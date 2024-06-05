@@ -1,0 +1,27 @@
+{
+  "name": "activitypub-v-3-final",
+  "version": "0.0.0",
+  "repository": "git@github.com:TryGhost/activitypub-v3-final.git",
+  "author": "Ghost Foundation",
+  "private": true,
+  "main": "app.js",
+  "scripts": {
+    "dev": "echo \"Implement me!\"",
+    "test:unit": "NODE_ENV=testing c8 --all --check-coverage --100  --reporter text --reporter cobertura mocha './test/**/*.test.js'",
+    "test": "yarn test:unit",
+    "lint:code": "eslint *.js lib/ --ext .js --cache",
+    "lint": "yarn lint:code",
+    "preship": "yarn test",
+    "ship": "STATUS=$(git status --porcelain); echo $STATUS; if [ -z \"$STATUS\" ]; then yarn version && git push --follow-tags; fi"
+  },
+  "files": [
+    "app.js",
+    "lib"
+  ],
+  "devDependencies": {
+    "c8": "9.1.0",
+    "mocha": "10.4.0",
+    "sinon": "18.0.0"
+  },
+  "dependencies": {}
+}
