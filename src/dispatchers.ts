@@ -33,12 +33,19 @@ async function getUserData(ctx: RequestContext<ContextData>, handle: string) {
     const existing = await ctx.data.db.get<PersonData>(['handle', handle]);
 
     if (existing) {
+        let icon = null;
+        try {
+            icon = new Image({ url: new URL(existing.icon) });
+        } catch (err) {
+            console.log('Could not create Image from Icon value', existing.icon);
+            console.log(err);
+        }
         return {
             id: new URL(existing.id),
             name: existing.name,
             summary: existing.summary,
             preferredUsername: existing.preferredUsername,
-            icon: new Image({ url: new URL(existing.icon) }),
+            icon,
             inbox: new URL(existing.inbox),
             outbox: new URL(existing.outbox),
             following: new URL(existing.following),
@@ -69,7 +76,7 @@ async function getUserData(ctx: RequestContext<ContextData>, handle: string) {
         name: data.name,
         summary: data.summary,
         preferredUsername: data.preferredUsername,
-        icon: data.icon.url!.href as string,
+        icon: 'https://ghost.org/favicon.ico',
         inbox: data.inbox.href,
         outbox: data.outbox.href,
         following: data.following.href,
