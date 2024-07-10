@@ -23,7 +23,7 @@ import {
     Undo,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
-import { Hono, Context as HonoContext } from 'hono';
+import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
 import { configure, getConsoleSink } from '@logtape/logtape';
@@ -353,15 +353,26 @@ app.get('/ping', (ctx) => {
     });
 });
 
-app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
-app.get('/.ghost/activitypub/activities/:handle', getActivities);
+function requireRole(role: GhostRole) {
+    return function roleMiddleware(ctx: HonoContext, next: Next) {
+        if (ctx.get('role') !== role) {
+            return new Response(null, {
+                status: 403
+            });
+        }
+        return next();
+    }
+}
+
+app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
+app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivities);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
 app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
-app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
-app.post('/.ghost/activitypub/actions/like/:id', likeAction);
-app.post('/.ghost/activitypub/actions/unlike/:id', unlikeAction);
-app.post('/.ghost/activitypub/actions/reply/:id', replyAction);
-app.get('/.ghost/activitypub/actions/search', searchAction);
+app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
+app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
+app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);
+app.post('/.ghost/activitypub/actions/reply/:id', requireRole(GhostRole.Owner), replyAction);
+app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), searchAction);
 
 /** Federation wire up */
 
