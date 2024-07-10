@@ -1,3 +1,5 @@
+import jose from 'node-jose';
+import jwt from 'jsonwebtoken';
 import { serve } from '@hono/node-server';
 import {
     Article,
@@ -208,9 +210,19 @@ fedify.setObjectDispatcher(
 
 /** Hono */
 
+enum GhostRole {
+  Anonymous = 'Anonymous',
+  Owner = 'Owner',
+  Administrator = 'Administrator',
+  Editor = 'Editor',
+  Author = 'Author',
+  Contributor = 'Contributor'
+}
+
 export type HonoContextVariables = {
     db: KvStore;
     globaldb: KvStore;
+    role: GhostRole;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -277,6 +289,61 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+app.use(async (ctx, next) => {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        // TODO handle
+        throw new Error('No Host header');
+    }
+    ctx.set('role', GhostRole.Anonymous);
+
+    const authorization = request.header('authorization');
+
+    if (!authorization) {
+        return next();
+    }
+
+    const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
+
+    if (!match) {
+        throw new Error('Invalid Authorization header');
+    }
+
+    let protocol = 'https';
+    // We allow insecure requests when not in production for things like testing
+    if (process.env.NODE_ENV !== 'production' && !request.raw.url.startsWith('https')) {
+        protocol = 'http';
+    }
+
+    const jwksURL = new URL('/ghost/.well-known/jwks.json', `${protocol}://${host}`);
+
+    const jwksResponse = await fetch(jwksURL, {
+        redirect: 'follow'
+    });
+
+    const jwks = await jwksResponse.json();
+
+    const key = await jose.JWK.asKey(jwks.keys[0]);
+
+    try {
+        const claims = jwt.verify(token, key.toPEM());
+        if (typeof claims === 'string' || typeof claims.role !== 'string') {
+            return;
+        }
+        if (['Owner', 'Administrator', 'Editor', 'Author', 'Contributor'].includes(claims.role)) {
+            ctx.set('role', GhostRole[claims.role as 'Owner' | 'Administrator' | 'Editor' | 'Author' | 'Contributor']);
+        } else {
+            ctx.set('role', GhostRole.Anonymous);
+        }
+    } catch (err) {
+        ctx.set('role', GhostRole.Anonymous);
+    }
+
+    await next();
+});
+
 
 /** Custom API routes */
 
