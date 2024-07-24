@@ -44,7 +44,7 @@ import {
     createDispatcher,
 } from './dispatchers';
 
-import { inboxHandler, postPublishedWebhook, followAction } from './handlers';
+import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
@@ -212,6 +212,7 @@ app.use(async (ctx, next) => {
 
 app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
+app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
 
 /** Federation wire up */

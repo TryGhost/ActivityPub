@@ -8,10 +8,20 @@ import {
     Note,
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
+import ky from 'ky';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
+import type { PersonData } from './user';
+
+type GhostSiteSettings = {
+    site: {
+        description: string;
+        icon: string;
+        title: string;
+    }
+}
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
     if (!post) {
@@ -113,6 +123,43 @@ export async function postPublishedWebhook(
             console.log(err);
         }
     }
+    return new Response(JSON.stringify({}), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+export async function siteChangedWebhook(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+    next: Next,
+) {
+    try {
+        // Retrieve site settings from Ghost
+        const host = ctx.req.header('host');
+
+        const settings = await ky
+            .get(`https://${host}/ghost/api/admin/site/`)
+            .json<GhostSiteSettings>();
+
+        // Update the database
+        const handle = 'index';
+        const db = ctx.get('db');
+
+        const current = await db.get<PersonData>(['handle', handle]);
+
+        await db.set(['handle', handle], {
+            ...current,
+            icon: settings.site.icon,
+            name: settings.site.title,
+            summary: settings.site.description,
+        });
+    } catch (err) {
+        console.log(err);
+    }
+
+    // Return 200 OK
     return new Response(JSON.stringify({}), {
         headers: {
             'Content-Type': 'application/activity+json',
