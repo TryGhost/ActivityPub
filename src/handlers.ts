@@ -7,6 +7,7 @@ import {
     Create,
     Note,
     Update,
+    PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
 import ky from 'ky';
@@ -15,6 +16,12 @@ import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
 import type { PersonData } from './user';
+import {
+    ACTOR_DEFAULT_HANDLE,
+    ACTOR_DEFAULT_ICON,
+    ACTOR_DEFAULT_NAME,
+    ACTOR_DEFAULT_SUMMARY
+} from './constants';
 
 type GhostSiteSettings = {
     site: {
@@ -22,6 +29,20 @@ type GhostSiteSettings = {
         icon: string;
         title: string;
     }
+}
+
+async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
+    const settings = await ky
+        .get(`https://${host}/ghost/api/admin/site/`)
+        .json<Partial<GhostSiteSettings>>();
+
+    return {
+        site: {
+            description: settings?.site?.description || ACTOR_DEFAULT_SUMMARY,
+            title: settings?.site?.title || ACTOR_DEFAULT_NAME,
+            icon: settings?.site?.icon || ACTOR_DEFAULT_ICON
+        }
+    };
 }
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
@@ -138,14 +159,12 @@ export async function siteChangedWebhook(
 ) {
     try {
         // Retrieve site settings from Ghost
-        const host = ctx.req.header('host');
+        const host = ctx.req.header('host') || '';
 
-        const settings = await ky
-            .get(`https://${host}/ghost/api/admin/site/`)
-            .json<GhostSiteSettings>();
+        const settings = await getGhostSiteSettings(host);
 
         // Update the database
-        const handle = 'index';
+        const handle = ACTOR_DEFAULT_HANDLE;
         const db = ctx.get('db');
 
         const current = await db.get<PersonData>(['handle', handle]);
@@ -169,6 +188,7 @@ export async function siteChangedWebhook(
         const update = new Update({
             id: apCtx.getObjectUri(Update, { id: uuidv4() }),
             actor: actor?.id,
+            to: PUBLIC_COLLECTION,
             object: actor
         });
 
