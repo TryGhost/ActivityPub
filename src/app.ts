@@ -14,6 +14,7 @@ import {
     Group,
     Organization,
     Service,
+    Update,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context } from 'hono';
@@ -42,6 +43,7 @@ import {
     followDispatcher,
     acceptDispatcher,
     createDispatcher,
+    updateDispatcher,
 } from './dispatchers';
 
 import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
@@ -134,6 +136,11 @@ fedify.setObjectDispatcher(
     Create,
     `/.ghost/activitypub/create/{id}`,
     createDispatcher,
+);
+fedify.setObjectDispatcher(
+    Update,
+    `/.ghost/activitypub/update/{id}`,
+    updateDispatcher,
 );
 
 /** Hono */

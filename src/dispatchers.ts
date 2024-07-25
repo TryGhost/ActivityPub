@@ -8,6 +8,7 @@ import {
     Create,
     Note,
     Activity,
+    Update,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -280,6 +281,18 @@ export async function createDispatcher(
         return null;
     }
     return Create.fromJsonLd(exists);
+}
+
+export async function updateDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Update, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
+    if (!exists) {
+        return null;
+    }
+    return Update.fromJsonLd(exists);
 }
 
 export async function noteDispatcher(

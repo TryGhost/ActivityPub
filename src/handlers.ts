@@ -6,6 +6,7 @@ import {
     isActor,
     Create,
     Note,
+    Update,
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
 import ky from 'ky';
@@ -148,13 +149,32 @@ export async function siteChangedWebhook(
         const db = ctx.get('db');
 
         const current = await db.get<PersonData>(['handle', handle]);
-
-        await db.set(['handle', handle], {
+        const updated =  {
             ...current,
             icon: settings.site.icon,
             name: settings.site.title,
             summary: settings.site.description,
+        }
+
+        await db.set(['handle', handle], updated);
+
+        // Publish activity
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb: ctx.get('globaldb'),
         });
+
+        const actor = await apCtx.getActor(handle);
+
+        const update = new Update({
+            id: apCtx.getObjectUri(Update, { id: uuidv4() }),
+            actor: actor?.id,
+            object: actor
+        });
+
+        await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
+        await addToList(db, ['outbox'], update.id!.href);
+        await apCtx.sendActivity({ handle }, 'followers', update);
     } catch (err) {
         console.log(err);
     }
