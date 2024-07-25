@@ -85,7 +85,7 @@ export async function followAction(
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
-    const actor = await apCtx.getActor('index'); // TODO This should be the actor making the request
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
     const followId = apCtx.getObjectUri(Follow, {
         id: uuidv4(),
     });
@@ -97,7 +97,7 @@ export async function followAction(
     const followJson = await follow.toJsonLd();
     ctx.get('globaldb').set([follow.id!.href], followJson);
 
-    apCtx.sendActivity({ handle: 'index' }, actorToFollow, follow);
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, actorToFollow, follow);
     return new Response(JSON.stringify(followJson), {
         headers: {
             'Content-Type': 'application/activity+json',
@@ -121,12 +121,12 @@ export async function postPublishedWebhook(
         data?.post?.current,
     );
     if (article) {
-        const actor = await apCtx.getActor('index');
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
         const create = new Create({
             actor,
             object: article,
             id: apCtx.getObjectUri(Create, { id: uuidv4() }),
-            to: apCtx.getFollowersUri('index'),
+            to: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
         });
         try {
             await article.toJsonLd();
@@ -140,7 +140,7 @@ export async function postPublishedWebhook(
                 .get('globaldb')
                 .set([article.id!.href], await article.toJsonLd());
             await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-            await apCtx.sendActivity({ handle: 'index' }, 'followers', create);
+            await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create);
         } catch (err) {
             console.log(err);
         }
