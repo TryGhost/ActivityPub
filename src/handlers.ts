@@ -6,12 +6,44 @@ import {
     isActor,
     Create,
     Note,
+    Update,
+    PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
+import ky from 'ky';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
+import type { PersonData } from './user';
+import {
+    ACTOR_DEFAULT_HANDLE,
+    ACTOR_DEFAULT_ICON,
+    ACTOR_DEFAULT_NAME,
+    ACTOR_DEFAULT_SUMMARY
+} from './constants';
+
+type GhostSiteSettings = {
+    site: {
+        description: string;
+        icon: string;
+        title: string;
+    }
+}
+
+async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
+    const settings = await ky
+        .get(`https://${host}/ghost/api/admin/site/`)
+        .json<Partial<GhostSiteSettings>>();
+
+    return {
+        site: {
+            description: settings?.site?.description || ACTOR_DEFAULT_SUMMARY,
+            title: settings?.site?.title || ACTOR_DEFAULT_NAME,
+            icon: settings?.site?.icon || ACTOR_DEFAULT_ICON
+        }
+    };
+}
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
     if (!post) {
@@ -113,6 +145,61 @@ export async function postPublishedWebhook(
             console.log(err);
         }
     }
+    return new Response(JSON.stringify({}), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+export async function siteChangedWebhook(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+    next: Next,
+) {
+    try {
+        // Retrieve site settings from Ghost
+        const host = ctx.req.header('host') || '';
+
+        const settings = await getGhostSiteSettings(host);
+
+        // Update the database
+        const handle = ACTOR_DEFAULT_HANDLE;
+        const db = ctx.get('db');
+
+        const current = await db.get<PersonData>(['handle', handle]);
+        const updated =  {
+            ...current,
+            icon: settings.site.icon,
+            name: settings.site.title,
+            summary: settings.site.description,
+        }
+
+        await db.set(['handle', handle], updated);
+
+        // Publish activity
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb: ctx.get('globaldb'),
+        });
+
+        const actor = await apCtx.getActor(handle);
+
+        const update = new Update({
+            id: apCtx.getObjectUri(Update, { id: uuidv4() }),
+            actor: actor?.id,
+            to: PUBLIC_COLLECTION,
+            object: actor
+        });
+
+        await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
+        await addToList(db, ['outbox'], update.id!.href);
+        await apCtx.sendActivity({ handle }, 'followers', update);
+    } catch (err) {
+        console.log(err);
+    }
+
+    // Return 200 OK
     return new Response(JSON.stringify({}), {
         headers: {
             'Content-Type': 'application/activity+json',
