@@ -1,6 +1,8 @@
 services:
-  activitypub:
+  activitypub-testing:
     build: .
+    volumes:
+      - ./src:/opt/activitypub/src
     environment:
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password

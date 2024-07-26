@@ -13,7 +13,7 @@
     "test:integration": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.integration.test.ts'",
     "test:code": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.test.ts'",
     "test:all": "yarn test:types && yarn test:code",
-    "test": "docker compose -f docker-compose.testing.yml up --abort-on-container-exit --exit-code-from activitypub",
+    "test": "docker compose -f docker-compose.testing.yml up --abort-on-container-exit --exit-code-from activitypub-testing",
     "lint:code": "eslint *.js lib/ --ext .js --cache",
     "lint": "yarn lint:code"
   },
