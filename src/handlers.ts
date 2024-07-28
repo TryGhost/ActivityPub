@@ -126,7 +126,8 @@ export async function postPublishedWebhook(
             actor,
             object: article,
             id: apCtx.getObjectUri(Create, { id: uuidv4() }),
-            to: apCtx.getFollowersUri('index'),
+            to: PUBLIC_COLLECTION,
+            cc: apCtx.getFollowersUri('index'),
         });
         try {
             await article.toJsonLd();
@@ -189,7 +190,8 @@ export async function siteChangedWebhook(
             id: apCtx.getObjectUri(Update, { id: uuidv4() }),
             actor: actor?.id,
             to: PUBLIC_COLLECTION,
-            object: actor
+            object: actor,
+            cc: apCtx.getFollowersUri('index'),
         });
 
         await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
