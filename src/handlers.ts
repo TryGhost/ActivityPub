@@ -141,7 +141,9 @@ export async function postPublishedWebhook(
                 .get('globaldb')
                 .set([article.id!.href], await article.toJsonLd());
             await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-            await apCtx.sendActivity({ handle: 'index' }, 'followers', create);
+            await apCtx.sendActivity({ handle: 'index' }, 'followers', create, {
+                preferSharedInbox: true
+            });
         } catch (err) {
             console.log(err);
         }
@@ -196,7 +198,9 @@ export async function siteChangedWebhook(
 
         await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
         await addToList(db, ['outbox'], update.id!.href);
-        await apCtx.sendActivity({ handle }, 'followers', update);
+        await apCtx.sendActivity({ handle }, 'followers', update, {
+            preferSharedInbox: true
+        });
     } catch (err) {
         console.log(err);
     }
