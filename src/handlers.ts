@@ -9,7 +9,7 @@ import {
     Update,
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
-import { Context, Next } from 'hono';
+import { Context } from 'hono';
 import ky from 'ky';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -31,6 +31,16 @@ type GhostSiteSettings = {
     }
 }
 
+type Post = {
+    uuid: string;
+    excerpt: string;
+    title: string;
+    html: string;
+    feature_image: string;
+    published_at: string;
+    url: string;
+}
+
 async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
     const settings = await ky
         .get(`https://${host}/ghost/api/admin/site/`)
@@ -45,7 +55,7 @@ async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
     };
 }
 
-async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
+async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
     if (!post) {
         return {
             article: null,
@@ -61,7 +71,7 @@ async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
         name: post.title,
         content: post.html,
         image: toURL(post.feature_image),
-        published: post.published_at,
+        published: post.published_at as any, /* eslint-disable-line @typescript-eslint/no-explicit-any */
         preview: preview,
         url: toURL(post.url),
     });
@@ -108,7 +118,6 @@ export async function followAction(
 
 export async function postPublishedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     // TODO: Validate webhook with secret
     const data = await ctx.req.json();
@@ -155,7 +164,6 @@ export async function postPublishedWebhook(
 
 export async function siteChangedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     try {
         // Retrieve site settings from Ghost
@@ -210,10 +218,9 @@ export async function siteChangedWebhook(
 
 export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     const results = (await ctx.get('db').get<string[]>(['inbox'])) || [];
-    let items: unknown[] = [];
+    const items: unknown[] = [];
     for (const result of results) {
         try {
             const thing = await ctx.get('globaldb').get([result]);

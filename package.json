@@ -14,20 +14,24 @@
     "test:code": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.test.ts'",
     "test:all": "yarn test:types && yarn test:code",
     "test": "docker compose -f docker-compose.testing.yml up --abort-on-container-exit --exit-code-from activitypub",
-    "lint:code": "eslint *.js lib/ --ext .js --cache",
+    "lint:code": "eslint src/**/*.ts",
     "lint": "yarn lint:code"
   },
   "files": [
     "src"
   ],
   "devDependencies": {
+    "@eslint/js": "9.7.0",
+    "@types/eslint__js": "8.42.3",
     "@types/mocha": "10.0.7",
     "@types/node": "20.12.12",
     "@types/uuid": "10.0.0",
     "c8": "10.1.2",
+    "eslint": "9.7.0",
     "mocha": "10.5.2",
     "tsx": "4.11.0",
-    "typescript": "5.4.5"
+    "typescript": "5.5.4",
+    "typescript-eslint": "7.17.0"
   },
   "dependencies": {
     "@fedify/fedify": "0.12.1",

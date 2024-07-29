@@ -2,18 +2,11 @@ import { serve } from '@hono/node-server';
 import {
     Article,
     Accept,
-    Object as ActivityPubObject,
     Federation,
     Follow,
-    KvKey,
     KvStore,
-    MemoryKvStore,
     Create,
     Note,
-    Application,
-    Group,
-    Organization,
-    Service,
     Update,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';

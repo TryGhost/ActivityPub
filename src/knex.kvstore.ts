@@ -1,4 +1,4 @@
-import { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
+import { KvKey, KvStore } from '@fedify/fedify';
 import Knex from 'knex';
 
 export class KnexKvStore implements KvStore {
@@ -26,7 +26,7 @@ export class KnexKvStore implements KvStore {
         return row.value;
     }
 
-    async set(key: KvKey, value: unknown, options?: KvStoreSetOptions) {
+    async set(key: KvKey, value: unknown) {
         if (typeof value === 'boolean') {
             value = {
                 '@@BOOLEAN@@': value,

@@ -44,10 +44,10 @@ export async function handleFollow(
     follow: Follow,
 ) {
     console.log('Handling Follow');
-    if (!follow.id) {
+    if (!follow.id || !follow.objectId) {
         return;
     }
-    const parsed = (ctx as any).parseUri(follow.objectId);
+    const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== 'actor') {
         // TODO Log
         return;
@@ -81,12 +81,15 @@ export async function handleAccept(
     accept: Accept,
 ) {
     console.log('Handling Accept');
-    const parsed = (ctx as any).parseUri(accept.objectId);
-    console.log(parsed);
-    if (false && parsed?.type !== 'follow') {
-        console.log('Not accepting a follow - exit');
+    if (!accept.objectId) {
         return;
     }
+    const parsed = ctx.parseUri(accept.objectId);
+    console.log(parsed);
+    // if (false && parsed?.type !== 'follow') {
+    //     console.log('Not accepting a follow - exit');
+    //     return;
+    // }
     if (!accept.id) {
         console.log('Accept missing id - exit');
         return;
@@ -113,12 +116,18 @@ export async function handleCreate(
     create: Create,
 ) {
     console.log('Handling Create');
-    const parsed = (ctx as any).parseUri(create.objectId);
-    console.log(parsed);
-    if (false && parsed?.type !== 'article') {
-        console.log('Not accepting a follow - exit');
+
+    if (create.objectId === null) {
+        console.log('Create missing objectId - exit');
         return;
     }
+
+    const parsed = ctx.parseUri(create.objectId);
+    console.log(parsed);
+    // if (false && parsed?.type !== 'article') {
+    //     console.log('Not accepting a follow - exit');
+    //     return;
+    // }
     if (!create.id) {
         console.log('Accept missing id - exit');
         return;
@@ -146,12 +155,11 @@ export async function inboxErrorHandler(
 
 export async function followersDispatcher(
     ctx: RequestContext<ContextData>,
-    handle: string,
 ) {
     console.log('Followers Dispatcher');
     const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
     console.log(results);
-    let items: Person[] = [];
+    const items: Person[] = [];
     for (const result of results) {
         try {
             const thing = await lookupObject(result);
@@ -169,7 +177,6 @@ export async function followersDispatcher(
 
 export async function followersCounter(
     ctx: RequestContext<ContextData>,
-    handle: string,
 ) {
     const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
     return results.length;
@@ -177,12 +184,11 @@ export async function followersCounter(
 
 export async function followingDispatcher(
     ctx: RequestContext<ContextData>,
-    handle: string,
 ) {
     console.log('Following Dispatcher');
     const results = (await ctx.data.db.get<string[]>(['following'])) || [];
     console.log(results);
-    let items: Person[] = [];
+    const items: Person[] = [];
     for (const result of results) {
         try {
             const thing = await lookupObject(result);
@@ -200,7 +206,6 @@ export async function followingDispatcher(
 
 export async function followingCounter(
     ctx: RequestContext<ContextData>,
-    handle: string,
 ) {
     const results = (await ctx.data.db.get<string[]>(['following'])) || [];
     return results.length;
@@ -208,12 +213,11 @@ export async function followingCounter(
 
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
-    handle: string,
 ) {
     console.log('Outbox Dispatcher');
     const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
     console.log(results);
-    let items: Activity[] = [];
+    const items: Activity[] = [];
     for (const result of results) {
         try {
             const thing = await ctx.data.globaldb.get([result]);
@@ -230,7 +234,6 @@ export async function outboxDispatcher(
 
 export async function outboxCounter(
     ctx: RequestContext<ContextData>,
-    handle: string,
 ) {
     const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
     return results.length;

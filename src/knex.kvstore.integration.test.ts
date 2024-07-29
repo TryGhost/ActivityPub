@@ -1,6 +1,5 @@
 import assert from 'assert';
 import { KnexKvStore } from './knex.kvstore';
-import { Knex } from 'knex';
 import { client } from './db';
 
 after(async function () {

@@ -10,7 +10,7 @@ export function scopeKvStore(db: KvStore, scope: KvKey): KvStore {
         get(key: KvKey) {
             return db.get(scopeKvKey(scope, key));
         },
-        set(key: KvKey, value: any) {
+        set(key: KvKey, value: unknown) {
             return db.set(scopeKvKey(scope, key), value);
         },
         delete(key: KvKey) {

@@ -62,25 +62,13 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         ),
     };
 
-    const dataToStore: PersonData = {
-        id: data.id.href,
-        name: data.name,
-        summary: data.summary,
-        preferredUsername: data.preferredUsername,
-        icon: 'https://ghost.org/favicon.ico',
-        inbox: data.inbox.href,
-        outbox: data.outbox.href,
-        following: data.following.href,
-        followers: data.followers.href,
-    };
-
     await ctx.data.db.set(['handle', handle], data);
 
     return data;
 }
 
 export async function getUserKeypair(ctx: Context<ContextData>, handle: string) {
-    const existing = await ctx.data.db.get<{ publicKey: any; privateKey: any }>([
+    const existing = await ctx.data.db.get<{ publicKey: JsonWebKey; privateKey: JsonWebKey }>([
         'keypair',
         handle,
     ]);
