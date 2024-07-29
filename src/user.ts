@@ -67,7 +67,19 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         ),
     };
 
-    await ctx.data.db.set(['handle', handle], data);
+    const dataToStore: PersonData = {
+        id: data.id.href,
+        name: data.name,
+        summary: data.summary,
+        preferredUsername: data.preferredUsername,
+        icon: ACTOR_DEFAULT_ICON,
+        inbox: data.inbox.href,
+        outbox: data.outbox.href,
+        following: data.following.href,
+        followers: data.followers.href,
+    };
+
+    await ctx.data.db.set(['handle', handle], dataToStore);
 
     return data;
 }
