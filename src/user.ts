@@ -4,6 +4,7 @@ import {
     generateCryptoKeyPair,
     exportJwk,
     importJwk,
+    Context,
 } from '@fedify/fedify';
 import { ContextData } from './app';
 
@@ -78,8 +79,8 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
     return data;
 }
 
-export async function getUserKeypair(ctx: ContextData, handle: string) {
-    const existing = await ctx.db.get<{ publicKey: any; privateKey: any }>([
+export async function getUserKeypair(ctx: Context<ContextData>, handle: string) {
+    const existing = await ctx.data.db.get<{ publicKey: any; privateKey: any }>([
         'keypair',
         handle,
     ]);
@@ -98,7 +99,7 @@ export async function getUserKeypair(ctx: ContextData, handle: string) {
         privateKey: keys.privateKey,
     };
 
-    await ctx.db.set(['keypair', handle], {
+    await ctx.data.db.set(['keypair', handle], {
         publicKey: await exportJwk(data.publicKey),
         privateKey: await exportJwk(data.privateKey),
     });
