@@ -10,6 +10,7 @@ import {
     Activity,
     Update,
     Context,
+    Announce,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -134,6 +135,47 @@ export async function handleCreate(
     const createJson = await create.toJsonLd();
     ctx.data.globaldb.set([create.id.href], createJson);
     await addToList(ctx.data.db, ['inbox'], create.id.href);
+}
+
+export async function handleAnnounce(
+    ctx: Context<ContextData>,
+    announce: Announce,
+) {
+    console.log('Handling Announce');
+    const announceJson = await announce.toJsonLd();
+    console.log(announceJson);
+    if (!announce.objectId) {
+        console.log('Invalid Announce - no object id');
+        return;
+    }
+    const object = await lookupObject(announce.objectId);
+    if (!object) {
+        console.log('Invalid Announce - could not find object');
+        return;
+    }
+    if (!object.id) {
+        console.log('Invalid Announce - could not find object id');
+        return;
+    }
+    if (!announce.id) {
+        console.log('Invalid Announce - no id');
+        return;
+    }
+
+    const sender = await announce.getActor(ctx);
+    if (sender === null || sender.id === null) {
+        console.log('Sender missing, exit early');
+        return;
+    }
+
+    // TODO Check Sender is in our following
+    ctx.data.globaldb.set([announce.id.href], announceJson);
+    try {
+        ctx.data.globaldb.set([object.id.href], object.toJsonLd());
+    } catch (err) {
+        console.error('Could not store announced object');
+    }
+    await addToList(ctx.data.db, ['inbox'], announce.id.href);
 }
 
 export async function inboxErrorHandler(
