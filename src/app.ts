@@ -48,6 +48,8 @@ import {
 } from './dispatchers';
 
 import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
+import * as path from 'path';
+import { RequestRecorder } from 'requestrecorder';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
@@ -237,6 +239,13 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+if (process.env.RECORD_INBOX_REQUESTS === 'true') {
+    const filePath = path.join(import.meta.dirname, '../', 'inbox-requests.json');
+    console.log(`Recording to ${filePath}`);
+    const requestRecorder = await RequestRecorder.create(filePath);
+    app.post('/.ghost/activitypub/inbox/:handle', requestRecorder.honoMiddleware.bind(requestRecorder));
+}
 
 /** Custom API routes */
 
