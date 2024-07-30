@@ -9,7 +9,6 @@ import {
     Note,
     Activity,
     Update,
-    Context,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -29,7 +28,7 @@ export async function actorDispatcher(
     return person;
 }
 
-export async function keypairDispatcher(ctx: Context<ContextData>, handle: string) {
+export async function keypairDispatcher(ctx: ContextData, handle: string) {
     if (handle !== 'index') return [];
 
     const data = await getUserKeypair(ctx, handle);
@@ -40,7 +39,7 @@ export async function keypairDispatcher(ctx: Context<ContextData>, handle: strin
 }
 
 export async function handleFollow(
-    ctx: Context<ContextData>,
+    ctx: RequestContext<ContextData>,
     follow: Follow,
 ) {
     console.log('Handling Follow');
@@ -77,7 +76,7 @@ export async function handleFollow(
 }
 
 export async function handleAccept(
-    ctx: Context<ContextData>,
+    ctx: RequestContext<ContextData>,
     accept: Accept,
 ) {
     console.log('Handling Accept');
@@ -109,7 +108,7 @@ export async function handleAccept(
 }
 
 export async function handleCreate(
-    ctx: Context<ContextData>,
+    ctx: RequestContext<ContextData>,
     create: Create,
 ) {
     console.log('Handling Create');
@@ -137,7 +136,7 @@ export async function handleCreate(
 }
 
 export async function inboxErrorHandler(
-    ctx: Context<ContextData>,
+    ctx: RequestContext<ContextData>,
     error: unknown,
 ) {
     console.error('Error handling incoming activity');
