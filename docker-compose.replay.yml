@@ -1,0 +1,41 @@
+services:
+  activitypub:
+    build: .
+    volumes:
+      - ./src:/opt/activitypub/src
+      - ./inbox-requests.json:/opt/activitypub/inbox-requests.json
+    environment:
+      - PORT=8080
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+      - SKIP_SIGNATURE_VERIFICATION=true 
+      - REPLAY_REQUESTS=true 
+      - NODE_ENV=dev
+    command: node --import tsx --watch src/replay-requests.ts
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  nginx:
+    build: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - activitypub
+
+  mysql:
+    image: mysql:lts
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=activitypub
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      interval: 1s
+      retries: 120
