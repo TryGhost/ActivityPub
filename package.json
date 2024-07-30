@@ -7,13 +7,16 @@
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up",
+    "dev": "docker compose up -d --no-recreate",
+    "stop": "docker compose down",
+    "fix": "docker compose rm activitypub nginx -sf && docker compose build activitypub nginx",
+    "logs": "docker compose logs activitypub -f",
+    "test": "yarn dev && docker compose exec activitypub yarn test:all",
     "test:types": "tsc --noEmit",
     "test:unit": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.unit.test.ts'",
     "test:integration": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.integration.test.ts'",
     "test:code": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.test.ts'",
     "test:all": "yarn test:types && yarn test:code",
-    "test": "docker compose -f docker-compose.testing.yml up --abort-on-container-exit --exit-code-from activitypub",
     "lint:code": "eslint *.js lib/ --ext .js --cache",
     "lint": "yarn lint:code"
   },
