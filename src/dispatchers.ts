@@ -142,39 +142,63 @@ export async function handleAnnounce(
     announce: Announce,
 ) {
     console.log('Handling Announce');
-    const announceJson = await announce.toJsonLd();
-    console.log(announceJson);
-    if (!announce.objectId) {
-        console.log('Invalid Announce - no object id');
-        return;
-    }
-    const object = await lookupObject(announce.objectId);
-    if (!object) {
-        console.log('Invalid Announce - could not find object');
-        return;
-    }
-    if (!object.id) {
-        console.log('Invalid Announce - could not find object id');
-        return;
-    }
+
+    // Validate announce
     if (!announce.id) {
         console.log('Invalid Announce - no id');
         return;
     }
 
+    if (!announce.objectId) {
+        console.log('Invalid Announce - no object id');
+        return;
+    }
+
+    // Validate sender
     const sender = await announce.getActor(ctx);
+
     if (sender === null || sender.id === null) {
         console.log('Sender missing, exit early');
         return;
     }
 
-    // TODO Check Sender is in our following
-    ctx.data.globaldb.set([announce.id.href], announceJson);
-    try {
-        ctx.data.globaldb.set([object.id.href], object.toJsonLd());
-    } catch (err) {
-        console.error('Could not store announced object');
+    // Lookup announced object - If not found in globalDb, perform network lookup
+    let object = null;
+    let existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
+
+    if (!existing) {
+        console.log('Object not found in globalDb, performing network lookup');
+
+        object = await lookupObject(announce.objectId);
     }
+
+    // Validate object
+    if (!existing && !object) {
+        console.log('Invalid Announce - could not find object');
+        return;
+    }
+
+    if (object && !object.id) {
+        console.log('Invalid Announce - could not find object id');
+        return;
+    }
+
+    // TODO: Check if sender is in our following and if so, bail out early
+
+    // Persist announce
+    const announceJson = await announce.toJsonLd();
+    ctx.data.globaldb.set([announce.id.href], announceJson);
+
+    // Persist object if not already persisted
+    if (!existing && object && object.id) {
+        console.log('Storing object in globalDb');
+
+        const objectJson = await object.toJsonLd();
+
+        ctx.data.globaldb.set([object.id.href], objectJson);
+    }
+
+    // Add announce to inbox
     await addToList(ctx.data.db, ['inbox'], announce.id.href);
 }
 
