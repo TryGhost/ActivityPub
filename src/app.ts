@@ -1,3 +1,5 @@
+import jose from 'node-jose';
+import jwt from 'jsonwebtoken';
 import { serve } from '@hono/node-server';
 import {
     Article,
@@ -145,9 +147,12 @@ fedify.setObjectDispatcher(
 
 /** Hono */
 
+type GhostRole = 'Anonymous' | 'Owner' | 'Administrator' | 'Editor' | 'Author' | 'Contributor';
+
 export type HonoContextVariables = {
     db: KvStore;
     globaldb: KvStore;
+    role: GhostRole;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -214,6 +219,55 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+app.use(async (ctx, next) => {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        // TODO handle
+        throw new Error('No Host header');
+    }
+    ctx.set('role', 'Anonymous');
+
+    const authorization = request.header('authorization');
+
+    if (!authorization) {
+        return next();
+    }
+
+    const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
+
+    if (!match) {
+        throw new Error('Invalid Authorization header');
+    }
+
+    const jwksURL = new URL('/ghost/.well-known/jwks.json', `https://${host}`);
+
+    const jwksResponse = await fetch(jwksURL, {
+        redirect: 'follow'
+    });
+
+    const jwks = await jwksResponse.json();
+
+    const key = await jose.JWK.asKey(jwks.keys[0]);
+
+    try {
+        const claims = jwt.verify(token, key.toPEM());
+        if (typeof claims === 'string' || typeof claims.role !== 'string') {
+            return;
+        }
+        if (['Owner', 'Administrator', 'Editor', 'Author', 'Contributor'].includes(claims.role)) {
+            ctx.set('role', claims.role as GhostRole);
+        } else {
+            ctx.set('role', 'Anonymous');
+        }
+    } catch (err) {
+        ctx.set('role', 'Anonymous');
+    }
+
+    next();
+});
+
 
 /** Custom API routes */
 
