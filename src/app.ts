@@ -1,4 +1,3 @@
-import { serve } from '@hono/node-server';
 import {
     Article,
     Accept,
@@ -21,7 +20,6 @@ import {
 import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext } from 'hono';
 import { cors } from 'hono/cors';
-import { behindProxy } from 'x-forwarded-fetch';
 import { configure, getConsoleSink } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
@@ -261,21 +259,4 @@ app.use(
     ),
 );
 
-function forceAcceptHeader(fn: (req: Request) => unknown) {
-    return function (request: Request) {
-        request.headers.set('accept', 'application/activity+json');
-        return fn(request);
-    };
-}
-
-serve(
-    {
-        fetch: forceAcceptHeader(behindProxy(app.fetch)),
-        port: parseInt(process.env.PORT || '8080'),
-    },
-    function (info) {
-        console.log(`listening on ${info.address}:${info.port}`);
-    },
-);
-
-process.on('SIGINT', () => process.exit(0));
+export default app;

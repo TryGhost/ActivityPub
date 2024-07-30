@@ -4,7 +4,7 @@
   "repository": "git@github.com:TryGhost/ActivityPub.git",
   "author": "Ghost Foundation",
   "license": "MIT",
-  "main": "src/app.ts",
+  "main": "src/main.ts",
   "type": "module",
   "scripts": {
     "dev": "docker compose up -d --no-recreate",

@@ -10,7 +10,7 @@ services:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
-    command: node --import tsx --watch src/app.ts
+    command: node --import tsx --watch src/main.ts
     depends_on:
       mysql:
         condition: service_healthy
