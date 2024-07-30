@@ -272,6 +272,49 @@ export async function followingCounter(
     return results.length;
 }
 
+type StoredThing = {
+    object: object | string;
+}
+
+export async function inboxDispatcher(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    console.log('Inbox Dispatcher');
+    const results = (await ctx.data.db.get<string[]>(['inbox'])) || [];
+    console.log(results);
+    let items: Activity[] = [];
+    for (const result of results) {
+        try {
+            const thing = await ctx.data.globaldb.get<StoredThing>([result]);
+
+            // If the object is a string, it's a URI, so we should to look it up
+            // in the globalDb. If it's not in the globalDb, we should just
+            // leave it as a string
+            if (thing && typeof thing.object === 'string') {
+                thing.object = await ctx.data.globaldb.get([thing.object]) ?? thing.object;
+            }
+
+            const activity = await Activity.fromJsonLd(thing);
+
+            items.push(activity);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    return {
+        items,
+    };
+}
+
+export async function inboxCounter(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    const results = (await ctx.data.db.get<string[]>(['inbox'])) || [];
+    return results.length;
+}
+
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,

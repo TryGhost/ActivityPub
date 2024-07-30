@@ -38,6 +38,8 @@ import {
     followersCounter,
     followingDispatcher,
     followingCounter,
+    inboxDispatcher,
+    inboxCounter,
     outboxDispatcher,
     outboxCounter,
     articleDispatcher,
@@ -129,6 +131,13 @@ fedify
         followingDispatcher,
     )
     .setCounter(followingCounter);
+
+fedify
+    .setInboxDispatcher(
+        '/.ghost/activitypub/inbox/{handle}',
+        inboxDispatcher,
+    )
+    .setCounter(inboxCounter);
 
 fedify
     .setOutboxDispatcher(
