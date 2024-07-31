@@ -33,7 +33,7 @@
     "typescript": "5.4.5"
   },
   "dependencies": {
-    "@fedify/fedify": "0.11.0-dev.223",
+    "@fedify/fedify": "0.13.0-dev.318",
     "@hono/node-server": "1.11.1",
     "@sentry/node": "8.13.0",
     "hono": "4.4.6",

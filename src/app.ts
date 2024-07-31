@@ -3,7 +3,7 @@ import {
     Article,
     Accept,
     Object as ActivityPubObject,
-    Federation,
+    createFederation,
     Follow,
     KvKey,
     KvStore,
@@ -15,9 +15,10 @@ import {
     Organization,
     Service,
     Update,
+    Context,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
-import { Hono, Context } from 'hono';
+import { Hono, Context as HonoContext } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
 import { configure, getConsoleSink } from '@logtape/logtape';
@@ -65,18 +66,38 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
-export const fedify = new Federation<ContextData>({
+export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
-    treatHttps: true,
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
 
 /** Fedify */
 
+/**
+ * Fedify does not pass the correct context object when running outside of the request context
+ * for example in the context of the Inbox Queue - so we need to wrap handlers with this.
+ */
+function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Promise<R>) {
+    return async function (ctx: Context<any>, b: B) {
+        const host = ctx.host;
+        if (!ctx.data) {
+            (ctx as any).data = {};
+        }
+        if (!ctx.data.globaldb) {
+            ctx.data.globaldb = db;
+        }
+        if (!ctx.data.db) {
+            ctx.data.db = scopeKvStore(db, ['sites', host]);
+        }
+        return fn(ctx, b);
+    }
+}
+
 fedify
+    // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher('/.ghost/activitypub/users/{handle}', actorDispatcher)
-    .setKeyPairsDispatcher(keypairDispatcher);
+    .setKeyPairsDispatcher(ensureCorrectContext(keypairDispatcher));
 
 const inboxListener = fedify.setInboxListeners(
     '/.ghost/activitypub/inbox/{handle}',
@@ -84,11 +105,11 @@ const inboxListener = fedify.setInboxListeners(
 );
 
 inboxListener
-    .on(Follow, handleFollow)
+    .on(Follow, ensureCorrectContext(handleFollow))
     .onError(inboxErrorHandler)
-    .on(Accept, handleAccept)
+    .on(Accept, ensureCorrectContext(handleAccept))
     .onError(inboxErrorHandler)
-    .on(Create, handleCreate)
+    .on(Create, ensureCorrectContext(handleCreate))
     .onError(inboxErrorHandler);
 
 fedify
@@ -227,7 +248,7 @@ app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
 app.use(
     federation(
         fedify,
-        (ctx: Context<{ Variables: HonoContextVariables }>): ContextData => {
+        (ctx: HonoContext<{ Variables: HonoContextVariables }>): ContextData => {
             return {
                 db: ctx.get('db'),
                 globaldb: ctx.get('globaldb'),
