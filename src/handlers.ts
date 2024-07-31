@@ -31,6 +31,10 @@ type GhostSiteSettings = {
     }
 }
 
+type StoredThing = {
+    object: object | string;
+}
+
 async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
     const settings = await ky
         .get(`https://${host}/ghost/api/admin/site/`)
@@ -222,7 +226,16 @@ export async function inboxHandler(
     let items: unknown[] = [];
     for (const result of results) {
         try {
-            const thing = await ctx.get('globaldb').get([result]);
+            const db = ctx.get('globaldb');
+            const thing = await db.get<StoredThing>([result]);
+
+            // If the object is a string, it's probably a URI, so we should
+            // look it up the db. If it's not in the db, we should just leave
+            // it as is
+            if (thing && typeof thing.object === 'string') {
+                thing.object = await db.get([thing.object]) ?? thing.object;
+            }
+
             items.push(thing);
         } catch (err) {
             console.log(err);
