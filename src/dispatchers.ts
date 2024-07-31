@@ -10,6 +10,7 @@ import {
     Activity,
     Update,
     Context,
+    Announce,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -135,6 +136,69 @@ export async function handleCreate(
     const createJson = await create.toJsonLd();
     ctx.data.globaldb.set([create.id.href], createJson);
     await addToList(ctx.data.db, ['inbox'], create.id.href);
+}
+
+export async function handleAnnounce(
+    ctx: Context<ContextData>,
+    announce: Announce,
+) {
+    console.log('Handling Announce');
+
+    // Validate announce
+    if (!announce.id) {
+        console.log('Invalid Announce - no id');
+        return;
+    }
+
+    if (!announce.objectId) {
+        console.log('Invalid Announce - no object id');
+        return;
+    }
+
+    // Validate sender
+    const sender = await announce.getActor(ctx);
+
+    if (sender === null || sender.id === null) {
+        console.log('Sender missing, exit early');
+        return;
+    }
+
+    // Lookup announced object - If not found in globalDb, perform network lookup
+    let object = null;
+    let existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
+
+    if (!existing) {
+        console.log('Object not found in globalDb, performing network lookup');
+
+        object = await lookupObject(announce.objectId);
+    }
+
+    // Validate object
+    if (!existing && !object) {
+        console.log('Invalid Announce - could not find object');
+        return;
+    }
+
+    if (object && !object.id) {
+        console.log('Invalid Announce - could not find object id');
+        return;
+    }
+
+    // Persist announce
+    const announceJson = await announce.toJsonLd();
+    ctx.data.globaldb.set([announce.id.href], announceJson);
+
+    // Persist object if not already persisted
+    if (!existing && object && object.id) {
+        console.log('Storing object in globalDb');
+
+        const objectJson = await object.toJsonLd();
+
+        ctx.data.globaldb.set([object.id.href], objectJson);
+    }
+
+    // Add announce to inbox
+    await addToList(ctx.data.db, ['inbox'], announce.id.href);
 }
 
 export async function inboxErrorHandler(
