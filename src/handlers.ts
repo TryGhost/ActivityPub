@@ -20,7 +20,9 @@ import type { PersonData } from './user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 
 type StoredThing = {
-    object: object | string;
+    object: string | {
+        content: string;
+    }
 }
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
@@ -210,7 +212,8 @@ export async function inboxHandler(
                 thing.object = await db.get([thing.object]) ?? thing.object;
             }
 
-            if (thing?.object?.content) {
+            // Sanitize HTML content
+            if (thing?.object && typeof thing.object !== 'string') {
                 thing.object.content = sanitizeHtml(thing.object.content, {
                     allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
                     allowedAttributes: {
