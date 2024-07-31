@@ -10,40 +10,13 @@ import {
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
-import ky from 'ky';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
+import { getSiteSettings } from './ghost';
 import type { PersonData } from './user';
-import {
-    ACTOR_DEFAULT_HANDLE,
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY
-} from './constants';
-
-type GhostSiteSettings = {
-    site: {
-        description: string;
-        icon: string;
-        title: string;
-    }
-}
-
-async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
-    const settings = await ky
-        .get(`https://${host}/ghost/api/admin/site/`)
-        .json<Partial<GhostSiteSettings>>();
-
-    return {
-        site: {
-            description: settings?.site?.description || ACTOR_DEFAULT_SUMMARY,
-            title: settings?.site?.title || ACTOR_DEFAULT_NAME,
-            icon: settings?.site?.icon || ACTOR_DEFAULT_ICON
-        }
-    };
-}
+import { ACTOR_DEFAULT_HANDLE } from './constants';
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
     if (!post) {
@@ -164,7 +137,7 @@ export async function siteChangedWebhook(
         // Retrieve site settings from Ghost
         const host = ctx.req.header('host') || '';
 
-        const settings = await getGhostSiteSettings(host);
+        const settings = await getSiteSettings(host);
 
         // Update the database
         const handle = ACTOR_DEFAULT_HANDLE;
