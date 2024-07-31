@@ -7,6 +7,11 @@ import {
     Context,
 } from '@fedify/fedify';
 import { ContextData } from './app';
+import {
+    ACTOR_DEFAULT_ICON,
+    ACTOR_DEFAULT_NAME,
+    ACTOR_DEFAULT_SUMMARY
+} from './constants';
 
 export type PersonData = {
     id: string;
@@ -49,10 +54,10 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
 
     const data = {
         id: ctx.getActorUri(handle),
-        name: `Local Ghost site`,
-        summary: 'This is a summary',
+        name: ACTOR_DEFAULT_NAME,
+        summary: ACTOR_DEFAULT_SUMMARY,
         preferredUsername: handle,
-        icon: new Image({ url: new URL('https://ghost.org/favicon.ico') }),
+        icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
         inbox: ctx.getInboxUri(handle),
         outbox: ctx.getOutboxUri(handle),
         following: ctx.getFollowingUri(handle),
@@ -67,14 +72,14 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         name: data.name,
         summary: data.summary,
         preferredUsername: data.preferredUsername,
-        icon: 'https://ghost.org/favicon.ico',
+        icon: ACTOR_DEFAULT_ICON,
         inbox: data.inbox.href,
         outbox: data.outbox.href,
         following: data.following.href,
         followers: data.followers.href,
     };
 
-    await ctx.data.db.set(['handle', handle], data);
+    await ctx.data.db.set(['handle', handle], dataToStore);
 
     return data;
 }
