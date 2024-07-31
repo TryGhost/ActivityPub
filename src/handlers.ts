@@ -126,7 +126,8 @@ export async function postPublishedWebhook(
             actor,
             object: article,
             id: apCtx.getObjectUri(Create, { id: uuidv4() }),
-            to: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+            to: PUBLIC_COLLECTION,
+            cc: apCtx.getFollowersUri('index'),
         });
         try {
             await article.toJsonLd();
@@ -140,7 +141,9 @@ export async function postPublishedWebhook(
                 .get('globaldb')
                 .set([article.id!.href], await article.toJsonLd());
             await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-            await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create);
+            await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create, {
+                preferSharedInbox: true
+            });
         } catch (err) {
             console.log(err);
         }
@@ -189,12 +192,15 @@ export async function siteChangedWebhook(
             id: apCtx.getObjectUri(Update, { id: uuidv4() }),
             actor: actor?.id,
             to: PUBLIC_COLLECTION,
-            object: actor
+            object: actor,
+            cc: apCtx.getFollowersUri('index'),
         });
 
         await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
         await addToList(db, ['outbox'], update.id!.href);
-        await apCtx.sendActivity({ handle }, 'followers', update);
+        await apCtx.sendActivity({ handle }, 'followers', update, {
+            preferSharedInbox: true
+        });
     } catch (err) {
         console.log(err);
     }
