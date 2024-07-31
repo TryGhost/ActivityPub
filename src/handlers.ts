@@ -11,6 +11,7 @@ import {
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
 import ky from 'ky';
+import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
@@ -223,6 +224,17 @@ export async function inboxHandler(
     for (const result of results) {
         try {
             const thing = await ctx.get('globaldb').get([result]);
+
+            if (thing?.object?.content) {
+                thing.object.content = sanitizeHtml(thing.object.content, {
+                    allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
+                    allowedAttributes: {
+                        a: ['href'],
+                        img: ['src'],
+                    }
+                });
+            }
+
             items.push(thing);
         } catch (err) {
             console.log(err);
