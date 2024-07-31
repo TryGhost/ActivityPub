@@ -10,40 +10,17 @@ import {
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
-import ky from 'ky';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
+import { getSiteSettings } from './ghost';
 import type { PersonData } from './user';
-import {
-    ACTOR_DEFAULT_HANDLE,
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY
-} from './constants';
+import { ACTOR_DEFAULT_HANDLE } from './constants';
 
-type GhostSiteSettings = {
-    site: {
-        description: string;
-        icon: string;
-        title: string;
-    }
-}
-
-async function getGhostSiteSettings(host: string): Promise<GhostSiteSettings> {
-    const settings = await ky
-        .get(`https://${host}/ghost/api/admin/site/`)
-        .json<Partial<GhostSiteSettings>>();
-
-    return {
-        site: {
-            description: settings?.site?.description || ACTOR_DEFAULT_SUMMARY,
-            title: settings?.site?.title || ACTOR_DEFAULT_NAME,
-            icon: settings?.site?.icon || ACTOR_DEFAULT_ICON
-        }
-    };
+type StoredThing = {
+    object: object | string;
 }
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
@@ -86,7 +63,7 @@ export async function followAction(
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
-    const actor = await apCtx.getActor('index'); // TODO This should be the actor making the request
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
     const followId = apCtx.getObjectUri(Follow, {
         id: uuidv4(),
     });
@@ -98,7 +75,7 @@ export async function followAction(
     const followJson = await follow.toJsonLd();
     ctx.get('globaldb').set([follow.id!.href], followJson);
 
-    apCtx.sendActivity({ handle: 'index' }, actorToFollow, follow);
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, actorToFollow, follow);
     return new Response(JSON.stringify(followJson), {
         headers: {
             'Content-Type': 'application/activity+json',
@@ -122,7 +99,7 @@ export async function postPublishedWebhook(
         data?.post?.current,
     );
     if (article) {
-        const actor = await apCtx.getActor('index');
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
         const create = new Create({
             actor,
             object: article,
@@ -142,7 +119,7 @@ export async function postPublishedWebhook(
                 .get('globaldb')
                 .set([article.id!.href], await article.toJsonLd());
             await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-            await apCtx.sendActivity({ handle: 'index' }, 'followers', create, {
+            await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create, {
                 preferSharedInbox: true
             });
         } catch (err) {
@@ -165,7 +142,7 @@ export async function siteChangedWebhook(
         // Retrieve site settings from Ghost
         const host = ctx.req.header('host') || '';
 
-        const settings = await getGhostSiteSettings(host);
+        const settings = await getSiteSettings(host);
 
         // Update the database
         const handle = ACTOR_DEFAULT_HANDLE;
@@ -223,7 +200,15 @@ export async function inboxHandler(
     let items: unknown[] = [];
     for (const result of results) {
         try {
-            const thing = await ctx.get('globaldb').get([result]);
+            const db = ctx.get('globaldb');
+            const thing = await db.get<StoredThing>([result]);
+
+            // If the object is a string, it's probably a URI, so we should
+            // look it up the db. If it's not in the db, we should just leave
+            // it as is
+            if (thing && typeof thing.object === 'string') {
+                thing.object = await db.get([thing.object]) ?? thing.object;
+            }
 
             if (thing?.object?.content) {
                 thing.object.content = sanitizeHtml(thing.object.content, {

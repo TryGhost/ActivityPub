@@ -19,10 +19,11 @@ import {
     createDispatcher,
 } from './dispatchers';
 import { RequestContext } from '@fedify/fedify';
+import { ACTOR_DEFAULT_HANDLE } from './constants';
 
 describe('dispatchers', function () {
     describe('actorDispatcher', function () {
-        it('returns null if the handle is not "index"', async function () {
+        it(`returns null if the handle is not "${ACTOR_DEFAULT_HANDLE}"`, async function () {
             const ctx = {} as RequestContext<any>;
             const handle = 'anything';
 
