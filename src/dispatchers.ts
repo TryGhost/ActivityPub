@@ -14,13 +14,14 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { ContextData } from './app';
+import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { getUserData, getUserKeypair } from './user';
 
 export async function actorDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    if (handle !== 'index') return null;
+    if (handle !== ACTOR_DEFAULT_HANDLE) return null;
 
     const data = await getUserData(ctx, handle);
 
@@ -30,7 +31,7 @@ export async function actorDispatcher(
 }
 
 export async function keypairDispatcher(ctx: Context<ContextData>, handle: string) {
-    if (handle !== 'index') return [];
+    if (handle !== ACTOR_DEFAULT_HANDLE) return [];
 
     const data = await getUserKeypair(ctx, handle);
 
