@@ -10,6 +10,7 @@ import {
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
+import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { toURL } from './toURL';
@@ -19,7 +20,9 @@ import type { PersonData } from './user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 
 type StoredThing = {
-    object: object | string;
+    object: string | {
+        content: string;
+    }
 }
 
 async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
@@ -207,6 +210,17 @@ export async function inboxHandler(
             // it as is
             if (thing && typeof thing.object === 'string') {
                 thing.object = await db.get([thing.object]) ?? thing.object;
+            }
+
+            // Sanitize HTML content
+            if (thing?.object && typeof thing.object !== 'string') {
+                thing.object.content = sanitizeHtml(thing.object.content, {
+                    allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
+                    allowedAttributes: {
+                        a: ['href'],
+                        img: ['src'],
+                    }
+                });
             }
 
             items.push(thing);
