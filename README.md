@@ -50,7 +50,7 @@ This has only been tested on MacOS using [Docker for Mac](https://docs.docker.co
 2. **Proxy with [Tailscale](https://tailscale.com/)** (or [ngrok](https://ngrok.com/))
     - Use `tailscale funnel 80` or `ngrok http 80` to expose your local port 80.
 3. **Configure Ghost**
-    - Run `ghost config url` and set it to tthe URL provided by Tailscale
+    - Run `ghost config url` and set it to the URL provided by Tailscale
 4. **Start the ActivityPub Service**
     - Run `yarn dev` in the root directory of this project
 5. **Open Ghost Admin**
