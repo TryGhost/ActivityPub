@@ -11,7 +11,10 @@ services:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
+      - SKIP_SIGNATURE_VERIFICATION=${SKIP_SIGNATURE_VERIFICATION:-false}
       - RECORD_INBOX_REQUESTS=${RECORD_INBOX_REQUESTS:-false}
+      - REPLAY_REQUESTS=${REPLAY_REQUESTS:-false}
+      - NODE_ENV=${NODE_ENV:-development}
     command: node --import tsx --watch src/main.ts
     depends_on:
       mysql:
