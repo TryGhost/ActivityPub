@@ -25,7 +25,21 @@ type StoredThing = {
     }
 }
 
-async function postToArticle(ctx: RequestContext<ContextData>, post: any) {
+import z from 'zod';
+
+const PostSchema = z.object({
+    uuid: z.string().uuid(),
+    title: z.string(),
+    html: z.string(),
+    excerpt: z.string(),
+    feature_image: z.string().url().nullable(),
+    published_at: z.string().datetime(),
+    url: z.string().url()
+});
+
+type Post = z.infer<typeof PostSchema>
+
+async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
     if (!post) {
         return {
             article: null,
@@ -86,19 +100,27 @@ export async function followAction(
     });
 }
 
+const PostPublishedWebhookSchema = z.object({
+    post: z.object({
+        current: PostSchema
+    })
+});
+
 export async function postPublishedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
     next: Next,
 ) {
     // TODO: Validate webhook with secret
-    const data = await ctx.req.json();
+    const data = PostPublishedWebhookSchema.parse(
+        await ctx.req.json() as unknown
+    );
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
     const { article, preview } = await postToArticle(
         apCtx,
-        data?.post?.current,
+        data.post.current,
     );
     if (article) {
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
