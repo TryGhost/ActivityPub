@@ -18,6 +18,7 @@ import { ContextData, HonoContextVariables, fedify } from './app';
 import { getSiteSettings } from './ghost';
 import type { PersonData } from './user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
+import { Temporal } from '@js-temporal/polyfill';
 
 type StoredThing = {
     object: string | {
@@ -55,7 +56,7 @@ async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
         name: post.title,
         content: post.html,
         image: toURL(post.feature_image),
-        published: post.published_at,
+        published: Temporal.Instant.from(post.published_at),
         preview: preview,
         url: toURL(post.url),
     });
