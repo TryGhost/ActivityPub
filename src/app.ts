@@ -17,6 +17,8 @@ import {
     Update,
     Announce,
     Context,
+    Actor,
+    RequestContext,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext } from 'hono';
@@ -49,7 +51,8 @@ import {
     handleAnnounce,
 } from './dispatchers';
 
-import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
+import { followAction, inboxHandler, siteChangedWebhook } from './handlers';
+import { PostPublishedHandler } from 'http/webhook-handlers/post.published.handler';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
@@ -249,8 +252,62 @@ app.get('/ping', (ctx) => {
     });
 });
 
+type MethodType = 'post' | 'get';
+
+interface HandlerConstructor<T> {
+    new(
+        context: RequestContext<unknown>,
+        globaldb: KvStore,
+        localdb: KvStore,
+        actor: Actor,
+    ): Handler<T>;
+    method: MethodType;
+    url: string;
+}
+
+interface Handler<T> {
+    parse(body: unknown): Promise<T>;
+    execute(data: T): Promise<Response>;
+}
+
+async function mount<T>(
+    app: Hono<{Variables: HonoContextVariables}>,
+    handler: HandlerConstructor<T>
+) {
+    app[handler.method](handler.url, async function (ctx, next) {
+        try {
+            const context = fedify.createContext(ctx.req.raw, {
+                globaldb: ctx.get('globaldb'),
+                db: ctx.get('db'),
+            });
+            const actor = await context.getActor('index');
+            if (!actor) {
+                throw new Error('Could not find actor');
+            }
+            const handler = new PostPublishedHandler(
+                context,
+                ctx.get('globaldb'),
+                ctx.get('db'),
+                actor,
+            );
+            const json = await ctx.req.json();
+            const data = await handler.parse(json);
+            return await handler.execute(data);
+        } catch (error: any) {
+            return new Response(JSON.stringify({
+                error: error,
+            }), {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                status: 500
+            });
+        }
+    });
+}
+
 app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
-app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
+mount(app, PostPublishedHandler);
 app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
 
