@@ -70,6 +70,7 @@ const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
+    skipSignatureVerification: process.env.SKIP_SIGNATURE_VERIFICATION === 'true' && process.env.NODE_ENV === 'testing',
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
@@ -241,6 +242,12 @@ app.use(async (ctx, next) => {
 });
 
 /** Custom API routes */
+
+app.get('/ping', (ctx) => {
+    return new Response('', {
+        status: 200
+    });
+});
 
 app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);

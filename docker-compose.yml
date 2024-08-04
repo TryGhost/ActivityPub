@@ -35,3 +35,52 @@ services:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
+
+  # Testing
+
+  activitypub-testing:
+    build: .
+    volumes:
+      - ./src:/opt/activitypub/src
+    environment:
+      - PORT=8080
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql-testing
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+      - NODE_ENV=testing
+      - SKIP_SIGNATURE_VERIFICATION=true
+    command: node --import tsx src/app.ts
+    depends_on:
+      mysql-testing:
+        condition: service_healthy
+    healthcheck:
+      test: "wget --spider http://0.0.0.0:8080/ping"
+      interval: 1s
+      retries: 120
+
+  cucumber-tests:
+    build: .
+    volumes:
+      - ./features:/opt/activitypub/features
+      - ./cucumber.js:/opt/activitypub/cucumber.js
+    environment:
+      - NODE_ENV=testing
+    command: yarn run cucumber-js
+    depends_on:
+      activitypub-testing:
+        condition: service_healthy
+
+
+  mysql-testing:
+    image: mysql:lts
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=activitypub
+    healthcheck:
+      test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      interval: 1s
+      retries: 120

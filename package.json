@@ -7,11 +7,12 @@
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up -d --no-recreate",
+    "dev": "docker compose up activitypub nginx -d --no-recreate",
     "stop": "docker compose stop",
     "fix": "docker compose rm activitypub nginx -sf && docker compose build activitypub nginx",
     "logs": "docker compose logs activitypub -f",
-    "test": "yarn dev && docker compose exec activitypub yarn test:all",
+    "test:cucumber": "docker compose rm mysql-testing -sf && docker compose up cucumber-tests --abort-on-container-exit",
+    "test": "yarn dev && docker compose exec activitypub yarn test:all && yarn test:cucumber",
     "test:types": "tsc --noEmit",
     "test:unit": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.unit.test.ts'",
     "test:integration": "c8 --src src --all --reporter text --reporter cobertura mocha -r tsx './src/**/*.integration.test.ts'",
@@ -24,6 +25,7 @@
     "src"
   ],
   "devDependencies": {
+    "@cucumber/cucumber": "10.8.0",
     "@types/mocha": "10.0.7",
     "@types/node": "20.12.12",
     "@types/sanitize-html": "^2.11.0",
