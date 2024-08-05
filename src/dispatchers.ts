@@ -216,6 +216,20 @@ export async function inboxErrorHandler(
     console.error(error);
 }
 
+async function lookupPerson(ctx: RequestContext<ContextData>, url: string) {
+    try {
+        const local = await ctx.data.globaldb.get([url]);
+        return await Person.fromJsonLd(local);
+    } catch (err) {
+        const remote = await lookupObject(url);
+        if (remote instanceof Person) {
+            await ctx.data.globaldb.set([url], await remote.toJsonLd());
+            return remote;
+        }
+    }
+    return null;
+}
+
 export async function followersDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
@@ -226,7 +240,7 @@ export async function followersDispatcher(
     let items: Person[] = [];
     for (const result of results) {
         try {
-            const thing = await lookupObject(result);
+            const thing = await lookupPerson(ctx, result);
             if (thing instanceof Person) {
                 items.push(thing);
             }
@@ -257,7 +271,7 @@ export async function followingDispatcher(
     let items: Person[] = [];
     for (const result of results) {
         try {
-            const thing = await lookupObject(result);
+            const thing = await lookupPerson(ctx, result);
             if (thing instanceof Person) {
                 items.push(thing);
             }
