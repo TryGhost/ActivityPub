@@ -11,6 +11,10 @@ import {
     Update,
     Context,
     Announce,
+    isActor,
+    Service,
+    Actor,
+    Object as APObject,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -64,6 +68,7 @@ export async function handleFollow(
     ctx.data.globaldb.set([sender.id.href], senderJson);
     await addToList(ctx.data.db, ['inbox'], follow.id.href);
     await addToList(ctx.data.db, ['followers'], sender.id.href);
+    await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
 
     const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
     const accept = new Accept({
@@ -216,15 +221,26 @@ export async function inboxErrorHandler(
     console.error(error);
 }
 
-async function lookupPerson(ctx: RequestContext<ContextData>, url: string) {
+async function lookupActor(ctx: RequestContext<ContextData>, url: string) {
     try {
+        console.log('Looking up actor locally', url);
         const local = await ctx.data.globaldb.get([url]);
         return await Person.fromJsonLd(local);
     } catch (err) {
-        const remote = await lookupObject(url);
-        if (remote instanceof Person) {
-            await ctx.data.globaldb.set([url], await remote.toJsonLd());
-            return remote;
+        console.log('Error looking up actor locally', url);
+        console.log(err);
+        console.log('Looking up actor remotely', url);
+        const documentLoader = await ctx.getDocumentLoader({handle: 'index'});
+        try {
+            const remote = await lookupObject(url, {documentLoader});
+            if (isActor(remote)) {
+                await ctx.data.globaldb.set([url], await remote.toJsonLd());
+                return remote;
+            }
+        } catch (err) {
+            console.log('Error looking up actor remotely', url);
+            console.log(err)
+            return null;
         }
     }
     return null;
@@ -235,18 +251,19 @@ export async function followersDispatcher(
     handle: string,
 ) {
     console.log('Followers Dispatcher');
-    const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
-    console.log(results);
-    let items: Person[] = [];
-    for (const result of results) {
-        try {
-            const thing = await lookupPerson(ctx, result);
-            if (thing instanceof Person) {
-                items.push(thing);
-            }
-        } catch (err) {
-            console.log(err);
-        }
+    let items: Actor[] = [];
+    const fullResults = await ctx.data.db.get<any[]>(['followers', 'expanded']);
+    if (fullResults) {
+        items = (await Promise.all(
+            fullResults.map((result): Promise<APObject> => {
+                return APObject.fromJsonLd(result);
+            })
+        )).filter((item): item is Actor => isActor(item));
+    } else {
+        const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
+        items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
+            .filter((item): item is Actor => item !== null);
+        await ctx.data.db.set(['followers', 'expanded'], await Promise.all(items.map(actor => actor.toJsonLd())));
     }
     return {
         items,
@@ -271,7 +288,7 @@ export async function followingDispatcher(
     let items: Person[] = [];
     for (const result of results) {
         try {
-            const thing = await lookupPerson(ctx, result);
+            const thing = await lookupActor(ctx, result);
             if (thing instanceof Person) {
                 items.push(thing);
             }
