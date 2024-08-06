@@ -47,7 +47,7 @@ This has only been tested on MacOS using [Docker for Mac](https://docs.docker.co
 
 1. **[Install Ghost](https://ghost.org/docs/install/)**
     - Ensure Ghost is running locally at `localhost:2368`.
-2. **Proxy with [Tailscale](https://tailscale.com/)** (or [ngrok](https://ngrok.com/))
+2. **Proxy with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
     - Use `tailscale funnel 80` or `ngrok http 80` to expose your local port 80.
 3. **Configure Ghost**
     - Run `ghost config url` and set it to the URL provided by Tailscale
