@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "docker compose up activitypub nginx -d --no-recreate",
     "stop": "docker compose stop",
+    "db": "docker compose exec mysql mysql -uroot -proot activitypub",
     "fix": "docker compose rm activitypub nginx -sf && docker compose build activitypub nginx",
     "logs": "docker compose logs activitypub -f",
     "test:cucumber": "docker compose rm mysql-testing -sf && docker compose up cucumber-tests --abort-on-container-exit",
