@@ -246,6 +246,17 @@ async function lookupActor(ctx: RequestContext<ContextData>, url: string) {
     return null;
 }
 
+function convertJsonLdToRecipient(result: any): Recipient {
+    return {
+        ...result,
+        id: new URL(result.id),
+        inboxId: new URL(result.inbox),
+        endpoints: result.endpoints?.sharedInbox != null
+            ? { sharedInbox: new URL(result.endpoints.sharedInbox) }
+            : null,
+    };
+}
+
 export async function followersDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
@@ -254,31 +265,14 @@ export async function followersDispatcher(
     let items: Recipient[] = [];
     const fullResults = await ctx.data.db.get<any[]>(['followers', 'expanded']);
     if (fullResults) {
-        items = (await Promise.all(
-            fullResults.map((result, i): Promise<Recipient> => {
-                return {
-                    ...result,
-                    id: new URL(result.id),
-                    inboxId: new URL(result.inbox),
-                    endpoints: result.endpoints?.sharedInbox != null
-                        ? { sharedInbox: result.endpoints.sharedInbox }
-                        : null,
-                };
-            })
-        ));
+        items = fullResults.map(convertJsonLdToRecipient)
     } else {
         const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
         const actors = items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
             .filter((item): item is Actor => isActor(item))
         const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
         await ctx.data.db.set(['followers', 'expanded'], toStore);
-        items = toStore.map((result) => {
-            return {
-                ...result,
-                id: new URL(result.id),
-                inboxId: new URL(result.inbox)
-            };
-        });
+        items = toStore.map(convertJsonLdToRecipient);
     }
     return {
         items,
