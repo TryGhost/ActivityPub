@@ -12,9 +12,9 @@ import {
     Context,
     Announce,
     isActor,
-    Service,
     Actor,
     Object as APObject,
+    Recipient,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -225,7 +225,7 @@ async function lookupActor(ctx: RequestContext<ContextData>, url: string) {
     try {
         console.log('Looking up actor locally', url);
         const local = await ctx.data.globaldb.get([url]);
-        return await Person.fromJsonLd(local);
+        return await APObject.fromJsonLd(local);
     } catch (err) {
         console.log('Error looking up actor locally', url);
         console.log(err);
@@ -251,19 +251,34 @@ export async function followersDispatcher(
     handle: string,
 ) {
     console.log('Followers Dispatcher');
-    let items: Actor[] = [];
+    let items: Recipient[] = [];
     const fullResults = await ctx.data.db.get<any[]>(['followers', 'expanded']);
     if (fullResults) {
         items = (await Promise.all(
-            fullResults.map((result): Promise<APObject> => {
-                return APObject.fromJsonLd(result);
+            fullResults.map((result, i): Promise<Recipient> => {
+                return {
+                    ...result,
+                    id: new URL(result.id),
+                    inboxId: new URL(result.inbox),
+                    endpoints: result.endpoints?.sharedInbox != null
+                        ? { sharedInbox: result.endpoints.sharedInbox }
+                        : null,
+                };
             })
-        )).filter((item): item is Actor => isActor(item));
+        ));
     } else {
         const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
-        items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
-            .filter((item): item is Actor => item !== null);
-        await ctx.data.db.set(['followers', 'expanded'], await Promise.all(items.map(actor => actor.toJsonLd())));
+        const actors = items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
+            .filter((item): item is Actor => isActor(item))
+        const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
+        await ctx.data.db.set(['followers', 'expanded'], toStore);
+        items = toStore.map((result) => {
+            return {
+                ...result,
+                id: new URL(result.id),
+                inboxId: new URL(result.inbox)
+            };
+        });
     }
     return {
         items,
