@@ -55,6 +55,10 @@ services:
     depends_on:
       mysql-testing:
         condition: service_healthy
+    healthcheck:
+      test: "wget --spider http://0.0.0.0:8083/ping"
+      interval: 1s
+      retries: 120
 
   cucumber-tests:
     build: .
@@ -70,8 +74,10 @@ services:
       - NODE_ENV=testing
     command: yarn run cucumber-js
     depends_on:
-      - wiremock
-      - activitypub-testing
+      wiremock:
+        condition: service_started
+      activitypub-testing:
+          condition: service_healthy
 
 
   mysql-testing:
