@@ -285,7 +285,6 @@ Then('a {string} activity is in the Outbox', async function (string) {
         }
     });
     const outbox = await response.json();
-    console.log(JSON.stringify(outbox, null, 4));
     const found = outbox.orderedItems.find((item) => {
         return item.type === activity && item.object?.type === object
     });
@@ -301,7 +300,6 @@ Then('{string} is in our Inbox', async function (activityName) {
     const inbox = await response.json();
     const activity = this.activities[activityName];
 
-    console.log(JSON.stringify(inbox, null, 4));
     const found = inbox.items.find(item => item.id === activity.id);
 
     assert(found);
@@ -315,8 +313,6 @@ Then('{string} is in our Followers', async function (actorName) {
     });
     const followers = await response.json();
     const actor = this.actors[actorName];
-
-    console.log(JSON.stringify(followers, null, 4));
 
     const found = followers.orderedItems.find(item => item.id === actor.id);
 
