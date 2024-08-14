@@ -23,6 +23,7 @@ export type PersonData = {
     outbox: string;
     following: string;
     followers: string;
+    url: string;
 };
 
 export async function getUserData(ctx: RequestContext<ContextData>, handle: string) {
@@ -34,6 +35,14 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
             icon = new Image({ url: new URL(existing.icon) });
         } catch (err) {
             console.log('Could not create Image from Icon value', existing.icon);
+            console.log(err);
+        }
+
+        let url = null;
+        try {
+            url = new URL(existing.url);
+        }  catch (err) {
+            console.log('Could not create URL from value', existing.url);
             console.log(err);
         }
         return {
@@ -49,6 +58,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
             publicKeys: (await ctx.getActorKeyPairs(handle)).map(
                 (key) => key.cryptographicKey,
             ),
+            url,
         };
     }
 
@@ -65,6 +75,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         publicKeys: (await ctx.getActorKeyPairs(handle)).map(
             (key) => key.cryptographicKey,
         ),
+        url: new URL(`https://${ctx.host}`),
     };
 
     const dataToStore: PersonData = {
@@ -77,6 +88,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         outbox: data.outbox.href,
         following: data.following.href,
         followers: data.followers.href,
+        url: data.url.href,
     };
 
     await ctx.data.db.set(['handle', handle], dataToStore);
