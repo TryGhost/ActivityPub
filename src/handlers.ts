@@ -169,11 +169,31 @@ export async function siteChangedWebhook(
 
         const settings = await getSiteSettings(host);
 
-        // Update the database
+        // Retrieve the persisted actor details and check if anything has changed
         const handle = ACTOR_DEFAULT_HANDLE;
         const db = ctx.get('db');
 
         const current = await db.get<PersonData>(['handle', handle]);
+
+        if (
+            current &&
+            current.icon === settings.site.icon &&
+            current.name === settings.site.title &&
+            current.summary === settings.site.description
+        ) {
+            console.log('No site settings changed, nothing to do');
+
+            return new Response(JSON.stringify({}), {
+                headers: {
+                    'Content-Type': 'application/activity+json',
+                },
+                status: 200,
+            });
+        }
+
+        console.log('Site settings changed, will notify followers');
+
+        // Update the database if the site settings have changed
         const updated =  {
             ...current,
             icon: settings.site.icon,
@@ -183,7 +203,7 @@ export async function siteChangedWebhook(
 
         await db.set(['handle', handle], updated);
 
-        // Publish activity
+        // Publish activity if the site settings have changed
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
             globaldb: ctx.get('globaldb'),
