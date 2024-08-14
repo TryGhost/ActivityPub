@@ -9,6 +9,10 @@ export const client = Knex({
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE,
     },
+    pool: {
+        min: 2,
+        max: 40,
+    }
 });
 
 await client.schema.createTableIfNotExists('key_value', function (table) {
