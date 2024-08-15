@@ -49,7 +49,6 @@ export class KnexKvStore implements KvStore {
             await this.knex(this.table)
                 .where(query)
                 .update({
-                    ...query,
                     ...values,
                 });
         }
