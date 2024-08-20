@@ -62,14 +62,28 @@ export async function handleFollow(
     if (sender === null || sender.id === null) {
         return;
     }
-    const senderJson = await sender.toJsonLd();
-    const followJson = await follow.toJsonLd();
-    ctx.data.globaldb.set([follow.id.href], followJson);
-    ctx.data.globaldb.set([sender.id.href], senderJson);
-    await addToList(ctx.data.db, ['inbox'], follow.id.href);
-    await addToList(ctx.data.db, ['followers'], sender.id.href);
-    await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
 
+    const currentFollowers = await ctx.data.db.get<string[]>(['followers']) ?? [];
+    let shouldRecordFollower = currentFollowers.includes(sender.id.href) === false;
+
+    // Add follow activity to inbox
+    const followJson = await follow.toJsonLd();
+
+    ctx.data.globaldb.set([follow.id.href], followJson);
+    await addToList(ctx.data.db, ['inbox'], follow.id.href);
+
+    // Record follower in followers list
+    const senderJson = await sender.toJsonLd();
+
+    if (shouldRecordFollower) {
+        await addToList(ctx.data.db, ['followers'], sender.id.href);
+        await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
+    }
+
+    // Store or update sender in global db
+    ctx.data.globaldb.set([sender.id.href], senderJson);
+
+    // Add accept activity to outbox
     const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
     const accept = new Accept({
         id: acceptId,
@@ -80,6 +94,8 @@ export async function handleFollow(
 
     await ctx.data.globaldb.set([accept.id!.href], acceptJson);
     await addToList(ctx.data.db, ['outbox'], accept.id!.href);
+
+    // Send accept activity to sender
     await ctx.sendActivity({ handle: parsed.handle }, sender, accept);
 }
 

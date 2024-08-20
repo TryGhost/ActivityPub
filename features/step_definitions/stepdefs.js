@@ -1,6 +1,7 @@
 import assert from 'assert';
 import Knex from 'knex';
 import { BeforeAll, AfterAll, Before, After, Given, When, Then } from '@cucumber/cucumber';
+import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
 
 async function createActivity(activityType, object, actor, remote = true) {
@@ -11,7 +12,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Follow',
-            'id': 'http://wiremock:8080/follow/1',
+            'id': `http://wiremock:8080/follow/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -317,4 +318,17 @@ Then('{string} is in our Followers', async function (actorName) {
     const found = followers.orderedItems.find(item => item === actor.id);
 
     assert(found);
+});
+
+Then('{string} is in our Followers once only', async function (actorName) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/followers/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const followers = await response.json();
+    const actor = this.actors[actorName];
+    const found = followers.orderedItems.filter(item => item === actor.id);
+
+    assert.equal(found.length, 1);
 });
