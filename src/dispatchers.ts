@@ -334,13 +334,19 @@ export async function followingCounter(
     return results.length;
 }
 
+function filterOutboxActivityUris (activityUris: string[]) {
+    // Only return Create and Announce activityUris
+    return activityUris.filter(uri => /(create|announce)/.test(uri));
+}
+
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
     console.log('Outbox Dispatcher');
-    const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
+    const results = filterOutboxActivityUris((await ctx.data.db.get<string[]>(['outbox'])) || []);
     console.log(results);
+
     let items: Activity[] = [];
     for (const result of results) {
         try {
@@ -361,7 +367,8 @@ export async function outboxCounter(
     handle: string,
 ) {
     const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
-    return results.length;
+
+    return filterOutboxActivityUris(results).length;
 }
 
 export async function articleDispatcher(

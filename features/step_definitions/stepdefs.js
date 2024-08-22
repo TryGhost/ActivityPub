@@ -46,6 +46,20 @@ async function createActivity(activityType, object, actor, remote = true) {
             actor: actor,
         };
     }
+
+    if (activityType === 'Announce') {
+        return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            'type': 'Announce',
+            'id': 'http://wiremock:8080/announce/1',
+            'to': 'as:Public',
+            'object': object,
+            actor: actor,
+        };
+    }
 }
 
 async function createActor(name = 'Test', remote = true) {
@@ -331,4 +345,18 @@ Then('{string} is in our Followers once only', async function (actorName) {
     const found = followers.orderedItems.filter(item => item === actor.id);
 
     assert.equal(found.length, 1);
+});
+
+When('the contents of the outbox is requested', async function () {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/outbox/index', {
+        headers: {
+            'Content-Type': 'application/ld+json'
+        },
+    });
+
+    this.response = await response.json();
+});
+
+Then('the outbox contains {int} activity', function (count) {
+    assert.equal(this.response.totalItems, count);
 });
