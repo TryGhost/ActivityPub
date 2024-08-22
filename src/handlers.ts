@@ -215,7 +215,7 @@ export async function siteChangedWebhook(
             id: apCtx.getObjectUri(Update, { id: uuidv4() }),
             actor: actor?.id,
             to: PUBLIC_COLLECTION,
-            object: actor,
+            object: actor?.id,
             cc: apCtx.getFollowersUri('index'),
         });
 
