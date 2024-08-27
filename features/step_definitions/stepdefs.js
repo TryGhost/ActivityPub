@@ -60,6 +60,20 @@ async function createActivity(activityType, object, actor, remote = true) {
             actor: actor,
         };
     }
+
+    if (activityType === 'Like') {
+        return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            'type': 'Like',
+            'id': 'http://wiremock:8080/like/1',
+            'to': 'as:Public',
+            'object': object,
+            actor: actor,
+        };
+    }
 }
 
 async function createActor(name = 'Test', remote = true) {
