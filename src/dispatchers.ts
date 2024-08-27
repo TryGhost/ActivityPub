@@ -15,6 +15,7 @@ import {
     Actor,
     Object as APObject,
     Recipient,
+    Like,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -227,6 +228,69 @@ export async function handleAnnounce(
 
     // Add announce to inbox
     await addToList(ctx.data.db, ['inbox'], announce.id.href);
+}
+
+export async function handleLike(
+    ctx: Context<ContextData>,
+    like: Like,
+) {
+    console.log('Handling Like');
+
+    // Validate like
+    if (!like.id) {
+        console.log('Invalid Like - no id');
+        return;
+    }
+
+    if (!like.objectId) {
+        console.log('Invalid Like - no object id');
+        return;
+    }
+
+    // Validate sender
+    const sender = await like.getActor(ctx);
+
+    if (sender === null || sender.id === null) {
+        console.log('Sender missing, exit early');
+        return;
+    }
+
+    // Lookup liked object - If not found in globalDb, perform network lookup
+    let object = null;
+    let existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
+
+    if (!existing) {
+        console.log('Object not found in globalDb, performing network lookup');
+
+        object = await lookupObject(like.objectId);
+    }
+
+    // Validate object
+    if (!existing && !object) {
+        console.log('Invalid Like - could not find object');
+        return;
+    }
+
+    if (object && !object.id) {
+        console.log('Invalid Like - could not find object id');
+        return;
+    }
+
+    // Persist like
+    const likeJson = await like.toJsonLd();
+    ctx.data.globaldb.set([like.id.href], likeJson);
+
+    // Persist object if not already persisted
+    if (!existing && object && object.id) {
+        console.log('Storing object in globalDb');
+
+        const objectJson = await object.toJsonLd();
+
+        ctx.data.globaldb.set([object.id.href], objectJson);
+    }
+
+    // Add to inbox
+    await addToList(ctx.data.db, ['inbox'], like.id.href);
 }
 
 export async function inboxErrorHandler(
