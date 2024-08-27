@@ -262,7 +262,7 @@ export async function handleLike(
     if (!existing) {
         console.log('Object not found in globalDb, performing network lookup');
 
-        object = await lookupObject(like.objectId);
+        object = await like.getObject();
     }
 
     // Validate object
