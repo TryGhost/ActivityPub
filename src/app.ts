@@ -17,6 +17,7 @@ import {
     Update,
     Announce,
     Context,
+    Like,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext } from 'hono';
@@ -47,6 +48,7 @@ import {
     createDispatcher,
     updateDispatcher,
     handleAnnounce,
+    handleLike
 } from './dispatchers';
 
 import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
@@ -115,6 +117,8 @@ inboxListener
     .on(Create, ensureCorrectContext(handleCreate))
     .onError(inboxErrorHandler)
     .on(Announce, ensureCorrectContext(handleAnnounce))
+    .onError(inboxErrorHandler)
+    .on(Like, ensureCorrectContext(handleLike))
     .onError(inboxErrorHandler);
 
 fedify
