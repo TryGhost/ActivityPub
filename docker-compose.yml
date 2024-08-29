@@ -91,6 +91,8 @@ services:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
+    ports:
+      - "3308:3306"
 
   wiremock:
     image: wiremock/wiremock:latest

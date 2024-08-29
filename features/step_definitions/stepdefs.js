@@ -4,7 +4,7 @@ import { BeforeAll, AfterAll, Before, After, Given, When, Then } from '@cucumber
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
 
-async function createActivity(activityType, object, actor, remote = true) {
+async function createActivity(activityType, object, actor, name) {
     if (activityType === 'Follow') {
         return {
             '@context': [
@@ -40,7 +40,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Create',
-            'id': 'http://wiremock:8080/create/1',
+            'id': `http://wiremock:8080/create/${name || '1'}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -166,8 +166,6 @@ BeforeAll(async function () {
             database: process.env.MYSQL_DATABASE
         }
     });
-
-    await client('key_value').truncate();
 });
 
 BeforeAll(async function () {
@@ -180,6 +178,7 @@ AfterAll(async function () {
 
 Before(async function () {
     await captain.clearAllRequests();
+    await client('key_value').truncate();
 });
 
 Before(async function () {
@@ -206,7 +205,7 @@ Given('a {string} Activity {string} by {string}', async function (activityDef, n
     const object = this.actors[objectName] ?? this.activities[objectName] ?? await createObject(objectName);
     const actor  = this.actors[actorName];
 
-    const activity = await createActivity(activityType, object, actor);
+    const activity = await createActivity(activityType, object, actor, name);
 
     this.activities[name] = activity;
 });
@@ -371,6 +370,59 @@ When('the contents of the outbox is requested', async function () {
     this.response = await response.json();
 });
 
-Then('the outbox contains {int} activity', function (count) {
+When('{string} adds {string} to the Outbox', async function (actorName, activityName) {
+    if (!this.actors[actorName]) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
+    if (!this.activities[activityName]) {
+        throw new Error(`Could not find Activity ${activityName}`);
+    }
+
+    const activity = this.activities[activityName];
+
+    // Add activity to the db
+    const activityKey = JSON.stringify([activity.id]);
+
+    if (
+        (await client('key_value').select('value').where({ key: activityKey })).length === 0
+    ) {
+        await client('key_value').insert({
+            key: activityKey,
+            value: JSON.stringify(activity)
+        })
+    }
+
+    // Add activity to the outbox
+    const outboxKey = JSON.stringify(["sites","activitypub-testing:8083","outbox"]);
+    const outbox = (
+        await client('key_value').select('value').where('key', outboxKey)
+    ).map((item) => item.value)[0] || [];
+
+    outbox.push(activity.id)
+
+    if (outbox.length === 1) {
+        await client('key_value').insert({
+            key: outboxKey,
+            value: JSON.stringify(outbox)
+        })
+    } else {
+        await client('key_value')
+        .where({ key: outboxKey })
+        .update({
+            value: JSON.stringify(outbox)
+        })
+    }
+});
+
+Then(/^the outbox contains ([0-9]+) (activity|activities)$/, function (count, word) {
     assert.equal(this.response.totalItems, count);
+});
+
+Then('the items in the outbox are in the order: {string}', function (order) {
+    order.split(",").map((item) => item.trim()).forEach((activityName, index) => {
+        assert.ok(
+            this.response.orderedItems[index].id.endsWith(activityName),
+            `${this.response.orderedItems[index].id} does not end with ${activityName} as expected`
+        )
+    })
 });
