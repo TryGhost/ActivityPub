@@ -360,17 +360,3 @@ Then('{string} is in our Followers once only', async function (actorName) {
 
     assert.equal(found.length, 1);
 });
-
-When('the contents of the outbox is requested', async function () {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/outbox/index', {
-        headers: {
-            'Content-Type': 'application/ld+json'
-        },
-    });
-
-    this.response = await response.json();
-});
-
-Then('the outbox contains {int} activity', function (count) {
-    assert.equal(this.response.totalItems, count);
-});

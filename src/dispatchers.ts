@@ -422,7 +422,7 @@ export async function outboxDispatcher(
         }
     }
     return {
-        items,
+        items: items.reverse(),
     };
 }
 
