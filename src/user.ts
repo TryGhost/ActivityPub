@@ -23,6 +23,7 @@ export type PersonData = {
     outbox: string;
     following: string;
     followers: string;
+    liked?: string;
     url: string;
 };
 
@@ -55,6 +56,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
             outbox: new URL(existing.outbox),
             following: new URL(existing.following),
             followers: new URL(existing.followers),
+            liked: existing.liked ? new URL(existing.liked) : ctx.getLikedUri(handle),
             publicKeys: (await ctx.getActorKeyPairs(handle)).map(
                 (key) => key.cryptographicKey,
             ),
@@ -72,6 +74,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         outbox: ctx.getOutboxUri(handle),
         following: ctx.getFollowingUri(handle),
         followers: ctx.getFollowersUri(handle),
+        liked: ctx.getLikedUri(handle),
         publicKeys: (await ctx.getActorKeyPairs(handle)).map(
             (key) => key.cryptographicKey,
         ),
@@ -88,6 +91,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         outbox: data.outbox.href,
         following: data.following.href,
         followers: data.followers.href,
+        liked: data.liked.href,
         url: data.url.href,
     };
 

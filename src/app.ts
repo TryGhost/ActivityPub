@@ -41,6 +41,8 @@ import {
     followingCounter,
     outboxDispatcher,
     outboxCounter,
+    likedDispatcher,
+    likedCounter,
     articleDispatcher,
     noteDispatcher,
     followDispatcher,
@@ -141,6 +143,13 @@ fedify
         outboxDispatcher,
     )
     .setCounter(outboxCounter);
+
+fedify
+    .setLikedDispatcher(
+        '/.ghost/activitypub/liked/{handle}',
+        likedDispatcher,
+    )
+    .setCounter(likedCounter);
 
 fedify.setObjectDispatcher(
     Article,

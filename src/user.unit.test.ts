@@ -13,6 +13,7 @@ const HANDLE = 'foo';
 const ACTOR_URI = `https://example.com/${HANDLE}`;
 const INBOX_URI = `https://example.com/${HANDLE}/inbox`;
 const OUTBOX_URI = `https://example.com/${HANDLE}/outbox`;
+const LIKED_URI = `https://example.com/${HANDLE}/liked`;
 const FOLLOWING_URI = `https://example.com/${HANDLE}/following`;
 const FOLLOWERS_URI = `https://example.com/${HANDLE}/followers`;
 
@@ -30,6 +31,7 @@ function getCtx() {
         getActorUri: sinon.stub(),
         getInboxUri: sinon.stub(),
         getOutboxUri: sinon.stub(),
+        getLikedUri: sinon.stub(),
         getFollowingUri: sinon.stub(),
         getFollowersUri: sinon.stub(),
         host,
@@ -43,6 +45,7 @@ function getCtx() {
     ctx.getInboxUri.withArgs(HANDLE).returns(new URL(INBOX_URI));
     ctx.getOutboxUri.withArgs(HANDLE).returns(new URL(OUTBOX_URI));
     ctx.getFollowingUri.withArgs(HANDLE).returns(new URL(FOLLOWING_URI));
+    ctx.getLikedUri.withArgs(HANDLE).returns(new URL(LIKED_URI));
     ctx.getFollowersUri.withArgs(HANDLE).returns(new URL(FOLLOWERS_URI));
 
     return ctx as any;
@@ -64,6 +67,7 @@ describe('getUserData', function () {
             icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
+            liked: new URL(LIKED_URI),
             following: new URL(FOLLOWING_URI),
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
@@ -79,6 +83,7 @@ describe('getUserData', function () {
                 icon: ACTOR_DEFAULT_ICON,
                 inbox: expectedUserData.inbox.href,
                 outbox: expectedUserData.outbox.href,
+                liked: expectedUserData.liked.href,
                 following: expectedUserData.following.href,
                 followers: expectedUserData.followers.href,
                 url: expectedUserData.url.href,
@@ -98,6 +103,7 @@ describe('getUserData', function () {
             icon: `https://${ctx.host}/icon.png`,
             inbox: INBOX_URI,
             outbox: OUTBOX_URI,
+            liked: LIKED_URI,
             following: FOLLOWING_URI,
             followers: FOLLOWERS_URI,
             url: `https://${ctx.host}`,
@@ -115,6 +121,7 @@ describe('getUserData', function () {
             icon: new Image({ url: new URL(`https://${ctx.host}/icon.png`) }),
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
+            liked: new URL(LIKED_URI),
             following: new URL(FOLLOWING_URI),
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
@@ -135,6 +142,7 @@ describe('getUserData', function () {
             preferredUsername: HANDLE,
             inbox: INBOX_URI,
             outbox: OUTBOX_URI,
+            liked: LIKED_URI,
             following: FOLLOWING_URI,
             followers: FOLLOWERS_URI,
             url: `https://${ctx.host}`,
@@ -152,6 +160,7 @@ describe('getUserData', function () {
             icon: null,
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
+            liked: new URL(LIKED_URI),
             following: new URL(FOLLOWING_URI),
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
@@ -173,6 +182,7 @@ describe('getUserData', function () {
             icon: `https://${ctx.host}/icon.png`,
             inbox: INBOX_URI,
             outbox: OUTBOX_URI,
+            liked: LIKED_URI,
             following: FOLLOWING_URI,
             followers: FOLLOWERS_URI
         }
@@ -189,6 +199,7 @@ describe('getUserData', function () {
             icon: new Image({ url: new URL(`https://${ctx.host}/icon.png`) }),
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
+            liked: new URL(LIKED_URI),
             following: new URL(FOLLOWING_URI),
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
