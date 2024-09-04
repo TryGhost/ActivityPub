@@ -435,6 +435,38 @@ export async function outboxCounter(
     return filterOutboxActivityUris(results).length;
 }
 
+export async function likedDispatcher(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    console.log('Liked Dispatcher');
+    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
+    console.log(results);
+
+    let items: Like[] = [];
+    for (const result of results) {
+        try {
+            const thing = await ctx.data.globaldb.get([result]);
+            const activity = await Like.fromJsonLd(thing);
+            items.push(activity);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    return {
+        items: items.reverse(),
+    };
+}
+
+export async function likedCounter(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
+
+    return results.length;
+}
+
 export async function articleDispatcher(
     ctx: RequestContext<ContextData>,
     data: Record<'id', string>,
