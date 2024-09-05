@@ -1,6 +1,8 @@
 import {
     Article,
     Follow,
+    Like,
+    Undo,
     RequestContext,
     lookupObject,
     isActor,
@@ -12,13 +14,14 @@ import {
 import { Context, Next } from 'hono';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
-import { addToList } from './kv-helpers';
+import { addToList, removeFromList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
 import { getSiteSettings } from './ghost';
 import type { PersonData } from './user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
+import { createHash } from 'node:crypto';
 
 type StoredThing = {
     object: string | {
@@ -65,6 +68,114 @@ async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
         article,
         preview,
     };
+}
+
+export async function unlikeAction(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const id = ctx.req.param('id');
+    const objectToLike = await lookupObject(id);
+    if (!objectToLike) {
+        return new Response(null, {
+            status: 404
+        });
+    }
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+
+    const likeId = apCtx.getObjectUri(Like, {
+        id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
+    });
+
+    const undoId = apCtx.getObjectUri(Undo, {
+        id: createHash('sha256').update(likeId.href).digest('hex'),
+    });
+
+    const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
+    if (!likeToUndoJson) {
+        return new Response(null, {
+            status: 409
+        });
+    }
+
+    const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+    const undo = new Undo({
+        id: undoId,
+        actor: actor,
+        object: likeToUndo,
+        to: PUBLIC_COLLECTION,
+        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+    });
+    const undoJson = await undo.toJsonLd();
+    await ctx.get('globaldb').set([undo.id!.href], undoJson);
+
+    await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
+    await ctx.get('globaldb').delete([likeId!.href]);
+
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', undo, {
+        preferSharedInbox: true
+    });
+    return new Response(JSON.stringify(undoJson), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+export async function likeAction(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const id = ctx.req.param('id');
+    const objectToLike = await lookupObject(id);
+    if (!objectToLike) {
+        return new Response(null, {
+            status: 404
+        });
+    }
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+
+    const likeId = apCtx.getObjectUri(Like, {
+        id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
+    });
+
+    if (await ctx.get('globaldb').get([likeId.href])) {
+        return new Response(null, {
+            status: 409
+        });
+    }
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+    const like = new Like({
+        id: likeId,
+        actor: actor,
+        object: objectToLike,
+        to: PUBLIC_COLLECTION,
+        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+    });
+    const likeJson = await like.toJsonLd();
+    await ctx.get('globaldb').set([like.id!.href], likeJson);
+
+    await addToList(ctx.get('db'), ['liked'], like.id!.href);
+
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', like, {
+        preferSharedInbox: true
+    });
+    return new Response(JSON.stringify(likeJson), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
 }
 
 export async function followAction(
