@@ -24,9 +24,13 @@ import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
 
 type StoredThing = {
+    id: string;
     object: string | {
+        id: string;
         content: string;
-    }
+        [key: string]: any;
+    };
+    [key: string]: any;
 }
 
 import z from 'zod';
@@ -352,22 +356,30 @@ export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
     next: Next,
 ) {
+    const liked = (await ctx.get('db').get<string[]>(['liked'])) || [];
     const results = (await ctx.get('db').get<string[]>(['inbox'])) || [];
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
     let items: unknown[] = [];
     for (const result of results) {
         try {
             const db = ctx.get('globaldb');
             const thing = await db.get<StoredThing>([result]);
+            if (!thing) {
+                continue;
+            }
 
             // If the object is a string, it's probably a URI, so we should
             // look it up the db. If it's not in the db, we should just leave
             // it as is
-            if (thing && typeof thing.object === 'string') {
+            if (typeof thing.object === 'string') {
                 thing.object = await db.get([thing.object]) ?? thing.object;
             }
 
             // Sanitize HTML content
-            if (thing?.object && typeof thing.object !== 'string') {
+            if (thing.object && typeof thing.object !== 'string') {
                 thing.object.content = sanitizeHtml(thing.object.content, {
                     allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
                     allowedAttributes: {
@@ -375,6 +387,24 @@ export async function inboxHandler(
                         img: ['src'],
                     }
                 });
+            }
+
+            let objectId: string = '';
+            if (typeof thing.object === 'string') {
+                objectId = thing.object;
+            } else if (typeof thing.object.id === 'string') {
+                objectId = thing.object.id;
+            }
+
+            if (objectId) {
+                const likeId = apCtx.getObjectUri(Like, {
+                    id: createHash('sha256').update(objectId).digest('hex'),
+                });
+                if (liked.includes(likeId.href)) {
+                    if (typeof thing.object !== 'string') {
+                        thing.object.liked = true;
+                    }
+                }
             }
 
             items.push(thing);
