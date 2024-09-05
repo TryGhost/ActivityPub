@@ -18,6 +18,7 @@ import {
     Announce,
     Context,
     Like,
+    Undo,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext } from 'hono';
@@ -43,6 +44,8 @@ import {
     outboxCounter,
     likedDispatcher,
     likedCounter,
+    likeDispatcher,
+    undoDispatcher,
     articleDispatcher,
     noteDispatcher,
     followDispatcher,
@@ -180,6 +183,16 @@ fedify.setObjectDispatcher(
     Update,
     `/.ghost/activitypub/update/{id}`,
     updateDispatcher,
+);
+fedify.setObjectDispatcher(
+    Like,
+    `/.ghost/activitypub/like/{id}`,
+    likeDispatcher,
+);
+fedify.setObjectDispatcher(
+    Undo,
+    `/.ghost/activitypub/undo/{id}`,
+    undoDispatcher,
 );
 
 /** Hono */
