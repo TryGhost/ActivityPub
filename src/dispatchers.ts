@@ -23,6 +23,7 @@ import { addToList } from './kv-helpers';
 import { ContextData } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { getUserData, getUserKeypair } from './user';
+import { lookupActor } from './lookup-helpers';
 
 export async function actorDispatcher(
     ctx: RequestContext<ContextData>,
@@ -300,31 +301,6 @@ export async function inboxErrorHandler(
 ) {
     console.error('Error handling incoming activity');
     console.error(error);
-}
-
-async function lookupActor(ctx: RequestContext<ContextData>, url: string) {
-    try {
-        console.log('Looking up actor locally', url);
-        const local = await ctx.data.globaldb.get([url]);
-        return await APObject.fromJsonLd(local);
-    } catch (err) {
-        console.log('Error looking up actor locally', url);
-        console.log(err);
-        console.log('Looking up actor remotely', url);
-        const documentLoader = await ctx.getDocumentLoader({handle: 'index'});
-        try {
-            const remote = await lookupObject(url, {documentLoader});
-            if (isActor(remote)) {
-                await ctx.data.globaldb.set([url], await remote.toJsonLd());
-                return remote;
-            }
-        } catch (err) {
-            console.log('Error looking up actor remotely', url);
-            console.log(err)
-            return null;
-        }
-    }
-    return null;
 }
 
 function convertJsonLdToRecipient(result: any): Recipient {
