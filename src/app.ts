@@ -56,7 +56,7 @@ import {
     handleLike
 } from './dispatchers';
 
-import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
+import { likeAction, unlikeAction, followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
@@ -279,6 +279,8 @@ app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
 app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
+app.post('/.ghost/activitypub/actions/like/:id', likeAction);
+app.post('/.ghost/activitypub/actions/unlike/:id', unlikeAction);
 
 /** Federation wire up */
 
