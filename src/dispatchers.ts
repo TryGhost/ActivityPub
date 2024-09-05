@@ -16,6 +16,7 @@ import {
     Object as APObject,
     Recipient,
     Like,
+    Undo,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -537,4 +538,28 @@ export async function noteDispatcher(
         return null;
     }
     return Note.fromJsonLd(exists);
+}
+
+export async function likeDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Like, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
+    if (!exists) {
+        return null;
+    }
+    return Like.fromJsonLd(exists);
+}
+
+export async function undoDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Undo, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
+    if (!exists) {
+        return null;
+    }
+    return Undo.fromJsonLd(exists);
 }
