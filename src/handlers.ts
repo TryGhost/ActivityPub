@@ -9,6 +9,7 @@ import {
     Create,
     Note,
     Update,
+    Actor,
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
@@ -22,6 +23,7 @@ import type { PersonData } from './user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
+import { lookupActor } from 'lookup-helpers';
 
 type StoredThing = {
     id: string;
@@ -121,6 +123,16 @@ export async function unlikeAction(
     await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
     await ctx.get('globaldb').delete([likeId!.href]);
 
+    let attributionActor: Actor | null = null;
+    if (objectToLike.attributionId) {
+        attributionActor = await lookupActor(apCtx, objectToLike.attributionId.href);
+    }
+    if (attributionActor) {
+        apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, undo, {
+            preferSharedInbox: true
+        });
+    }
+
     apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', undo, {
         preferSharedInbox: true
     });
@@ -170,6 +182,16 @@ export async function likeAction(
     await ctx.get('globaldb').set([like.id!.href], likeJson);
 
     await addToList(ctx.get('db'), ['liked'], like.id!.href);
+
+    let attributionActor: Actor | null = null;
+    if (objectToLike.attributionId) {
+        attributionActor = await lookupActor(apCtx, objectToLike.attributionId.href);
+    }
+    if (attributionActor) {
+        apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, like, {
+            preferSharedInbox: true
+        });
+    }
 
     apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', like, {
         preferSharedInbox: true
