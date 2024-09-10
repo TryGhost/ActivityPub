@@ -303,17 +303,6 @@ export async function inboxErrorHandler(
     console.error(error);
 }
 
-function convertJsonLdToRecipient(result: any): Recipient {
-    return {
-        ...result,
-        id: new URL(result.id),
-        inboxId: new URL(result.inbox),
-        endpoints: result.endpoints?.sharedInbox != null
-            ? { sharedInbox: new URL(result.endpoints.sharedInbox) }
-            : null,
-    };
-}
-
 export async function followersDispatcher(
     ctx: Context<ContextData>,
     handle: string,
@@ -322,14 +311,20 @@ export async function followersDispatcher(
     let items: Recipient[] = [];
     const fullResults = await ctx.data.db.get<any[]>(['followers', 'expanded']);
     if (fullResults) {
-        items = fullResults.map(convertJsonLdToRecipient)
+        items = await fullResults.reduce(async (list, item) => {
+            const obj = await APObject.fromJsonLd(item);
+            if (isActor(obj)) {
+                return (await list).concat(obj);
+            }
+            return list;
+        }, Promise.resolve([]));
     } else {
         const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
         const actors = items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
             .filter((item): item is Actor => isActor(item))
         const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
         await ctx.data.db.set(['followers', 'expanded'], toStore);
-        items = toStore.map(convertJsonLdToRecipient);
+        items = actors;
     }
     return {
         items,
