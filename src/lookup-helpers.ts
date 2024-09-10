@@ -1,13 +1,12 @@
 import {
     isActor,
-    lookupObject,
     Actor,
-    RequestContext,
+    Context,
     Object as APObject,
 } from '@fedify/fedify';
 import { ContextData } from './app';
 
-export async function lookupActor(ctx: RequestContext<ContextData>, url: string): Promise<Actor | null> {
+export async function lookupActor(ctx: Context<ContextData>, url: string): Promise<Actor | null> {
     try {
         console.log('Looking up actor locally', url);
         const local = await ctx.data.globaldb.get([url]);
@@ -22,7 +21,7 @@ export async function lookupActor(ctx: RequestContext<ContextData>, url: string)
         console.log('Looking up actor remotely', url);
         const documentLoader = await ctx.getDocumentLoader({handle: 'index'});
         try {
-            const remote = await lookupObject(url, {documentLoader});
+            const remote = await ctx.lookupObject(url, {documentLoader});
             if (isActor(remote)) {
                 await ctx.data.globaldb.set([url], await remote.toJsonLd());
                 return remote;

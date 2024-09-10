@@ -315,7 +315,7 @@ function convertJsonLdToRecipient(result: any): Recipient {
 }
 
 export async function followersDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: Context<ContextData>,
     handle: string,
 ) {
     console.log('Followers Dispatcher');
