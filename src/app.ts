@@ -78,6 +78,7 @@ const fedifyKv = await KnexKvStore.create(client, 'key_value');
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
     skipSignatureVerification: process.env.SKIP_SIGNATURE_VERIFICATION === 'true' && process.env.NODE_ENV === 'testing',
+    allowPrivateAddress: process.env.ALLOW_PRIVATE_ADDRESS === 'true' && process.env.NODE_ENV === 'testing'
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
