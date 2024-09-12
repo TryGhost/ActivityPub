@@ -26,7 +26,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Accept',
-            'id': 'http://wiremock:8080/accept/1',
+            'id': `http://wiremock:8080/accept/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -40,7 +40,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Create',
-            'id': 'http://wiremock:8080/create/1',
+            'id': `http://wiremock:8080/create/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -54,7 +54,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Announce',
-            'id': 'http://wiremock:8080/announce/1',
+            'id': `http://wiremock:8080/announce/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -68,7 +68,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Like',
-            'id': 'http://wiremock:8080/like/1',
+            'id': `http://wiremock:8080/like/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -139,12 +139,13 @@ async function createActor(name = 'Test', remote = true) {
 
 async function createObject(type) {
     if (type === 'Article') {
+        const uuid = uuidv4();
         return {
             'type': 'Article',
-            'id': 'http://wiremock:8080/article/1',
+            'id': `http://wiremock:8080/article/${uuid}`,
+            'url': `http://wiremock:8080/article/${uuid}`,
             'to': 'as:Public',
             'cc': 'http://wiremock:8080/followers',
-            'url': 'http://wiremock:8080/article/1',
             'content': '<p>This is a test article</p>',
             'published': '2020-04-20T04:20:00Z',
             'attributedTo': 'http://wiremock:8080/user'
