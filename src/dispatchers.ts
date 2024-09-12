@@ -4,7 +4,6 @@ import {
     Follow,
     Person,
     RequestContext,
-    lookupObject,
     Create,
     Note,
     Activity,
@@ -193,8 +192,7 @@ export async function handleAnnounce(
 
     if (!existing) {
         console.log('Object not found in globalDb, performing network lookup');
-
-        object = await lookupObject(announce.objectId);
+        object = await ctx.lookupObject(announce.objectId);
     }
 
     // Validate object
@@ -220,7 +218,7 @@ export async function handleAnnounce(
 
         if (typeof objectJson === 'object' && objectJson !== null) {
             if ('attributedTo' in objectJson && typeof objectJson.attributedTo === 'string') {
-                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await lookupObject(objectJson.attributedTo)
+                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await ctx.lookupObject(objectJson.attributedTo)
                 objectJson.attributedTo = await (actor as any)?.toJsonLd();
             }
         }
