@@ -257,6 +257,9 @@ Before(async function () {
     if (!this.activities) {
         this.activities = {};
     }
+    if (!this.objects) {
+        this.objects = {};
+    }
     if (!this.actors) {
         this.actors = {
             Us: await createActor('Test', false)
@@ -280,6 +283,7 @@ Given('a {string} Activity {string} by {string}', async function (activityDef, n
     const activity = await createActivity(activityType, object, actor);
 
     this.activities[name] = activity;
+    this.objects[name] = object;
 });
 
 Then('an {string} Activity {string} is created by {string}', async function (activityDef, name, actorName) {
@@ -294,6 +298,7 @@ Then('an {string} Activity {string} is created by {string}', async function (act
     const activity = await createActivity(activityType, object, actor);
 
     this.activities[name] = activity;
+    this.objects[name] = object;
 });
 
 When('{string} sends {string} to the Inbox', async function (actorName, activityName) {
