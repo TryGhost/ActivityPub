@@ -202,6 +202,27 @@ async function createObject(type) {
     return object;
 }
 
+/**
+ *
+ * Splits a string like `Create(Note)` or `Like(A)` into its activity and object parts
+ *
+ * @param {string} string
+ * @returns {{activity: string, object: string} | {activity: null, object: null}}
+ */
+function parseActivityString(string) {
+    const [match, activity, object] = string.match(/(\w+)\((\w+)\)/) || [null]
+    if (!match) {
+        return {
+            activity: null,
+            object: null
+        };
+    }
+    return {
+        activity,
+        object
+    };
+}
+
 let /* @type Knex */ client;
 let /* @type WireMock */ captain;
 
@@ -248,8 +269,8 @@ Given('an Actor {string}', async function (name) {
 });
 
 Given('a {string} Activity {string} by {string}', async function (activityDef, name, actorName) {
-    const [match, activityType, objectName] = activityDef.match(/(\w+)\((\w+)\)/) || [null]
-    if (!match) {
+    const {activity: activityType, object: objectName} = parseActivityString(activityDef);
+    if (!activityType) {
         throw new error(`could not match ${activityDef} to an activity`);
     }
 
@@ -262,8 +283,8 @@ Given('a {string} Activity {string} by {string}', async function (activityDef, n
 });
 
 Then('an {string} Activity {string} is created by {string}', async function (activityDef, name, actorName) {
-    const [match, activityType, objectName] = activityDef.match(/(\w+)\((\w+)\)/) || [null]
-    if (!match) {
+    const {activity: activityType, object: objectName} = parseActivityString(activityDef);
+    if (!activityType) {
         throw new error(`could not match ${activityDef} to an activity`);
     }
 
