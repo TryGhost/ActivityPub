@@ -508,3 +508,27 @@ Then('{string} is in our Followers once only', async function (actorName) {
 
     assert.equal(found.length, 1);
 });
+
+Then('a {string} activity is sent to {string}', async function (activityString, actorName) {
+    const {activity: activityType, object: objectNameOrType} = parseActivityString(activityString);
+    if (!activityType) {
+        throw new error(`could not match ${activityDef} to an activity`);
+    }
+    if (!this.actors[actorName]) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
+    const actor = this.actors[actorName];
+
+    const object = this.objects[objectNameOrType];
+
+    const inboxUrl = new URL(actor.inbox);
+
+    const requests = await captain.getRequestsForAPI('POST', inboxUrl.pathname);
+
+    const found = requests.find(request => {
+        const body = JSON.parse(request.request.body);
+        return body.type === activityType && (object ? body.object.id === object.id : body.object.type === objectNameOrType);
+    });
+
+    assert(found);
+});
