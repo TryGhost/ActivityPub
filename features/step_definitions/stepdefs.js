@@ -145,7 +145,7 @@ async function createActor(name = 'Test', remote = true) {
     };
 }
 
-async function createObject(type) {
+function generateObject(type) {
     if (type === 'Article') {
         const uuid = uuidv4();
         return {
@@ -163,6 +163,25 @@ async function createObject(type) {
             'attributedTo': 'http://wiremock:8080/user'
         };
     }
+}
+
+async function createObject(type) {
+    const object = generateObject(type);
+
+    const url = new URL(object.id);
+
+    captain.register({
+        method: 'GET',
+        endpoint: url.pathname
+    }, {
+        status: 200,
+        body: object,
+        headers: {
+            'Content-Type': 'application/activity+json'
+        }
+    });
+
+    return object;
 }
 
 let /* @type Knex */ client;
