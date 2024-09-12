@@ -271,6 +271,42 @@ Given('an Actor {string}', async function (name) {
     this.actors[name] = await createActor(name);
 });
 
+When('we like the object {string}', async function (name) {
+    const id = this.objects[name].id;
+    this.response = await fetch(`http://activitypub-testing:8083/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`, {
+        method: 'POST'
+    });
+});
+
+Then('the object {string} should be liked', async function (name) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const object = this.objects[name];
+
+    const found = inbox.items.find(item => item.object.id === object.id);
+
+    assert(found.object.liked === true);
+});
+
+Then('the object {string} should be in the liked collection', async function (name) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/liked/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const object = this.objects[name];
+
+    // TODO Change this when liked collection is fixed to contain objects not Likes
+    const found = inbox.orderedItems.find(item => item.object.id === object.id);
+
+    assert(found);
+});
+
 Given('a {string} Activity {string} by {string}', async function (activityDef, name, actorName) {
     const {activity: activityType, object: objectName} = parseActivityString(activityDef);
     if (!activityType) {
