@@ -163,6 +163,24 @@ function generateObject(type) {
             'attributedTo': 'http://wiremock:8080/user'
         };
     }
+
+    if (type === 'Note') {
+        const uuid = uuidv4();
+        return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            'type': 'Note',
+            'id': `http://wiremock:8080/note/${uuid}`,
+            'url': `http://wiremock:8080/note/${uuid}`,
+            'to': 'as:Public',
+            'cc': 'http://wiremock:8080/followers',
+            'content': '<p>This is a test note</p>',
+            'published': '2020-04-20T04:20:00Z',
+            'attributedTo': 'http://wiremock:8080/user'
+        };
+    }
 }
 
 async function createObject(type) {
