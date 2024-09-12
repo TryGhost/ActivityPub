@@ -79,6 +79,10 @@ async function createActivity(activityType, object, actor, remote = true) {
 async function createActor(name = 'Test', remote = true) {
     if (remote === false) {
         return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
             'id': 'http://activitypub-testing:8083/.ghost/activitypub/users/index',
             'url': 'http://activitypub-testing:8083/.ghost/activitypub/users/index',
             'type': 'Person',
@@ -113,6 +117,10 @@ async function createActor(name = 'Test', remote = true) {
     });
 
     return {
+        '@context': [
+            'https://www.w3.org/ns/activitystreams',
+            'https://w3id.org/security/data-integrity/v1',
+        ],
         'id': `http://wiremock:8080/user/${name}`,
         'url': `http://wiremock:8080/user/${name}`,
         'type': 'Person',
@@ -141,6 +149,10 @@ async function createObject(type) {
     if (type === 'Article') {
         const uuid = uuidv4();
         return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
             'type': 'Article',
             'id': `http://wiremock:8080/article/${uuid}`,
             'url': `http://wiremock:8080/article/${uuid}`,
