@@ -4,7 +4,6 @@ import {
     Like,
     Undo,
     RequestContext,
-    lookupObject,
     isActor,
     Create,
     Note,
@@ -80,16 +79,17 @@ export async function unlikeAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const id = ctx.req.param('id');
-    const objectToLike = await lookupObject(id);
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+
+    const objectToLike = await apCtx.lookupObject(id);
     if (!objectToLike) {
         return new Response(null, {
             status: 404
         });
     }
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-    });
 
     const likeId = apCtx.getObjectUri(Like, {
         id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
@@ -148,16 +148,17 @@ export async function likeAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const id = ctx.req.param('id');
-    const objectToLike = await lookupObject(id);
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+
+    const objectToLike = await apCtx.lookupObject(id);
     if (!objectToLike) {
         return new Response(null, {
             status: 404
         });
     }
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-    });
 
     const likeId = apCtx.getObjectUri(Like, {
         id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
@@ -208,15 +209,15 @@ export async function followAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const handle = ctx.req.param('handle');
-    const actorToFollow = await lookupObject(handle);
-    if (!isActor(actorToFollow)) {
-        // Not Found?
-        return;
-    }
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
+    const actorToFollow = await apCtx.lookupObject(handle);
+    if (!isActor(actorToFollow)) {
+        // Not Found?
+        return;
+    }
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
     const followId = apCtx.getObjectUri(Follow, {
         id: uuidv4(),
