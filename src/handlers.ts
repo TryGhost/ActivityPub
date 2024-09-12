@@ -584,7 +584,7 @@ export async function inboxHandler(
     // Prepare the items for the response
     const items: unknown[] = [];
 
-    for (const item of inbox) {
+    for (const item of inbox.slice(-50)) {
         try {
             const builtInboxItem = await buildActivity(item, globaldb, apCtx, liked);
 
