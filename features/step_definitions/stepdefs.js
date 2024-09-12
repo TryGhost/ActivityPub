@@ -447,6 +447,11 @@ Then('the request is rejected', function () {
     assert(!this.response.ok);
 });
 
+Then('the request is rejected with a {int}', function (statusCode) {
+    assert(!this.response.ok);
+    assert.equal(this.response.status, statusCode);
+});
+
 Then('the request is accepted', async function () {
     assert(this.response.ok, `Expected OK response - got ${this.response.status} ${await this.response.clone().text()}`);
 });
