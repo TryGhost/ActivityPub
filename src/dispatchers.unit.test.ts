@@ -2,22 +2,7 @@ import assert from 'assert';
 import sinon from 'sinon';
 import {
     actorDispatcher,
-    keypairDispatcher,
-    handleFollow,
-    inboxErrorHandler,
-    handleAccept,
-    handleCreate,
-    followersDispatcher,
-    followersCounter,
-    followingDispatcher,
-    followingCounter,
     outboxDispatcher,
-    outboxCounter,
-    articleDispatcher,
-    noteDispatcher,
-    followDispatcher,
-    acceptDispatcher,
-    createDispatcher,
 } from './dispatchers';
 import { Activity, RequestContext } from '@fedify/fedify';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
@@ -34,8 +19,6 @@ describe('dispatchers', function () {
             assert.equal(actual, expected);
         });
     });
-    describe('keypairDispatcher', function () {});
-    describe('handleFollow', function () {});
 
     describe('outboxDispatcher', function () {
         const outboxActivities: Record<string, any> = {
@@ -93,7 +76,7 @@ describe('dispatchers', function () {
         });
 
         it('returns relevant items from the outbox in the correct order', async function () {
-            const result = await outboxDispatcher(ctx, ACTOR_DEFAULT_HANDLE);
+            const result = await outboxDispatcher(ctx);
 
             // Check items exist
             assert.ok(result.items);
@@ -102,10 +85,8 @@ describe('dispatchers', function () {
             assert.equal(result.items.length, 2);
             assert.equal(result.items[0] instanceof Activity, true);
             assert.equal(result.items[1] instanceof Activity, true);
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            assert.equal(result.items[0].id.toString(), 'https://example.com/announce/456');
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            assert.equal(result.items[1].id.toString(), 'https://example.com/create/123');
+            assert.equal(result.items[0].id?.toString(), 'https://example.com/announce/456');
+            assert.equal(result.items[1].id?.toString(), 'https://example.com/create/123');
         });
     });
 });

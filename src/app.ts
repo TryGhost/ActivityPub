@@ -2,18 +2,11 @@ import { serve } from '@hono/node-server';
 import {
     Article,
     Accept,
-    Object as ActivityPubObject,
     createFederation,
     Follow,
-    KvKey,
     KvStore,
-    MemoryKvStore,
     Create,
     Note,
-    Application,
-    Group,
-    Organization,
-    Service,
     Update,
     Announce,
     Context,
@@ -68,10 +61,10 @@ await configure({
     loggers: [{ category: 'fedify', sinks: ['console'], level: 'debug' }],
 });
 
-export type ContextData = {
+export interface ContextData {
     db: KvStore;
     globaldb: KvStore;
-};
+}
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
@@ -198,10 +191,11 @@ fedify.setObjectDispatcher(
 
 /** Hono */
 
-export type HonoContextVariables = {
+export interface HonoContextVariables {
     db: KvStore;
     globaldb: KvStore;
-};
+    [key: string]: unknown;
+}
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
 
@@ -270,7 +264,7 @@ app.use(async (ctx, next) => {
 
 /** Custom API routes */
 
-app.get('/ping', (ctx) => {
+app.get('/ping', () => {
     return new Response('', {
         status: 200
     });

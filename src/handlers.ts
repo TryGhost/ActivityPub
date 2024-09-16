@@ -11,7 +11,7 @@ import {
     Actor,
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
-import { Context, Next } from 'hono';
+import { Context } from 'hono';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList, removeFromList } from './kv-helpers';
@@ -24,14 +24,14 @@ import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
 import { lookupActor } from 'lookup-helpers';
 
-type StoredThing = {
+export interface StoredThing {
     id: string;
     object: string | {
         id: string;
         content: string;
-        [key: string]: any;
+        [key: string]: unknown;
     };
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 import z from 'zod';
@@ -247,7 +247,6 @@ const PostPublishedWebhookSchema = z.object({
 
 export async function postPublishedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     // TODO: Validate webhook with secret
     const data = PostPublishedWebhookSchema.parse(
@@ -299,7 +298,6 @@ export async function postPublishedWebhook(
 
 export async function siteChangedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     try {
         // Retrieve site settings from Ghost
@@ -377,7 +375,6 @@ export async function siteChangedWebhook(
 
 export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     const liked = (await ctx.get('db').get<string[]>(['liked'])) || [];
     const results = (await ctx.get('db').get<string[]>(['inbox'])) || [];
@@ -385,7 +382,7 @@ export async function inboxHandler(
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
-    let items: unknown[] = [];
+    const items: unknown[] = [];
     for (const result of results) {
         try {
             const db = ctx.get('globaldb');
@@ -412,7 +409,7 @@ export async function inboxHandler(
                 });
             }
 
-            let objectId: string = '';
+            let objectId = '';
             if (typeof thing.object === 'string') {
                 objectId = thing.object;
             } else if (typeof thing.object.id === 'string') {

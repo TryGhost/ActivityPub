@@ -1,4 +1,4 @@
-import { Image, RequestContext } from '@fedify/fedify';
+import { Image } from '@fedify/fedify';
 import assert from 'assert';
 import sinon from 'sinon';
 

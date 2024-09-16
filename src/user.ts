@@ -13,7 +13,7 @@ import {
     ACTOR_DEFAULT_SUMMARY
 } from './constants';
 
-export type PersonData = {
+export interface PersonData {
     id: string;
     name: string;
     summary: string;
@@ -25,7 +25,7 @@ export type PersonData = {
     followers: string;
     liked?: string;
     url: string;
-};
+}
 
 export async function getUserData(ctx: RequestContext<ContextData>, handle: string) {
     const existing = await ctx.data.db.get<PersonData>(['handle', handle]);
@@ -101,7 +101,7 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
 }
 
 export async function getUserKeypair(ctx: Context<ContextData>, handle: string) {
-    const existing = await ctx.data.db.get<{ publicKey: any; privateKey: any }>([
+    const existing = await ctx.data.db.get<{ publicKey: JsonWebKey; privateKey: JsonWebKey }>([
         'keypair',
         handle,
     ]);

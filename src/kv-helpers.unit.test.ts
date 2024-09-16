@@ -21,6 +21,7 @@ describe('Kv Helpers', function () {
                 const actual = await scopedStore.get(['key']);
                 const expected = { value: 'da value' };
                 assert.deepEqual(actual, expected);
+                break checkIsSet;
             }
 
             checkDeletes: {
@@ -28,6 +29,7 @@ describe('Kv Helpers', function () {
                 const actual = await scopedStore.get(['key']);
                 const expected = null;
                 assert.deepEqual(actual, expected);
+                break checkDeletes;
             }
         });
     });
@@ -41,6 +43,7 @@ describe('Kv Helpers', function () {
                 const actual = await store.get(['not-existing']);
                 const expected = ['first'];
                 assert.deepEqual(actual, expected);
+                break checkNonExisting;
             }
 
             checkExisting: {
@@ -49,6 +52,7 @@ describe('Kv Helpers', function () {
                 const actual = await store.get(['existing']);
                 const expected = ['first', 'second'];
                 assert.deepEqual(actual, expected);
+                break checkExisting;
             }
         });
     });
@@ -62,6 +66,7 @@ describe('Kv Helpers', function () {
                 const actual = await store.get(['not-existing']);
                 const expected: never[] = [];
                 assert.deepEqual(actual, expected);
+                break checkNonExisting;
             }
 
             checkExisting: {
@@ -70,6 +75,7 @@ describe('Kv Helpers', function () {
                 const actual = await store.get(['existing']);
                 const expected: never[] = [];
                 assert.deepEqual(actual, expected);
+                break checkExisting;
             }
         });
     });

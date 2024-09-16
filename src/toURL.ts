@@ -7,6 +7,7 @@ export function toURL(x: unknown) {
     }
     try {
         return new URL(x);
+    // eslint-disable-next-line
     } catch (err) {
         return undefined;
     }

@@ -5,7 +5,7 @@ import {
     ACTOR_DEFAULT_SUMMARY
 } from './constants';
 
-type SiteSettings = {
+export interface SiteSettings {
     site: {
         description: string;
         icon: string;
