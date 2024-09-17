@@ -4,7 +4,6 @@ import {
     Follow,
     Person,
     RequestContext,
-    lookupObject,
     Create,
     Note,
     Activity,
@@ -15,12 +14,15 @@ import {
     Actor,
     Object as APObject,
     Recipient,
+    Like,
+    Undo,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { ContextData } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { getUserData, getUserKeypair } from './user';
+import { lookupActor } from './lookup-helpers';
 
 export async function actorDispatcher(
     ctx: RequestContext<ContextData>,
@@ -190,8 +192,7 @@ export async function handleAnnounce(
 
     if (!existing) {
         console.log('Object not found in globalDb, performing network lookup');
-
-        object = await lookupObject(announce.objectId);
+        object = await ctx.lookupObject(announce.objectId);
     }
 
     // Validate object
@@ -217,7 +218,7 @@ export async function handleAnnounce(
 
         if (typeof objectJson === 'object' && objectJson !== null) {
             if ('attributedTo' in objectJson && typeof objectJson.attributedTo === 'string') {
-                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await lookupObject(objectJson.attributedTo)
+                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await ctx.lookupObject(objectJson.attributedTo)
                 objectJson.attributedTo = await (actor as any)?.toJsonLd();
             }
         }
@@ -229,37 +230,75 @@ export async function handleAnnounce(
     await addToList(ctx.data.db, ['inbox'], announce.id.href);
 }
 
+export async function handleLike(
+    ctx: Context<ContextData>,
+    like: Like,
+) {
+    console.log('Handling Like');
+
+    // Validate like
+    if (!like.id) {
+        console.log('Invalid Like - no id');
+        return;
+    }
+
+    if (!like.objectId) {
+        console.log('Invalid Like - no object id');
+        return;
+    }
+
+    // Validate sender
+    const sender = await like.getActor(ctx);
+
+    if (sender === null || sender.id === null) {
+        console.log('Sender missing, exit early');
+        return;
+    }
+
+    // Lookup liked object - If not found in globalDb, perform network lookup
+    let object = null;
+    let existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
+
+    if (!existing) {
+        console.log('Object not found in globalDb, performing network lookup');
+
+        object = await like.getObject();
+    }
+
+    // Validate object
+    if (!existing && !object) {
+        console.log('Invalid Like - could not find object');
+        return;
+    }
+
+    if (object && !object.id) {
+        console.log('Invalid Like - could not find object id');
+        return;
+    }
+
+    // Persist like
+    const likeJson = await like.toJsonLd();
+    ctx.data.globaldb.set([like.id.href], likeJson);
+
+    // Persist object if not already persisted
+    if (!existing && object && object.id) {
+        console.log('Storing object in globalDb');
+
+        const objectJson = await object.toJsonLd();
+
+        ctx.data.globaldb.set([object.id.href], objectJson);
+    }
+
+    // Add to inbox
+    await addToList(ctx.data.db, ['inbox'], like.id.href);
+}
+
 export async function inboxErrorHandler(
     ctx: Context<ContextData>,
     error: unknown,
 ) {
     console.error('Error handling incoming activity');
     console.error(error);
-}
-
-async function lookupActor(ctx: RequestContext<ContextData>, url: string) {
-    try {
-        console.log('Looking up actor locally', url);
-        const local = await ctx.data.globaldb.get([url]);
-        return await APObject.fromJsonLd(local);
-    } catch (err) {
-        console.log('Error looking up actor locally', url);
-        console.log(err);
-        console.log('Looking up actor remotely', url);
-        const documentLoader = await ctx.getDocumentLoader({handle: 'index'});
-        try {
-            const remote = await lookupObject(url, {documentLoader});
-            if (isActor(remote)) {
-                await ctx.data.globaldb.set([url], await remote.toJsonLd());
-                return remote;
-            }
-        } catch (err) {
-            console.log('Error looking up actor remotely', url);
-            console.log(err)
-            return null;
-        }
-    }
-    return null;
 }
 
 function convertJsonLdToRecipient(result: any): Recipient {
@@ -274,7 +313,7 @@ function convertJsonLdToRecipient(result: any): Recipient {
 }
 
 export async function followersDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: Context<ContextData>,
     handle: string,
 ) {
     console.log('Followers Dispatcher');
@@ -372,7 +411,7 @@ export async function outboxDispatcher(
         }
     }
     return {
-        items,
+        items: items.reverse(),
     };
 }
 
@@ -383,6 +422,38 @@ export async function outboxCounter(
     const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
 
     return filterOutboxActivityUris(results).length;
+}
+
+export async function likedDispatcher(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    console.log('Liked Dispatcher');
+    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
+    console.log(results);
+
+    let items: Like[] = [];
+    for (const result of results) {
+        try {
+            const thing = await ctx.data.globaldb.get([result]);
+            const activity = await Like.fromJsonLd(thing);
+            items.push(activity);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    return {
+        items: items.reverse(),
+    };
+}
+
+export async function likedCounter(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
+
+    return results.length;
 }
 
 export async function articleDispatcher(
@@ -455,4 +526,28 @@ export async function noteDispatcher(
         return null;
     }
     return Note.fromJsonLd(exists);
+}
+
+export async function likeDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Like, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
+    if (!exists) {
+        return null;
+    }
+    return Like.fromJsonLd(exists);
+}
+
+export async function undoDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Undo, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
+    if (!exists) {
+        return null;
+    }
+    return Undo.fromJsonLd(exists);
 }

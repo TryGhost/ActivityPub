@@ -17,6 +17,8 @@ import {
     Update,
     Announce,
     Context,
+    Like,
+    Undo,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext } from 'hono';
@@ -40,6 +42,10 @@ import {
     followingCounter,
     outboxDispatcher,
     outboxCounter,
+    likedDispatcher,
+    likedCounter,
+    likeDispatcher,
+    undoDispatcher,
     articleDispatcher,
     noteDispatcher,
     followDispatcher,
@@ -47,9 +53,10 @@ import {
     createDispatcher,
     updateDispatcher,
     handleAnnounce,
+    handleLike
 } from './dispatchers';
 
-import { followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
+import { likeAction, unlikeAction, followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
@@ -71,6 +78,7 @@ const fedifyKv = await KnexKvStore.create(client, 'key_value');
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
     skipSignatureVerification: process.env.SKIP_SIGNATURE_VERIFICATION === 'true' && process.env.NODE_ENV === 'testing',
+    allowPrivateAddress: process.env.ALLOW_PRIVATE_ADDRESS === 'true' && process.env.NODE_ENV === 'testing'
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
@@ -115,6 +123,8 @@ inboxListener
     .on(Create, ensureCorrectContext(handleCreate))
     .onError(inboxErrorHandler)
     .on(Announce, ensureCorrectContext(handleAnnounce))
+    .onError(inboxErrorHandler)
+    .on(Like, ensureCorrectContext(handleLike))
     .onError(inboxErrorHandler);
 
 fedify
@@ -137,6 +147,13 @@ fedify
         outboxDispatcher,
     )
     .setCounter(outboxCounter);
+
+fedify
+    .setLikedDispatcher(
+        '/.ghost/activitypub/liked/{handle}',
+        likedDispatcher,
+    )
+    .setCounter(likedCounter);
 
 fedify.setObjectDispatcher(
     Article,
@@ -167,6 +184,16 @@ fedify.setObjectDispatcher(
     Update,
     `/.ghost/activitypub/update/{id}`,
     updateDispatcher,
+);
+fedify.setObjectDispatcher(
+    Like,
+    `/.ghost/activitypub/like/{id}`,
+    likeDispatcher,
+);
+fedify.setObjectDispatcher(
+    Undo,
+    `/.ghost/activitypub/undo/{id}`,
+    undoDispatcher,
 );
 
 /** Hono */
@@ -253,6 +280,8 @@ app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
 app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
+app.post('/.ghost/activitypub/actions/like/:id', likeAction);
+app.post('/.ghost/activitypub/actions/unlike/:id', unlikeAction);
 
 /** Federation wire up */
 

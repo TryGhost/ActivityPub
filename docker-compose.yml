@@ -51,6 +51,7 @@ services:
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
       - SKIP_SIGNATURE_VERIFICATION=true
+      - ALLOW_PRIVATE_ADDRESS=true
     command: node --import tsx --watch src/app.ts
     depends_on:
       mysql-testing:

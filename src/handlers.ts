@@ -1,29 +1,37 @@
 import {
     Article,
     Follow,
+    Like,
+    Undo,
     RequestContext,
-    lookupObject,
     isActor,
     Create,
     Note,
     Update,
+    Actor,
     PUBLIC_COLLECTION
 } from '@fedify/fedify';
 import { Context, Next } from 'hono';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
-import { addToList } from './kv-helpers';
+import { addToList, removeFromList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
 import { getSiteSettings } from './ghost';
 import type { PersonData } from './user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
+import { createHash } from 'node:crypto';
+import { lookupActor } from 'lookup-helpers';
 
 type StoredThing = {
+    id: string;
     object: string | {
+        id: string;
         content: string;
-    }
+        [key: string]: any;
+    };
+    [key: string]: any;
 }
 
 import z from 'zod';
@@ -67,19 +75,149 @@ async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
     };
 }
 
-export async function followAction(
+export async function unlikeAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
-    const handle = ctx.req.param('handle');
-    const actorToFollow = await lookupObject(handle);
-    if (!isActor(actorToFollow)) {
-        // Not Found?
-        return;
-    }
+    const id = ctx.req.param('id');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
+
+    const objectToLike = await apCtx.lookupObject(id);
+    if (!objectToLike) {
+        return new Response(null, {
+            status: 404
+        });
+    }
+
+    const likeId = apCtx.getObjectUri(Like, {
+        id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
+    });
+
+    const undoId = apCtx.getObjectUri(Undo, {
+        id: createHash('sha256').update(likeId.href).digest('hex'),
+    });
+
+    const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
+    if (!likeToUndoJson) {
+        return new Response(null, {
+            status: 409
+        });
+    }
+
+    const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+    const undo = new Undo({
+        id: undoId,
+        actor: actor,
+        object: likeToUndo,
+        to: PUBLIC_COLLECTION,
+        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+    });
+    const undoJson = await undo.toJsonLd();
+    await ctx.get('globaldb').set([undo.id!.href], undoJson);
+
+    await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
+    await ctx.get('globaldb').delete([likeId!.href]);
+
+    let attributionActor: Actor | null = null;
+    if (objectToLike.attributionId) {
+        attributionActor = await lookupActor(apCtx, objectToLike.attributionId.href);
+    }
+    if (attributionActor) {
+        apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, undo, {
+            preferSharedInbox: true
+        });
+    }
+
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', undo, {
+        preferSharedInbox: true
+    });
+    return new Response(JSON.stringify(undoJson), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+export async function likeAction(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const id = ctx.req.param('id');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+
+    const objectToLike = await apCtx.lookupObject(id);
+    if (!objectToLike) {
+        return new Response(null, {
+            status: 404
+        });
+    }
+
+    const likeId = apCtx.getObjectUri(Like, {
+        id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
+    });
+
+    if (await ctx.get('globaldb').get([likeId.href])) {
+        return new Response(null, {
+            status: 409
+        });
+    }
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+    const like = new Like({
+        id: likeId,
+        actor: actor,
+        object: objectToLike,
+        to: PUBLIC_COLLECTION,
+        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+    });
+    const likeJson = await like.toJsonLd();
+    await ctx.get('globaldb').set([like.id!.href], likeJson);
+
+    await addToList(ctx.get('db'), ['liked'], like.id!.href);
+
+    let attributionActor: Actor | null = null;
+    if (objectToLike.attributionId) {
+        attributionActor = await lookupActor(apCtx, objectToLike.attributionId.href);
+    }
+    if (attributionActor) {
+        apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, like, {
+            preferSharedInbox: true
+        });
+    }
+
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', like, {
+        preferSharedInbox: true
+    });
+    return new Response(JSON.stringify(likeJson), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+export async function followAction(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const handle = ctx.req.param('handle');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+    const actorToFollow = await apCtx.lookupObject(handle);
+    if (!isActor(actorToFollow)) {
+        // Not Found?
+        return;
+    }
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
     const followId = apCtx.getObjectUri(Follow, {
         id: uuidv4(),
@@ -241,22 +379,30 @@ export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
     next: Next,
 ) {
+    const liked = (await ctx.get('db').get<string[]>(['liked'])) || [];
     const results = (await ctx.get('db').get<string[]>(['inbox'])) || [];
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
     let items: unknown[] = [];
     for (const result of results) {
         try {
             const db = ctx.get('globaldb');
             const thing = await db.get<StoredThing>([result]);
+            if (!thing) {
+                continue;
+            }
 
             // If the object is a string, it's probably a URI, so we should
             // look it up the db. If it's not in the db, we should just leave
             // it as is
-            if (thing && typeof thing.object === 'string') {
+            if (typeof thing.object === 'string') {
                 thing.object = await db.get([thing.object]) ?? thing.object;
             }
 
             // Sanitize HTML content
-            if (thing?.object && typeof thing.object !== 'string') {
+            if (thing.object && typeof thing.object !== 'string') {
                 thing.object.content = sanitizeHtml(thing.object.content, {
                     allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
                     allowedAttributes: {
@@ -264,6 +410,24 @@ export async function inboxHandler(
                         img: ['src'],
                     }
                 });
+            }
+
+            let objectId: string = '';
+            if (typeof thing.object === 'string') {
+                objectId = thing.object;
+            } else if (typeof thing.object.id === 'string') {
+                objectId = thing.object.id;
+            }
+
+            if (objectId) {
+                const likeId = apCtx.getObjectUri(Like, {
+                    id: createHash('sha256').update(objectId).digest('hex'),
+                });
+                if (liked.includes(likeId.href)) {
+                    if (typeof thing.object !== 'string') {
+                        thing.object.liked = true;
+                    }
+                }
             }
 
             items.push(thing);

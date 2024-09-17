@@ -26,7 +26,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Accept',
-            'id': 'http://wiremock:8080/accept/1',
+            'id': `http://wiremock:8080/accept/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -40,7 +40,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Create',
-            'id': 'http://wiremock:8080/create/1',
+            'id': `http://wiremock:8080/create/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -54,7 +54,21 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Announce',
-            'id': 'http://wiremock:8080/announce/1',
+            'id': `http://wiremock:8080/announce/${uuidv4()}`,
+            'to': 'as:Public',
+            'object': object,
+            actor: actor,
+        };
+    }
+
+    if (activityType === 'Like') {
+        return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            'type': 'Like',
+            'id': `http://wiremock:8080/like/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -65,6 +79,10 @@ async function createActivity(activityType, object, actor, remote = true) {
 async function createActor(name = 'Test', remote = true) {
     if (remote === false) {
         return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
             'id': 'http://activitypub-testing:8083/.ghost/activitypub/users/index',
             'url': 'http://activitypub-testing:8083/.ghost/activitypub/users/index',
             'type': 'Person',
@@ -99,6 +117,10 @@ async function createActor(name = 'Test', remote = true) {
     });
 
     return {
+        '@context': [
+            'https://www.w3.org/ns/activitystreams',
+            'https://w3id.org/security/data-integrity/v1',
+        ],
         'id': `http://wiremock:8080/user/${name}`,
         'url': `http://wiremock:8080/user/${name}`,
         'type': 'Person',
@@ -123,19 +145,82 @@ async function createActor(name = 'Test', remote = true) {
     };
 }
 
-async function createObject(type) {
+function generateObject(type) {
     if (type === 'Article') {
+        const uuid = uuidv4();
         return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
             'type': 'Article',
-            'id': 'http://wiremock:8080/article/1',
+            'id': `http://wiremock:8080/article/${uuid}`,
+            'url': `http://wiremock:8080/article/${uuid}`,
             'to': 'as:Public',
             'cc': 'http://wiremock:8080/followers',
-            'url': 'http://wiremock:8080/article/1',
             'content': '<p>This is a test article</p>',
             'published': '2020-04-20T04:20:00Z',
             'attributedTo': 'http://wiremock:8080/user'
         };
     }
+
+    if (type === 'Note') {
+        const uuid = uuidv4();
+        return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            'type': 'Note',
+            'id': `http://wiremock:8080/note/${uuid}`,
+            'url': `http://wiremock:8080/note/${uuid}`,
+            'to': 'as:Public',
+            'cc': 'http://wiremock:8080/followers',
+            'content': '<p>This is a test note</p>',
+            'published': '2020-04-20T04:20:00Z',
+            'attributedTo': 'http://wiremock:8080/user'
+        };
+    }
+}
+
+async function createObject(type) {
+    const object = generateObject(type);
+
+    const url = new URL(object.id);
+
+    captain.register({
+        method: 'GET',
+        endpoint: url.pathname
+    }, {
+        status: 200,
+        body: object,
+        headers: {
+            'Content-Type': 'application/activity+json'
+        }
+    });
+
+    return object;
+}
+
+/**
+ *
+ * Splits a string like `Create(Note)` or `Like(A)` into its activity and object parts
+ *
+ * @param {string} string
+ * @returns {{activity: string, object: string} | {activity: null, object: null}}
+ */
+function parseActivityString(string) {
+    const [match, activity, object] = string.match(/(\w+)\((\w+)\)/) || [null]
+    if (!match) {
+        return {
+            activity: null,
+            object: null
+        };
+    }
+    return {
+        activity,
+        object
+    };
 }
 
 let /* @type Knex */ client;
@@ -172,6 +257,9 @@ Before(async function () {
     if (!this.activities) {
         this.activities = {};
     }
+    if (!this.objects) {
+        this.objects = {};
+    }
     if (!this.actors) {
         this.actors = {
             Us: await createActor('Test', false)
@@ -183,9 +271,81 @@ Given('an Actor {string}', async function (name) {
     this.actors[name] = await createActor(name);
 });
 
+When('we like the object {string}', async function (name) {
+    const id = this.objects[name].id;
+    this.response = await fetch(`http://activitypub-testing:8083/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`, {
+        method: 'POST'
+    });
+});
+
+When('we unlike the object {string}', async function (name) {
+    const id = this.objects[name].id;
+    this.response = await fetch(`http://activitypub-testing:8083/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`, {
+        method: 'POST'
+    });
+});
+
+Then('the object {string} should be liked', async function (name) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const object = this.objects[name];
+
+    const found = inbox.items.find(item => item.object.id === object.id);
+
+    assert(found.object.liked === true);
+});
+
+Then('the object {string} should not be liked', async function (name) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const object = this.objects[name];
+
+    const found = inbox.items.find(item => item.object.id === object.id);
+
+    assert(found.object.liked !== true);
+});
+
+Then('the object {string} should be in the liked collection', async function (name) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/liked/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const object = this.objects[name];
+
+    // TODO Change this when liked collection is fixed to contain objects not Likes
+    const found = inbox.orderedItems.find(item => item.object.id === object.id);
+
+    assert(found);
+});
+
+Then('the object {string} should not be in the liked collection', async function (name) {
+    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/liked/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const object = this.objects[name];
+
+    // TODO Change this when liked collection is fixed to contain objects not Likes
+    const found = inbox.orderedItems.find(item => item.object.id === object.id);
+
+    assert(!found);
+});
+
 Given('a {string} Activity {string} by {string}', async function (activityDef, name, actorName) {
-    const [match, activityType, objectName] = activityDef.match(/(\w+)\((\w+)\)/) || [null]
-    if (!match) {
+    const {activity: activityType, object: objectName} = parseActivityString(activityDef);
+    if (!activityType) {
         throw new error(`could not match ${activityDef} to an activity`);
     }
 
@@ -195,11 +355,12 @@ Given('a {string} Activity {string} by {string}', async function (activityDef, n
     const activity = await createActivity(activityType, object, actor);
 
     this.activities[name] = activity;
+    this.objects[name] = object;
 });
 
 Then('an {string} Activity {string} is created by {string}', async function (activityDef, name, actorName) {
-    const [match, activityType, objectName] = activityDef.match(/(\w+)\((\w+)\)/) || [null]
-    if (!match) {
+    const {activity: activityType, object: objectName} = parseActivityString(activityDef);
+    if (!activityType) {
         throw new error(`could not match ${activityDef} to an activity`);
     }
 
@@ -209,6 +370,7 @@ Then('an {string} Activity {string} is created by {string}', async function (act
     const activity = await createActivity(activityType, object, actor);
 
     this.activities[name] = activity;
+    this.objects[name] = object;
 });
 
 When('{string} sends {string} to the Inbox', async function (actorName, activityName) {
@@ -285,6 +447,11 @@ Then('the request is rejected', function () {
     assert(!this.response.ok);
 });
 
+Then('the request is rejected with a {int}', function (statusCode) {
+    assert(!this.response.ok);
+    assert.equal(this.response.status, statusCode);
+});
+
 Then('the request is accepted', async function () {
     assert(this.response.ok, `Expected OK response - got ${this.response.status} ${await this.response.clone().text()}`);
 });
@@ -347,16 +514,26 @@ Then('{string} is in our Followers once only', async function (actorName) {
     assert.equal(found.length, 1);
 });
 
-When('the contents of the outbox is requested', async function () {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/outbox/index', {
-        headers: {
-            'Content-Type': 'application/ld+json'
-        },
+Then('a {string} activity is sent to {string}', async function (activityString, actorName) {
+    const {activity: activityType, object: objectNameOrType} = parseActivityString(activityString);
+    if (!activityType) {
+        throw new error(`could not match ${activityDef} to an activity`);
+    }
+    if (!this.actors[actorName]) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
+    const actor = this.actors[actorName];
+
+    const object = this.objects[objectNameOrType];
+
+    const inboxUrl = new URL(actor.inbox);
+
+    const requests = await captain.getRequestsForAPI('POST', inboxUrl.pathname);
+
+    const found = requests.find(request => {
+        const body = JSON.parse(request.request.body);
+        return body.type === activityType && (object ? body.object.id === object.id : body.object.type === objectNameOrType);
     });
 
-    this.response = await response.json();
-});
-
-Then('the outbox contains {int} activity', function (count) {
-    assert.equal(this.response.totalItems, count);
+    assert(found);
 });

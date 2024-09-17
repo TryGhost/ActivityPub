@@ -292,10 +292,10 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/fedify@0.13.0-dev.318":
-  version "0.13.0-dev.318"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-0.13.0-dev.318.tgz#96146859d01888cb163908049bdb4d928ade0938"
-  integrity sha512-xzT3iz5IA9/9Wj30X+o0t0INDeLzn/7dq75nw5u966myzT0Ejq5L//fKNmVB04rFE6vx0+DWmZtpdxOL26YoNw==
+"@fedify/fedify@0.15.0-dev.375":
+  version "0.15.0-dev.375"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-0.15.0-dev.375.tgz#6867611f571143f67f609170e18f63f008c0e26b"
+  integrity sha512-VoY7PzKBjpPxM24/bD/vA2YXqv+dIiD18nTpY4IiYV3R7c27C0Js5Bc7hYNKBoe2QDygHH2q0sTH0/zL2U7uXg==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"
