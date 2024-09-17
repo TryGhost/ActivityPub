@@ -56,7 +56,15 @@ import {
     handleLike
 } from './dispatchers';
 
-import { likeAction, unlikeAction, followAction, inboxHandler, postPublishedWebhook, siteChangedWebhook } from './handlers';
+import {
+    likeAction,
+    unlikeAction,
+    followAction,
+    inboxHandler,
+    postPublishedWebhook,
+    siteChangedWebhook,
+    getActivities
+} from './handlers';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
@@ -277,6 +285,7 @@ app.get('/ping', (ctx) => {
 });
 
 app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
+app.get('/.ghost/activitypub/activities/:handle', getActivities);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
 app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
