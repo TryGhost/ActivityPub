@@ -508,7 +508,10 @@ export async function getActivities(
     // Fetch the inbox from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
-    const inbox = (await db.get<string[]>(['inbox'])) || [];
+    //   - First item is the oldest, last item is the newest
+    const inbox = ((await db.get<string[]>(['inbox'])) || [])
+        // Reverse so that the newest items are first
+        .reverse();
 
     // Find the starting index based on the cursor
     const startIndex = cursor ? inbox.indexOf(cursor) + 1 : 0;
