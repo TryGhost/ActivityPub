@@ -18,6 +18,12 @@ services:
       mysql:
         condition: service_healthy
 
+  scripts:
+    build: scripts
+    depends_on:
+      - activitypub
+      - fake-mastodon
+
   nginx:
     build: nginx
     ports:

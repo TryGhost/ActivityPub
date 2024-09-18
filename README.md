@@ -65,6 +65,12 @@ This has only been tested on MacOS using [Docker for Mac](https://docs.docker.co
 - Run `yarn test` to execute tests within a Docker Compose stack.
 
 
+## Populating the DB
+
+The below command will populate the DB with ~5000 followers for the `activitypub` host
+
+- Run `docker compose run scripts populate-activitypub-db`
+
 &nbsp;
 
 ![Leaderboard](https://github.com/TryGhost/ActivityPub/assets/115641230/371e8f36-8293-43d2-912a-772e56517e1d)
