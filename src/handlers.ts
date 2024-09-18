@@ -13,6 +13,7 @@ import {
     Actor,
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
+import { Buffer } from 'node:buffer';
 import { Context, Next } from 'hono';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
@@ -494,8 +495,9 @@ export async function getActivities(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
 
     // Parse cursor and limit from query parameters
-    const cursor = parseInt(ctx.req.query('cursor') || '0', 10);
-    const limit = parseInt(ctx.req.query('limit') || DEFAULT_LIMIT.toString(), 10);
+    const queryCursor = ctx.req.query('cursor')
+    const cursor = queryCursor ? Buffer.from(queryCursor, 'base64url').toString('utf-8') : null;
+    const limit = Number.parseInt(ctx.req.query('limit') || DEFAULT_LIMIT.toString(), 10);
 
     // Fetch the liked items from the database:
     //   - Data is structured as an array of strings
@@ -508,12 +510,15 @@ export async function getActivities(
     //   - Each string is a URI to an object in the database
     const inbox = (await db.get<string[]>(['inbox'])) || [];
 
+    // Find the starting index based on the cursor
+    const startIndex = cursor ? inbox.indexOf(cursor) + 1 : 0;
+
     // Slice the results array based on the cursor and limit
-    const paginatedInbox = inbox.slice(cursor, cursor + limit);
+    const paginatedInbox = inbox.slice(startIndex, startIndex + limit);
 
     // Determine the next cursor
-    const nextCursor = cursor + paginatedInbox.length < inbox.length
-        ? (cursor + paginatedInbox.length).toString()
+    const nextCursor = startIndex + paginatedInbox.length < inbox.length
+        ? Buffer.from(paginatedInbox[paginatedInbox.length - 1]).toString('base64url')
         : null;
 
     // Prepare the items for the response
