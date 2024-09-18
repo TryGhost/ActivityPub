@@ -63,7 +63,8 @@ import {
     inboxHandler,
     postPublishedWebhook,
     siteChangedWebhook,
-    getActivities
+    getActivities,
+    replyAction,
 } from './handlers';
 
 if (process.env.SENTRY_DSN) {
@@ -291,6 +292,7 @@ app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
 app.post('/.ghost/activitypub/actions/like/:id', likeAction);
 app.post('/.ghost/activitypub/actions/unlike/:id', unlikeAction);
+app.post('/.ghost/activitypub/actions/reply/:id', replyAction);
 
 /** Federation wire up */
 

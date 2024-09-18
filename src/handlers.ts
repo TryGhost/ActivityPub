@@ -12,6 +12,7 @@ import {
     Update,
     Actor,
     PUBLIC_COLLECTION,
+    Mention,
 } from '@fedify/fedify';
 import { Buffer } from 'node:buffer';
 import { Context, Next } from 'hono';
@@ -201,6 +202,110 @@ export async function likeAction(
         preferSharedInbox: true
     });
     return new Response(JSON.stringify(likeJson), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+
+const ReplyActionSchema = z.object({
+    content: z.string()
+});
+
+export async function replyAction(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const id = ctx.req.param('id');
+
+    const data = ReplyActionSchema.parse(
+        await ctx.req.json() as unknown
+    );
+
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+    });
+
+    const objectToReplyTo = await apCtx.lookupObject(id);
+    if (!objectToReplyTo) {
+        return new Response(null, {
+            status: 404,
+        });
+    }
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
+
+    let attributionActor: Actor | null = null;
+    if (objectToReplyTo.attributionId) {
+        attributionActor = await lookupActor(apCtx, objectToReplyTo.attributionId.href);
+    }
+
+    if (!attributionActor) {
+        return new Response(null, {
+            status: 400,
+        });
+    }
+
+    const to = PUBLIC_COLLECTION;
+    const cc = [attributionActor, apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
+
+    const conversation = objectToReplyTo.replyTargetId || objectToReplyTo.id!;
+    const mentions = [new Mention({
+        href: attributionActor.id,
+        name: attributionActor.name,
+    })];
+
+    const replyId = apCtx.getObjectUri(Note, {
+        id: uuidv4(),
+    });
+
+    const reply = new Note({
+        id: replyId,
+        attribution: actor,
+        replyTarget: objectToReplyTo,
+        content: data.content,
+        summary: null,
+        published: Temporal.Now.instant(),
+        contexts: [conversation],
+        tags: mentions,
+        to: to,
+        ccs: cc,
+    });
+
+    const createId = apCtx.getObjectUri(Create, {
+        id: uuidv4(),
+    });
+
+    const create = new Create({
+        id: createId,
+        actor: actor,
+        object: reply,
+        to: to,
+        ccs: cc,
+    });
+
+    const activityJson = await create.toJsonLd();
+
+    await ctx
+        .get('globaldb')
+        .set([create.id!.href], activityJson);
+    await ctx
+        .get('globaldb')
+        .set([reply.id!.href], await reply.toJsonLd());
+
+    await addToList(ctx.get('db'), ['outbox'], create.id!.href);
+
+    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, create, {
+        preferSharedInbox: true,
+    });
+
+    await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create, {
+        preferSharedInbox: true,
+    });
+
+    return new Response(JSON.stringify(activityJson), {
         headers: {
             'Content-Type': 'application/activity+json',
         },
