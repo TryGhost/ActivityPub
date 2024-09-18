@@ -17,6 +17,7 @@ import { Buffer } from 'node:buffer';
 import { Context, Next } from 'hono';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
+import { getActivityMeta } from './db';
 import { addToList, removeFromList } from './kv-helpers';
 import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
@@ -378,7 +379,7 @@ export async function siteChangedWebhook(
     });
 }
 
-async function buildInboxItem(
+async function buildActivity(
     uri: string,
     db: KvStore,
     apCtx: APContext<ContextData>,
@@ -458,7 +459,7 @@ export async function inboxHandler(
 
     for (const item of inbox) {
         try {
-            const builtInboxItem = await buildInboxItem(item, globaldb, apCtx, liked);
+            const builtInboxItem = await buildActivity(item, globaldb, apCtx, liked);
 
             if (builtInboxItem) {
                 items.push(builtInboxItem);
@@ -499,49 +500,82 @@ export async function getActivities(
     const cursor = queryCursor ? Buffer.from(queryCursor, 'base64url').toString('utf-8') : null;
     const limit = Number.parseInt(ctx.req.query('limit') || DEFAULT_LIMIT.toString(), 10);
 
-    // Fetch the liked items from the database:
+    // Parse includeOwn from query parameters
+    // This is used to include the user's own activities in the results
+    const includeOwn = ctx.req.query('includeOwn') === 'true';
+
+    // Fetch the liked object refs from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
     // This is used to add a "liked" property to the item if the user has liked it
-    const liked = (await db.get<string[]>(['liked'])) || [];
+    const likedRefs = (await db.get<string[]>(['liked'])) || [];
 
-    // Fetch the inbox from the database:
+    // Fetch the refs of the activities in the inbox from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
     //   - First item is the oldest, last item is the newest
-    const inbox = ((await db.get<string[]>(['inbox'])) || [])
-        // Reverse so that the newest items are first
-        .reverse();
+    const inboxRefs = ((await db.get<string[]>(['inbox'])) || [])
+
+    // Fetch the refs of the activities in the outbox from the database (if
+    // user is requesting their own activities):
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    //   - First item is the oldest, last item is the newest
+    let outboxRefs: string[] = [];
+
+    if (includeOwn) {
+        outboxRefs = await db.get<string[]>(['outbox']) || [];
+    }
+
+    // To be able to return a sorted / filtered "feed" of activities, we need to
+    // fetch some additional meta data about the referenced activities. Doing this
+    // upfront allows us to sort, filter and paginate the activities before
+    // building them for the response which saves us from having to perform
+    // unnecessary database lookups for referenced activities that will not be
+    // included in the response. If we can't find the meta data in the database
+    // for an activity, we skip it as this is unexpected
+    let activityRefs = [...inboxRefs, ...outboxRefs];
+    const activityMeta = await getActivityMeta(activityRefs);
+
+    activityRefs = activityRefs.filter(ref => activityMeta.has(ref));
+
+    // Sort the activity refs by the id of the activity (newest first)
+    // We are using the id to sort because currently not all activity types have
+    // a timestamp. The id property is a unique auto incremented number at the
+    // database level
+    activityRefs.sort((a, b) => {
+        return activityMeta.get(b)!.id - activityMeta.get(a)!.id;
+    });
 
     // Find the starting index based on the cursor
-    const startIndex = cursor ? inbox.indexOf(cursor) + 1 : 0;
+    const startIndex = cursor ? activityRefs.findIndex(ref => ref === cursor) + 1 : 0;
 
     // Slice the results array based on the cursor and limit
-    const paginatedInbox = inbox.slice(startIndex, startIndex + limit);
+    const paginatedRefs = activityRefs.slice(startIndex, startIndex + limit);
 
     // Determine the next cursor
-    const nextCursor = startIndex + paginatedInbox.length < inbox.length
-        ? Buffer.from(paginatedInbox[paginatedInbox.length - 1]).toString('base64url')
+    const nextCursor = startIndex + paginatedRefs.length < activityRefs.length
+        ? Buffer.from(paginatedRefs[paginatedRefs.length - 1]).toString('base64url')
         : null;
 
-    // Prepare the items for the response
-    const items = [];
+    // Build the activities for the response
+    const activities = [];
 
-    for (const item of paginatedInbox) {
+    for (const ref of paginatedRefs) {
         try {
-            const builtInboxItem = await buildInboxItem(item, globaldb, apCtx, liked);
+            const builtActivity = await buildActivity(ref, globaldb, apCtx, likedRefs);
 
-            if (builtInboxItem) {
-                items.push(builtInboxItem);
+            if (builtActivity) {
+                activities.push(builtActivity);
             }
         } catch (err) {
             console.log(err);
         }
     }
 
-    // Return the paginated prepared inbox items and the next cursor
+    // Return the built activities and the next cursor
     return new Response(JSON.stringify({
-        items,
+        items: activities,
         nextCursor,
     }), {
         headers: {

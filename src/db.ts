@@ -17,3 +17,26 @@ await client.schema.createTableIfNotExists('key_value', function (table) {
     table.json('value').notNullable();
     table.datetime('expires').nullable();
 });
+
+// Helper function to get the meta data for a list of activity URIs
+// from the database. This allows us to fetch information about the activities
+// without having to fetch the full activity object. This is a bit of a hack to
+// support sorting / filtering of the activities and should be replaced when we
+// have a proper db schema
+export async function getActivityMeta(uris: string[]): Promise<Map<string, { id: number, type: string }>> {
+    const results = await client
+        .select('key', 'id', client.raw('JSON_EXTRACT(value, "$.type") as type'))
+        .from('key_value')
+        .whereIn('key', uris.map(uri => `["${uri}"]`));
+
+    const map = new Map<string, { id: number, type: string }>();
+
+    for (const result of results) {
+        map.set(result.key.substring(2, result.key.length - 2), {
+            id: result.id,
+            type: result.type,
+        });
+    }
+
+    return map;
+}
