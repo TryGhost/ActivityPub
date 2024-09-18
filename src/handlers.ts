@@ -398,6 +398,28 @@ async function buildInboxItem(
         item.object = await db.get([item.object]) ?? item.object;
     }
 
+    if (typeof item.actor === 'string') {
+        const actor = await lookupActor(apCtx, item.actor);
+
+        if (actor) {
+            const json = await actor.toJsonLd();
+            if (typeof json === 'object' && json !== null) {
+                item.actor = json;
+            }
+        }
+    }
+
+    if (typeof item.object !== 'string' && typeof item.object.attributedTo === 'string') {
+        const actor = await lookupActor(apCtx, item.object.attributedTo);
+
+        if (actor) {
+            const json = await actor.toJsonLd();
+            if (typeof json === 'object' && json !== null) {
+                item.object.attributedTo = json;
+            }
+        }
+    }
+
     // If the object associated with the item is an object with a content property,
     // we should sanitize the content to prevent XSS (in case it contains HTML)
     if (item.object && typeof item.object !== 'string' && item.object.content) {
