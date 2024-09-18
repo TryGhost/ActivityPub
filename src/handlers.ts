@@ -1,6 +1,8 @@
 import {
     Article,
+    Context as APContext,
     Follow,
+    KvStore,
     Like,
     Undo,
     RequestContext,
@@ -9,8 +11,9 @@ import {
     Note,
     Update,
     Actor,
-    PUBLIC_COLLECTION
+    PUBLIC_COLLECTION,
 } from '@fedify/fedify';
+import { Buffer } from 'node:buffer';
 import { Context, Next } from 'hono';
 import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,7 +27,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
 import { lookupActor } from 'lookup-helpers';
 
-type StoredThing = {
+type InboxItem = {
     id: string;
     object: string | {
         id: string;
@@ -375,71 +378,102 @@ export async function siteChangedWebhook(
     });
 }
 
+async function buildInboxItem(
+    uri: string,
+    db: KvStore,
+    apCtx: APContext<ContextData>,
+    liked: string[] = [],
+): Promise<InboxItem | null> {
+    const item = await db.get<InboxItem>([uri]);
+
+    // If the item is not in the db, return null as we can't build it
+    if (!item) {
+        return null;
+    }
+
+    // If the object associated with the item is a string, it's probably a URI,
+    // so we should look it up in the db. If it's not in the db, we should just
+    // leave it as is
+    if (typeof item.object === 'string') {
+        item.object = await db.get([item.object]) ?? item.object;
+    }
+
+    // If the object associated with the item is an object with a content property,
+    // we should sanitize the content to prevent XSS (in case it contains HTML)
+    if (item.object && typeof item.object !== 'string' && item.object.content) {
+        item.object.content = sanitizeHtml(item.object.content, {
+            allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
+            allowedAttributes: {
+                a: ['href'],
+                img: ['src'],
+            }
+        });
+    }
+
+    // If the associated object is a Like, we should check if it's in the provided
+    // liked list and add a liked property to the item if it is
+    let objectId: string = '';
+
+    if (typeof item.object === 'string') {
+        objectId = item.object;
+    } else if (typeof item.object.id === 'string') {
+        objectId = item.object.id;
+    }
+
+    if (objectId) {
+        const likeId = apCtx.getObjectUri(Like, {
+            id: createHash('sha256').update(objectId).digest('hex'),
+        });
+        if (liked.includes(likeId.href)) {
+            if (typeof item.object !== 'string') {
+                item.object.liked = true;
+            }
+        }
+    }
+
+    // Return the built item
+    return item;
+}
+
 export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
-    const liked = (await ctx.get('db').get<string[]>(['liked'])) || [];
-    const results = (await ctx.get('db').get<string[]>(['inbox'])) || [];
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-    });
-    let items: unknown[] = [];
-    for (const result of results) {
+    const db = ctx.get('db');
+    const globaldb = ctx.get('globaldb');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+
+    // Fetch the liked items from the database:
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    // This is used to add a "liked" property to the item if the user has liked it
+    const liked = (await db.get<string[]>(['liked'])) || [];
+
+    // Fetch the inbox from the database:
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    const inbox = (await db.get<string[]>(['inbox'])) || [];
+
+    // Prepare the items for the response
+    const items: unknown[] = [];
+
+    for (const item of inbox) {
         try {
-            const db = ctx.get('globaldb');
-            const thing = await db.get<StoredThing>([result]);
-            if (!thing) {
-                continue;
-            }
+            const builtInboxItem = await buildInboxItem(item, globaldb, apCtx, liked);
 
-            // If the object is a string, it's probably a URI, so we should
-            // look it up the db. If it's not in the db, we should just leave
-            // it as is
-            if (typeof thing.object === 'string') {
-                thing.object = await db.get([thing.object]) ?? thing.object;
+            if (builtInboxItem) {
+                items.push(builtInboxItem);
             }
-
-            // Sanitize HTML content
-            if (thing.object && typeof thing.object !== 'string') {
-                thing.object.content = sanitizeHtml(thing.object.content, {
-                    allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
-                    allowedAttributes: {
-                        a: ['href'],
-                        img: ['src'],
-                    }
-                });
-            }
-
-            let objectId: string = '';
-            if (typeof thing.object === 'string') {
-                objectId = thing.object;
-            } else if (typeof thing.object.id === 'string') {
-                objectId = thing.object.id;
-            }
-
-            if (objectId) {
-                const likeId = apCtx.getObjectUri(Like, {
-                    id: createHash('sha256').update(objectId).digest('hex'),
-                });
-                if (liked.includes(likeId.href)) {
-                    if (typeof thing.object !== 'string') {
-                        thing.object.liked = true;
-                    }
-                }
-            }
-
-            items.push(thing);
         } catch (err) {
             console.log(err);
         }
     }
+
+    // Return the prepared inbox items
     return new Response(
         JSON.stringify({
             '@context': 'https://www.w3.org/ns/activitystreams',
             type: 'OrderedCollection',
-            totalItems: results.length,
+            totalItems: inbox.length,
             items,
         }),
         {
@@ -449,4 +483,70 @@ export async function inboxHandler(
             status: 200,
         },
     );
+}
+
+export async function getActivities(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const DEFAULT_LIMIT = 10;
+
+    const db = ctx.get('db');
+    const globaldb = ctx.get('globaldb');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+
+    // Parse cursor and limit from query parameters
+    const queryCursor = ctx.req.query('cursor')
+    const cursor = queryCursor ? Buffer.from(queryCursor, 'base64url').toString('utf-8') : null;
+    const limit = Number.parseInt(ctx.req.query('limit') || DEFAULT_LIMIT.toString(), 10);
+
+    // Fetch the liked items from the database:
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    // This is used to add a "liked" property to the item if the user has liked it
+    const liked = (await db.get<string[]>(['liked'])) || [];
+
+    // Fetch the inbox from the database:
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    //   - First item is the oldest, last item is the newest
+    const inbox = ((await db.get<string[]>(['inbox'])) || [])
+        // Reverse so that the newest items are first
+        .reverse();
+
+    // Find the starting index based on the cursor
+    const startIndex = cursor ? inbox.indexOf(cursor) + 1 : 0;
+
+    // Slice the results array based on the cursor and limit
+    const paginatedInbox = inbox.slice(startIndex, startIndex + limit);
+
+    // Determine the next cursor
+    const nextCursor = startIndex + paginatedInbox.length < inbox.length
+        ? Buffer.from(paginatedInbox[paginatedInbox.length - 1]).toString('base64url')
+        : null;
+
+    // Prepare the items for the response
+    const items = [];
+
+    for (const item of paginatedInbox) {
+        try {
+            const builtInboxItem = await buildInboxItem(item, globaldb, apCtx, liked);
+
+            if (builtInboxItem) {
+                items.push(builtInboxItem);
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    // Return the paginated prepared inbox items and the next cursor
+    return new Response(JSON.stringify({
+        items,
+        nextCursor,
+    }), {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        status: 200,
+    });
 }
