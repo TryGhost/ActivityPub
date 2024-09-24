@@ -53,7 +53,7 @@ const PostSchema = z.object({
 
 type Post = z.infer<typeof PostSchema>
 
-async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
+async function postToArticle(ctx: RequestContext<ContextData>, post: Post, author: Actor | null) {
     if (!post) {
         return {
             article: null,
@@ -66,6 +66,7 @@ async function postToArticle(ctx: RequestContext<ContextData>, post: Post) {
     });
     const article = new Article({
         id: ctx.getObjectUri(Article, { id: post.uuid }),
+        attribution: author,
         name: post.title,
         content: post.html,
         image: toURL(post.feature_image),
@@ -366,12 +367,13 @@ export async function postPublishedWebhook(
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
     });
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
     const { article, preview } = await postToArticle(
         apCtx,
         data.post.current,
+        actor
     );
     if (article) {
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
         const create = new Create({
             actor,
             object: article,

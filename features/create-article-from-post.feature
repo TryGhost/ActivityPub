@@ -5,3 +5,4 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
     When it is sent to the webhook endpoint
     Then the request is accepted
     Then a "Create(Article)" activity is in the Outbox
+    And the found "Create(Article)" has property "object.attributedTo"

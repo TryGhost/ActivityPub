@@ -470,7 +470,21 @@ Then('a {string} activity is in the Outbox', async function (string) {
     const found = outbox.orderedItems.find((item) => {
         return item.type === activity && item.object?.type === object
     });
+    if (!this.found) {
+        this.found = {};
+    }
+    this.found[string] = found;
     assert.ok(found);
+});
+
+Then('the found {string} has property {string}', function (name, prop) {
+    const found = this.found[name];
+
+    const property = prop.split('.').reduce(function (thing, key) {
+        return thing?.[key];
+    }, found);
+
+    assert.ok(property);
 });
 
 Then('{string} is in our Inbox', async function (activityName) {
