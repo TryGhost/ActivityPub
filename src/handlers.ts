@@ -563,12 +563,14 @@ async function buildActivity(
         }
     }
 
-    // If a replies map has been provided, the item is not a string, and the
-    // item has an id, we should nest any replies recursively (which involves
-    // calling this function again for each reply)
-    if (repliesMap && typeof item.object !== 'string' && item.object.id) {
+    // Make sure the replies property exists on the object and is the type we expect
+    if (typeof item.object !== 'string' && item.object.id) {
         item.object.replies = [];
+    }
 
+    // If a replies map has been provided, we should nest any replies recursively
+    // (which involves calling this function again for each reply)
+    if (repliesMap && typeof item.object !== 'string' && item.object.id) {
         const replies = repliesMap.get(item.object.id);
 
         if (replies) {
