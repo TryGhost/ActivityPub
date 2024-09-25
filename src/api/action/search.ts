@@ -1,6 +1,5 @@
 import { isActor } from '@fedify/fedify';
 import { Context } from 'hono';
-import ky from 'ky';
 import sanitizeHtml from 'sanitize-html';
 
 import {
@@ -35,6 +34,7 @@ export async function searchAction(
     });
 
     // Parse "query" from query parameters
+    // ?query=<string>
     const query = ctx.req.query('query') || '';
 
     // Init search results - At the moment we only support searching for an actor (ui calls them profiles)
@@ -94,11 +94,8 @@ export async function searchAction(
             result.handle = `@${actor.preferredUsername}@${actor.id!.host}`;
 
             // Retrieve follower count for the actor
-            const followers = await ky
-                .get(actor.followersId!.href)
-                .json<{ totalItems: number }>();
-
-            result.followerCount = followers.totalItems;
+            result.followerCount = (await actor.getFollowers() || { totalItems: 0 })
+                .totalItems || 0;
 
             // Determine if the current user is following the actor
             const following = (await db.get<string[]>(['following'])) || [];
