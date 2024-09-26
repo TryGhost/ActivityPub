@@ -55,9 +55,7 @@ import {
     handleAnnounce,
     handleLike
 } from './dispatchers';
-import {
-    searchAction
-} from './api';
+import { searchAction } from './api';
 
 import {
     likeAction,
