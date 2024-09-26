@@ -1,6 +1,9 @@
-import assert from 'assert';
-import sinon from 'sinon';
-import ky from 'ky';
+import { describe, expect, it, vi } from 'vitest';
+
+import ky, { ResponsePromise } from 'ky';
+
+vi.mock('ky');
+
 import { getSiteSettings } from './ghost';
 import {
     ACTOR_DEFAULT_ICON,
@@ -11,16 +14,6 @@ import {
 describe('getSiteSettings', function () {
     const host = 'example.com';
 
-    let kyGetStub: sinon.SinonStub;
-
-    beforeEach(function () {
-        kyGetStub = sinon.stub(ky, 'get');
-    });
-
-    afterEach(function () {
-        sinon.restore();
-    });
-
     it('should retrieve settings from Ghost', async function () {
         const settings = {
             site: {
@@ -30,33 +23,33 @@ describe('getSiteSettings', function () {
             }
         };
 
-        kyGetStub.returns({
+        vi.mocked(ky.get).mockReturnValue({
             json: async () => settings
-        });
+        } as ResponsePromise);
 
         const result = await getSiteSettings(host);
 
-        assert.deepStrictEqual(result, settings);
-        assert.strictEqual(kyGetStub.callCount, 1);
-        assert.strictEqual(kyGetStub.firstCall.args[0], `https://${host}/ghost/api/admin/site/`);
+        expect(result).toEqual(settings);
+        expect(ky.get).toHaveBeenCalledTimes(1);
+        expect(ky.get).toHaveBeenCalledWith(`https://${host}/ghost/api/admin/site/`);
     });
 
     it('should use defaults for missing settings', async function () {
         let result;
 
         // Missing description
-        kyGetStub.returns({
+        vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
                 site: {
                     title: 'bar',
                     icon: 'https://example.com/baz.png'
                 }
             })
-        });
+        } as ResponsePromise);
 
         result = await getSiteSettings(host);
 
-        assert.deepStrictEqual(result, {
+        expect(result).toEqual({
             site: {
                 description: ACTOR_DEFAULT_SUMMARY,
                 title: 'bar',
@@ -65,18 +58,18 @@ describe('getSiteSettings', function () {
         });
 
         // Missing title
-        kyGetStub.returns({
+        vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
                 site: {
                     description: 'foo',
                     icon: 'https://example.com/baz.png'
                 }
             })
-        });
+        } as ResponsePromise);
 
         result = await getSiteSettings(host);
 
-        assert.deepStrictEqual(result, {
+        expect(result).toEqual({
             site: {
                 description: 'foo',
                 title: ACTOR_DEFAULT_NAME,
@@ -85,18 +78,18 @@ describe('getSiteSettings', function () {
         });
 
         // Missing icon
-        kyGetStub.returns({
+        vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
                 site: {
                     description: 'foo',
                     title: 'bar'
                 }
             })
-        });
+        } as ResponsePromise);
 
         result = await getSiteSettings(host);
 
-        assert.deepStrictEqual(result, {
+        expect(result).toEqual({
             site: {
                 description: 'foo',
                 title: 'bar',
@@ -105,13 +98,13 @@ describe('getSiteSettings', function () {
         });
 
         // Missing everything
-        kyGetStub.returns({
+        vi.mocked(ky.get).mockReturnValue({
             json: async () => ({})
-        });
+        } as ResponsePromise);
 
         result = await getSiteSettings(host);
 
-        assert.deepStrictEqual(result, {
+        expect(result).toEqual({
             site: {
                 description: ACTOR_DEFAULT_SUMMARY,
                 title: ACTOR_DEFAULT_NAME,

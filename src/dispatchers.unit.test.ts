@@ -1,23 +1,8 @@
-import assert from 'assert';
-import sinon from 'sinon';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
     actorDispatcher,
-    keypairDispatcher,
-    handleFollow,
-    inboxErrorHandler,
-    handleAccept,
-    handleCreate,
-    followersDispatcher,
-    followersCounter,
-    followingDispatcher,
-    followingCounter,
     outboxDispatcher,
-    outboxCounter,
-    articleDispatcher,
-    noteDispatcher,
-    followDispatcher,
-    acceptDispatcher,
-    createDispatcher,
 } from './dispatchers';
 import { Activity, RequestContext } from '@fedify/fedify';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
@@ -31,11 +16,9 @@ describe('dispatchers', function () {
             const actual = await actorDispatcher(ctx, handle);
             const expected = null;
 
-            assert.equal(actual, expected);
+            expect(actual).toEqual(expected);
         });
     });
-    describe('keypairDispatcher', function () {});
-    describe('handleFollow', function () {});
 
     describe('outboxDispatcher', function () {
         const outboxActivities: Record<string, any> = {
@@ -76,19 +59,25 @@ describe('dispatchers', function () {
         const ctx = {
             data: {
                 db: {
-                    get: sinon.stub(),
+                    get: vi.fn(),
                 },
                 globaldb: {
-                    get: sinon.stub(),
+                    get: vi.fn(),
                 },
             },
         } as RequestContext<any>;
 
         beforeEach(function () {
-            ctx.data.db.get.withArgs(['outbox']).resolves(Object.keys(outboxActivities));
+            ctx.data.db.get.mockImplementation((key: string[]) => {
+                return Promise.resolve(
+                    key[0] === 'outbox'
+                        ? Object.keys(outboxActivities)
+                        : undefined
+                );
+            });
 
-            Object.keys(outboxActivities).forEach(key => {
-                ctx.data.globaldb.get.withArgs([key]).resolves(outboxActivities[key]);
+            ctx.data.globaldb.get.mockImplementation((key: string[]) => {
+                return Promise.resolve(outboxActivities[key[0]]);
             });
         });
 
@@ -96,16 +85,16 @@ describe('dispatchers', function () {
             const result = await outboxDispatcher(ctx, ACTOR_DEFAULT_HANDLE);
 
             // Check items exist
-            assert.ok(result.items);
+            expect(result.items).toBeDefined();
 
             // Check correct items are returned in the correct order
-            assert.equal(result.items.length, 2);
-            assert.equal(result.items[0] instanceof Activity, true);
-            assert.equal(result.items[1] instanceof Activity, true);
+            expect(result.items.length).toEqual(2);
+            expect(result.items[0] instanceof Activity).toBeTruthy();
+            expect(result.items[1] instanceof Activity).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            assert.equal(result.items[0].id.toString(), 'https://example.com/announce/456');
+            expect(result.items[0].id.toString()).toEqual('https://example.com/announce/456');
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            assert.equal(result.items[1].id.toString(), 'https://example.com/create/123');
+            expect(result.items[1].id.toString()).toEqual('https://example.com/create/123');
         });
     });
 });
