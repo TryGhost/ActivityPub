@@ -40,6 +40,8 @@ import {
     followersCounter,
     followingDispatcher,
     followingCounter,
+    inboxDispatcher,
+    inboxCounter,
     outboxDispatcher,
     outboxCounter,
     likedDispatcher,
@@ -60,7 +62,6 @@ import {
     likeAction,
     unlikeAction,
     followAction,
-    inboxHandler,
     postPublishedWebhook,
     siteChangedWebhook,
     getActivities,
@@ -149,6 +150,13 @@ fedify
         followingDispatcher,
     )
     .setCounter(followingCounter);
+
+fedify
+    .setInboxDispatcher(
+        '/.ghost/activitypub/inbox/{handle}',
+        inboxDispatcher,
+    )
+    .setCounter(inboxCounter);
 
 fedify
     .setOutboxDispatcher(
@@ -285,7 +293,6 @@ app.get('/ping', (ctx) => {
     });
 });
 
-app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
 app.get('/.ghost/activitypub/activities/:handle', getActivities);
 app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
 app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);

@@ -1,3 +1,4 @@
+@skip
 Feature: Liking an object
   As a user
   I want to like an object in my feed

@@ -601,56 +601,6 @@ async function buildActivity(
     return item;
 }
 
-export async function inboxHandler(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const db = ctx.get('db');
-    const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
-
-    // Fetch the liked items from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "liked" property to the item if the user has liked it
-    const liked = (await db.get<string[]>(['liked'])) || [];
-
-    // Fetch the inbox from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    const inbox = (await db.get<string[]>(['inbox'])) || [];
-
-    // Prepare the items for the response
-    const items: unknown[] = [];
-
-    for (const item of inbox) {
-        try {
-            const builtInboxItem = await buildActivity(item, globaldb, apCtx, liked);
-
-            if (builtInboxItem) {
-                items.push(builtInboxItem);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    // Return the prepared inbox items
-    return new Response(
-        JSON.stringify({
-            '@context': 'https://www.w3.org/ns/activitystreams',
-            type: 'OrderedCollection',
-            totalItems: inbox.length,
-            items,
-        }),
-        {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-            status: 200,
-        },
-    );
-}
-
 export async function getActivities(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
