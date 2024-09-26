@@ -12,6 +12,7 @@ interface ProfileSearchResult {
     handle: string;
     followerCount: number;
     isFollowing: boolean;
+    posts: any[];
 }
 
 interface SearchResults {
@@ -23,6 +24,15 @@ const HANDLE_REGEX = /^@([\w-]+)@([\w-]+\.[\w.-]+)$/;
 
 // http(s)://...
 const URI_REGEX = /^https?:\/\/[^\s/$.?#].[^\s]*$/;
+
+// Config for sanitizing HTML
+const SANITIZE_HTML_CONFIG = {
+    allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
+    allowedAttributes: {
+        a: ['href'],
+        img: ['src'],
+    }
+};
 
 export async function searchAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
@@ -64,26 +74,18 @@ export async function searchAction(
                 handle: '',
                 followerCount: 0,
                 isFollowing: false,
+                posts: [],
             };
 
             // Retrieve actor data
             result.actor = await actor.toJsonLd();
 
-            // Sanitize actor data
-            const sanitizeHtmlConfig = {
-                allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
-                allowedAttributes: {
-                    a: ['href'],
-                    img: ['src'],
-                }
-            };
-
-            result.actor.summary = sanitizeHtml(result.actor.summary, sanitizeHtmlConfig);
+            result.actor.summary = sanitizeHtml(result.actor.summary, SANITIZE_HTML_CONFIG);
 
             if (result.actor.attachment) {
                 result.actor.attachment = result.actor.attachment.map((attachment: any) => {
                     if (attachment.type === 'PropertyValue') {
-                        attachment.value = sanitizeHtml(attachment.value, sanitizeHtmlConfig);
+                        attachment.value = sanitizeHtml(attachment.value, SANITIZE_HTML_CONFIG);
                     }
 
                     return attachment;
@@ -101,6 +103,23 @@ export async function searchAction(
             const following = (await db.get<string[]>(['following'])) || [];
 
             result.isFollowing = following.includes(actor.id!.href);
+
+            // Retrieve latest posts for the actor
+            const posts = await (
+                await actor.getOutbox()
+            )?.getFirst();
+
+            if (posts) {
+                for await (const post of posts.getItems()) {
+                    result.posts.push(await post.toJsonLd({ format: 'compact' }));
+                }
+            }
+
+            result.posts = result.posts.map((post: any) => {
+                post.content = sanitizeHtml(post.content, SANITIZE_HTML_CONFIG);
+
+                return post;
+            });
 
             // Add to the results
             results.profiles.push(result);
