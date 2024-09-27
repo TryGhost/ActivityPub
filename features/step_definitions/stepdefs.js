@@ -294,7 +294,7 @@ Then('the object {string} should be liked', async function (name) {
     const inbox = await response.json();
     const object = this.objects[name];
 
-    const found = inbox.items.find(item => item.object.id === object.id);
+    const found = inbox.orderedItems.find(item => item.object.id === object.id);
 
     assert(found.object.liked === true);
 });
@@ -308,7 +308,7 @@ Then('the object {string} should not be liked', async function (name) {
     const inbox = await response.json();
     const object = this.objects[name];
 
-    const found = inbox.items.find(item => item.object.id === object.id);
+    const found = orderedItems.items.find(item => item.object.id === object.id);
 
     assert(found.object.liked !== true);
 });
@@ -496,7 +496,7 @@ Then('{string} is in our Inbox', async function (activityName) {
     const inbox = await response.json();
     const activity = this.activities[activityName];
 
-    const found = inbox.items.find(item => item.id === activity.id);
+    const found = inbox.orderedItems.find(item => item.id === activity.id);
 
     assert(found);
 });

@@ -82,7 +82,7 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
-    command: yarn run cucumber-js
+    command: yarn run cucumber-js --tags "not @skip"
     depends_on:
       wiremock:
         condition: service_started

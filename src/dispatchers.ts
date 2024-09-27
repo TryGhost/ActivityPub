@@ -373,6 +373,38 @@ export async function followingCounter(
     return results.length;
 }
 
+export async function inboxDispatcher(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    console.log('Inbox Dispatcher');
+    const results = (await ctx.data.db.get<string[]>(['inbox'])) || [];
+    console.log(results);
+
+    let items: Activity[] = [];
+    for (const result of results) {
+        try {
+            const thing = await ctx.data.globaldb.get([result]);
+            const activity = await Activity.fromJsonLd(thing);
+            items.push(activity);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    return {
+        items: items.reverse(),
+    };
+}
+
+export async function inboxCounter(
+    ctx: RequestContext<ContextData>,
+    handle: string,
+) {
+    const results = (await ctx.data.db.get<string[]>(['inbox'])) || [];
+
+    return results.length;
+}
+
 function filterOutboxActivityUris (activityUris: string[]) {
     // Only return Create and Announce activityUris
     return activityUris.filter(uri => /(create|announce)/.test(uri));
