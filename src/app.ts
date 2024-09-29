@@ -1,5 +1,6 @@
 import jose from 'node-jose';
 import jwt from 'jsonwebtoken';
+import { createHmac } from 'crypto';
 import { serve } from '@hono/node-server';
 import {
     Article,
@@ -29,7 +30,7 @@ import { behindProxy } from 'x-forwarded-fetch';
 import { configure, getConsoleSink } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
-import { client } from './db';
+import { client, getSite } from './db';
 import { scopeKvStore } from './kv-helpers';
 import {
     actorDispatcher,
@@ -223,6 +224,10 @@ export type HonoContextVariables = {
     db: KvStore;
     globaldb: KvStore;
     role: GhostRole;
+    site: {
+        host: string;
+        webhook_secret: string;
+    };
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -284,8 +289,11 @@ app.use(async (ctx, next) => {
 
     const scopedDb = scopeKvStore(db, ['sites', host]);
 
+    const site = await getSite(host);
+
     ctx.set('db', scopedDb);
     ctx.set('globaldb', db);
+    ctx.set('site', site);
 
     await next();
 });
@@ -353,6 +361,41 @@ app.get('/ping', (ctx) => {
     });
 });
 
+function validateWebhook() {
+    return async function webhookMiddleware(ctx: HonoContext<{Variables: HonoContextVariables}>, next: Next) {
+        const signature = ctx.req.header('x-ghost-signature') || '';
+        const [matches, remoteHmac, timestamp] = signature.match(/sha256=([0-9a-f]+),\s+t=(\d+)/) || [null];
+        if (!matches) {
+            return new Response(null, {
+                status: 401
+            });
+        }
+
+        const now = Date.now();
+
+        if (Math.abs(now - parseInt(timestamp)) > 5 * 60 * 1000) {
+            return new Response(null, {
+                status: 401
+            });
+        }
+
+        const body = await ctx.req.json();
+        const site = ctx.get('site');
+        const localHmac = createHmac('sha256', site.webhook_secret).update(JSON.stringify(body) + timestamp).digest('hex');
+
+        if (localHmac !== remoteHmac) {
+            return new Response(null, {
+                status: 401
+            });
+        }
+
+        return next();
+    }
+}
+
+app.post('/.ghost/activitypub/webhooks/post/published', validateWebhook(), postPublishedWebhook);
+app.post('/.ghost/activitypub/webhooks/site/changed', validateWebhook(), siteChangedWebhook);
+
 function requireRole(role: GhostRole) {
     return function roleMiddleware(ctx: HonoContext, next: Next) {
         if (ctx.get('role') !== role) {
@@ -366,8 +409,6 @@ function requireRole(role: GhostRole) {
 
 app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
 app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivities);
-app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
-app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
 app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
 app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
 app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);

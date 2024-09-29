@@ -1,4 +1,5 @@
 import Knex from 'knex';
+import crypto from 'crypto';
 
 export const client = Knex({
     client: 'mysql2',
@@ -32,6 +33,29 @@ type getActivityMetaQueryResult = {
     object_type: string,
     reply_object_url: string,
     reply_object_name: string
+}
+
+export async function getSite(host: string) {
+    const rows = await client.select('*').from('sites').where({host});
+
+    if (!rows || !rows.length) {
+        const webhook_secret = crypto.randomBytes(32).toString('hex');
+        await client.insert({host, webhook_secret}).into('sites');
+
+        return {
+            host,
+            webhook_secret
+        };
+    }
+
+    if (rows.length > 1) {
+        throw new Error(`More than one row found for site ${host}`)
+    }
+
+    return {
+        host: rows[0].host,
+        webhook_secret: rows[0].webhook_secret
+    };
 }
 
 export async function getActivityMeta(uris: string[]): Promise<Map<string, ActivityMeta>> {

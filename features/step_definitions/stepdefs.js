@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import http from 'http';
+import { createHmac } from 'crypto';
 
 // Get the current file's URL and convert it to a path
 const __filename = fileURLToPath(import.meta.url);
@@ -236,6 +237,7 @@ function parseActivityString(string) {
 let /* @type Knex */ client;
 let /* @type WireMock */ externalActivityPub;
 let /* @type WireMock */ ghostActivityPub;
+let webhookSecret;
 
 BeforeAll(async function () {
     client = Knex({
@@ -250,6 +252,14 @@ BeforeAll(async function () {
     });
 
     await client('key_value').truncate();
+
+    await client('sites').truncate();
+
+    webhookSecret = fs.readFileSync(resolve(__dirname, '../fixtures/webhook_secret.txt'), 'utf8')
+    await client('sites').insert({
+        host: 'fake-ghost-activitypub',
+        webhook_secret: webhookSecret
+    });
 });
 
 BeforeAll(async function () {
@@ -502,6 +512,40 @@ Given('a valid {string} webhook', function (string) {
 });
 
 When('it is sent to the webhook endpoint', async function () {
+    const endpoint = endpoints[this.payloadType];
+    const payload = webhooks[this.payloadType];
+    const body = JSON.stringify(payload);
+    const timestamp = Date.now();
+    const hmac = createHmac('sha256', webhookSecret).update(body + timestamp).digest('hex');
+
+    this.response = await fetchActivityPub(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`
+        },
+        body: body
+    });
+});
+
+When('it is sent to the webhook endpoint with an old signature', async function () {
+    const endpoint = endpoints[this.payloadType];
+    const payload = webhooks[this.payloadType];
+    const body = JSON.stringify(payload);
+    const timestamp = Date.now() - (60 * 60 * 1000); // An hour old
+    const hmac = createHmac('sha256', webhookSecret).update(body + timestamp).digest('hex');
+
+    this.response = await fetchActivityPub(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`
+        },
+        body: body
+    });
+});
+
+When('it is sent to the webhook endpoint without a signature', async function () {
     const endpoint = endpoints[this.payloadType];
     const payload = webhooks[this.payloadType];
     this.response = await fetchActivityPub(endpoint, {
