@@ -67,8 +67,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: "wget --spider http://0.0.0.0:8083/ping"
-      interval: 1s
-      retries: 120
+      interval: 300s
+      retries: 3
+      start_period: 5s
 
   cucumber-tests:
     build: .
