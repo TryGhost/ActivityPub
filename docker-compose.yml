@@ -85,7 +85,9 @@ services:
       - NODE_ENV=testing
     command: yarn run cucumber-js
     depends_on:
-      wiremock:
+      fake-ghost-activitypub:
+        condition: service_started
+      fake-external-activitypub:
         condition: service_started
       activitypub-testing:
           condition: service_healthy
@@ -103,14 +105,15 @@ services:
       interval: 1s
       retries: 120
 
-  wiremock:
+  fake-ghost-activitypub:
     image: wiremock/wiremock:latest
-    ports:
-      - "8082:8080"
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
     volumes:
-      - ./wiremock/mappings:/home/wiremock/mappings
-      - ./wiremock/__files:/home/wiremock/__files
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose"]
+      - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
+
+  fake-external-activitypub:
+    image: wiremock/wiremock:latest
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
 
   fake-mastodon:
     image: wiremock/wiremock:latest
