@@ -75,7 +75,7 @@ if (process.env.SENTRY_DSN) {
 await configure({
     sinks: { console: getConsoleSink() },
     filters: {},
-    loggers: [{ category: 'fedify', sinks: ['console'], level: 'debug' }],
+    loggers: [{ category: 'fedify', sinks: ['console'], level: 'warning' }],
 });
 
 export type ContextData = {
