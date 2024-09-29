@@ -392,13 +392,32 @@ When('{string} sends {string} to the Inbox', async function (actorName, activity
     });
 });
 
+async function wait(n) {
+    return new Promise(resolve => setTimeout(resolve, n));
+}
+
+async function waitForRequest(method, path, matcher, step = 100, milliseconds = 1000) {
+    const calls = await captain.getRequestsForAPI(method, path);
+    const found = calls.find(matcher);
+
+    if (found) {
+        return found;
+    }
+
+    if (milliseconds <= 0) {
+        return null;
+    }
+
+    await wait(step);
+    return waitForRequest(method, path, matcher, step, milliseconds - step);
+}
+
 Then('Activity {string} is sent to {string}', async function (activityName, actorName) {
     const actor = this.actors[actorName];
     const inbox = new URL(actor.inbox);
-    const calls = await captain.getRequestsForAPI('POST', inbox.pathname);
     const activity = this.activities[activityName];
 
-    const found = calls.find((call) => {
+    const found = await waitForRequest('POST', inbox.pathname, (call) => {
         const json = JSON.parse(call.request.body);
         return json.type === activity.type && json.object.id === activity.object.id;
     });
