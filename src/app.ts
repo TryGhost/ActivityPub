@@ -55,6 +55,7 @@ import {
     handleAnnounce,
     handleLike
 } from './dispatchers';
+import { searchAction } from './api';
 
 import {
     likeAction,
@@ -293,6 +294,7 @@ app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
 app.post('/.ghost/activitypub/actions/like/:id', likeAction);
 app.post('/.ghost/activitypub/actions/unlike/:id', unlikeAction);
 app.post('/.ghost/activitypub/actions/reply/:id', replyAction);
+app.get('/.ghost/activitypub/actions/search', searchAction);
 
 /** Federation wire up */
 
