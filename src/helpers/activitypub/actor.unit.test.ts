@@ -5,6 +5,7 @@ import { Actor, KvStore, PropertyValue } from '@fedify/fedify';
 import {
     getAttachments,
     getFollowerCount,
+    getFollowingCount,
     getHandle,
     getRecentActivities,
     isFollowing,
@@ -98,6 +99,24 @@ describe('getFollowerCount', () => {
         } as unknown as Actor;
 
         expect(await getFollowerCount(actor)).toBe(0);
+    });
+});
+
+describe('getFollowingCount', () => {
+    it('should return the following count for the actor', async () => {
+        const actor = {
+            getFollowing: vi.fn().mockResolvedValue({ totalItems: 100 })
+        } as unknown as Actor;
+
+        expect(await getFollowingCount(actor)).toBe(100);
+    });
+
+    it('should return 0 if the actor following is not available', async () => {
+        const actor = {
+            getFollowing: vi.fn().mockResolvedValue(null)
+        } as unknown as Actor;
+
+        expect(await getFollowingCount(actor)).toBe(0);
     });
 });
 
