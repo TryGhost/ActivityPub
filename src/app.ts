@@ -58,7 +58,11 @@ import {
     handleAnnounce,
     handleLike
 } from './dispatchers';
-import { searchAction, profileGetFollowersAction } from './api';
+import {
+    searchAction,
+    profileGetFollowersAction,
+    profileGetFollowingAction,
+} from './api';
 
 import {
     likeAction,
@@ -415,6 +419,8 @@ app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner),
 app.post('/.ghost/activitypub/actions/reply/:id', requireRole(GhostRole.Owner), replyAction);
 app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), searchAction);
 app.get('/.ghost/activitypub/profile/:handle/followers', requireRole(GhostRole.Owner), profileGetFollowersAction);
+app.get('/.ghost/activitypub/profile/:handle/following', requireRole(GhostRole.Owner), profileGetFollowingAction);
+
 /** Federation wire up */
 
 app.use(
