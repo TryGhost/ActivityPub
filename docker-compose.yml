@@ -18,6 +18,26 @@ services:
       mysql:
         condition: service_healthy
 
+  migrate:
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql:3306)/activitypub
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  migrate-testing:
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql-testing:3306)/activitypub
+    depends_on:
+      mysql-testing:
+        condition: service_healthy
+
   scripts:
     build: scripts
     depends_on:
