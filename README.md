@@ -75,6 +75,12 @@ The below command will populate the DB with ~5000 followers for the `activitypub
 
 ![Leaderboard](https://github.com/TryGhost/ActivityPub/assets/115641230/371e8f36-8293-43d2-912a-772e56517e1d)
 
+## Migrations
+
+`docker compose run migrate` or `docker compose run migrate-testing` will run the up migrations against your dev or testing db respectively.
+
+If you would like to run other commands you can run `docker compose exec -it migrate /bin/bash` or `docker compose exec -it migrate-testing /bin/bash` This will drop you into a shell with the `migrate` binary available as well as a $MYSQL_DB environment variable that is correctly formated for use as the `-database` argument to the `migrate` binary
+
 
 &nbsp;
 
