@@ -88,7 +88,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          image: ${{ steps.migrations-docker-metadata.outputs.version }}
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ steps.migrations-docker-metadata.outputs.version }}
           region: europe-west4
           job: migrations
           flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db'
@@ -103,6 +103,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          image: ${{ steps.activitypub-docker-metadata.outputs.version }}
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ steps.activitypub-docker-metadata.outputs.version }}
           region: europe-west4
           service: activitypub
