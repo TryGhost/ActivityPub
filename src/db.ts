@@ -11,13 +11,6 @@ export const client = Knex({
     },
 });
 
-await client.schema.createTableIfNotExists('key_value', function (table) {
-    table.increments('id').primary();
-    table.string('key', 2048);
-    table.json('value').notNullable();
-    table.datetime('expires').nullable();
-});
-
 // Helper function to get the meta data for an array of activity URIs
 // from the database. This allows us to fetch information about the activities
 // without having to fetch the full activity object. This is a bit of a hack to
