@@ -34,6 +34,12 @@ export async function getFollowerCount(actor: Actor): Promise<number> {
     return followers?.totalItems || 0;
 }
 
+export async function getFollowingCount(actor: Actor): Promise<number> {
+    const following = await actor.getFollowing();
+
+    return following?.totalItems || 0;
+}
+
 export function getHandle(actor: Actor): string {
     const host = actor.id?.host || 'unknown';
 

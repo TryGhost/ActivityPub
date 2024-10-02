@@ -4,6 +4,7 @@ import { isActor } from '@fedify/fedify';
 import {
     getAttachments,
     getFollowerCount,
+    getFollowingCount,
     getHandle,
     getRecentActivities,
     isFollowing,
@@ -20,6 +21,7 @@ interface ProfileSearchResult {
     actor: any;
     handle: string;
     followerCount: number;
+    followingCount: number;
     isFollowing: boolean;
     posts: any[];
 }
@@ -67,6 +69,7 @@ export async function searchAction(
                 actor: {},
                 handle: '',
                 followerCount: 0,
+                followingCount: 0,
                 isFollowing: false,
                 posts: [],
             };
@@ -79,6 +82,7 @@ export async function searchAction(
             });
             result.handle = getHandle(actor);
             result.followerCount = await getFollowerCount(actor);
+            result.followingCount = await getFollowingCount(actor);
             result.isFollowing = await isFollowing(actor, { db });
             result.posts = await getRecentActivities(actor, {
                 sanitizeContent: (content: string) => sanitizeHtml(content)
