@@ -60,9 +60,10 @@ import {
 } from './dispatchers';
 import {
     getActivitiesAction,
-    searchAction,
+    profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
+    searchAction,
 } from './api';
 
 import {
@@ -418,6 +419,7 @@ app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), l
 app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);
 app.post('/.ghost/activitypub/actions/reply/:id', requireRole(GhostRole.Owner), replyAction);
 app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), searchAction);
+app.get('/.ghost/activitypub/profile/:handle', requireRole(GhostRole.Owner), profileGetAction);
 app.get('/.ghost/activitypub/profile/:handle/followers', requireRole(GhostRole.Owner), profileGetFollowersAction);
 app.get('/.ghost/activitypub/profile/:handle/following', requireRole(GhostRole.Owner), profileGetFollowingAction);
 

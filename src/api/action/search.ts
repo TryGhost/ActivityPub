@@ -50,8 +50,6 @@ export async function searchAction(
 
     // If the query is not a handle or URI, return early
     if (isHandle(query) === false && isUri(query) === false) {
-        console.log(`Invalid query: "${query}"`);
-
         return new Response(JSON.stringify(results), {
             headers: {
                 'Content-Type': 'application/json',
