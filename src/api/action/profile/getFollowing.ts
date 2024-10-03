@@ -31,12 +31,7 @@ export async function profileGetFollowingAction(
 
     // If the provided handle is invalid, return early
     if (!isHandle(handle)) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 400,
-        });
+        return new Response(null, { status: 400 });
     }
 
     // Parse "next" from query parameters
@@ -46,24 +41,14 @@ export async function profileGetFollowingAction(
 
     // If the next parameter is not a valid URI, return early
     if (next !== '' && !isUri(next)) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 400,
-        });
+        return new Response(null, { status: 400 });
     }
 
     // Lookup actor by handle
     const actor = await apCtx.lookupObject(handle);
 
     if (!isActor(actor)) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 404,
-        });
+        return new Response(null, { status: 404 });
     }
 
     // Retrieve actor's following
@@ -88,12 +73,7 @@ export async function profileGetFollowingAction(
             const { host: nextHost } = new URL(next);
 
             if (actorHost !== nextHost) {
-                return new Response(JSON.stringify({}), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    status: 400,
-                });
+                return new Response(null, { status: 400 });
             }
 
             page = await apCtx.lookupObject(next) as CollectionPage | null;
@@ -115,12 +95,7 @@ export async function profileGetFollowingAction(
     }
 
     if (!page) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 404,
-        });
+        return new Response(null, { status: 404 });
     }
 
     // Return result
