@@ -59,6 +59,7 @@ import {
     handleLike
 } from './dispatchers';
 import {
+    getActivitiesAction,
     searchAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
@@ -71,7 +72,6 @@ import {
     inboxHandler,
     postPublishedWebhook,
     siteChangedWebhook,
-    getActivities,
     replyAction,
 } from './handlers';
 
@@ -412,7 +412,7 @@ function requireRole(role: GhostRole) {
 }
 
 app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
-app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivities);
+app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivitiesAction);
 app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
 app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
 app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);
