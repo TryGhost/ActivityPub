@@ -363,11 +363,11 @@ export async function followingDispatcher(
     console.log('Following Dispatcher');
     const results = (await ctx.data.db.get<string[]>(['following'])) || [];
     console.log(results);
-    let items: Person[] = [];
+    let items: Actor[] = [];
     for (const result of results) {
         try {
             const thing = await lookupActor(ctx, result);
-            if (thing instanceof Person) {
+            if (isActor(thing)) {
                 items.push(thing);
             }
         } catch (err) {
