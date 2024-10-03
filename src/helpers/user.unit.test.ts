@@ -6,7 +6,7 @@ import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY
-} from './constants';
+} from '../constants';
 import { getUserData } from './user';
 
 const HANDLE = 'foo';
