@@ -318,11 +318,20 @@ export async function followersDispatcher(
 ) {
     console.log('Followers Dispatcher');
     let items: Recipient[] = [];
-    const fullResults = await ctx.data.db.get<any[]>(['followers', 'expanded']);
+    const fullResults = (await ctx.data.db.get<any[]>(['followers', 'expanded']) ?? [])
+        .filter((v, i, results) => {
+            // Remove duplicates
+            return results.findIndex((r) => r.id === v.id) === i;
+        });
     if (fullResults) {
         items = fullResults.map(convertJsonLdToRecipient)
     } else {
-        const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
+        const results = [
+            // Remove duplicates
+            ...new Set(
+                (await ctx.data.db.get<string[]>(['followers'])) || []
+            )
+        ];
         const actors = items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
             .filter((item): item is Actor => isActor(item))
         const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
@@ -338,7 +347,12 @@ export async function followersCounter(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    const results = (await ctx.data.db.get<string[]>(['followers'])) || [];
+    const results = [
+        // Remove duplicates
+        ...new Set(
+            (await ctx.data.db.get<string[]>(['followers'])) || []
+        )
+    ];
     return results.length;
 }
 
