@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { ContextData } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { getUserData, getUserKeypair } from './user';
+import { getUserData, getUserKeypair } from './helpers/user';
 import { lookupActor } from './lookup-helpers';
 
 export async function actorDispatcher(

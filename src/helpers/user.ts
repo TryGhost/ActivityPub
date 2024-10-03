@@ -6,12 +6,12 @@ import {
     importJwk,
     Context,
 } from '@fedify/fedify';
-import { ContextData } from './app';
+import { ContextData } from '../app';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY
-} from './constants';
+} from '../constants';
 
 export type PersonData = {
     id: string;
