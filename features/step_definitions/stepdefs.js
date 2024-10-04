@@ -87,6 +87,10 @@ async function createActivity(activityType, object, actor, remote = true) {
     }
 }
 
+function getActorHandle(actor, remote = true) {
+    return `@${actor.preferredUsername}@${remote ? 'fake-external-activitypub' : 'fake-ghost-activitypub'}`;
+}
+
 async function createActor(name = 'Test', remote = true) {
     if (remote === false) {
         return {
@@ -118,8 +122,112 @@ async function createActor(name = 'Test', remote = true) {
         }
     }
 
-    // Register endpoints with wiremock - for now just inbox
+    const actor = {
+        '@context': [
+            'https://www.w3.org/ns/activitystreams',
+            'https://w3id.org/security/data-integrity/v1',
+        ],
+        id: `http://fake-external-activitypub/user/${name}`,
+        url: `http://fake-external-activitypub/user/${name}`,
+        type: 'Person',
 
+        preferredUsername: name,
+        name: name,
+        summary: 'A test actor for testing',
+
+        inbox: `http://fake-external-activitypub/inbox/${name}`,
+        outbox: `http://fake-external-activitypub/outbox/${name}`,
+        followers: `http://fake-external-activitypub/followers/${name}`,
+        following: `http://fake-external-activitypub/following/${name}`,
+
+        'https://w3id.org/security#publicKey': {
+            id: 'http://fake-external-activitypub/user#main-key',
+            type: 'https://w3id.org/security#Key',
+            'https://w3id.org/security#owner': {
+                id: 'http://fake-external-activitypub/user'
+            },
+            'https://w3id.org/security#publicKeyPem': '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n'
+        }
+    };
+
+    // Mock webfinger
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${getActorHandle(actor).substring(1)}`)}`
+    }, {
+        status: 200,
+        body: {
+            links: [
+                {
+                    rel: "self",
+                    type: "application/activity+json",
+                    href: actor.id
+                },
+            ]
+        }
+    });
+
+    // Mock user
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/user/${name}`
+    }, {
+        status: 200,
+        body: actor
+    });
+
+    // Mock followers collection
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/followers/${name}`
+    }, {
+        status: 200,
+        body: {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/data-integrity/v1",
+            ],
+            id: actor.followers,
+            type: "OrderedCollection",
+            orderedItems: []
+        }
+    });
+
+    // Mock following collection
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/following/${name}`
+    }, {
+        status: 200,
+        body: {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/data-integrity/v1",
+            ],
+            id: actor.following,
+            type: "OrderedCollection",
+            orderedItems: []
+        }
+    });
+
+    // Mock outbox collection
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/outbox/${name}`
+    }, {
+        status: 200,
+        body: {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/data-integrity/v1",
+            ],
+            id: actor.outbox,
+            type: "OrderedCollection",
+            orderedItems: []
+        }
+    });
+
+    // Mock inbox
     externalActivityPub.register({
         method: 'POST',
         endpoint: `/inbox/${name}`
@@ -127,33 +235,7 @@ async function createActor(name = 'Test', remote = true) {
         status: 202
     });
 
-    return {
-        '@context': [
-            'https://www.w3.org/ns/activitystreams',
-            'https://w3id.org/security/data-integrity/v1',
-        ],
-        'id': `http://fake-external-activitypub/user/${name}`,
-        'url': `http://fake-external-activitypub/user/${name}`,
-        'type': 'Person',
-
-        'preferredUsername': name,
-        'name': name,
-        'summary': 'A test actor for testing',
-
-        'inbox': `http://fake-external-activitypub/inbox/${name}`,
-        'outbox': `http://fake-external-activitypub/inbox/${name}`,
-        'followers': `http://fake-external-activitypub/followers/${name}`,
-        'following': `http://fake-external-activitypub/following/${name}`,
-
-        'https://w3id.org/security#publicKey': {
-            'id': 'http://fake-external-activitypub/user#main-key',
-            'type': 'https://w3id.org/security#Key',
-            'https://w3id.org/security#owner': {
-                'id': 'http://fake-external-activitypub/user'
-            },
-            'https://w3id.org/security#publicKeyPem': '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n'
-        }
-    };
+    return actor;
 }
 
 function generateObject(type) {
@@ -309,7 +391,7 @@ Before(async function () {
     }
 });
 
-async function fetchActivityPub(url, options) {
+async function fetchActivityPub(url, options = { method: 'GET' }) {
     if (!options.headers) {
         options.headers = {};
     }
@@ -662,4 +744,29 @@ Then('a {string} activity is sent to {string}', async function (activityString, 
     });
 
     assert(found);
+});
+
+When('I request the profile for {string}', async function (name) {
+    const actor = this.actors[name];
+
+    this.response = await fetchActivityPub(`http://fake-ghost-activitypub/.ghost/activitypub/profile/${getActorHandle(actor)}`);
+});
+
+Then('the response has status code {int}', function (statusCode) {
+    assert.strictEqual(this.response.status, statusCode);
+});
+
+Then('the response body is a valid profile', async function () {
+    const profile = await this.response.json();
+
+    assert.ok(profile.actor);
+
+    const actor = this.actors[profile.actor.name];
+
+    assert.equal(profile.actor.id, actor.id);
+    assert.equal(profile.handle, getActorHandle(actor));
+    assert.equal(profile.followerCount, 0);
+    assert.equal(profile.followingCount, 0);
+    assert.equal(profile.isFollowing, false);
+    assert.deepEqual(profile.posts, []);
 });
