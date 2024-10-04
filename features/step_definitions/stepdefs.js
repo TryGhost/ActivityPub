@@ -752,21 +752,42 @@ When('I request the profile for {string}', async function (name) {
     this.response = await fetchActivityPub(`http://fake-ghost-activitypub/.ghost/activitypub/profile/${getActorHandle(actor)}`);
 });
 
-Then('the response has status code {int}', function (statusCode) {
+Then('the response has a {int} status code', function (statusCode) {
     assert.strictEqual(this.response.status, statusCode);
 });
 
-Then('the response body is a valid profile', async function () {
-    const profile = await this.response.json();
+Then('the response body contains the profile for {string}', async function (name) {
+    const result = await this.response.json();
+    const actor = this.actors[name];
 
-    assert.ok(profile.actor);
+    assert.equal(result.actor.id, actor.id);
+    assert.equal(result.handle, getActorHandle(actor));
+    assert.equal(result.followerCount, 0);
+    assert.equal(result.followingCount, 0);
+    assert.equal(result.isFollowing, false);
+    assert.deepEqual(result.posts, []);
+});
 
-    const actor = this.actors[profile.actor.name];
+When('I search for {string}', async function (name) {
+    const actor = this.actors[name];
 
-    assert.equal(profile.actor.id, actor.id);
-    assert.equal(profile.handle, getActorHandle(actor));
-    assert.equal(profile.followerCount, 0);
-    assert.equal(profile.followingCount, 0);
-    assert.equal(profile.isFollowing, false);
-    assert.deepEqual(profile.posts, []);
+    this.response = await fetchActivityPub(`http://fake-ghost-activitypub/.ghost/activitypub/actions/search?query=${getActorHandle(actor)}`);
+});
+
+Then('the response body contains search results for {string}', async function (name) {
+    const results = await this.response.json();
+
+    assert.ok(results.profiles);
+    assert.equal(results.profiles.length, 1);
+
+    assert.ok(results.profiles[0].actor);
+
+    const actor = this.actors[results.profiles[0].actor.name];
+
+    assert.equal(results.profiles[0].actor.id, actor.id);
+    assert.equal(results.profiles[0].handle, getActorHandle(actor));
+    assert.equal(results.profiles[0].followerCount, 0);
+    assert.equal(results.profiles[0].followingCount, 0);
+    assert.equal(results.profiles[0].isFollowing, false);
+    assert.deepEqual(results.profiles[0].posts, []);
 });

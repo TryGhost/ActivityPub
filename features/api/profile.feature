@@ -7,5 +7,5 @@ Feature: Profile
     Scenario: Succesfully retreiving a profile
         Given an Actor "Alice"
         When I request the profile for "Alice"
-        Then the response has status code 200
-        And the response body is a valid profile
+        Then the response has a 200 status code
+        And the response body contains the profile for "Alice"
