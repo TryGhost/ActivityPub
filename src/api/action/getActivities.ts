@@ -141,6 +141,13 @@ export async function getActivitiesAction(
                     return siteHost === replyHost;
                 }
 
+                 // ?filter={type: ['<activityType>:<objectType>:notReply']}
+                 if (filter.criteria && filter.criteria.startsWith('notReply')) {
+                    if (activity.reply_object_url) {
+                        return false;
+                    }
+                }
+
                 return true;
             });
         });
