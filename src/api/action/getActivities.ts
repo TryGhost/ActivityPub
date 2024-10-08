@@ -122,8 +122,8 @@ export async function getActivitiesAction(
                     return false;
                 }
 
-                // ?filter={type: ['<activityType>:<objectType>:isReplyToOwn,<siteHost>']}
-                if (filter.criteria && filter.criteria.startsWith('isReplyToOwn,')) {
+                // ?filter={type: ['<activityType>:<objectType>:isReplyToOwn']}
+                if (filter.criteria && filter.criteria.startsWith('isReplyToOwn')) {
                     // If the activity does not have a reply object url or name,
                     // we can't determine if it's a reply to an own object so
                     // we skip it
@@ -135,7 +135,7 @@ export async function getActivitiesAction(
                     // checking that the hostname associated with the reply object
                     // is the same as the hostname of the site. This is not a bullet
                     // proof check, but it's a good enough for now (i think 😅)
-                    const [_, siteHost] = filter.criteria.split(',');
+                    const siteHost = ctx.get('site').host;
                     const { hostname: replyHost } = new URL(activity.reply_object_url);
 
                     return siteHost === replyHost;
