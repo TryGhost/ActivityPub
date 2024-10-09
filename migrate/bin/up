@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+if [ -n "$MYSQL_DB" ]; then
+    echo "Running migrate -path migrations -database $MYSQL_DB up"
+    migrate -path migrations -database "$MYSQL_DB" up
+else
+    echo "Running migrate -path migrations -database mysql://$DB_USER:$DB_PASS@unix(/cloudsql/$DB_CONN)/$DB_NAME up"
+    migrate -path migrations -database "mysql://$DB_USER:$DB_PASS@unix(/cloudsql/$DB_CONN)/$DB_NAME" up
+fi

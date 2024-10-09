@@ -1,9 +1,10 @@
 import ky from 'ky';
+
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY
-} from './constants';
+} from '../constants';
 
 type SiteSettings = {
     site: {

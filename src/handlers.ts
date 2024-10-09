@@ -2,7 +2,6 @@ import {
     Article,
     Context as APContext,
     Follow,
-    KvStore,
     Like,
     Undo,
     RequestContext,
@@ -14,30 +13,18 @@ import {
     PUBLIC_COLLECTION,
     Mention,
 } from '@fedify/fedify';
-import { Buffer } from 'node:buffer';
 import { Context, Next } from 'hono';
-import sanitizeHtml from 'sanitize-html';
 import { v4 as uuidv4 } from 'uuid';
-import { getActivityMeta } from './db';
 import { addToList, removeFromList } from './kv-helpers';
-import { toURL } from './toURL';
 import { ContextData, HonoContextVariables, fedify } from './app';
-import { getSiteSettings } from './ghost';
-import type { PersonData } from './user';
+import { getSiteSettings } from './helpers/ghost';
+import type { PersonData } from './helpers/user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
 import { lookupActor } from 'lookup-helpers';
-
-type InboxItem = {
-    id: string;
-    object: string | {
-        id: string;
-        content: string;
-        [key: string]: any;
-    };
-    [key: string]: any;
-}
+import { toURL } from './helpers/uri';
+import { buildActivity } from 'helpers/activitypub/activity';
 
 import z from 'zod';
 
@@ -486,85 +473,6 @@ export async function siteChangedWebhook(
     });
 }
 
-async function buildActivity(
-    uri: string,
-    db: KvStore,
-    apCtx: APContext<ContextData>,
-    liked: string[] = [],
-): Promise<InboxItem | null> {
-    const item = await db.get<InboxItem>([uri]);
-
-    // If the item is not in the db, return null as we can't build it
-    if (!item) {
-        return null;
-    }
-
-    // If the object associated with the item is a string, it's probably a URI,
-    // so we should look it up in the db. If it's not in the db, we should just
-    // leave it as is
-    if (typeof item.object === 'string') {
-        item.object = await db.get([item.object]) ?? item.object;
-    }
-
-    if (typeof item.actor === 'string') {
-        const actor = await lookupActor(apCtx, item.actor);
-
-        if (actor) {
-            const json = await actor.toJsonLd();
-            if (typeof json === 'object' && json !== null) {
-                item.actor = json;
-            }
-        }
-    }
-
-    if (typeof item.object !== 'string' && typeof item.object.attributedTo === 'string') {
-        const actor = await lookupActor(apCtx, item.object.attributedTo);
-
-        if (actor) {
-            const json = await actor.toJsonLd();
-            if (typeof json === 'object' && json !== null) {
-                item.object.attributedTo = json;
-            }
-        }
-    }
-
-    // If the object associated with the item is an object with a content property,
-    // we should sanitize the content to prevent XSS (in case it contains HTML)
-    if (item.object && typeof item.object !== 'string' && item.object.content) {
-        item.object.content = sanitizeHtml(item.object.content, {
-            allowedTags: ['a', 'p', 'img', 'br', 'strong', 'em', 'span'],
-            allowedAttributes: {
-                a: ['href'],
-                img: ['src'],
-            }
-        });
-    }
-
-    // If the associated object is a Like, we should check if it's in the provided
-    // liked list and add a liked property to the item if it is
-    let objectId: string = '';
-
-    if (typeof item.object === 'string') {
-        objectId = item.object;
-    } else if (typeof item.object.id === 'string') {
-        objectId = item.object.id;
-    }
-
-    if (objectId) {
-        const likeId = apCtx.getObjectUri(Like, {
-            id: createHash('sha256').update(objectId).digest('hex'),
-        });
-        if (liked.includes(likeId.href)) {
-            if (typeof item.object !== 'string') {
-                item.object.liked = true;
-            }
-        }
-    }
-
-    // Return the built item
-    return item;
-}
-
 export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
@@ -613,103 +521,4 @@ export async function inboxHandler(
             status: 200,
         },
     );
-}
-
-export async function getActivities(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const DEFAULT_LIMIT = 10;
-
-    const db = ctx.get('db');
-    const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
-
-    // Parse cursor and limit from query parameters
-    const queryCursor = ctx.req.query('cursor')
-    const cursor = queryCursor ? Buffer.from(queryCursor, 'base64url').toString('utf-8') : null;
-    const limit = Number.parseInt(ctx.req.query('limit') || DEFAULT_LIMIT.toString(), 10);
-
-    // Parse includeOwn from query parameters
-    // This is used to include the user's own activities in the results
-    const includeOwn = ctx.req.query('includeOwn') === 'true';
-
-    // Fetch the liked object refs from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "liked" property to the item if the user has liked it
-    const likedRefs = (await db.get<string[]>(['liked'])) || [];
-
-    // Fetch the refs of the activities in the inbox from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    //   - First item is the oldest, last item is the newest
-    const inboxRefs = ((await db.get<string[]>(['inbox'])) || [])
-
-    // Fetch the refs of the activities in the outbox from the database (if
-    // user is requesting their own activities):
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    //   - First item is the oldest, last item is the newest
-    let outboxRefs: string[] = [];
-
-    if (includeOwn) {
-        outboxRefs = await db.get<string[]>(['outbox']) || [];
-    }
-
-    // To be able to return a sorted / filtered "feed" of activities, we need to
-    // fetch some additional meta data about the referenced activities. Doing this
-    // upfront allows us to sort, filter and paginate the activities before
-    // building them for the response which saves us from having to perform
-    // unnecessary database lookups for referenced activities that will not be
-    // included in the response. If we can't find the meta data in the database
-    // for an activity, we skip it as this is unexpected
-    let activityRefs = [...inboxRefs, ...outboxRefs];
-    const activityMeta = await getActivityMeta(activityRefs);
-
-    activityRefs = activityRefs.filter(ref => activityMeta.has(ref));
-
-    // Sort the activity refs by the id of the activity (newest first)
-    // We are using the id to sort because currently not all activity types have
-    // a timestamp. The id property is a unique auto incremented number at the
-    // database level
-    activityRefs.sort((a, b) => {
-        return activityMeta.get(b)!.id - activityMeta.get(a)!.id;
-    });
-
-    // Find the starting index based on the cursor
-    const startIndex = cursor ? activityRefs.findIndex(ref => ref === cursor) + 1 : 0;
-
-    // Slice the results array based on the cursor and limit
-    const paginatedRefs = activityRefs.slice(startIndex, startIndex + limit);
-
-    // Determine the next cursor
-    const nextCursor = startIndex + paginatedRefs.length < activityRefs.length
-        ? Buffer.from(paginatedRefs[paginatedRefs.length - 1]).toString('base64url')
-        : null;
-
-    // Build the activities for the response
-    const activities = [];
-
-    for (const ref of paginatedRefs) {
-        try {
-            const builtActivity = await buildActivity(ref, globaldb, apCtx, likedRefs);
-
-            if (builtActivity) {
-                activities.push(builtActivity);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    // Return the built activities and the next cursor
-    return new Response(JSON.stringify({
-        items: activities,
-        nextCursor,
-    }), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        status: 200,
-    });
 }

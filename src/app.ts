@@ -1,3 +1,6 @@
+import jose from 'node-jose';
+import jwt from 'jsonwebtoken';
+import { createHmac } from 'crypto';
 import { serve } from '@hono/node-server';
 import {
     Article,
@@ -21,13 +24,13 @@ import {
     Undo,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
-import { Hono, Context as HonoContext } from 'hono';
+import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
 import { configure, getConsoleSink } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
-import { client } from './db';
+import { client, getSite } from './db';
 import { scopeKvStore } from './kv-helpers';
 import {
     actorDispatcher,
@@ -55,6 +58,13 @@ import {
     handleAnnounce,
     handleLike
 } from './dispatchers';
+import {
+    getActivitiesAction,
+    profileGetAction,
+    profileGetFollowersAction,
+    profileGetFollowingAction,
+    searchAction,
+} from './api';
 
 import {
     likeAction,
@@ -63,7 +73,6 @@ import {
     inboxHandler,
     postPublishedWebhook,
     siteChangedWebhook,
-    getActivities,
     replyAction,
 } from './handlers';
 
@@ -74,7 +83,7 @@ if (process.env.SENTRY_DSN) {
 await configure({
     sinks: { console: getConsoleSink() },
     filters: {},
-    loggers: [{ category: 'fedify', sinks: ['console'], level: 'debug' }],
+    loggers: [{ category: 'fedify', sinks: ['console'], level: 'warning' }],
 });
 
 export type ContextData = {
@@ -207,9 +216,23 @@ fedify.setObjectDispatcher(
 
 /** Hono */
 
+enum GhostRole {
+  Anonymous = 'Anonymous',
+  Owner = 'Owner',
+  Administrator = 'Administrator',
+  Editor = 'Editor',
+  Author = 'Author',
+  Contributor = 'Contributor'
+}
+
 export type HonoContextVariables = {
     db: KvStore;
     globaldb: KvStore;
+    role: GhostRole;
+    site: {
+        host: string;
+        webhook_secret: string;
+    };
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -271,11 +294,69 @@ app.use(async (ctx, next) => {
 
     const scopedDb = scopeKvStore(db, ['sites', host]);
 
+    const site = await getSite(host);
+
     ctx.set('db', scopedDb);
     ctx.set('globaldb', db);
+    ctx.set('site', site);
 
     await next();
 });
+
+app.use(async (ctx, next) => {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        // TODO handle
+        throw new Error('No Host header');
+    }
+    ctx.set('role', GhostRole.Anonymous);
+
+    const authorization = request.header('authorization');
+
+    if (!authorization) {
+        return next();
+    }
+
+    const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
+
+    if (!match) {
+        throw new Error('Invalid Authorization header');
+    }
+
+    let protocol = 'https';
+    // We allow insecure requests when not in production for things like testing
+    if (process.env.NODE_ENV !== 'production' && !request.raw.url.startsWith('https')) {
+        protocol = 'http';
+    }
+
+    const jwksURL = new URL('/ghost/.well-known/jwks.json', `${protocol}://${host}`);
+
+    const jwksResponse = await fetch(jwksURL, {
+        redirect: 'follow'
+    });
+
+    const jwks = await jwksResponse.json();
+
+    const key = await jose.JWK.asKey(jwks.keys[0]);
+
+    try {
+        const claims = jwt.verify(token, key.toPEM());
+        if (typeof claims === 'string' || typeof claims.role !== 'string') {
+            return;
+        }
+        if (['Owner', 'Administrator', 'Editor', 'Author', 'Contributor'].includes(claims.role)) {
+            ctx.set('role', GhostRole[claims.role as 'Owner' | 'Administrator' | 'Editor' | 'Author' | 'Contributor']);
+        } else {
+            ctx.set('role', GhostRole.Anonymous);
+        }
+    } catch (err) {
+        ctx.set('role', GhostRole.Anonymous);
+    }
+
+    await next();
+});
+
 
 /** Custom API routes */
 
@@ -285,14 +366,62 @@ app.get('/ping', (ctx) => {
     });
 });
 
-app.get('/.ghost/activitypub/inbox/:handle', inboxHandler);
-app.get('/.ghost/activitypub/activities/:handle', getActivities);
-app.post('/.ghost/activitypub/webhooks/post/published', postPublishedWebhook);
-app.post('/.ghost/activitypub/webhooks/site/changed', siteChangedWebhook);
-app.post('/.ghost/activitypub/actions/follow/:handle', followAction);
-app.post('/.ghost/activitypub/actions/like/:id', likeAction);
-app.post('/.ghost/activitypub/actions/unlike/:id', unlikeAction);
-app.post('/.ghost/activitypub/actions/reply/:id', replyAction);
+function validateWebhook() {
+    return async function webhookMiddleware(ctx: HonoContext<{Variables: HonoContextVariables}>, next: Next) {
+        const signature = ctx.req.header('x-ghost-signature') || '';
+        const [matches, remoteHmac, timestamp] = signature.match(/sha256=([0-9a-f]+),\s+t=(\d+)/) || [null];
+        if (!matches) {
+            return new Response(null, {
+                status: 401
+            });
+        }
+
+        const now = Date.now();
+
+        if (Math.abs(now - parseInt(timestamp)) > 5 * 60 * 1000) {
+            return new Response(null, {
+                status: 401
+            });
+        }
+
+        const body = await ctx.req.json();
+        const site = ctx.get('site');
+        const localHmac = createHmac('sha256', site.webhook_secret).update(JSON.stringify(body) + timestamp).digest('hex');
+
+        if (localHmac !== remoteHmac) {
+            return new Response(null, {
+                status: 401
+            });
+        }
+
+        return next();
+    }
+}
+
+app.post('/.ghost/activitypub/webhooks/post/published', validateWebhook(), postPublishedWebhook);
+app.post('/.ghost/activitypub/webhooks/site/changed', validateWebhook(), siteChangedWebhook);
+
+function requireRole(role: GhostRole) {
+    return function roleMiddleware(ctx: HonoContext, next: Next) {
+        if (ctx.get('role') !== role) {
+            return new Response(null, {
+                status: 403
+            });
+        }
+        return next();
+    }
+}
+
+app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
+app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivitiesAction);
+app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
+app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
+app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);
+app.post('/.ghost/activitypub/actions/reply/:id', requireRole(GhostRole.Owner), replyAction);
+app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), searchAction);
+app.get('/.ghost/activitypub/profile/:handle', requireRole(GhostRole.Owner), profileGetAction);
+app.get('/.ghost/activitypub/profile/:handle/followers', requireRole(GhostRole.Owner), profileGetFollowersAction);
+app.get('/.ghost/activitypub/profile/:handle/following', requireRole(GhostRole.Owner), profileGetFollowingAction);
 
 /** Federation wire up */
 

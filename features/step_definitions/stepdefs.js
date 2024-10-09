@@ -3,6 +3,17 @@ import Knex from 'knex';
 import { BeforeAll, AfterAll, Before, After, Given, When, Then } from '@cucumber/cucumber';
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
+import jose from 'node-jose';
+import jwt from 'jsonwebtoken';
+import fs from 'node:fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import http from 'http';
+import { createHmac } from 'crypto';
+
+// Get the current file's URL and convert it to a path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function createActivity(activityType, object, actor, remote = true) {
     if (activityType === 'Follow') {
@@ -12,7 +23,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Follow',
-            'id': `http://wiremock:8080/follow/${uuidv4()}`,
+            'id': `http://fake-external-activitypub/follow/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -26,7 +37,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Accept',
-            'id': `http://wiremock:8080/accept/${uuidv4()}`,
+            'id': `http://fake-external-activitypub/accept/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -40,7 +51,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Create',
-            'id': `http://wiremock:8080/create/${uuidv4()}`,
+            'id': `http://fake-external-activitypub/create/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -54,7 +65,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Announce',
-            'id': `http://wiremock:8080/announce/${uuidv4()}`,
+            'id': `http://fake-external-activitypub/announce/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -68,7 +79,7 @@ async function createActivity(activityType, object, actor, remote = true) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Like',
-            'id': `http://wiremock:8080/like/${uuidv4()}`,
+            'id': `http://fake-external-activitypub/like/${uuidv4()}`,
             'to': 'as:Public',
             'object': object,
             actor: actor,
@@ -83,24 +94,24 @@ async function createActor(name = 'Test', remote = true) {
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
-            'id': 'http://activitypub-testing:8083/.ghost/activitypub/users/index',
-            'url': 'http://activitypub-testing:8083/.ghost/activitypub/users/index',
+            'id': 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
+            'url': 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
             'type': 'Person',
 
             'preferredUsername': 'index',
             'name': 'Test Actor',
             'summary': 'A test actor for testing',
 
-            'inbox': 'http://activitypub-testing:8083/.ghost/activitypub/inbox/index',
-            'outbox': 'http://activitypub-testing:8083/.ghost/activitypub/outbox/index',
-            'followers': 'http://activitypub-testing:8083/.ghost/activitypub/followers/index',
-            'following': 'http://activitypub-testing:8083/.ghost/activitypub/following/index',
+            'inbox': 'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+            'outbox': 'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+            'followers': 'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+            'following': 'http://fake-ghost-activitypub/.ghost/activitypub/following/index',
 
             'https://w3id.org/security#publicKey': {
-                'id':  'http://activitypub-testing:8083/.ghost/activitypub/users/index#main-key',
+                'id':  'http://fake-ghost-activitypub/.ghost/activitypub/users/index#main-key',
                 'type': 'https://w3id.org/security#Key',
                 'https://w3id.org/security#owner': {
-                    'id': 'http://activitypub-testing:8083/.ghost/activitypub/users/index'
+                    'id': 'http://fake-ghost-activitypub/.ghost/activitypub/users/index'
                 },
                 'https://w3id.org/security#publicKeyPem': '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n'
             }
@@ -109,7 +120,7 @@ async function createActor(name = 'Test', remote = true) {
 
     // Register endpoints with wiremock - for now just inbox
 
-    captain.register({
+    externalActivityPub.register({
         method: 'POST',
         endpoint: `/inbox/${name}`
     }, {
@@ -121,24 +132,24 @@ async function createActor(name = 'Test', remote = true) {
             'https://www.w3.org/ns/activitystreams',
             'https://w3id.org/security/data-integrity/v1',
         ],
-        'id': `http://wiremock:8080/user/${name}`,
-        'url': `http://wiremock:8080/user/${name}`,
+        'id': `http://fake-external-activitypub/user/${name}`,
+        'url': `http://fake-external-activitypub/user/${name}`,
         'type': 'Person',
 
         'preferredUsername': name,
         'name': name,
         'summary': 'A test actor for testing',
 
-        'inbox': `http://wiremock:8080/inbox/${name}`,
-        'outbox': `http://wiremock:8080/inbox/${name}`,
-        'followers': `http://wiremock:8080/followers/${name}`,
-        'following': `http://wiremock:8080/following/${name}`,
+        'inbox': `http://fake-external-activitypub/inbox/${name}`,
+        'outbox': `http://fake-external-activitypub/inbox/${name}`,
+        'followers': `http://fake-external-activitypub/followers/${name}`,
+        'following': `http://fake-external-activitypub/following/${name}`,
 
         'https://w3id.org/security#publicKey': {
-            'id': 'http://wiremock:8080/user#main-key',
+            'id': 'http://fake-external-activitypub/user#main-key',
             'type': 'https://w3id.org/security#Key',
             'https://w3id.org/security#owner': {
-                'id': 'http://wiremock:8080/user'
+                'id': 'http://fake-external-activitypub/user'
             },
             'https://w3id.org/security#publicKeyPem': '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n'
         }
@@ -154,13 +165,13 @@ function generateObject(type) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Article',
-            'id': `http://wiremock:8080/article/${uuid}`,
-            'url': `http://wiremock:8080/article/${uuid}`,
+            'id': `http://fake-external-activitypub/article/${uuid}`,
+            'url': `http://fake-external-activitypub/article/${uuid}`,
             'to': 'as:Public',
-            'cc': 'http://wiremock:8080/followers',
+            'cc': 'http://fake-external-activitypub/followers',
             'content': '<p>This is a test article</p>',
             'published': '2020-04-20T04:20:00Z',
-            'attributedTo': 'http://wiremock:8080/user'
+            'attributedTo': 'http://fake-external-activitypub/user'
         };
     }
 
@@ -172,13 +183,13 @@ function generateObject(type) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             'type': 'Note',
-            'id': `http://wiremock:8080/note/${uuid}`,
-            'url': `http://wiremock:8080/note/${uuid}`,
+            'id': `http://fake-external-activitypub/note/${uuid}`,
+            'url': `http://fake-external-activitypub/note/${uuid}`,
             'to': 'as:Public',
-            'cc': 'http://wiremock:8080/followers',
+            'cc': 'http://fake-external-activitypub/followers',
             'content': '<p>This is a test note</p>',
             'published': '2020-04-20T04:20:00Z',
-            'attributedTo': 'http://wiremock:8080/user'
+            'attributedTo': 'http://fake-external-activitypub/user'
         };
     }
 }
@@ -188,7 +199,7 @@ async function createObject(type) {
 
     const url = new URL(object.id);
 
-    captain.register({
+    externalActivityPub.register({
         method: 'GET',
         endpoint: url.pathname
     }, {
@@ -224,7 +235,9 @@ function parseActivityString(string) {
 }
 
 let /* @type Knex */ client;
-let /* @type WireMock */ captain;
+let /* @type WireMock */ externalActivityPub;
+let /* @type WireMock */ ghostActivityPub;
+let webhookSecret;
 
 BeforeAll(async function () {
     client = Knex({
@@ -239,10 +252,39 @@ BeforeAll(async function () {
     });
 
     await client('key_value').truncate();
+
+    await client('sites').truncate();
+
+    webhookSecret = fs.readFileSync(resolve(__dirname, '../fixtures/webhook_secret.txt'), 'utf8')
+    await client('sites').insert({
+        host: 'fake-ghost-activitypub',
+        webhook_secret: webhookSecret
+    });
 });
 
 BeforeAll(async function () {
-    captain = new WireMock('http://wiremock:8080');
+    externalActivityPub = new WireMock('http://fake-external-activitypub');
+    ghostActivityPub = new WireMock('http://fake-ghost-activitypub');
+
+    const publicKey = fs.readFileSync(resolve(__dirname, '../fixtures/private.key'), 'utf8');
+
+    const key = await jose.JWK.asKey(publicKey, 'pem', {
+        kid: 'test-key-id'
+    })
+    const jwk = key.toJSON();
+
+    ghostActivityPub.register({
+        method: 'GET',
+        endpoint: '/ghost/.well-known/jwks.json'
+    }, {
+        status: 200,
+        body: {
+            keys: [jwk]
+        },
+        headers: {
+            'Content-Type': 'application/activity+json'
+        }
+    });
 });
 
 AfterAll(async function () {
@@ -250,7 +292,7 @@ AfterAll(async function () {
 });
 
 Before(async function () {
-    await captain.clearAllRequests();
+    await externalActivityPub.clearAllRequests();
 });
 
 Before(async function () {
@@ -265,7 +307,26 @@ Before(async function () {
             Us: await createActor('Test', false)
         };
     }
-})
+});
+
+async function fetchActivityPub(url, options) {
+    if (!options.headers) {
+        options.headers = {};
+    }
+
+    const privateKey = fs.readFileSync(resolve(__dirname, '../fixtures/private.key'));
+    const token = jwt.sign({
+        sub: 'test@user.com',
+        role: 'Owner'
+    }, privateKey, {
+        algorithm: 'RS256',
+        keyid: 'test-key-id',
+        expiresIn: '5m'
+    });
+
+    options.headers['Authorization'] = `Bearer ${token}`;
+    return fetch(url, options);
+}
 
 Given('an Actor {string}', async function (name) {
     this.actors[name] = await createActor(name);
@@ -273,20 +334,20 @@ Given('an Actor {string}', async function (name) {
 
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
-    this.response = await fetch(`http://activitypub-testing:8083/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`, {
+    this.response = await fetchActivityPub(`http://fake-ghost-activitypub/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`, {
         method: 'POST'
     });
 });
 
 When('we unlike the object {string}', async function (name) {
     const id = this.objects[name].id;
-    this.response = await fetch(`http://activitypub-testing:8083/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`, {
+    this.response = await fetchActivityPub(`http://fake-ghost-activitypub/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`, {
         method: 'POST'
     });
 });
 
 Then('the object {string} should be liked', async function (name) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/inbox/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -300,7 +361,7 @@ Then('the object {string} should be liked', async function (name) {
 });
 
 Then('the object {string} should not be liked', async function (name) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/inbox/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -314,7 +375,7 @@ Then('the object {string} should not be liked', async function (name) {
 });
 
 Then('the object {string} should be in the liked collection', async function (name) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/liked/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/liked/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -329,7 +390,7 @@ Then('the object {string} should be in the liked collection', async function (na
 });
 
 Then('the object {string} should not be in the liked collection', async function (name) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/liked/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/liked/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -383,7 +444,7 @@ When('{string} sends {string} to the Inbox', async function (actorName, activity
 
     const activity = this.activities[activityName];
 
-    this.response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+    this.response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/inbox/index', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/ld+json'
@@ -392,13 +453,32 @@ When('{string} sends {string} to the Inbox', async function (actorName, activity
     });
 });
 
+async function wait(n) {
+    return new Promise(resolve => setTimeout(resolve, n));
+}
+
+async function waitForRequest(method, path, matcher, step = 100, milliseconds = 1000) {
+    const calls = await externalActivityPub.getRequestsForAPI(method, path);
+    const found = calls.find(matcher);
+
+    if (found) {
+        return found;
+    }
+
+    if (milliseconds <= 0) {
+        return null;
+    }
+
+    await wait(step);
+    return waitForRequest(method, path, matcher, step, milliseconds - step);
+}
+
 Then('Activity {string} is sent to {string}', async function (activityName, actorName) {
     const actor = this.actors[actorName];
     const inbox = new URL(actor.inbox);
-    const calls = await captain.getRequestsForAPI('POST', inbox.pathname);
     const activity = this.activities[activityName];
 
-    const found = calls.find((call) => {
+    const found = await waitForRequest('POST', inbox.pathname, (call) => {
         const json = JSON.parse(call.request.body);
         return json.type === activity.type && json.object.id === activity.object.id;
     });
@@ -416,7 +496,7 @@ const webhooks = {
                 "feature_image": null,
                 "visibility": "paid",
                 "published_at": "1970-01-01T00:00:00.000Z",
-                "url": "http://wiremock:8080/post/",
+                "url": "http://fake-external-activitypub/post/",
                 "excerpt": "This is some content.",
             }
         }
@@ -424,7 +504,7 @@ const webhooks = {
 };
 
 const endpoints = {
-    'post.published': 'http://activitypub-testing:8083/.ghost/activitypub/webhooks/post/published'
+    'post.published': 'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published'
 };
 
 Given('a valid {string} webhook', function (string) {
@@ -434,7 +514,41 @@ Given('a valid {string} webhook', function (string) {
 When('it is sent to the webhook endpoint', async function () {
     const endpoint = endpoints[this.payloadType];
     const payload = webhooks[this.payloadType];
-    this.response = await fetch(endpoint, {
+    const body = JSON.stringify(payload);
+    const timestamp = Date.now();
+    const hmac = createHmac('sha256', webhookSecret).update(body + timestamp).digest('hex');
+
+    this.response = await fetchActivityPub(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`
+        },
+        body: body
+    });
+});
+
+When('it is sent to the webhook endpoint with an old signature', async function () {
+    const endpoint = endpoints[this.payloadType];
+    const payload = webhooks[this.payloadType];
+    const body = JSON.stringify(payload);
+    const timestamp = Date.now() - (60 * 60 * 1000); // An hour old
+    const hmac = createHmac('sha256', webhookSecret).update(body + timestamp).digest('hex');
+
+    this.response = await fetchActivityPub(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`
+        },
+        body: body
+    });
+});
+
+When('it is sent to the webhook endpoint without a signature', async function () {
+    const endpoint = endpoints[this.payloadType];
+    const payload = webhooks[this.payloadType];
+    this.response = await fetchActivityPub(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/ld+json'
@@ -461,7 +575,7 @@ Then('a {string} activity is in the Outbox', async function (string) {
     if (!match) {
         throw new Error(`Could not match ${string} to an activity`);
     }
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/outbox/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/outbox/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -488,7 +602,7 @@ Then('the found {string} has property {string}', function (name, prop) {
 });
 
 Then('{string} is in our Inbox', async function (activityName) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/inbox/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/inbox/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -502,7 +616,7 @@ Then('{string} is in our Inbox', async function (activityName) {
 });
 
 Then('{string} is in our Followers', async function (actorName) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/followers/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/followers/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -516,7 +630,7 @@ Then('{string} is in our Followers', async function (actorName) {
 });
 
 Then('{string} is in our Followers once only', async function (actorName) {
-    const response = await fetch('http://activitypub-testing:8083/.ghost/activitypub/followers/index', {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/followers/index', {
         headers: {
             Accept: 'application/ld+json'
         }
@@ -542,10 +656,8 @@ Then('a {string} activity is sent to {string}', async function (activityString, 
 
     const inboxUrl = new URL(actor.inbox);
 
-    const requests = await captain.getRequestsForAPI('POST', inboxUrl.pathname);
-
-    const found = requests.find(request => {
-        const body = JSON.parse(request.request.body);
+    const found = await waitForRequest('POST', inboxUrl.pathname, (call) => {
+        const body = JSON.parse(call.request.body);
         return body.type === activityType && (object ? body.object.id === object.id : body.object.type === objectNameOrType);
     });
 

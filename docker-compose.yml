@@ -18,6 +18,26 @@ services:
       mysql:
         condition: service_healthy
 
+  migrate:
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql:3306)/activitypub
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  migrate-testing:
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql-testing:3306)/activitypub
+    depends_on:
+      mysql-testing:
+        condition: service_healthy
+
   scripts:
     build: scripts
     depends_on:
@@ -67,8 +87,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: "wget --spider http://0.0.0.0:8083/ping"
-      interval: 1s
-      retries: 120
+      interval: 300s
+      retries: 3
+      start_period: 5s
 
   cucumber-tests:
     build: .
@@ -84,10 +105,12 @@ services:
       - NODE_ENV=testing
     command: yarn run cucumber-js
     depends_on:
-      wiremock:
+      fake-ghost-activitypub:
+        condition: service_started
+      fake-external-activitypub:
         condition: service_started
       activitypub-testing:
-          condition: service_healthy
+        condition: service_healthy
 
 
   mysql-testing:
@@ -102,14 +125,15 @@ services:
       interval: 1s
       retries: 120
 
-  wiremock:
+  fake-ghost-activitypub:
     image: wiremock/wiremock:latest
-    ports:
-      - "8082:8080"
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
     volumes:
-      - ./wiremock/mappings:/home/wiremock/mappings
-      - ./wiremock/__files:/home/wiremock/__files
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose"]
+      - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
+
+  fake-external-activitypub:
+    image: wiremock/wiremock:latest
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
 
   fake-mastodon:
     image: wiremock/wiremock:latest

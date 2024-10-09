@@ -3,23 +3,23 @@ name: Test, Build and Push to Artifact Registry
 on:
   push:
 
-env:
-  IMAGE_NAME: europe-west4-docker.pkg.dev/ghost-activitypub/main/test-image
-
 jobs:
-  build-push-artifact:
+  build-test-deploy:
     environment: build
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout"
-        uses: "actions/checkout@v3"
+        uses: actions/checkout@v3
 
-      - name: Docker meta
-        id: meta
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: ActivityPub Docker meta
+        id: activitypub-docker-metadata
         uses: docker/metadata-action@v5
         with:
           images: |
-            europe-west4-docker.pkg.dev/ghost-activitypub/main/test-image
+            europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub
           tags: |
             type=edge,branch=main
             type=semver,pattern={{version}}
@@ -27,47 +27,82 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,priority=1100
 
-      - name: "Build docker image"
+      - name: Migrations Docker meta
+        id: migrations-docker-metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations
+          tags: |
+            type=edge,branch=main
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,priority=1100
+
+      - name: "Build Docker Image for ActivityPub"
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}"
+          context: .
           load: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
-      - name: "Create ci docker compose file"
-        run: |
-          echo "
-          services:
-            activitypub:
-              image: $IMAGE_NAME:$DOCKER_METADATA_OUTPUT_VERSION" > docker-compose.ci.yml
+      - name: "Build Docker Image for Migrations"
+        uses: docker/build-push-action@v6
+        with:
+          context: migrate
+          load: true
+          tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
-      - name: "Run tests"
+      - name: "Run Tests"
         run: yarn test
 
-      - name: Login to GAR
+      - name: "Login to GAR"
         uses: docker/login-action@v3
         with:
           registry: europe-west4-docker.pkg.dev
           username: _json_key
           password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
 
-      - name: "Push docker image"
+      - name: "Push ActivityPub Docker Image"
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}"
+          context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
-      - name: "Auth with gcloud"
+      - name: "Push Migrations Docker Image"
+        uses: docker/build-push-action@v6
+        with:
+          context: migrate
+          push: true
+          tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
+
+      - name: "Auth with Google Cloud"
+        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
 
-      - name: "Deploy to Cloud Run"
+      - name: "Deploy Migrations to Cloud Run"
+        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/test-image:edge
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ steps.migrations-docker-metadata.outputs.version }}
+          region: europe-west4
+          job: migrations
+          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db'
+          env_vars: |-
+            DB_USER=activitypub
+            DB_NAME=activitypub
+            DB_CONN=ghost-activitypub:europe-west4:activitypub-db
+          secrets: |-
+            DB_PASS=activitypub_mysqldb_password:latest
+
+      - name: "Deploy ActivityPub to Cloud Run"
+        if: github.ref == 'refs/heads/main'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ steps.activitypub-docker-metadata.outputs.version }}
           region: europe-west4
           service: activitypub

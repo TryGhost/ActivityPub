@@ -1,9 +1,9 @@
-import assert from 'assert';
+import { afterAll, describe, expect, it } from 'vitest';
+
 import { KnexKvStore } from './knex.kvstore';
-import { Knex } from 'knex';
 import { client } from './db';
 
-after(async function () {
+afterAll(async function () {
     await client.destroy();
 });
 
@@ -15,7 +15,7 @@ describe('KnexKvStore', function () {
         checkReadingUnsetKey: {
             const actual = await store.get(['unsetkey']);
             const expected = null;
-            assert.equal(actual, expected);
+            expect(actual).toEqual(expected);
             break checkReadingUnsetKey;
         }
 
@@ -23,7 +23,7 @@ describe('KnexKvStore', function () {
             await store.set(['setkey'], { hello: 'world' });
             const actual = await store.get(['setkey']);
             const expected = { hello: 'world' };
-            assert.deepEqual(actual, expected);
+            expect(actual).toEqual(expected);
             break checkReadingSetKey;
         }
 
@@ -32,7 +32,7 @@ describe('KnexKvStore', function () {
             await store.set(['updated'], { updated: 'value' });
             const actual = await store.get(['updated']);
             const expected = { updated: 'value' };
-            assert.deepEqual(actual, expected);
+            expect(actual).toEqual(expected);
             break checkUpdatingKey;
         }
 
@@ -41,7 +41,7 @@ describe('KnexKvStore', function () {
             await store.delete(['deleted']);
             const actual = await store.get(['deleted']);
             const expected = null;
-            assert.deepEqual(actual, expected);
+            expect(actual).toEqual(expected);
             break checkDeletingKey;
         }
     });
@@ -54,7 +54,7 @@ describe('KnexKvStore', function () {
             await store.set(['boolean_true'], true);
             const actual = await store.get(['boolean_true']);
             const expected = true;
-            assert.equal(actual, expected);
+            expect(actual).toEqual(expected);
             break checkTrue;
         }
 
@@ -62,7 +62,7 @@ describe('KnexKvStore', function () {
             await store.set(['boolean_false'], false);
             const actual = await store.get(['boolean_false']);
             const expected = false;
-            assert.equal(actual, expected);
+            expect(actual).toEqual(expected);
             break checkFalse;
         }
     });

@@ -1,12 +1,12 @@
-import { Image, RequestContext } from '@fedify/fedify';
-import assert from 'assert';
-import sinon from 'sinon';
+import { describe, expect, it, vi } from 'vitest';
+
+import { Image } from '@fedify/fedify';
 
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY
-} from './constants';
+} from '../constants';
 import { getUserData } from './user';
 
 const HANDLE = 'foo';
@@ -23,30 +23,45 @@ function getCtx() {
     const ctx = {
         data: {
             db: {
-                get: sinon.stub(),
-                set: sinon.stub(),
+                get: vi.fn(),
+                set: vi.fn(),
             },
         },
-        getActorKeyPairs: sinon.stub(),
-        getActorUri: sinon.stub(),
-        getInboxUri: sinon.stub(),
-        getOutboxUri: sinon.stub(),
-        getLikedUri: sinon.stub(),
-        getFollowingUri: sinon.stub(),
-        getFollowersUri: sinon.stub(),
+        getActorKeyPairs: vi.fn(),
+        getActorUri: vi.fn(),
+        getInboxUri: vi.fn(),
+        getOutboxUri: vi.fn(),
+        getLikedUri: vi.fn(),
+        getFollowingUri: vi.fn(),
+        getFollowersUri: vi.fn(),
         host,
     };
 
-    ctx.getActorKeyPairs.withArgs(HANDLE).resolves([
-        { cryptographicKey: 'abc123' }
-    ]);
-
-    ctx.getActorUri.withArgs(HANDLE).returns(new URL(ACTOR_URI));
-    ctx.getInboxUri.withArgs(HANDLE).returns(new URL(INBOX_URI));
-    ctx.getOutboxUri.withArgs(HANDLE).returns(new URL(OUTBOX_URI));
-    ctx.getFollowingUri.withArgs(HANDLE).returns(new URL(FOLLOWING_URI));
-    ctx.getLikedUri.withArgs(HANDLE).returns(new URL(LIKED_URI));
-    ctx.getFollowersUri.withArgs(HANDLE).returns(new URL(FOLLOWERS_URI));
+    ctx.getActorKeyPairs.mockImplementation((handle) => {
+        return Promise.resolve(
+            handle === HANDLE
+                ? [{ cryptographicKey: 'abc123' }]
+                : []
+        );
+    });
+    ctx.getActorUri.mockImplementation((handle) => {
+        return handle === HANDLE ? new URL(ACTOR_URI) : undefined;
+    });
+    ctx.getInboxUri.mockImplementation((handle) => {
+        return handle === HANDLE ? new URL(INBOX_URI) : undefined;
+    });
+    ctx.getOutboxUri.mockImplementation((handle) => {
+        return handle === HANDLE ? new URL(OUTBOX_URI) : undefined;
+    });
+    ctx.getFollowingUri.mockImplementation((handle) => {
+        return handle === HANDLE ? new URL(FOLLOWING_URI) : undefined;
+    });
+    ctx.getLikedUri.mockImplementation((handle) => {
+        return handle === HANDLE ? new URL(LIKED_URI) : undefined;
+    });
+    ctx.getFollowersUri.mockImplementation((handle) => {
+        return handle === HANDLE ? new URL(FOLLOWERS_URI) : undefined;
+    });
 
     return ctx as any;
 }
@@ -55,7 +70,7 @@ describe('getUserData', function () {
     it('persists a user to the database if it does not exist', async function () {
         const ctx = getCtx();
 
-        ctx.data.db.get.resolves(null);
+        ctx.data.db.get.mockResolvedValue(undefined);
 
         const result = await getUserData(ctx, HANDLE);
 
@@ -74,8 +89,10 @@ describe('getUserData', function () {
             url: new URL(`https://${ctx.host}`),
         }
 
-        assert.ok(
-            ctx.data.db.set.calledOnceWith(['handle', HANDLE], {
+        expect(ctx.data.db.set).toBeCalledTimes(1);
+        expect(ctx.data.db.set).toBeCalledWith(
+            ['handle', HANDLE],
+            {
                 id: expectedUserData.id.href,
                 name: expectedUserData.name,
                 summary: expectedUserData.summary,
@@ -87,9 +104,9 @@ describe('getUserData', function () {
                 following: expectedUserData.following.href,
                 followers: expectedUserData.followers.href,
                 url: expectedUserData.url.href,
-            })
-        );
-        assert.deepStrictEqual(result, expectedUserData);
+            });
+
+        expect(result).toEqual(expectedUserData);
     });
 
     it('retrieves a user from the database', async function () {
@@ -109,7 +126,7 @@ describe('getUserData', function () {
             url: `https://${ctx.host}`,
         }
 
-        ctx.data.db.get.resolves(persistedUser);
+        ctx.data.db.get.mockResolvedValue(persistedUser);
 
         const result = await getUserData(ctx, HANDLE);
 
@@ -128,8 +145,8 @@ describe('getUserData', function () {
             url: new URL(`https://${ctx.host}`),
         }
 
-        assert.ok(ctx.data.db.set.notCalled);
-        assert.deepStrictEqual(result, expectedUserData);
+        expect(ctx.data.db.set).toBeCalledTimes(0);
+        expect(result).toEqual(expectedUserData);
     });
 
     it('handles retrieving a user with an invalid icon', async function () {
@@ -148,7 +165,7 @@ describe('getUserData', function () {
             url: `https://${ctx.host}`,
         }
 
-        ctx.data.db.get.resolves(persistedUser);
+        ctx.data.db.get.mockResolvedValue(persistedUser);
 
         const result = await getUserData(ctx, HANDLE);
 
@@ -167,8 +184,8 @@ describe('getUserData', function () {
             url: new URL(`https://${ctx.host}`),
         }
 
-        assert.ok(ctx.data.db.set.notCalled);
-        assert.deepStrictEqual(result, expectedUserData);
+        expect(ctx.data.db.set).toBeCalledTimes(0);
+        expect(result).toEqual(expectedUserData);
     });
 
     it('handles retrieving a user with an invalid URL', async function () {
@@ -187,7 +204,7 @@ describe('getUserData', function () {
             followers: FOLLOWERS_URI
         }
 
-        ctx.data.db.get.resolves(persistedUser);
+        ctx.data.db.get.mockResolvedValue(persistedUser);
 
         const result = await getUserData(ctx, HANDLE);
 
@@ -206,7 +223,7 @@ describe('getUserData', function () {
             url: null,
         }
 
-        assert.ok(ctx.data.db.set.notCalled);
-        assert.deepStrictEqual(result, expectedUserData);
+        expect(ctx.data.db.set).toBeCalledTimes(0);
+        expect(result).toEqual(expectedUserData);
     });
 });
