@@ -20,6 +20,7 @@ export const client = Knex({
 
 type ActivityMeta = {
     id: number; // Used for sorting
+    actor_id: string; // Used for filtering by follower / non-follower status
     activity_type: string; // Used for filtering by activity type
     object_type: string; // Used for filtering by object type
     reply_object_url: string; // Used for filtering by isReplyToOwn criteria
@@ -29,6 +30,7 @@ type ActivityMeta = {
 type getActivityMetaQueryResult = {
     key: string,
     left_id: number,
+    actor_id: string,
     activity_type: string,
     object_type: string,
     reply_object_url: string,
@@ -64,6 +66,7 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
             'left.key',
             'left.id as left_id',
             // mongo schmongo...
+            client.raw('JSON_EXTRACT(left.value, "$.actor.id") as actor_id'),
             client.raw('JSON_EXTRACT(left.value, "$.type") as activity_type'),
             client.raw('JSON_EXTRACT(left.value, "$.object.type") as object_type'),
             client.raw('JSON_EXTRACT(right.value, "$.object.url") as reply_object_url'),
@@ -84,6 +87,7 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
     for (const result of results as getActivityMetaQueryResult[]) {
         map.set(result.key.substring(2, result.key.length - 2), {
             id: result.left_id,
+            actor_id: result.actor_id,
             activity_type: result.activity_type,
             object_type: result.object_type,
             reply_object_url: result.reply_object_url,

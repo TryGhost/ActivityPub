@@ -54,12 +54,18 @@ export async function getActivitiesAction(
         }
     });
 
+    // Parse "excludeNonFollowers" from query parameters
+    // This is used to exclude activities from non-followers
+    // ?excludeNonFollowers=<boolean>
+    const excludeNonFollowers = ctx.req.query('excludeNonFollowers') === 'true';
+
     console.log('Request query =', ctx.req.query());
     console.log('Processed query params =', JSON.stringify({
         cursor,
         limit,
         includeOwn,
         typeFilters,
+        excludeNonFollowers,
     }, null, 2));
 
     // -------------------------------------------------------------------------
@@ -109,16 +115,16 @@ export async function getActivitiesAction(
     // Filter the activity refs by any provided type filters
     if (typeFilters.length > 0) {
         activityRefs = activityRefs.filter(ref => {
-            const activity = activityMeta.get(ref)!;
+            const meta = activityMeta.get(ref)!;
 
             return typeFilters.some((filter: { activity: string; object: string | null, criteria: string | null }) => {
                 // ?filter={type: ['<activityType>']}
-                if (filter.activity && activity.activity_type !== filter.activity) {
+                if (filter.activity && meta.activity_type !== filter.activity) {
                     return false;
                 }
 
                 // ?filter={type: ['<activityType>:<objectType>']}
-                if (filter.object && activity.object_type !== filter.object) {
+                if (filter.object && meta.object_type !== filter.object) {
                     return false;
                 }
 
@@ -127,7 +133,7 @@ export async function getActivitiesAction(
                     // If the activity does not have a reply object url or name,
                     // we can't determine if it's a reply to an own object so
                     // we skip it
-                    if (!activity.reply_object_url || !activity.reply_object_name) {
+                    if (!meta.reply_object_url || !meta.reply_object_name) {
                         return false;
                     }
 
@@ -136,20 +142,31 @@ export async function getActivitiesAction(
                     // is the same as the hostname of the site. This is not a bullet
                     // proof check, but it's a good enough for now (i think 😅)
                     const siteHost = ctx.get('site').host;
-                    const { hostname: replyHost } = new URL(activity.reply_object_url);
+                    const { hostname: replyHost } = new URL(meta.reply_object_url);
 
                     return siteHost === replyHost;
                 }
 
                  // ?filter={type: ['<activityType>:<objectType>:notReply']}
                  if (filter.criteria && filter.criteria.startsWith('notReply')) {
-                    if (activity.reply_object_url) {
+                    if (meta.reply_object_url) {
                         return false;
                     }
                 }
 
                 return true;
             });
+        });
+    }
+
+    // Filter the activity refs by excluding non-followers if the query parameter is set
+    if (excludeNonFollowers) {
+        const followers = await db.get<string[]>(['following']) || [];
+
+        activityRefs = activityRefs.filter(ref => {
+            const meta = activityMeta.get(ref)!;
+
+            return followers.includes(meta.actor_id);
         });
     }
 
