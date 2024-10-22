@@ -161,7 +161,7 @@ export async function getActivitiesAction(
 
     // Filter the activity refs by excluding non-followers if the query parameter is set
     if (excludeNonFollowers) {
-        const followers = await db.get<string[]>(['following']) || [];
+        const followers = await db.get<string[]>(['followers']) || [];
 
         activityRefs = activityRefs.filter(ref => {
             const meta = activityMeta.get(ref)!;
