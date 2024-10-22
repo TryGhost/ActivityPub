@@ -19,7 +19,7 @@ import {
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
-import { ContextData } from './app';
+import { ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { getUserData, getUserKeypair } from './helpers/user';
 import { lookupActor } from './lookup-helpers';
@@ -429,14 +429,43 @@ export async function likedDispatcher(
     handle: string,
 ) {
     console.log('Liked Dispatcher');
-    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
+
+    const db = ctx.data.db;
+    const globaldb = ctx.data.globaldb;
+    const apCtx = fedify.createContext(ctx.request as Request, {
+        db,
+        globaldb,
+    });
+
+    const results = (await db.get<string[]>(['liked'])) || [];
+
     console.log(results);
 
     let items: Like[] = [];
+
     for (const result of results) {
         try {
-            const thing = await ctx.data.globaldb.get([result]);
+            const thing = await globaldb.get<{
+                object: string | {
+                    [key: string]: any;
+                };
+                [key: string]: any;
+            }>([result]);
+
+            if (thing && typeof thing.object !== 'string' && typeof thing.object.attributedTo === 'string') {
+                const actor = await lookupActor(apCtx, thing.object.attributedTo);
+
+                if (actor) {
+                    const json = await actor.toJsonLd();
+
+                    if (typeof json === 'object' && json !== null) {
+                        thing.object.attributedTo = json;
+                    }
+                }
+            }
+
             const activity = await Like.fromJsonLd(thing);
+
             items.push(activity);
         } catch (err) {
             console.log(err);
