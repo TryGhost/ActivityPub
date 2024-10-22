@@ -22,7 +22,7 @@ import type { PersonData } from './helpers/user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
-import { lookupActor } from 'lookup-helpers';
+import { lookupActor } from './lookup-helpers';
 import { toURL } from './helpers/uri';
 import { buildActivity } from 'helpers/activitypub/activity';
 
@@ -513,6 +513,64 @@ export async function inboxHandler(
             type: 'OrderedCollection',
             totalItems: inbox.length,
             items,
+        }),
+        {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        },
+    );
+}
+
+// Temporary endpoint to fetch the followers expanded seeming though the
+// followers dispatcher does not return full actor objects which is required
+// by the client. This can be removed once we have a better solution for
+// fetching followers from the client
+export async function followersExpandedHandler(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const db = ctx.get('db');
+    const globaldb = ctx.get('globaldb');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+
+    let items: Actor[] = [];
+
+    const fullResults = (await db.get<any[]>(['followers', 'expanded']) ?? [])
+        .filter((v, i, results) => {
+            // Remove duplicates
+            return results.findIndex((r) => r.id === v.id) === i;
+        });
+
+    if (fullResults) {
+        items = fullResults
+    } else {
+        const results = [
+            // Remove duplicates
+            ...new Set(
+                (await db.get<string[]>(['followers'])) || []
+            )
+        ];
+        const actors = (
+            await Promise.all(
+                results.map((result) => lookupActor(apCtx, result))
+            )
+        ).filter((item): item is Actor => isActor(item))
+
+        const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
+
+        await db.set(['followers', 'expanded'], toStore);
+
+        items = toStore;
+    }
+
+    // Return the prepared inbox items
+    return new Response(
+        JSON.stringify({
+            '@context': 'https://www.w3.org/ns/activitystreams',
+            type: 'OrderedCollection',
+            totalItems: items.length,
+            orderedItems: items.reverse(),
         }),
         {
             headers: {
