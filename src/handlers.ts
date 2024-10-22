@@ -22,9 +22,9 @@ import type { PersonData } from './helpers/user';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash } from 'node:crypto';
-import { lookupActor } from 'lookup-helpers';
+import { lookupActor } from './lookup-helpers';
 import { toURL } from './helpers/uri';
-import { buildActivity } from 'helpers/activitypub/activity';
+import { buildActivity } from './helpers/activitypub/activity';
 
 import z from 'zod';
 
