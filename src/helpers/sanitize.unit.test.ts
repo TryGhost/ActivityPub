@@ -25,7 +25,7 @@ describe('sanitizeHtml', () => {
                 'ul', 'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'data', 'dfn',
                 'em', 'i', 'kbd', 'mark', 'q', 'rb', 'rp', 'rt', 'rtc', 'ruby', 's', 'samp',
                 'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr', 'caption',
-                'col', 'colgroup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'svg', 'defs', 'style', 'rect', 'polyline', 'line', 'circle', 'button', 'input', 'path', 'audio', 'video'],
+                'col', 'colgroup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'svg', 'defs', 'iframe', 'style', 'rect', 'polyline', 'line', 'circle', 'button', 'input', 'path', 'audio', 'video'],
                       allowedClasses: {
                           '*': false
                         },
