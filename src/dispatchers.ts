@@ -315,7 +315,11 @@ function convertJsonLdToRecipient(result: any): Recipient {
 export async function followersDispatcher(
     ctx: Context<ContextData>,
     handle: string,
+    cursor: string | null
 ) {
+    // As we're using pagination, we just return an empty response if the cursor is not provided:
+    if (cursor == null) return null;
+
     console.log('Followers Dispatcher');
     let items: Recipient[] = [];
     const fullResults = (await ctx.data.db.get<any[]>(['followers', 'expanded']) ?? [])
@@ -338,9 +342,19 @@ export async function followersDispatcher(
         await ctx.data.db.set(['followers', 'expanded'], toStore);
         items = toStore.map(convertJsonLdToRecipient);
     }
+
+    const offset = parseInt(cursor);
+    const nextCursor = items.length > offset + 100 ? (offset + 100).toString() : null;
+    items = items.slice(offset, offset + 100);
+
     return {
         items,
+        nextCursor,
     };
+}
+
+export function followersFirstCursor(): string {
+    return "0";
 }
 
 export async function followersCounter(

@@ -39,6 +39,7 @@ import {
     inboxErrorHandler,
     handleAccept,
     handleCreate,
+    followersFirstCursor,
     followersDispatcher,
     followersCounter,
     followingDispatcher,
@@ -151,6 +152,7 @@ fedify
         '/.ghost/activitypub/followers/{handle}',
         followersDispatcher,
     )
+    .setFirstCursor(followersFirstCursor)
     .setCounter(followersCounter);
 
 fedify
