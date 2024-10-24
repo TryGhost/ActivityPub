@@ -101,7 +101,7 @@ export async function profileGetFollowersAction(
     try {
         for await (const item of page.getItems()) {
             result.followers.push({
-                actor: await item.toJsonLd(),
+                actor: await item.toJsonLd({ format: 'compact' }),
                 isFollowing: await isFollowing(item as Actor, { db }),
             });
         }
