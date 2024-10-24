@@ -41,12 +41,16 @@ import {
     handleCreate,
     followersDispatcher,
     followersCounter,
+    followersFirstCursor,
     followingDispatcher,
     followingCounter,
+    followingFirstCursor,
     outboxDispatcher,
     outboxCounter,
+    outboxFirstCursor,
     likedDispatcher,
     likedCounter,
+    likedFirstCursor,
     likeDispatcher,
     undoDispatcher,
     articleDispatcher,
@@ -56,7 +60,7 @@ import {
     createDispatcher,
     updateDispatcher,
     handleAnnounce,
-    handleLike
+    handleLike,
 } from './dispatchers';
 import {
     getActivitiesAction,
@@ -70,7 +74,6 @@ import {
     likeAction,
     unlikeAction,
     followAction,
-    followersExpandedHandler,
     inboxHandler,
     postPublishedWebhook,
     siteChangedWebhook,
@@ -151,28 +154,32 @@ fedify
         '/.ghost/activitypub/followers/{handle}',
         followersDispatcher,
     )
-    .setCounter(followersCounter);
+    .setCounter(followersCounter)
+    .setFirstCursor(followersFirstCursor);
 
 fedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{handle}',
         followingDispatcher,
     )
-    .setCounter(followingCounter);
+    .setCounter(followingCounter)
+    .setFirstCursor(followingFirstCursor);
 
 fedify
     .setOutboxDispatcher(
         '/.ghost/activitypub/outbox/{handle}',
         outboxDispatcher,
     )
-    .setCounter(outboxCounter);
+    .setCounter(outboxCounter)
+    .setFirstCursor(outboxFirstCursor);
 
 fedify
     .setLikedDispatcher(
         '/.ghost/activitypub/liked/{handle}',
         likedDispatcher,
     )
-    .setCounter(likedCounter);
+    .setCounter(likedCounter)
+    .setFirstCursor(likedFirstCursor);
 
 fedify.setObjectDispatcher(
     Article,
@@ -414,7 +421,6 @@ function requireRole(role: GhostRole) {
 }
 
 app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
-app.get('/.ghost/activitypub/followers-expanded/:handle', followersExpandedHandler);
 app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivitiesAction);
 app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
 app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
