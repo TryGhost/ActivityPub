@@ -1,10 +1,11 @@
-name: Test, Build and Push to Artifact Registry
+name: CI
 
 on:
   push:
 
 jobs:
   build-test-deploy:
+    name: Build, Test and Deploy
     environment: build
     runs-on: ubuntu-latest
     steps:
