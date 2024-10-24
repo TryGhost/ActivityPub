@@ -5,7 +5,8 @@ WORKDIR /opt/activitypub
 COPY package.json .
 COPY yarn.lock .
 
-RUN yarn
+RUN yarn && \
+    yarn cache clean
 
 COPY tsconfig.json .
 
