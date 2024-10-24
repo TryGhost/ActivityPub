@@ -56,6 +56,7 @@ jobs:
         run: yarn test
 
       - name: "Login to GAR"
+        if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: europe-west4-docker.pkg.dev
@@ -63,6 +64,7 @@ jobs:
           password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
 
       - name: "Push ActivityPub Docker Image"
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -70,6 +72,7 @@ jobs:
           tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
       - name: "Push Migrations Docker Image"
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: migrate
