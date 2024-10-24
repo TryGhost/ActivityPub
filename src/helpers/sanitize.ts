@@ -6,20 +6,24 @@ export function sanitizeHtml(content: string): string {
     }
 
     return doSanitizeHtml(content, {
-        allowedTags: ['address', 'img', 'article', 'aside', 'footer', 'header', 'h1', 'h2', 'h3', 'h4',
-  'h5', 'h6', 'hgroup', 'main', 'nav', 'section', 'blockquote', 'dd', 'div',
-  'dl', 'dt', 'figcaption', 'figure', 'hr', 'li', 'main', 'ol', 'p', 'pre',
-  'ul', 'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'data', 'dfn',
-  'em', 'i', 'kbd', 'mark', 'q', 'rb', 'rp', 'rt', 'rtc', 'ruby', 's', 'samp',
-  'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr', 'caption',
-  'col', 'colgroup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'svg', 'defs', 'iframe', 'style', 'rect', 'polyline', 'line', 'circle', 'button', 'input', 'path', 'audio', 'video'],
+        allowedTags: [
+            'address', 'img', 'article', 'aside', 'footer', 'header', 'h1', 'h2', 'h3', 'h4',
+            'h5', 'h6', 'hgroup', 'main', 'nav', 'section', 'blockquote', 'dd', 'div',
+            'dl', 'dt', 'figcaption', 'figure', 'hr', 'li', 'main', 'ol', 'p', 'pre',
+            'ul', 'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'data', 'dfn',
+            'em', 'i', 'kbd', 'mark', 'q', 'rb', 'rp', 'rt', 'rtc', 'ruby', 's', 'samp',
+            'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr', 'caption',
+            'col', 'colgroup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'svg',
+            'defs', 'iframe', 'rect', 'polyline', 'line', 'circle', 'button', 'input',
+            'path', 'audio', 'video',
+        ],
         allowedClasses: {
             '*': false
         },
         allowedAttributes: {
             // Global attributes
             '*': ['id', 'class', 'title', 'lang', 'dir', 'tabindex', 'style'],
-            
+
             // Specific HTML elements
             a: ['href', 'target', 'rel', 'download', 'hreflang', 'type'],
             img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading'],
@@ -30,7 +34,7 @@ export function sanitizeHtml(content: string): string {
             table: ['border', 'cellpadding', 'cellspacing'],
             td: ['colspan', 'rowspan', 'headers'],
             th: ['colspan', 'rowspan', 'headers', 'scope'],
-            
+
             // SVG elements
             svg: ['viewBox', 'width', 'height', 'viewbox', 'preserveAspectRatio', 'xmlns'],
             circle: ['cx', 'cy', 'r', 'fill', 'stroke', 'stroke-width'],
