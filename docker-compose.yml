@@ -52,7 +52,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:lts
+    image: mysql:8.0.31
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -114,7 +114,7 @@ services:
 
 
   mysql-testing:
-    image: mysql:lts
+    image: mysql:8.0.31
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -126,17 +126,17 @@ services:
       retries: 120
 
   fake-ghost-activitypub:
-    image: wiremock/wiremock:latest
+    image: wiremock/wiremock:3.9.2-1
     entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
-    image: wiremock/wiremock:latest
+    image: wiremock/wiremock:3.9.2-1
     entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
 
   fake-mastodon:
-    image: wiremock/wiremock:latest
+    image: wiremock/wiremock:3.9.2-1
     ports:
       - "8084:8080"
     entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose"]
