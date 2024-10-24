@@ -456,7 +456,6 @@ export async function siteChangedWebhook(
         });
 
         await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
-        await addToList(db, ['outbox'], update.id!.href);
         await apCtx.sendActivity({ handle }, 'followers', update, {
             preferSharedInbox: true
         });
