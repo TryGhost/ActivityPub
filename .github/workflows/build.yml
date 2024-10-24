@@ -12,9 +12,6 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: ActivityPub Docker meta
         id: activitypub-docker-metadata
         uses: docker/metadata-action@v5
