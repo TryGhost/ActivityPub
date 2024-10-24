@@ -624,7 +624,7 @@ Then('{string} is in our Followers', async function (actorName) {
     const followers = await response.json();
     const actor = this.actors[actorName];
 
-    const found = followers.orderedItems.find(item => item === actor.id);
+    const found = followers.orderedItems.find(item => item.id === actor.id);
 
     assert(found);
 });
@@ -637,7 +637,7 @@ Then('{string} is in our Followers once only', async function (actorName) {
     });
     const followers = await response.json();
     const actor = this.actors[actorName];
-    const found = followers.orderedItems.filter(item => item === actor.id);
+    const found = followers.orderedItems.filter(item => item.id === actor.id);
 
     assert.equal(found.length, 1);
 });
