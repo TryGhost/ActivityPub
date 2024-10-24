@@ -436,23 +436,23 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/fedify@0.15.0-dev.375":
-  version "0.15.0-dev.375"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-0.15.0-dev.375.tgz#6867611f571143f67f609170e18f63f008c0e26b"
-  integrity sha512-VoY7PzKBjpPxM24/bD/vA2YXqv+dIiD18nTpY4IiYV3R7c27C0Js5Bc7hYNKBoe2QDygHH2q0sTH0/zL2U7uXg==
+"@fedify/fedify@1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.1.1.tgz#851d1005dd0336bb19cf73d79cb400178a296ece"
+  integrity sha512-7jMKcZS+SUrsAXUin5gZzDPNSu+E8hxntKLPkHg2/oyfTgk/oMXyzQBNkent7QmhLjIkj5jxRCv3CoxvkbhVlw==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"
     "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.4.4"
-    "@logtape/logtape" "^0.4.0"
-    "@phensley/language-tag" "^1.8.1"
+    "@logtape/logtape" "^0.6.2"
+    "@phensley/language-tag" "^1.9.0"
     asn1js "^3.0.5"
     json-canon "^1.0.1"
     jsonld "^8.3.2"
     multibase "^4.0.6"
     multicodec "^3.2.1"
-    pkijs "^3.1.0"
+    pkijs "^3.2.4"
     uri-template-router "^0.0.16"
     url-template "^3.1.1"
     urlpattern-polyfill "~10.0.0"
@@ -531,10 +531,10 @@
     jsbi "^4.3.0"
     tslib "^2.4.1"
 
-"@logtape/logtape@^0.4.0":
-  version "0.4.2"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.4.2.tgz#a0e493472a9f66b3af3da99b270c9bdc397afec5"
-  integrity sha512-AIhwFxU3hZTaP9SOY266DQde1H/4nzjfhZOO1/yGEFQT3mlSuYMwxeW2xgnNFDmyRzBrRpNXLA3vdZvnilvLCA==
+"@logtape/logtape@^0.6.2":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.6.3.tgz#4522c56588f74a94f6a653e7e1d38e587690c5ef"
+  integrity sha512-QX0ygk82ANyODIFhvVAOaKwgFHjbrXAaTkx8dRiISyf10QkhuNV6E79R9RNB8oRMxQbbT8h+ZcrFNHIUtszn7g==
 
 "@multiformats/base-x@^4.0.1":
   version "4.0.1"
@@ -774,12 +774,12 @@
   dependencies:
     "@opentelemetry/core" "^1.1.0"
 
-"@phensley/language-tag@^1.8.1":
-  version "1.8.1"
-  resolved "https://registry.yarnpkg.com/@phensley/language-tag/-/language-tag-1.8.1.tgz#aca910aab1540c61fcee8cd94eb70460136c989b"
-  integrity sha512-Jz5P1/AgGQU4ttK8FXg0M7zyZdFHl8iIfi+PXJErrDu6NFalm6W4avbT0kJcvi7bp+j4DhKL4UfV34Vwl2dv7w==
+"@phensley/language-tag@^1.9.0":
+  version "1.9.2"
+  resolved "https://registry.yarnpkg.com/@phensley/language-tag/-/language-tag-1.9.2.tgz#4782fb7d1ff9b25e4751230d1a92001fd5f5c54f"
+  integrity sha512-XrlZuKBOUQTT80Nu2DxDiIhhyqK9wh8UIX3IVd6HBkwhOjq4aSL7fqGIHXwVBVDTYUnkvXfJ2HD+uYKKpMKEUw==
   dependencies:
-    tslib "^2.6.2"
+    tslib "^2.7.0"
 
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
@@ -2629,7 +2629,7 @@ picocolors@^1.1.0:
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.1.0.tgz#5358b76a78cde483ba5cef6a9dc9671440b27d59"
   integrity sha512-TQ92mBOW0l3LeMeyLV6mzy/kWr8lkd/hp3mTg7wYK7zJhuBStmGMBG0BdeDZS/dZx1IukaX6Bk11zcln25o1Aw==
 
-pkijs@^3.1.0:
+pkijs@^3.2.4:
   version "3.2.4"
   resolved "https://registry.yarnpkg.com/pkijs/-/pkijs-3.2.4.tgz#55ed72b363a20fbd42b139ee3b72e54483635171"
   integrity sha512-Et9V5QpvBilPFgagJcaKBqXjKrrgF5JL2mSDELk1vvbOTt4fuBhSSsGn9Tcz0TQTfS5GCpXQ31Whrpqeqp0VRg==
@@ -3010,16 +3010,7 @@ string-argv@0.3.1:
   resolved "https://registry.yarnpkg.com/string-argv/-/string-argv-0.3.1.tgz#95e2fbec0427ae19184935f816d74aaa4c5c19da"
   integrity sha512-a1uQGz7IyVy9YwhqjZIZu1c8JO8dNIe20xBmSS6qu9kv++k3JGzCVmprbNN5Kn+BgzD5E7YYwg1CcjuJMRNsvg==
 
-"string-width-cjs@npm:string-width@^4.2.0":
-  version "4.2.3"
-  resolved "https://registry.yarnpkg.com/string-width/-/string-width-4.2.3.tgz#269c7117d27b05ad2e536830a8ec895ef9c6d010"
-  integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==
-  dependencies:
-    emoji-regex "^8.0.0"
-    is-fullwidth-code-point "^3.0.0"
-    strip-ansi "^6.0.1"
-
-string-width@^4.1.0, string-width@^4.2.0:
+"string-width-cjs@npm:string-width@^4.2.0", string-width@^4.1.0, string-width@^4.2.0:
   version "4.2.3"
   resolved "https://registry.yarnpkg.com/string-width/-/string-width-4.2.3.tgz#269c7117d27b05ad2e536830a8ec895ef9c6d010"
   integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==
@@ -3037,14 +3028,7 @@ string-width@^5.0.1, string-width@^5.1.2:
     emoji-regex "^9.2.2"
     strip-ansi "^7.0.1"
 
-"strip-ansi-cjs@npm:strip-ansi@^6.0.1":
-  version "6.0.1"
-  resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
-  integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
-  dependencies:
-    ansi-regex "^5.0.1"
-
-strip-ansi@6.0.1, strip-ansi@^6.0.0, strip-ansi@^6.0.1:
+"strip-ansi-cjs@npm:strip-ansi@^6.0.1", strip-ansi@6.0.1, strip-ansi@^6.0.0, strip-ansi@^6.0.1:
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
   integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
@@ -3162,10 +3146,15 @@ toposort@^2.0.2:
   resolved "https://registry.yarnpkg.com/toposort/-/toposort-2.0.2.tgz#ae21768175d1559d48bef35420b2f4962f09c330"
   integrity sha512-0a5EOkAUp8D4moMi2W8ZF8jcga7BgZd91O/yabJCFY8az+XSzeGyTKs0Aoo897iV1Nj6guFq8orWDS96z91oGg==
 
-tslib@^2.0.3, tslib@^2.4.0, tslib@^2.4.1, tslib@^2.6.1, tslib@^2.6.2, tslib@^2.6.3:
+tslib@^2.0.3, tslib@^2.4.0, tslib@^2.4.1, tslib@^2.6.1, tslib@^2.6.3:
   version "2.6.3"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.6.3.tgz#0438f810ad7a9edcde7a241c3d80db693c8cbfe0"
   integrity sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==
+
+tslib@^2.7.0:
+  version "2.8.0"
+  resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.0.tgz#d124c86c3c05a40a91e6fdea4021bd31d377971b"
+  integrity sha512-jWVzBLplnCmoaTr13V9dYbiQ99wvZRd0vNWaDRg+aVYRcjDF3nDksxFDE/+fkXnKhpnUUkmx5pK/v8mCtLVqZA==
 
 tsx@4.11.0:
   version "4.11.0"
