@@ -439,6 +439,15 @@ app.use(
     ),
 );
 
+// Send errors to Sentry
+app.onError((err, c) => {
+    Sentry.captureException(err);
+    console.error('Error:', err);
+
+    // TODO: should we return a JSON error?
+    return c.text('Internal Server Error', 500);
+});
+
 function forceAcceptHeader(fn: (req: Request) => unknown) {
     return function (request: Request) {
         request.headers.set('accept', 'application/activity+json');
