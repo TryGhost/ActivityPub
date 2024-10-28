@@ -83,9 +83,18 @@ if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
+const defaultConsoleSink = getConsoleSink();
+
 await configure({
     sinks: {
-        console: getConsoleSink()
+        // TODO: figure out what the correct way to do this is
+        console(record) {
+            if (process.env.GCLOUD_PROJECT) {
+                console.log(JSON.stringify(record));
+            } else {
+                defaultConsoleSink(record);
+            }
+        }
     },
     filters: {},
     loggers: [
