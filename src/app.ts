@@ -77,14 +77,21 @@ import {
     replyAction,
 } from './handlers';
 
+import { logging } from './logging';
+
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
 await configure({
-    sinks: { console: getConsoleSink() },
+    sinks: {
+        console: getConsoleSink()
+    },
     filters: {},
-    loggers: [{ category: 'fedify', sinks: ['console'], level: 'warning' }],
+    loggers: [
+        { category: 'activitypub', sinks: ['console'], level: 'info' },
+        { category: 'fedify', sinks: ['console'], level: 'warning' }
+    ],
 });
 
 export type ContextData = {
@@ -275,12 +282,12 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
     const id = crypto.randomUUID();
     const start = Date.now();
-    console.log(
+    logging.info(
         `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url}          ${id}b`,
     );
     await next();
     const end = Date.now();
-    console.log(
+    logging.info(
         `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url} ${ctx.res.status} ${end - start}ms ${id}`,
     );
 });
@@ -442,7 +449,7 @@ app.use(
 // Send errors to Sentry
 app.onError((err, c) => {
     Sentry.captureException(err);
-    console.error('Error:', err);
+    logging.error(`Encountered error`, { error: err });
 
     // TODO: should we return a JSON error?
     return c.text('Internal Server Error', 500);
@@ -461,7 +468,7 @@ serve(
         port: parseInt(process.env.PORT || '8080'),
     },
     function (info) {
-        console.log(`listening on ${info.address}:${info.port}`);
+        logging.info(`listening on ${info.address}:${info.port}`);
     },
 );
 
