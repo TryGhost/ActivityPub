@@ -267,8 +267,8 @@ app.use(async (ctx, next) => {
 
     const { traceId, spanId } = getTraceAndSpanId(ctx.req.header('x-cloud-trace-context'));
     if (traceId && spanId) {
-        extra.trace = `projects/ghost-activitypub/traces/${traceId}`;
-        extra.spanId = spanId;
+        extra['logging.googleapis.com/trace'] = `projects/ghost-activitypub/traces/${traceId}`;
+        extra['logging.googleapis.com/spanId'] = spanId;
     }
 
     ctx.set('logger', logging.with(extra));
