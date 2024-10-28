@@ -286,14 +286,24 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
     const id = crypto.randomUUID();
     const start = Date.now();
-    logging.info(
-        `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url}          ${id}b`,
-    );
+    logging.info(`{method} {host} {url} {id}`, {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
+    });
+
     await next();
     const end = Date.now();
-    logging.info(
-        `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url} ${ctx.res.status} ${end - start}ms ${id}`,
-    );
+
+    logging.info(`{method} {host} {url} {status} {duration}ms {id}`, {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
+        status: ctx.res.status,
+        duration: end - start,
+    });
 });
 
 app.use(async (ctx, next) => {
@@ -453,7 +463,7 @@ app.use(
 // Send errors to Sentry
 app.onError((err, c) => {
     Sentry.captureException(err);
-    logging.error(`Encountered error`, { error: err });
+    logging.error(`{error}`, { error: err });
 
     // TODO: should we return a JSON error?
     return c.text('Internal Server Error', 500);
