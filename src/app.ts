@@ -27,7 +27,7 @@ import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
-import { configure, getConsoleSink } from '@logtape/logtape';
+import { configure, getAnsiColorFormatter, getConsoleSink, LogRecord } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
 import { client, getSite } from './db';
@@ -70,24 +70,41 @@ import {
     likeAction,
     unlikeAction,
     followAction,
+    followersExpandedHandler,
     inboxHandler,
     postPublishedWebhook,
     siteChangedWebhook,
     replyAction,
 } from './handlers';
 
+import { logging } from './logging';
+
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
 await configure({
-    sinks: { console: getConsoleSink() },
+    sinks: {
+        console: getConsoleSink({
+            formatter: process.env.K_SERVICE ? (record: LogRecord) => {
+                const loggingObject = {
+                    timestamp: new Date(record.timestamp).toISOString(),
+                    severity: record.level.toUpperCase(),
+                    message: record.message.join(''),
+                    ...record.properties
+                };
+
+                return JSON.stringify(loggingObject);
+            } : getAnsiColorFormatter({
+                timestamp: 'time'
+            })
+        })
+    },
     filters: {},
-    loggers: [{
-        category: 'fedify',
-        sinks: ['console'],
-        level: process.env.NODE_ENV === 'testing' ? 'debug' : 'warning'
-    }],
+    loggers: [
+        { category: 'activitypub', sinks: ['console'], level: 'info' },
+        { category: 'fedify', sinks: ['console'], level: process.env.NODE_ENV === 'testing' ? 'debug' : 'warning' }
+    ],
 });
 
 export type ContextData = {
@@ -278,14 +295,24 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
     const id = crypto.randomUUID();
     const start = Date.now();
-    console.log(
-        `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url}          ${id}b`,
-    );
+    logging.info(`{method} {host} {url} {id}`, {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
+    });
+
     await next();
     const end = Date.now();
-    console.log(
-        `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url} ${ctx.res.status} ${end - start}ms ${id}`,
-    );
+
+    logging.info(`{method} {host} {url} {status} {duration}ms {id}`, {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
+        status: ctx.res.status,
+        duration: end - start,
+    });
 });
 
 app.use(async (ctx, next) => {
@@ -417,6 +444,7 @@ function requireRole(role: GhostRole) {
 }
 
 app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
+app.get('/.ghost/activitypub/followers-expanded/:handle', followersExpandedHandler);
 app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivitiesAction);
 app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
 app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
@@ -441,6 +469,15 @@ app.use(
     ),
 );
 
+// Send errors to Sentry
+app.onError((err, c) => {
+    Sentry.captureException(err);
+    logging.error(`{error}`, { error: err });
+
+    // TODO: should we return a JSON error?
+    return c.text('Internal Server Error', 500);
+});
+
 function forceAcceptHeader(fn: (req: Request) => unknown) {
     return function (request: Request) {
         request.headers.set('accept', 'application/activity+json');
@@ -454,7 +491,7 @@ serve(
         port: parseInt(process.env.PORT || '8080'),
     },
     function (info) {
-        console.log(`listening on ${info.address}:${info.port}`);
+        logging.info(`listening on ${info.address}:${info.port}`);
     },
 );
 
