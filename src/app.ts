@@ -27,7 +27,7 @@ import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
-import { configure, getConsoleSink } from '@logtape/logtape';
+import { configure, getAnsiColorFormatter, getConsoleSink, LogRecord } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
 import { client, getSite } from './db';
@@ -83,18 +83,13 @@ if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
-const defaultConsoleSink = getConsoleSink();
-
 await configure({
     sinks: {
-        // TODO: figure out what the correct way to do this is
-        console(record) {
-            if (process.env.GCLOUD_PROJECT) {
-                console.log(JSON.stringify(record));
-            } else {
-                defaultConsoleSink(record);
-            }
-        }
+        console: getConsoleSink({
+            formatter: process.env.GCLOUD_PROJECT ? (record: LogRecord) => JSON.stringify(record) : getAnsiColorFormatter({
+                timestamp: 'time'
+            })
+        })
     },
     filters: {},
     loggers: [
