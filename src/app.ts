@@ -90,10 +90,8 @@ await configure({
                 const loggingObject = {
                     timestamp: new Date(record.timestamp).toISOString(),
                     severity: record.level.toUpperCase(),
-                    jsonPayload: {
-                        message: record.message.join(''),
-                        ...record.properties
-                    }
+                    message: record.message.join(''),
+                    ...record.properties
                 };
 
                 return JSON.stringify(loggingObject);
