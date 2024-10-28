@@ -5,6 +5,10 @@ Feature: Liking an object
 
   Scenario: Liking an object that has not been liked before
     Given an Actor "Alice"
+    Given we follow "Alice"
+    Then the request is accepted
+    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
+    And "Alice" sends "Accept" to the Inbox
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And we like the object "Note"
@@ -15,6 +19,10 @@ Feature: Liking an object
 
   Scenario: Liking an object that has been liked before
     Given an Actor "Alice"
+    Given we follow "Alice"
+    Then the request is accepted
+    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
+    And "Alice" sends "Accept" to the Inbox
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And we like the object "Note"
@@ -24,6 +32,10 @@ Feature: Liking an object
 
   Scenario: Unliking an object that has not been liked before
     Given an Actor "Alice"
+    Given we follow "Alice"
+    Then the request is accepted
+    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
+    And "Alice" sends "Accept" to the Inbox
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     Then we unlike the object "Note"
@@ -31,6 +43,10 @@ Feature: Liking an object
 
   Scenario: Unliking an object that has been liked before
     Given an Actor "Alice"
+    Given we follow "Alice"
+    Then the request is accepted
+    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
+    And "Alice" sends "Accept" to the Inbox
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And we like the object "Note"

@@ -493,6 +493,17 @@ Then('the object {string} should not be in the liked collection', async function
     assert(!found);
 });
 
+Given('a {string} Object {string} by {string}', async function (objectType, objectName, actorName) {
+    const actor  = this.actors[actorName];
+    const object = await createObject(objectType, actor);
+
+    this.objects[objectName] = object;
+});
+
+Given('{string} is a reply to {string}', async function (objectA, objectB) {
+    this.objects[objectA].inReplyTo = this.objects[objectB].id;
+});
+
 Given('a {string} Activity {string} by {string}', async function (activityDef, name, actorName) {
     const {activity: activityType, object: objectName} = parseActivityString(activityDef);
     if (!activityType) {
@@ -686,6 +697,15 @@ Then('a {string} activity is in the Outbox', async function (string) {
     assert.ok(found);
 });
 
+Then('the found {string} as {string}', function (foundName, name) {
+    const found = this.found[foundName];
+
+    const {activity, object} = parseActivityString(name);
+
+    this.activities[activity] = found;
+    this.objects[object] = found.object;
+});
+
 Then('the found {string} has property {string}', function (name, prop) {
     const found = this.found[name];
 
@@ -706,6 +726,20 @@ Then('{string} is in our Inbox', async function (activityName) {
     const found = inbox.items.find(item => item.id === activity.id);
 
     assert(found);
+});
+
+Then('{string} is not in our Inbox', async function (activityName) {
+    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/inbox/index', {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const inbox = await response.json();
+    const activity = this.activities[activityName];
+
+    const found = inbox.items.find(item => item.id === activity.id);
+
+    assert(!found);
 });
 
 Then('{string} is in our Followers', async function (actorName) {

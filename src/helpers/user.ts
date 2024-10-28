@@ -1,7 +1,6 @@
 import {
     type Context,
     Image,
-    type RequestContext,
     exportJwk,
     generateCryptoKeyPair,
     importJwk,
@@ -27,7 +26,7 @@ export type PersonData = {
     url: string;
 };
 
-export async function getUserData(ctx: RequestContext<ContextData>, handle: string) {
+export async function getUserData(ctx: Context<ContextData>, handle: string) {
     const existing = await ctx.data.db.get<PersonData>(['handle', handle]);
 
     if (existing) {
