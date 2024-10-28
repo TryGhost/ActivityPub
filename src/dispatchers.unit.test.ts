@@ -64,6 +64,10 @@ describe('dispatchers', function () {
                 globaldb: {
                     get: vi.fn(),
                 },
+                logger: {
+                    info: vi.fn(),
+                    error: vi.fn(),
+                },
             },
         } as RequestContext<any>;
 

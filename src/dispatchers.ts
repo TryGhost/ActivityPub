@@ -23,7 +23,6 @@ import { ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { getUserData, getUserKeypair } from './helpers/user';
 import { lookupActor } from './lookup-helpers';
-import { logging } from './logging';
 
 export async function actorDispatcher(
     ctx: RequestContext<ContextData>,
@@ -52,7 +51,7 @@ export async function handleFollow(
     ctx: Context<ContextData>,
     follow: Follow,
 ) {
-    logging.info('Handling Follow');
+    ctx.data.logger.info('Handling Follow');
     if (!follow.id) {
         return;
     }
@@ -106,22 +105,22 @@ export async function handleAccept(
     ctx: Context<ContextData>,
     accept: Accept,
 ) {
-    logging.info('Handling Accept');
+    ctx.data.logger.info('Handling Accept');
     const parsed = (ctx as any).parseUri(accept.objectId);
-    logging.info('Parsed accept object', { parsed });
+    ctx.data.logger.info('Parsed accept object', { parsed });
     if (false && parsed?.type !== 'follow') {
-        logging.info('Not accepting a follow - exit');
+        ctx.data.logger.info('Not accepting a follow - exit');
         return;
     }
     if (!accept.id) {
-        logging.info('Accept missing id - exit');
+        ctx.data.logger.info('Accept missing id - exit');
         return;
     }
 
     const sender = await accept.getActor(ctx);
-    logging.info('Accept sender', { sender });
+    ctx.data.logger.info('Accept sender', { sender });
     if (sender === null || sender.id === null) {
-        logging.info('Sender missing, exit early');
+        ctx.data.logger.info('Sender missing, exit early');
         return;
     }
 
@@ -137,21 +136,21 @@ export async function handleCreate(
     ctx: Context<ContextData>,
     create: Create,
 ) {
-    logging.info('Handling Create');
+    ctx.data.logger.info('Handling Create');
     const parsed = (ctx as any).parseUri(create.objectId);
-    logging.info('Parsed create object', { parsed });
+    ctx.data.logger.info('Parsed create object', { parsed });
     if (false && parsed?.type !== 'article') {
-        logging.info('Not accepting a follow - exit');
+        ctx.data.logger.info('Not accepting a follow - exit');
         return;
     }
     if (!create.id) {
-        logging.info('Create missing id - exit');
+        ctx.data.logger.info('Create missing id - exit');
         return;
     }
 
     const sender = await create.getActor(ctx);
     if (sender === null || sender.id === null) {
-        logging.info('Create sender missing, exit early');
+        ctx.data.logger.info('Create sender missing, exit early');
         return;
     }
 
@@ -165,16 +164,16 @@ export async function handleAnnounce(
     ctx: Context<ContextData>,
     announce: Announce,
 ) {
-    logging.info('Handling Announce');
+    ctx.data.logger.info('Handling Announce');
 
     // Validate announce
     if (!announce.id) {
-        logging.info('Invalid Announce - no id');
+        ctx.data.logger.info('Invalid Announce - no id');
         return;
     }
 
     if (!announce.objectId) {
-        logging.info('Invalid Announce - no object id');
+        ctx.data.logger.info('Invalid Announce - no object id');
         return;
     }
 
@@ -182,7 +181,7 @@ export async function handleAnnounce(
     const sender = await announce.getActor(ctx);
 
     if (sender === null || sender.id === null) {
-        logging.info('Announce sender missing, exit early');
+        ctx.data.logger.info('Announce sender missing, exit early');
         return;
     }
 
@@ -191,18 +190,18 @@ export async function handleAnnounce(
     let existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
 
     if (!existing) {
-        logging.info('Announce object not found in globalDb, performing network lookup');
+        ctx.data.logger.info('Announce object not found in globalDb, performing network lookup');
         object = await ctx.lookupObject(announce.objectId);
     }
 
     // Validate object
     if (!existing && !object) {
-        logging.info('Invalid Announce - could not find object');
+        ctx.data.logger.info('Invalid Announce - could not find object');
         return;
     }
 
     if (object && !object.id) {
-        logging.info('Invalid Announce - could not find object id');
+        ctx.data.logger.info('Invalid Announce - could not find object id');
         return;
     }
 
@@ -212,7 +211,7 @@ export async function handleAnnounce(
 
     // Persist object if not already persisted
     if (!existing && object && object.id) {
-        logging.info('Storing object in globalDb');
+        ctx.data.logger.info('Storing object in globalDb');
 
         const objectJson = await object.toJsonLd();
 
@@ -234,16 +233,16 @@ export async function handleLike(
     ctx: Context<ContextData>,
     like: Like,
 ) {
-    logging.info('Handling Like');
+    ctx.data.logger.info('Handling Like');
 
     // Validate like
     if (!like.id) {
-        logging.info('Invalid Like - no id');
+        ctx.data.logger.info('Invalid Like - no id');
         return;
     }
 
     if (!like.objectId) {
-        logging.info('Invalid Like - no object id');
+        ctx.data.logger.info('Invalid Like - no object id');
         return;
     }
 
@@ -251,7 +250,7 @@ export async function handleLike(
     const sender = await like.getActor(ctx);
 
     if (sender === null || sender.id === null) {
-        logging.info('Like sender missing, exit early');
+        ctx.data.logger.info('Like sender missing, exit early');
         return;
     }
 
@@ -260,19 +259,19 @@ export async function handleLike(
     let existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
 
     if (!existing) {
-        logging.info('Like object not found in globalDb, performing network lookup');
+        ctx.data.logger.info('Like object not found in globalDb, performing network lookup');
 
         object = await like.getObject();
     }
 
     // Validate object
     if (!existing && !object) {
-        logging.info('Invalid Like - could not find object');
+        ctx.data.logger.info('Invalid Like - could not find object');
         return;
     }
 
     if (object && !object.id) {
-        logging.info('Invalid Like - could not find object id');
+        ctx.data.logger.info('Invalid Like - could not find object id');
         return;
     }
 
@@ -282,7 +281,7 @@ export async function handleLike(
 
     // Persist object if not already persisted
     if (!existing && object && object.id) {
-        logging.info('Storing object in globalDb');
+        ctx.data.logger.info('Storing object in globalDb');
 
         const objectJson = await object.toJsonLd();
 
@@ -297,7 +296,7 @@ export async function inboxErrorHandler(
     ctx: Context<ContextData>,
     error: unknown,
 ) {
-    logging.error('Error handling incoming activity', { error });
+    ctx.data.logger.error('Error handling incoming activity', { error });
 }
 
 function convertJsonLdToRecipient(result: any): Recipient {
@@ -315,7 +314,7 @@ export async function followersDispatcher(
     ctx: Context<ContextData>,
     handle: string,
 ) {
-    logging.info('Followers Dispatcher');
+    ctx.data.logger.info('Followers Dispatcher');
     let items: Recipient[] = [];
     const fullResults = (await ctx.data.db.get<any[]>(['followers', 'expanded']) ?? [])
         .filter((v, i, results) => {
@@ -359,9 +358,9 @@ export async function followingDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    logging.info('Following Dispatcher');
+    ctx.data.logger.info('Following Dispatcher');
     const results = (await ctx.data.db.get<string[]>(['following'])) || [];
-    logging.info('Following results', { results });
+    ctx.data.logger.info('Following results', { results });
     let items: Actor[] = [];
     for (const result of results) {
         try {
@@ -370,7 +369,7 @@ export async function followingDispatcher(
                 items.push(thing);
             }
         } catch (err) {
-            logging.error('Error looking up following actor', { error: err });
+            ctx.data.logger.error('Error looking up following actor', { error: err });
         }
     }
     return {
@@ -395,9 +394,9 @@ export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    logging.info('Outbox Dispatcher');
+    ctx.data.logger.info('Outbox Dispatcher');
     const results = filterOutboxActivityUris((await ctx.data.db.get<string[]>(['outbox'])) || []);
-    logging.info('Outbox results', { results });
+    ctx.data.logger.info('Outbox results', { results });
 
     let items: Activity[] = [];
     for (const result of results) {
@@ -406,7 +405,7 @@ export async function outboxDispatcher(
             const activity = await Activity.fromJsonLd(thing);
             items.push(activity);
         } catch (err) {
-            logging.error('Error getting outbox activity', { error: err });
+            ctx.data.logger.error('Error getting outbox activity', { error: err });
         }
     }
     return {
@@ -427,18 +426,20 @@ export async function likedDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    logging.info('Liked Dispatcher');
+    ctx.data.logger.info('Liked Dispatcher');
 
     const db = ctx.data.db;
     const globaldb = ctx.data.globaldb;
+    const logger = ctx.data.logger;
     const apCtx = fedify.createContext(ctx.request as Request, {
         db,
         globaldb,
+        logger,
     });
 
     const results = (await db.get<string[]>(['liked'])) || [];
 
-    logging.info('Liked results', { results });
+    ctx.data.logger.info('Liked results', { results });
 
     let items: Like[] = [];
 
@@ -467,7 +468,7 @@ export async function likedDispatcher(
 
             items.push(activity);
         } catch (err) {
-            logging.error('Error getting liked activity', { error: err });
+            ctx.data.logger.error('Error getting liked activity', { error: err });
         }
     }
     return {

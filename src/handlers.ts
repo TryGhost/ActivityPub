@@ -75,6 +75,7 @@ export async function unlikeAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToLike = await apCtx.lookupObject(id);
@@ -144,6 +145,7 @@ export async function likeAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToLike = await apCtx.lookupObject(id);
@@ -215,6 +217,7 @@ export async function replyAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToReplyTo = await apCtx.lookupObject(id);
@@ -309,6 +312,7 @@ export async function followAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
     const actorToFollow = await apCtx.lookupObject(handle);
     if (!isActor(actorToFollow)) {
@@ -353,6 +357,7 @@ export async function postPublishedWebhook(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
     const { article, preview } = await postToArticle(
@@ -443,6 +448,7 @@ export async function siteChangedWebhook(
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
             globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
 
         const actor = await apCtx.getActor(handle);
@@ -478,7 +484,8 @@ export async function inboxHandler(
 ) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
 
     // Fetch the liked items from the database:
     //   - Data is structured as an array of strings
@@ -532,7 +539,8 @@ export async function followersExpandedHandler(
 ) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
 
     let items: Actor[] = [];
 

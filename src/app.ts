@@ -27,7 +27,7 @@ import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
-import { configure, getAnsiColorFormatter, getConsoleSink, Logger, LogRecord } from '@logtape/logtape';
+import { configure, getAnsiColorFormatter, getConsoleSink, getLogger, Logger, LogRecord } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
 import { client, getSite } from './db';
@@ -77,12 +77,14 @@ import {
     replyAction,
 } from './handlers';
 
-import { logging } from './logging';
+
 import { getTraceAndSpanId } from './helpers/context-header';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
+
+const logging = getLogger(['activitypub']);
 
 await configure({
     sinks: {
@@ -111,6 +113,7 @@ await configure({
 export type ContextData = {
     db: KvStore;
     globaldb: KvStore;
+    logger: Logger;
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
@@ -140,6 +143,9 @@ function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Pro
         }
         if (!ctx.data.db) {
             ctx.data.db = scopeKvStore(db, ['sites', host]);
+        }
+        if (!ctx.data.logger) {
+            ctx.data.logger = logging;
         }
         return fn(ctx, b);
     }
@@ -480,6 +486,7 @@ app.use(
             return {
                 db: ctx.get('db'),
                 globaldb: ctx.get('globaldb'),
+                logger: ctx.get('logger'),
             };
         },
     ),

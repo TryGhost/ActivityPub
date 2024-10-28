@@ -20,9 +20,11 @@ export async function profileGetFollowersAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
+    const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db,
         globaldb: ctx.get('globaldb'),
+        logger,
     });
 
     // Parse "handle" from request parameters
@@ -90,7 +92,7 @@ export async function profileGetFollowersAction(
             }
         }
     } catch (err) {
-        console.error(err);
+        logger.error('Error getting followers', { error: err });
     }
 
     if (!page) {
@@ -106,7 +108,7 @@ export async function profileGetFollowersAction(
             });
         }
     } catch (err) {
-        console.error(err);
+        logger.error('Error getting followers', { error: err });
     }
 
     result.next = page.nextId
