@@ -26,6 +26,10 @@ function getCtx() {
                 get: vi.fn(),
                 set: vi.fn(),
             },
+            logger: {
+                info: vi.fn(),
+                error: vi.fn(),
+            },
         },
         getActorKeyPairs: vi.fn(),
         getActorUri: vi.fn(),

@@ -14,7 +14,8 @@ export async function getActivitiesAction(
 ) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
 
     // -------------------------------------------------------------------------
     // Process query parameters
@@ -59,8 +60,8 @@ export async function getActivitiesAction(
     // ?excludeNonFollowers=<boolean>
     const excludeNonFollowers = ctx.req.query('excludeNonFollowers') === 'true';
 
-    ctx.get('logger').info('Request query = {query}', { query: ctx.req.query() });
-    ctx.get('logger').info('Processed query params = {params}', { params: JSON.stringify({
+    logger.info('Request query = {query}', { query: ctx.req.query() });
+    logger.info('Processed query params = {params}', { params: JSON.stringify({
         cursor,
         limit,
         includeOwn,
@@ -214,7 +215,7 @@ export async function getActivitiesAction(
                 activities.push(builtActivity);
             }
         } catch (err) {
-            ctx.get('logger').error('Error building activity ({ref}): {error}', { ref, error: err });
+            logger.error('Error building activity ({ref}): {error}', { ref, error: err });
         }
     }
 

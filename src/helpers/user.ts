@@ -12,7 +12,6 @@ import {
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY
 } from '../constants';
-import { logging } from '../logging';
 
 export type PersonData = {
     id: string;
@@ -36,14 +35,14 @@ export async function getUserData(ctx: RequestContext<ContextData>, handle: stri
         try {
             icon = new Image({ url: new URL(existing.icon) });
         } catch (err) {
-            logging.error('Could not create Image from Icon value ({icon}): {error}', { icon: existing.icon, error: err });
+            ctx.data.logger.error('Could not create Image from Icon value ({icon}): {error}', { icon: existing.icon, error: err });
         }
 
         let url = null;
         try {
             url = new URL(existing.url);
         }  catch (err) {
-            logging.error('Could not create URL from value ({url}): {error}', { url: existing.url, error: err });
+            ctx.data.logger.error('Could not create URL from value ({url}): {error}', { url: existing.url, error: err });
         }
         return {
             id: new URL(existing.id),
