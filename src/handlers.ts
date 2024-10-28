@@ -25,7 +25,6 @@ import { createHash } from 'node:crypto';
 import { lookupActor } from './lookup-helpers';
 import { toURL } from './helpers/uri';
 import { buildActivity } from './helpers/activitypub/activity';
-import { logging } from './logging';
 
 import z from 'zod';
 
@@ -385,7 +384,7 @@ export async function postPublishedWebhook(
                 preferSharedInbox: true
             });
         } catch (err) {
-            logging.error('Post published webhook failed: {error}', { error: err });
+            ctx.get('logger').error('Post published webhook failed: {error}', { error: err });
         }
     }
     return new Response(JSON.stringify({}), {
@@ -418,7 +417,7 @@ export async function siteChangedWebhook(
             current.name === settings.site.title &&
             current.summary === settings.site.description
         ) {
-            logging.info('No site settings changed, nothing to do');
+            ctx.get('logger').info('No site settings changed, nothing to do');
 
             return new Response(JSON.stringify({}), {
                 headers: {
@@ -428,7 +427,7 @@ export async function siteChangedWebhook(
             });
         }
 
-        logging.info('Site settings changed, will notify followers');
+        ctx.get('logger').info('Site settings changed, will notify followers');
 
         // Update the database if the site settings have changed
         const updated =  {
@@ -462,7 +461,7 @@ export async function siteChangedWebhook(
             preferSharedInbox: true
         });
     } catch (err) {
-        logging.error('Site changed webhook failed: {error}', { error: err });
+        ctx.get('logger').error('Site changed webhook failed: {error}', { error: err });
     }
 
     // Return 200 OK
@@ -503,7 +502,7 @@ export async function inboxHandler(
                 items.push(builtInboxItem);
             }
         } catch (err) {
-            logging.error('Inbox handler failed: {error}', { error: err });
+            ctx.get('logger').error('Inbox handler failed: {error}', { error: err });
         }
     }
 

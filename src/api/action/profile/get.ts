@@ -15,7 +15,6 @@ import {
     type HonoContextVariables,
     fedify,
 } from '../../../app';
-import { logging } from '../../../logging';
 
 interface Profile {
     actor: any;
@@ -74,7 +73,7 @@ export async function profileGetAction(
             sanitizeContent: (content: string) => sanitizeHtml(content)
         });
     } catch (err) {
-        logging.error('Profile retrieval failed ({handle}): {error}', { handle, error: err });
+        ctx.get('logger').error('Profile retrieval failed ({handle}): {error}', { handle, error: err });
 
         return new Response(null, { status: 500 });
     }

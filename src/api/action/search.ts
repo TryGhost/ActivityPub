@@ -16,7 +16,6 @@ import {
     type HonoContextVariables,
     fedify,
 } from '../../app';
-import { logging } from '../../logging';
 
 interface ProfileSearchResult {
     actor: any;
@@ -90,7 +89,7 @@ export async function searchAction(
             results.profiles.push(result);
         }
     } catch (err) {
-        logging.error('Profile search failed ({query}): {error}', { query, error: err });
+        ctx.get('logger').error('Profile search failed ({query}): {error}', { query, error: err });
     }
 
     // Return results

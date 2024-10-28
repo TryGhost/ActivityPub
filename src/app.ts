@@ -488,7 +488,7 @@ app.use(
 // Send errors to Sentry
 app.onError((err, c) => {
     Sentry.captureException(err);
-    logging.error(`{error}`, { error: err });
+    c.get('logger').error(`{error}`, { error: err });
 
     // TODO: should we return a JSON error?
     return c.text('Internal Server Error', 500);
