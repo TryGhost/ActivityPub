@@ -1,7 +1,7 @@
 Feature: Like(Article)
   We want to handle Like(Article) activities in the Inbox
 
-  Scenario: We recieve a Like(Article) activity from someone we follow
+  Scenario: We recieve a Like(Article) activity from someone
     Given an Actor "Alice"
     And an Actor "Bob"
     And a "Create(Article)" Activity "A" by "Alice"

@@ -27,6 +27,7 @@ import {
     LIKED_PAGE_SIZE,
     OUTBOX_PAGE_SIZE,
 } from './constants';
+import { isFollowing } from './helpers/activitypub/actor';
 import { getUserData, getUserKeypair } from './helpers/user';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
@@ -161,10 +162,27 @@ export async function handleCreate(
         return;
     }
 
-    // TODO Check Sender is in our following
     const createJson = await create.toJsonLd();
     ctx.data.globaldb.set([create.id.href], createJson);
-    await addToList(ctx.data.db, ['inbox'], create.id.href);
+
+    const object = await create.getObject();
+    const replyTarget = await object?.getReplyTarget();
+
+    if (replyTarget?.id?.href) {
+        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
+        const replyTargetAuthor = data?.attributedTo?.id;
+        const inboxActor = await getUserData(ctx, 'index');
+
+        if (replyTargetAuthor === inboxActor.id.href) {
+            await addToList(ctx.data.db, ['inbox'], create.id.href);
+            return;
+        }
+    }
+
+    if (await isFollowing(sender, {db: ctx.data.db})) {
+        await addToList(ctx.data.db, ['inbox'], create.id.href);
+        return;
+    }
 }
 
 export async function handleAnnounce(
@@ -232,8 +250,10 @@ export async function handleAnnounce(
         ctx.data.globaldb.set([object.id.href], objectJson);
     }
 
-    // Add announce to inbox
-    await addToList(ctx.data.db, ['inbox'], announce.id.href);
+    if (await isFollowing(sender, {db: ctx.data.db})) {
+        await addToList(ctx.data.db, ['inbox'], announce.id.href);
+        return;
+    }
 }
 
 export async function handleLike(
@@ -295,7 +315,6 @@ export async function handleLike(
         ctx.data.globaldb.set([object.id.href], objectJson);
     }
 
-    // Add to inbox
     await addToList(ctx.data.db, ['inbox'], like.id.href);
 }
 
