@@ -86,7 +86,7 @@ if (process.env.SENTRY_DSN) {
 await configure({
     sinks: {
         console: getConsoleSink({
-            formatter: process.env.GCLOUD_PROJECT ? (record: LogRecord) => JSON.stringify(record) : getAnsiColorFormatter({
+            formatter: process.env.K_SERVICE ? (record: LogRecord) => JSON.stringify(record) : getAnsiColorFormatter({
                 timestamp: 'time'
             })
         })
