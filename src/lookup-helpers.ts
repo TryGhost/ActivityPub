@@ -5,10 +5,11 @@ import {
     Object as APObject,
 } from '@fedify/fedify';
 import { ContextData } from './app';
+import { logging } from './logging';
 
 export async function lookupActor(ctx: Context<ContextData>, url: string): Promise<Actor | null> {
     try {
-        console.log('Looking up actor locally', url);
+        logging.info('Looking up actor locally {url})', { url });
         const local = await ctx.data.globaldb.get([url]);
         const object = await APObject.fromJsonLd(local);
         if (isActor(object)) {
@@ -16,9 +17,8 @@ export async function lookupActor(ctx: Context<ContextData>, url: string): Promi
         }
         return null;
     } catch (err) {
-        console.log('Error looking up actor locally', url);
-        console.log(err);
-        console.log('Looking up actor remotely', url);
+        logging.error('Error looking up actor locally ({url}): {error}', { url, error: err });
+        logging.info('Looking up actor remotely ({url})', { url });
         const documentLoader = await ctx.getDocumentLoader({handle: 'index'});
         try {
             const remote = await ctx.lookupObject(url, {documentLoader});
@@ -27,8 +27,7 @@ export async function lookupActor(ctx: Context<ContextData>, url: string): Promi
                 return remote;
             }
         } catch (err) {
-            console.log('Error looking up actor remotely', url);
-            console.log(err)
+            logging.error('Error looking up actor remotely ({url}): {error}', { url, error: err });
             return null;
         }
     }

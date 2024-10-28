@@ -6,6 +6,7 @@ import {
 } from '../../app';
 import { getActivityMeta, getRepliesMap } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
+import { logging } from '../../logging';
 
 const DEFAULT_LIMIT = 10;
 
@@ -59,14 +60,14 @@ export async function getActivitiesAction(
     // ?excludeNonFollowers=<boolean>
     const excludeNonFollowers = ctx.req.query('excludeNonFollowers') === 'true';
 
-    console.log('Request query =', ctx.req.query());
-    console.log('Processed query params =', JSON.stringify({
+    logging.info('Request query = {query}', { query: ctx.req.query() });
+    logging.info('Processed query params = {params}', { params: JSON.stringify({
         cursor,
         limit,
         includeOwn,
         typeFilters,
         excludeNonFollowers,
-    }, null, 2));
+    }) });
 
     // -------------------------------------------------------------------------
     // Fetch required data from the database
@@ -214,7 +215,7 @@ export async function getActivitiesAction(
                 activities.push(builtActivity);
             }
         } catch (err) {
-            console.log(err);
+            logging.error('Error building activity ({ref}): {error}', { ref, error: err });
         }
     }
 
