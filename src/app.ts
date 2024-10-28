@@ -86,7 +86,18 @@ if (process.env.SENTRY_DSN) {
 await configure({
     sinks: {
         console: getConsoleSink({
-            formatter: process.env.K_SERVICE ? (record: LogRecord) => JSON.stringify(record) : getAnsiColorFormatter({
+            formatter: process.env.K_SERVICE ? (record: LogRecord) => {
+                const loggingObject = {
+                    timestamp: new Date(record.timestamp).toISOString(),
+                    severity: record.level.toUpperCase(),
+                    jsonPayload: {
+                        message: record.message.join(''),
+                        ...record.properties
+                    }
+                };
+
+                return JSON.stringify(loggingObject);
+            } : getAnsiColorFormatter({
                 timestamp: 'time'
             })
         })
