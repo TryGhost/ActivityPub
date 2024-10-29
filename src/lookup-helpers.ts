@@ -1,8 +1,8 @@
 import {
-    isActor,
+    Object as APObject,
     Actor,
     Context,
-    Object as APObject,
+    isActor,
 } from '@fedify/fedify';
 import { ContextData } from './app';
 

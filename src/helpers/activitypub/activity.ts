@@ -1,13 +1,13 @@
+import { createHash } from 'node:crypto';
 import {
     Context,
     KvStore,
     Like,
 } from '@fedify/fedify';
-import { createHash } from 'node:crypto';
 
 import { ContextData } from '../../app';
-import { lookupActor } from '../../lookup-helpers';
 import { sanitizeHtml } from '../../helpers/sanitize';
+import { lookupActor } from '../../lookup-helpers';
 
 type Activity = {
     id: string;

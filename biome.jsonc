@@ -18,19 +18,19 @@
         "enabled": true
     },
     "linter": {
-        "enabled": false,
+        "enabled": true,
         "rules": {
-            "recommended": true,
+            "recommended": false,
             "correctness": {
                 "noUnusedImports": "error"
             },
             "style": {
-                "noNonNullAssertion": "warn"
+                "noNonNullAssertion": "off"
             },
             "suspicious": {
-                "noConsoleLog": "error",
-                "noExplicitAny": "warn",
-                "noImplicitAnyLet": "warn"
+                "noConsoleLog": "off",
+                "noExplicitAny": "off",
+                "noImplicitAnyLet": "off"
             }
         }
     },
