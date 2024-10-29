@@ -366,7 +366,7 @@ describe('dispatchers', function () {
                 protocols: ['activitypub'],
                 openRegistrations: false,
                 usage: {
-                  users: { total: 4, activeHalfyear: 4, activeMonth: 4 },
+                  users: {},
                   localPosts: 0,
                   localComments: 0,
                 },

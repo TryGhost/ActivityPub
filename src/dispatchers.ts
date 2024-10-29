@@ -11,12 +11,12 @@ import {
     Like,
     Note,
     Person,
+    Protocol,
     Recipient,
     RequestContext,
     Undo,
     Update,
     isActor,
-    Protocol,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { ContextData, fedify } from './app';
@@ -690,7 +690,7 @@ export async function nodeInfoDispatcher(
         protocols: ['activitypub'] as Protocol[],
         openRegistrations: false,
         usage: {
-          users: { total: 4, activeHalfyear: 4, activeMonth: 4 },
+          users: {},
           localPosts: 0,
           localComments: 0,
         },
