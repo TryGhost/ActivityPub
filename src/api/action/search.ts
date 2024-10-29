@@ -16,7 +16,6 @@ import {
     type HonoContextVariables,
     fedify,
 } from '../../app';
-import { logging } from '../../logging';
 
 interface ProfileSearchResult {
     actor: any;
@@ -35,9 +34,11 @@ export async function searchAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
+    const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db,
         globaldb: ctx.get('globaldb'),
+        logger,
     });
 
     // Parse "query" from query parameters
@@ -90,7 +91,7 @@ export async function searchAction(
             results.profiles.push(result);
         }
     } catch (err) {
-        logging.error('Profile search failed ({query}): {error}', { query, error: err });
+        logger.error('Profile search failed ({query}): {error}', { query, error: err });
     }
 
     // Return results

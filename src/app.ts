@@ -27,7 +27,7 @@ import { federation } from '@fedify/fedify/x/hono';
 import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
-import { configure, getAnsiColorFormatter, getConsoleSink, LogRecord } from '@logtape/logtape';
+import { configure, getAnsiColorFormatter, getConsoleSink, getLogger, Logger, LogRecord } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexKvStore } from './knex.kvstore';
 import { client, getSite } from './db';
@@ -80,16 +80,28 @@ import {
     replyAction,
 } from './handlers';
 
-import { logging } from './logging';
+
+import { getTraceAndSpanId } from './helpers/context-header';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
+const logging = getLogger(['activitypub']);
+
 await configure({
     sinks: {
         console: getConsoleSink({
-            formatter: process.env.K_SERVICE ? (record: LogRecord) => JSON.stringify(record) : getAnsiColorFormatter({
+            formatter: process.env.K_SERVICE ? (record: LogRecord) => {
+                const loggingObject = {
+                    timestamp: new Date(record.timestamp).toISOString(),
+                    severity: record.level.toUpperCase(),
+                    message: record.message.join(''),
+                    ...record.properties
+                };
+
+                return JSON.stringify(loggingObject);
+            } : getAnsiColorFormatter({
                 timestamp: 'time'
             })
         })
@@ -104,6 +116,7 @@ await configure({
 export type ContextData = {
     db: KvStore;
     globaldb: KvStore;
+    logger: Logger;
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
@@ -133,6 +146,9 @@ function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Pro
         }
         if (!ctx.data.db) {
             ctx.data.db = scopeKvStore(db, ['sites', host]);
+        }
+        if (!ctx.data.logger) {
+            ctx.data.logger = logging;
         }
         return fn(ctx, b);
     }
@@ -247,6 +263,7 @@ enum GhostRole {
 export type HonoContextVariables = {
     db: KvStore;
     globaldb: KvStore;
+    logger: Logger;
     role: GhostRole;
     site: {
         host: string;
@@ -257,6 +274,19 @@ export type HonoContextVariables = {
 const app = new Hono<{ Variables: HonoContextVariables }>();
 
 /** Middleware */
+
+app.use(async (ctx, next) => {
+    const extra: Record<string, any> = {};
+
+    const { traceId, spanId } = getTraceAndSpanId(ctx.req.header('x-cloud-trace-context'));
+    if (traceId && spanId) {
+        extra['logging.googleapis.com/trace'] = `projects/ghost-activitypub/traces/${traceId}`;
+        extra['logging.googleapis.com/spanId'] = spanId;
+    }
+
+    ctx.set('logger', logging.with(extra));
+    return next();
+});
 
 app.use(
     cors({
@@ -293,7 +323,8 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
     const id = crypto.randomUUID();
     const start = Date.now();
-    logging.info(`{method} {host} {url} {id}`, {
+
+    ctx.get('logger').info(`{method} {host} {url} {id}`, {
         id,
         method: ctx.req.method.toUpperCase(),
         host: ctx.req.header('host'),
@@ -303,7 +334,7 @@ app.use(async (ctx, next) => {
     await next();
     const end = Date.now();
 
-    logging.info(`{method} {host} {url} {status} {duration}ms {id}`, {
+    ctx.get('logger').info(`{method} {host} {url} {status} {duration}ms {id}`, {
         id,
         method: ctx.req.method.toUpperCase(),
         host: ctx.req.header('host'),
@@ -461,6 +492,7 @@ app.use(
             return {
                 db: ctx.get('db'),
                 globaldb: ctx.get('globaldb'),
+                logger: ctx.get('logger'),
             };
         },
     ),
@@ -469,7 +501,7 @@ app.use(
 // Send errors to Sentry
 app.onError((err, c) => {
     Sentry.captureException(err);
-    logging.error(`{error}`, { error: err });
+    c.get('logger').error(`{error}`, { error: err });
 
     // TODO: should we return a JSON error?
     return c.text('Internal Server Error', 500);

@@ -6,7 +6,6 @@ import {
 } from '../../app';
 import { getActivityMeta, getRepliesMap } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
-import { logging } from '../../logging';
 
 const DEFAULT_LIMIT = 10;
 
@@ -15,7 +14,8 @@ export async function getActivitiesAction(
 ) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
 
     // -------------------------------------------------------------------------
     // Process query parameters
@@ -60,8 +60,8 @@ export async function getActivitiesAction(
     // ?excludeNonFollowers=<boolean>
     const excludeNonFollowers = ctx.req.query('excludeNonFollowers') === 'true';
 
-    logging.info('Request query = {query}', { query: ctx.req.query() });
-    logging.info('Processed query params = {params}', { params: JSON.stringify({
+    logger.info('Request query = {query}', { query: ctx.req.query() });
+    logger.info('Processed query params = {params}', { params: JSON.stringify({
         cursor,
         limit,
         includeOwn,
@@ -215,7 +215,7 @@ export async function getActivitiesAction(
                 activities.push(builtActivity);
             }
         } catch (err) {
-            logging.error('Error building activity ({ref}): {error}', { ref, error: err });
+            logger.error('Error building activity ({ref}): {error}', { ref, error: err });
         }
     }
 

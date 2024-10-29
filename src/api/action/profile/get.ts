@@ -15,7 +15,6 @@ import {
     type HonoContextVariables,
     fedify,
 } from '../../../app';
-import { logging } from '../../../logging';
 
 interface Profile {
     actor: any;
@@ -30,9 +29,11 @@ export async function profileGetAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
+    const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db,
         globaldb: ctx.get('globaldb'),
+        logger,
     });
 
     // Parse "handle" from request parameters
@@ -74,7 +75,7 @@ export async function profileGetAction(
             sanitizeContent: (content: string) => sanitizeHtml(content)
         });
     } catch (err) {
-        logging.error('Profile retrieval failed ({handle}): {error}', { handle, error: err });
+        logger.error('Profile retrieval failed ({handle}): {error}', { handle, error: err });
 
         return new Response(null, { status: 500 });
     }

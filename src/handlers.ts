@@ -25,7 +25,6 @@ import { createHash } from 'node:crypto';
 import { lookupActor } from './lookup-helpers';
 import { toURL } from './helpers/uri';
 import { buildActivity } from './helpers/activitypub/activity';
-import { logging } from './logging';
 
 import z from 'zod';
 
@@ -76,6 +75,7 @@ export async function unlikeAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToLike = await apCtx.lookupObject(id);
@@ -145,6 +145,7 @@ export async function likeAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToLike = await apCtx.lookupObject(id);
@@ -216,6 +217,7 @@ export async function replyAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToReplyTo = await apCtx.lookupObject(id);
@@ -310,6 +312,7 @@ export async function followAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
     const actorToFollow = await apCtx.lookupObject(handle);
     if (!isActor(actorToFollow)) {
@@ -354,6 +357,7 @@ export async function postPublishedWebhook(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
     const { article, preview } = await postToArticle(
@@ -385,7 +389,7 @@ export async function postPublishedWebhook(
                 preferSharedInbox: true
             });
         } catch (err) {
-            logging.error('Post published webhook failed: {error}', { error: err });
+            ctx.get('logger').error('Post published webhook failed: {error}', { error: err });
         }
     }
     return new Response(JSON.stringify({}), {
@@ -418,7 +422,7 @@ export async function siteChangedWebhook(
             current.name === settings.site.title &&
             current.summary === settings.site.description
         ) {
-            logging.info('No site settings changed, nothing to do');
+            ctx.get('logger').info('No site settings changed, nothing to do');
 
             return new Response(JSON.stringify({}), {
                 headers: {
@@ -428,7 +432,7 @@ export async function siteChangedWebhook(
             });
         }
 
-        logging.info('Site settings changed, will notify followers');
+        ctx.get('logger').info('Site settings changed, will notify followers');
 
         // Update the database if the site settings have changed
         const updated =  {
@@ -444,6 +448,7 @@ export async function siteChangedWebhook(
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
             globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
 
         const actor = await apCtx.getActor(handle);
@@ -462,7 +467,7 @@ export async function siteChangedWebhook(
             preferSharedInbox: true
         });
     } catch (err) {
-        logging.error('Site changed webhook failed: {error}', { error: err });
+        ctx.get('logger').error('Site changed webhook failed: {error}', { error: err });
     }
 
     // Return 200 OK
@@ -479,7 +484,8 @@ export async function inboxHandler(
 ) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
 
     // Fetch the liked items from the database:
     //   - Data is structured as an array of strings
@@ -503,7 +509,7 @@ export async function inboxHandler(
                 items.push(builtInboxItem);
             }
         } catch (err) {
-            logging.error('Inbox handler failed: {error}', { error: err });
+            ctx.get('logger').error('Inbox handler failed: {error}', { error: err });
         }
     }
 
