@@ -86,7 +86,7 @@ services:
       mysql-testing:
         condition: service_healthy
     healthcheck:
-      test: "if [ ! -f /tmp/health.txt ]; then touch /tmp/health.txt && wget --spider http://0.0.0.0:8083/ping || exit 1 ; else echo \"healthcheck already executed\"; fi"
+      test: "if [ ! -f /tmp/health.txt ]; then (wget --spider http://0.0.0.0:8083/ping || exit 1) && touch /tmp/health.txt ; else echo \"healthcheck already executed\"; fi"
       interval: 1s
       retries: 120
       start_period: 5s
