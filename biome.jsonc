@@ -20,7 +20,7 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": false,
+            "recommended": true,
             "correctness": {
                 "noUnusedImports": "error"
             },
@@ -29,8 +29,8 @@
             },
             "suspicious": {
                 "noConsoleLog": "off",
-                "noExplicitAny": "off",
-                "noImplicitAnyLet": "off"
+                "noExplicitAny": "warn",
+                "noImplicitAnyLet": "warn"
             }
         }
     },

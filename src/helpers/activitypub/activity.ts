@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import {
-    Context,
-    KvStore,
+    type Context,
+    type KvStore,
     Like,
 } from '@fedify/fedify';
 
-import { ContextData } from '../../app';
+import type { ContextData } from '../../app';
 import { sanitizeHtml } from '../../helpers/sanitize';
 import { lookupActor } from '../../lookup-helpers';
 
@@ -25,7 +25,7 @@ export async function buildActivity(
     apCtx: Context<ContextData>,
     liked: string[] = [],
     repliesMap: Map<string, any> | null = null,
-    expandInReplyTo: boolean = false,
+    expandInReplyTo = false,
 ): Promise<Activity | null> {
     const item = await db.get<Activity>([uri]);
 
@@ -71,7 +71,7 @@ export async function buildActivity(
 
     // If the associated object is a Like, we should check if it's in the provided
     // liked list and add a liked property to the item if it is
-    let objectId: string = '';
+    let objectId = '';
 
     if (typeof item.object === 'string') {
         objectId = item.object;

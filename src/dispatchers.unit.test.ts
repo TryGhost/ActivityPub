@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Activity, Actor, Like, Person, RequestContext } from '@fedify/fedify';
+import { Activity, type Actor, Like, Person, type RequestContext } from '@fedify/fedify';
 import {
     actorDispatcher,
     followingDispatcher,
@@ -18,9 +18,9 @@ vi.mock('./app', () => ({
     },
 }));
 
-describe('dispatchers', function () {
-    describe('actorDispatcher', function () {
-        it(`returns null if the handle is not "${ACTOR_DEFAULT_HANDLE}"`, async function () {
+describe('dispatchers', () => {
+    describe('actorDispatcher', () => {
+        it(`returns null if the handle is not "${ACTOR_DEFAULT_HANDLE}"`, async () => {
             const ctx = {} as RequestContext<any>;
             const handle = 'anything';
 
@@ -31,7 +31,7 @@ describe('dispatchers', function () {
         });
     });
 
-    describe('followingDispatcher', function () {
+    describe('followingDispatcher', () => {
         const following: Record<string, any> = {
             'https://example.com/person/123': {
                 '@context': [
@@ -65,7 +65,7 @@ describe('dispatchers', function () {
             },
         } as RequestContext<any>;
 
-        beforeEach(function () {
+        beforeEach(() => {
             ctx.data.db.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(
                     key[0] === 'following'
@@ -79,7 +79,7 @@ describe('dispatchers', function () {
             });
         });
 
-        it('returns items from the following collection in the correct order', async function () {
+        it('returns items from the following collection in the correct order', async () => {
             const result = await followingDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
 
             // Check items exist
@@ -95,7 +95,7 @@ describe('dispatchers', function () {
             expect(result.items[1].id.toString()).toEqual('https://example.com/person/456');
         });
 
-        it('returns items from the following collection with a cursor', async function () {
+        it('returns items from the following collection with a cursor', async () => {
             const result = await followingDispatcher(ctx, ACTOR_DEFAULT_HANDLE, '1');
 
             // Check items exist
@@ -109,7 +109,7 @@ describe('dispatchers', function () {
         });
     });
 
-    describe('likedDispatcher', function () {
+    describe('likedDispatcher', () => {
         const likeActivities: Record<string, any> = {
             'https://example.com/like/123': {
                 '@context': [
@@ -151,7 +151,7 @@ describe('dispatchers', function () {
             },
         } as RequestContext<any>;
 
-        beforeEach(function () {
+        beforeEach(() => {
             ctx.data.db.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(
                     key[0] === 'liked'
@@ -165,7 +165,7 @@ describe('dispatchers', function () {
             });
         });
 
-        it('returns items from the liked collection in the correct order', async function () {
+        it('returns items from the liked collection in the correct order', async () => {
             const result = await likedDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
 
             // Check items exist
@@ -181,7 +181,7 @@ describe('dispatchers', function () {
             expect(result.items[1].id.toString()).toEqual('https://example.com/like/123');
         });
 
-        it('returns items from the liked collection with a cursor', async function () {
+        it('returns items from the liked collection with a cursor', async () => {
             const result = await likedDispatcher(ctx, ACTOR_DEFAULT_HANDLE, '1');
 
             // Check items exist
@@ -194,7 +194,7 @@ describe('dispatchers', function () {
             expect(result.items[0].id.toString()).toEqual('https://example.com/like/123');
         });
 
-        it('hydrates the object of a like', async function () {
+        it('hydrates the object of a like', async () => {
             const actorId = 'https://example.com/actor/123';
 
             const likeActivities: Record<string, any> = {
@@ -257,8 +257,8 @@ describe('dispatchers', function () {
         });
     });
 
-    describe('outboxDispatcher', function () {
-        const outboxActivities: Record<string, any> = {
+    describe('outboxDispatcher', () => {
+        const outboxActivities: Record<string, object> = {
             'https://example.com/create/123': {
                 '@context': [
                     'https://www.w3.org/ns/activitystreams',
@@ -308,7 +308,7 @@ describe('dispatchers', function () {
             },
         } as RequestContext<any>;
 
-        beforeEach(function () {
+        beforeEach(() => {
             ctx.data.db.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(
                     key[0] === 'outbox'
@@ -322,7 +322,7 @@ describe('dispatchers', function () {
             });
         });
 
-        it('returns items from the outbox collection in the correct order', async function () {
+        it('returns items from the outbox collection in the correct order', async () => {
             const result = await outboxDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
 
             // Check items exist
@@ -338,7 +338,7 @@ describe('dispatchers', function () {
             expect(result.items[1].id.toString()).toEqual('https://example.com/create/123');
         });
 
-        it('returns items from the outbox collection with a cursor', async function () {
+        it('returns items from the outbox collection with a cursor', async () => {
             const result = await outboxDispatcher(ctx, ACTOR_DEFAULT_HANDLE, '1');
 
             // Check items exist

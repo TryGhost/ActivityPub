@@ -2,24 +2,24 @@ import {
     Object as APObject,
     Accept,
     Activity,
-    Actor,
-    Announce,
+    type Actor,
+    type Announce,
     Article,
-    Context,
+    type Context,
     Create,
     Follow,
     Like,
     Note,
     Person,
-    Protocol,
-    Recipient,
-    RequestContext,
+    type Protocol,
+    type Recipient,
+    type RequestContext,
     Undo,
     Update,
     isActor,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
-import { ContextData, fedify } from './app';
+import { type ContextData, fedify } from './app';
 import {
     ACTOR_DEFAULT_HANDLE,
     FOLLOWERS_PAGE_SIZE,
@@ -62,7 +62,7 @@ export async function handleFollow(
     if (!follow.id) {
         return;
     }
-    const parsed = (ctx as any).parseUri(follow.objectId);
+    const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== 'actor') {
         // TODO Log
         return;
@@ -73,7 +73,7 @@ export async function handleFollow(
     }
 
     const currentFollowers = await ctx.data.db.get<string[]>(['followers']) ?? [];
-    let shouldRecordFollower = currentFollowers.includes(sender.id.href) === false;
+    const shouldRecordFollower = currentFollowers.includes(sender.id.href) === false;
 
     // Add follow activity to inbox
     const followJson = await follow.toJsonLd();
@@ -115,6 +115,7 @@ export async function handleAccept(
     ctx.data.logger.info('Handling Accept');
     const parsed = (ctx as any).parseUri(accept.objectId);
     ctx.data.logger.info('Parsed accept object', { parsed });
+    // biome-ignore lint/correctness/noConstantCondition: present when adding linting
     if (false && parsed?.type !== 'follow') {
         ctx.data.logger.info('Not accepting a follow - exit');
         return;
@@ -146,6 +147,7 @@ export async function handleCreate(
     ctx.data.logger.info('Handling Create');
     const parsed = (ctx as any).parseUri(create.objectId);
     ctx.data.logger.info('Parsed create object', { parsed });
+    // biome-ignore lint/correctness/noConstantCondition: present when adding linting
     if (false && parsed?.type !== 'article') {
         ctx.data.logger.info('Not accepting a follow - exit');
         return;
@@ -194,7 +196,7 @@ export async function handleAnnounce(
 
     // Lookup announced object - If not found in globalDb, perform network lookup
     let object = null;
-    let existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
+    const existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
 
     if (!existing) {
         ctx.data.logger.info('Announce object not found in globalDb, performing network lookup');
@@ -263,7 +265,7 @@ export async function handleLike(
 
     // Lookup liked object - If not found in globalDb, perform network lookup
     let object = null;
-    let existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
+    const existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
 
     if (!existing) {
         ctx.data.logger.info('Like object not found in globalDb, performing network lookup');
@@ -313,7 +315,7 @@ export async function followersDispatcher(
 ) {
     ctx.data.logger.info('Followers Dispatcher');
 
-    const offset = parseInt(cursor ?? '0');
+    const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
     let items: Recipient[] = [];
@@ -396,7 +398,7 @@ export async function followingDispatcher(
 ) {
     ctx.data.logger.info('Following Dispatcher');
 
-    const offset = parseInt(cursor ?? '0');
+    const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
     const results = (await ctx.data.db.get<string[]>(['following'])) || []
@@ -409,7 +411,7 @@ export async function followingDispatcher(
 
     ctx.data.logger.info('Following results', { results: slicedResults });
 
-    let items: Actor[] = [];
+    const items: Actor[] = [];
 
     for (const result of slicedResults) {
         try {
@@ -453,7 +455,7 @@ export async function outboxDispatcher(
 ) {
     ctx.data.logger.info('Outbox Dispatcher');
 
-    const offset = parseInt(cursor ?? '0');
+    const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
     const results = filterOutboxActivityUris(
@@ -468,7 +470,7 @@ export async function outboxDispatcher(
 
     ctx.data.logger.info('Outbox results', { results: slicedResults });
 
-    let items: Activity[] = [];
+    const items: Activity[] = [];
 
     for (const result of slicedResults) {
         try {
@@ -516,7 +518,7 @@ export async function likedDispatcher(
         logger,
     });
 
-    const offset = parseInt(cursor ?? '0');
+    const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
     const results = (
@@ -531,7 +533,7 @@ export async function likedDispatcher(
 
     ctx.data.logger.info('Liked results', { results: slicedResults });
 
-    let items: Like[] = [];
+    const items: Like[] = [];
 
     for (const result of slicedResults) {
         try {

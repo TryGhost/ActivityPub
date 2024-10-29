@@ -1,12 +1,12 @@
 import {
-    Context,
+    type Context,
     Image,
-    RequestContext,
+    type RequestContext,
     exportJwk,
     generateCryptoKeyPair,
     importJwk,
 } from '@fedify/fedify';
-import { ContextData } from '../app';
+import type { ContextData } from '../app';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,

@@ -1,4 +1,4 @@
-import { type Context } from 'hono';
+import type { Context } from 'hono';
 
 import {
     type HonoContextVariables,
@@ -130,7 +130,7 @@ export async function getActivitiesAction(
                 }
 
                 // ?filter={type: ['<activityType>:<objectType>:isReplyToOwn']}
-                if (filter.criteria && filter.criteria.startsWith('isReplyToOwn')) {
+                if (filter.criteria?.startsWith('isReplyToOwn')) {
                     // If the activity does not have a reply object url or name,
                     // we can't determine if it's a reply to an own object so
                     // we skip it
@@ -149,7 +149,7 @@ export async function getActivitiesAction(
                 }
 
                  // ?filter={type: ['<activityType>:<objectType>:notReply']}
-                 if (filter.criteria && filter.criteria.startsWith('notReply')) {
+                 if (filter.criteria?.startsWith('notReply')) {
                     if (meta.reply_object_url) {
                         return false;
                     }
