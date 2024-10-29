@@ -352,8 +352,8 @@ describe('dispatchers', () => {
         });
     });
 
-    describe('nodeInfoDispatcher', function () {
-        it('returns the node info', async function () {
+    describe('nodeInfoDispatcher', () => {
+        it('returns the node info', async () => {
             const result = await nodeInfoDispatcher({} as RequestContext<any>);
 
             expect(result).toEqual({
