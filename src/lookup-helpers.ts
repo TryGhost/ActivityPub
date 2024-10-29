@@ -8,7 +8,7 @@ import { ContextData } from './app';
 
 export async function lookupActor(ctx: Context<ContextData>, url: string): Promise<Actor | null> {
     try {
-        ctx.data.logger.info('Looking up actor locally {url})', { url });
+        ctx.data.logger.info('Looking up actor locally ({url})', { url });
         const local = await ctx.data.globaldb.get([url]);
         const object = await APObject.fromJsonLd(local);
         if (isActor(object)) {
