@@ -58,6 +58,9 @@ describe('dispatchers', function () {
                 globaldb: {
                     get: vi.fn(),
                 },
+                logger: {
+                    info: vi.fn(),
+                },
             },
         } as RequestContext<any>;
 
@@ -140,6 +143,9 @@ describe('dispatchers', function () {
                 },
                 globaldb: {
                     get: vi.fn(),
+                },
+                logger: {
+                    info: vi.fn(),
                 },
             },
         } as RequestContext<any>;
