@@ -104,7 +104,7 @@ export async function profileGetFollowingAction(
     try {
         for await (const item of page.getItems()) {
             result.following.push({
-                actor: await item.toJsonLd(),
+                actor: await item.toJsonLd({ format: 'compact' }),
                 isFollowing: await isFollowing(item as Actor, { db }),
             });
         }

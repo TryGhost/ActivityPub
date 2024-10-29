@@ -20,7 +20,13 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
 import { ContextData, fedify } from './app';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
+import {
+    ACTOR_DEFAULT_HANDLE,
+    FOLLOWERS_PAGE_SIZE,
+    FOLLOWING_PAGE_SIZE,
+    LIKED_PAGE_SIZE,
+    OUTBOX_PAGE_SIZE,
+} from './constants';
 import { getUserData, getUserKeypair } from './helpers/user';
 import { lookupActor } from './lookup-helpers';
 
@@ -299,30 +305,30 @@ export async function inboxErrorHandler(
     ctx.data.logger.error('Error handling incoming activity', { error });
 }
 
-function convertJsonLdToRecipient(result: any): Recipient {
-    return {
-        ...result,
-        id: new URL(result.id),
-        inboxId: new URL(result.inbox),
-        endpoints: result.endpoints?.sharedInbox != null
-            ? { sharedInbox: new URL(result.endpoints.sharedInbox) }
-            : null,
-    };
-}
-
 export async function followersDispatcher(
     ctx: Context<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
     ctx.data.logger.info('Followers Dispatcher');
+
+    const offset = parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
     let items: Recipient[] = [];
+
     const fullResults = (await ctx.data.db.get<any[]>(['followers', 'expanded']) ?? [])
         .filter((v, i, results) => {
             // Remove duplicates
             return results.findIndex((r) => r.id === v.id) === i;
         });
+
     if (fullResults) {
-        items = fullResults.map(convertJsonLdToRecipient)
+        nextCursor = fullResults.length > offset + FOLLOWERS_PAGE_SIZE
+            ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+            : null;
+
+        items = fullResults.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
     } else {
         const results = [
             // Remove duplicates
@@ -330,14 +336,38 @@ export async function followersDispatcher(
                 (await ctx.data.db.get<string[]>(['followers'])) || []
             )
         ];
-        const actors = items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
-            .filter((item): item is Actor => isActor(item))
-        const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
+
+        nextCursor = results.length > offset + FOLLOWERS_PAGE_SIZE
+            ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+            : null;
+
+        const slicedResults = results.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
+
+        const actors = (
+            await Promise.all(
+                slicedResults.map((result) => lookupActor(ctx, result))
+            )
+        // This could potentially mean that the slicedResults is not the size
+        // of FOLLOWERS_PAGE_SIZE if for some reason the lookupActor returns
+        // null for some of the results. TODO: Find a better way to handle this
+        ).filter((item): item is Actor => isActor(item))
+
+        const toStore = await Promise.all(
+            actors.map(actor => actor.toJsonLd() as any)
+        );
+
         await ctx.data.db.set(['followers', 'expanded'], toStore);
-        items = toStore.map(convertJsonLdToRecipient);
+
+        items = toStore;
     }
+
     return {
-        items,
+        items: (
+            await Promise.all(
+                items.map(item => APObject.fromJsonLd(item))
+            )
+        ).filter((item): item is Actor => isActor(item)),
+        nextCursor,
     };
 }
 
@@ -354,17 +384,36 @@ export async function followersCounter(
     return results.length;
 }
 
+export function followersFirstCursor() {
+    return '0';
+}
+
 export async function followingDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
     ctx.data.logger.info('Following Dispatcher');
-    const results = (await ctx.data.db.get<string[]>(['following'])) || [];
-    ctx.data.logger.info('Following results', { results });
+
+    const offset = parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
+    const results = (await ctx.data.db.get<string[]>(['following'])) || []
+
+    nextCursor = results.length > offset + FOLLOWING_PAGE_SIZE
+        ? (offset + FOLLOWING_PAGE_SIZE).toString()
+        : null;
+
+    const slicedResults = results.slice(offset, offset + FOLLOWING_PAGE_SIZE);
+
+    ctx.data.logger.info('Following results', { results: slicedResults });
+
     let items: Actor[] = [];
-    for (const result of results) {
+
+    for (const result of slicedResults) {
         try {
             const thing = await lookupActor(ctx, result);
+
             if (isActor(thing)) {
                 items.push(thing);
             }
@@ -372,8 +421,10 @@ export async function followingDispatcher(
             ctx.data.logger.error('Error looking up following actor', { error: err });
         }
     }
+
     return {
         items,
+        nextCursor,
     };
 }
 
@@ -385,6 +436,10 @@ export async function followingCounter(
     return results.length;
 }
 
+export function followingFirstCursor() {
+    return '0';
+}
+
 function filterOutboxActivityUris (activityUris: string[]) {
     // Only return Create and Announce activityUris
     return activityUris.filter(uri => /(create|announce)/.test(uri));
@@ -393,23 +448,41 @@ function filterOutboxActivityUris (activityUris: string[]) {
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
     ctx.data.logger.info('Outbox Dispatcher');
-    const results = filterOutboxActivityUris((await ctx.data.db.get<string[]>(['outbox'])) || []);
-    ctx.data.logger.info('Outbox results', { results });
+
+    const offset = parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
+    const results = filterOutboxActivityUris(
+        (await ctx.data.db.get<string[]>(['outbox'])) || []
+    ).reverse();
+
+    nextCursor = results.length > offset + OUTBOX_PAGE_SIZE
+        ? (offset + OUTBOX_PAGE_SIZE).toString()
+        : null;
+
+    const slicedResults = results.slice(offset, offset + OUTBOX_PAGE_SIZE);
+
+    ctx.data.logger.info('Outbox results', { results: slicedResults });
 
     let items: Activity[] = [];
-    for (const result of results) {
+
+    for (const result of slicedResults) {
         try {
             const thing = await ctx.data.globaldb.get([result]);
             const activity = await Activity.fromJsonLd(thing);
+
             items.push(activity);
         } catch (err) {
             ctx.data.logger.error('Error getting outbox activity', { error: err });
         }
     }
+
     return {
-        items: items.reverse(),
+        items,
+        nextCursor,
     };
 }
 
@@ -422,9 +495,14 @@ export async function outboxCounter(
     return filterOutboxActivityUris(results).length;
 }
 
+export function outboxFirstCursor() {
+    return '0';
+}
+
 export async function likedDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
     ctx.data.logger.info('Liked Dispatcher');
 
@@ -437,13 +515,24 @@ export async function likedDispatcher(
         logger,
     });
 
-    const results = (await db.get<string[]>(['liked'])) || [];
+    const offset = parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
 
-    ctx.data.logger.info('Liked results', { results });
+    const results = (
+        (await db.get<string[]>(['liked'])) || []
+    ).reverse();
+
+    nextCursor = results.length > offset + LIKED_PAGE_SIZE
+        ? (offset + LIKED_PAGE_SIZE).toString()
+        : null;
+
+    const slicedResults = results.slice(offset, offset + LIKED_PAGE_SIZE);
+
+    ctx.data.logger.info('Liked results', { results: slicedResults });
 
     let items: Like[] = [];
 
-    for (const result of results) {
+    for (const result of slicedResults) {
         try {
             const thing = await globaldb.get<{
                 object: string | {
@@ -471,8 +560,10 @@ export async function likedDispatcher(
             ctx.data.logger.error('Error getting liked activity', { error: err });
         }
     }
+
     return {
-        items: items.reverse(),
+        items,
+        nextCursor,
     };
 }
 
@@ -483,6 +574,10 @@ export async function likedCounter(
     const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
 
     return results.length;
+}
+
+export function likedFirstCursor() {
+    return '0';
 }
 
 export async function articleDispatcher(
