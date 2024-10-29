@@ -129,7 +129,7 @@ export const db = await KnexKvStore.create(client, 'key_value');
  * for example in the context of the Inbox Queue - so we need to wrap handlers with this.
  */
 function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Promise<R>) {
-    return async function (ctx: Context<any>, b: B) {
+    return async function (ctx: Context<ContextData>, b: B) {
         const host = ctx.host;
         if (!ctx.data) {
             (ctx as any).data = {};
@@ -269,7 +269,7 @@ const app = new Hono<{ Variables: HonoContextVariables }>();
 /** Middleware */
 
 app.use(async (ctx, next) => {
-    const extra: Record<string, any> = {};
+    const extra: Record<string, string> = {};
 
     const { traceId, spanId } = getTraceAndSpanId(ctx.req.header('x-cloud-trace-context'));
     if (traceId && spanId) {

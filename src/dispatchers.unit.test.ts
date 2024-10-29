@@ -257,7 +257,7 @@ describe('dispatchers', function () {
     });
 
     describe('outboxDispatcher', function () {
-        const outboxActivities: Record<string, any> = {
+        const outboxActivities: Record<string, object> = {
             'https://example.com/create/123': {
                 '@context': [
                     'https://www.w3.org/ns/activitystreams',
