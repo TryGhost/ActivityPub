@@ -91,7 +91,7 @@ export async function handleFollow(
     // Store or update sender in global db
     ctx.data.globaldb.set([sender.id.href], senderJson);
 
-    // Add accept activity to outbox
+    // Send accept activity to sender
     const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
     const accept = new Accept({
         id: acceptId,
@@ -101,9 +101,7 @@ export async function handleFollow(
     const acceptJson = await accept.toJsonLd();
 
     await ctx.data.globaldb.set([accept.id!.href], acceptJson);
-    await addToList(ctx.data.db, ['outbox'], accept.id!.href);
 
-    // Send accept activity to sender
     await ctx.sendActivity({ handle: parsed.handle }, sender, accept);
 }
 
