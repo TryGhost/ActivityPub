@@ -8,3 +8,7 @@ Feature: Follow accounts from their handle
     And "Alice" sends "A" to the Inbox
     Given we follow "Alice"
     Then the request is rejected with a 409
+
+  Scenario: We cannot follow ourselves
+    Given we follow "Us"
+    Then the request is rejected with a 400

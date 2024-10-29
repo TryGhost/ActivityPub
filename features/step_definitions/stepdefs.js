@@ -97,6 +97,8 @@ async function createActor(name = 'Test', remote = true) {
             'url': 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
             'type': 'Person',
 
+            'handle': '@index@fake-ghost-activitypub',
+
             'preferredUsername': 'index',
             'name': 'Test Actor',
             'summary': 'A test actor for testing',

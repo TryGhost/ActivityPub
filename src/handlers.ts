@@ -320,13 +320,22 @@ export async function followAction(
             status: 404
         });
     }
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+    if (actorToFollow.id!.href === actor!.id!.href) {
+        return new Response(null, {
+            status: 400
+        });
+    }
+
     const following = await ctx.get('db').get<string[]>(['following']) || [];
     if (following.includes(actorToFollow.id!.href)) {
         return new Response(null, {
             status: 409
         });
     }
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
     const followId = apCtx.getObjectUri(Follow, {
         id: uuidv4(),
     });
