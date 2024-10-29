@@ -1,6 +1,7 @@
 import { isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
+import { lookupObject } from 'lookup-helpers';
 import {
     type HonoContextVariables,
     fedify,
@@ -60,9 +61,10 @@ export async function searchAction(
         });
     }
 
+
     // Lookup actor by handle or URI
     try {
-        const actor = await apCtx.lookupObject(query);
+        const actor = await lookupObject(apCtx, query);
 
         if (isActor(actor)) {
             const result: ProfileSearchResult = {
