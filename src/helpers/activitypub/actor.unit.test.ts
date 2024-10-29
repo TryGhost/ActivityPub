@@ -266,8 +266,7 @@ describe('isFollowing', () => {
 describe('isHandle', () => {
     it('should return a boolean indicating if the provided string is a handle', () => {
         expect(isHandle('@foo@example.com')).toBe(true);
-        expect(isHandle('@foo@example.com/bar')).toBe(false);
-        expect(isHandle('@foo@example')).toBe(false);
+        expect(isHandle('@foo@example')).toBe(true);
         expect(isHandle('@example.com')).toBe(false);
         expect(isHandle('@foo')).toBe(false);
         expect(isHandle('@@foo')).toBe(false);

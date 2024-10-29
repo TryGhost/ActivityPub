@@ -102,7 +102,7 @@ await configure({
     filters: {},
     loggers: [
         { category: 'activitypub', sinks: ['console'], level: 'info' },
-        { category: 'fedify', sinks: ['console'], level: 'warning' }
+        { category: 'fedify', sinks: ['console'], level: process.env.NODE_ENV === 'testing' ? 'debug' : 'warning' }
     ],
 });
 

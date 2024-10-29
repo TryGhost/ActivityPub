@@ -88,5 +88,6 @@ export async function isFollowing(actor: Actor, options: {
 }
 
 export function isHandle(handle: string): boolean {
-    return /^@([\w-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
+    // https://github.com/dahlia/fedify/blob/main/src/vocab/lookup.ts#L29-L30
+    return /^@?((?:[-A-Za-z0-9._~!$&'()*+,;=]|%[A-Fa-f0-9]{2})+)@([^@]+)$/.test(handle);
 }
