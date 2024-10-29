@@ -26,6 +26,7 @@ import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
+    getActivityThreadAction,
     profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
@@ -491,6 +492,7 @@ app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), sear
 app.get('/.ghost/activitypub/profile/:handle', requireRole(GhostRole.Owner), profileGetAction);
 app.get('/.ghost/activitypub/profile/:handle/followers', requireRole(GhostRole.Owner), profileGetFollowersAction);
 app.get('/.ghost/activitypub/profile/:handle/following', requireRole(GhostRole.Owner), profileGetFollowingAction);
+app.get('/.ghost/activitypub/thread/:activity_id', getActivityThreadAction);
 
 /** Federation wire up */
 
