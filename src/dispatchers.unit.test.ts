@@ -4,6 +4,7 @@ import {
     actorDispatcher,
     followingDispatcher,
     likedDispatcher,
+    nodeInfoDispatcher,
     outboxDispatcher,
 } from './dispatchers';
 import { Activity, Actor, Like, Person, RequestContext } from '@fedify/fedify';
@@ -348,6 +349,28 @@ describe('dispatchers', function () {
             expect(result.items[0] instanceof Activity).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
             expect(result.items[0].id.toString()).toEqual('https://example.com/create/123');
+        });
+    });
+
+    describe('nodeInfoDispatcher', function () {
+        it('returns the node info', async function () {
+            const result = await nodeInfoDispatcher({} as RequestContext<any>);
+
+            expect(result).toEqual({
+                software: {
+                  name: 'ghost',
+                  version: { major: 0, minor: 0, patch: 0 },
+                  homepage: new URL("https://ghost.org/"),
+                  repository: new URL("https://github.com/TryGhost/Ghost"),
+                },
+                protocols: ['activitypub'],
+                openRegistrations: false,
+                usage: {
+                  users: { total: 4, activeHalfyear: 4, activeMonth: 4 },
+                  localPosts: 0,
+                  localComments: 0,
+                },
+            });
         });
     });
 });

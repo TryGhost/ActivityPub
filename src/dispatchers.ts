@@ -16,6 +16,7 @@ import {
     Recipient,
     Like,
     Undo,
+    Protocol,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 import { addToList } from './kv-helpers';
@@ -674,4 +675,24 @@ export async function undoDispatcher(
         return null;
     }
     return Undo.fromJsonLd(exists);
+}
+
+export async function nodeInfoDispatcher(
+    ctx: RequestContext<ContextData>,
+) {
+    return {
+        software: {
+          name: 'ghost',
+          version: { major: 0, minor: 0, patch: 0 },
+          homepage: new URL("https://ghost.org/"),
+          repository: new URL("https://github.com/TryGhost/Ghost"),
+        },
+        protocols: ['activitypub'] as Protocol[],
+        openRegistrations: false,
+        usage: {
+          users: { total: 4, activeHalfyear: 4, activeMonth: 4 },
+          localPosts: 0,
+          localComments: 0,
+        },
+    }
 }
