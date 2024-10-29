@@ -4,12 +4,12 @@ import ky, { ResponsePromise } from 'ky';
 
 vi.mock('ky');
 
-import { getSiteSettings } from './ghost';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY
 } from '../constants';
+import { getSiteSettings } from './ghost';
 
 describe('getSiteSettings', function () {
     const host = 'example.com';

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { KnexKvStore } from './knex.kvstore';
 import { client } from './db';
+import { KnexKvStore } from './knex.kvstore';
 
 afterAll(async function () {
     await client.destroy();
