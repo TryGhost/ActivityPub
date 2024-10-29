@@ -1,15 +1,14 @@
 import assert from 'assert';
+import { createHmac } from 'crypto';
+import fs from 'node:fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { AfterAll, Before, BeforeAll, Given, Then, When } from '@cucumber/cucumber';
+import jwt from 'jsonwebtoken';
 import Knex from 'knex';
-import { BeforeAll, AfterAll, Before, After, Given, When, Then } from '@cucumber/cucumber';
+import jose from 'node-jose';
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
-import jose from 'node-jose';
-import jwt from 'jsonwebtoken';
-import fs from 'node:fs';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import http from 'http';
-import { createHmac } from 'crypto';
 
 // Get the current file's URL and convert it to a path
 const __filename = fileURLToPath(import.meta.url);

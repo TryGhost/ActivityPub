@@ -1,5 +1,5 @@
-import Knex from 'knex';
 import crypto from 'crypto';
+import Knex from 'knex';
 
 export const client = Knex({
     client: 'mysql2',

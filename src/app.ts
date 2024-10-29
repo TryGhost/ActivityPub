@@ -1,68 +1,27 @@
-import jose from 'node-jose';
-import jwt from 'jsonwebtoken';
 import { createHmac } from 'crypto';
-import { serve } from '@hono/node-server';
 import {
-    Article,
     Accept,
-    Object as ActivityPubObject,
-    createFederation,
-    Follow,
-    KvKey,
-    KvStore,
-    MemoryKvStore,
-    Create,
-    Note,
-    Application,
-    Group,
-    Organization,
-    Service,
-    Update,
     Announce,
+    Article,
     Context,
+    Create,
+    Follow,
+    KvStore,
     Like,
+    Note,
     Undo,
+    Update,
+    createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
+import { serve } from '@hono/node-server';
+import { LogRecord, Logger, configure, getAnsiColorFormatter, getConsoleSink, getLogger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
 import { Hono, Context as HonoContext, Next } from 'hono';
 import { cors } from 'hono/cors';
+import jwt from 'jsonwebtoken';
+import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
-import { configure, getAnsiColorFormatter, getConsoleSink, getLogger, Logger, LogRecord } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
-import { KnexKvStore } from './knex.kvstore';
-import { client, getSite } from './db';
-import { scopeKvStore } from './kv-helpers';
-import {
-    actorDispatcher,
-    keypairDispatcher,
-    handleFollow,
-    inboxErrorHandler,
-    handleAccept,
-    handleCreate,
-    followersDispatcher,
-    followersCounter,
-    followersFirstCursor,
-    followingDispatcher,
-    followingCounter,
-    followingFirstCursor,
-    outboxDispatcher,
-    outboxCounter,
-    outboxFirstCursor,
-    likedDispatcher,
-    likedCounter,
-    likedFirstCursor,
-    likeDispatcher,
-    undoDispatcher,
-    articleDispatcher,
-    nodeInfoDispatcher,
-    noteDispatcher,
-    followDispatcher,
-    acceptDispatcher,
-    createDispatcher,
-    updateDispatcher,
-    handleAnnounce,
-    handleLike,
-} from './dispatchers';
 import {
     getActivitiesAction,
     profileGetAction,
@@ -70,15 +29,49 @@ import {
     profileGetFollowingAction,
     searchAction,
 } from './api';
+import { client, getSite } from './db';
+import {
+    acceptDispatcher,
+    actorDispatcher,
+    articleDispatcher,
+    createDispatcher,
+    followDispatcher,
+    followersCounter,
+    followersDispatcher,
+    followersFirstCursor,
+    followingCounter,
+    followingDispatcher,
+    followingFirstCursor,
+    handleAccept,
+    handleAnnounce,
+    handleCreate,
+    handleFollow,
+    handleLike,
+    inboxErrorHandler,
+    keypairDispatcher,
+    likeDispatcher,
+    likedCounter,
+    likedDispatcher,
+    likedFirstCursor,
+    nodeInfoDispatcher,
+    noteDispatcher,
+    outboxCounter,
+    outboxDispatcher,
+    outboxFirstCursor,
+    undoDispatcher,
+    updateDispatcher,
+} from './dispatchers';
+import { KnexKvStore } from './knex.kvstore';
+import { scopeKvStore } from './kv-helpers';
 
 import {
-    likeAction,
-    unlikeAction,
     followAction,
     inboxHandler,
+    likeAction,
     postPublishedWebhook,
-    siteChangedWebhook,
     replyAction,
+    siteChangedWebhook,
+    unlikeAction,
 } from './handlers';
 
 

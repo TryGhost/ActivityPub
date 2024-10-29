@@ -1,25 +1,24 @@
 import {
-    Article,
-    Accept,
-    Follow,
-    Person,
-    RequestContext,
-    Create,
-    Note,
-    Activity,
-    Update,
-    Context,
-    Announce,
-    isActor,
-    Actor,
     Object as APObject,
-    Recipient,
+    Accept,
+    Activity,
+    Actor,
+    Announce,
+    Article,
+    Context,
+    Create,
+    Follow,
     Like,
+    Note,
+    Person,
+    Recipient,
+    RequestContext,
     Undo,
+    Update,
+    isActor,
     Protocol,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
-import { addToList } from './kv-helpers';
 import { ContextData, fedify } from './app';
 import {
     ACTOR_DEFAULT_HANDLE,
@@ -29,6 +28,7 @@ import {
     OUTBOX_PAGE_SIZE,
 } from './constants';
 import { getUserData, getUserKeypair } from './helpers/user';
+import { addToList } from './kv-helpers';
 import { lookupActor } from './lookup-helpers';
 
 export async function actorDispatcher(

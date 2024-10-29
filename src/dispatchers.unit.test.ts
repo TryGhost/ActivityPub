@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Activity, Actor, Like, Person, RequestContext } from '@fedify/fedify';
 import {
     actorDispatcher,
     followingDispatcher,
@@ -7,7 +8,6 @@ import {
     nodeInfoDispatcher,
     outboxDispatcher,
 } from './dispatchers';
-import { Activity, Actor, Like, Person, RequestContext } from '@fedify/fedify';
 
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import * as lookupHelpers from './lookup-helpers';
