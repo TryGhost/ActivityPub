@@ -1,12 +1,12 @@
-import { type Context } from 'hono';
-import { Actor, CollectionPage, isActor } from '@fedify/fedify';
+import { type Actor, type CollectionPage, isActor } from '@fedify/fedify';
+import type { Context } from 'hono';
 
-import { isFollowing, isHandle } from '../../../helpers/activitypub/actor';
-import { isUri } from '../../../helpers/uri';
 import {
     type HonoContextVariables,
     fedify,
 } from '../../../app';
+import { isFollowing, isHandle } from '../../../helpers/activitypub/actor';
+import { isUri } from '../../../helpers/uri';
 
 interface ProfileFollowing {
     following: {

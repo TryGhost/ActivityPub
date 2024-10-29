@@ -1,4 +1,4 @@
-import { Actor, KvStore, PropertyValue, } from "@fedify/fedify";
+import { type Actor, type KvStore, PropertyValue, } from "@fedify/fedify";
 
 interface Attachment {
     name: string;

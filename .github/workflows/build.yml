@@ -4,6 +4,19 @@ on:
   push:
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Biome
+        uses: biomejs/setup-biome@v2
+
+      - name: Run Biome
+        run: biome ci .
+
   build-test-deploy:
     name: Build, Test and Deploy
     environment: build

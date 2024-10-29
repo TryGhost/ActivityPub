@@ -1,11 +1,11 @@
+import crypto from 'node:crypto';
 import Knex from 'knex';
-import crypto from 'crypto';
 
 export const client = Knex({
     client: 'mysql2',
     connection: {
         host: process.env.MYSQL_HOST,
-        port: parseInt(process.env.MYSQL_PORT!),
+        port: Number.parseInt(process.env.MYSQL_PORT!),
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE,
@@ -100,8 +100,8 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
 
 // Helper function to retrieve a map of replies for an array of activity URIs
 // from the database
-export async function getRepliesMap (uris: string[]): Promise<Map<string, any>> {
-    const map = new Map<string, any>();
+export async function getRepliesMap (uris: string[]): Promise<Map<string, string[]>> {
+    const map = new Map<string, string[]>();
 
     const results = await client
         .select('value')

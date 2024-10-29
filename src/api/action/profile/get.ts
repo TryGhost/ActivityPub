@@ -1,6 +1,10 @@
-import { type Context } from 'hono';
 import { isActor } from '@fedify/fedify';
+import type { Context } from 'hono';
 
+import {
+    type HonoContextVariables,
+    fedify,
+} from '../../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -11,10 +15,6 @@ import {
     isHandle,
 } from '../../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../../helpers/sanitize';
-import {
-    type HonoContextVariables,
-    fedify,
-} from '../../../app';
 
 interface Profile {
     actor: any;

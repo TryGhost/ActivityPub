@@ -1,10 +1,10 @@
 import {
-    isActor,
-    Actor,
-    Context,
     Object as APObject,
+    type Actor,
+    type Context,
+    isActor,
 } from '@fedify/fedify';
-import { ContextData } from './app';
+import type { ContextData } from './app';
 
 export async function lookupActor(ctx: Context<ContextData>, url: string): Promise<Actor | null> {
     try {
