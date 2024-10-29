@@ -1,8 +1,8 @@
-import assert from 'assert';
-import { createHmac } from 'crypto';
+import assert from 'node:assert';
+import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { AfterAll, Before, BeforeAll, Given, Then, When } from '@cucumber/cucumber';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
@@ -238,12 +238,12 @@ let /* @type WireMock */ externalActivityPub;
 let /* @type WireMock */ ghostActivityPub;
 let webhookSecret;
 
-BeforeAll(async function () {
+BeforeAll(async () => {
     client = Knex({
         client: 'mysql2',
         connection: {
             host: process.env.MYSQL_HOST,
-            port: parseInt(process.env.MYSQL_PORT),
+            port: Number.parseInt(process.env.MYSQL_PORT),
             user: process.env.MYSQL_USER,
             password: process.env.MYSQL_PASSWORD,
             database: process.env.MYSQL_DATABASE
@@ -261,7 +261,7 @@ BeforeAll(async function () {
     });
 });
 
-BeforeAll(async function () {
+BeforeAll(async () => {
     externalActivityPub = new WireMock('http://fake-external-activitypub');
     ghostActivityPub = new WireMock('http://fake-ghost-activitypub');
 
@@ -286,11 +286,11 @@ BeforeAll(async function () {
     });
 });
 
-AfterAll(async function () {
+AfterAll(async () => {
     await client.destroy();
 });
 
-Before(async function () {
+Before(async () => {
     await externalActivityPub.clearAllRequests();
 });
 
@@ -323,7 +323,7 @@ async function fetchActivityPub(url, options) {
         expiresIn: '5m'
     });
 
-    options.headers['Authorization'] = `Bearer ${token}`;
+    options.headers.Authorization = `Bearer ${token}`;
     return fetch(url, options);
 }
 
@@ -612,9 +612,7 @@ Then('a {string} activity is in the Outbox', async function (string) {
 Then('the found {string} has property {string}', function (name, prop) {
     const found = this.found[name];
 
-    const property = prop.split('.').reduce(function (thing, key) {
-        return thing?.[key];
-    }, found);
+    const property = prop.split('.').reduce((thing, key) => thing?.[key], found);
 
     assert.ok(property);
 });

@@ -70,8 +70,8 @@ function getCtx() {
     return ctx as any;
 }
 
-describe('getUserData', function () {
-    it('persists a user to the database if it does not exist', async function () {
+describe('getUserData', () => {
+    it('persists a user to the database if it does not exist', async () => {
         const ctx = getCtx();
 
         ctx.data.db.get.mockResolvedValue(undefined);
@@ -113,7 +113,7 @@ describe('getUserData', function () {
         expect(result).toEqual(expectedUserData);
     });
 
-    it('retrieves a user from the database', async function () {
+    it('retrieves a user from the database', async () => {
         const ctx = getCtx();
 
         const persistedUser = {
@@ -153,7 +153,7 @@ describe('getUserData', function () {
         expect(result).toEqual(expectedUserData);
     });
 
-    it('handles retrieving a user with an invalid icon', async function () {
+    it('handles retrieving a user with an invalid icon', async () => {
         const ctx = getCtx();
 
         const persistedUser = {
@@ -192,7 +192,7 @@ describe('getUserData', function () {
         expect(result).toEqual(expectedUserData);
     });
 
-    it('handles retrieving a user with an invalid URL', async function () {
+    it('handles retrieving a user with an invalid URL', async () => {
         const ctx = getCtx();
 
         const persistedUser = {
