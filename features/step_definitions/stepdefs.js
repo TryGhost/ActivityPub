@@ -375,31 +375,44 @@ Then('the object {string} should not be liked', async function (name) {
 });
 
 Then('the object {string} should be in the liked collection', async function (name) {
-    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/liked/index', {
+    const initialResponse = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/liked/index', {
         headers: {
             Accept: 'application/ld+json'
         }
     });
-    const inbox = await response.json();
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const liked = await firstPageReponse.json();
+
     const object = this.objects[name];
 
     // TODO Change this when liked collection is fixed to contain objects not Likes
-    const found = inbox.orderedItems.find(item => item.object.id === object.id);
+    const found = liked.orderedItems.find(item => item.object.id === object.id);
 
     assert(found);
 });
 
 Then('the object {string} should not be in the liked collection', async function (name) {
-    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/liked/index', {
+    const initialResponse = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/liked/index', {
         headers: {
             Accept: 'application/ld+json'
         }
     });
-    const inbox = await response.json();
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const liked = await firstPageReponse.json();
     const object = this.objects[name];
 
     // TODO Change this when liked collection is fixed to contain objects not Likes
-    const found = inbox.orderedItems.find(item => item.object.id === object.id);
+    const found = liked.orderedItems.find(item => item.object.id === object.id);
 
     assert(!found);
 });
@@ -575,12 +588,18 @@ Then('a {string} activity is in the Outbox', async function (string) {
     if (!match) {
         throw new Error(`Could not match ${string} to an activity`);
     }
-    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/outbox/index', {
+    const initialResponse = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/outbox/index', {
         headers: {
             Accept: 'application/ld+json'
         }
     });
-    const outbox = await response.json();
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const outbox = await firstPageReponse.json();
     const found = outbox.orderedItems.find((item) => {
         return item.type === activity && item.object?.type === object
     });
@@ -616,28 +635,41 @@ Then('{string} is in our Inbox', async function (activityName) {
 });
 
 Then('{string} is in our Followers', async function (actorName) {
-    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/followers/index', {
+    const initialResponse = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/followers/index', {
         headers: {
             Accept: 'application/ld+json'
         }
     });
-    const followers = await response.json();
+    const initialResponseJson = await initialResponse.json();
+    const firstPageResponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const followers = await firstPageResponse.json();
+
     const actor = this.actors[actorName];
 
-    const found = followers.orderedItems.find(item => item === actor.id);
+    const found = followers.orderedItems.find(item => item.id === actor.id);
 
     assert(found);
 });
 
 Then('{string} is in our Followers once only', async function (actorName) {
-    const response = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/followers/index', {
+    const initialResponse = await fetchActivityPub('http://fake-ghost-activitypub/.ghost/activitypub/followers/index', {
         headers: {
             Accept: 'application/ld+json'
         }
     });
-    const followers = await response.json();
+    const initialResponseJson = await initialResponse.json();
+    const firstPageResponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json'
+        }
+    });
+    const followers = await firstPageResponse.json();
     const actor = this.actors[actorName];
-    const found = followers.orderedItems.filter(item => item === actor.id);
+    const found = followers.orderedItems.filter(item => item.id === actor.id);
 
     assert.equal(found.length, 1);
 });
