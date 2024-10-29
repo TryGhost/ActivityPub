@@ -61,7 +61,7 @@ export async function handleFollow(
     if (!follow.id) {
         return;
     }
-    const parsed = (ctx as any).parseUri(follow.objectId);
+    const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== 'actor') {
         // TODO Log
         return;

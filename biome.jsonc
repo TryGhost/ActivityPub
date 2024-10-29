@@ -29,8 +29,8 @@
             },
             "suspicious": {
                 "noConsoleLog": "off",
-                "noExplicitAny": "off",
-                "noImplicitAnyLet": "off"
+                "noExplicitAny": "warn",
+                "noImplicitAnyLet": "warn"
             }
         }
     },
