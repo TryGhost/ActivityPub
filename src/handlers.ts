@@ -316,7 +316,15 @@ export async function followAction(
     const actorToFollow = await apCtx.lookupObject(handle);
     if (!isActor(actorToFollow)) {
         // Not Found?
-        return;
+        return new Response(null, {
+            status: 404
+        });
+    }
+    const following = await ctx.get('db').get<string[]>(['following']) || [];
+    if (following.includes(actorToFollow.id!.href)) {
+        return new Response(null, {
+            status: 409
+        });
     }
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
     const followId = apCtx.getObjectUri(Follow, {

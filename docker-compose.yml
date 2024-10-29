@@ -81,6 +81,7 @@ services:
       - NODE_ENV=testing
       - SKIP_SIGNATURE_VERIFICATION=true
       - ALLOW_PRIVATE_ADDRESS=true
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
     command: node --import tsx --watch src/app.ts
     depends_on:
       mysql-testing:
@@ -127,13 +128,13 @@ services:
 
   fake-ghost-activitypub:
     image: wiremock/wiremock:3.9.2-1
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443"]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
     image: wiremock/wiremock:3.9.2-1
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80"]
+    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443"]
 
   fake-mastodon:
     image: wiremock/wiremock:3.9.2-1

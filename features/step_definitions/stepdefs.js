@@ -117,16 +117,7 @@ async function createActor(name = 'Test', remote = true) {
         }
     }
 
-    // Register endpoints with wiremock - for now just inbox
-
-    externalActivityPub.register({
-        method: 'POST',
-        endpoint: `/inbox/${name}`
-    }, {
-        status: 202
-    });
-
-    return {
+    const user = {
         '@context': [
             'https://www.w3.org/ns/activitystreams',
             'https://w3id.org/security/data-integrity/v1',
@@ -134,6 +125,8 @@ async function createActor(name = 'Test', remote = true) {
         'id': `http://fake-external-activitypub/user/${name}`,
         'url': `http://fake-external-activitypub/user/${name}`,
         'type': 'Person',
+
+        'handle': `@${name}@fake-external-activitypub`,
 
         'preferredUsername': name,
         'name': name,
@@ -153,6 +146,54 @@ async function createActor(name = 'Test', remote = true) {
             'https://w3id.org/security#publicKeyPem': '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n'
         }
     };
+
+    externalActivityPub.register({
+        method: 'POST',
+        endpoint: `/inbox/${name}`
+    }, {
+        status: 202
+    });
+
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/user/${name}`
+    }, {
+        status: 200,
+        body: user,
+        headers: {
+            'Content-Type': 'application/activity+json'
+        }
+    });
+
+    externalActivityPub.register({
+        method: 'GET',
+        endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub`)}`
+    }, {
+        status: 200,
+        body: {
+            'subject': `acct:${name}@fake-external-activitypub`,
+            'aliases': [
+                `http://fake-external-activitypub/user/${name}`
+            ],
+            'links': [
+                {
+                    'rel': 'self',
+                    'href': `http://fake-external-activitypub/user/${name}`,
+                    'type': 'application/activity+json'
+                },
+                {
+                    'rel': 'http://webfinger.net/rel/profile-page',
+                    'href': 'https://activitypub.ghost.org/'
+                },
+                {
+                    'rel': 'http://webfinger.net/rel/avatar',
+                    'href': 'https://activitypub.ghost.org/content/images/2024/09/ghost-orb-white-squircle-07.png'
+                }
+            ]
+        }
+    });
+
+    return user;
 }
 
 function generateObject(type) {
@@ -191,6 +232,19 @@ function generateObject(type) {
             'attributedTo': 'http://fake-external-activitypub/user'
         };
     }
+
+    if (type === 'Accept') {
+        const uuid = uuidv4();
+        return {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            'type': 'Accept',
+            'id': `http://fake-external-activitypub/accept/${uuid}`,
+            'url': `http://fake-external-activitypub/accept/${uuid}`,
+        };
+    }
 }
 
 async function createObject(type) {
@@ -220,7 +274,7 @@ async function createObject(type) {
  * @returns {{activity: string, object: string} | {activity: null, object: null}}
  */
 function parseActivityString(string) {
-    const [match, activity, object] = string.match(/(\w+)\((\w+)\)/) || [null]
+    const [match, activity, object] = string.match(/(\w+)\((.+)\)/) || [null]
     if (!match) {
         return {
             activity: null,
@@ -331,6 +385,20 @@ Given('an Actor {string}', async function (name) {
     this.actors[name] = await createActor(name);
 });
 
+Given('we follow {string}', async function (name) {
+    const handle = this.actors[name].handle
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/actions/follow/${handle}`,
+        {
+            method: 'POST'
+        }
+    );
+    if (this.response.ok) {
+        const follow = await this.response.clone().json();
+        this.objects[`Follow(${name})`] = follow;
+    }
+});
+
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(`http://fake-ghost-activitypub/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`, {
@@ -419,10 +487,10 @@ Then('the object {string} should not be in the liked collection', async function
 Given('a {string} Activity {string} by {string}', async function (activityDef, name, actorName) {
     const {activity: activityType, object: objectName} = parseActivityString(activityDef);
     if (!activityType) {
-        throw new error(`could not match ${activityDef} to an activity`);
+        throw new Error(`could not match ${activityDef} to an activity`);
     }
 
-    const object = this.actors[objectName] ?? this.activities[objectName] ?? await createObject(objectName);
+    const object = this.actors[objectName] ?? this.activities[objectName] ?? this.objects[objectName] ?? await createObject(objectName);
     const actor  = this.actors[actorName];
 
     const activity = await createActivity(activityType, object, actor);
@@ -434,10 +502,10 @@ Given('a {string} Activity {string} by {string}', async function (activityDef, n
 Then('an {string} Activity {string} is created by {string}', async function (activityDef, name, actorName) {
     const {activity: activityType, object: objectName} = parseActivityString(activityDef);
     if (!activityType) {
-        throw new error(`could not match ${activityDef} to an activity`);
+        throw new Error(`could not match ${activityDef} to an activity`);
     }
 
-    const object = this.actors[objectName] ?? this.activities[objectName] ?? await createObject(objectName);
+    const object = this.actors[objectName] ?? this.activities[objectName] ?? this.objects[objectName] ?? await createObject(objectName);
     const actor  = this.actors[actorName];
 
     const activity = await createActivity(activityType, object, actor);
@@ -674,7 +742,7 @@ Then('{string} is in our Followers once only', async function (actorName) {
 Then('a {string} activity is sent to {string}', async function (activityString, actorName) {
     const {activity: activityType, object: objectNameOrType} = parseActivityString(activityString);
     if (!activityType) {
-        throw new error(`could not match ${activityDef} to an activity`);
+        throw new Error(`could not match ${activityString} to an activity`);
     }
     if (!this.actors[actorName]) {
         throw new Error(`Could not find Actor ${actorName}`);
