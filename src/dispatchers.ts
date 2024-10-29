@@ -347,6 +347,9 @@ export async function followersDispatcher(
             await Promise.all(
                 slicedResults.map((result) => lookupActor(ctx, result))
             )
+        // This could potentially mean that the slicedResults is not the size
+        // of FOLLOWERS_PAGE_SIZE if for some reason the lookupActor returns
+        // null for some of the results. TODO: Find a better way to handle this
         ).filter((item): item is Actor => isActor(item))
 
         const toStore = await Promise.all(
