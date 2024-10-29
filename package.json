@@ -12,7 +12,7 @@
     "db": "docker compose exec mysql mysql -uroot -proot activitypub",
     "fix": "docker compose rm activitypub nginx -sf && docker compose build activitypub nginx",
     "logs": "docker compose logs activitypub -f",
-    "test:cucumber": "docker compose run --rm migrate-testing up && docker compose up cucumber-tests",
+    "test:cucumber": "docker compose run --rm migrate-testing up && docker compose up cucumber-tests --exit-code-from cucumber-tests",
     "test": "docker compose run --rm migrate-testing up && docker compose run --rm activitypub-testing yarn test:all && yarn test:cucumber",
     "test:types": "tsc --noEmit",
     "test:unit": "vitest run --dir src --coverage '.unit.test.ts'",
@@ -20,13 +20,13 @@
     "test:integration": "vitest run --dir src --coverage '.integration.test.ts'",
     "test:code": "vitest run --dir src --coverage '.test.ts'",
     "test:all": "yarn test:types && yarn test:code",
-    "lint:code": "eslint *.js lib/ --ext .js --cache",
-    "lint": "yarn lint:code"
+    "lint": "biome check"
   },
   "files": [
     "src"
   ],
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "10.8.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "20.12.12",
@@ -41,9 +41,10 @@
     "wiremock-captain": "3.3.1"
   },
   "dependencies": {
-    "@fedify/fedify": "0.15.0-dev.375",
+    "@fedify/fedify": "1.1.1",
     "@hono/node-server": "1.11.1",
     "@js-temporal/polyfill": "0.4.4",
+    "@logtape/logtape": "0.6.3",
     "@sentry/node": "8.13.0",
     "hono": "4.4.6",
     "jsonwebtoken": "^9.0.2",

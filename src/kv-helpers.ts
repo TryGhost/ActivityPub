@@ -1,4 +1,4 @@
-import { KvKey, KvStore } from '@fedify/fedify';
+import type { KvKey, KvStore } from '@fedify/fedify';
 
 export function scopeKvKey(scope: KvKey, key: KvKey): KvKey {
     const [first, ...rest] = scope;

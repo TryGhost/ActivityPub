@@ -1,12 +1,12 @@
-import { type Context } from 'hono';
-import { Actor, CollectionPage, isActor } from '@fedify/fedify';
+import { type Actor, type CollectionPage, isActor } from '@fedify/fedify';
+import type { Context } from 'hono';
 
-import { isFollowing, isHandle } from '../../../helpers/activitypub/actor';
-import { isUri } from '../../../helpers/uri';
 import {
     type HonoContextVariables,
     fedify,
 } from '../../../app';
+import { isFollowing, isHandle } from '../../../helpers/activitypub/actor';
+import { isUri } from '../../../helpers/uri';
 
 interface ProfileFollowing {
     following: {
@@ -20,9 +20,11 @@ export async function profileGetFollowingAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
+    const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db,
         globaldb: ctx.get('globaldb'),
+        logger,
     });
 
     // Parse "handle" from request parameters
@@ -31,12 +33,7 @@ export async function profileGetFollowingAction(
 
     // If the provided handle is invalid, return early
     if (!isHandle(handle)) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 400,
-        });
+        return new Response(null, { status: 400 });
     }
 
     // Parse "next" from query parameters
@@ -46,24 +43,14 @@ export async function profileGetFollowingAction(
 
     // If the next parameter is not a valid URI, return early
     if (next !== '' && !isUri(next)) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 400,
-        });
+        return new Response(null, { status: 400 });
     }
 
     // Lookup actor by handle
     const actor = await apCtx.lookupObject(handle);
 
     if (!isActor(actor)) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 404,
-        });
+        return new Response(null, { status: 404 });
     }
 
     // Retrieve actor's following
@@ -88,12 +75,7 @@ export async function profileGetFollowingAction(
             const { host: nextHost } = new URL(next);
 
             if (actorHost !== nextHost) {
-                return new Response(JSON.stringify({}), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    status: 400,
-                });
+                return new Response(null, { status: 400 });
             }
 
             page = await apCtx.lookupObject(next) as CollectionPage | null;
@@ -111,28 +93,23 @@ export async function profileGetFollowingAction(
             }
         }
     } catch (err) {
-        console.error(err);
+        logger.error('Error getting following', { error: err });
     }
 
     if (!page) {
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 404,
-        });
+        return new Response(null, { status: 404 });
     }
 
     // Return result
     try {
         for await (const item of page.getItems()) {
             result.following.push({
-                actor: await item.toJsonLd(),
+                actor: await item.toJsonLd({ format: 'compact' }),
                 isFollowing: await isFollowing(item as Actor, { db }),
             });
         }
     } catch (err) {
-        console.error(err);
+        logger.error('Error getting following', { error: err });
     }
 
     result.next = page.nextId

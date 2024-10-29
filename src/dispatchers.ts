@@ -1,27 +1,33 @@
 import {
-    Article,
-    Accept,
-    Follow,
-    Person,
-    RequestContext,
-    Create,
-    Note,
-    Activity,
-    Update,
-    Context,
-    Announce,
-    isActor,
-    Actor,
     Object as APObject,
-    Recipient,
+    Accept,
+    Activity,
+    type Actor,
+    type Announce,
+    Article,
+    type Context,
+    Create,
+    Follow,
     Like,
+    Note,
+    Person,
+    type Recipient,
+    type RequestContext,
     Undo,
+    Update,
+    isActor,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
-import { addToList } from './kv-helpers';
-import { ContextData } from './app';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
+import { type ContextData, fedify } from './app';
+import {
+    ACTOR_DEFAULT_HANDLE,
+    FOLLOWERS_PAGE_SIZE,
+    FOLLOWING_PAGE_SIZE,
+    LIKED_PAGE_SIZE,
+    OUTBOX_PAGE_SIZE,
+} from './constants';
 import { getUserData, getUserKeypair } from './helpers/user';
+import { addToList } from './kv-helpers';
 import { lookupActor } from './lookup-helpers';
 
 export async function actorDispatcher(
@@ -51,11 +57,11 @@ export async function handleFollow(
     ctx: Context<ContextData>,
     follow: Follow,
 ) {
-    console.log('Handling Follow');
+    ctx.data.logger.info('Handling Follow');
     if (!follow.id) {
         return;
     }
-    const parsed = (ctx as any).parseUri(follow.objectId);
+    const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== 'actor') {
         // TODO Log
         return;
@@ -66,7 +72,7 @@ export async function handleFollow(
     }
 
     const currentFollowers = await ctx.data.db.get<string[]>(['followers']) ?? [];
-    let shouldRecordFollower = currentFollowers.includes(sender.id.href) === false;
+    const shouldRecordFollower = currentFollowers.includes(sender.id.href) === false;
 
     // Add follow activity to inbox
     const followJson = await follow.toJsonLd();
@@ -103,23 +109,23 @@ export async function handleAccept(
     ctx: Context<ContextData>,
     accept: Accept,
 ) {
-    console.log('Handling Accept');
+    ctx.data.logger.info('Handling Accept');
     const parsed = (ctx as any).parseUri(accept.objectId);
-    console.log(parsed);
+    ctx.data.logger.info('Parsed accept object', { parsed });
+    // biome-ignore lint/correctness/noConstantCondition: present when adding linting
     if (false && parsed?.type !== 'follow') {
-        console.log('Not accepting a follow - exit');
+        ctx.data.logger.info('Not accepting a follow - exit');
         return;
     }
     if (!accept.id) {
-        console.log('Accept missing id - exit');
+        ctx.data.logger.info('Accept missing id - exit');
         return;
     }
 
     const sender = await accept.getActor(ctx);
-    console.log('Accept sender');
-    console.log(sender);
+    ctx.data.logger.info('Accept sender', { sender });
     if (sender === null || sender.id === null) {
-        console.log('Sender missing, exit early');
+        ctx.data.logger.info('Sender missing, exit early');
         return;
     }
 
@@ -135,21 +141,22 @@ export async function handleCreate(
     ctx: Context<ContextData>,
     create: Create,
 ) {
-    console.log('Handling Create');
+    ctx.data.logger.info('Handling Create');
     const parsed = (ctx as any).parseUri(create.objectId);
-    console.log(parsed);
+    ctx.data.logger.info('Parsed create object', { parsed });
+    // biome-ignore lint/correctness/noConstantCondition: present when adding linting
     if (false && parsed?.type !== 'article') {
-        console.log('Not accepting a follow - exit');
+        ctx.data.logger.info('Not accepting a follow - exit');
         return;
     }
     if (!create.id) {
-        console.log('Accept missing id - exit');
+        ctx.data.logger.info('Create missing id - exit');
         return;
     }
 
     const sender = await create.getActor(ctx);
     if (sender === null || sender.id === null) {
-        console.log('Sender missing, exit early');
+        ctx.data.logger.info('Create sender missing, exit early');
         return;
     }
 
@@ -163,16 +170,16 @@ export async function handleAnnounce(
     ctx: Context<ContextData>,
     announce: Announce,
 ) {
-    console.log('Handling Announce');
+    ctx.data.logger.info('Handling Announce');
 
     // Validate announce
     if (!announce.id) {
-        console.log('Invalid Announce - no id');
+        ctx.data.logger.info('Invalid Announce - no id');
         return;
     }
 
     if (!announce.objectId) {
-        console.log('Invalid Announce - no object id');
+        ctx.data.logger.info('Invalid Announce - no object id');
         return;
     }
 
@@ -180,27 +187,27 @@ export async function handleAnnounce(
     const sender = await announce.getActor(ctx);
 
     if (sender === null || sender.id === null) {
-        console.log('Sender missing, exit early');
+        ctx.data.logger.info('Announce sender missing, exit early');
         return;
     }
 
     // Lookup announced object - If not found in globalDb, perform network lookup
     let object = null;
-    let existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
+    const existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
 
     if (!existing) {
-        console.log('Object not found in globalDb, performing network lookup');
+        ctx.data.logger.info('Announce object not found in globalDb, performing network lookup');
         object = await ctx.lookupObject(announce.objectId);
     }
 
     // Validate object
     if (!existing && !object) {
-        console.log('Invalid Announce - could not find object');
+        ctx.data.logger.info('Invalid Announce - could not find object');
         return;
     }
 
     if (object && !object.id) {
-        console.log('Invalid Announce - could not find object id');
+        ctx.data.logger.info('Invalid Announce - could not find object id');
         return;
     }
 
@@ -210,7 +217,7 @@ export async function handleAnnounce(
 
     // Persist object if not already persisted
     if (!existing && object && object.id) {
-        console.log('Storing object in globalDb');
+        ctx.data.logger.info('Storing object in globalDb');
 
         const objectJson = await object.toJsonLd();
 
@@ -232,16 +239,16 @@ export async function handleLike(
     ctx: Context<ContextData>,
     like: Like,
 ) {
-    console.log('Handling Like');
+    ctx.data.logger.info('Handling Like');
 
     // Validate like
     if (!like.id) {
-        console.log('Invalid Like - no id');
+        ctx.data.logger.info('Invalid Like - no id');
         return;
     }
 
     if (!like.objectId) {
-        console.log('Invalid Like - no object id');
+        ctx.data.logger.info('Invalid Like - no object id');
         return;
     }
 
@@ -249,28 +256,28 @@ export async function handleLike(
     const sender = await like.getActor(ctx);
 
     if (sender === null || sender.id === null) {
-        console.log('Sender missing, exit early');
+        ctx.data.logger.info('Like sender missing, exit early');
         return;
     }
 
     // Lookup liked object - If not found in globalDb, perform network lookup
     let object = null;
-    let existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
+    const existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
 
     if (!existing) {
-        console.log('Object not found in globalDb, performing network lookup');
+        ctx.data.logger.info('Like object not found in globalDb, performing network lookup');
 
         object = await like.getObject();
     }
 
     // Validate object
     if (!existing && !object) {
-        console.log('Invalid Like - could not find object');
+        ctx.data.logger.info('Invalid Like - could not find object');
         return;
     }
 
     if (object && !object.id) {
-        console.log('Invalid Like - could not find object id');
+        ctx.data.logger.info('Invalid Like - could not find object id');
         return;
     }
 
@@ -280,7 +287,7 @@ export async function handleLike(
 
     // Persist object if not already persisted
     if (!existing && object && object.id) {
-        console.log('Storing object in globalDb');
+        ctx.data.logger.info('Storing object in globalDb');
 
         const objectJson = await object.toJsonLd();
 
@@ -295,34 +302,33 @@ export async function inboxErrorHandler(
     ctx: Context<ContextData>,
     error: unknown,
 ) {
-    console.error('Error handling incoming activity');
-    console.error(error);
-}
-
-function convertJsonLdToRecipient(result: any): Recipient {
-    return {
-        ...result,
-        id: new URL(result.id),
-        inboxId: new URL(result.inbox),
-        endpoints: result.endpoints?.sharedInbox != null
-            ? { sharedInbox: new URL(result.endpoints.sharedInbox) }
-            : null,
-    };
+    ctx.data.logger.error('Error handling incoming activity', { error });
 }
 
 export async function followersDispatcher(
     ctx: Context<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
-    console.log('Followers Dispatcher');
+    ctx.data.logger.info('Followers Dispatcher');
+
+    const offset = Number.parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
     let items: Recipient[] = [];
+
     const fullResults = (await ctx.data.db.get<any[]>(['followers', 'expanded']) ?? [])
         .filter((v, i, results) => {
             // Remove duplicates
             return results.findIndex((r) => r.id === v.id) === i;
         });
+
     if (fullResults) {
-        items = fullResults.map(convertJsonLdToRecipient)
+        nextCursor = fullResults.length > offset + FOLLOWERS_PAGE_SIZE
+            ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+            : null;
+
+        items = fullResults.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
     } else {
         const results = [
             // Remove duplicates
@@ -330,14 +336,38 @@ export async function followersDispatcher(
                 (await ctx.data.db.get<string[]>(['followers'])) || []
             )
         ];
-        const actors = items = (await Promise.all(results.map((result) => lookupActor(ctx, result))))
-            .filter((item): item is Actor => isActor(item))
-        const toStore = await Promise.all(actors.map(actor => actor.toJsonLd() as any));
+
+        nextCursor = results.length > offset + FOLLOWERS_PAGE_SIZE
+            ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+            : null;
+
+        const slicedResults = results.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
+
+        const actors = (
+            await Promise.all(
+                slicedResults.map((result) => lookupActor(ctx, result))
+            )
+        // This could potentially mean that the slicedResults is not the size
+        // of FOLLOWERS_PAGE_SIZE if for some reason the lookupActor returns
+        // null for some of the results. TODO: Find a better way to handle this
+        ).filter((item): item is Actor => isActor(item))
+
+        const toStore = await Promise.all(
+            actors.map(actor => actor.toJsonLd() as any)
+        );
+
         await ctx.data.db.set(['followers', 'expanded'], toStore);
-        items = toStore.map(convertJsonLdToRecipient);
+
+        items = toStore;
     }
+
     return {
-        items,
+        items: (
+            await Promise.all(
+                items.map(item => APObject.fromJsonLd(item))
+            )
+        ).filter((item): item is Actor => isActor(item)),
+        nextCursor,
     };
 }
 
@@ -354,26 +384,47 @@ export async function followersCounter(
     return results.length;
 }
 
+export function followersFirstCursor() {
+    return '0';
+}
+
 export async function followingDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
-    console.log('Following Dispatcher');
-    const results = (await ctx.data.db.get<string[]>(['following'])) || [];
-    console.log(results);
-    let items: Person[] = [];
-    for (const result of results) {
+    ctx.data.logger.info('Following Dispatcher');
+
+    const offset = Number.parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
+    const results = (await ctx.data.db.get<string[]>(['following'])) || []
+
+    nextCursor = results.length > offset + FOLLOWING_PAGE_SIZE
+        ? (offset + FOLLOWING_PAGE_SIZE).toString()
+        : null;
+
+    const slicedResults = results.slice(offset, offset + FOLLOWING_PAGE_SIZE);
+
+    ctx.data.logger.info('Following results', { results: slicedResults });
+
+    const items: Actor[] = [];
+
+    for (const result of slicedResults) {
         try {
             const thing = await lookupActor(ctx, result);
-            if (thing instanceof Person) {
+
+            if (isActor(thing)) {
                 items.push(thing);
             }
         } catch (err) {
-            console.log(err);
+            ctx.data.logger.error('Error looking up following actor', { error: err });
         }
     }
+
     return {
         items,
+        nextCursor,
     };
 }
 
@@ -385,6 +436,10 @@ export async function followingCounter(
     return results.length;
 }
 
+export function followingFirstCursor() {
+    return '0';
+}
+
 function filterOutboxActivityUris (activityUris: string[]) {
     // Only return Create and Announce activityUris
     return activityUris.filter(uri => /(create|announce)/.test(uri));
@@ -393,23 +448,41 @@ function filterOutboxActivityUris (activityUris: string[]) {
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
-    console.log('Outbox Dispatcher');
-    const results = filterOutboxActivityUris((await ctx.data.db.get<string[]>(['outbox'])) || []);
-    console.log(results);
+    ctx.data.logger.info('Outbox Dispatcher');
 
-    let items: Activity[] = [];
-    for (const result of results) {
+    const offset = Number.parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
+    const results = filterOutboxActivityUris(
+        (await ctx.data.db.get<string[]>(['outbox'])) || []
+    ).reverse();
+
+    nextCursor = results.length > offset + OUTBOX_PAGE_SIZE
+        ? (offset + OUTBOX_PAGE_SIZE).toString()
+        : null;
+
+    const slicedResults = results.slice(offset, offset + OUTBOX_PAGE_SIZE);
+
+    ctx.data.logger.info('Outbox results', { results: slicedResults });
+
+    const items: Activity[] = [];
+
+    for (const result of slicedResults) {
         try {
             const thing = await ctx.data.globaldb.get([result]);
             const activity = await Activity.fromJsonLd(thing);
+
             items.push(activity);
         } catch (err) {
-            console.log(err);
+            ctx.data.logger.error('Error getting outbox activity', { error: err });
         }
     }
+
     return {
-        items: items.reverse(),
+        items,
+        nextCursor,
     };
 }
 
@@ -422,26 +495,75 @@ export async function outboxCounter(
     return filterOutboxActivityUris(results).length;
 }
 
+export function outboxFirstCursor() {
+    return '0';
+}
+
 export async function likedDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
+    cursor: string | null,
 ) {
-    console.log('Liked Dispatcher');
-    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
-    console.log(results);
+    ctx.data.logger.info('Liked Dispatcher');
 
-    let items: Like[] = [];
-    for (const result of results) {
+    const db = ctx.data.db;
+    const globaldb = ctx.data.globaldb;
+    const logger = ctx.data.logger;
+    const apCtx = fedify.createContext(ctx.request as Request, {
+        db,
+        globaldb,
+        logger,
+    });
+
+    const offset = Number.parseInt(cursor ?? '0');
+    let nextCursor: string | null = null;
+
+    const results = (
+        (await db.get<string[]>(['liked'])) || []
+    ).reverse();
+
+    nextCursor = results.length > offset + LIKED_PAGE_SIZE
+        ? (offset + LIKED_PAGE_SIZE).toString()
+        : null;
+
+    const slicedResults = results.slice(offset, offset + LIKED_PAGE_SIZE);
+
+    ctx.data.logger.info('Liked results', { results: slicedResults });
+
+    const items: Like[] = [];
+
+    for (const result of slicedResults) {
         try {
-            const thing = await ctx.data.globaldb.get([result]);
+            const thing = await globaldb.get<{
+                object: string | {
+                    [key: string]: any;
+                };
+                [key: string]: any;
+            }>([result]);
+
+            if (thing && typeof thing.object !== 'string' && typeof thing.object.attributedTo === 'string') {
+                const actor = await lookupActor(apCtx, thing.object.attributedTo);
+
+                if (actor) {
+                    const json = await actor.toJsonLd();
+
+                    if (typeof json === 'object' && json !== null) {
+                        thing.object.attributedTo = json;
+                    }
+                }
+            }
+
             const activity = await Like.fromJsonLd(thing);
+
             items.push(activity);
         } catch (err) {
-            console.log(err);
+            ctx.data.logger.error('Error getting liked activity', { error: err });
         }
     }
+
     return {
-        items: items.reverse(),
+        items,
+        nextCursor,
     };
 }
 
@@ -452,6 +574,10 @@ export async function likedCounter(
     const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
 
     return results.length;
+}
+
+export function likedFirstCursor() {
+    return '0';
 }
 
 export async function articleDispatcher(

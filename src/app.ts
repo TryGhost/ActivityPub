@@ -1,93 +1,115 @@
-import jose from 'node-jose';
-import jwt from 'jsonwebtoken';
-import { createHmac } from 'crypto';
-import { serve } from '@hono/node-server';
+import { createHmac } from 'node:crypto';
 import {
-    Article,
     Accept,
-    Object as ActivityPubObject,
-    createFederation,
-    Follow,
-    KvKey,
-    KvStore,
-    MemoryKvStore,
-    Create,
-    Note,
-    Application,
-    Group,
-    Organization,
-    Service,
-    Update,
     Announce,
-    Context,
+    Article,
+    type Context,
+    Create,
+    Follow,
+    type KvStore,
     Like,
+    Note,
     Undo,
+    Update,
+    createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
-import { Hono, Context as HonoContext, Next } from 'hono';
-import { cors } from 'hono/cors';
-import { behindProxy } from 'x-forwarded-fetch';
-import { configure, getConsoleSink } from '@logtape/logtape';
+import { serve } from '@hono/node-server';
+import { type LogRecord, type Logger, configure, getAnsiColorFormatter, getConsoleSink, getLogger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
-import { KnexKvStore } from './knex.kvstore';
-import { client, getSite } from './db';
-import { scopeKvStore } from './kv-helpers';
-import {
-    actorDispatcher,
-    keypairDispatcher,
-    handleFollow,
-    inboxErrorHandler,
-    handleAccept,
-    handleCreate,
-    followersDispatcher,
-    followersCounter,
-    followingDispatcher,
-    followingCounter,
-    outboxDispatcher,
-    outboxCounter,
-    likedDispatcher,
-    likedCounter,
-    likeDispatcher,
-    undoDispatcher,
-    articleDispatcher,
-    noteDispatcher,
-    followDispatcher,
-    acceptDispatcher,
-    createDispatcher,
-    updateDispatcher,
-    handleAnnounce,
-    handleLike
-} from './dispatchers';
+import { Hono, type Context as HonoContext, type Next } from 'hono';
+import { cors } from 'hono/cors';
+import jwt from 'jsonwebtoken';
+import jose from 'node-jose';
+import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
-    searchAction,
+    profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
+    searchAction,
 } from './api';
+import { client, getSite } from './db';
+import {
+    acceptDispatcher,
+    actorDispatcher,
+    articleDispatcher,
+    createDispatcher,
+    followDispatcher,
+    followersCounter,
+    followersDispatcher,
+    followersFirstCursor,
+    followingCounter,
+    followingDispatcher,
+    followingFirstCursor,
+    handleAccept,
+    handleAnnounce,
+    handleCreate,
+    handleFollow,
+    handleLike,
+    inboxErrorHandler,
+    keypairDispatcher,
+    likeDispatcher,
+    likedCounter,
+    likedDispatcher,
+    likedFirstCursor,
+    noteDispatcher,
+    outboxCounter,
+    outboxDispatcher,
+    outboxFirstCursor,
+    undoDispatcher,
+    updateDispatcher,
+} from './dispatchers';
+import { KnexKvStore } from './knex.kvstore';
+import { scopeKvStore } from './kv-helpers';
 
 import {
-    likeAction,
-    unlikeAction,
     followAction,
     inboxHandler,
+    likeAction,
     postPublishedWebhook,
-    siteChangedWebhook,
     replyAction,
+    siteChangedWebhook,
+    unlikeAction,
 } from './handlers';
+
+
+import { getTraceAndSpanId } from './helpers/context-header';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
+const logging = getLogger(['activitypub']);
+
 await configure({
-    sinks: { console: getConsoleSink() },
+    sinks: {
+        console: getConsoleSink({
+            formatter: process.env.K_SERVICE ? (record: LogRecord) => {
+                const loggingObject = {
+                    timestamp: new Date(record.timestamp).toISOString(),
+                    severity: record.level.toUpperCase(),
+                    message: record.message.join(''),
+                    ...record.properties
+                };
+
+                return JSON.stringify(loggingObject);
+            } : getAnsiColorFormatter({
+                timestamp: 'time'
+            })
+        })
+    },
     filters: {},
-    loggers: [{ category: 'fedify', sinks: ['console'], level: 'warning' }],
+    loggers: [
+        { category: 'activitypub', sinks: ['console'], level: 'info' },
+        { category: 'fedify', sinks: ['console'], level: 'warning' }
+    ],
 });
 
 export type ContextData = {
     db: KvStore;
     globaldb: KvStore;
+    logger: Logger;
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
@@ -107,7 +129,7 @@ export const db = await KnexKvStore.create(client, 'key_value');
  * for example in the context of the Inbox Queue - so we need to wrap handlers with this.
  */
 function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Promise<R>) {
-    return async function (ctx: Context<any>, b: B) {
+    return async (ctx: Context<ContextData>, b: B) => {
         const host = ctx.host;
         if (!ctx.data) {
             (ctx as any).data = {};
@@ -117,6 +139,9 @@ function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Pro
         }
         if (!ctx.data.db) {
             ctx.data.db = scopeKvStore(db, ['sites', host]);
+        }
+        if (!ctx.data.logger) {
+            ctx.data.logger = logging;
         }
         return fn(ctx, b);
     }
@@ -149,67 +174,71 @@ fedify
         '/.ghost/activitypub/followers/{handle}',
         followersDispatcher,
     )
-    .setCounter(followersCounter);
+    .setCounter(followersCounter)
+    .setFirstCursor(followersFirstCursor);
 
 fedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{handle}',
         followingDispatcher,
     )
-    .setCounter(followingCounter);
+    .setCounter(followingCounter)
+    .setFirstCursor(followingFirstCursor);
 
 fedify
     .setOutboxDispatcher(
         '/.ghost/activitypub/outbox/{handle}',
         outboxDispatcher,
     )
-    .setCounter(outboxCounter);
+    .setCounter(outboxCounter)
+    .setFirstCursor(outboxFirstCursor);
 
 fedify
     .setLikedDispatcher(
         '/.ghost/activitypub/liked/{handle}',
         likedDispatcher,
     )
-    .setCounter(likedCounter);
+    .setCounter(likedCounter)
+    .setFirstCursor(likedFirstCursor);
 
 fedify.setObjectDispatcher(
     Article,
-    `/.ghost/activitypub/article/{id}`,
+    '/.ghost/activitypub/article/{id}',
     articleDispatcher,
 );
 fedify.setObjectDispatcher(
     Note,
-    `/.ghost/activitypub/note/{id}`,
+    '/.ghost/activitypub/note/{id}',
     noteDispatcher,
 );
 fedify.setObjectDispatcher(
     Follow,
-    `/.ghost/activitypub/follow/{id}`,
+    '/.ghost/activitypub/follow/{id}',
     followDispatcher,
 );
 fedify.setObjectDispatcher(
     Accept,
-    `/.ghost/activitypub/accept/{id}`,
+    '/.ghost/activitypub/accept/{id}',
     acceptDispatcher,
 );
 fedify.setObjectDispatcher(
     Create,
-    `/.ghost/activitypub/create/{id}`,
+    '/.ghost/activitypub/create/{id}',
     createDispatcher,
 );
 fedify.setObjectDispatcher(
     Update,
-    `/.ghost/activitypub/update/{id}`,
+    '/.ghost/activitypub/update/{id}',
     updateDispatcher,
 );
 fedify.setObjectDispatcher(
     Like,
-    `/.ghost/activitypub/like/{id}`,
+    '/.ghost/activitypub/like/{id}',
     likeDispatcher,
 );
 fedify.setObjectDispatcher(
     Undo,
-    `/.ghost/activitypub/undo/{id}`,
+    '/.ghost/activitypub/undo/{id}',
     undoDispatcher,
 );
 
@@ -227,6 +256,7 @@ enum GhostRole {
 export type HonoContextVariables = {
     db: KvStore;
     globaldb: KvStore;
+    logger: Logger;
     role: GhostRole;
     site: {
         host: string;
@@ -237,6 +267,19 @@ export type HonoContextVariables = {
 const app = new Hono<{ Variables: HonoContextVariables }>();
 
 /** Middleware */
+
+app.use(async (ctx, next) => {
+    const extra: Record<string, string> = {};
+
+    const { traceId, spanId } = getTraceAndSpanId(ctx.req.header('x-cloud-trace-context'));
+    if (traceId && spanId) {
+        extra['logging.googleapis.com/trace'] = `projects/ghost-activitypub/traces/${traceId}`;
+        extra['logging.googleapis.com/spanId'] = spanId;
+    }
+
+    ctx.set('logger', logging.with(extra));
+    return next();
+});
 
 app.use(
     cors({
@@ -273,14 +316,25 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
     const id = crypto.randomUUID();
     const start = Date.now();
-    console.log(
-        `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url}          ${id}b`,
-    );
+
+    ctx.get('logger').info('{method} {host} {url} {id}', {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
+    });
+
     await next();
     const end = Date.now();
-    console.log(
-        `${ctx.req.method.toUpperCase()} ${ctx.req.header('host')} ${ctx.req.url} ${ctx.res.status} ${end - start}ms ${id}`,
-    );
+
+    ctx.get('logger').info('{method} {host} {url} {status} {duration}ms {id}', {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
+        status: ctx.res.status,
+        duration: end - start,
+    });
 });
 
 app.use(async (ctx, next) => {
@@ -377,7 +431,7 @@ function validateWebhook() {
 
         const now = Date.now();
 
-        if (Math.abs(now - parseInt(timestamp)) > 5 * 60 * 1000) {
+        if (Math.abs(now - Number.parseInt(timestamp)) > 5 * 60 * 1000) {
             return new Response(null, {
                 status: 401
             });
@@ -418,6 +472,7 @@ app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), l
 app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);
 app.post('/.ghost/activitypub/actions/reply/:id', requireRole(GhostRole.Owner), replyAction);
 app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), searchAction);
+app.get('/.ghost/activitypub/profile/:handle', requireRole(GhostRole.Owner), profileGetAction);
 app.get('/.ghost/activitypub/profile/:handle/followers', requireRole(GhostRole.Owner), profileGetFollowersAction);
 app.get('/.ghost/activitypub/profile/:handle/following', requireRole(GhostRole.Owner), profileGetFollowingAction);
 
@@ -430,13 +485,23 @@ app.use(
             return {
                 db: ctx.get('db'),
                 globaldb: ctx.get('globaldb'),
+                logger: ctx.get('logger'),
             };
         },
     ),
 );
 
+// Send errors to Sentry
+app.onError((err, c) => {
+    Sentry.captureException(err);
+    c.get('logger').error('{error}', { error: err });
+
+    // TODO: should we return a JSON error?
+    return c.text('Internal Server Error', 500);
+});
+
 function forceAcceptHeader(fn: (req: Request) => unknown) {
-    return function (request: Request) {
+    return (request: Request) => {
         request.headers.set('accept', 'application/activity+json');
         return fn(request);
     };
@@ -445,10 +510,10 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
 serve(
     {
         fetch: forceAcceptHeader(behindProxy(app.fetch)),
-        port: parseInt(process.env.PORT || '8080'),
+        port: Number.parseInt(process.env.PORT || '8080'),
     },
-    function (info) {
-        console.log(`listening on ${info.address}:${info.port}`);
+    (info) => {
+        logging.info(`listening on ${info.address}:${info.port}`);
     },
 );
 

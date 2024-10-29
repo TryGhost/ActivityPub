@@ -1,11 +1,11 @@
+import crypto from 'node:crypto';
 import Knex from 'knex';
-import crypto from 'crypto';
 
 export const client = Knex({
     client: 'mysql2',
     connection: {
         host: process.env.MYSQL_HOST,
-        port: parseInt(process.env.MYSQL_PORT!),
+        port: Number.parseInt(process.env.MYSQL_PORT!),
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE,
@@ -20,6 +20,7 @@ export const client = Knex({
 
 type ActivityMeta = {
     id: number; // Used for sorting
+    actor_id: string; // Used for filtering by follower / non-follower status
     activity_type: string; // Used for filtering by activity type
     object_type: string; // Used for filtering by object type
     reply_object_url: string; // Used for filtering by isReplyToOwn criteria
@@ -29,6 +30,7 @@ type ActivityMeta = {
 type getActivityMetaQueryResult = {
     key: string,
     left_id: number,
+    actor_id: string,
     activity_type: string,
     object_type: string,
     reply_object_url: string,
@@ -64,6 +66,7 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
             'left.key',
             'left.id as left_id',
             // mongo schmongo...
+            client.raw('JSON_EXTRACT(left.value, "$.actor.id") as actor_id'),
             client.raw('JSON_EXTRACT(left.value, "$.type") as activity_type'),
             client.raw('JSON_EXTRACT(left.value, "$.object.type") as object_type'),
             client.raw('JSON_EXTRACT(right.value, "$.object.url") as reply_object_url'),
@@ -84,6 +87,7 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
     for (const result of results as getActivityMetaQueryResult[]) {
         map.set(result.key.substring(2, result.key.length - 2), {
             id: result.left_id,
+            actor_id: result.actor_id,
             activity_type: result.activity_type,
             object_type: result.object_type,
             reply_object_url: result.reply_object_url,
@@ -96,8 +100,8 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
 
 // Helper function to retrieve a map of replies for an array of activity URIs
 // from the database
-export async function getRepliesMap (uris: string[]): Promise<Map<string, any>> {
-    const map = new Map<string, any>();
+export async function getRepliesMap (uris: string[]): Promise<Map<string, string[]>> {
+    const map = new Map<string, string[]>();
 
     const results = await client
         .select('value')

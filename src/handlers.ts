@@ -1,30 +1,29 @@
+import { createHash } from 'node:crypto';
 import {
+    type Actor,
     Article,
-    Context as APContext,
+    Create,
     Follow,
     Like,
-    Undo,
-    RequestContext,
-    isActor,
-    Create,
-    Note,
-    Update,
-    Actor,
-    PUBLIC_COLLECTION,
     Mention,
+    Note,
+    PUBLIC_COLLECTION,
+    type RequestContext,
+    Undo,
+    Update,
+    isActor,
 } from '@fedify/fedify';
-import { Context, Next } from 'hono';
-import { v4 as uuidv4 } from 'uuid';
-import { addToList, removeFromList } from './kv-helpers';
-import { ContextData, HonoContextVariables, fedify } from './app';
-import { getSiteSettings } from './helpers/ghost';
-import type { PersonData } from './helpers/user';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Temporal } from '@js-temporal/polyfill';
-import { createHash } from 'node:crypto';
-import { lookupActor } from 'lookup-helpers';
+import type { Context, Next } from 'hono';
+import { v4 as uuidv4 } from 'uuid';
+import { type ContextData, type HonoContextVariables, fedify } from './app';
+import { ACTOR_DEFAULT_HANDLE } from './constants';
+import { buildActivity } from './helpers/activitypub/activity';
+import { getSiteSettings } from './helpers/ghost';
 import { toURL } from './helpers/uri';
-import { buildActivity } from 'helpers/activitypub/activity';
+import type { PersonData } from './helpers/user';
+import { addToList, removeFromList } from './kv-helpers';
+import { lookupActor } from './lookup-helpers';
 
 import z from 'zod';
 
@@ -75,6 +74,7 @@ export async function unlikeAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToLike = await apCtx.lookupObject(id);
@@ -144,6 +144,7 @@ export async function likeAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToLike = await apCtx.lookupObject(id);
@@ -215,6 +216,7 @@ export async function replyAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
 
     const objectToReplyTo = await apCtx.lookupObject(id);
@@ -309,6 +311,7 @@ export async function followAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
     const actorToFollow = await apCtx.lookupObject(handle);
     if (!isActor(actorToFollow)) {
@@ -353,6 +356,7 @@ export async function postPublishedWebhook(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
     });
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
     const { article, preview } = await postToArticle(
@@ -384,7 +388,7 @@ export async function postPublishedWebhook(
                 preferSharedInbox: true
             });
         } catch (err) {
-            console.log(err);
+            ctx.get('logger').error('Post published webhook failed: {error}', { error: err });
         }
     }
     return new Response(JSON.stringify({}), {
@@ -417,7 +421,7 @@ export async function siteChangedWebhook(
             current.name === settings.site.title &&
             current.summary === settings.site.description
         ) {
-            console.log('No site settings changed, nothing to do');
+            ctx.get('logger').info('No site settings changed, nothing to do');
 
             return new Response(JSON.stringify({}), {
                 headers: {
@@ -427,7 +431,7 @@ export async function siteChangedWebhook(
             });
         }
 
-        console.log('Site settings changed, will notify followers');
+        ctx.get('logger').info('Site settings changed, will notify followers');
 
         // Update the database if the site settings have changed
         const updated =  {
@@ -443,6 +447,7 @@ export async function siteChangedWebhook(
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
             globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
 
         const actor = await apCtx.getActor(handle);
@@ -460,7 +465,7 @@ export async function siteChangedWebhook(
             preferSharedInbox: true
         });
     } catch (err) {
-        console.log(err);
+        ctx.get('logger').error('Site changed webhook failed: {error}', { error: err });
     }
 
     // Return 200 OK
@@ -477,7 +482,8 @@ export async function inboxHandler(
 ) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb});
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
 
     // Fetch the liked items from the database:
     //   - Data is structured as an array of strings
@@ -501,7 +507,7 @@ export async function inboxHandler(
                 items.push(builtInboxItem);
             }
         } catch (err) {
-            console.log(err);
+            ctx.get('logger').error('Inbox handler failed: {error}', { error: err });
         }
     }
 

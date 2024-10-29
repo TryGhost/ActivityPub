@@ -1,6 +1,10 @@
-import { type Context } from 'hono';
 import { isActor } from '@fedify/fedify';
+import type { Context } from 'hono';
 
+import {
+    type HonoContextVariables,
+    fedify,
+} from '../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -12,10 +16,6 @@ import {
 } from '../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../helpers/sanitize';
 import { isUri } from '../../helpers/uri';
-import {
-    type HonoContextVariables,
-    fedify,
-} from '../../app';
 
 interface ProfileSearchResult {
     actor: any;
@@ -34,9 +34,11 @@ export async function searchAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
+    const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db,
         globaldb: ctx.get('globaldb'),
+        logger,
     });
 
     // Parse "query" from query parameters
@@ -50,8 +52,6 @@ export async function searchAction(
 
     // If the query is not a handle or URI, return early
     if (isHandle(query) === false && isUri(query) === false) {
-        console.log(`Invalid query: "${query}"`);
-
         return new Response(JSON.stringify(results), {
             headers: {
                 'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ export async function searchAction(
             results.profiles.push(result);
         }
     } catch (err) {
-        console.log(`Profile search failed: ${query}`, err);
+        logger.error('Profile search failed ({query}): {error}', { query, error: err });
     }
 
     // Return results
