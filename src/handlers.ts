@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
-    Actor,
+    type Actor,
     Article,
     Create,
     Follow,
@@ -8,15 +8,15 @@ import {
     Mention,
     Note,
     PUBLIC_COLLECTION,
-    RequestContext,
+    type RequestContext,
     Undo,
     Update,
     isActor,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
-import { ContextData, HonoContextVariables, fedify } from './app';
+import { type ContextData, type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { buildActivity } from './helpers/activitypub/activity';
 import { getSiteSettings } from './helpers/ghost';

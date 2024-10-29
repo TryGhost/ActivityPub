@@ -1,5 +1,5 @@
-import { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
-import Knex from 'knex';
+import type { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
+import type Knex from 'knex';
 
 export class KnexKvStore implements KvStore {
     private constructor(
@@ -27,16 +27,18 @@ export class KnexKvStore implements KvStore {
     }
 
     async set(key: KvKey, value: unknown, options?: KvStoreSetOptions) {
-        if (typeof value === 'boolean') {
-            value = {
-                '@@BOOLEAN@@': value,
+        let valueToStore = value;
+
+        if (typeof valueToStore === 'boolean') {
+            valueToStore = {
+                '@@BOOLEAN@@': valueToStore,
             };
         }
         const query = {
             key: JSON.stringify(key),
         };
         const values = {
-            value: JSON.stringify(value),
+            value: JSON.stringify(valueToStore),
             expires: null,
         };
         const exists = await this.knex(this.table).where(query).first();

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import ky, { ResponsePromise } from 'ky';
+import ky, { type ResponsePromise } from 'ky';
 
 vi.mock('ky');
 
@@ -11,10 +11,10 @@ import {
 } from '../constants';
 import { getSiteSettings } from './ghost';
 
-describe('getSiteSettings', function () {
+describe('getSiteSettings', () => {
     const host = 'example.com';
 
-    it('should retrieve settings from Ghost', async function () {
+    it('should retrieve settings from Ghost', async () => {
         const settings = {
             site: {
                 description: 'foo',
@@ -34,7 +34,7 @@ describe('getSiteSettings', function () {
         expect(ky.get).toHaveBeenCalledWith(`https://${host}/ghost/api/admin/site/`);
     });
 
-    it('should use defaults for missing settings', async function () {
+    it('should use defaults for missing settings', async () => {
         let result;
 
         // Missing description

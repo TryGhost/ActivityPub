@@ -1,5 +1,5 @@
 import { isActor } from '@fedify/fedify';
-import { type Context } from 'hono';
+import type { Context } from 'hono';
 
 import {
     type HonoContextVariables,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Actor, KvStore, PropertyValue } from '@fedify/fedify';
+import { type Actor, type KvStore, PropertyValue } from '@fedify/fedify';
 
 import {
     getAttachments,
