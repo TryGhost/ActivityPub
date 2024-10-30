@@ -6,7 +6,7 @@ import {
 } from '@fedify/fedify';
 
 import type { ContextData } from '../../app';
-import { getActivityReplyCount } from '../../db';
+import { getActivityChildrenCount } from '../../db';
 import { sanitizeHtml } from '../../helpers/sanitize';
 import { lookupActor } from '../../lookup-helpers';
 
@@ -107,7 +107,7 @@ export async function buildActivity(
 
     // Add the reply count to the object, if it is an object
     if (typeof item.object !== 'string') {
-        item.object.replyCount = await getActivityReplyCount(item.object.id);
+        item.object.replyCount = await getActivityChildrenCount(item);
     }
 
     // Return the built item

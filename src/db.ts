@@ -31,6 +31,10 @@ type getActivityMetaQueryResult = {
     reply_object_name: string
 }
 
+interface ActivityJsonLd {
+    [key: string]: any;
+}
+
 export async function getSite(host: string) {
     const rows = await client.select('*').from('sites').where({host});
 
@@ -97,20 +101,36 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
     return map;
 }
 
-export async function getActivityThreadChildren(id: string) {
+export async function getActivityChildren(activity: ActivityJsonLd) {
+    const objectId = activity.object.id;
+
     const results = await client
         .select('value')
         .from('key_value')
         // If inReplyTo is a string
-        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${id}"`))
+        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`))
         // If inReplyTo is an object
-        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${id}"`));
+        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`));
 
     return results.map((result) => result.value);
 }
 
-export async function getActivityThreadParents(activityObjectId: string) {
-    const parents: any[] = [];
+export async function getActivityChildrenCount(activity: ActivityJsonLd) {
+    const objectId = activity.object.id;
+
+    const result = await client
+        .count('* as count')
+        .from('key_value')
+        // If inReplyTo is a string
+        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`))
+        // If inReplyTo is an object
+        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`));
+
+    return result[0].count;
+}
+
+export async function getActivityParents(activity: ActivityJsonLd) {
+    const parents: ActivityJsonLd[] = [];
 
     const getParent = async (objectId: string) => {
         const result = await client
@@ -123,7 +143,8 @@ export async function getActivityThreadParents(activityObjectId: string) {
 
             parents.unshift(parent.value);
 
-            const inReplyToId = parent.value.object.inReplyTo?.id ?? parent.value.object.inReplyTo; // inReplyTo can be a string or an object
+            // inReplyTo can be a string or an object
+            const inReplyToId = parent.value.object.inReplyTo?.id ?? parent.value.object.inReplyTo;
 
             if (inReplyToId) {
                 await getParent(inReplyToId);
@@ -131,19 +152,10 @@ export async function getActivityThreadParents(activityObjectId: string) {
         }
     };
 
-    await getParent(activityObjectId);
+    await getParent(
+        // inReplyTo can be a string or an object
+        activity.object.inReplyTo?.id ?? activity.object.inReplyTo
+    );
 
     return parents;
-}
-
-export async function getActivityReplyCount(activityObjectId: string) {
-    const result = await client
-        .count('* as count')
-        .from('key_value')
-        // If inReplyTo is a string
-        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${activityObjectId}"`))
-        // If inReplyTo is an object
-        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${activityObjectId}"`));
-
-    return result[0].count;
 }

@@ -4,7 +4,7 @@ import {
     type HonoContextVariables,
     fedify,
 } from '../../app';
-import { getActivityThreadChildren, getActivityThreadParents } from '../../db';
+import { getActivityChildren, getActivityParents } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
 import { isUri } from '../../helpers/uri';
 
@@ -39,13 +39,23 @@ export async function getActivityThreadAction(
 
     const items: ActivityJsonLd[] = [activityJsonLd];
 
+    // If the object is a string, fetch the object from the database. We need to
+    // do this because we need the inReplyTo property of the object to find the
+    // parent(s) and children of the activity
+    if (typeof activityJsonLd.object === 'string') {
+        const object = await globaldb.get<ActivityJsonLd>([activityJsonLd.object]);
+
+        if (object) {
+            activityJsonLd.object = object;
+        }
+    }
+
     // Find children (replies) and append to the thread
-    const children = await getActivityThreadChildren(activityJsonLd.object.id);
+    const children = await getActivityChildren(activityJsonLd);
     items.push(...children);
 
     // Find parent(s) and prepend to the thread
-    const inReplyToId = activityJsonLd.object.inReplyTo?.id ?? activityJsonLd.object.inReplyTo; // inReplyTo can be a string or an object
-    const parents = await getActivityThreadParents(inReplyToId);
+    const parents = await getActivityParents(activityJsonLd);
     items.unshift(...parents);
 
     // Build the activities so that they have all the data expected by the client
