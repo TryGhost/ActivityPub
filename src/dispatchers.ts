@@ -224,8 +224,8 @@ export async function handleAnnounce(
 
         if (typeof objectJson === 'object' && objectJson !== null) {
             if ('attributedTo' in objectJson && typeof objectJson.attributedTo === 'string') {
-                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await lookupObject(ctx, objectJson.attributedTo)
-                objectJson.attributedTo = await (actor as any)?.toJsonLd();
+                const actor = await lookupActor(ctx, objectJson.attributedTo);
+                objectJson.attributedTo = await actor?.toJsonLd();
             }
         }
 
