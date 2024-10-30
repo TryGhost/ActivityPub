@@ -275,7 +275,9 @@ const app = new Hono<{ Variables: HonoContextVariables }>();
 
 /** Middleware */
 
-app.use('*', sentry());
+app.use('*', sentry({
+    dsn: process.env.SENTRY_DSN
+}));
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
