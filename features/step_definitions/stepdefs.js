@@ -466,7 +466,7 @@ Then('the object {string} should be in the liked collection', async function (na
     const object = this.objects[name];
 
     // TODO Change this when liked collection is fixed to contain objects not Likes
-    const found = liked.orderedItems.find(item => item.object.id === object.id);
+    const found = (liked.orderedItems || []).find(item => item.object.id === object.id);
 
     assert(found);
 });
@@ -487,7 +487,7 @@ Then('the object {string} should not be in the liked collection', async function
     const object = this.objects[name];
 
     // TODO Change this when liked collection is fixed to contain objects not Likes
-    const found = liked.orderedItems.find(item => item.object.id === object.id);
+    const found = (liked.orderedItems || []).find(item => item.object.id === object.id);
 
     assert(!found);
 });
@@ -675,7 +675,7 @@ Then('a {string} activity is in the Outbox', async function (string) {
         }
     });
     const outbox = await firstPageReponse.json();
-    const found = outbox.orderedItems.find((item) => {
+    const found = (outbox.orderedItems || []).find((item) => {
         return item.type === activity && item.object?.type === object
     });
     if (!this.found) {
@@ -723,7 +723,7 @@ Then('{string} is in our Followers', async function (actorName) {
 
     const actor = this.actors[actorName];
 
-    const found = followers.orderedItems.find(item => item.id === actor.id);
+    const found = (followers.orderedItems || []).find(item => item.id === actor.id);
 
     assert(found);
 });
@@ -742,7 +742,7 @@ Then('{string} is in our Followers once only', async function (actorName) {
     });
     const followers = await firstPageResponse.json();
     const actor = this.actors[actorName];
-    const found = followers.orderedItems.filter(item => item.id === actor.id);
+    const found = (followers.orderedItems || []).filter(item => item.id === actor.id);
 
     assert.equal(found.length, 1);
 });
