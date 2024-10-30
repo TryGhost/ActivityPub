@@ -249,8 +249,14 @@ function generateObject(type) {
     }
 }
 
-async function createObject(type) {
+async function createObject(type, actor) {
     const object = generateObject(type);
+
+    if (!object) {
+        throw new Error(`Cannot create objects of type ${type}`);
+    }
+
+    object.attributedTo = actor.id
 
     const url = new URL(object.id);
 
@@ -492,8 +498,8 @@ Given('a {string} Activity {string} by {string}', async function (activityDef, n
         throw new Error(`could not match ${activityDef} to an activity`);
     }
 
-    const object = this.actors[objectName] ?? this.activities[objectName] ?? this.objects[objectName] ?? await createObject(objectName);
     const actor  = this.actors[actorName];
+    const object = this.actors[objectName] ?? this.activities[objectName] ?? this.objects[objectName] ?? await createObject(objectName, actor);
 
     const activity = await createActivity(activityType, object, actor);
 
@@ -507,8 +513,8 @@ Then('an {string} Activity {string} is created by {string}', async function (act
         throw new Error(`could not match ${activityDef} to an activity`);
     }
 
-    const object = this.actors[objectName] ?? this.activities[objectName] ?? this.objects[objectName] ?? await createObject(objectName);
     const actor  = this.actors[actorName];
+    const object = this.actors[objectName] ?? this.activities[objectName] ?? this.objects[objectName] ?? await createObject(objectName, actor);
 
     const activity = await createActivity(activityType, object, actor);
 
