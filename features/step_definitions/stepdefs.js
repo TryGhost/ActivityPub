@@ -354,6 +354,7 @@ AfterAll(async () => {
 
 Before(async () => {
     await externalActivityPub.clearAllRequests();
+    await client('key_value').truncate();
 });
 
 Before(async function () {
