@@ -53,6 +53,7 @@ import {
     likedCounter,
     likedDispatcher,
     likedFirstCursor,
+    nodeInfoDispatcher,
     noteDispatcher,
     outboxCounter,
     outboxDispatcher,
@@ -240,6 +241,11 @@ fedify.setObjectDispatcher(
     Undo,
     '/.ghost/activitypub/undo/{id}',
     undoDispatcher,
+);
+
+fedify.setNodeInfoDispatcher(
+    '/.ghost/activitypub/nodeinfo/2.1',
+    nodeInfoDispatcher,
 );
 
 /** Hono */

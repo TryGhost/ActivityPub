@@ -11,6 +11,7 @@ import {
     Like,
     Note,
     Person,
+    type Protocol,
     type Recipient,
     type RequestContext,
     Undo,
@@ -674,4 +675,24 @@ export async function undoDispatcher(
         return null;
     }
     return Undo.fromJsonLd(exists);
+}
+
+export async function nodeInfoDispatcher(
+    ctx: RequestContext<ContextData>,
+) {
+    return {
+        software: {
+          name: 'ghost',
+          version: { major: 0, minor: 0, patch: 0 },
+          homepage: new URL("https://ghost.org/"),
+          repository: new URL("https://github.com/TryGhost/Ghost"),
+        },
+        protocols: ['activitypub'] as Protocol[],
+        openRegistrations: false,
+        usage: {
+          users: {},
+          localPosts: 0,
+          localComments: 0,
+        },
+    }
 }
