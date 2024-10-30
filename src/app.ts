@@ -15,6 +15,7 @@ import {
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
+import { sentry } from '@hono/sentry';
 import { type LogRecord, type Logger, configure, getAnsiColorFormatter, getConsoleSink, getLogger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
@@ -274,6 +275,8 @@ const app = new Hono<{ Variables: HonoContextVariables }>();
 
 /** Middleware */
 
+app.use('*', sentry());
+
 app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
 
@@ -499,7 +502,7 @@ app.use(
 
 // Send errors to Sentry
 app.onError((err, c) => {
-    Sentry.captureException(err);
+    c.get('sentry').captureException(err);
     c.get('logger').error('{error}', { error: err });
 
     // TODO: should we return a JSON error?
