@@ -516,13 +516,6 @@
   resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.11.1.tgz#f4c7bea7f3d52760b1950d6b8aeb900cc59142d3"
   integrity sha512-GW1Iomhmm1o4Z+X57xGby8A35Cu9UZLL7pSMdqDBkD99U5cywff8F+8hLk5aBTzNubnsFAvWQ/fZjNwPsEn9lA==
 
-"@hono/sentry@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@hono/sentry/-/sentry-1.2.0.tgz#1af4dceaeaabb475776d5912ac10f797a4da851a"
-  integrity sha512-9mS8GrkGtR4YxM1CViL4Ft8LFQ9YhCoXeqKnUA1AUmrvA5PhUU/V+xoo8Autw0nVriin3liX5/lPrwWz3muwiw==
-  dependencies:
-    toucan-js "^4.0.0"
-
 "@hugoalh/http-header-link@^1.0.2":
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/@hugoalh/http-header-link/-/http-header-link-1.0.2.tgz#d3d35e960b2c2c024f903b2c8718c6b4d119b85c"
@@ -1040,14 +1033,6 @@
     "@sentry/types" "8.35.0"
     "@sentry/utils" "8.35.0"
 
-"@sentry/core@8.9.2":
-  version "8.9.2"
-  resolved "https://registry.yarnpkg.com/@sentry/core/-/core-8.9.2.tgz#af0f2ec25b88da5467cf327d2ffcd555323c30e6"
-  integrity sha512-ixm8NISFlPlEo3FjSaqmq4nnd13BRHoafwJ5MG+okCz6BKGZ1SexEggP42/QpGvDprUUHnfncG6WUMgcarr1zA==
-  dependencies:
-    "@sentry/types" "8.9.2"
-    "@sentry/utils" "8.9.2"
-
 "@sentry/node@8.35.0":
   version "8.35.0"
   resolved "https://registry.yarnpkg.com/@sentry/node/-/node-8.35.0.tgz#14ab7d77d5bcce649e571fa05b4efacb71811395"
@@ -1103,24 +1088,12 @@
   resolved "https://registry.yarnpkg.com/@sentry/types/-/types-8.35.0.tgz#535c807800f7e378f61416f30177c0ef81b95012"
   integrity sha512-AVEZjb16MlYPifiDDvJ19dPQyDn0jlrtC1PHs6ZKO+Rzyz+2EX2BRdszvanqArldexPoU1p5Bn2w81XZNXThBA==
 
-"@sentry/types@8.9.2":
-  version "8.9.2"
-  resolved "https://registry.yarnpkg.com/@sentry/types/-/types-8.9.2.tgz#d143383fc35552d9f153042cc6d56c5ee8ec2fa6"
-  integrity sha512-+LFOyQGl+zk5SZRGZD2MEURf7i5RHgP/mt3s85Rza+vz8M211WJ0YsjkIGUJFSY842nged5QLx4JysLaBlLymg==
-
 "@sentry/utils@8.35.0":
   version "8.35.0"
   resolved "https://registry.yarnpkg.com/@sentry/utils/-/utils-8.35.0.tgz#1e099fcbc60040091c79f028a83226c145d588ee"
   integrity sha512-MdMb6+uXjqND7qIPWhulubpSeHzia6HtxeJa8jYI09OCvIcmNGPydv/Gx/LZBwosfMHrLdTWcFH7Y7aCxrq7cg==
   dependencies:
     "@sentry/types" "8.35.0"
-
-"@sentry/utils@8.9.2":
-  version "8.9.2"
-  resolved "https://registry.yarnpkg.com/@sentry/utils/-/utils-8.9.2.tgz#58b003d9c1302f61192e7c99ea42bf1cd5cad7f7"
-  integrity sha512-A4srR9mEBFdVXwSEKjQ94msUbVkMr8JeFiEj9ouOFORw/Y/ux/WV2bWVD/ZI9wq0TcTNK8L1wBgU8UMS5lIq3A==
-  dependencies:
-    "@sentry/types" "8.9.2"
 
 "@teppeis/multimaps@3.0.0":
   version "3.0.0"
@@ -3184,15 +3157,6 @@ toposort@^2.0.2:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/toposort/-/toposort-2.0.2.tgz#ae21768175d1559d48bef35420b2f4962f09c330"
   integrity sha512-0a5EOkAUp8D4moMi2W8ZF8jcga7BgZd91O/yabJCFY8az+XSzeGyTKs0Aoo897iV1Nj6guFq8orWDS96z91oGg==
-
-toucan-js@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/toucan-js/-/toucan-js-4.0.0.tgz#736247f0560aff3c1e9bebcc4ef99a4a43d53ecb"
-  integrity sha512-FkF7uBztiyjs2WxVt54akH3pFWDcu61RwHsdH2oB0KGailstKEB/xmgMHiE6mft4YCnZi88uM2RPWZVZrA5r1w==
-  dependencies:
-    "@sentry/core" "8.9.2"
-    "@sentry/types" "8.9.2"
-    "@sentry/utils" "8.9.2"
 
 tslib@^2.0.3, tslib@^2.4.0, tslib@^2.4.1, tslib@^2.6.1, tslib@^2.6.3:
   version "2.6.3"
