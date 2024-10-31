@@ -60,6 +60,14 @@ This has only been tested on MacOS using [Docker for Mac](https://docs.docker.co
 7. **Enable ActivityPub Alpha**
     - Enable the ActivityPub Alpha flag in Settings &rarr; Labs
 
+## Code formatting + linting
+
+We use [Biome](https://biomejs.dev/) for code formatting and linting.
+
+If you use VS Code, you can install the [Biome extension](https://marketplace.visualstudio.com/items?itemName=biomejs.biome) to get inline feedback.
+
+To enable auto-formatting on save, you'll need to set the [default formatter](https://biomejs.dev/reference/vscode/#default-formatter) to `Biome` and enable [`Format on Save`](https://biomejs.dev/reference/vscode/#format-on-save) in your VS Code settings.
+
 ## Running Tests
 
 - Run `yarn test` to execute tests within a Docker Compose stack.
