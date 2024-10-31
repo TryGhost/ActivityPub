@@ -16,7 +16,6 @@ import {
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
-import { sentry } from '@hono/sentry';
 import {
     type LogRecord,
     type Logger,
@@ -88,7 +87,9 @@ import {
 import { getTraceAndSpanId } from './helpers/context-header';
 
 if (process.env.SENTRY_DSN) {
-    Sentry.init({ dsn: process.env.SENTRY_DSN });
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+    });
 }
 
 const logging = getLogger(['activitypub']);
@@ -289,13 +290,6 @@ export type HonoContextVariables = {
 const app = new Hono<{ Variables: HonoContextVariables }>();
 
 /** Middleware */
-
-app.use(
-    '*',
-    sentry({
-        dsn: process.env.SENTRY_DSN,
-    }),
-);
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
@@ -609,7 +603,7 @@ app.use(
 
 // Send errors to Sentry
 app.onError((err, c) => {
-    c.get('sentry').captureException(err);
+    Sentry.captureException(err);
     c.get('logger').error('{error}', { error: err });
 
     // TODO: should we return a JSON error?
