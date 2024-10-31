@@ -17,7 +17,15 @@ import {
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
 import { sentry } from '@hono/sentry';
-import { type LogRecord, type Logger, configure, getAnsiColorFormatter, getConsoleSink, getLogger, withContext } from '@logtape/logtape';
+import {
+    type LogRecord,
+    type Logger,
+    configure,
+    getAnsiColorFormatter,
+    getConsoleSink,
+    getLogger,
+    withContext,
+} from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
@@ -77,7 +85,6 @@ import {
     unlikeAction,
 } from './handlers';
 
-
 import { getTraceAndSpanId } from './helpers/context-header';
 
 if (process.env.SENTRY_DSN) {
@@ -90,24 +97,26 @@ await configure({
     contextLocalStorage: new AsyncLocalStorage(),
     sinks: {
         console: getConsoleSink({
-            formatter: process.env.K_SERVICE ? (record: LogRecord) => {
-                const loggingObject = {
-                    timestamp: new Date(record.timestamp).toISOString(),
-                    severity: record.level.toUpperCase(),
-                    message: record.message.join(''),
-                    ...record.properties
-                };
+            formatter: process.env.K_SERVICE
+                ? (record: LogRecord) => {
+                      const loggingObject = {
+                          timestamp: new Date(record.timestamp).toISOString(),
+                          severity: record.level.toUpperCase(),
+                          message: record.message.join(''),
+                          ...record.properties,
+                      };
 
-                return JSON.stringify(loggingObject);
-            } : getAnsiColorFormatter({
-                timestamp: 'time'
-            })
-        })
+                      return JSON.stringify(loggingObject);
+                  }
+                : getAnsiColorFormatter({
+                      timestamp: 'time',
+                  }),
+        }),
     },
     filters: {},
     loggers: [
         { category: 'activitypub', sinks: ['console'], level: 'info' },
-        { category: 'fedify', sinks: ['console'], level: 'warning' }
+        { category: 'fedify', sinks: ['console'], level: 'warning' },
     ],
 });
 
@@ -121,8 +130,12 @@ const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
-    skipSignatureVerification: process.env.SKIP_SIGNATURE_VERIFICATION === 'true' && process.env.NODE_ENV === 'testing',
-    allowPrivateAddress: process.env.ALLOW_PRIVATE_ADDRESS === 'true' && process.env.NODE_ENV === 'testing'
+    skipSignatureVerification:
+        process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
+        process.env.NODE_ENV === 'testing',
+    allowPrivateAddress:
+        process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+        process.env.NODE_ENV === 'testing',
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
@@ -133,7 +146,9 @@ export const db = await KnexKvStore.create(client, 'key_value');
  * Fedify does not pass the correct context object when running outside of the request context
  * for example in the context of the Inbox Queue - so we need to wrap handlers with this.
  */
-function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Promise<R>) {
+function ensureCorrectContext<B, R>(
+    fn: (ctx: Context<ContextData>, b: B) => Promise<R>,
+) {
     return async (ctx: Context<ContextData>, b: B) => {
         const host = ctx.host;
         if (!ctx.data) {
@@ -149,7 +164,7 @@ function ensureCorrectContext<B, R>(fn: (ctx: Context<ContextData>, b: B) => Pro
             ctx.data.logger = logging;
         }
         return fn(ctx, b);
-    }
+    };
 }
 
 fedify
@@ -199,10 +214,7 @@ fedify
     .setFirstCursor(outboxFirstCursor);
 
 fedify
-    .setLikedDispatcher(
-        '/.ghost/activitypub/liked/{handle}',
-        likedDispatcher,
-    )
+    .setLikedDispatcher('/.ghost/activitypub/liked/{handle}', likedDispatcher)
     .setCounter(likedCounter)
     .setFirstCursor(likedFirstCursor);
 
@@ -255,12 +267,12 @@ fedify.setNodeInfoDispatcher(
 /** Hono */
 
 enum GhostRole {
-  Anonymous = 'Anonymous',
-  Owner = 'Owner',
-  Administrator = 'Administrator',
-  Editor = 'Editor',
-  Author = 'Author',
-  Contributor = 'Contributor'
+    Anonymous = 'Anonymous',
+    Owner = 'Owner',
+    Administrator = 'Administrator',
+    Editor = 'Editor',
+    Author = 'Author',
+    Contributor = 'Contributor',
 }
 
 export type HonoContextVariables = {
@@ -278,16 +290,22 @@ const app = new Hono<{ Variables: HonoContextVariables }>();
 
 /** Middleware */
 
-app.use('*', sentry({
-    dsn: process.env.SENTRY_DSN
-}));
+app.use(
+    '*',
+    sentry({
+        dsn: process.env.SENTRY_DSN,
+    }),
+);
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
 
-    const { traceId, spanId } = getTraceAndSpanId(ctx.req.header('x-cloud-trace-context'));
+    const { traceId, spanId } = getTraceAndSpanId(
+        ctx.req.header('x-cloud-trace-context'),
+    );
     if (traceId && spanId) {
-        extra['logging.googleapis.com/trace'] = `projects/ghost-activitypub/traces/${traceId}`;
+        extra['logging.googleapis.com/trace'] =
+            `projects/ghost-activitypub/traces/${traceId}`;
         extra['logging.googleapis.com/spanId'] = spanId;
     }
 
@@ -396,14 +414,20 @@ app.use(async (ctx, next) => {
 
     let protocol = 'https';
     // We allow insecure requests when not in production for things like testing
-    if (process.env.NODE_ENV !== 'production' && !request.raw.url.startsWith('https')) {
+    if (
+        process.env.NODE_ENV !== 'production' &&
+        !request.raw.url.startsWith('https')
+    ) {
         protocol = 'http';
     }
 
-    const jwksURL = new URL('/ghost/.well-known/jwks.json', `${protocol}://${host}`);
+    const jwksURL = new URL(
+        '/ghost/.well-known/jwks.json',
+        `${protocol}://${host}`,
+    );
 
     const jwksResponse = await fetch(jwksURL, {
-        redirect: 'follow'
+        redirect: 'follow',
     });
 
     const jwks = await jwksResponse.json();
@@ -415,8 +439,26 @@ app.use(async (ctx, next) => {
         if (typeof claims === 'string' || typeof claims.role !== 'string') {
             return;
         }
-        if (['Owner', 'Administrator', 'Editor', 'Author', 'Contributor'].includes(claims.role)) {
-            ctx.set('role', GhostRole[claims.role as 'Owner' | 'Administrator' | 'Editor' | 'Author' | 'Contributor']);
+        if (
+            [
+                'Owner',
+                'Administrator',
+                'Editor',
+                'Author',
+                'Contributor',
+            ].includes(claims.role)
+        ) {
+            ctx.set(
+                'role',
+                GhostRole[
+                    claims.role as
+                        | 'Owner'
+                        | 'Administrator'
+                        | 'Editor'
+                        | 'Author'
+                        | 'Contributor'
+                ],
+            );
         } else {
             ctx.set('role', GhostRole.Anonymous);
         }
@@ -427,22 +469,26 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-
 /** Custom API routes */
 
 app.get('/ping', (ctx) => {
     return new Response('', {
-        status: 200
+        status: 200,
     });
 });
 
 function validateWebhook() {
-    return async function webhookMiddleware(ctx: HonoContext<{Variables: HonoContextVariables}>, next: Next) {
+    return async function webhookMiddleware(
+        ctx: HonoContext<{ Variables: HonoContextVariables }>,
+        next: Next,
+    ) {
         const signature = ctx.req.header('x-ghost-signature') || '';
-        const [matches, remoteHmac, timestamp] = signature.match(/sha256=([0-9a-f]+),\s+t=(\d+)/) || [null];
+        const [matches, remoteHmac, timestamp] = signature.match(
+            /sha256=([0-9a-f]+),\s+t=(\d+)/,
+        ) || [null];
         if (!matches) {
             return new Response(null, {
-                status: 401
+                status: 401,
             });
         }
 
@@ -450,48 +496,98 @@ function validateWebhook() {
 
         if (Math.abs(now - Number.parseInt(timestamp)) > 5 * 60 * 1000) {
             return new Response(null, {
-                status: 401
+                status: 401,
             });
         }
 
         const body = await ctx.req.json();
         const site = ctx.get('site');
-        const localHmac = createHmac('sha256', site.webhook_secret).update(JSON.stringify(body) + timestamp).digest('hex');
+        const localHmac = createHmac('sha256', site.webhook_secret)
+            .update(JSON.stringify(body) + timestamp)
+            .digest('hex');
 
         if (localHmac !== remoteHmac) {
             return new Response(null, {
-                status: 401
+                status: 401,
             });
         }
 
         return next();
-    }
+    };
 }
 
-app.post('/.ghost/activitypub/webhooks/post/published', validateWebhook(), postPublishedWebhook);
-app.post('/.ghost/activitypub/webhooks/site/changed', validateWebhook(), siteChangedWebhook);
+app.post(
+    '/.ghost/activitypub/webhooks/post/published',
+    validateWebhook(),
+    postPublishedWebhook,
+);
+app.post(
+    '/.ghost/activitypub/webhooks/site/changed',
+    validateWebhook(),
+    siteChangedWebhook,
+);
 
 function requireRole(role: GhostRole) {
     return function roleMiddleware(ctx: HonoContext, next: Next) {
         if (ctx.get('role') !== role) {
             return new Response(null, {
-                status: 403
+                status: 403,
             });
         }
         return next();
-    }
+    };
 }
 
-app.get('/.ghost/activitypub/inbox/:handle', requireRole(GhostRole.Owner), inboxHandler);
-app.get('/.ghost/activitypub/activities/:handle', requireRole(GhostRole.Owner), getActivitiesAction);
-app.post('/.ghost/activitypub/actions/follow/:handle', requireRole(GhostRole.Owner), followAction);
-app.post('/.ghost/activitypub/actions/like/:id', requireRole(GhostRole.Owner), likeAction);
-app.post('/.ghost/activitypub/actions/unlike/:id', requireRole(GhostRole.Owner), unlikeAction);
-app.post('/.ghost/activitypub/actions/reply/:id', requireRole(GhostRole.Owner), replyAction);
-app.get('/.ghost/activitypub/actions/search', requireRole(GhostRole.Owner), searchAction);
-app.get('/.ghost/activitypub/profile/:handle', requireRole(GhostRole.Owner), profileGetAction);
-app.get('/.ghost/activitypub/profile/:handle/followers', requireRole(GhostRole.Owner), profileGetFollowersAction);
-app.get('/.ghost/activitypub/profile/:handle/following', requireRole(GhostRole.Owner), profileGetFollowingAction);
+app.get(
+    '/.ghost/activitypub/inbox/:handle',
+    requireRole(GhostRole.Owner),
+    inboxHandler,
+);
+app.get(
+    '/.ghost/activitypub/activities/:handle',
+    requireRole(GhostRole.Owner),
+    getActivitiesAction,
+);
+app.post(
+    '/.ghost/activitypub/actions/follow/:handle',
+    requireRole(GhostRole.Owner),
+    followAction,
+);
+app.post(
+    '/.ghost/activitypub/actions/like/:id',
+    requireRole(GhostRole.Owner),
+    likeAction,
+);
+app.post(
+    '/.ghost/activitypub/actions/unlike/:id',
+    requireRole(GhostRole.Owner),
+    unlikeAction,
+);
+app.post(
+    '/.ghost/activitypub/actions/reply/:id',
+    requireRole(GhostRole.Owner),
+    replyAction,
+);
+app.get(
+    '/.ghost/activitypub/actions/search',
+    requireRole(GhostRole.Owner),
+    searchAction,
+);
+app.get(
+    '/.ghost/activitypub/profile/:handle',
+    requireRole(GhostRole.Owner),
+    profileGetAction,
+);
+app.get(
+    '/.ghost/activitypub/profile/:handle/followers',
+    requireRole(GhostRole.Owner),
+    profileGetFollowersAction,
+);
+app.get(
+    '/.ghost/activitypub/profile/:handle/following',
+    requireRole(GhostRole.Owner),
+    profileGetFollowingAction,
+);
 app.get('/.ghost/activitypub/thread/:activity_id', getActivityThreadAction);
 
 /** Federation wire up */
@@ -499,7 +595,9 @@ app.get('/.ghost/activitypub/thread/:activity_id', getActivityThreadAction);
 app.use(
     federation(
         fedify,
-        (ctx: HonoContext<{ Variables: HonoContextVariables }>): ContextData => {
+        (
+            ctx: HonoContext<{ Variables: HonoContextVariables }>,
+        ): ContextData => {
             return {
                 db: ctx.get('db'),
                 globaldb: ctx.get('globaldb'),

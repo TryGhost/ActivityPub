@@ -18,12 +18,12 @@ describe('getAttachments', () => {
             getAttachments: vi.fn().mockImplementation(async function* () {
                 yield new PropertyValue({ name: 'foo', value: 'bar' });
                 yield new PropertyValue({ name: 'baz', value: 'qux' });
-            })
+            }),
         } as unknown as Actor;
 
         expect(await getAttachments(actor)).toEqual([
             { name: 'foo', value: 'bar' },
-            { name: 'baz', value: 'qux' }
+            { name: 'baz', value: 'qux' },
         ]);
     });
 
@@ -32,7 +32,7 @@ describe('getAttachments', () => {
             getAttachments: vi.fn().mockImplementation(async function* () {
                 yield { name: 'foo', value: 'bar' };
                 yield new PropertyValue({ name: 'baz', value: 'qux' });
-            })
+            }),
         } as unknown as Actor;
 
         expect(await getAttachments(actor)).toEqual([
@@ -44,7 +44,7 @@ describe('getAttachments', () => {
         const actor = {
             getAttachments: vi.fn().mockImplementation(async function* () {
                 yield new PropertyValue({ value: 'bar' });
-            })
+            }),
         } as unknown as Actor;
 
         expect(await getAttachments(actor)).toEqual([
@@ -56,7 +56,7 @@ describe('getAttachments', () => {
         const actor = {
             getAttachments: vi.fn().mockImplementation(async function* () {
                 yield new PropertyValue({ name: 'foo' });
-            })
+            }),
         } as unknown as Actor;
 
         expect(await getAttachments(actor)).toEqual([
@@ -67,19 +67,26 @@ describe('getAttachments', () => {
     it('should sanitize the attachment value if a sanitizeValue function is provided', async () => {
         const actor = {
             getAttachments: vi.fn().mockImplementation(async function* () {
-                yield new PropertyValue({ name: 'foo', value: '<script>alert("XSS")</script>' });
-            })
+                yield new PropertyValue({
+                    name: 'foo',
+                    value: '<script>alert("XSS")</script>',
+                });
+            }),
         } as unknown as Actor;
 
         expect(
             await getAttachments(actor, {
-                sanitizeValue: (value) => value
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-            })
+                sanitizeValue: (value) =>
+                    value
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;'),
+            }),
         ).toEqual([
-            { name: 'foo', value: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;' }
+            {
+                name: 'foo',
+                value: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;',
+            },
         ]);
     });
 });
@@ -87,7 +94,7 @@ describe('getAttachments', () => {
 describe('getFollowerCount', () => {
     it('should return the follower count for the actor', async () => {
         const actor = {
-            getFollowers: vi.fn().mockResolvedValue({ totalItems: 100 })
+            getFollowers: vi.fn().mockResolvedValue({ totalItems: 100 }),
         } as unknown as Actor;
 
         expect(await getFollowerCount(actor)).toBe(100);
@@ -95,7 +102,7 @@ describe('getFollowerCount', () => {
 
     it('should return 0 if the actor followers are not available', async () => {
         const actor = {
-            getFollowers: vi.fn().mockResolvedValue(null)
+            getFollowers: vi.fn().mockResolvedValue(null),
         } as unknown as Actor;
 
         expect(await getFollowerCount(actor)).toBe(0);
@@ -105,7 +112,7 @@ describe('getFollowerCount', () => {
 describe('getFollowingCount', () => {
     it('should return the following count for the actor', async () => {
         const actor = {
-            getFollowing: vi.fn().mockResolvedValue({ totalItems: 100 })
+            getFollowing: vi.fn().mockResolvedValue({ totalItems: 100 }),
         } as unknown as Actor;
 
         expect(await getFollowingCount(actor)).toBe(100);
@@ -113,7 +120,7 @@ describe('getFollowingCount', () => {
 
     it('should return 0 if the actor following is not available', async () => {
         const actor = {
-            getFollowing: vi.fn().mockResolvedValue(null)
+            getFollowing: vi.fn().mockResolvedValue(null),
         } as unknown as Actor;
 
         expect(await getFollowingCount(actor)).toBe(0);
@@ -156,25 +163,31 @@ describe('getHandle', () => {
 describe('getRecentActivities', () => {
     it('should return an array of recent activities for the actor', async () => {
         const activityContent = 'Hello, world!';
-        const activityToJsonLdMock = vi.fn().mockResolvedValue({ content: activityContent });
+        const activityToJsonLdMock = vi
+            .fn()
+            .mockResolvedValue({ content: activityContent });
         const actor = {
             getOutbox: vi.fn().mockResolvedValue({
                 getFirst: vi.fn().mockResolvedValue({
                     getItems: vi.fn().mockImplementation(async function* () {
                         yield { toJsonLd: activityToJsonLdMock };
-                    })
-                })
-            })
+                    }),
+                }),
+            }),
         } as unknown as Actor;
 
-        expect(await getRecentActivities(actor)).toEqual([{ content: activityContent }]);
+        expect(await getRecentActivities(actor)).toEqual([
+            { content: activityContent },
+        ]);
 
-        expect(activityToJsonLdMock).toHaveBeenCalledWith({ format: 'compact' });
+        expect(activityToJsonLdMock).toHaveBeenCalledWith({
+            format: 'compact',
+        });
     });
 
     it('should return an empty array if the actor outbox is not available', async () => {
         const actor = {
-            getOutbox: vi.fn().mockResolvedValue(null)
+            getOutbox: vi.fn().mockResolvedValue(null),
         } as unknown as Actor;
 
         expect(await getRecentActivities(actor)).toEqual([]);
@@ -183,8 +196,8 @@ describe('getRecentActivities', () => {
     it('should return an empty array if the first page of the actor outbox is not available', async () => {
         const actor = {
             getOutbox: vi.fn().mockResolvedValue({
-                getFirst: vi.fn().mockResolvedValue(null)
-            })
+                getFirst: vi.fn().mockResolvedValue(null),
+            }),
         } as unknown as Actor;
 
         expect(await getRecentActivities(actor)).toEqual([]);
@@ -195,31 +208,40 @@ describe('getRecentActivities', () => {
             getOutbox: vi.fn().mockResolvedValue({
                 getFirst: vi.fn().mockResolvedValue({
                     getItems: vi.fn().mockImplementation(async function* () {
-                        yield { toJsonLd: vi.fn().mockResolvedValue({ content: '<script>alert("XSS")</script>' }) };
-                    })
-                })
-            })
+                        yield {
+                            toJsonLd: vi.fn().mockResolvedValue({
+                                content: '<script>alert("XSS")</script>',
+                            }),
+                        };
+                    }),
+                }),
+            }),
         } as unknown as Actor;
 
         expect(
             await getRecentActivities(actor, {
-                sanitizeContent: (content) => content
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-            })
-        ).toEqual([{ content: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;' }]);
+                sanitizeContent: (content) =>
+                    content
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;'),
+            }),
+        ).toEqual([
+            { content: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;' },
+        ]);
     });
 });
 
 describe('isFollowing', () => {
     it('should return a boolean indicating if the current user is following the given actor', async () => {
         const db = {
-            get: vi.fn().mockResolvedValue([
-                'https://example.com/users/foo',
-                'https://example.com/users/bar',
-                'https://example.com/users/baz'
-            ]),
+            get: vi
+                .fn()
+                .mockResolvedValue([
+                    'https://example.com/users/foo',
+                    'https://example.com/users/bar',
+                    'https://example.com/users/baz',
+                ]),
         } as unknown as KvStore;
 
         const followedActor = {
@@ -248,11 +270,13 @@ describe('isFollowing', () => {
 
     it('should return false if the actor id is not available', async () => {
         const db = {
-            get: vi.fn().mockResolvedValue([
-                'https://example.com/users/foo',
-                'https://example.com/users/bar',
-                'https://example.com/users/baz'
-            ]),
+            get: vi
+                .fn()
+                .mockResolvedValue([
+                    'https://example.com/users/foo',
+                    'https://example.com/users/bar',
+                    'https://example.com/users/baz',
+                ]),
         } as unknown as KvStore;
 
         const actor = {

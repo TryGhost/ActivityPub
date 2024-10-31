@@ -5,7 +5,7 @@ import { Image } from '@fedify/fedify';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY
+    ACTOR_DEFAULT_SUMMARY,
 } from '../constants';
 import { getUserData } from './user';
 
@@ -43,9 +43,7 @@ function getCtx() {
 
     ctx.getActorKeyPairs.mockImplementation((handle) => {
         return Promise.resolve(
-            handle === HANDLE
-                ? [{ cryptographicKey: 'abc123' }]
-                : []
+            handle === HANDLE ? [{ cryptographicKey: 'abc123' }] : [],
         );
     });
     ctx.getActorUri.mockImplementation((handle) => {
@@ -91,24 +89,22 @@ describe('getUserData', () => {
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
             url: new URL(`https://${ctx.host}`),
-        }
+        };
 
         expect(ctx.data.db.set).toBeCalledTimes(1);
-        expect(ctx.data.db.set).toBeCalledWith(
-            ['handle', HANDLE],
-            {
-                id: expectedUserData.id.href,
-                name: expectedUserData.name,
-                summary: expectedUserData.summary,
-                preferredUsername: expectedUserData.preferredUsername,
-                icon: ACTOR_DEFAULT_ICON,
-                inbox: expectedUserData.inbox.href,
-                outbox: expectedUserData.outbox.href,
-                liked: expectedUserData.liked.href,
-                following: expectedUserData.following.href,
-                followers: expectedUserData.followers.href,
-                url: expectedUserData.url.href,
-            });
+        expect(ctx.data.db.set).toBeCalledWith(['handle', HANDLE], {
+            id: expectedUserData.id.href,
+            name: expectedUserData.name,
+            summary: expectedUserData.summary,
+            preferredUsername: expectedUserData.preferredUsername,
+            icon: ACTOR_DEFAULT_ICON,
+            inbox: expectedUserData.inbox.href,
+            outbox: expectedUserData.outbox.href,
+            liked: expectedUserData.liked.href,
+            following: expectedUserData.following.href,
+            followers: expectedUserData.followers.href,
+            url: expectedUserData.url.href,
+        });
 
         expect(result).toEqual(expectedUserData);
     });
@@ -128,7 +124,7 @@ describe('getUserData', () => {
             following: FOLLOWING_URI,
             followers: FOLLOWERS_URI,
             url: `https://${ctx.host}`,
-        }
+        };
 
         ctx.data.db.get.mockResolvedValue(persistedUser);
 
@@ -147,7 +143,7 @@ describe('getUserData', () => {
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
             url: new URL(`https://${ctx.host}`),
-        }
+        };
 
         expect(ctx.data.db.set).toBeCalledTimes(0);
         expect(result).toEqual(expectedUserData);
@@ -167,7 +163,7 @@ describe('getUserData', () => {
             following: FOLLOWING_URI,
             followers: FOLLOWERS_URI,
             url: `https://${ctx.host}`,
-        }
+        };
 
         ctx.data.db.get.mockResolvedValue(persistedUser);
 
@@ -186,7 +182,7 @@ describe('getUserData', () => {
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
             url: new URL(`https://${ctx.host}`),
-        }
+        };
 
         expect(ctx.data.db.set).toBeCalledTimes(0);
         expect(result).toEqual(expectedUserData);
@@ -205,8 +201,8 @@ describe('getUserData', () => {
             outbox: OUTBOX_URI,
             liked: LIKED_URI,
             following: FOLLOWING_URI,
-            followers: FOLLOWERS_URI
-        }
+            followers: FOLLOWERS_URI,
+        };
 
         ctx.data.db.get.mockResolvedValue(persistedUser);
 
@@ -225,7 +221,7 @@ describe('getUserData', () => {
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
             url: null,
-        }
+        };
 
         expect(ctx.data.db.set).toBeCalledTimes(0);
         expect(result).toEqual(expectedUserData);

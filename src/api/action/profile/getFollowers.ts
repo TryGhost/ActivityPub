@@ -1,10 +1,7 @@
 import { type Actor, type CollectionPage, isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import {
-    type HonoContextVariables,
-    fedify,
-} from '../../../app';
+import { type HonoContextVariables, fedify } from '../../../app';
 import { isFollowing, isHandle } from '../../../helpers/activitypub/actor';
 import { isUri } from '../../../helpers/uri';
 import { lookupObject } from '../../../lookup-helpers';
@@ -40,7 +37,9 @@ export async function profileGetFollowersAction(
     // Parse "next" from query parameters
     // /profile/:handle/followers?next=<string>
     const queryNext = ctx.req.query('next') || '';
-    const next = queryNext ? Buffer.from(queryNext, 'base64url').toString('utf-8') : '';
+    const next = queryNext
+        ? Buffer.from(queryNext, 'base64url').toString('utf-8')
+        : '';
 
     // If the next parameter is not a valid URI, return early
     if (next !== '' && !isUri(next)) {
@@ -78,7 +77,7 @@ export async function profileGetFollowersAction(
                 return new Response(null, { status: 400 });
             }
 
-            page = await lookupObject(apCtx, next) as CollectionPage | null;
+            page = (await lookupObject(apCtx, next)) as CollectionPage | null;
 
             // Explicitly check that we have a valid page seeming though we
             // can't be type safe due to lookupObject returning a generic object

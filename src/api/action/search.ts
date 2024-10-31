@@ -1,10 +1,7 @@
 import { isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import {
-    type HonoContextVariables,
-    fedify,
-} from '../../app';
+import { type HonoContextVariables, fedify } from '../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -61,7 +58,6 @@ export async function searchAction(
         });
     }
 
-
     // Lookup actor by handle or URI
     try {
         const actor = await lookupObject(apCtx, query);
@@ -80,20 +76,23 @@ export async function searchAction(
 
             result.actor.summary = sanitizeHtml(result.actor.summary);
             result.actor.attachment = await getAttachments(actor, {
-                sanitizeValue: (value: string) => sanitizeHtml(value)
+                sanitizeValue: (value: string) => sanitizeHtml(value),
             });
             result.handle = getHandle(actor);
             result.followerCount = await getFollowerCount(actor);
             result.followingCount = await getFollowingCount(actor);
             result.isFollowing = await isFollowing(actor, { db });
             result.posts = await getRecentActivities(actor, {
-                sanitizeContent: (content: string) => sanitizeHtml(content)
+                sanitizeContent: (content: string) => sanitizeHtml(content),
             });
 
             results.profiles.push(result);
         }
     } catch (err) {
-        logger.error('Profile search failed ({query}): {error}', { query, error: err });
+        logger.error('Profile search failed ({query}): {error}', {
+            query,
+            error: err,
+        });
     }
 
     // Return results

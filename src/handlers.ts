@@ -34,12 +34,16 @@ const PostSchema = z.object({
     excerpt: z.string(),
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
-    url: z.string().url()
+    url: z.string().url(),
 });
 
-type Post = z.infer<typeof PostSchema>
+type Post = z.infer<typeof PostSchema>;
 
-async function postToArticle(ctx: RequestContext<ContextData>, post: Post, author: Actor | null) {
+async function postToArticle(
+    ctx: RequestContext<ContextData>,
+    post: Post,
+    author: Actor | null,
+) {
     if (!post) {
         return {
             article: null,
@@ -80,7 +84,7 @@ export async function unlikeAction(
     const objectToLike = await lookupObject(apCtx, id);
     if (!objectToLike) {
         return new Response(null, {
-            status: 404
+            status: 404,
         });
     }
 
@@ -95,7 +99,7 @@ export async function unlikeAction(
     const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
     if (!likeToUndoJson) {
         return new Response(null, {
-            status: 409
+            status: 409,
         });
     }
 
@@ -118,16 +122,24 @@ export async function unlikeAction(
 
     let attributionActor: Actor | null = null;
     if (objectToLike.attributionId) {
-        attributionActor = await lookupActor(apCtx, objectToLike.attributionId.href);
+        attributionActor = await lookupActor(
+            apCtx,
+            objectToLike.attributionId.href,
+        );
     }
     if (attributionActor) {
-        apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, undo, {
-            preferSharedInbox: true
-        });
+        apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            attributionActor,
+            undo,
+            {
+                preferSharedInbox: true,
+            },
+        );
     }
 
     apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', undo, {
-        preferSharedInbox: true
+        preferSharedInbox: true,
     });
     return new Response(JSON.stringify(undoJson), {
         headers: {
@@ -150,7 +162,7 @@ export async function likeAction(
     const objectToLike = await lookupObject(apCtx, id);
     if (!objectToLike) {
         return new Response(null, {
-            status: 404
+            status: 404,
         });
     }
 
@@ -160,7 +172,7 @@ export async function likeAction(
 
     if (await ctx.get('globaldb').get([likeId.href])) {
         return new Response(null, {
-            status: 409
+            status: 409,
         });
     }
 
@@ -180,16 +192,24 @@ export async function likeAction(
 
     let attributionActor: Actor | null = null;
     if (objectToLike.attributionId) {
-        attributionActor = await lookupActor(apCtx, objectToLike.attributionId.href);
+        attributionActor = await lookupActor(
+            apCtx,
+            objectToLike.attributionId.href,
+        );
     }
     if (attributionActor) {
-        apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, like, {
-            preferSharedInbox: true
-        });
+        apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            attributionActor,
+            like,
+            {
+                preferSharedInbox: true,
+            },
+        );
     }
 
     apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', like, {
-        preferSharedInbox: true
+        preferSharedInbox: true,
     });
     return new Response(JSON.stringify(likeJson), {
         headers: {
@@ -199,9 +219,8 @@ export async function likeAction(
     });
 }
 
-
 const ReplyActionSchema = z.object({
-    content: z.string()
+    content: z.string(),
 });
 
 export async function replyAction(
@@ -209,9 +228,7 @@ export async function replyAction(
 ) {
     const id = ctx.req.param('id');
 
-    const data = ReplyActionSchema.parse(
-        await ctx.req.json() as unknown
-    );
+    const data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
 
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
@@ -230,7 +247,10 @@ export async function replyAction(
 
     let attributionActor: Actor | null = null;
     if (objectToReplyTo.attributionId) {
-        attributionActor = await lookupActor(apCtx, objectToReplyTo.attributionId.href);
+        attributionActor = await lookupActor(
+            apCtx,
+            objectToReplyTo.attributionId.href,
+        );
     }
 
     if (!attributionActor) {
@@ -243,10 +263,12 @@ export async function replyAction(
     const cc = [attributionActor, apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
 
     const conversation = objectToReplyTo.replyTargetId || objectToReplyTo.id!;
-    const mentions = [new Mention({
-        href: attributionActor.id,
-        name: attributionActor.name,
-    })];
+    const mentions = [
+        new Mention({
+            href: attributionActor.id,
+            name: attributionActor.name,
+        }),
+    ];
 
     const replyId = apCtx.getObjectUri(Note, {
         id: uuidv4(),
@@ -279,22 +301,28 @@ export async function replyAction(
 
     const activityJson = await create.toJsonLd();
 
-    await ctx
-        .get('globaldb')
-        .set([create.id!.href], activityJson);
-    await ctx
-        .get('globaldb')
-        .set([reply.id!.href], await reply.toJsonLd());
+    await ctx.get('globaldb').set([create.id!.href], activityJson);
+    await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
     await addToList(ctx.get('db'), ['outbox'], create.id!.href);
 
-    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, attributionActor, create, {
-        preferSharedInbox: true,
-    });
+    apCtx.sendActivity(
+        { handle: ACTOR_DEFAULT_HANDLE },
+        attributionActor,
+        create,
+        {
+            preferSharedInbox: true,
+        },
+    );
 
-    await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create, {
-        preferSharedInbox: true,
-    });
+    await apCtx.sendActivity(
+        { handle: ACTOR_DEFAULT_HANDLE },
+        'followers',
+        create,
+        {
+            preferSharedInbox: true,
+        },
+    );
 
     return new Response(JSON.stringify(activityJson), {
         headers: {
@@ -317,7 +345,7 @@ export async function followAction(
     if (!isActor(actorToFollow)) {
         // Not Found?
         return new Response(null, {
-            status: 404
+            status: 404,
         });
     }
 
@@ -325,14 +353,14 @@ export async function followAction(
 
     if (actorToFollow.id!.href === actor!.id!.href) {
         return new Response(null, {
-            status: 400
+            status: 400,
         });
     }
 
-    const following = await ctx.get('db').get<string[]>(['following']) || [];
+    const following = (await ctx.get('db').get<string[]>(['following'])) || [];
     if (following.includes(actorToFollow.id!.href)) {
         return new Response(null, {
-            status: 409
+            status: 409,
         });
     }
 
@@ -347,7 +375,11 @@ export async function followAction(
     const followJson = await follow.toJsonLd();
     ctx.get('globaldb').set([follow.id!.href], followJson);
 
-    await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, actorToFollow, follow);
+    await apCtx.sendActivity(
+        { handle: ACTOR_DEFAULT_HANDLE },
+        actorToFollow,
+        follow,
+    );
     return new Response(JSON.stringify(followJson), {
         headers: {
             'Content-Type': 'application/activity+json',
@@ -358,8 +390,8 @@ export async function followAction(
 
 const PostPublishedWebhookSchema = z.object({
     post: z.object({
-        current: PostSchema
-    })
+        current: PostSchema,
+    }),
 });
 
 export async function postPublishedWebhook(
@@ -368,7 +400,7 @@ export async function postPublishedWebhook(
 ) {
     // TODO: Validate webhook with secret
     const data = PostPublishedWebhookSchema.parse(
-        await ctx.req.json() as unknown
+        (await ctx.req.json()) as unknown,
     );
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
@@ -379,7 +411,7 @@ export async function postPublishedWebhook(
     const { article, preview } = await postToArticle(
         apCtx,
         data.post.current,
-        actor
+        actor,
     );
     if (article) {
         const create = new Create({
@@ -401,11 +433,18 @@ export async function postPublishedWebhook(
                 .get('globaldb')
                 .set([article.id!.href], await article.toJsonLd());
             await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-            await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', create, {
-                preferSharedInbox: true
-            });
+            await apCtx.sendActivity(
+                { handle: ACTOR_DEFAULT_HANDLE },
+                'followers',
+                create,
+                {
+                    preferSharedInbox: true,
+                },
+            );
         } catch (err) {
-            ctx.get('logger').error('Post published webhook failed: {error}', { error: err });
+            ctx.get('logger').error('Post published webhook failed: {error}', {
+                error: err,
+            });
         }
     }
     return new Response(JSON.stringify({}), {
@@ -451,12 +490,12 @@ export async function siteChangedWebhook(
         ctx.get('logger').info('Site settings changed, will notify followers');
 
         // Update the database if the site settings have changed
-        const updated =  {
+        const updated = {
             ...current,
             icon: settings.site.icon,
             name: settings.site.title,
             summary: settings.site.description,
-        }
+        };
 
         await db.set(['handle', handle], updated);
 
@@ -477,12 +516,16 @@ export async function siteChangedWebhook(
             cc: apCtx.getFollowersUri('index'),
         });
 
-        await ctx.get('globaldb').set([update.id!.href], await update.toJsonLd());
+        await ctx
+            .get('globaldb')
+            .set([update.id!.href], await update.toJsonLd());
         await apCtx.sendActivity({ handle }, 'followers', update, {
-            preferSharedInbox: true
+            preferSharedInbox: true,
         });
     } catch (err) {
-        ctx.get('logger').error('Site changed webhook failed: {error}', { error: err });
+        ctx.get('logger').error('Site changed webhook failed: {error}', {
+            error: err,
+        });
     }
 
     // Return 200 OK
@@ -500,7 +543,11 @@ export async function inboxHandler(
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
     const logger = ctx.get('logger');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {db, globaldb, logger});
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db,
+        globaldb,
+        logger,
+    });
 
     // Fetch the liked items from the database:
     //   - Data is structured as an array of strings
@@ -518,13 +565,20 @@ export async function inboxHandler(
 
     for (const item of inbox) {
         try {
-            const builtInboxItem = await buildActivity(item, globaldb, apCtx, liked);
+            const builtInboxItem = await buildActivity(
+                item,
+                globaldb,
+                apCtx,
+                liked,
+            );
 
             if (builtInboxItem) {
                 items.push(builtInboxItem);
             }
         } catch (err) {
-            ctx.get('logger').error('Inbox handler failed: {error}', { error: err });
+            ctx.get('logger').error('Inbox handler failed: {error}', {
+                error: err,
+            });
         }
     }
 
