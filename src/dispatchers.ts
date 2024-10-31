@@ -18,6 +18,7 @@ import {
     Update,
     isActor,
 } from '@fedify/fedify';
+import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
 import { type ContextData, fedify } from './app';
 import {
@@ -324,7 +325,10 @@ export async function inboxErrorHandler(
     ctx: Context<ContextData>,
     error: unknown,
 ) {
-    ctx.data.logger.error('Error handling incoming activity', { error });
+    Sentry.captureException(error);
+    ctx.data.logger.error('Error handling incoming activity: {error}', {
+        error,
+    });
 }
 
 export async function followersDispatcher(
@@ -442,6 +446,7 @@ export async function followingDispatcher(
                 items.push(thing);
             }
         } catch (err) {
+            Sentry.captureException(err);
             ctx.data.logger.error('Error looking up following actor', {
                 error: err,
             });
@@ -503,6 +508,7 @@ export async function outboxDispatcher(
 
             items.push(activity);
         } catch (err) {
+            Sentry.captureException(err);
             ctx.data.logger.error('Error getting outbox activity', {
                 error: err,
             });
@@ -594,6 +600,7 @@ export async function likedDispatcher(
 
             items.push(activity);
         } catch (err) {
+            Sentry.captureException(err);
             ctx.data.logger.error('Error getting liked activity', {
                 error: err,
             });
