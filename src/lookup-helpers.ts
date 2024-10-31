@@ -32,3 +32,16 @@ export async function lookupActor(ctx: Context<ContextData>, url: string): Promi
     }
     return null;
 }
+
+export async function lookupObject(ctx: Context<ContextData>, identifier: string | URL) {
+    let documentLoader = null;
+    try {
+        documentLoader = await ctx.getDocumentLoader({identifier: 'index'});
+    } catch (err) {
+        ctx.data.logger.warn("Could not get authenticated document loader for lookupObject");
+    }
+    if (documentLoader === null) {
+        return ctx.lookupObject(identifier);
+    }
+        return ctx.lookupObject(identifier, {documentLoader});
+}

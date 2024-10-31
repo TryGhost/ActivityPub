@@ -23,7 +23,7 @@ import { getSiteSettings } from './helpers/ghost';
 import { toURL } from './helpers/uri';
 import type { PersonData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
-import { lookupActor } from './lookup-helpers';
+import { lookupActor, lookupObject } from './lookup-helpers';
 
 import z from 'zod';
 
@@ -77,7 +77,7 @@ export async function unlikeAction(
         logger: ctx.get('logger'),
     });
 
-    const objectToLike = await apCtx.lookupObject(id);
+    const objectToLike = await lookupObject(apCtx, id);
     if (!objectToLike) {
         return new Response(null, {
             status: 404
@@ -147,7 +147,7 @@ export async function likeAction(
         logger: ctx.get('logger'),
     });
 
-    const objectToLike = await apCtx.lookupObject(id);
+    const objectToLike = await lookupObject(apCtx, id);
     if (!objectToLike) {
         return new Response(null, {
             status: 404
@@ -219,7 +219,7 @@ export async function replyAction(
         logger: ctx.get('logger'),
     });
 
-    const objectToReplyTo = await apCtx.lookupObject(id);
+    const objectToReplyTo = await lookupObject(apCtx, id);
     if (!objectToReplyTo) {
         return new Response(null, {
             status: 404,
@@ -313,7 +313,7 @@ export async function followAction(
         globaldb: ctx.get('globaldb'),
         logger: ctx.get('logger'),
     });
-    const actorToFollow = await apCtx.lookupObject(handle);
+    const actorToFollow = await lookupObject(apCtx, handle);
     if (!isActor(actorToFollow)) {
         // Not Found?
         return new Response(null, {
@@ -347,7 +347,7 @@ export async function followAction(
     const followJson = await follow.toJsonLd();
     ctx.get('globaldb').set([follow.id!.href], followJson);
 
-    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, actorToFollow, follow);
+    await apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, actorToFollow, follow);
     return new Response(JSON.stringify(followJson), {
         headers: {
             'Content-Type': 'application/activity+json',

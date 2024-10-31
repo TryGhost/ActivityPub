@@ -7,6 +7,7 @@ import {
 } from '../../../app';
 import { isFollowing, isHandle } from '../../../helpers/activitypub/actor';
 import { isUri } from '../../../helpers/uri';
+import { lookupObject } from '../../../lookup-helpers';
 
 interface ProfileFollowers {
     followers: {
@@ -47,7 +48,7 @@ export async function profileGetFollowersAction(
     }
 
     // Lookup actor by handle
-    const actor = await apCtx.lookupObject(handle);
+    const actor = await lookupObject(apCtx, handle);
 
     if (!isActor(actor)) {
         return new Response(null, { status: 404 });
@@ -77,7 +78,7 @@ export async function profileGetFollowersAction(
                 return new Response(null, { status: 400 });
             }
 
-            page = await apCtx.lookupObject(next) as CollectionPage | null;
+            page = await lookupObject(apCtx, next) as CollectionPage | null;
 
             // Explicitly check that we have a valid page seeming though we
             // can't be type safe due to lookupObject returning a generic object

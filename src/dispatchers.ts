@@ -29,7 +29,7 @@ import {
 } from './constants';
 import { getUserData, getUserKeypair } from './helpers/user';
 import { addToList } from './kv-helpers';
-import { lookupActor } from './lookup-helpers';
+import { lookupActor, lookupObject } from './lookup-helpers';
 
 export async function actorDispatcher(
     ctx: RequestContext<ContextData>,
@@ -198,7 +198,7 @@ export async function handleAnnounce(
 
     if (!existing) {
         ctx.data.logger.info('Announce object not found in globalDb, performing network lookup');
-        object = await ctx.lookupObject(announce.objectId);
+        object = await lookupObject(ctx, announce.objectId);
     }
 
     // Validate object
@@ -224,7 +224,7 @@ export async function handleAnnounce(
 
         if (typeof objectJson === 'object' && objectJson !== null) {
             if ('attributedTo' in objectJson && typeof objectJson.attributedTo === 'string') {
-                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await ctx.lookupObject(objectJson.attributedTo)
+                const actor = await ctx.data.globaldb.get([objectJson.attributedTo]) ?? await lookupObject(ctx, objectJson.attributedTo)
                 objectJson.attributedTo = await (actor as any)?.toJsonLd();
             }
         }

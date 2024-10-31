@@ -16,6 +16,7 @@ import {
 } from '../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../helpers/sanitize';
 import { isUri } from '../../helpers/uri';
+import { lookupObject } from '../../lookup-helpers';
 
 interface ProfileSearchResult {
     actor: any;
@@ -60,9 +61,10 @@ export async function searchAction(
         });
     }
 
+
     // Lookup actor by handle or URI
     try {
-        const actor = await apCtx.lookupObject(query);
+        const actor = await lookupObject(apCtx, query);
 
         if (isActor(actor)) {
             const result: ProfileSearchResult = {

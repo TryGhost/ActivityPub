@@ -15,6 +15,7 @@ import {
     isHandle,
 } from '../../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../../helpers/sanitize';
+import { lookupObject } from '../../../lookup-helpers';
 
 interface Profile {
     actor: any;
@@ -56,7 +57,7 @@ export async function profileGetAction(
     };
 
     try {
-        const actor = await apCtx.lookupObject(handle);
+        const actor = await lookupObject(apCtx, handle);
 
         if (!isActor(actor)) {
             return new Response(null, { status: 404 });
