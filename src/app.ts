@@ -85,6 +85,7 @@ import {
 } from './handlers';
 
 import { getTraceAndSpanId } from './helpers/context-header';
+import { getRequestData } from './helpers/request-data';
 
 if (process.env.SENTRY_DSN) {
     Sentry.init({
@@ -307,6 +308,18 @@ app.use(async (ctx, next) => {
     ctx.set('logger', logging.with(extra));
 
     return withContext(extra, () => {
+        return next();
+    });
+});
+
+app.use(async (ctx, next) => {
+    return Sentry.withIsolationScope(() => {
+        const scope = Sentry.getIsolationScope();
+        scope.addEventProcessor((event) => {
+            Sentry.addRequestDataToEvent(event, getRequestData(ctx.req.raw));
+            return event;
+        });
+
         return next();
     });
 });
