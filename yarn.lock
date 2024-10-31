@@ -490,16 +490,16 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/fedify@1.1.1":
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.1.1.tgz#851d1005dd0336bb19cf73d79cb400178a296ece"
-  integrity sha512-7jMKcZS+SUrsAXUin5gZzDPNSu+E8hxntKLPkHg2/oyfTgk/oMXyzQBNkent7QmhLjIkj5jxRCv3CoxvkbhVlw==
+"@fedify/fedify@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.2.0.tgz#43287401c8e02150b1592d3bd2a8a1f175b869d7"
+  integrity sha512-76wTodMo5OjXtb39qPa36VtEDzebFkix1tSYo/olaGLZ6oMo0ri8ZPevLvq4RzPvNo+omE1yYJTRdrmUnEmS0g==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"
     "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.4.4"
-    "@logtape/logtape" "^0.6.2"
+    "@logtape/logtape" "^0.7.1"
     "@phensley/language-tag" "^1.9.0"
     asn1js "^3.0.5"
     json-canon "^1.0.1"
@@ -592,10 +592,15 @@
     jsbi "^4.3.0"
     tslib "^2.4.1"
 
-"@logtape/logtape@0.6.3", "@logtape/logtape@^0.6.2":
+"@logtape/logtape@0.6.3":
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.6.3.tgz#4522c56588f74a94f6a653e7e1d38e587690c5ef"
   integrity sha512-QX0ygk82ANyODIFhvVAOaKwgFHjbrXAaTkx8dRiISyf10QkhuNV6E79R9RNB8oRMxQbbT8h+ZcrFNHIUtszn7g==
+
+"@logtape/logtape@^0.7.1":
+  version "0.7.1"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.7.1.tgz#538425089fef6061f7000c592e3b4f989302080a"
+  integrity sha512-gP2O2Pk68I5UtH2D3d+uZpZG3eo2JLUStXpa+fLoPa4dkRYJyX+o70pPl4/4KkY06xsc+33mpslUd3kIKDT2Gw==
 
 "@multiformats/base-x@^4.0.1":
   version "4.0.1"
