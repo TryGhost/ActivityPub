@@ -343,7 +343,7 @@ app.use(async (ctx, next) => {
     await next();
     const end = Date.now();
 
-    ctx.get('logger').info('{method} {host} {url} {status} {duration}ms {id}', {
+    ctx.get('logger').info('{method} {host} {url} {id} {status} {duration}ms', {
         id,
         method: ctx.req.method.toUpperCase(),
         host: ctx.req.header('host'),
