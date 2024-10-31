@@ -1,7 +1,6 @@
 import { isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import { lookupObject } from 'lookup-helpers';
 import {
     type HonoContextVariables,
     fedify,
@@ -16,6 +15,7 @@ import {
     isHandle,
 } from '../../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../../helpers/sanitize';
+import { lookupObject } from '../../../lookup-helpers';
 
 interface Profile {
     actor: any;
