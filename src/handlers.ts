@@ -226,6 +226,7 @@ const ReplyActionSchema = z.object({
 export async function replyAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
+    const logger = ctx.get('logger');
     const id = ctx.req.param('id');
 
     const data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
@@ -233,7 +234,7 @@ export async function replyAction(
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
-        logger: ctx.get('logger'),
+        logger,
     });
 
     const objectToReplyTo = await lookupObject(apCtx, id);
@@ -315,14 +316,20 @@ export async function replyAction(
         },
     );
 
-    await apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
-        'followers',
-        create,
-        {
-            preferSharedInbox: true,
-        },
-    );
+    try {
+        await apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            'followers',
+            create,
+            {
+                preferSharedInbox: true,
+            },
+        );
+    } catch (err) {
+        logger.error('Error sending reply activity - {error}', {
+            error: err,
+        });
+    }
 
     return new Response(JSON.stringify(activityJson), {
         headers: {
