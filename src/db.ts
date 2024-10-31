@@ -12,12 +12,6 @@ export const client = Knex({
     },
 });
 
-// Helper function to get the meta data for an array of activity URIs
-// from the database. This allows us to fetch information about the activities
-// without having to fetch the full activity object. This is a bit of a hack to
-// support sorting / filtering of the activities and should be replaced when we
-// have a proper db schema
-
 type ActivityMeta = {
     id: number; // Used for sorting
     actor_id: string; // Used for filtering by follower / non-follower status
@@ -35,6 +29,10 @@ type getActivityMetaQueryResult = {
     object_type: string,
     reply_object_url: string,
     reply_object_name: string
+}
+
+interface ActivityJsonLd {
+    [key: string]: any;
 }
 
 export async function getSite(host: string) {
@@ -60,6 +58,11 @@ export async function getSite(host: string) {
     };
 }
 
+// Helper function to get the meta data for an array of activity URIs
+// from the database. This allows us to fetch information about the activities
+// without having to fetch the full activity object. This is a bit of a hack to
+// support sorting / filtering of the activities and should be replaced when we
+// have a proper db schema
 export async function getActivityMeta(uris: string[]): Promise<Map<string, ActivityMeta>> {
     const results = await client
         .select(
@@ -98,24 +101,61 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
     return map;
 }
 
-// Helper function to retrieve a map of replies for an array of activity URIs
-// from the database
-export async function getRepliesMap (uris: string[]): Promise<Map<string, string[]>> {
-    const map = new Map<string, string[]>();
+export async function getActivityChildren(activity: ActivityJsonLd) {
+    const objectId = activity.object.id;
 
     const results = await client
         .select('value')
         .from('key_value')
-        .where(client.raw('JSON_EXTRACT(value, "$.object.inReplyTo") IS NOT NULL'))
-        .whereIn('key', uris.map(uri => `["${uri}"]`));
+        // If inReplyTo is a string
+        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`))
+        // If inReplyTo is an object
+        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`));
 
-    for (const {value: result} of results) {
-        const replies = map.get(result.object.inReplyTo) ?? [];
+    return results.map((result) => result.value);
+}
 
-        replies.push(result);
+export async function getActivityChildrenCount(activity: ActivityJsonLd) {
+    const objectId = activity.object.id;
 
-        map.set(result.object.inReplyTo, replies);
-    }
+    const result = await client
+        .count('* as count')
+        .from('key_value')
+        // If inReplyTo is a string
+        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`))
+        // If inReplyTo is an object
+        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`));
 
-    return map;
+    return result[0].count;
+}
+
+export async function getActivityParents(activity: ActivityJsonLd) {
+    const parents: ActivityJsonLd[] = [];
+
+    const getParent = async (objectId: string) => {
+        const result = await client
+            .select('value')
+            .from('key_value')
+            .where(client.raw(`JSON_EXTRACT(value, "$.object.id") = "${objectId}"`));
+
+        if (result.length === 1) {
+            const parent = result[0];
+
+            parents.unshift(parent.value);
+
+            // inReplyTo can be a string or an object
+            const inReplyToId = parent.value.object.inReplyTo?.id ?? parent.value.object.inReplyTo;
+
+            if (inReplyToId) {
+                await getParent(inReplyToId);
+            }
+        }
+    };
+
+    await getParent(
+        // inReplyTo can be a string or an object
+        activity.object.inReplyTo?.id ?? activity.object.inReplyTo
+    );
+
+    return parents;
 }

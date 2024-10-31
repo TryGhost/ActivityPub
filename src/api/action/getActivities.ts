@@ -4,7 +4,7 @@ import {
     type HonoContextVariables,
     fedify,
 } from '../../app';
-import { getActivityMeta, getRepliesMap } from '../../db';
+import { getActivityMeta } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
 
 const DEFAULT_LIMIT = 10;
@@ -33,11 +33,6 @@ export async function getActivitiesAction(
     // This is used to include the user's own activities in the results
     // ?includeOwn=<boolean>
     const includeOwn = ctx.req.query('includeOwn') === 'true';
-
-    // Parse "includeReplies" from query parameters
-    // This is used to include nested replies in the results
-    // ?includeReplies=<boolean>
-    const includeReplies = ctx.req.query('includeReplies') === 'true';
 
     // Parse "filter" from query parameters
     // This is used to filter the activities by various criteria
@@ -200,16 +195,10 @@ export async function getActivitiesAction(
 
     const activities = [];
 
-    // If we need to include replies, fetch the replies map based on the paginated
-    // activity refs, which will be utilised when building the activities
-    const repliesMap = includeReplies
-        ? await getRepliesMap(paginatedRefs)
-        : null;
-
     // Build the activities
     for (const ref of paginatedRefs) {
         try {
-            const builtActivity = await buildActivity(ref, globaldb, apCtx, likedRefs, repliesMap, true);
+            const builtActivity = await buildActivity(ref, globaldb, apCtx, likedRefs, true);
 
             if (builtActivity) {
                 activities.push(builtActivity);

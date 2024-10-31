@@ -6,6 +6,7 @@ import {
 } from '@fedify/fedify';
 
 import type { ContextData } from '../../app';
+import { getActivityChildrenCount } from '../../db';
 import { sanitizeHtml } from '../../helpers/sanitize';
 import { lookupActor } from '../../lookup-helpers';
 
@@ -24,7 +25,6 @@ export async function buildActivity(
     db: KvStore,
     apCtx: Context<ContextData>,
     liked: string[] = [],
-    repliesMap: Map<string, any> | null = null,
     expandInReplyTo = false,
 ): Promise<Activity | null> {
     const item = await db.get<Activity>([uri]);
@@ -41,22 +41,28 @@ export async function buildActivity(
         item.object = await db.get([item.object]) ?? item.object;
     }
 
+    // If the actor associated with the item is a string, it's probably a URI,
+    // so we should look it up
     if (typeof item.actor === 'string') {
         const actor = await lookupActor(apCtx, item.actor);
 
         if (actor) {
             const json = await actor.toJsonLd();
+
             if (typeof json === 'object' && json !== null) {
                 item.actor = json;
             }
         }
     }
 
+    // If the object associated with the item is an object with an attributedTo
+    // property, it's probably a URI, so we should look it up
     if (typeof item.object !== 'string' && typeof item.object.attributedTo === 'string') {
         const actor = await lookupActor(apCtx, item.object.attributedTo);
 
         if (actor) {
             const json = await actor.toJsonLd();
+
             if (typeof json === 'object' && json !== null) {
                 item.object.attributedTo = json;
             }
@@ -90,29 +96,6 @@ export async function buildActivity(
         }
     }
 
-    // If a replies map has been provided, the item is not a string, and the
-    // item has an id, we should nest any replies recursively (which involves
-    // calling this function again for each reply)
-    if (repliesMap && typeof item.object !== 'string' && item.object.id) {
-        item.object.replies = [];
-
-        const replies = repliesMap.get(item.object.id);
-
-        if (replies) {
-            const builtReplies = [];
-
-            for (const reply of replies) {
-                const builtReply = await buildActivity(reply.id, db, apCtx, liked, repliesMap);
-
-                if (builtReply) {
-                    builtReplies.push(builtReply);
-                }
-            }
-
-            item.object.replies = builtReplies;
-        }
-    }
-
     // Expand the inReplyTo object if it is a string and we are expanding inReplyTo
     if (expandInReplyTo && typeof item.object !== 'string' && item.object.inReplyTo) {
         const replyObject = await db.get([item.object.inReplyTo]);
@@ -120,6 +103,11 @@ export async function buildActivity(
         if (replyObject) {
             item.object.inReplyTo = replyObject;
         }
+    }
+
+    // Add the reply count to the object, if it is an object
+    if (typeof item.object !== 'string') {
+        item.object.replyCount = await getActivityChildrenCount(item);
     }
 
     // Return the built item
