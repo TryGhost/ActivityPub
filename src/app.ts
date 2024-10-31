@@ -89,6 +89,7 @@ import { getTraceAndSpanId } from './helpers/context-header';
 if (process.env.SENTRY_DSN) {
     Sentry.init({
         dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'unknown',
     });
 }
 
