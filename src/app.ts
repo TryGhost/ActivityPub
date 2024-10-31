@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 import {
     Accept,
@@ -16,7 +17,7 @@ import {
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
 import { sentry } from '@hono/sentry';
-import { type LogRecord, type Logger, configure, getAnsiColorFormatter, getConsoleSink, getLogger } from '@logtape/logtape';
+import { type LogRecord, type Logger, configure, getAnsiColorFormatter, getConsoleSink, getLogger, withContext } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
@@ -85,6 +86,7 @@ if (process.env.SENTRY_DSN) {
 const logging = getLogger(['activitypub']);
 
 await configure({
+    contextLocalStorage: new AsyncLocalStorage(),
     sinks: {
         console: getConsoleSink({
             formatter: process.env.K_SERVICE ? (record: LogRecord) => {
@@ -289,7 +291,10 @@ app.use(async (ctx, next) => {
     }
 
     ctx.set('logger', logging.with(extra));
-    return next();
+
+    return withContext(extra, () => {
+        return next();
+    });
 });
 
 app.use(
