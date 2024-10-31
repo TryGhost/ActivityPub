@@ -1,10 +1,7 @@
 import { isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import {
-    type HonoContextVariables,
-    fedify,
-} from '../../../app';
+import { type HonoContextVariables, fedify } from '../../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -66,17 +63,20 @@ export async function profileGetAction(
         result.actor = await actor.toJsonLd();
         result.actor.summary = sanitizeHtml(result.actor.summary);
         result.actor.attachment = await getAttachments(actor, {
-            sanitizeValue: (value: string) => sanitizeHtml(value)
+            sanitizeValue: (value: string) => sanitizeHtml(value),
         });
         result.handle = getHandle(actor);
         result.followerCount = await getFollowerCount(actor);
         result.followingCount = await getFollowingCount(actor);
         result.isFollowing = await isFollowing(actor, { db });
         result.posts = await getRecentActivities(actor, {
-            sanitizeContent: (content: string) => sanitizeHtml(content)
+            sanitizeContent: (content: string) => sanitizeHtml(content),
         });
     } catch (err) {
-        logger.error('Profile retrieval failed ({handle}): {error}', { handle, error: err });
+        logger.error('Profile retrieval failed ({handle}): {error}', {
+            handle,
+            error: err,
+        });
 
         return new Response(null, { status: 500 });
     }

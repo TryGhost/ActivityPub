@@ -22,9 +22,7 @@
     "test:all": "yarn test:types && yarn test:code",
     "lint": "biome check"
   },
-  "files": [
-    "src"
-  ],
+  "files": ["src"],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "10.8.0",

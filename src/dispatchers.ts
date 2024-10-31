@@ -45,7 +45,10 @@ export async function actorDispatcher(
     return person;
 }
 
-export async function keypairDispatcher(ctx: Context<ContextData>, handle: string) {
+export async function keypairDispatcher(
+    ctx: Context<ContextData>,
+    handle: string,
+) {
     if (handle !== ACTOR_DEFAULT_HANDLE) return [];
 
     const data = await getUserKeypair(ctx, handle);
@@ -55,10 +58,7 @@ export async function keypairDispatcher(ctx: Context<ContextData>, handle: strin
     return [data];
 }
 
-export async function handleFollow(
-    ctx: Context<ContextData>,
-    follow: Follow,
-) {
+export async function handleFollow(ctx: Context<ContextData>, follow: Follow) {
     ctx.data.logger.info('Handling Follow');
     if (!follow.id) {
         return;
@@ -73,8 +73,10 @@ export async function handleFollow(
         return;
     }
 
-    const currentFollowers = await ctx.data.db.get<string[]>(['followers']) ?? [];
-    const shouldRecordFollower = currentFollowers.includes(sender.id.href) === false;
+    const currentFollowers =
+        (await ctx.data.db.get<string[]>(['followers'])) ?? [];
+    const shouldRecordFollower =
+        currentFollowers.includes(sender.id.href) === false;
 
     // Add follow activity to inbox
     const followJson = await follow.toJsonLd();
@@ -107,10 +109,7 @@ export async function handleFollow(
     await ctx.sendActivity({ handle: parsed.handle }, sender, accept);
 }
 
-export async function handleAccept(
-    ctx: Context<ContextData>,
-    accept: Accept,
-) {
+export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
     ctx.data.logger.info('Handling Accept');
     const parsed = (ctx as any).parseUri(accept.objectId);
     ctx.data.logger.info('Parsed accept object', { parsed });
@@ -139,10 +138,7 @@ export async function handleAccept(
     await addToList(ctx.data.db, ['following'], sender.id.href);
 }
 
-export async function handleCreate(
-    ctx: Context<ContextData>,
-    create: Create,
-) {
+export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     ctx.data.logger.info('Handling Create');
     const parsed = (ctx as any).parseUri(create.objectId);
     ctx.data.logger.info('Parsed create object', { parsed });
@@ -179,7 +175,7 @@ export async function handleCreate(
         }
     }
 
-    if (await isFollowing(sender, {db: ctx.data.db})) {
+    if (await isFollowing(sender, { db: ctx.data.db })) {
         await addToList(ctx.data.db, ['inbox'], create.id.href);
         return;
     }
@@ -212,10 +208,13 @@ export async function handleAnnounce(
 
     // Lookup announced object - If not found in globalDb, perform network lookup
     let object = null;
-    const existing = await ctx.data.globaldb.get([announce.objectId.href]) ?? null;
+    const existing =
+        (await ctx.data.globaldb.get([announce.objectId.href])) ?? null;
 
     if (!existing) {
-        ctx.data.logger.info('Announce object not found in globalDb, performing network lookup');
+        ctx.data.logger.info(
+            'Announce object not found in globalDb, performing network lookup',
+        );
         object = await lookupObject(ctx, announce.objectId);
     }
 
@@ -241,7 +240,10 @@ export async function handleAnnounce(
         const objectJson = await object.toJsonLd();
 
         if (typeof objectJson === 'object' && objectJson !== null) {
-            if ('attributedTo' in objectJson && typeof objectJson.attributedTo === 'string') {
+            if (
+                'attributedTo' in objectJson &&
+                typeof objectJson.attributedTo === 'string'
+            ) {
                 const actor = await lookupActor(ctx, objectJson.attributedTo);
                 objectJson.attributedTo = await actor?.toJsonLd();
             }
@@ -250,16 +252,13 @@ export async function handleAnnounce(
         ctx.data.globaldb.set([object.id.href], objectJson);
     }
 
-    if (await isFollowing(sender, {db: ctx.data.db})) {
+    if (await isFollowing(sender, { db: ctx.data.db })) {
         await addToList(ctx.data.db, ['inbox'], announce.id.href);
         return;
     }
 }
 
-export async function handleLike(
-    ctx: Context<ContextData>,
-    like: Like,
-) {
+export async function handleLike(ctx: Context<ContextData>, like: Like) {
     ctx.data.logger.info('Handling Like');
 
     // Validate like
@@ -283,10 +282,13 @@ export async function handleLike(
 
     // Lookup liked object - If not found in globalDb, perform network lookup
     let object = null;
-    const existing = await ctx.data.globaldb.get([like.objectId.href]) ?? null;
+    const existing =
+        (await ctx.data.globaldb.get([like.objectId.href])) ?? null;
 
     if (!existing) {
-        ctx.data.logger.info('Like object not found in globalDb, performing network lookup');
+        ctx.data.logger.info(
+            'Like object not found in globalDb, performing network lookup',
+        );
 
         object = await like.getObject();
     }
@@ -337,43 +339,48 @@ export async function followersDispatcher(
 
     let items: Recipient[] = [];
 
-    const fullResults = (await ctx.data.db.get<any[]>(['followers', 'expanded']) ?? [])
-        .filter((v, i, results) => {
-            // Remove duplicates
-            return results.findIndex((r) => r.id === v.id) === i;
-        });
+    const fullResults = (
+        (await ctx.data.db.get<any[]>(['followers', 'expanded'])) ?? []
+    ).filter((v, i, results) => {
+        // Remove duplicates
+        return results.findIndex((r) => r.id === v.id) === i;
+    });
 
     if (fullResults) {
-        nextCursor = fullResults.length > offset + FOLLOWERS_PAGE_SIZE
-            ? (offset + FOLLOWERS_PAGE_SIZE).toString()
-            : null;
+        nextCursor =
+            fullResults.length > offset + FOLLOWERS_PAGE_SIZE
+                ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+                : null;
 
         items = fullResults.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
     } else {
         const results = [
             // Remove duplicates
-            ...new Set(
-                (await ctx.data.db.get<string[]>(['followers'])) || []
-            )
+            ...new Set((await ctx.data.db.get<string[]>(['followers'])) || []),
         ];
 
-        nextCursor = results.length > offset + FOLLOWERS_PAGE_SIZE
-            ? (offset + FOLLOWERS_PAGE_SIZE).toString()
-            : null;
+        nextCursor =
+            results.length > offset + FOLLOWERS_PAGE_SIZE
+                ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+                : null;
 
-        const slicedResults = results.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
+        const slicedResults = results.slice(
+            offset,
+            offset + FOLLOWERS_PAGE_SIZE,
+        );
 
         const actors = (
             await Promise.all(
-                slicedResults.map((result) => lookupActor(ctx, result))
+                slicedResults.map((result) => lookupActor(ctx, result)),
             )
-        // This could potentially mean that the slicedResults is not the size
-        // of FOLLOWERS_PAGE_SIZE if for some reason the lookupActor returns
-        // null for some of the results. TODO: Find a better way to handle this
-        ).filter((item): item is Actor => isActor(item))
+        )
+            // This could potentially mean that the slicedResults is not the size
+            // of FOLLOWERS_PAGE_SIZE if for some reason the lookupActor returns
+            // null for some of the results. TODO: Find a better way to handle this
+            .filter((item): item is Actor => isActor(item));
 
         const toStore = await Promise.all(
-            actors.map(actor => actor.toJsonLd() as any)
+            actors.map((actor) => actor.toJsonLd() as any),
         );
 
         await ctx.data.db.set(['followers', 'expanded'], toStore);
@@ -383,9 +390,7 @@ export async function followersDispatcher(
 
     return {
         items: (
-            await Promise.all(
-                items.map(item => APObject.fromJsonLd(item))
-            )
+            await Promise.all(items.map((item) => APObject.fromJsonLd(item)))
         ).filter((item): item is Actor => isActor(item)),
         nextCursor,
     };
@@ -397,9 +402,7 @@ export async function followersCounter(
 ) {
     const results = [
         // Remove duplicates
-        ...new Set(
-            (await ctx.data.db.get<string[]>(['followers'])) || []
-        )
+        ...new Set((await ctx.data.db.get<string[]>(['followers'])) || []),
     ];
     return results.length;
 }
@@ -418,11 +421,12 @@ export async function followingDispatcher(
     const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
-    const results = (await ctx.data.db.get<string[]>(['following'])) || []
+    const results = (await ctx.data.db.get<string[]>(['following'])) || [];
 
-    nextCursor = results.length > offset + FOLLOWING_PAGE_SIZE
-        ? (offset + FOLLOWING_PAGE_SIZE).toString()
-        : null;
+    nextCursor =
+        results.length > offset + FOLLOWING_PAGE_SIZE
+            ? (offset + FOLLOWING_PAGE_SIZE).toString()
+            : null;
 
     const slicedResults = results.slice(offset, offset + FOLLOWING_PAGE_SIZE);
 
@@ -438,7 +442,9 @@ export async function followingDispatcher(
                 items.push(thing);
             }
         } catch (err) {
-            ctx.data.logger.error('Error looking up following actor', { error: err });
+            ctx.data.logger.error('Error looking up following actor', {
+                error: err,
+            });
         }
     }
 
@@ -460,9 +466,9 @@ export function followingFirstCursor() {
     return '0';
 }
 
-function filterOutboxActivityUris (activityUris: string[]) {
+function filterOutboxActivityUris(activityUris: string[]) {
     // Only return Create and Announce activityUris
-    return activityUris.filter(uri => /(create|announce)/.test(uri));
+    return activityUris.filter((uri) => /(create|announce)/.test(uri));
 }
 
 export async function outboxDispatcher(
@@ -476,12 +482,13 @@ export async function outboxDispatcher(
     let nextCursor: string | null = null;
 
     const results = filterOutboxActivityUris(
-        (await ctx.data.db.get<string[]>(['outbox'])) || []
+        (await ctx.data.db.get<string[]>(['outbox'])) || [],
     ).reverse();
 
-    nextCursor = results.length > offset + OUTBOX_PAGE_SIZE
-        ? (offset + OUTBOX_PAGE_SIZE).toString()
-        : null;
+    nextCursor =
+        results.length > offset + OUTBOX_PAGE_SIZE
+            ? (offset + OUTBOX_PAGE_SIZE).toString()
+            : null;
 
     const slicedResults = results.slice(offset, offset + OUTBOX_PAGE_SIZE);
 
@@ -496,7 +503,9 @@ export async function outboxDispatcher(
 
             items.push(activity);
         } catch (err) {
-            ctx.data.logger.error('Error getting outbox activity', { error: err });
+            ctx.data.logger.error('Error getting outbox activity', {
+                error: err,
+            });
         }
     }
 
@@ -538,13 +547,12 @@ export async function likedDispatcher(
     const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
-    const results = (
-        (await db.get<string[]>(['liked'])) || []
-    ).reverse();
+    const results = ((await db.get<string[]>(['liked'])) || []).reverse();
 
-    nextCursor = results.length > offset + LIKED_PAGE_SIZE
-        ? (offset + LIKED_PAGE_SIZE).toString()
-        : null;
+    nextCursor =
+        results.length > offset + LIKED_PAGE_SIZE
+            ? (offset + LIKED_PAGE_SIZE).toString()
+            : null;
 
     const slicedResults = results.slice(offset, offset + LIKED_PAGE_SIZE);
 
@@ -555,14 +563,23 @@ export async function likedDispatcher(
     for (const result of slicedResults) {
         try {
             const thing = await globaldb.get<{
-                object: string | {
-                    [key: string]: any;
-                };
+                object:
+                    | string
+                    | {
+                          [key: string]: any;
+                      };
                 [key: string]: any;
             }>([result]);
 
-            if (thing && typeof thing.object !== 'string' && typeof thing.object.attributedTo === 'string') {
-                const actor = await lookupActor(apCtx, thing.object.attributedTo);
+            if (
+                thing &&
+                typeof thing.object !== 'string' &&
+                typeof thing.object.attributedTo === 'string'
+            ) {
+                const actor = await lookupActor(
+                    apCtx,
+                    thing.object.attributedTo,
+                );
 
                 if (actor) {
                     const json = await actor.toJsonLd();
@@ -577,7 +594,9 @@ export async function likedDispatcher(
 
             items.push(activity);
         } catch (err) {
-            ctx.data.logger.error('Error getting liked activity', { error: err });
+            ctx.data.logger.error('Error getting liked activity', {
+                error: err,
+            });
         }
     }
 
@@ -696,22 +715,20 @@ export async function undoDispatcher(
     return Undo.fromJsonLd(exists);
 }
 
-export async function nodeInfoDispatcher(
-    ctx: RequestContext<ContextData>,
-) {
+export async function nodeInfoDispatcher(ctx: RequestContext<ContextData>) {
     return {
         software: {
-          name: 'ghost',
-          version: { major: 0, minor: 0, patch: 0 },
-          homepage: new URL("https://ghost.org/"),
-          repository: new URL("https://github.com/TryGhost/Ghost"),
+            name: 'ghost',
+            version: { major: 0, minor: 0, patch: 0 },
+            homepage: new URL('https://ghost.org/'),
+            repository: new URL('https://github.com/TryGhost/Ghost'),
         },
         protocols: ['activitypub'] as Protocol[],
         openRegistrations: false,
         usage: {
-          users: {},
-          localPosts: 0,
-          localComments: 0,
+            users: {},
+            localPosts: 0,
+            localComments: 0,
         },
-    }
+    };
 }

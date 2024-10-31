@@ -13,4 +13,4 @@ export function getTraceAndSpanId(traceContext: string | undefined) {
     }
 
     return { traceId: null, spanId: null };
-};
+}

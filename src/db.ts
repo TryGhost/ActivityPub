@@ -22,39 +22,39 @@ type ActivityMeta = {
 };
 
 type getActivityMetaQueryResult = {
-    key: string,
-    left_id: number,
-    actor_id: string,
-    activity_type: string,
-    object_type: string,
-    reply_object_url: string,
-    reply_object_name: string
-}
+    key: string;
+    left_id: number;
+    actor_id: string;
+    activity_type: string;
+    object_type: string;
+    reply_object_url: string;
+    reply_object_name: string;
+};
 
 interface ActivityJsonLd {
     [key: string]: any;
 }
 
 export async function getSite(host: string) {
-    const rows = await client.select('*').from('sites').where({host});
+    const rows = await client.select('*').from('sites').where({ host });
 
     if (!rows || !rows.length) {
         const webhook_secret = crypto.randomBytes(32).toString('hex');
-        await client.insert({host, webhook_secret}).into('sites');
+        await client.insert({ host, webhook_secret }).into('sites');
 
         return {
             host,
-            webhook_secret
+            webhook_secret,
         };
     }
 
     if (rows.length > 1) {
-        throw new Error(`More than one row found for site ${host}`)
+        throw new Error(`More than one row found for site ${host}`);
     }
 
     return {
         host: rows[0].host,
-        webhook_secret: rows[0].webhook_secret
+        webhook_secret: rows[0].webhook_secret,
     };
 }
 
@@ -63,7 +63,9 @@ export async function getSite(host: string) {
 // without having to fetch the full activity object. This is a bit of a hack to
 // support sorting / filtering of the activities and should be replaced when we
 // have a proper db schema
-export async function getActivityMeta(uris: string[]): Promise<Map<string, ActivityMeta>> {
+export async function getActivityMeta(
+    uris: string[],
+): Promise<Map<string, ActivityMeta>> {
     const results = await client
         .select(
             'left.key',
@@ -71,19 +73,32 @@ export async function getActivityMeta(uris: string[]): Promise<Map<string, Activ
             // mongo schmongo...
             client.raw('JSON_EXTRACT(left.value, "$.actor.id") as actor_id'),
             client.raw('JSON_EXTRACT(left.value, "$.type") as activity_type'),
-            client.raw('JSON_EXTRACT(left.value, "$.object.type") as object_type'),
-            client.raw('JSON_EXTRACT(right.value, "$.object.url") as reply_object_url'),
-            client.raw('JSON_EXTRACT(right.value, "$.object.name") as reply_object_name')
+            client.raw(
+                'JSON_EXTRACT(left.value, "$.object.type") as object_type',
+            ),
+            client.raw(
+                'JSON_EXTRACT(right.value, "$.object.url") as reply_object_url',
+            ),
+            client.raw(
+                'JSON_EXTRACT(right.value, "$.object.name") as reply_object_name',
+            ),
         )
         .from({ left: 'key_value' })
         // @ts-ignore: This works as expected but the type definitions complain 🤔
         .leftJoin(
             { right: 'key_value' },
-            client.raw('JSON_UNQUOTE(JSON_EXTRACT(right.value, "$.object.id"))'),
+            client.raw(
+                'JSON_UNQUOTE(JSON_EXTRACT(right.value, "$.object.id"))',
+            ),
             '=',
-            client.raw('JSON_UNQUOTE(JSON_EXTRACT(left.value, "$.object.inReplyTo"))')
+            client.raw(
+                'JSON_UNQUOTE(JSON_EXTRACT(left.value, "$.object.inReplyTo"))',
+            ),
         )
-        .whereIn('left.key', uris.map(uri => `["${uri}"]`));
+        .whereIn(
+            'left.key',
+            uris.map((uri) => `["${uri}"]`),
+        );
 
     const map = new Map<string, ActivityMeta>();
 
@@ -108,9 +123,17 @@ export async function getActivityChildren(activity: ActivityJsonLd) {
         .select('value')
         .from('key_value')
         // If inReplyTo is a string
-        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`))
+        .where(
+            client.raw(
+                `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
+            ),
+        )
         // If inReplyTo is an object
-        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`));
+        .orWhere(
+            client.raw(
+                `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
+            ),
+        );
 
     return results.map((result) => result.value);
 }
@@ -122,9 +145,17 @@ export async function getActivityChildrenCount(activity: ActivityJsonLd) {
         .count('* as count')
         .from('key_value')
         // If inReplyTo is a string
-        .where(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`))
+        .where(
+            client.raw(
+                `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
+            ),
+        )
         // If inReplyTo is an object
-        .orWhere(client.raw(`JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`));
+        .orWhere(
+            client.raw(
+                `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
+            ),
+        );
 
     return result[0].count;
 }
@@ -136,7 +167,11 @@ export async function getActivityParents(activity: ActivityJsonLd) {
         const result = await client
             .select('value')
             .from('key_value')
-            .where(client.raw(`JSON_EXTRACT(value, "$.object.id") = "${objectId}"`));
+            .where(
+                client.raw(
+                    `JSON_EXTRACT(value, "$.object.id") = "${objectId}"`,
+                ),
+            );
 
         if (result.length === 1) {
             const parent = result[0];
@@ -144,7 +179,9 @@ export async function getActivityParents(activity: ActivityJsonLd) {
             parents.unshift(parent.value);
 
             // inReplyTo can be a string or an object
-            const inReplyToId = parent.value.object.inReplyTo?.id ?? parent.value.object.inReplyTo;
+            const inReplyToId =
+                parent.value.object.inReplyTo?.id ??
+                parent.value.object.inReplyTo;
 
             if (inReplyToId) {
                 await getParent(inReplyToId);
@@ -154,7 +191,7 @@ export async function getActivityParents(activity: ActivityJsonLd) {
 
     await getParent(
         // inReplyTo can be a string or an object
-        activity.object.inReplyTo?.id ?? activity.object.inReplyTo
+        activity.object.inReplyTo?.id ?? activity.object.inReplyTo,
     );
 
     return parents;

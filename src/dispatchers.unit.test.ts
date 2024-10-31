@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Activity, type Actor, Like, Person, type RequestContext } from '@fedify/fedify';
+import {
+    Activity,
+    type Actor,
+    Like,
+    Person,
+    type RequestContext,
+} from '@fedify/fedify';
 import {
     actorDispatcher,
     followingDispatcher,
@@ -68,9 +74,7 @@ describe('dispatchers', () => {
         beforeEach(() => {
             ctx.data.db.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(
-                    key[0] === 'following'
-                        ? Object.keys(following)
-                        : undefined
+                    key[0] === 'following' ? Object.keys(following) : undefined,
                 );
             });
 
@@ -80,7 +84,11 @@ describe('dispatchers', () => {
         });
 
         it('returns items from the following collection in the correct order', async () => {
-            const result = await followingDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
+            const result = await followingDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                null,
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -90,13 +98,21 @@ describe('dispatchers', () => {
             expect(result.items[0] instanceof Person).toBeTruthy();
             expect(result.items[1] instanceof Person).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/person/123');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/person/123',
+            );
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[1].id.toString()).toEqual('https://example.com/person/456');
+            expect(result.items[1].id.toString()).toEqual(
+                'https://example.com/person/456',
+            );
         });
 
         it('returns items from the following collection with a cursor', async () => {
-            const result = await followingDispatcher(ctx, ACTOR_DEFAULT_HANDLE, '1');
+            const result = await followingDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                '1',
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -105,7 +121,9 @@ describe('dispatchers', () => {
             expect(result.items.length).toEqual(1);
             expect(result.items[0] instanceof Person).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/person/456');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/person/456',
+            );
         });
     });
 
@@ -134,7 +152,7 @@ describe('dispatchers', () => {
                     id: 'https://example.com/note/456',
                     type: 'Note',
                 },
-            }
+            },
         };
 
         const ctx = {
@@ -156,7 +174,7 @@ describe('dispatchers', () => {
                 return Promise.resolve(
                     key[0] === 'liked'
                         ? Object.keys(likeActivities)
-                        : undefined
+                        : undefined,
                 );
             });
 
@@ -166,7 +184,11 @@ describe('dispatchers', () => {
         });
 
         it('returns items from the liked collection in the correct order', async () => {
-            const result = await likedDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
+            const result = await likedDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                null,
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -176,13 +198,21 @@ describe('dispatchers', () => {
             expect(result.items[0] instanceof Like).toBeTruthy();
             expect(result.items[1] instanceof Like).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/like/456');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/like/456',
+            );
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[1].id.toString()).toEqual('https://example.com/like/123');
+            expect(result.items[1].id.toString()).toEqual(
+                'https://example.com/like/123',
+            );
         });
 
         it('returns items from the liked collection with a cursor', async () => {
-            const result = await likedDispatcher(ctx, ACTOR_DEFAULT_HANDLE, '1');
+            const result = await likedDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                '1',
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -191,7 +221,9 @@ describe('dispatchers', () => {
             expect(result.items.length).toEqual(1);
             expect(result.items[0] instanceof Activity).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/like/123');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/like/123',
+            );
         });
 
         it('hydrates the object of a like', async () => {
@@ -210,7 +242,7 @@ describe('dispatchers', () => {
                         type: 'Note',
                         attributedTo: actorId,
                     },
-                }
+                },
             };
 
             ctx.data.globaldb.get.mockImplementation((key: string[]) => {
@@ -221,7 +253,7 @@ describe('dispatchers', () => {
                 return Promise.resolve(
                     key[0] === 'liked'
                         ? Object.keys(likeActivities)
-                        : undefined
+                        : undefined,
                 );
             });
 
@@ -231,7 +263,11 @@ describe('dispatchers', () => {
                 }) as unknown as Promise<Actor>;
             });
 
-            const result = await likedDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
+            const result = await likedDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                null,
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -240,7 +276,9 @@ describe('dispatchers', () => {
             expect(result.items.length).toEqual(1);
             expect(result.items[0] instanceof Like).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/like/123');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/like/123',
+            );
 
             // Check the object of the item is hydrated
             const object = await result.items[0].getObject();
@@ -313,7 +351,7 @@ describe('dispatchers', () => {
                 return Promise.resolve(
                     key[0] === 'outbox'
                         ? Object.keys(outboxActivities)
-                        : undefined
+                        : undefined,
                 );
             });
 
@@ -323,7 +361,11 @@ describe('dispatchers', () => {
         });
 
         it('returns items from the outbox collection in the correct order', async () => {
-            const result = await outboxDispatcher(ctx, ACTOR_DEFAULT_HANDLE, null);
+            const result = await outboxDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                null,
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -333,13 +375,21 @@ describe('dispatchers', () => {
             expect(result.items[0] instanceof Activity).toBeTruthy();
             expect(result.items[1] instanceof Activity).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/announce/456');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/announce/456',
+            );
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[1].id.toString()).toEqual('https://example.com/create/123');
+            expect(result.items[1].id.toString()).toEqual(
+                'https://example.com/create/123',
+            );
         });
 
         it('returns items from the outbox collection with a cursor', async () => {
-            const result = await outboxDispatcher(ctx, ACTOR_DEFAULT_HANDLE, '1');
+            const result = await outboxDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                '1',
+            );
 
             // Check items exist
             expect(result.items).toBeDefined();
@@ -348,7 +398,9 @@ describe('dispatchers', () => {
             expect(result.items.length).toEqual(1);
             expect(result.items[0] instanceof Activity).toBeTruthy();
             // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual('https://example.com/create/123');
+            expect(result.items[0].id.toString()).toEqual(
+                'https://example.com/create/123',
+            );
         });
     });
 
@@ -358,17 +410,17 @@ describe('dispatchers', () => {
 
             expect(result).toEqual({
                 software: {
-                  name: 'ghost',
-                  version: { major: 0, minor: 0, patch: 0 },
-                  homepage: new URL("https://ghost.org/"),
-                  repository: new URL("https://github.com/TryGhost/Ghost"),
+                    name: 'ghost',
+                    version: { major: 0, minor: 0, patch: 0 },
+                    homepage: new URL('https://ghost.org/'),
+                    repository: new URL('https://github.com/TryGhost/Ghost'),
                 },
                 protocols: ['activitypub'],
                 openRegistrations: false,
                 usage: {
-                  users: {},
-                  localPosts: 0,
-                  localComments: 0,
+                    users: {},
+                    localPosts: 0,
+                    localComments: 0,
                 },
             });
         });

@@ -9,7 +9,7 @@ import type { ContextData } from '../app';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY
+    ACTOR_DEFAULT_SUMMARY,
 } from '../constants';
 
 export type PersonData = {
@@ -34,14 +34,20 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
         try {
             icon = new Image({ url: new URL(existing.icon) });
         } catch (err) {
-            ctx.data.logger.error('Could not create Image from Icon value ({icon}): {error}', { icon: existing.icon, error: err });
+            ctx.data.logger.error(
+                'Could not create Image from Icon value ({icon}): {error}',
+                { icon: existing.icon, error: err },
+            );
         }
 
         let url = null;
         try {
             url = new URL(existing.url);
-        }  catch (err) {
-            ctx.data.logger.error('Could not create URL from value ({url}): {error}', { url: existing.url, error: err });
+        } catch (err) {
+            ctx.data.logger.error(
+                'Could not create URL from value ({url}): {error}',
+                { url: existing.url, error: err },
+            );
         }
         return {
             id: new URL(existing.id),
@@ -53,7 +59,9 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
             outbox: new URL(existing.outbox),
             following: new URL(existing.following),
             followers: new URL(existing.followers),
-            liked: existing.liked ? new URL(existing.liked) : ctx.getLikedUri(handle),
+            liked: existing.liked
+                ? new URL(existing.liked)
+                : ctx.getLikedUri(handle),
             publicKeys: (await ctx.getActorKeyPairs(handle)).map(
                 (key) => key.cryptographicKey,
             ),
@@ -97,11 +105,13 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
     return data;
 }
 
-export async function getUserKeypair(ctx: Context<ContextData>, handle: string) {
-    const existing = await ctx.data.db.get<{ publicKey: any; privateKey: any }>([
-        'keypair',
-        handle,
-    ]);
+export async function getUserKeypair(
+    ctx: Context<ContextData>,
+    handle: string,
+) {
+    const existing = await ctx.data.db.get<{ publicKey: any; privateKey: any }>(
+        ['keypair', handle],
+    );
 
     if (existing) {
         return {

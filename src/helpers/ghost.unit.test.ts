@@ -7,7 +7,7 @@ vi.mock('ky');
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY
+    ACTOR_DEFAULT_SUMMARY,
 } from '../constants';
 import { getSiteSettings } from './ghost';
 
@@ -19,19 +19,21 @@ describe('getSiteSettings', () => {
             site: {
                 description: 'foo',
                 title: 'bar',
-                icon: 'https://example.com/baz.png'
-            }
+                icon: 'https://example.com/baz.png',
+            },
         };
 
         vi.mocked(ky.get).mockReturnValue({
-            json: async () => settings
+            json: async () => settings,
         } as ResponsePromise);
 
         const result = await getSiteSettings(host);
 
         expect(result).toEqual(settings);
         expect(ky.get).toHaveBeenCalledTimes(1);
-        expect(ky.get).toHaveBeenCalledWith(`https://${host}/ghost/api/admin/site/`);
+        expect(ky.get).toHaveBeenCalledWith(
+            `https://${host}/ghost/api/admin/site/`,
+        );
     });
 
     it('should use defaults for missing settings', async () => {
@@ -42,9 +44,9 @@ describe('getSiteSettings', () => {
             json: async () => ({
                 site: {
                     title: 'bar',
-                    icon: 'https://example.com/baz.png'
-                }
-            })
+                    icon: 'https://example.com/baz.png',
+                },
+            }),
         } as ResponsePromise);
 
         result = await getSiteSettings(host);
@@ -53,8 +55,8 @@ describe('getSiteSettings', () => {
             site: {
                 description: ACTOR_DEFAULT_SUMMARY,
                 title: 'bar',
-                icon: 'https://example.com/baz.png'
-            }
+                icon: 'https://example.com/baz.png',
+            },
         });
 
         // Missing title
@@ -62,9 +64,9 @@ describe('getSiteSettings', () => {
             json: async () => ({
                 site: {
                     description: 'foo',
-                    icon: 'https://example.com/baz.png'
-                }
-            })
+                    icon: 'https://example.com/baz.png',
+                },
+            }),
         } as ResponsePromise);
 
         result = await getSiteSettings(host);
@@ -73,8 +75,8 @@ describe('getSiteSettings', () => {
             site: {
                 description: 'foo',
                 title: ACTOR_DEFAULT_NAME,
-                icon: 'https://example.com/baz.png'
-            }
+                icon: 'https://example.com/baz.png',
+            },
         });
 
         // Missing icon
@@ -82,9 +84,9 @@ describe('getSiteSettings', () => {
             json: async () => ({
                 site: {
                     description: 'foo',
-                    title: 'bar'
-                }
-            })
+                    title: 'bar',
+                },
+            }),
         } as ResponsePromise);
 
         result = await getSiteSettings(host);
@@ -93,13 +95,13 @@ describe('getSiteSettings', () => {
             site: {
                 description: 'foo',
                 title: 'bar',
-                icon: ACTOR_DEFAULT_ICON
-            }
+                icon: ACTOR_DEFAULT_ICON,
+            },
         });
 
         // Missing everything
         vi.mocked(ky.get).mockReturnValue({
-            json: async () => ({})
+            json: async () => ({}),
         } as ResponsePromise);
 
         result = await getSiteSettings(host);
@@ -108,8 +110,8 @@ describe('getSiteSettings', () => {
             site: {
                 description: ACTOR_DEFAULT_SUMMARY,
                 title: ACTOR_DEFAULT_NAME,
-                icon: ACTOR_DEFAULT_ICON
-            }
+                icon: ACTOR_DEFAULT_ICON,
+            },
         });
     });
 });
