@@ -23,9 +23,9 @@ export async function getActivityThreadAction(
 
     // Parse "activity_id" from request parameters
     // /thread/:activity_id
-    const activityIdParam = ctx.req.param('activity_id');
-    const activityId = activityIdParam
-        ? Buffer.from(activityIdParam, 'base64url').toString('utf-8')
+    const paramActivityId = ctx.req.param('activity_id');
+    const activityId = paramActivityId
+        ? decodeURIComponent(paramActivityId)
         : '';
 
     // If the provided activityId is invalid, return early

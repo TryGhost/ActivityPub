@@ -27,9 +27,7 @@ export async function getActivitiesAction(
     // ?cursor=<string>
     // ?limit=<number>
     const queryCursor = ctx.req.query('cursor');
-    const cursor = queryCursor
-        ? Buffer.from(queryCursor, 'base64url').toString('utf-8')
-        : null;
+    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
     const limit = Number.parseInt(
         ctx.req.query('limit') || DEFAULT_LIMIT.toString(),
         10,
@@ -44,7 +42,7 @@ export async function getActivitiesAction(
     // This is used to filter the activities by various criteria
     // ?filter={type: ['<activityType>', '<activityType>:<objectType>', '<activityType>:<objectType>:<criteria>']}
     const queryFilters = ctx.req.query('filter') || '[]';
-    const filters = JSON.parse(decodeURI(queryFilters));
+    const filters = JSON.parse(decodeURIComponent(queryFilters));
 
     const typeFilters = (filters.type || []).map((filter: string) => {
         const [activityType, objectType = null, criteria = null] =
@@ -207,9 +205,7 @@ export async function getActivitiesAction(
     // Determine the next cursor
     const nextCursor =
         startIndex + paginatedRefs.length < activityRefs.length
-            ? Buffer.from(paginatedRefs[paginatedRefs.length - 1]).toString(
-                  'base64url',
-              )
+            ? encodeURIComponent(paginatedRefs[paginatedRefs.length - 1])
             : null;
 
     // -------------------------------------------------------------------------
@@ -244,7 +240,7 @@ export async function getActivitiesAction(
     return new Response(
         JSON.stringify({
             items: activities,
-            nextCursor,
+            next: nextCursor,
         }),
         {
             headers: {

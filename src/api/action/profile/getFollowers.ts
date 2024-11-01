@@ -37,9 +37,7 @@ export async function profileGetFollowersAction(
     // Parse "next" from query parameters
     // /profile/:handle/followers?next=<string>
     const queryNext = ctx.req.query('next') || '';
-    const next = queryNext
-        ? Buffer.from(queryNext, 'base64url').toString('utf-8')
-        : '';
+    const next = queryNext ? decodeURIComponent(queryNext) : '';
 
     // If the next parameter is not a valid URI, return early
     if (next !== '' && !isUri(next)) {
@@ -112,7 +110,7 @@ export async function profileGetFollowersAction(
     }
 
     result.next = page.nextId
-        ? Buffer.from(page.nextId.toString()).toString('base64url')
+        ? encodeURIComponent(page.nextId.toString())
         : null;
 
     return new Response(JSON.stringify(result), {
