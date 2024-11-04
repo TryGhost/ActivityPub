@@ -387,7 +387,8 @@ export async function followAction(
         actorToFollow,
         follow,
     );
-    return new Response(JSON.stringify(followJson), {
+    // We return the actor because the serialisation of the object property is not working as expected
+    return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
         headers: {
             'Content-Type': 'application/activity+json',
         },
