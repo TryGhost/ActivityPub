@@ -308,7 +308,7 @@ app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
 
     const { traceId, spanId } = getTraceAndSpanId(
-        ctx.req.header('x-cloud-trace-context'),
+        ctx.req.header('traceparent'),
     );
     if (traceId && spanId) {
         extra['logging.googleapis.com/trace'] =
