@@ -411,7 +411,7 @@ describe('dispatchers', () => {
             expect(result).toEqual({
                 software: {
                     name: 'ghost',
-                    version: { major: 0, minor: 0, patch: 0 },
+                    version: { major: 0, minor: 1, patch: 0 },
                     homepage: new URL('https://ghost.org/'),
                     repository: new URL('https://github.com/TryGhost/Ghost'),
                 },
