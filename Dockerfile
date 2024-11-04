@@ -5,8 +5,10 @@ WORKDIR /opt/activitypub
 COPY package.json .
 COPY yarn.lock .
 
-RUN yarn && \
-    yarn cache clean
+RUN apk add --no-cache python3 make g++ && \
+    yarn && \
+    yarn cache clean && \
+    apk del python3 make g++
 
 COPY tsconfig.json .
 

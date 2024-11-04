@@ -15,6 +15,7 @@ import {
     createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
+import CloudProfiler from '@google-cloud/profiler';
 import { serve } from '@hono/node-server';
 import {
     type LogRecord,
@@ -92,6 +93,15 @@ if (process.env.SENTRY_DSN) {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV || 'unknown',
         release: process.env.K_REVISION,
+    });
+}
+
+if (process.env.K_SERVICE) {
+    CloudProfiler.start({
+        serviceContext: {
+            service: 'activitypub',
+            version: process.env.K_REVISION,
+        },
     });
 }
 
