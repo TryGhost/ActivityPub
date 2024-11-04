@@ -41,7 +41,8 @@ export async function searchAction(
 
     // Parse "query" from query parameters
     // ?query=<string>
-    const query = ctx.req.query('query') || '';
+    const queryQuery = ctx.req.query('query');
+    const query = queryQuery ? decodeURIComponent(queryQuery) : '';
 
     // Init search results - At the moment we only support searching for an actor (profile)
     const results: SearchResults = {
