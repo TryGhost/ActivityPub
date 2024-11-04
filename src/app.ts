@@ -66,9 +66,6 @@ import {
     likedFirstCursor,
     nodeInfoDispatcher,
     noteDispatcher,
-    outboxCounter,
-    outboxDispatcher,
-    outboxFirstCursor,
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
@@ -84,6 +81,12 @@ import {
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
+
+import {
+    outboxCounter,
+    outboxDispatcher,
+    outboxFirstCursor,
+} from './fedify/collection/outbox';
 
 import { getTraceAndSpanId } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
