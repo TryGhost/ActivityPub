@@ -406,7 +406,6 @@ export async function postPublishedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
     next: Next,
 ) {
-    // TODO: Validate webhook with secret
     const data = PostPublishedWebhookSchema.parse(
         (await ctx.req.json()) as unknown,
     );
