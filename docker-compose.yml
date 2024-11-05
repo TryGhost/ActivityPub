@@ -17,6 +17,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      pubsub:
+        condition: service_healthy
 
   migrate:
     build: migrate
@@ -26,16 +28,6 @@ services:
       - MYSQL_DB=mysql://ghost:password@tcp(mysql:3306)/activitypub
     depends_on:
       mysql:
-        condition: service_healthy
-
-  migrate-testing:
-    build: migrate
-    volumes:
-      - ./migrate/migrations:/migrations
-    environment:
-      - MYSQL_DB=mysql://ghost:password@tcp(mysql-testing:3306)/activitypub
-    depends_on:
-      mysql-testing:
         condition: service_healthy
 
   scripts:
@@ -65,6 +57,17 @@ services:
       interval: 1s
       retries: 120
 
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
+    ports:
+      - "8085:8085"
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=activitypub
+    healthcheck:
+      test: "echo > /dev/tcp/localhost/8085"
+      interval: 1s
+      retries: 120
+      start_period: 5s
+
   # Testing
 
   activitypub-testing:
@@ -92,6 +95,16 @@ services:
       retries: 120
       start_period: 5s
 
+  migrate-testing:
+    build: migrate
+    volumes:
+      - ./migrate/migrations:/migrations
+    environment:
+      - MYSQL_DB=mysql://ghost:password@tcp(mysql-testing:3306)/activitypub
+    depends_on:
+      mysql-testing:
+        condition: service_healthy
+
   cucumber-tests:
     build: .
     volumes:
@@ -112,7 +125,6 @@ services:
         condition: service_started
       activitypub-testing:
         condition: service_healthy
-
 
   mysql-testing:
     image: mysql:8.0.31
