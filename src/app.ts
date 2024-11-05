@@ -1,3 +1,5 @@
+import './instrumentation';
+
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 import {
@@ -87,14 +89,6 @@ import {
 
 import { getTraceAndSpanId } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
-
-if (process.env.SENTRY_DSN) {
-    Sentry.init({
-        dsn: process.env.SENTRY_DSN,
-        environment: process.env.NODE_ENV || 'unknown',
-        release: process.env.K_REVISION,
-    });
-}
 
 if (process.env.K_SERVICE) {
     CloudProfiler.start({
@@ -318,9 +312,18 @@ app.use(async (ctx, next) => {
 
     ctx.set('logger', logging.with(extra));
 
-    return withContext(extra, () => {
-        return next();
-    });
+    return Sentry.startSpan(
+        {
+            op: 'http.server',
+            name: `${ctx.req.method} ${ctx.req.path}`,
+            attributes: extra,
+        },
+        () => {
+            return withContext(extra, () => {
+                return next();
+            });
+        },
+    );
 });
 
 app.use(async (ctx, next) => {

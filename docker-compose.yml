@@ -18,6 +18,17 @@ services:
       mysql:
         condition: service_healthy
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: activitypub-jaeger
+    ports:
+      - "4318:4318"
+      - "16686:16686"
+      - "9411:9411"
+    restart: always
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+
   migrate:
     build: migrate
     volumes:
@@ -113,7 +124,6 @@ services:
       activitypub-testing:
         condition: service_healthy
 
-
   mysql-testing:
     image: mysql:8.0.31
     environment:
@@ -128,16 +138,16 @@ services:
 
   fake-ghost-activitypub:
     image: wiremock/wiremock:3.9.2-1
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443"]
+    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
     image: wiremock/wiremock:3.9.2-1
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443"]
+    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
     image: wiremock/wiremock:3.9.2-1
     ports:
       - "8084:8080"
-    entrypoint: ["/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose"]
+    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
