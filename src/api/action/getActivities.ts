@@ -212,29 +212,25 @@ export async function getActivitiesAction(
     // Build the activities and return the response
     // -------------------------------------------------------------------------
 
-    const activities = [];
-
-    // Build the activities
-    for (const ref of paginatedRefs) {
-        try {
-            const builtActivity = await buildActivity(
-                ref,
-                globaldb,
-                apCtx,
-                likedRefs,
-                true,
-            );
-
-            if (builtActivity) {
-                activities.push(builtActivity);
+    const activities = await Promise.all(
+        paginatedRefs.map(async (ref) => {
+            try {
+                return await buildActivity(
+                    ref,
+                    globaldb,
+                    apCtx,
+                    likedRefs,
+                    true,
+                );
+            } catch (err) {
+                logger.error('Error building activity ({ref}): {error}', {
+                    ref,
+                    error: err,
+                });
+                return null;
             }
-        } catch (err) {
-            logger.error('Error building activity ({ref}): {error}', {
-                ref,
-                error: err,
-            });
-        }
-    }
+        }),
+    ).then((results) => results.filter(Boolean));
 
     // Return the response
     return new Response(

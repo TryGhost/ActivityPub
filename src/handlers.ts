@@ -568,26 +568,18 @@ export async function inboxHandler(
     const inbox = (await db.get<string[]>(['inbox'])) || [];
 
     // Prepare the items for the response
-    const items: unknown[] = [];
-
-    for (const item of inbox) {
-        try {
-            const builtInboxItem = await buildActivity(
-                item,
-                globaldb,
-                apCtx,
-                liked,
-            );
-
-            if (builtInboxItem) {
-                items.push(builtInboxItem);
+    const items = await Promise.all(
+        inbox.map(async (item) => {
+            try {
+                return await buildActivity(item, globaldb, apCtx, liked);
+            } catch (err) {
+                ctx.get('logger').error('Inbox handler failed: {error}', {
+                    error: err,
+                });
+                return null;
             }
-        } catch (err) {
-            ctx.get('logger').error('Inbox handler failed: {error}', {
-                error: err,
-            });
-        }
-    }
+        }),
+    ).then((results) => results.filter(Boolean));
 
     // Return the prepared inbox items
     return new Response(
