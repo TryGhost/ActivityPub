@@ -65,7 +65,6 @@ import {
     likedCounter,
     likedDispatcher,
     likedFirstCursor,
-    nodeInfoDispatcher,
     noteDispatcher,
     outboxCounter,
     outboxDispatcher,
@@ -73,6 +72,11 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
+import {
+    NODEINFO_PATH,
+    nodeInfoDispatcher,
+    nodeInfoMiddleware,
+} from './fedify/nodeinfo';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 
@@ -257,10 +261,7 @@ fedify.setObjectDispatcher(
     undoDispatcher,
 );
 
-fedify.setNodeInfoDispatcher(
-    '/.ghost/activitypub/nodeinfo/2.1',
-    nodeInfoDispatcher,
-);
+fedify.setNodeInfoDispatcher(NODEINFO_PATH, nodeInfoDispatcher);
 
 /** Hono */
 
@@ -281,7 +282,7 @@ export type HonoContextVariables = {
     site: {
         host: string;
         webhook_secret: string;
-    };
+    } | null;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -343,9 +344,9 @@ app.use(
     }),
 );
 
-app.use(async (c, next) => {
+app.use(async (ctx, next) => {
     await next();
-    c.res.headers.set(
+    ctx.res.headers.set(
         'Cache-Control',
         'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0',
     );
@@ -479,6 +480,8 @@ app.use(async (ctx, next) => {
     await next();
 });
 
+app.use(nodeInfoMiddleware);
+
 /** Custom API routes */
 
 app.get('/ping', (ctx) => {
@@ -512,6 +515,13 @@ function validateWebhook() {
 
         const body = await ctx.req.json();
         const site = ctx.get('site');
+
+        if (!site) {
+            return new Response(null, {
+                status: 401,
+            });
+        }
+
         const localHmac = createHmac('sha256', site.webhook_secret)
             .update(JSON.stringify(body) + timestamp)
             .digest('hex');

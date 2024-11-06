@@ -152,7 +152,7 @@ export async function getActivitiesAction(
                         // checking that the hostname associated with the reply object
                         // is the same as the hostname of the site. This is not a bullet
                         // proof check, but it's a good enough for now (i think 😅)
-                        const siteHost = ctx.get('site').host;
+                        const siteHost = ctx.get('site')?.host;
                         const { hostname: replyHost } = new URL(
                             meta.reply_object_url,
                         );

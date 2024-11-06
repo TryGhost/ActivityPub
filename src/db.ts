@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import Knex from 'knex';
 
 export const client = Knex({
@@ -38,14 +37,8 @@ interface ActivityJsonLd {
 export async function getSite(host: string) {
     const rows = await client.select('*').from('sites').where({ host });
 
-    if (!rows || !rows.length) {
-        const webhook_secret = crypto.randomBytes(32).toString('hex');
-        await client.insert({ host, webhook_secret }).into('sites');
-
-        return {
-            host,
-            webhook_secret,
-        };
+    if (rows.length === 0) {
+        return null;
     }
 
     if (rows.length > 1) {
