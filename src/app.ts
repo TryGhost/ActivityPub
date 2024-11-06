@@ -17,7 +17,6 @@ import {
     createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
-import CloudProfiler from '@google-cloud/profiler';
 import { serve } from '@hono/node-server';
 import {
     type LogRecord,
@@ -89,15 +88,6 @@ import {
 
 import { getTraceAndSpanId } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
-
-if (process.env.K_SERVICE) {
-    CloudProfiler.start({
-        serviceContext: {
-            service: 'activitypub',
-            version: process.env.K_REVISION,
-        },
-    });
-}
 
 const logging = getLogger(['activitypub']);
 
