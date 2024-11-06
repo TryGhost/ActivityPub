@@ -302,32 +302,27 @@ app.use(async (ctx, next) => {
 
     ctx.set('logger', logging.with(extra));
 
-    return Sentry.startSpan(
-        {
-            op: 'http.server',
-            name: `${ctx.req.method} ${ctx.req.path}`,
-            attributes: {
-                ...extra,
-                'service.name': 'activitypub',
-            },
-        },
-        () => {
-            return withContext(extra, () => {
-                return next();
-            });
-        },
-    );
-});
-
-app.use(async (ctx, next) => {
-    return Sentry.withIsolationScope(() => {
-        const scope = Sentry.getIsolationScope();
+    return Sentry.withIsolationScope((scope) => {
         scope.addEventProcessor((event) => {
             Sentry.addRequestDataToEvent(event, getRequestData(ctx.req.raw));
             return event;
         });
 
-        return next();
+        return Sentry.startSpan(
+            {
+                op: 'http.server',
+                name: `${ctx.req.method} ${ctx.req.path}`,
+                attributes: {
+                    ...extra,
+                    'service.name': 'activitypub',
+                },
+            },
+            () => {
+                return withContext(extra, () => {
+                    return next();
+                });
+            },
+        );
     });
 });
 
