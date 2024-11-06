@@ -106,12 +106,6 @@ jobs:
           region: europe-west4
           job: migrations
           flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db'
-          env_vars: |-
-            DB_USER=activitypub
-            DB_NAME=activitypub
-            DB_CONN=ghost-activitypub:europe-west4:activitypub-db
-          secrets: |-
-            DB_PASS=activitypub_mysqldb_password:latest
 
       - name: "Deploy ActivityPub to Cloud Run"
         if: github.ref == 'refs/heads/main'
