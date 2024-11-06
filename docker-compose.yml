@@ -74,7 +74,7 @@ services:
       - "8085:8085"
     command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=activitypub
     healthcheck:
-      test: "echo > /dev/tcp/localhost/8085"
+      test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
       retries: 120
       start_period: 5s
@@ -153,9 +153,11 @@ services:
 
   pubsub-testing:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
+    ports:
+      - "8085:8085"
     command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=activitypub
     healthcheck:
-      test: "echo > /dev/tcp/localhost/8085"
+      test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
       retries: 120
       start_period: 5s
