@@ -68,5 +68,55 @@ jobs:
       - name: "Run Tests"
         run: yarn test
 
-      - name: "Fail"
-        run: exit 1
+      - name: "Login to GAR"
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: europe-west4-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+
+      - name: "Push ActivityPub Docker Image"
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
+
+      - name: "Push Migrations Docker Image"
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: migrate
+          push: true
+          tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
+
+      - name: "Auth with Google Cloud"
+        if: github.ref == 'refs/heads/main'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+
+      - name: "Deploy Migrations to Cloud Run"
+        if: github.ref == 'refs/heads/main'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ steps.migrations-docker-metadata.outputs.version }}
+          region: europe-west4
+          job: migrations
+          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db'
+          env_vars: |-
+            DB_USER=activitypub
+            DB_NAME=activitypub
+            DB_CONN=ghost-activitypub:europe-west4:activitypub-db
+          secrets: |-
+            DB_PASS=activitypub_mysqldb_password:latest
+
+      - name: "Deploy ActivityPub to Cloud Run"
+        if: github.ref == 'refs/heads/main'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ steps.activitypub-docker-metadata.outputs.version }}
+          region: europe-west4
+          service: activitypub
