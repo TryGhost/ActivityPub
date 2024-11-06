@@ -436,22 +436,18 @@ export async function followingDispatcher(
 
     ctx.data.logger.info('Following results', { results: slicedResults });
 
-    const items: Actor[] = [];
-
-    for (const result of slicedResults) {
-        try {
-            const thing = await lookupActor(ctx, result);
-
-            if (isActor(thing)) {
-                items.push(thing);
+    const items = await Promise.all(
+        slicedResults.map(async (result) => {
+            try {
+                return await lookupActor(ctx, result);
+            } catch (err) {
+                Sentry.captureException(err);
+                ctx.data.logger.error('Error looking up following actor', {
+                    error: err,
+                });
             }
-        } catch (err) {
-            Sentry.captureException(err);
-            ctx.data.logger.error('Error looking up following actor', {
-                error: err,
-            });
-        }
-    }
+        }),
+    ).then((results) => results.filter((r): r is Actor => isActor(r)));
 
     return {
         items,
@@ -499,21 +495,22 @@ export async function outboxDispatcher(
 
     ctx.data.logger.info('Outbox results', { results: slicedResults });
 
-    const items: Activity[] = [];
+    const items: Activity[] = await Promise.all(
+        slicedResults.map(async (result) => {
+            try {
+                const thing = await ctx.data.globaldb.get([result]);
+                const activity = await Activity.fromJsonLd(thing);
 
-    for (const result of slicedResults) {
-        try {
-            const thing = await ctx.data.globaldb.get([result]);
-            const activity = await Activity.fromJsonLd(thing);
-
-            items.push(activity);
-        } catch (err) {
-            Sentry.captureException(err);
-            ctx.data.logger.error('Error getting outbox activity', {
-                error: err,
-            });
-        }
-    }
+                return activity;
+            } catch (err) {
+                Sentry.captureException(err);
+                ctx.data.logger.error('Error getting outbox activity', {
+                    error: err,
+                });
+                return null;
+            }
+        }),
+    ).then((results) => results.filter((r): r is Activity => r !== null));
 
     return {
         items,
@@ -564,48 +561,50 @@ export async function likedDispatcher(
 
     ctx.data.logger.info('Liked results', { results: slicedResults });
 
-    const items: Like[] = [];
+    const items: Like[] = (
+        await Promise.all(
+            slicedResults.map(async (result) => {
+                try {
+                    const thing = await globaldb.get<{
+                        object:
+                            | string
+                            | {
+                                  [key: string]: any;
+                              };
+                        [key: string]: any;
+                    }>([result]);
 
-    for (const result of slicedResults) {
-        try {
-            const thing = await globaldb.get<{
-                object:
-                    | string
-                    | {
-                          [key: string]: any;
-                      };
-                [key: string]: any;
-            }>([result]);
+                    if (
+                        thing &&
+                        typeof thing.object !== 'string' &&
+                        typeof thing.object.attributedTo === 'string'
+                    ) {
+                        const actor = await lookupActor(
+                            apCtx,
+                            thing.object.attributedTo,
+                        );
 
-            if (
-                thing &&
-                typeof thing.object !== 'string' &&
-                typeof thing.object.attributedTo === 'string'
-            ) {
-                const actor = await lookupActor(
-                    apCtx,
-                    thing.object.attributedTo,
-                );
+                        if (actor) {
+                            const json = await actor.toJsonLd();
 
-                if (actor) {
-                    const json = await actor.toJsonLd();
-
-                    if (typeof json === 'object' && json !== null) {
-                        thing.object.attributedTo = json;
+                            if (typeof json === 'object' && json !== null) {
+                                thing.object.attributedTo = json;
+                            }
+                        }
                     }
+
+                    const activity = await Like.fromJsonLd(thing);
+                    return activity;
+                } catch (err) {
+                    Sentry.captureException(err);
+                    ctx.data.logger.error('Error getting liked activity', {
+                        error: err,
+                    });
+                    return null;
                 }
-            }
-
-            const activity = await Like.fromJsonLd(thing);
-
-            items.push(activity);
-        } catch (err) {
-            Sentry.captureException(err);
-            ctx.data.logger.error('Error getting liked activity', {
-                error: err,
-            });
-        }
-    }
+            }),
+        )
+    ).filter((item): item is Like => item !== null);
 
     return {
         items,
