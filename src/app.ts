@@ -306,7 +306,10 @@ app.use(async (ctx, next) => {
         {
             op: 'http.server',
             name: `${ctx.req.method} ${ctx.req.path}`,
-            attributes: extra,
+            attributes: {
+                ...extra,
+                'service.name': 'activitypub',
+            },
         },
         () => {
             return withContext(extra, () => {
