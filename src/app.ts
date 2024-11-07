@@ -395,31 +395,6 @@ app.use(async (ctx, next) => {
         // TODO handle
         throw new Error('No Host header');
     }
-
-    const scopedDb = scopeKvStore(db, ['sites', host]);
-
-    const site = await getSite(host);
-
-    if (!site) {
-        return new Response(null, {
-            status: 403,
-        });
-    }
-
-    ctx.set('db', scopedDb);
-    ctx.set('globaldb', db);
-    ctx.set('site', site);
-
-    await next();
-});
-
-app.use(async (ctx, next) => {
-    const request = ctx.req;
-    const host = request.header('host');
-    if (!host) {
-        // TODO handle
-        throw new Error('No Host header');
-    }
     ctx.set('role', GhostRole.Anonymous);
 
     const authorization = request.header('authorization');
@@ -487,6 +462,55 @@ app.use(async (ctx, next) => {
     } catch (err) {
         ctx.set('role', GhostRole.Anonymous);
     }
+
+    await next();
+});
+
+// This needs to go before the middleware which loads the site
+// Because the site doesn't always exist - this is how it's created
+app.get(
+    '/.ghost/activitypub/site',
+    requireRole(GhostRole.Owner),
+    async (ctx) => {
+        const request = ctx.req;
+        const host = request.header('host');
+        if (!host) {
+            // TODO handle
+            throw new Error('No Host header');
+        }
+
+        const site = await getSite(host, true);
+
+        return new Response(JSON.stringify(site), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+);
+
+app.use(async (ctx, next) => {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        // TODO handle
+        throw new Error('No Host header');
+    }
+
+    const scopedDb = scopeKvStore(db, ['sites', host]);
+
+    const site = await getSite(host);
+
+    if (!site) {
+        return new Response(null, {
+            status: 403,
+        });
+    }
+
+    ctx.set('db', scopedDb);
+    ctx.set('globaldb', db);
+    ctx.set('site', site);
 
     await next();
 });
