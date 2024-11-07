@@ -90,6 +90,7 @@ import {
 
 import { getTraceAndSpanId } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
+import { spanWrapper } from './instrumentation';
 
 const logging = getLogger(['activitypub']);
 
@@ -193,8 +194,13 @@ function ensureCorrectContext<B, R>(
 
 fedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
-    .setActorDispatcher('/.ghost/activitypub/users/{handle}', actorDispatcher)
-    .setKeyPairsDispatcher(ensureCorrectContext(keypairDispatcher));
+    .setActorDispatcher(
+        '/.ghost/activitypub/users/{handle}',
+        spanWrapper(actorDispatcher),
+    )
+    .setKeyPairsDispatcher(
+        ensureCorrectContext(spanWrapper(keypairDispatcher)),
+    );
 
 const inboxListener = fedify.setInboxListeners(
     '/.ghost/activitypub/inbox/{handle}',
@@ -202,21 +208,21 @@ const inboxListener = fedify.setInboxListeners(
 );
 
 inboxListener
-    .on(Follow, ensureCorrectContext(handleFollow))
+    .on(Follow, ensureCorrectContext(spanWrapper(handleFollow)))
     .onError(inboxErrorHandler)
-    .on(Accept, ensureCorrectContext(handleAccept))
+    .on(Accept, ensureCorrectContext(spanWrapper(handleAccept)))
     .onError(inboxErrorHandler)
-    .on(Create, ensureCorrectContext(handleCreate))
+    .on(Create, ensureCorrectContext(spanWrapper(handleCreate)))
     .onError(inboxErrorHandler)
-    .on(Announce, ensureCorrectContext(handleAnnounce))
+    .on(Announce, ensureCorrectContext(spanWrapper(handleAnnounce)))
     .onError(inboxErrorHandler)
-    .on(Like, ensureCorrectContext(handleLike))
+    .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
     .onError(inboxErrorHandler);
 
 fedify
     .setFollowersDispatcher(
         '/.ghost/activitypub/followers/{handle}',
-        followersDispatcher,
+        spanWrapper(followersDispatcher),
     )
     .setCounter(followersCounter)
     .setFirstCursor(followersFirstCursor);
@@ -224,7 +230,7 @@ fedify
 fedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{handle}',
-        followingDispatcher,
+        spanWrapper(followingDispatcher),
     )
     .setCounter(followingCounter)
     .setFirstCursor(followingFirstCursor);
@@ -232,60 +238,63 @@ fedify
 fedify
     .setOutboxDispatcher(
         '/.ghost/activitypub/outbox/{handle}',
-        outboxDispatcher,
+        spanWrapper(outboxDispatcher),
     )
     .setCounter(outboxCounter)
     .setFirstCursor(outboxFirstCursor);
 
 fedify
-    .setLikedDispatcher('/.ghost/activitypub/liked/{handle}', likedDispatcher)
+    .setLikedDispatcher(
+        '/.ghost/activitypub/liked/{handle}',
+        spanWrapper(likedDispatcher),
+    )
     .setCounter(likedCounter)
     .setFirstCursor(likedFirstCursor);
 
 fedify.setObjectDispatcher(
     Article,
     '/.ghost/activitypub/article/{id}',
-    articleDispatcher,
+    spanWrapper(articleDispatcher),
 );
 fedify.setObjectDispatcher(
     Note,
     '/.ghost/activitypub/note/{id}',
-    noteDispatcher,
+    spanWrapper(noteDispatcher),
 );
 fedify.setObjectDispatcher(
     Follow,
     '/.ghost/activitypub/follow/{id}',
-    followDispatcher,
+    spanWrapper(followDispatcher),
 );
 fedify.setObjectDispatcher(
     Accept,
     '/.ghost/activitypub/accept/{id}',
-    acceptDispatcher,
+    spanWrapper(acceptDispatcher),
 );
 fedify.setObjectDispatcher(
     Create,
     '/.ghost/activitypub/create/{id}',
-    createDispatcher,
+    spanWrapper(createDispatcher),
 );
 fedify.setObjectDispatcher(
     Update,
     '/.ghost/activitypub/update/{id}',
-    updateDispatcher,
+    spanWrapper(updateDispatcher),
 );
 fedify.setObjectDispatcher(
     Like,
     '/.ghost/activitypub/like/{id}',
-    likeDispatcher,
+    spanWrapper(likeDispatcher),
 );
 fedify.setObjectDispatcher(
     Undo,
     '/.ghost/activitypub/undo/{id}',
-    undoDispatcher,
+    spanWrapper(undoDispatcher),
 );
 
 fedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
-    nodeInfoDispatcher,
+    spanWrapper(nodeInfoDispatcher),
 );
 
 /** Hono */
@@ -555,12 +564,12 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    postPublishedWebhook,
+    spanWrapper(postPublishedWebhook),
 );
 app.post(
     '/.ghost/activitypub/webhooks/site/changed',
     validateWebhook(),
-    siteChangedWebhook,
+    spanWrapper(siteChangedWebhook),
 );
 
 function requireRole(role: GhostRole) {
@@ -577,54 +586,57 @@ function requireRole(role: GhostRole) {
 app.get(
     '/.ghost/activitypub/inbox/:handle',
     requireRole(GhostRole.Owner),
-    inboxHandler,
+    spanWrapper(inboxHandler),
 );
 app.get(
     '/.ghost/activitypub/activities/:handle',
     requireRole(GhostRole.Owner),
-    getActivitiesAction,
+    spanWrapper(getActivitiesAction),
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner),
-    followAction,
+    spanWrapper(followAction),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
     requireRole(GhostRole.Owner),
-    likeAction,
+    spanWrapper(likeAction),
 );
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
     requireRole(GhostRole.Owner),
-    unlikeAction,
+    spanWrapper(unlikeAction),
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner),
-    replyAction,
+    spanWrapper(replyAction),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner),
-    searchAction,
+    spanWrapper(searchAction),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle',
     requireRole(GhostRole.Owner),
-    profileGetAction,
+    spanWrapper(profileGetAction),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/followers',
     requireRole(GhostRole.Owner),
-    profileGetFollowersAction,
+    spanWrapper(profileGetFollowersAction),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/following',
     requireRole(GhostRole.Owner),
-    profileGetFollowingAction,
+    spanWrapper(profileGetFollowingAction),
 );
-app.get('/.ghost/activitypub/thread/:activity_id', getActivityThreadAction);
+app.get(
+    '/.ghost/activitypub/thread/:activity_id',
+    spanWrapper(getActivityThreadAction),
+);
 
 /** Federation wire up */
 

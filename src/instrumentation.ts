@@ -36,3 +36,17 @@ if (process.env.SENTRY_DSN) {
         );
     }
 }
+
+export function spanWrapper<TArgs extends unknown[], TReturn>(
+    fn: (...args: TArgs) => TReturn,
+) {
+    return (...args: TArgs) => {
+        return Sentry.startSpan(
+            {
+                op: 'fn',
+                name: fn.name,
+            },
+            () => fn(...args),
+        );
+    };
+}
