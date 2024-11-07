@@ -639,7 +639,12 @@ serve(
         port: Number.parseInt(process.env.PORT || '8080'),
     },
     (info) => {
-        logging.info(`listening on ${info.address}:${info.port}`);
+        logging.info(
+            `listening on ${info.address}:${info.port}, booted in {bootTime}ms`,
+            {
+                bootTime: Math.round(process.uptime() * 1000),
+            },
+        );
     },
 );
 
