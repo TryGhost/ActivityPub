@@ -286,6 +286,12 @@ export type HonoContextVariables = {
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
 
+app.get('/ping', (ctx) => {
+    return new Response('', {
+        status: 200,
+    });
+});
+
 /** Middleware */
 
 app.use(async (ctx, next) => {
@@ -394,6 +400,12 @@ app.use(async (ctx, next) => {
 
     const site = await getSite(host);
 
+    if (!site) {
+        return new Response(null, {
+            status: 403,
+        });
+    }
+
     ctx.set('db', scopedDb);
     ctx.set('globaldb', db);
     ctx.set('site', site);
@@ -480,12 +492,6 @@ app.use(async (ctx, next) => {
 });
 
 /** Custom API routes */
-
-app.get('/ping', (ctx) => {
-    return new Response('', {
-        status: 200,
-    });
-});
 
 function validateWebhook() {
     return async function webhookMiddleware(

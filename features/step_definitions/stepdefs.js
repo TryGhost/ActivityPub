@@ -341,10 +341,6 @@ BeforeAll(async () => {
         resolve(__dirname, '../fixtures/webhook_secret.txt'),
         'utf8',
     );
-    await client('sites').insert({
-        host: 'fake-ghost-activitypub',
-        webhook_secret: webhookSecret,
-    });
 });
 
 BeforeAll(async () => {
@@ -385,6 +381,12 @@ AfterAll(async () => {
 Before(async () => {
     await externalActivityPub.clearAllRequests();
     await client('key_value').truncate();
+    await client('sites').truncate();
+
+    await client('sites').insert({
+        host: 'fake-ghost-activitypub',
+        webhook_secret: webhookSecret,
+    });
 });
 
 Before(async function () {
@@ -425,6 +427,21 @@ async function fetchActivityPub(url, options) {
     options.headers.Authorization = `Bearer ${token}`;
     return fetch(url, options);
 }
+
+Given('there is no entry in the sites table', async () => {
+    await client('sites').truncate();
+});
+
+When('we request the outbox', async function () {
+    this.response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+});
 
 Given('an Actor {string}', async function (name) {
     this.actors[name] = await createActor(name);
