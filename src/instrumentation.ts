@@ -1,5 +1,3 @@
-import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { KnexInstrumentation } from '@opentelemetry/instrumentation-knex';
 import {
     BatchSpanProcessor,
@@ -24,12 +22,20 @@ if (process.env.SENTRY_DSN) {
     client?.addIntegration(new KnexIntegration());
 
     if (process.env.K_SERVICE) {
+        const { TraceExporter } = await import(
+            '@google-cloud/opentelemetry-cloud-trace-exporter'
+        );
+
         client?.traceProvider?.addSpanProcessor(
             new BatchSpanProcessor(new TraceExporter({})),
         );
     }
 
     if (process.env.NODE_ENV === 'testing') {
+        const { OTLPTraceExporter } = await import(
+            '@opentelemetry/exporter-trace-otlp-proto'
+        );
+
         client?.traceProvider?.addSpanProcessor(
             new SimpleSpanProcessor(
                 new OTLPTraceExporter({
