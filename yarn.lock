@@ -130,17 +130,17 @@
   dependencies:
     regexp-match-indices "1.0.2"
 
-"@cucumber/cucumber@10.8.0":
-  version "10.8.0"
-  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-10.8.0.tgz#d906b451a07a91c254f90b8e2dfed4cf8ade3fcf"
-  integrity sha512-o8SR6MRQVCKKw4tytWqCqOjfX4cASj9dqpdHKHMi09rZWBCNQHBwH1TO9wj7NKjOa6RfUOTcgvDlayTcjyCH4A==
+"@cucumber/cucumber@10.9.0":
+  version "10.9.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/cucumber/-/cucumber-10.9.0.tgz#1ee505b3fc513367d2ddc651ad71059c3fd544c8"
+  integrity sha512-7XHJ6nmr9IkIag0nv6or82HfelbSInrEe3H4aT6dMHyTehwFLUifG6eQQ+uE4LZIOXAnzLPH37YmqygEO67vCA==
   dependencies:
     "@cucumber/ci-environment" "10.0.1"
     "@cucumber/cucumber-expressions" "17.1.0"
     "@cucumber/gherkin" "28.0.0"
     "@cucumber/gherkin-streams" "5.0.1"
     "@cucumber/gherkin-utils" "9.0.0"
-    "@cucumber/html-formatter" "21.3.1"
+    "@cucumber/html-formatter" "21.6.0"
     "@cucumber/message-streams" "4.0.1"
     "@cucumber/messages" "24.1.0"
     "@cucumber/tag-expressions" "6.1.0"
@@ -161,6 +161,7 @@
     lodash.merge "^4.6.2"
     lodash.mergewith "^4.6.2"
     luxon "3.2.1"
+    mime "^3.0.0"
     mkdirp "^2.1.5"
     mz "^2.7.0"
     progress "^2.0.3"
@@ -203,10 +204,10 @@
   dependencies:
     "@cucumber/messages" ">=19.1.4 <=24"
 
-"@cucumber/html-formatter@21.3.1":
-  version "21.3.1"
-  resolved "https://registry.yarnpkg.com/@cucumber/html-formatter/-/html-formatter-21.3.1.tgz#1c832d95891c1e961d9e6a4da4664c09a1332768"
-  integrity sha512-M1zbre7e8MsecXheqNv62BKY5J06YJSv1LmsD7sJ3mu5t1jirLjj2It1HqPsX5CQAfg9n69xFRugPgLMSte9TA==
+"@cucumber/html-formatter@21.6.0":
+  version "21.6.0"
+  resolved "https://registry.yarnpkg.com/@cucumber/html-formatter/-/html-formatter-21.6.0.tgz#bfd8c4db31c6c96a8520332efba2ea9838ca36f0"
+  integrity sha512-Qw1tdObBJrgXgXwVjKVjB3hFhFPI8WhIFb+ULy8g5lDl5AdnKDiyDXAMvAWRX+pphnRMMNdkPCt6ZXEfWvUuAA==
 
 "@cucumber/message-streams@4.0.1":
   version "4.0.1"
@@ -2715,6 +2716,11 @@ mime-types@^2.1.12:
   integrity sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==
   dependencies:
     mime-db "1.52.0"
+
+mime@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/mime/-/mime-3.0.0.tgz#b374550dca3a0c18443b0c950a6a58f1931cf7a7"
+  integrity sha512-jSCU7/VB1loIWBZe14aEYHU/+1UMEHoaO7qxCOVJOw9GgH72VAWppxNcjU+x9a2k3GSIBXNKxXQFqRvvZ7vr3A==
 
 minimatch@^9.0.4:
   version "9.0.5"
