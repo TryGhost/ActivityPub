@@ -388,6 +388,30 @@ app.use(async (ctx, next) => {
     });
 });
 
+function sleep(n: number) {
+    return new Promise((resolve) => setTimeout(resolve, n));
+}
+
+async function getKey(jwksURL: URL, retries = 5) {
+    try {
+        const jwksResponse = await fetch(jwksURL, {
+            redirect: 'follow',
+        });
+
+        const jwks = await jwksResponse.json();
+
+        const key = await jose.JWK.asKey(jwks.keys[0]);
+
+        return key;
+    } catch (err) {
+        if (retries === 0) {
+            throw err;
+        }
+        await sleep(100);
+        return getKey(jwksURL, retries - 1);
+    }
+}
+
 app.use(async (ctx, next) => {
     const request = ctx.req;
     const host = request.header('host');
@@ -423,14 +447,7 @@ app.use(async (ctx, next) => {
         `${protocol}://${host}`,
     );
 
-    const jwksResponse = await fetch(jwksURL, {
-        redirect: 'follow',
-    });
-
-    const jwks = await jwksResponse.json();
-
-    const key = await jose.JWK.asKey(jwks.keys[0]);
-
+    const key = await getKey(jwksURL);
     try {
         const claims = jwt.verify(token, key.toPEM());
         if (typeof claims === 'string' || typeof claims.role !== 'string') {
