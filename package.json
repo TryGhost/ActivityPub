@@ -47,7 +47,7 @@
     "@logtape/logtape": "0.7.1",
     "@opentelemetry/exporter-trace-otlp-proto": "0.54.2",
     "@opentelemetry/sdk-trace-base": "1.27.0",
-    "@sentry/node": "8.35.0",
+    "@sentry/node": "8.37.1",
     "hono": "4.6.9",
     "jsonwebtoken": "9.0.2",
     "knex": "3.1.0",
