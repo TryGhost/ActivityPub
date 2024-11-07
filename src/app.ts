@@ -11,6 +11,7 @@ import {
     Follow,
     type KvStore,
     Like,
+    type MessageQueue,
     Note,
     Undo,
     Update,
@@ -75,6 +76,7 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
+import { GCloudPubSubMessageQueue } from './fedify/mq/gcloud-pubsub-mq';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 
@@ -88,6 +90,13 @@ import {
     unlikeAction,
 } from './handlers';
 
+import { PubSub } from '@google-cloud/pubsub';
+import {
+    getFullSubscriptionIdentifier,
+    getFullTopicIdentifier,
+    subscriptionExists,
+    topicExists,
+} from 'helpers/gcloud-pubsub';
 import { getTraceAndSpanId } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
@@ -153,8 +162,56 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
+let messageQueue: MessageQueue | undefined;
+
+if (process.env.USE_MQ === 'true') {
+    logging.info('Message queue is enabled');
+
+    try {
+        const pubSubClient = new PubSub({
+            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
+            apiEndpoint: process.env.MQ_PUBSUB_HOST,
+            emulatorMode: process.env.NODE_ENV !== 'production',
+        });
+
+        const topicName = process.env.MQ_PUBSUB_TOPIC_NAME ?? 'unknown_topic';
+        const subscriptionName =
+            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME ?? 'unknown_subscription';
+
+        const topicIdentifier = getFullTopicIdentifier(pubSubClient, topicName);
+        const subscriptionIdentifier = getFullSubscriptionIdentifier(
+            pubSubClient,
+            subscriptionName,
+        );
+
+        if (!(await topicExists(pubSubClient, topicIdentifier))) {
+            throw new Error(`Topic does not exist: ${topicName}`);
+        }
+
+        if (!(await subscriptionExists(pubSubClient, subscriptionIdentifier))) {
+            throw new Error(`Subscription does not exist: ${subscriptionName}`);
+        }
+
+        messageQueue = new GCloudPubSubMessageQueue(
+            pubSubClient,
+            topicIdentifier,
+            subscriptionIdentifier,
+            logging,
+        );
+    } catch (err) {
+        logging.error('Failed to initialise message queue {error}', {
+            error: err,
+        });
+
+        process.exit(1);
+    }
+} else {
+    logging.info('Message queue is disabled');
+}
+
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
+    queue: messageQueue,
     skipSignatureVerification:
         process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
         process.env.NODE_ENV === 'testing',

@@ -13,6 +13,11 @@ services:
       - NODE_ENV=testing
       - ALLOW_PRIVATE_ADDRESS=true
       - SKIP_SIGNATURE_VERIFICATION=true
+      - USE_MQ=true
+      - MQ_PUBSUB_PROJECT_ID=activitypub
+      - MQ_PUBSUB_HOST=pubsub:8085
+      - MQ_PUBSUB_TOPIC_NAME=activitypub_topic_changeme
+      - MQ_PUBSUB_SUBSCRIPTION_NAME=activitypub_subscription_changeme
     command: yarn build:watch
     depends_on:
       migrate:
@@ -74,7 +79,13 @@ services:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
     ports:
       - "8085:8085"
-    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=activitypub
+    command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
+    volumes:
+      - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
+    environment:
+      - PROJECT_ID=activitypub
+      - TOPIC_NAME=activitypub_topic_changeme
+      - SUBSCRIPTION_NAME=activitypub_subscription_changeme
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
@@ -98,6 +109,11 @@ services:
       - SKIP_SIGNATURE_VERIFICATION=true
       - ALLOW_PRIVATE_ADDRESS=true
       - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - USE_MQ=true
+      - MQ_PUBSUB_PROJECT_ID=activitypub
+      - MQ_PUBSUB_HOST=pubsub-testing:8085
+      - MQ_PUBSUB_TOPIC_NAME=activitypub_topic_changeme
+      - MQ_PUBSUB_SUBSCRIPTION_NAME=activitypub_subscription_changeme
     command: yarn build:watch
     depends_on:
       mysql-testing:
@@ -157,7 +173,13 @@ services:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
     ports:
       - "8086:8085"
-    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=activitypub
+    command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
+    volumes:
+      - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
+    environment:
+      - PROJECT_ID=activitypub
+      - TOPIC_NAME=activitypub_topic_changeme
+      - SUBSCRIPTION_NAME=activitypub_subscription_changeme
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
