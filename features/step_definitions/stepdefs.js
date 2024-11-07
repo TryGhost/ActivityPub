@@ -443,6 +443,17 @@ When('we request the outbox', async function () {
     );
 });
 
+When('we request the site endpoint', async function () {
+    this.response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/site',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+});
+
 Given('an Actor {string}', async function (name) {
     this.actors[name] = await createActor(name);
 });
