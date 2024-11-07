@@ -32,10 +32,10 @@
     "@types/sanitize-html": "2.13.0",
     "@types/sinon": "17.0.3",
     "@types/uuid": "10.0.0",
-    "@vitest/coverage-v8": "2.1.1",
+    "@vitest/coverage-v8": "2.1.4",
     "tsx": "4.19.2",
     "typescript": "5.4.5",
-    "vitest": "2.1.1",
+    "vitest": "2.1.4",
     "wiremock-captain": "3.3.1"
   },
   "dependencies": {
