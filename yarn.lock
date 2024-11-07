@@ -1608,10 +1608,10 @@ aws-ssl-profiles@^1.1.1:
   resolved "https://registry.yarnpkg.com/aws-ssl-profiles/-/aws-ssl-profiles-1.1.2.tgz#157dd77e9f19b1d123678e93f120e6f193022641"
   integrity sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g==
 
-axios@1.6.8:
-  version "1.6.8"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.6.8.tgz#66d294951f5d988a00e87a0ffb955316a619ea66"
-  integrity sha512-v/ZHtJDU39mDpyBoFVkETcd/uNdxrWRrg3bKpOKzXFA6Bvqopts6ALSMU3y6ijYxbw2B+wPrIv46egTzJXCLGQ==
+axios@1.7.7:
+  version "1.7.7"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.7.7.tgz#2f554296f9892a72ac8d8e4c5b79c14a91d0a47f"
+  integrity sha512-S4kL7XrjgBmvdGut0sN3yJxqYzrDOnivkBiN0OFs6hLiUam3UPvswUo0kqGyhqUZGEOytHyumEdXsAkgCOUf3Q==
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.0"
@@ -3846,12 +3846,12 @@ why-is-node-running@^2.3.0:
     siginfo "^2.0.0"
     stackback "0.0.2"
 
-wiremock-captain@3.3.1:
-  version "3.3.1"
-  resolved "https://registry.yarnpkg.com/wiremock-captain/-/wiremock-captain-3.3.1.tgz#a3f5448f94b82b88977fd9d1d135d12de876c97a"
-  integrity sha512-TOvkd6r6S5hskhEc2u42Tf7frpNnyDzP8bkL/0YK+d6mZGE7oaofhkV4A8iWOlRtynY9x/RAK/IZ9k5K4BWb4g==
+wiremock-captain@3.5.0:
+  version "3.5.0"
+  resolved "https://registry.yarnpkg.com/wiremock-captain/-/wiremock-captain-3.5.0.tgz#68d414599bb509ec4899c88423e5a6b0c3c0efb6"
+  integrity sha512-2koJniQZYtc+rSy9kTzvfaxEYw1E+psyhM1PqJ26EzLZg4Gu2jwoj7dGNgriqQ3mi++ZHJPMmELpgHgG7RqoSw==
   dependencies:
-    axios "1.6.8"
+    axios "1.7.7"
 
 "wrap-ansi-cjs@npm:wrap-ansi@^7.0.0":
   version "7.0.0"

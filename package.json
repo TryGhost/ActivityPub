@@ -36,7 +36,7 @@
     "tsx": "4.19.2",
     "typescript": "5.4.5",
     "vitest": "2.1.4",
-    "wiremock-captain": "3.3.1"
+    "wiremock-captain": "3.5.0"
   },
   "dependencies": {
     "@fedify/fedify": "1.2.3",
