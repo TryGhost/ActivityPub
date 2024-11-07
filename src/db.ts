@@ -35,10 +35,13 @@ interface ActivityJsonLd {
     [key: string]: any;
 }
 
-export async function getSite(host: string) {
+export async function getSite(host: string, createIfMissing = false) {
     const rows = await client.select('*').from('sites').where({ host });
 
     if (!rows || !rows.length) {
+        if (!createIfMissing) {
+            return null;
+        }
         const webhook_secret = crypto.randomBytes(32).toString('hex');
         await client.insert({ host, webhook_secret }).into('sites');
 
