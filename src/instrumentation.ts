@@ -1,15 +1,8 @@
-import { KnexInstrumentation } from '@opentelemetry/instrumentation-knex';
 import {
     BatchSpanProcessor,
     SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import * as Sentry from '@sentry/node';
-import type { Integration } from '@sentry/types';
-
-// Wrapper class to add `name` to the OTel integration to keep TS happy
-class KnexIntegration extends KnexInstrumentation implements Integration {
-    name = 'knex';
-}
 
 if (process.env.SENTRY_DSN) {
     const client = Sentry.init({
@@ -18,8 +11,6 @@ if (process.env.SENTRY_DSN) {
         release: process.env.K_REVISION,
         tracesSampleRate: 1.0,
     });
-
-    client?.addIntegration(new KnexIntegration());
 
     if (process.env.K_SERVICE) {
         const { TraceExporter } = await import(
