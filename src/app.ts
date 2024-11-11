@@ -352,8 +352,10 @@ app.use(async (ctx, next) => {
         return Sentry.continueTrace(
             {
                 sentryTrace:
-                    traceId && spanId ? `${traceId}-${spanId}-1` : undefined,
-                baggage: undefined,
+                    traceId && spanId
+                        ? `${traceId}-${spanId}-1`
+                        : ctx.req.header('sentry-trace'),
+                baggage: ctx.req.header('baggage'),
             },
             () => {
                 return Sentry.startSpan(
