@@ -349,19 +349,28 @@ app.use(async (ctx, next) => {
             return event;
         });
 
-        return Sentry.startSpan(
+        return Sentry.continueTrace(
             {
-                op: 'http.server',
-                name: `${ctx.req.method} ${ctx.req.path}`,
-                attributes: {
-                    ...extra,
-                    'service.name': 'activitypub',
-                },
+                sentryTrace:
+                    traceId && spanId ? `${traceId}-${spanId}-1` : undefined,
+                baggage: spanId || undefined,
             },
             () => {
-                return withContext(extra, () => {
-                    return next();
-                });
+                return Sentry.startSpan(
+                    {
+                        op: 'http.server',
+                        name: `${ctx.req.method} ${ctx.req.path}`,
+                        attributes: {
+                            ...extra,
+                            'service.name': 'activitypub',
+                        },
+                    },
+                    () => {
+                        return withContext(extra, () => {
+                            return next();
+                        });
+                    },
+                );
             },
         );
     });
