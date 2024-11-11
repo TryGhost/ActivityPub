@@ -13,7 +13,7 @@ services:
       - NODE_ENV=testing
       - ALLOW_PRIVATE_ADDRESS=true
       - SKIP_SIGNATURE_VERIFICATION=true
-    command: node --import tsx --watch src/app.ts
+    command: yarn build:watch
     depends_on:
       mysql:
         condition: service_healthy
@@ -96,7 +96,7 @@ services:
       - SKIP_SIGNATURE_VERIFICATION=true
       - ALLOW_PRIVATE_ADDRESS=true
       - NODE_TLS_REJECT_UNAUTHORIZED=0
-    command: node --import tsx --watch src/app.ts
+    command: yarn build:watch
     depends_on:
       mysql-testing:
         condition: service_healthy

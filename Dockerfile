@@ -13,6 +13,8 @@ COPY tsconfig.json .
 COPY src ./src
 
 ENV NODE_ENV=production
+RUN yarn build
+
 EXPOSE 8080
 
-CMD ["node", "--import", "tsx", "src/app.ts"]
+CMD ["node", "dist/app.js"]
