@@ -9,10 +9,10 @@
   "scripts": {
     "build": "esbuild src/app.ts --platform=neutral --packages=external --bundle --outfile=dist/app.js",
     "build:watch": "concurrently \"yarn build --watch\" \"node --watch dist/app.js\"",
-    "dev": "docker compose up activitypub nginx -d",
+    "dev": "docker compose up activitypub nginx -d --build",
     "stop": "docker compose stop",
     "db": "docker compose exec mysql mysql -uroot -proot activitypub",
-    "fix": "docker compose rm activitypub nginx -sf && docker compose build activitypub nginx",
+    "fix": "docker compose down --rmi all activitypub activitypub-testing cucumber-tests nginx",
     "logs": "docker compose logs activitypub -f",
     "test:cucumber": "docker compose run --rm migrate-testing up && docker compose up cucumber-tests --exit-code-from cucumber-tests",
     "test": "docker compose run --rm migrate-testing up && docker compose run --rm activitypub-testing yarn test:all && yarn test:cucumber",
