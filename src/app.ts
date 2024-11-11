@@ -353,7 +353,7 @@ app.use(async (ctx, next) => {
             {
                 sentryTrace:
                     traceId && spanId ? `${traceId}-${spanId}-1` : undefined,
-                baggage: spanId || undefined,
+                baggage: undefined,
             },
             () => {
                 return Sentry.startSpan(
