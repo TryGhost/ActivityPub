@@ -19,12 +19,14 @@ import {
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
 import {
+    type LogLevel,
     type LogRecord,
     type Logger,
     configure,
     getAnsiColorFormatter,
     getConsoleSink,
     getLogger,
+    isLogLevel,
     withContext,
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
@@ -91,6 +93,16 @@ import { getRequestData } from './helpers/request-data';
 
 const logging = getLogger(['activitypub']);
 
+function toLogLevel(level: unknown): LogLevel | null {
+    if (typeof level !== 'string') {
+        return null;
+    }
+    if (isLogLevel(level)) {
+        return level;
+    }
+    return null;
+}
+
 await configure({
     contextLocalStorage: new AsyncLocalStorage(),
     sinks: {
@@ -113,8 +125,22 @@ await configure({
     },
     filters: {},
     loggers: [
-        { category: 'activitypub', sinks: ['console'], level: 'info' },
-        { category: 'fedify', sinks: ['console'], level: 'warning' },
+        {
+            category: 'activitypub',
+            sinks: ['console'],
+            level:
+                toLogLevel(process.env.LOG_LEVEL_ACTIVITYPUB) ||
+                toLogLevel(process.env.LOG_LEVEL) ||
+                'info',
+        },
+        {
+            category: 'fedify',
+            sinks: ['console'],
+            level:
+                toLogLevel(process.env.LOG_LEVEL_FEDIFY) ||
+                toLogLevel(process.env.LOG_LEVEL) ||
+                'warning',
+        },
     ],
 });
 
