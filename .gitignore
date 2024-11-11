@@ -70,3 +70,6 @@ typings/
 
 # Activitypub V 3 Final Custom
 .direnv
+
+# Build
+dist/
