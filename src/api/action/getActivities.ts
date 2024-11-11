@@ -3,6 +3,7 @@ import type { Context } from 'hono';
 import { type HonoContextVariables, fedify } from '../../app';
 import { getActivityMeta } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
+import { spanWrapper } from '../../instrumentation';
 
 const DEFAULT_LIMIT = 10;
 
@@ -214,8 +215,10 @@ export async function getActivitiesAction(
 
     const activities = await Promise.all(
         paginatedRefs.map(async (ref) => {
+            const wrappedBuildActivity = spanWrapper(buildActivity);
+
             try {
-                return await buildActivity(
+                return await wrappedBuildActivity(
                     ref,
                     globaldb,
                     apCtx,
