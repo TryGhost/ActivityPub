@@ -29,6 +29,7 @@ import {
     isLogLevel,
     withContext,
 } from '@logtape/logtape';
+import { SEMANTIC_ATTRIBUTE_HTTP_REQUEST_METHOD } from '@sentry/core';
 import * as Sentry from '@sentry/node';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
@@ -361,8 +362,11 @@ app.use(async (ctx, next) => {
                     {
                         op: 'http.server',
                         name: `${ctx.req.method} ${ctx.req.path}`,
+
                         attributes: {
                             ...extra,
+                            [SEMANTIC_ATTRIBUTE_HTTP_REQUEST_METHOD]:
+                                ctx.req.method,
                             'service.name': 'activitypub',
                         },
                     },
