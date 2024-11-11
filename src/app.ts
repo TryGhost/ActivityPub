@@ -33,7 +33,6 @@ import * as Sentry from '@sentry/node';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
-import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
@@ -428,6 +427,9 @@ function sleep(n: number) {
 }
 
 async function getKey(jwksURL: URL, retries = 5) {
+    // Lazyloaded to keep boot fast
+    const jose = await import('node-jose');
+
     try {
         const jwksResponse = await fetch(jwksURL, {
             redirect: 'follow',
