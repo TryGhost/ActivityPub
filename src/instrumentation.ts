@@ -14,6 +14,11 @@ if (process.env.SENTRY_DSN) {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV || 'unknown',
         release: process.env.K_REVISION,
+
+        // Enabled sampling but disable default integrations
+        // Without this, OTel won't work, and I'm not sure why
+        defaultIntegrations: false,
+        tracesSampleRate: 1.0,
     });
 }
 
