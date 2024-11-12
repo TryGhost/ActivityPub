@@ -1,3 +1,4 @@
+import { CloudPropagator } from '@google-cloud/opentelemetry-cloud-trace-propagator';
 import { trace } from '@opentelemetry/api';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -25,19 +26,21 @@ const sdk = new NodeSDK({
 });
 
 const provider = new NodeTracerProvider();
+let propagator: CloudPropagator | undefined;
 
 if (process.env.K_SERVICE) {
     const { TraceExporter } = await import(
         '@google-cloud/opentelemetry-cloud-trace-exporter'
     );
-    provider.addSpanProcessor(new BatchSpanProcessor(new TraceExporter({})));
-
-    const { CloudPropagator } = await import(
-        '@google-cloud/opentelemetry-cloud-trace-propagator'
+    provider.addSpanProcessor(
+        new BatchSpanProcessor(
+            new TraceExporter({
+                resourceFilter: /.*/, // TODO: filter by our service name?
+            }),
+        ),
     );
-    provider.register({
-        propagator: new CloudPropagator(),
-    });
+
+    propagator = new CloudPropagator();
 }
 
 if (process.env.NODE_ENV === 'development') {
@@ -52,9 +55,11 @@ if (process.env.NODE_ENV === 'development') {
             }),
         ),
     );
-
-    provider.register();
 }
+
+provider.register({
+    propagator,
+});
 
 export const tracer = trace.getTracer('activitypub');
 
