@@ -188,10 +188,10 @@ export const fedify = createFederation<ContextData>({
     queue: messageQueue,
     skipSignatureVerification:
         process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
-        process.env.NODE_ENV === 'testing',
+        ['development', 'testing'].includes(process.env.NODE_ENV || ''),
     allowPrivateAddress:
         process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
-        process.env.NODE_ENV === 'testing',
+        ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
@@ -380,21 +380,9 @@ app.use(async (ctx, next) => {
             return event;
         });
 
-        return Sentry.startSpan(
-            {
-                op: 'http.server',
-                name: `${ctx.req.method} ${ctx.req.path}`,
-                attributes: {
-                    ...extra,
-                    'service.name': 'activitypub',
-                },
-            },
-            () => {
-                return withContext(extra, () => {
-                    return next();
-                });
-            },
-        );
+        return withContext(extra, () => {
+            return next();
+        });
     });
 });
 

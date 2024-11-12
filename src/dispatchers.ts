@@ -114,11 +114,6 @@ export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
     ctx.data.logger.info('Handling Accept');
     const parsed = (ctx as any).parseUri(accept.objectId);
     ctx.data.logger.info('Parsed accept object', { parsed });
-    // biome-ignore lint/correctness/noConstantCondition: present when adding linting
-    if (false && parsed?.type !== 'follow') {
-        ctx.data.logger.info('Not accepting a follow - exit');
-        return;
-    }
     if (!accept.id) {
         ctx.data.logger.info('Accept missing id - exit');
         return;
@@ -143,11 +138,6 @@ export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     ctx.data.logger.info('Handling Create');
     const parsed = (ctx as any).parseUri(create.objectId);
     ctx.data.logger.info('Parsed create object', { parsed });
-    // biome-ignore lint/correctness/noConstantCondition: present when adding linting
-    if (false && parsed?.type !== 'article') {
-        ctx.data.logger.info('Not accepting a follow - exit');
-        return;
-    }
     if (!create.id) {
         ctx.data.logger.info('Create missing id - exit');
         return;
