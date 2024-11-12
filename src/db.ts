@@ -125,18 +125,22 @@ export async function getActivityChildren(activity: ActivityJsonLd) {
     const results = await client
         .select('value')
         .from('key_value')
-        // If inReplyTo is a string
-        .where(
-            client.raw(
-                `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
-            ),
-        )
-        // If inReplyTo is an object
-        .orWhere(
-            client.raw(
-                `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
-            ),
-        );
+        .where(function () {
+            // If inReplyTo is a string
+            this.where(
+                client.raw(
+                    `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
+                ),
+            );
+
+            // If inReplyTo is an object
+            this.orWhere(
+                client.raw(
+                    `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
+                ),
+            );
+        })
+        .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Create"`));
 
     return results.map((result) => result.value);
 }
@@ -147,18 +151,22 @@ export async function getActivityChildrenCount(activity: ActivityJsonLd) {
     const result = await client
         .count('* as count')
         .from('key_value')
-        // If inReplyTo is a string
-        .where(
-            client.raw(
-                `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
-            ),
-        )
-        // If inReplyTo is an object
-        .orWhere(
-            client.raw(
-                `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
-            ),
-        );
+        .where(function () {
+            // If inReplyTo is a string
+            this.where(
+                client.raw(
+                    `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
+                ),
+            );
+
+            // If inReplyTo is an object
+            this.orWhere(
+                client.raw(
+                    `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
+                ),
+            );
+        })
+        .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Create"`));
 
     return result[0].count;
 }
@@ -174,7 +182,8 @@ export async function getActivityParents(activity: ActivityJsonLd) {
                 client.raw(
                     `JSON_EXTRACT(value, "$.object.id") = "${objectId}"`,
                 ),
-            );
+            )
+            .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Create"`));
 
         if (result.length === 1) {
             const parent = result[0];
