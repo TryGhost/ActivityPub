@@ -10,7 +10,7 @@ services:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
-      - NODE_ENV=testing
+      - NODE_ENV=development
       - ALLOW_PRIVATE_ADDRESS=true
       - SKIP_SIGNATURE_VERIFICATION=true
     command: yarn build:watch
