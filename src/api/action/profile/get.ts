@@ -62,16 +62,31 @@ export async function profileGetAction(
 
         result.actor = await actor.toJsonLd();
         result.actor.summary = sanitizeHtml(result.actor.summary);
-        result.actor.attachment = await getAttachments(actor, {
-            sanitizeValue: (value: string) => sanitizeHtml(value),
-        });
         result.handle = getHandle(actor);
-        result.followerCount = await getFollowerCount(actor);
-        result.followingCount = await getFollowingCount(actor);
-        result.isFollowing = await isFollowing(actor, { db });
-        result.posts = await getRecentActivities(actor, {
-            sanitizeContent: (content: string) => sanitizeHtml(content),
-        });
+
+        const [
+            followerCount,
+            followingCount,
+            isFollowingResult,
+            posts,
+            attachments,
+        ] = await Promise.all([
+            getFollowerCount(actor),
+            getFollowingCount(actor),
+            isFollowing(actor, { db }),
+            getRecentActivities(actor, {
+                sanitizeContent: (content: string) => sanitizeHtml(content),
+            }),
+            getAttachments(actor, {
+                sanitizeValue: (value: string) => sanitizeHtml(value),
+            }),
+        ]);
+
+        result.followerCount = followerCount;
+        result.followingCount = followingCount;
+        result.isFollowing = isFollowingResult;
+        result.posts = posts;
+        result.actor.attachment = attachments;
     } catch (err) {
         logger.error('Profile retrieval failed ({handle}): {error}', {
             handle,
