@@ -93,15 +93,15 @@ describe('enqueue', () => {
         );
     });
 
-    it('should log an error if the message fails to be published', async () => {
-        mockTopic.publishMessage = vi
-            .fn()
-            .mockRejectedValue(new Error('Failed to publish message'));
+    it('should throw an error and log if the message fails to be published', async () => {
+        const error = new Error('Failed to publish message');
+
+        mockTopic.publishMessage = vi.fn().mockRejectedValue(error);
 
         const enqueuePromise = messageQueue.enqueue(MESSAGE);
 
         vi.runAllTimers();
-        await enqueuePromise;
+        await expect(enqueuePromise).rejects.toThrow(error);
 
         expect(mockLogger.error).toHaveBeenCalledWith(
             `Failed to enqueue message [FedifyID: ${MESSAGE.id}]: Error: Failed to publish message`,
@@ -145,6 +145,7 @@ describe('listen', () => {
                         if (event === 'message') {
                             callback(MESSAGE);
                         }
+                        return mockSubscription;
                     },
                 ),
             removeAllListeners: vi.fn().mockReturnThis(),
