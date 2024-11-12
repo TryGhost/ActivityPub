@@ -76,7 +76,6 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
-import { GCloudPubSubMessageQueue } from './fedify/mq/gcloud-pubsub-mq';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 
@@ -89,15 +88,8 @@ import {
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
-
-import { PubSub } from '@google-cloud/pubsub';
-import {
-    getFullSubscriptionIdentifier,
-    getFullTopicIdentifier,
-    subscriptionExists,
-    topicExists,
-} from 'helpers/gcloud-pubsub';
 import { getTraceAndSpanId } from './helpers/context-header';
+import { initGCloudPubSubMessageQueue } from './helpers/gcloud-pubsub-mq';
 import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
 
@@ -168,34 +160,16 @@ if (process.env.USE_MQ === 'true') {
     logging.info('Message queue is enabled');
 
     try {
-        const pubSubClient = new PubSub({
-            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
-            apiEndpoint: process.env.MQ_PUBSUB_HOST,
-            emulatorMode: process.env.NODE_ENV !== 'production',
-        });
-
-        const topicName = process.env.MQ_PUBSUB_TOPIC_NAME ?? 'unknown_topic';
-        const subscriptionName =
-            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME ?? 'unknown_subscription';
-
-        const topicIdentifier = getFullTopicIdentifier(pubSubClient, topicName);
-        const subscriptionIdentifier = getFullSubscriptionIdentifier(
-            pubSubClient,
-            subscriptionName,
-        );
-
-        if (!(await topicExists(pubSubClient, topicIdentifier))) {
-            throw new Error(`Topic does not exist: ${topicName}`);
-        }
-
-        if (!(await subscriptionExists(pubSubClient, subscriptionIdentifier))) {
-            throw new Error(`Subscription does not exist: ${subscriptionName}`);
-        }
-
-        messageQueue = new GCloudPubSubMessageQueue(
-            pubSubClient,
-            topicIdentifier,
-            subscriptionIdentifier,
+        messageQueue = await initGCloudPubSubMessageQueue(
+            {
+                host: String(process.env.MQ_PUBSUB_HOST),
+                emulatorMode: process.env.NODE_ENV !== 'production',
+                projectId: String(process.env.MQ_PUBSUB_PROJECT_ID),
+                topicName: String(process.env.MQ_PUBSUB_TOPIC_NAME),
+                subscriptionName: String(
+                    process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
+                ),
+            },
             logging,
         );
     } catch (err) {
