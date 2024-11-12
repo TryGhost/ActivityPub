@@ -403,7 +403,7 @@ Before(async function () {
     }
 });
 
-async function fetchActivityPub(url, options) {
+async function fetchActivityPub(url, options = {}) {
     if (!options.headers) {
         options.headers = {};
     }
@@ -702,6 +702,45 @@ async function waitForRequest(
     return waitForRequest(method, path, matcher, step, milliseconds - step);
 }
 
+async function waitForInboxActivity(
+    activity,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+
+    const response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const inbox = await response.json();
+
+    if (inbox.items.find((item) => item.id === activity.id)) {
+        return;
+    }
+
+    if (options.retryCount === MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting on an activity in the inbox`,
+        );
+    }
+
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
+
+    await waitForInboxActivity(activity, {
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 100,
+    });
+}
+
 Then(
     'Activity {string} is sent to {string}',
     async function (activityName, actorName) {
@@ -869,20 +908,9 @@ Then('the found {string} has property {string}', function (name, prop) {
 });
 
 Then('{string} is in our Inbox', async function (activityName) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
     const activity = this.activities[activityName];
 
-    const found = inbox.items.find((item) => item.id === activity.id);
-
-    assert(found);
+    await waitForInboxActivity(activity);
 });
 
 Then('{string} is not in our Inbox', async function (activityName) {
