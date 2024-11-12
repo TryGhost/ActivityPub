@@ -91,17 +91,22 @@ export async function getActivityMeta(
             ),
         )
         .from({ left: 'key_value' })
-        // @ts-ignore: This works as expected but the type definitions complain 🤔
-        .leftJoin(
-            { right: 'key_value' },
-            client.raw(
-                'JSON_UNQUOTE(JSON_EXTRACT(right.value, "$.object.id"))',
-            ),
-            '=',
-            client.raw(
-                'JSON_UNQUOTE(JSON_EXTRACT(left.value, "$.object.inReplyTo"))',
-            ),
-        )
+        .leftJoin({ right: 'key_value' }, function () {
+            this.on(
+                // @ts-ignore: This works as expected but the type definitions complain 🤔
+                client.raw(
+                    'JSON_UNQUOTE(JSON_EXTRACT(right.value, "$.object.id"))',
+                ),
+                '=',
+                client.raw(`
+                        CASE
+                            WHEN JSON_TYPE(JSON_EXTRACT(left.value, "$.object.inReplyTo")) = 'OBJECT'
+                            THEN JSON_UNQUOTE(JSON_EXTRACT(left.value, "$.object.inReplyTo.id"))
+                            ELSE JSON_UNQUOTE(JSON_EXTRACT(left.value, "$.object.inReplyTo"))
+                        END
+                    `),
+            );
+        })
         .whereIn(
             'left.key',
             uris.map((uri) => `["${uri}"]`),

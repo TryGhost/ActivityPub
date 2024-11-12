@@ -63,13 +63,13 @@ export async function getActivitiesAction(
 
     logger.info('Request query = {query}', { query: ctx.req.query() });
     logger.info('Processed query params = {params}', {
-        params: JSON.stringify({
+        params: {
             cursor,
             limit,
             includeOwn,
             typeFilters,
             excludeNonFollowers,
-        }),
+        },
     });
 
     // -------------------------------------------------------------------------
