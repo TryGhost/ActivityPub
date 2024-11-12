@@ -10,6 +10,10 @@ export const client = Knex({
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE,
     },
+    pool: {
+        min: 1,
+        max: 25,
+    },
 });
 
 type ActivityMeta = {
