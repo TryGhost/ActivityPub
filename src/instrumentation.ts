@@ -9,19 +9,6 @@ import {
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import * as Sentry from '@sentry/node';
 
-if (process.env.SENTRY_DSN) {
-    Sentry.init({
-        dsn: process.env.SENTRY_DSN,
-        environment: process.env.NODE_ENV || 'unknown',
-        release: process.env.K_REVISION,
-
-        // Enabled sampling but disable default integrations
-        // Without this, OTel won't work, and I'm not sure why
-        defaultIntegrations: false,
-        tracesSampleRate: 1.0,
-    });
-}
-
 const sdk = new NodeSDK({
     instrumentations: getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-mysql2': {
@@ -72,6 +59,14 @@ try {
     sdk.start();
 } catch (e) {
     console.error(e);
+}
+
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'unknown',
+        release: process.env.K_REVISION,
+    });
 }
 
 export function spanWrapper<TArgs extends unknown[], TReturn>(
