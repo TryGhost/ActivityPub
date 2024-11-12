@@ -29,7 +29,6 @@ import {
     isLogLevel,
     withContext,
 } from '@logtape/logtape';
-import { SEMANTIC_ATTRIBUTE_HTTP_REQUEST_METHOD } from '@sentry/core';
 import * as Sentry from '@sentry/node';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
@@ -158,10 +157,10 @@ export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
     skipSignatureVerification:
         process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
-        process.env.NODE_ENV === 'testing',
+        ['development', 'testing'].includes(process.env.NODE_ENV || ''),
     allowPrivateAddress:
         process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
-        process.env.NODE_ENV === 'testing',
+        ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
 
 export const db = await KnexKvStore.create(client, 'key_value');
@@ -350,34 +349,9 @@ app.use(async (ctx, next) => {
             return event;
         });
 
-        return Sentry.continueTrace(
-            {
-                sentryTrace:
-                    ctx.req.header('sentry-trace') ||
-                    (traceId && spanId ? `${traceId}-${spanId}-1` : undefined),
-                baggage: ctx.req.header('baggage'),
-            },
-            () => {
-                return Sentry.startSpan(
-                    {
-                        op: 'http.server',
-                        name: `${ctx.req.method} ${ctx.req.path}`,
-
-                        attributes: {
-                            ...extra,
-                            [SEMANTIC_ATTRIBUTE_HTTP_REQUEST_METHOD]:
-                                ctx.req.method,
-                            'service.name': 'activitypub',
-                        },
-                    },
-                    () => {
-                        return withContext(extra, () => {
-                            return next();
-                        });
-                    },
-                );
-            },
-        );
+        return withContext(extra, () => {
+            return next();
+        });
     });
 });
 
