@@ -86,6 +86,7 @@ services:
       - PROJECT_ID=activitypub
       - TOPIC_NAME=activitypub_topic_changeme
       - SUBSCRIPTION_NAME=activitypub_subscription_changeme
+      - PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
@@ -180,6 +181,7 @@ services:
       - PROJECT_ID=activitypub
       - TOPIC_NAME=activitypub_topic_changeme
       - SUBSCRIPTION_NAME=activitypub_subscription_changeme
+      - PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s

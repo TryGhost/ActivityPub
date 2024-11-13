@@ -30,11 +30,14 @@ else
     exit 1
 fi
 
-# Create the subscription via REST API
+# Create the (push) subscription via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_NAME} \
     -H "Content-Type: application/json" \
     -d '{
-  "topic": "projects/'${PROJECT_ID}'/topics/'${TOPIC_NAME}'"
+  "topic": "projects/'${PROJECT_ID}'/topics/'${TOPIC_NAME}'",
+  "pushConfig": {
+    "pushEndpoint": "'${PUSH_ENDPOINT}'"
+  }
 }' | grep -q "200"; then
     echo "Subscription created: ${SUBSCRIPTION_NAME}"
 else

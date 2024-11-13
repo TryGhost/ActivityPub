@@ -737,7 +737,7 @@ async function waitForInboxActivity(
 
     await waitForInboxActivity(activity, {
         retryCount: options.retryCount + 1,
-        delay: options.delay + 100,
+        delay: options.delay + 500,
     });
 }
 

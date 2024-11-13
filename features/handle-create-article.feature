@@ -7,6 +7,7 @@ Feature: Create(Article)
     Then the request is accepted
     Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
     And "Alice" sends "Accept" to the Inbox
+    And "Accept" is in our Inbox
     Given a "Create(Article)" Activity "A" by "Alice"
     When "Alice" sends "A" to the Inbox
     Then the request is accepted

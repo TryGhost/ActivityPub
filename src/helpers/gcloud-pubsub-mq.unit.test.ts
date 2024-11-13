@@ -1,7 +1,9 @@
+import type { EventEmitter } from 'node:events';
 import { PubSub, type Subscription, type Topic } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GCloudPubSubMessageQueue } from '../fedify/mq/gcloud-pubsub-mq';
+
+import { GCloudPubSubMessageQueue } from '../mq/gcloud-pubsub-mq';
 import {
     getFullSubscriptionIdentifier,
     getFullTopicIdentifier,
@@ -14,19 +16,26 @@ vi.mock('@google-cloud/pubsub', () => {
     };
 });
 
-vi.mock('../fedify/mq/gcloud-pubsub-mq', () => {
+vi.mock('../mq/gcloud-pubsub-mq', () => {
     return {
         GCloudPubSubMessageQueue: vi.fn(),
     };
 });
 
+const EVENT_NAME = 'event';
+
 describe('initGCloudPubSubMessageQueue', () => {
     let mockLogger: Logger;
+    let mockEventBus: EventEmitter;
 
     beforeEach(() => {
         mockLogger = {
             info: vi.fn(),
         } as unknown as Logger;
+
+        mockEventBus = {
+            on: vi.fn(),
+        } as unknown as EventEmitter;
 
         vi.resetAllMocks();
     });
@@ -64,7 +73,12 @@ describe('initGCloudPubSubMessageQueue', () => {
         });
 
         await expect(
-            initGCloudPubSubMessageQueue(options, mockLogger),
+            initGCloudPubSubMessageQueue(
+                mockLogger,
+                mockEventBus,
+                EVENT_NAME,
+                options,
+            ),
         ).resolves.toBeInstanceOf(GCloudPubSubMessageQueue);
 
         expect(PubSub).toHaveBeenCalledWith({
@@ -75,12 +89,14 @@ describe('initGCloudPubSubMessageQueue', () => {
 
         expect(GCloudPubSubMessageQueue).toHaveBeenCalledWith(
             expect.any(Object),
+            mockEventBus,
+            mockLogger,
             getFullTopicIdentifier(options.projectId, options.topicName),
             getFullSubscriptionIdentifier(
                 options.projectId,
                 options.subscriptionName,
             ),
-            mockLogger,
+            EVENT_NAME,
         );
     });
 
@@ -101,7 +117,12 @@ describe('initGCloudPubSubMessageQueue', () => {
         });
 
         await expect(
-            initGCloudPubSubMessageQueue(options, mockLogger),
+            initGCloudPubSubMessageQueue(
+                mockLogger,
+                mockEventBus,
+                EVENT_NAME,
+                options,
+            ),
         ).rejects.toThrow(`Topic does not exist: ${options.topicName}`);
     });
 
@@ -131,7 +152,12 @@ describe('initGCloudPubSubMessageQueue', () => {
         });
 
         await expect(
-            initGCloudPubSubMessageQueue(options, mockLogger),
+            initGCloudPubSubMessageQueue(
+                mockLogger,
+                mockEventBus,
+                EVENT_NAME,
+                options,
+            ),
         ).rejects.toThrow(
             `Subscription does not exist: ${options.subscriptionName}`,
         );

@@ -1,6 +1,8 @@
+import type { EventEmitter } from 'node:events';
 import { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
-import { GCloudPubSubMessageQueue } from '../fedify/mq/gcloud-pubsub-mq';
+
+import { GCloudPubSubMessageQueue } from '../mq/gcloud-pubsub-mq';
 
 export function getFullTopicIdentifier(
     projectId: string,
@@ -42,6 +44,9 @@ type InitGCloudPubSubMessageQueueOptions = {
 };
 
 export async function initGCloudPubSubMessageQueue(
+    logger: Logger,
+    eventBus: EventEmitter,
+    messageReceivedEventName: string,
     {
         host,
         emulatorMode,
@@ -49,7 +54,6 @@ export async function initGCloudPubSubMessageQueue(
         topicName = 'unknown_topic',
         subscriptionName = 'unknown_subscription',
     }: InitGCloudPubSubMessageQueueOptions,
-    logger: Logger,
 ) {
     const pubSubClient = new PubSub({
         projectId,
@@ -73,8 +77,10 @@ export async function initGCloudPubSubMessageQueue(
 
     return new GCloudPubSubMessageQueue(
         pubSubClient,
+        eventBus,
+        logger,
         topicIdentifier,
         subscriptionIdentifier,
-        logger,
+        messageReceivedEventName,
     );
 }

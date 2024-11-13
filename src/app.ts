@@ -2,6 +2,7 @@ import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import {
     Accept,
     Announce,
@@ -39,6 +40,7 @@ import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
     getActivityThreadAction,
+    handleMessageAction,
     profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
@@ -79,6 +81,7 @@ import {
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 
+import { EVENT_MQ_MESSAGE_RECEIVED } from './constants';
 import {
     followAction,
     inboxHandler,
@@ -154,13 +157,18 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
-let messageQueue: MessageQueue | undefined;
+const eventBus = new EventEmitter();
+
+let queue: MessageQueue | undefined;
 
 if (process.env.USE_MQ === 'true') {
     logging.info('Message queue is enabled');
 
     try {
-        messageQueue = await initGCloudPubSubMessageQueue(
+        queue = await initGCloudPubSubMessageQueue(
+            logging,
+            eventBus,
+            EVENT_MQ_MESSAGE_RECEIVED,
             {
                 host: String(process.env.MQ_PUBSUB_HOST),
                 emulatorMode: process.env.NODE_ENV !== 'production',
@@ -170,7 +178,6 @@ if (process.env.USE_MQ === 'true') {
                     process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
                 ),
             },
-            logging,
         );
     } catch (err) {
         logging.error('Failed to initialise message queue {error}', {
@@ -185,7 +192,7 @@ if (process.env.USE_MQ === 'true') {
 
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
-    queue: messageQueue,
+    queue,
     skipSignatureVerification:
         process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
@@ -348,6 +355,7 @@ export type HonoContextVariables = {
         host: string;
         webhook_secret: string;
     };
+    eventBus: EventEmitter;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -359,6 +367,12 @@ app.get('/ping', (ctx) => {
 });
 
 /** Middleware */
+
+app.use(async (ctx, next) => {
+    ctx.set('eventBus', eventBus);
+
+    return next();
+});
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
@@ -536,6 +550,10 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+// This needs to go before the middleware which loads the site
+// because this endpoint does not require the site to exist
+app.post('/.ghost/activitypub/mq', spanWrapper(handleMessageAction));
 
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
