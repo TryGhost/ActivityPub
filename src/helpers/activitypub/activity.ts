@@ -59,13 +59,18 @@ export async function buildActivity(
         typeof item.object !== 'string' &&
         typeof item.object.attributedTo === 'string'
     ) {
-        const actor = await lookupActor(apCtx, item.object.attributedTo);
+        // Shortcut the lookup if the actor is the same as the item's actor
+        if (item.actor && item.actor.id === item.object.attributedTo) {
+            item.object.attributedTo = item.actor;
+        } else {
+            const actor = await lookupActor(apCtx, item.object.attributedTo);
 
-        if (actor) {
-            const json = await actor.toJsonLd();
+            if (actor) {
+                const json = await actor.toJsonLd();
 
-            if (typeof json === 'object' && json !== null) {
-                item.object.attributedTo = json;
+                if (typeof json === 'object' && json !== null) {
+                    item.object.attributedTo = json;
+                }
             }
         }
     }
