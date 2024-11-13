@@ -21,13 +21,61 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
-  build-test-deploy:
-    name: Build, Test and Deploy
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Tests
+        run: yarn test
+
+      - name: Export ActivityPub image to .tar
+        run: docker save activitypub -o activitypub.tar
+
+      - name: Export Migrations image to .tar
+        run: docker save migrations -o migrations.tar
+
+      - name: Upload ActivityPub image to GHA
+        uses: actions/upload-artifact@v4
+        with:
+          name: activitypub.tar
+          path: activitypub.tar
+
+      - name: Upload Migrations image to GHA
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrations.tar
+          path: migrations.tar
+
+  deploy:
+    name: Deploy
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'
     environment: build
     runs-on: ubuntu-latest
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download ActivityPub image from GHA
+        uses: actions/download-artifact@v4
+        with:
+          name: activitypub.tar
+          path: activitypub.tar
+
+      - name: Download Migrations image from GHA
+        uses: actions/download-artifact@v4
+        with:
+          name: migrations.tar
+          path: migrations.tar
+
+      - name: Load ActivityPub image
+        run: docker load -i activitypub.tar
+
+      - name: Load Migrations image
+        run: docker load -i migrations.tar
 
       - name: ActivityPub Docker meta
         id: activitypub-docker-metadata
@@ -55,23 +103,6 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,priority=1100
 
-      - name: "Build Docker Image for ActivityPub"
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          load: true
-          tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
-
-      - name: "Build Docker Image for Migrations"
-        uses: docker/build-push-action@v6
-        with:
-          context: migrate
-          load: true
-          tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
-
-      - name: "Run Tests"
-        run: yarn test
-
       - name: "Login to GAR"
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
@@ -81,7 +112,6 @@ jobs:
           password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
 
       - name: "Push ActivityPub Docker Image"
-        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
