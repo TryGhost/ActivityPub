@@ -2,6 +2,7 @@ import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import {
     Accept,
     Announce,
@@ -11,6 +12,7 @@ import {
     Follow,
     type KvStore,
     Like,
+    type MessageQueue,
     Note,
     Undo,
     Update,
@@ -38,6 +40,7 @@ import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
     getActivityThreadAction,
+    handleMessageAction,
     profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
@@ -78,6 +81,7 @@ import {
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 
+import { EVENT_MQ_MESSAGE_RECEIVED } from './constants';
 import {
     followAction,
     inboxHandler,
@@ -87,8 +91,8 @@ import {
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
-
 import { getTraceAndSpanId } from './helpers/context-header';
+import { initGCloudPubSubMessageQueue } from './helpers/gcloud-pubsub-mq';
 import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
 
@@ -153,8 +157,48 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
+const eventBus = new EventEmitter();
+
+let queue: MessageQueue | undefined;
+
+if (process.env.USE_MQ === 'true') {
+    logging.info('Message queue is enabled');
+
+    try {
+        const host = String(process.env.MQ_PUBSUB_HOST) || undefined;
+        const emulatorMode = process.env.NODE_ENV !== 'production';
+        const projectId = String(process.env.MQ_PUBSUB_PROJECT_ID) || undefined;
+        const topicName = String(process.env.MQ_PUBSUB_TOPIC_NAME);
+        const subscriptionName = String(
+            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
+        );
+
+        queue = await initGCloudPubSubMessageQueue(
+            logging,
+            eventBus,
+            EVENT_MQ_MESSAGE_RECEIVED,
+            {
+                host,
+                emulatorMode,
+                projectId,
+                topicName,
+                subscriptionName,
+            },
+        );
+    } catch (err) {
+        logging.error('Failed to initialise message queue {error}', {
+            error: err,
+        });
+
+        process.exit(1);
+    }
+} else {
+    logging.info('Message queue is disabled');
+}
+
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
+    queue,
     skipSignatureVerification:
         process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
@@ -317,6 +361,7 @@ export type HonoContextVariables = {
         host: string;
         webhook_secret: string;
     };
+    eventBus: EventEmitter;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -328,6 +373,12 @@ app.get('/ping', (ctx) => {
 });
 
 /** Middleware */
+
+app.use(async (ctx, next) => {
+    ctx.set('eventBus', eventBus);
+
+    return next();
+});
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string> = {};
@@ -505,6 +556,10 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+// This needs to go before the middleware which loads the site
+// because this endpoint does not require the site to exist
+app.post('/.ghost/activitypub/mq', spanWrapper(handleMessageAction));
 
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
