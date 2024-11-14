@@ -69,6 +69,7 @@ describe('initGCloudPubSubMessageQueue', () => {
             return {
                 getTopics: vi.fn().mockResolvedValue([topics]),
                 getSubscriptions: vi.fn().mockResolvedValue([subscriptions]),
+                projectId: options.projectId,
             };
         });
 
@@ -100,6 +101,55 @@ describe('initGCloudPubSubMessageQueue', () => {
         );
     });
 
+    it('should only explicitly provide options to the PubSub client if they are defined', async () => {
+        const projectId = 'foo';
+        const options = {
+            topicName: 'baz',
+            subscriptionName: 'qux',
+        };
+        const topics: Topic[] = [
+            {
+                name: getFullTopicIdentifier(projectId, options.topicName),
+            } as Topic,
+        ];
+        const subscriptions: Subscription[] = [
+            {
+                name: getFullSubscriptionIdentifier(
+                    projectId,
+                    options.subscriptionName,
+                ),
+            } as Subscription,
+        ];
+
+        (vi.mocked(PubSub) as Mock).mockImplementation(() => {
+            return {
+                getTopics: vi.fn().mockResolvedValue([topics]),
+                getSubscriptions: vi.fn().mockResolvedValue([subscriptions]),
+                projectId,
+            };
+        });
+
+        await expect(
+            initGCloudPubSubMessageQueue(
+                mockLogger,
+                mockEventBus,
+                EVENT_NAME,
+                options,
+            ),
+        ).resolves.toBeInstanceOf(GCloudPubSubMessageQueue);
+
+        expect(PubSub).toHaveBeenCalledWith({});
+
+        expect(GCloudPubSubMessageQueue).toHaveBeenCalledWith(
+            expect.any(Object),
+            mockEventBus,
+            mockLogger,
+            getFullTopicIdentifier(projectId, options.topicName),
+            getFullSubscriptionIdentifier(projectId, options.subscriptionName),
+            EVENT_NAME,
+        );
+    });
+
     it('should throw an error if the topic does not exist', async () => {
         const options = {
             host: 'foo',
@@ -113,6 +163,7 @@ describe('initGCloudPubSubMessageQueue', () => {
         (vi.mocked(PubSub) as Mock).mockImplementation(() => {
             return {
                 getTopics: vi.fn().mockResolvedValue([topics]),
+                projectId: options.projectId,
             };
         });
 
@@ -148,6 +199,7 @@ describe('initGCloudPubSubMessageQueue', () => {
             return {
                 getTopics: vi.fn().mockResolvedValue([topics]),
                 getSubscriptions: vi.fn().mockResolvedValue([subscriptions]),
+                projectId: options.projectId,
             };
         });
 

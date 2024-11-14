@@ -1,5 +1,5 @@
 import type { EventEmitter } from 'node:events';
-import { PubSub } from '@google-cloud/pubsub';
+import { type ClientConfig, PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 
 import { GCloudPubSubMessageQueue } from '../mq/gcloud-pubsub-mq';
@@ -36,9 +36,9 @@ async function subscriptionExists(
 }
 
 type InitGCloudPubSubMessageQueueOptions = {
-    host: string;
-    emulatorMode: boolean;
-    projectId: string;
+    host?: string;
+    emulatorMode?: boolean;
+    projectId?: string;
     topicName: string;
     subscriptionName: string;
 };
@@ -55,15 +55,28 @@ export async function initGCloudPubSubMessageQueue(
         subscriptionName = 'unknown_subscription',
     }: InitGCloudPubSubMessageQueueOptions,
 ) {
-    const pubSubClient = new PubSub({
-        projectId,
-        apiEndpoint: host,
-        emulatorMode,
-    });
+    const pubsubClientConfig: Partial<ClientConfig> = {};
 
-    const topicIdentifier = getFullTopicIdentifier(projectId, topicName);
+    if (host !== undefined) {
+        pubsubClientConfig.apiEndpoint = host;
+    }
+
+    if (emulatorMode !== undefined) {
+        pubsubClientConfig.emulatorMode = emulatorMode;
+    }
+
+    if (projectId !== undefined) {
+        pubsubClientConfig.projectId = projectId;
+    }
+
+    const pubSubClient = new PubSub(pubsubClientConfig);
+
+    const topicIdentifier = getFullTopicIdentifier(
+        pubSubClient.projectId,
+        topicName,
+    );
     const subscriptionIdentifier = getFullSubscriptionIdentifier(
-        projectId,
+        pubSubClient.projectId,
         subscriptionName,
     );
 

@@ -165,18 +165,24 @@ if (process.env.USE_MQ === 'true') {
     logging.info('Message queue is enabled');
 
     try {
+        const host = String(process.env.MQ_PUBSUB_HOST) || undefined;
+        const emulatorMode = process.env.NODE_ENV !== 'production';
+        const projectId = String(process.env.MQ_PUBSUB_PROJECT_ID) || undefined;
+        const topicName = String(process.env.MQ_PUBSUB_TOPIC_NAME);
+        const subscriptionName = String(
+            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
+        );
+
         queue = await initGCloudPubSubMessageQueue(
             logging,
             eventBus,
             EVENT_MQ_MESSAGE_RECEIVED,
             {
-                host: String(process.env.MQ_PUBSUB_HOST),
-                emulatorMode: process.env.NODE_ENV !== 'production',
-                projectId: String(process.env.MQ_PUBSUB_PROJECT_ID),
-                topicName: String(process.env.MQ_PUBSUB_TOPIC_NAME),
-                subscriptionName: String(
-                    process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
-                ),
+                host,
+                emulatorMode,
+                projectId,
+                topicName,
+                subscriptionName,
             },
         );
     } catch (err) {
