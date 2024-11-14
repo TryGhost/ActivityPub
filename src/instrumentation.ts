@@ -24,13 +24,7 @@ if (process.env.K_SERVICE) {
     const { TraceExporter } = await import(
         '@google-cloud/opentelemetry-cloud-trace-exporter'
     );
-    provider.addSpanProcessor(
-        new BatchSpanProcessor(
-            new TraceExporter({
-                resourceFilter: /.*/, // TODO: filter by our service name?
-            }),
-        ),
-    );
+    provider.addSpanProcessor(new BatchSpanProcessor(new TraceExporter()));
 
     propagator = new CloudPropagator();
 }
