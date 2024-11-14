@@ -1,7 +1,7 @@
+import { CloudPropagator } from '@google-cloud/opentelemetry-cloud-trace-propagator';
 import {
     DiagConsoleLogger,
     DiagLogLevel,
-    type TextMapPropagator,
     diag,
     trace,
 } from '@opentelemetry/api';
@@ -10,12 +10,20 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
     BatchSpanProcessor,
     SimpleSpanProcessor,
-    type SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import * as Sentry from '@sentry/node';
 
-let textMapPropagator: TextMapPropagator | undefined;
-const spanProcessors: SpanProcessor[] = [];
+const sdk = new NodeSDK({
+    instrumentations: getNodeAutoInstrumentations({
+        '@opentelemetry/instrumentation-mysql2': {
+            addSqlCommenterCommentToQueries: true,
+        },
+    }),
+});
+
+const provider = new NodeTracerProvider();
+let propagator: CloudPropagator | undefined;
 
 if (process.env.NODE_ENV === 'production') {
     if (process.env.OTEL_DEBUG_LOGGING) {
@@ -29,12 +37,9 @@ if (process.env.K_SERVICE) {
     const { TraceExporter } = await import(
         '@google-cloud/opentelemetry-cloud-trace-exporter'
     );
-    spanProcessors.push(new BatchSpanProcessor(new TraceExporter()));
+    provider.addSpanProcessor(new BatchSpanProcessor(new TraceExporter()));
 
-    const { CloudPropagator } = await import(
-        '@google-cloud/opentelemetry-cloud-trace-propagator'
-    );
-    textMapPropagator = new CloudPropagator();
+    propagator = new CloudPropagator();
 }
 
 if (process.env.NODE_ENV === 'development') {
@@ -42,7 +47,7 @@ if (process.env.NODE_ENV === 'development') {
         '@opentelemetry/exporter-trace-otlp-proto'
     );
 
-    spanProcessors.push(
+    provider.addSpanProcessor(
         new SimpleSpanProcessor(
             new OTLPTraceExporter({
                 url: 'http://jaeger:4318/v1/traces',
@@ -51,17 +56,11 @@ if (process.env.NODE_ENV === 'development') {
     );
 }
 
-export const tracer = trace.getTracer('activitypub');
-
-const sdk = new NodeSDK({
-    instrumentations: getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-mysql2': {
-            addSqlCommenterCommentToQueries: true,
-        },
-    }),
-    spanProcessors,
-    textMapPropagator,
+provider.register({
+    propagator,
 });
+
+export const tracer = trace.getTracer('activitypub');
 
 try {
     sdk.start();
