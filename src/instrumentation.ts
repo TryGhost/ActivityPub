@@ -73,6 +73,7 @@ if (process.env.SENTRY_DSN) {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV || 'unknown',
         release: process.env.K_REVISION,
+        skipOpenTelemetrySetup: true,
     });
 }
 
