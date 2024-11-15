@@ -7,5 +7,3 @@ export const FOLLOWERS_PAGE_SIZE = 100;
 export const FOLLOWING_PAGE_SIZE = 100;
 export const LIKED_PAGE_SIZE = 100;
 export const OUTBOX_PAGE_SIZE = 100;
-
-export const EVENT_MQ_MESSAGE_RECEIVED = 'mq.message_received';
