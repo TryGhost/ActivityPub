@@ -91,7 +91,7 @@ import {
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
-import { getTraceAndSpanId } from './helpers/context-header';
+import { getTraceContext } from './helpers/context-header';
 import { initGCloudPubSubMessageQueue } from './helpers/gcloud-pubsub-mq';
 import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
@@ -381,15 +381,16 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (ctx, next) => {
-    const extra: Record<string, string> = {};
+    const extra: Record<string, string | boolean> = {};
 
-    const { traceId, spanId } = getTraceAndSpanId(
+    const { traceId, spanId, sampled } = getTraceContext(
         ctx.req.header('traceparent'),
     );
     if (traceId && spanId) {
         extra['logging.googleapis.com/trace'] =
             `projects/ghost-activitypub/traces/${traceId}`;
         extra['logging.googleapis.com/spanId'] = spanId;
+        extra['logging.googleapis.com/traceSampled'] = sampled;
     }
 
     ctx.set('logger', logging.with(extra));
