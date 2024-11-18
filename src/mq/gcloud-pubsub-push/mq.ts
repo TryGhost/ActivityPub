@@ -6,6 +6,7 @@ import type {
 import { type ClientConfig, PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
+import { z } from 'zod';
 
 /**
  * Represents a message from a Pub/Sub push subscription
@@ -208,26 +209,15 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 }
 
 /**
- * Represents an incoming message from a Pub/Sub push subscription
- *
  * @see https://cloud.google.com/pubsub/docs/push#receive_push
  */
-interface IncomingPushMessageJson {
-    message: {
-        /**
-         * Unique identifier for the message
-         */
-        message_id: string;
-        /**
-         * Data contained within the message encoded as a base64 string
-         */
-        data: string;
-        /**
-         * Additional metadata about the message
-         */
-        attributes: Record<string, string>;
-    };
-}
+const IncomingPushMessageSchema = z.object({
+    message: z.object({
+        message_id: z.string(),
+        data: z.string(),
+        attributes: z.record(z.string()),
+    }),
+});
 
 /**
  * Hono middleware to handle an incoming message from a Pub/Sub push subscription
@@ -248,7 +238,16 @@ export function handlePushMessage(
     mq: GCloudPubSubPushMessageQueue,
 ): (ctx: Context) => Promise<Response> {
     return async (ctx: Context) => {
-        const json = await ctx.req.json<IncomingPushMessageJson>();
+        // Check that the incoming JSON is valid
+        let json: z.infer<typeof IncomingPushMessageSchema>;
+
+        try {
+            json = IncomingPushMessageSchema.parse(
+                (await ctx.req.json()) as unknown,
+            );
+        } catch (error) {
+            return new Response(JSON.stringify(error), { status: 400 });
+        }
 
         // Check that the message queue is listening
         if (mq.isListening === false) {

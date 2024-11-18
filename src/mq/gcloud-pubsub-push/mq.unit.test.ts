@@ -250,7 +250,15 @@ describe('handlePushMessage', () => {
     beforeEach(() => {
         ctx = {
             req: {
-                json: vi.fn(),
+                json: vi.fn().mockResolvedValue({
+                    message: {
+                        message_id: 'abc123',
+                        data: Buffer.from(
+                            JSON.stringify({ id: 'abc123' }),
+                        ).toString('base64'),
+                        attributes: {},
+                    },
+                }),
             },
         } as unknown as Context;
 
@@ -263,6 +271,24 @@ describe('handlePushMessage', () => {
         mockPubSubClient = {
             projectId: PROJECT_ID,
         } as unknown as PubSub;
+    });
+
+    it('should return a 400 response if the incoming message data is invalid', async () => {
+        const mq = new GCloudPubSubPushMessageQueue(
+            mockLogger,
+            mockPubSubClient,
+            TOPIC,
+        );
+
+        (ctx.req.json as Mock).mockResolvedValue({
+            foo: 'bar',
+        });
+
+        mq.listen(vi.fn());
+
+        const result = await handlePushMessage(mq)(ctx);
+
+        expect(result.status).toBe(400);
     });
 
     it('should return a 429 response if the message queue is not listening', async () => {
@@ -284,6 +310,14 @@ describe('handlePushMessage', () => {
             TOPIC,
         );
 
+        (ctx.req.json as Mock).mockResolvedValue({
+            message: {
+                message_id: 'abc123',
+                data: 'definitely not base64 encoded json',
+                attributes: {},
+            },
+        });
+
         mq.listen(vi.fn());
 
         const result = await handlePushMessage(mq)(ctx);
@@ -298,15 +332,6 @@ describe('handlePushMessage', () => {
             TOPIC,
         );
 
-        (ctx.req.json as Mock).mockResolvedValue({
-            message: {
-                data: Buffer.from(JSON.stringify({ id: 'abc123' })).toString(
-                    'base64',
-                ),
-                attributes: {},
-            },
-        });
-
         mq.listen(vi.fn().mockResolvedValue(undefined));
 
         const result = await handlePushMessage(mq)(ctx);
@@ -320,15 +345,6 @@ describe('handlePushMessage', () => {
             mockPubSubClient,
             TOPIC,
         );
-
-        (ctx.req.json as Mock).mockResolvedValue({
-            message: {
-                data: Buffer.from(JSON.stringify({ id: 'abc123' })).toString(
-                    'base64',
-                ),
-                attributes: {},
-            },
-        });
 
         mq.listen(
             vi.fn().mockRejectedValue(new Error('Failed to handle message')),
