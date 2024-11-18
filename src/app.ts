@@ -226,12 +226,13 @@ function ensureCorrectContext<B, R>(
         if (!ctx.data.globaldb) {
             ctx.data.globaldb = db;
         }
-        if (!ctx.data.db) {
-            ctx.data.db = scopeKvStore(db, ['sites', host]);
-        }
         if (!ctx.data.logger) {
             ctx.data.logger = logging;
         }
+        // Ensure scoped data / objects are initialised on each execution
+        // of this function - Fedify may reuse the context object across
+        // multiple executions of an inbox listener
+        ctx.data.db = scopeKvStore(db, ['sites', host]);
         return fn(ctx, b);
     };
 }
