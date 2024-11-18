@@ -4,7 +4,10 @@ import {
     type TextMapPropagator,
     diag,
 } from '@opentelemetry/api';
-import { CompositePropagator } from '@opentelemetry/core';
+import {
+    CompositePropagator,
+    W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import {
     BatchSpanProcessor,
     SimpleSpanProcessor,
@@ -55,6 +58,7 @@ if (process.env.SENTRY_DSN) {
             '@google-cloud/opentelemetry-cloud-trace-propagator'
         );
         propagators.push(new CloudPropagator());
+        propagators.push(new W3CTraceContextPropagator());
     }
 
     if (process.env.NODE_ENV === 'development') {
