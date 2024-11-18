@@ -74,9 +74,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
         mockPubSubClient = {
             projectId: PROJECT_ID,
             topic: vi.fn((topic) => {
-                const fullTopic = `projects/${PROJECT_ID}/topics/${TOPIC}`;
-
-                if (topic === fullTopic) {
+                if (topic === TOPIC) {
                     return mockTopic;
                 }
 

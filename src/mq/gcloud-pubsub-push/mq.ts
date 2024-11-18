@@ -115,7 +115,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      *
      * @param logger {Logger} Logger instance
      * @param pubSubClient {PubSub} Pub/Sub client instance
-     * @param topic {string} Name of topic to publish messages to
+     * @param topic {string} Full name of topic to publish messages to
      */
     constructor(logger: Logger, pubSubClient: PubSub, topic: string) {
         this.logger = logger;
@@ -161,7 +161,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         try {
             const messageId = await this.pubSubClient
-                .topic(getFullTopic(this.pubSubClient.projectId, this.topic))
+                .topic(this.topic)
                 .publishMessage({
                     json: message,
                     attributes: {
@@ -405,29 +405,24 @@ export async function createMessageQueue(
     const pubSubClient = new PubSub(pubsubClientConfig);
 
     // Check that the topic exists
+    const fullTopic = getFullTopic(pubSubClient.projectId, topic);
     const [topics] = await pubSubClient.getTopics();
 
-    if (
-        !topics.some(
-            ({ name }) => name === getFullTopic(pubSubClient.projectId, topic),
-        )
-    ) {
+    if (!topics.some(({ name }) => name === fullTopic)) {
         throw new Error(`Topic [${topic}] does not exist`);
     }
 
     // Check that the subscription exists
+    const fullSubscription = getFullSubscription(
+        pubSubClient.projectId,
+        subscription,
+    );
     const [subscriptions] = await pubSubClient.getSubscriptions();
 
-    if (
-        !subscriptions.some(
-            ({ name }) =>
-                name ===
-                getFullSubscription(pubSubClient.projectId, subscription),
-        )
-    ) {
+    if (!subscriptions.some(({ name }) => name === fullSubscription)) {
         throw new Error(`Subscription [${subscription}] does not exist`);
     }
 
     // Return a message queue instance
-    return new GCloudPubSubPushMessageQueue(logger, pubSubClient, topic);
+    return new GCloudPubSubPushMessageQueue(logger, pubSubClient, fullTopic);
 }
