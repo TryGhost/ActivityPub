@@ -43,15 +43,12 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
         if (delay !== undefined) {
             this.logger.info(
                 `Not enqueuing message [FedifyID: ${message.id}] due to delay being set: ${delay}`,
-                { message },
             );
 
             return;
         }
 
-        this.logger.info(`Enqueuing message [FedifyID: ${message.id}]`, {
-            message,
-        });
+        this.logger.info(`Enqueuing message [FedifyID: ${message.id}]`);
 
         try {
             const messageId = await this.pubSubClient
@@ -65,12 +62,10 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
 
             this.logger.info(
                 `Message [FedifyID: ${message.id}] was enqueued [PubSubID: ${messageId}]`,
-                { message },
             );
         } catch (error) {
             this.logger.error(
                 `Failed to enqueue message [FedifyID: ${message.id}]: ${error}`,
-                { message },
             );
 
             Sentry.captureException(error);
@@ -110,7 +105,6 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
         if (message.subscriptionIdentifier !== this.subscriptionIdentifier) {
             this.logger.info(
                 `Not handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}] due to subscription mismatch [${message.subscriptionIdentifier} !== ${this.subscriptionIdentifier}]`,
-                { message },
             );
 
             message.nack();
@@ -120,7 +114,6 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
 
         this.logger.info(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-            { message },
         );
 
         try {
@@ -130,14 +123,12 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
 
             this.logger.info(
                 `Acknowledged message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-                { message },
             );
         } catch (error) {
             message.nack();
 
             this.logger.error(
                 `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
-                { message },
             );
 
             Sentry.captureException(error);
