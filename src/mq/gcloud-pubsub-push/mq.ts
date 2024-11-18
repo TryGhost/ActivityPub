@@ -1,4 +1,3 @@
-import EventEmitter from 'node:events';
 import type {
     MessageQueue,
     MessageQueueEnqueueOptions,
@@ -8,14 +7,10 @@ import { type ClientConfig, PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 
-export enum MessageEvent {
-    ACK = 'ack',
-    NACK = 'nack',
-}
-
-export type MessageEventListener = (...args: unknown[]) => void;
-
-export type MessageOptions = {
+/**
+ * Represents a message from a Pub/Sub push subscription
+ */
+interface Message {
     /**
      * Unique identifier for the message
      */
@@ -28,52 +23,6 @@ export type MessageOptions = {
      * Additional metadata about the message
      */
     attributes: Record<string, string>;
-};
-
-/**
- * Represents a message from a Pub/Sub push subscription
- */
-export class Message {
-    readonly id: string;
-    readonly data: Record<string, unknown>;
-    readonly attributes: Record<string, string>;
-    private events: EventEmitter;
-
-    /**
-     * Creates a new message
-     *
-     * @param options {MessageOptions} Options for the message
-     */
-    constructor({ id, data, attributes }: MessageOptions) {
-        this.id = id;
-        this.data = data;
-        this.attributes = attributes;
-        this.events = new EventEmitter();
-    }
-
-    /**
-     * Sets up a listener for an event that can occur on the message
-     *
-     * @param event {MessageEvent} Event to listen for
-     * @param listener {MessageEventListener} Listener for the event
-     */
-    on(event: MessageEvent, listener: MessageEventListener) {
-        this.events.on(event, listener);
-    }
-
-    /**
-     * Acknowledges a message
-     */
-    ack() {
-        this.events.emit(MessageEvent.ACK);
-    }
-
-    /**
-     * Negatively acknowledges a message
-     */
-    nack() {
-        this.events.emit(MessageEvent.NACK);
-    }
 }
 
 /**
@@ -105,10 +54,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     private logger: Logger;
     private pubSubClient: PubSub;
     private topic: string;
-
-    private messageEvent = 'message';
-    private errorEvent = '_error';
-    private events: EventEmitter;
+    private messageHandler?: (message: any) => Promise<void> | void;
+    private errorListener?: (error: Error) => void;
 
     /**
      * Creates a new message queue
@@ -121,14 +68,13 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         this.logger = logger;
         this.pubSubClient = pubSubClient;
         this.topic = topic;
-        this.events = new EventEmitter();
     }
 
     /**
      * Indicates whether the message queue is listening for messages or not
      */
     get isListening(): boolean {
-        return this.events.listenerCount(this.messageEvent) > 0;
+        return this.messageHandler !== undefined;
     }
 
     /**
@@ -179,7 +125,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 { fedifyId: message.id, error },
             );
 
-            this.events.emit(this.errorEvent, error);
+            this.errorListener?.(error as Error);
         }
     }
 
@@ -193,40 +139,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         handler: (message: any) => Promise<void> | void,
         options: MessageQueueListenOptions = {},
     ): Promise<void> {
-        // Set up a listener to handle messages
-        this.events.on(this.messageEvent, async (message: Message) => {
-            const fedifyId = message.attributes.fedifyId ?? 'unknown';
+        this.messageHandler = handler;
 
-            this.logger.info(
-                `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-                { fedifyId, pubSubId: message.id },
-            );
-
-            try {
-                await handler(message.data);
-
-                message.ack();
-
-                this.logger.info(
-                    `Acknowledged message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-                    { fedifyId, pubSubId: message.id },
-                );
-            } catch (error) {
-                message.nack();
-
-                this.logger.error(
-                    `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
-                    { fedifyId, pubSubId: message.id, error },
-                );
-
-                this.events.emit(this.errorEvent, error);
-            }
-        });
-
-        // Return a promise that resolves when the message queue is stopped
         return await new Promise((resolve) => {
             options.signal?.addEventListener('abort', () => {
-                this.events.removeAllListeners();
                 resolve();
             });
         });
@@ -235,30 +151,59 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     /**
      * Handles a message
      *
-     * Ensure that the message queue is listening before calling this method
-     *
      * @param message {Message} Message to handle
      */
-    handleMessage(message: Message): void {
-        if (this.isListening === false) {
-            this.logger.warn(
-                `Message [FedifyID: ${message.attributes.fedifyId}, PubSubID: ${message.id}] cannot be handled as the message queue is not yet listening`,
-                { fedifyId: message.attributes.fedifyId, pubSubId: message.id },
+    async handleMessage(message: Message): Promise<void> {
+        if (this.messageHandler === undefined) {
+            const error = new Error(
+                'Message queue is not listening, cannot handle message',
             );
+
+            this.logger.error(
+                `Message [FedifyID: ${message.attributes.fedifyId}, PubSubID: ${message.id}] cannot be handled as the message queue is not yet listening`,
+                {
+                    fedifyId: message.attributes.fedifyId,
+                    pubSubId: message.id,
+                    error,
+                },
+            );
+
+            throw error;
         }
 
-        this.events.emit(this.messageEvent, message);
+        const fedifyId = message.attributes.fedifyId ?? 'unknown';
+
+        this.logger.info(
+            `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+            { fedifyId, pubSubId: message.id },
+        );
+
+        try {
+            await this.messageHandler(message.data);
+
+            this.logger.info(
+                `Acknowledged message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+                { fedifyId, pubSubId: message.id },
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
+                { fedifyId, pubSubId: message.id, error },
+            );
+
+            this.errorListener?.(error as Error);
+
+            throw error;
+        }
     }
 
     /**
      * Registers an error listener
      *
-     * If an error occurs, the provided listener will be executed with the error
-     *
      * @param listener {function}
      */
     registerErrorListener(listener: (error: Error) => void): void {
-        this.events.on(this.errorEvent, listener);
+        this.errorListener = listener;
     }
 }
 
@@ -305,41 +250,31 @@ export function handlePushMessage(
     return async (ctx: Context) => {
         const json = await ctx.req.json<IncomingPushMessageJson>();
 
-        return new Promise<Response>((resolve) => {
-            // Check that the message queue is listening
-            if (mq.isListening === false) {
-                return resolve(new Response(null, { status: 429 }));
-            }
+        // Check that the message queue is listening
+        if (mq.isListening === false) {
+            return new Response(null, { status: 429 });
+        }
 
-            let data = {};
+        let data = {};
 
-            // Attempt to parse the incoming message data
-            try {
-                data = JSON.parse(
-                    Buffer.from(json.message.data, 'base64').toString(),
-                );
-            } catch (error) {
-                return resolve(new Response(null, { status: 500 }));
-            }
+        // Attempt to parse the incoming message data
+        try {
+            data = JSON.parse(
+                Buffer.from(json.message.data, 'base64').toString(),
+            );
+        } catch (error) {
+            return new Response(null, { status: 500 });
+        }
 
-            // Create a message instance from the incoming message data
-            const message = new Message({
+        // Handle the message
+        return mq
+            .handleMessage({
                 id: json.message.message_id,
                 data,
                 attributes: json.message.attributes,
-            });
-
-            message.on(MessageEvent.ACK, () => {
-                resolve(new Response(null, { status: 200 }));
-            });
-
-            message.on(MessageEvent.NACK, () => {
-                resolve(new Response(null, { status: 500 }));
-            });
-
-            // Handle the message
-            mq.handleMessage(message);
-        });
+            })
+            .then(() => new Response(null, { status: 200 }))
+            .catch(() => new Response(null, { status: 500 }));
     };
 }
 

@@ -1,15 +1,11 @@
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { setTimeout } from 'node:timers/promises';
 import { PubSub, type Topic } from '@google-cloud/pubsub';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     GCloudPubSubPushMessageQueue,
-    Message,
-    MessageEvent,
     createMessageQueue,
     handlePushMessage,
 } from './mq';
@@ -17,40 +13,6 @@ import {
 vi.mock('@google-cloud/pubsub', () => ({
     PubSub: vi.fn(),
 }));
-
-describe('Message', () => {
-    it('can be acknowledged', () => {
-        const message = new Message({
-            id: 'abc123',
-            data: {},
-            attributes: {},
-        });
-
-        const ack = vi.fn();
-
-        message.on(MessageEvent.ACK, ack);
-
-        message.ack();
-
-        expect(ack).toHaveBeenCalled();
-    });
-
-    it('can be negatively acknowledged', () => {
-        const message = new Message({
-            id: 'abc123',
-            data: {},
-            attributes: {},
-        });
-
-        const nack = vi.fn();
-
-        message.on(MessageEvent.NACK, nack);
-
-        message.nack();
-
-        expect(nack).toHaveBeenCalled();
-    });
-});
 
 describe('GCloudPubSubPushMessageQueue', () => {
     const PROJECT_ID = 'test_project';
@@ -159,84 +121,97 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             const abortController = new AbortController();
 
-            const listenPromise = mq.listen(vi.fn(), {
+            const promise = mq.listen(vi.fn(), {
                 signal: abortController.signal,
             });
 
             abortController.abort();
 
-            await expect(listenPromise).resolves.toBeUndefined();
+            await expect(promise).resolves.toBeUndefined();
         });
 
-        it('should setup a listener that acknowledges messages if they are successfully handled', async () => {
+        it('should set that the message queue is listening', async () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
                 TOPIC,
             );
 
-            // Listen
-            const handler = vi.fn().mockResolvedValue(undefined);
-            mq.listen(handler);
+            expect(mq.isListening).toBe(false);
 
-            // Init message to be handled
-            const message = new Message({
-                id: 'abc123',
-                data: {},
-                attributes: {},
-            });
-            const ack = vi.fn();
+            mq.listen(vi.fn());
 
-            message.on(MessageEvent.ACK, ack);
-
-            // Handle the message
-            mq.handleMessage(message);
-
-            // Give the ack listener time to be called
-            await setTimeout(1);
-
-            // Assert
-            expect(handler).toHaveBeenCalledTimes(1);
-            expect(handler).toHaveBeenCalledWith(message.data);
-            expect(ack).toHaveBeenCalledTimes(1);
+            expect(mq.isListening).toBe(true);
         });
+    });
 
-        it('should setup a listener that negatively acknowledges messages if they are not successfully handled', async () => {
+    describe('handleMessage', () => {
+        it('should return a promise that resolves when the message is handled', async () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
                 TOPIC,
             );
 
-            // Listen
-            const handler = vi
-                .fn()
-                .mockRejectedValue(new Error('Failed to handle message'));
+            const handler = vi.fn();
+
             mq.listen(handler);
 
-            // Init message to be handled
-            const message = new Message({
+            const messageData = {
+                foo: 'bar',
+            };
+
+            await mq.handleMessage({
                 id: 'abc123',
-                data: {},
+                data: messageData,
                 attributes: {},
             });
-            const nack = vi.fn();
 
-            message.on(MessageEvent.NACK, nack);
-
-            // Handle the message
-            mq.handleMessage(message);
-
-            // Give the nack listener time to be called
-            await setTimeout(1);
-
-            // Assert
             expect(handler).toHaveBeenCalledTimes(1);
-            expect(handler).toHaveBeenCalledWith(message.data);
-            expect(nack).toHaveBeenCalledTimes(1);
+            expect(handler).toHaveBeenCalledWith(messageData);
         });
 
-        it('should setup a listener that handles errors', async () => {
+        it('should return a promise that rejects if the handler throws an error', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                TOPIC,
+            );
+
+            const error = new Error('Failed to handle message');
+
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await expect(
+                mq.handleMessage({
+                    id: 'abc123',
+                    data: {},
+                    attributes: {},
+                }),
+            ).rejects.toThrow(error);
+        });
+
+        it('should return a promise that rejects if the message queue is not listening', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                TOPIC,
+            );
+
+            await expect(
+                mq.handleMessage({
+                    id: 'abc123',
+                    data: {},
+                    attributes: {},
+                }),
+            ).rejects.toThrow(
+                'Message queue is not listening, cannot handle message',
+            );
+        });
+
+        it('should execute the error listener if an error occurs', async () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
@@ -246,25 +221,18 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const errorListener = vi.fn();
             mq.registerErrorListener(errorListener);
 
-            // Listen
             const error = new Error('Failed to handle message');
             const handler = vi.fn().mockRejectedValue(error);
-
             mq.listen(handler);
 
-            // Handle the message
-            mq.handleMessage(
-                new Message({
+            await expect(
+                mq.handleMessage({
                     id: 'abc123',
                     data: {},
                     attributes: {},
                 }),
-            );
+            ).rejects.toThrow(error);
 
-            // Give the error listener time to be called
-            await setTimeout(1);
-
-            // Assert
             expect(errorListener).toHaveBeenCalledTimes(1);
             expect(errorListener).toHaveBeenCalledWith(error);
         });
