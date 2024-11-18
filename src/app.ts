@@ -220,6 +220,9 @@ function ensureCorrectContext<B, R>(
 ) {
     return async (ctx: Context<ContextData>, b: B) => {
         const host = ctx.host;
+
+        console.log(`context host is ${host}`);
+
         if (!ctx.data) {
             (ctx as any).data = {};
         }
