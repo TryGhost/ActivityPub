@@ -403,9 +403,21 @@ app.use(async (ctx, next) => {
             return event;
         });
 
-        return withContext(extra, () => {
-            return next();
-        });
+        return Sentry.startSpan(
+            {
+                op: 'http.server',
+                name: `${ctx.req.method} ${ctx.req.path}`,
+                attributes: {
+                    ...extra,
+                    'service.name': 'activitypub',
+                },
+            },
+            () => {
+                return withContext(extra, () => {
+                    return next();
+                });
+            },
+        );
     });
 });
 
