@@ -12,7 +12,7 @@ export const client = Knex({
     },
     pool: {
         min: 1,
-        max: 25,
+        max: 50,
     },
 });
 
