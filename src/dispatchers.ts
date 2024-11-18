@@ -112,7 +112,7 @@ export async function handleFollow(ctx: Context<ContextData>, follow: Follow) {
 
 export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
     ctx.data.logger.info('Handling Accept');
-    const parsed = (ctx as any).parseUri(accept.objectId);
+    const parsed = ctx.parseUri(accept.objectId);
     ctx.data.logger.info('Parsed accept object', { parsed });
     if (!accept.id) {
         ctx.data.logger.info('Accept missing id - exit');
@@ -136,7 +136,7 @@ export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
 
 export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     ctx.data.logger.info('Handling Create');
-    const parsed = (ctx as any).parseUri(create.objectId);
+    const parsed = ctx.parseUri(create.objectId);
     ctx.data.logger.info('Parsed create object', { parsed });
     if (!create.id) {
         ctx.data.logger.info('Create missing id - exit');
