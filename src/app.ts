@@ -163,9 +163,9 @@ if (process.env.USE_MQ === 'true') {
 
     try {
         queue = await createMessageQueue(logging, {
-            pubSubHost: String(process.env.MQ_PUBSUB_HOST) || undefined,
+            pubSubHost: process.env.MQ_PUBSUB_HOST,
             hostIsEmulator: process.env.NODE_ENV !== 'production',
-            projectId: String(process.env.MQ_PUBSUB_PROJECT_ID) || undefined,
+            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
             topic: String(process.env.MQ_PUBSUB_TOPIC_NAME),
             subscription: String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME),
         });
