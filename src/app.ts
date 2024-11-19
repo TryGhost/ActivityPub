@@ -85,7 +85,6 @@ import {
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
-import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
@@ -375,35 +374,8 @@ app.use(async (ctx, next) => {
 
     ctx.set('logger', logging.with(extra));
 
-    return Sentry.withIsolationScope((scope) => {
-        scope.addEventProcessor((event) => {
-            Sentry.addRequestDataToEvent(event, getRequestData(ctx.req.raw));
-            return event;
-        });
-
-        return Sentry.continueTrace(
-            {
-                sentryTrace: ctx.req.header('sentry-trace'),
-                baggage: ctx.req.header('baggage'),
-            },
-            () => {
-                return Sentry.startSpan(
-                    {
-                        op: 'http.server',
-                        name: `${ctx.req.method} ${ctx.req.path}`,
-                        attributes: {
-                            ...extra,
-                            'service.name': 'activitypub',
-                        },
-                    },
-                    () => {
-                        return withContext(extra, () => {
-                            return next();
-                        });
-                    },
-                );
-            },
-        );
+    return withContext(extra, () => {
+        return next();
     });
 });
 
