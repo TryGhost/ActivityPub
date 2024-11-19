@@ -96,7 +96,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         if (delay !== undefined) {
             this.logger.info(
                 `Not enqueuing message [FedifyID: ${message.id}] due to delay being set: ${delay}`,
-                { fedifyId: message.id },
+                { fedifyId: message.id, mq_message: message },
             );
 
             return;
@@ -104,6 +104,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         this.logger.info(`Enqueuing message [FedifyID: ${message.id}]`, {
             fedifyId: message.id,
+            mq_message: message,
         });
 
         try {
@@ -118,12 +119,16 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
             this.logger.info(
                 `Message [FedifyID: ${message.id}] was enqueued [PubSubID: ${messageId}]`,
-                { fedifyId: message.id, pubSubId: messageId },
+                {
+                    fedifyId: message.id,
+                    pubSubId: messageId,
+                    mq_message: message,
+                },
             );
         } catch (error) {
             this.logger.error(
                 `Failed to enqueue message [FedifyID: ${message.id}]: ${error}`,
-                { fedifyId: message.id, error },
+                { fedifyId: message.id, error, mq_message: message },
             );
 
             this.errorListener?.(error as Error);
@@ -168,6 +173,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     fedifyId: message.attributes.fedifyId,
                     pubSubId: message.id,
                     error,
+                    mq_message: message.data,
                 },
             );
 
@@ -178,7 +184,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         this.logger.info(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-            { fedifyId, pubSubId: message.id },
+            { fedifyId, pubSubId: message.id, mq_message: message.data },
         );
 
         try {
@@ -191,7 +197,12 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         } catch (error) {
             this.logger.error(
                 `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
-                { fedifyId, pubSubId: message.id, error },
+                {
+                    fedifyId,
+                    pubSubId: message.id,
+                    error,
+                    mq_message: message.data,
+                },
             );
 
             this.errorListener?.(error as Error);
