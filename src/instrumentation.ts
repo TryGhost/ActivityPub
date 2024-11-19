@@ -1,5 +1,4 @@
 import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter';
-import { CloudPropagator } from '@google-cloud/opentelemetry-cloud-trace-propagator';
 import {
     DiagConsoleLogger,
     DiagLogLevel,
@@ -21,9 +20,6 @@ if (process.env.NODE_ENV === 'production') {
 
 const sdk = new NodeSDK({
     instrumentations: getNodeAutoInstrumentations(),
-    textMapPropagator: process.env.K_SERVICE
-        ? new CloudPropagator()
-        : undefined,
     serviceName: 'activitypub',
     traceExporter: process.env.K_SERVICE
         ? new TraceExporter()
