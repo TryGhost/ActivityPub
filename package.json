@@ -28,7 +28,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "10.9.0",
-    "@fedify/cli": "1.2.5",
+    "@fedify/cli": "1.2.6",
     "@types/jsonwebtoken": "9.0.7",
     "@types/node": "20.17.6",
     "@types/node-jose": "1.1.13",

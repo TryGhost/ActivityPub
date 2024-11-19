@@ -496,10 +496,10 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/cli@1.2.5":
-  version "1.2.5"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.2.5.tgz#0be77c59776c3349efed327ad47fdbccae17f249"
-  integrity sha512-H7zeegBXdHRsW80fyzpH1Xfe3go9LpQb45YeA0vRRz2aDe/BaY/rHiey6mYqjoS2t6tWvKrncs6sbvmkvXUphw==
+"@fedify/cli@1.2.6":
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.2.6.tgz#c4a996b0d93ec4804101d199206b55ed30039307"
+  integrity sha512-UwKfhHHiQaxjHTQWizFXML9cl1rRb/W10D3/00B4CVI6XgHn+hjH6zFAeCUMyDUXrmbW15hcjAwqaIxCgvIc2w==
 
 "@fedify/fedify@1.2.6":
   version "1.2.6"
