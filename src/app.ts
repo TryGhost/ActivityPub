@@ -84,7 +84,7 @@ import {
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
-import { getTraceAndSpanId } from './helpers/context-header';
+import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
@@ -212,12 +212,13 @@ function ensureCorrectContext<B, R>(
         if (!ctx.data.globaldb) {
             ctx.data.globaldb = db;
         }
-        if (!ctx.data.db) {
-            ctx.data.db = scopeKvStore(db, ['sites', host]);
-        }
         if (!ctx.data.logger) {
             ctx.data.logger = logging;
         }
+        // Ensure scoped data / objects are initialised on each execution
+        // of this function - Fedify may reuse the context object across
+        // multiple executions of an inbox listener
+        ctx.data.db = scopeKvStore(db, ['sites', host]);
         return fn(ctx, b);
     };
 }
@@ -360,15 +361,16 @@ app.get('/ping', (ctx) => {
 /** Middleware */
 
 app.use(async (ctx, next) => {
-    const extra: Record<string, string> = {};
+    const extra: Record<string, string | boolean> = {};
 
-    const { traceId, spanId } = getTraceAndSpanId(
+    const { traceId, spanId, sampled } = getTraceContext(
         ctx.req.header('traceparent'),
     );
     if (traceId && spanId) {
         extra['logging.googleapis.com/trace'] =
             `projects/ghost-activitypub/traces/${traceId}`;
         extra['logging.googleapis.com/spanId'] = spanId;
+        extra['logging.googleapis.com/trace_sampled'] = sampled;
     }
 
     ctx.set('logger', logging.with(extra));
@@ -379,9 +381,29 @@ app.use(async (ctx, next) => {
             return event;
         });
 
-        return withContext(extra, () => {
-            return next();
-        });
+        return Sentry.continueTrace(
+            {
+                sentryTrace: ctx.req.header('sentry-trace'),
+                baggage: ctx.req.header('baggage'),
+            },
+            () => {
+                return Sentry.startSpan(
+                    {
+                        op: 'http.server',
+                        name: `${ctx.req.method} ${ctx.req.path}`,
+                        attributes: {
+                            ...extra,
+                            'service.name': 'activitypub',
+                        },
+                    },
+                    () => {
+                        return withContext(extra, () => {
+                            return next();
+                        });
+                    },
+                );
+            },
+        );
     });
 });
 
