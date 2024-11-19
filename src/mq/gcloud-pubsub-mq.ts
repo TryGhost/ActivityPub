@@ -48,7 +48,9 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
             return;
         }
 
-        this.logger.info(`Enqueuing message [FedifyID: ${message.id}]`);
+        this.logger.info(`Enqueuing message [FedifyID: ${message.id}]`, {
+            mq_message: message.data,
+        });
 
         try {
             const messageId = await this.pubSubClient
@@ -114,6 +116,9 @@ export class GCloudPubSubMessageQueue implements MessageQueue {
 
         this.logger.info(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+            {
+                mq_message: message.data,
+            },
         );
 
         try {
