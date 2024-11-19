@@ -2,7 +2,6 @@ import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
-import { EventEmitter } from 'node:events';
 import {
     Accept,
     Announce,
@@ -12,7 +11,6 @@ import {
     Follow,
     type KvStore,
     Like,
-    type MessageQueue,
     Note,
     Undo,
     Update,
@@ -40,7 +38,6 @@ import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
     getActivityThreadAction,
-    handleMessageAction,
     profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
@@ -78,10 +75,6 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
-import { KnexKvStore } from './knex.kvstore';
-import { scopeKvStore } from './kv-helpers';
-
-import { EVENT_MQ_MESSAGE_RECEIVED } from './constants';
 import {
     followAction,
     inboxHandler,
@@ -92,9 +85,15 @@ import {
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
-import { initGCloudPubSubMessageQueue } from './helpers/gcloud-pubsub-mq';
 import { getRequestData } from './helpers/request-data';
 import { spanWrapper } from './instrumentation';
+import { KnexKvStore } from './knex.kvstore';
+import { scopeKvStore } from './kv-helpers';
+import {
+    GCloudPubSubPushMessageQueue,
+    createMessageQueue,
+    handlePushMessage,
+} from './mq/gcloud-pubsub-push/mq';
 
 const logging = getLogger(['activitypub']);
 
@@ -157,34 +156,21 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
-const eventBus = new EventEmitter();
-
-let queue: MessageQueue | undefined;
+let queue: GCloudPubSubPushMessageQueue | undefined;
 
 if (process.env.USE_MQ === 'true') {
     logging.info('Message queue is enabled');
 
     try {
-        const host = String(process.env.MQ_PUBSUB_HOST) || undefined;
-        const emulatorMode = process.env.NODE_ENV !== 'production';
-        const projectId = String(process.env.MQ_PUBSUB_PROJECT_ID) || undefined;
-        const topicName = String(process.env.MQ_PUBSUB_TOPIC_NAME);
-        const subscriptionName = String(
-            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
-        );
+        queue = await createMessageQueue(logging, {
+            pubSubHost: process.env.MQ_PUBSUB_HOST,
+            hostIsEmulator: process.env.NODE_ENV !== 'production',
+            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
+            topic: String(process.env.MQ_PUBSUB_TOPIC_NAME),
+            subscription: String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME),
+        });
 
-        queue = await initGCloudPubSubMessageQueue(
-            logging,
-            eventBus,
-            EVENT_MQ_MESSAGE_RECEIVED,
-            {
-                host,
-                emulatorMode,
-                projectId,
-                topicName,
-                subscriptionName,
-            },
-        );
+        queue.registerErrorListener((error) => Sentry.captureException(error));
     } catch (err) {
         logging.error('Failed to initialise message queue {error}', {
             error: err,
@@ -362,7 +348,6 @@ export type HonoContextVariables = {
         host: string;
         webhook_secret: string;
     };
-    eventBus: EventEmitter;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -374,12 +359,6 @@ app.get('/ping', (ctx) => {
 });
 
 /** Middleware */
-
-app.use(async (ctx, next) => {
-    ctx.set('eventBus', eventBus);
-
-    return next();
-});
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string | boolean> = {};
@@ -581,7 +560,9 @@ app.use(async (ctx, next) => {
 
 // This needs to go before the middleware which loads the site
 // because this endpoint does not require the site to exist
-app.post('/.ghost/activitypub/mq', spanWrapper(handleMessageAction));
+if (queue instanceof GCloudPubSubPushMessageQueue) {
+    app.post('/.ghost/activitypub/mq', spanWrapper(handlePushMessage(queue)));
+}
 
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
