@@ -139,9 +139,19 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             expect(mq.isListening).toBe(false);
 
-            mq.listen(vi.fn());
+            const abortController = new AbortController();
+
+            const promise = mq.listen(vi.fn(), {
+                signal: abortController.signal,
+            });
 
             expect(mq.isListening).toBe(true);
+
+            abortController.abort();
+
+            await promise;
+
+            expect(mq.isListening).toBe(false);
         });
     });
 

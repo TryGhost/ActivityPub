@@ -144,6 +144,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         return await new Promise((resolve) => {
             options.signal?.addEventListener('abort', () => {
+                this.messageHandler = undefined;
+
                 resolve();
             });
         });
