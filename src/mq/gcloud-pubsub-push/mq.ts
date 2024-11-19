@@ -9,6 +9,14 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 /**
+ * Represents a message from Fedify
+ */
+interface FedifyMessage {
+    id: string;
+    [key: string]: unknown;
+}
+
+/**
  * Represents a message from a Pub/Sub push subscription
  */
 interface Message {
@@ -19,7 +27,7 @@ interface Message {
     /**
      * Data contained within the message
      */
-    data: Record<string, unknown>;
+    data: FedifyMessage;
     /**
      * Additional metadata about the message
      */
@@ -49,13 +57,13 @@ function getFullSubscription(projectId: string, subscription: string) {
 }
 
 /**
- * Message queue that utilises GCloud Pub/Sub
+ * Message queue that utilises a GCloud Pub/Sub push subscription
  */
 export class GCloudPubSubPushMessageQueue implements MessageQueue {
     private logger: Logger;
     private pubSubClient: PubSub;
     private topic: string;
-    private messageHandler?: (message: any) => Promise<void> | void;
+    private messageHandler?: (message: FedifyMessage) => Promise<void> | void;
     private errorListener?: (error: Error) => void;
 
     /**
@@ -81,11 +89,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     /**
      * Enqueues a message
      *
-     * @param message {any} Message to enqueue
+     * @param message {FedifyMessage} Message to enqueue
      * @param options {MessageQueueEnqueueOptions} Options for the enqueue operation
      */
     async enqueue(
-        message: any,
+        message: FedifyMessage,
         options?: MessageQueueEnqueueOptions,
     ): Promise<void> {
         const delay = options?.delay?.total('millisecond');
@@ -142,7 +150,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      * @param options {MessageQueueListenOptions} Options for the listen operation
      */
     async listen(
-        handler: (message: any) => Promise<void> | void,
+        handler: (message: FedifyMessage) => Promise<void> | void,
         options: MessageQueueListenOptions = {},
     ): Promise<void> {
         this.messageHandler = handler;
@@ -267,7 +275,7 @@ export function handlePushMessage(
             return new Response(null, { status: 429 });
         }
 
-        let data = {};
+        let data: FedifyMessage;
 
         // Attempt to parse the incoming message data
         try {

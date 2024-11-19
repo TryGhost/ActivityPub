@@ -168,7 +168,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             mq.listen(handler);
 
             const messageData = {
-                foo: 'bar',
+                id: 'abc123',
             };
 
             await mq.handleMessage({
@@ -197,7 +197,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
             await expect(
                 mq.handleMessage({
                     id: 'abc123',
-                    data: {},
+                    data: {
+                        id: 'abc123',
+                    },
                     attributes: {},
                 }),
             ).rejects.toThrow(error);
@@ -213,7 +215,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
             await expect(
                 mq.handleMessage({
                     id: 'abc123',
-                    data: {},
+                    data: {
+                        id: 'abc123',
+                    },
                     attributes: {},
                 }),
             ).rejects.toThrow(
@@ -238,7 +242,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
             await expect(
                 mq.handleMessage({
                     id: 'abc123',
-                    data: {},
+                    data: {
+                        id: 'abc123',
+                    },
                     attributes: {},
                 }),
             ).rejects.toThrow(error);
