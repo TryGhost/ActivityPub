@@ -391,7 +391,7 @@ app.use(async (ctx, next) => {
         extra['logging.googleapis.com/trace'] =
             `projects/ghost-activitypub/traces/${traceId}`;
         extra['logging.googleapis.com/spanId'] = spanId;
-        extra['logging.googleapis.com/traceSampled'] = sampled;
+        extra['logging.googleapis.com/trace_sampled'] = sampled;
     }
 
     ctx.set('logger', logging.with(extra));
