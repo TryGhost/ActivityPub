@@ -687,7 +687,12 @@
     jsbi "^4.3.0"
     tslib "^2.4.1"
 
-"@logtape/logtape@0.7.1", "@logtape/logtape@^0.7.1":
+"@logtape/logtape@0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.8.0.tgz#e0b3423aa3003d582bb8f4cbe865923b4d238f6a"
+  integrity sha512-kTGbRE4tbHGlZk3+k9fIJbrLODcDiAvv9X2q+tHXjWyNjWXEH46efDBjsE63zDzR/b6Q4Abiloa4VNwKSDLyzQ==
+
+"@logtape/logtape@^0.7.1":
   version "0.7.1"
   resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.7.1.tgz#538425089fef6061f7000c592e3b4f989302080a"
   integrity sha512-gP2O2Pk68I5UtH2D3d+uZpZG3eo2JLUStXpa+fLoPa4dkRYJyX+o70pPl4/4KkY06xsc+33mpslUd3kIKDT2Gw==
