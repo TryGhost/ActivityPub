@@ -51,7 +51,7 @@ export function spanWrapper<TArgs extends unknown[], TReturn>(
         return Sentry.startSpan(
             {
                 op: 'fn',
-                name: fn.name,
+                name: fn.name || 'anonymous',
             },
             () => fn(...args),
         );
