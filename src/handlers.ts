@@ -4,6 +4,7 @@ import {
     Article,
     Create,
     Follow,
+    type KvStore,
     Like,
     Mention,
     Note,
@@ -28,6 +29,7 @@ import type { PersonData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
+import type { Logger } from '@logtape/logtape';
 import z from 'zod';
 
 const PostSchema = z.object({
@@ -545,30 +547,48 @@ export async function postPublishedWebhook(
     });
 }
 
+async function updateSiteActor(db: KvStore, logger: Logger, host: string) {
+    const settings = await getSiteSettings(host);
+    const handle = ACTOR_DEFAULT_HANDLE;
+
+    const current = await db.get<PersonData>(['handle', handle]);
+
+    if (
+        current &&
+        current.icon === settings.site.icon &&
+        current.name === settings.site.title &&
+        current.summary === settings.site.description
+    ) {
+        logger.info('No site settings changed, nothing to do');
+        return false;
+    }
+
+    // Update the database if the site settings have changed
+    const updated = {
+        ...current,
+        icon: settings.site.icon,
+        name: settings.site.title,
+        summary: settings.site.description,
+    };
+
+    await db.set(['handle', handle], updated);
+
+    return true;
+}
+
 export async function siteChangedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
     next: Next,
 ) {
     try {
-        // Retrieve site settings from Ghost
         const host = ctx.req.header('host') || '';
-
-        const settings = await getSiteSettings(host);
-
-        // Retrieve the persisted actor details and check if anything has changed
-        const handle = ACTOR_DEFAULT_HANDLE;
         const db = ctx.get('db');
+        const logger = ctx.get('logger');
+        const handle = ACTOR_DEFAULT_HANDLE;
 
-        const current = await db.get<PersonData>(['handle', handle]);
+        const updated = await updateSiteActor(db, logger, host);
 
-        if (
-            current &&
-            current.icon === settings.site.icon &&
-            current.name === settings.site.title &&
-            current.summary === settings.site.description
-        ) {
-            ctx.get('logger').info('No site settings changed, nothing to do');
-
+        if (!updated) {
             return new Response(JSON.stringify({}), {
                 headers: {
                     'Content-Type': 'application/activity+json',
@@ -577,23 +597,13 @@ export async function siteChangedWebhook(
             });
         }
 
-        ctx.get('logger').info('Site settings changed, will notify followers');
-
-        // Update the database if the site settings have changed
-        const updated = {
-            ...current,
-            icon: settings.site.icon,
-            name: settings.site.title,
-            summary: settings.site.description,
-        };
-
-        await db.set(['handle', handle], updated);
+        logger.info('Site settings changed, will notify followers');
 
         // Publish activity if the site settings have changed
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger: logger,
         });
 
         const actor = await apCtx.getActor(handle);
