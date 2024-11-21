@@ -18,7 +18,10 @@ import type { Context, Next } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import { type ContextData, type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { buildActivity } from './helpers/activitypub/activity';
+import {
+    buildActivity,
+    prepareNoteContent,
+} from './helpers/activitypub/activity';
 import { getSiteSettings } from './helpers/ghost';
 import { toURL } from './helpers/uri';
 import type { PersonData } from './helpers/user';
@@ -254,7 +257,7 @@ export async function noteAction(
     const note = new Note({
         id: noteId,
         attribution: actor,
-        content: data.content,
+        content: prepareNoteContent(data.content),
         summary: null,
         published: Temporal.Now.instant(),
         to: to,

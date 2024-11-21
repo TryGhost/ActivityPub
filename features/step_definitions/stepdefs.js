@@ -1095,7 +1095,7 @@ When('we attempt to create a note with invalid content', async function () {
 });
 
 When(
-    'we create a note {string} with the content {string}',
+    'we create a note {string} with the content',
     async function (noteName, noteContent) {
         this.response = await fetchActivityPub(
             'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
@@ -1124,4 +1124,8 @@ Then('{string} is in our Outbox', async function (activityName) {
     await waitForOutboxActivity(activity);
 });
 
-Given('{string} follows us', (actorName) => 'pending');
+Then('{string} has the content {string}', function (activityName, content) {
+    const activity = this.activities[activityName];
+
+    assert(activity.object.content === content);
+});

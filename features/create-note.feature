@@ -8,8 +8,20 @@ Feature: Creating a note
         Then the request is rejected with a 400
 
     Scenario: Created note is added to the Outbox
-        When we create a note "Note" with the content "Hello, world!"
+        When we create a note "Note" with the content
+           """
+           Hello, world!
+           """
         Then "Note" is in our Outbox
+
+    Scenario: Created note is formatted
+        When we create a note "Note" with the content
+           """
+           Hello
+           World
+           """
+        Then "Note" is in our Outbox
+        And "Note" has the content "<p>Hello</p><p>World</p>"
 
     Scenario: Created note is sent to followers
         Given an Actor "Alice"
@@ -20,6 +32,9 @@ Feature: Creating a note
         And "F1" is in our Inbox
         And "Bob" sends "F2" to the Inbox
         And "F2" is in our Inbox
-        When we create a note "Note" with the content "Hello, world!"
+        When we create a note "Note" with the content
+           """
+           Hello, world!
+           """
         Then Activity "Note" is sent to "Alice"
         And Activity "Note" is sent to "Bob"

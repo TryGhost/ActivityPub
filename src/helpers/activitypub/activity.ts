@@ -123,3 +123,11 @@ export async function buildActivity(
     // Return the built item
     return item;
 }
+
+export function prepareNoteContent(content: string): string {
+    return content
+        .split(/\n/)
+        .filter((line) => line.trim() !== '')
+        .map((line) => `<p>${line.trim()}</p>`)
+        .join('');
+}
