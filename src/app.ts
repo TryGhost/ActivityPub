@@ -79,9 +79,9 @@ import {
     followAction,
     inboxHandler,
     likeAction,
+    noteAction,
     postPublishedWebhook,
     replyAction,
-    noteAction,
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
