@@ -228,7 +228,13 @@ export async function noteAction(
 ) {
     const logger = ctx.get('logger');
 
-    const data = NoteActionSchema.parse((await ctx.req.json()) as unknown);
+    let data: z.infer<typeof NoteActionSchema>;
+
+    try {
+        data = NoteActionSchema.parse((await ctx.req.json()) as unknown);
+    } catch (err) {
+        return new Response(JSON.stringify(err), { status: 400 });
+    }
 
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
