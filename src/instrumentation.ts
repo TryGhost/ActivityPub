@@ -8,6 +8,7 @@ import {
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { NodeSDK } from '@opentelemetry/sdk-node';
+import * as Sentry from '@sentry/node';
 
 if (process.env.NODE_ENV === 'production') {
     if (process.env.OTEL_DEBUG_LOGGING) {
@@ -34,6 +35,17 @@ try {
 }
 
 const tracer = trace.getTracer('activitypub');
+
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'unknown',
+        release: process.env.K_REVISION,
+        tracesSampleRate: 0,
+        skipOpenTelemetrySetup: true,
+        defaultIntegrations: false,
+    });
+}
 
 export function spanWrapper<TArgs extends unknown[], TReturn>(
     fn: (...args: TArgs) => TReturn,
