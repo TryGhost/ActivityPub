@@ -741,6 +741,51 @@ async function waitForInboxActivity(
     });
 }
 
+async function waitForOutboxActivity(
+    activity,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+
+    const initialResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json',
+        },
+    });
+    const outbox = await firstPageReponse.json();
+
+    if (outbox.orderedItems.find((item) => item.id === activity.id)) {
+        return;
+    }
+
+    if (options.retryCount === MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting on an activity in the outbox`,
+        );
+    }
+
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
+
+    await waitForOutboxActivity(activity, {
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 500,
+    });
+}
+
 Then(
     'Activity {string} is sent to {string}',
     async function (activityName, actorName) {
@@ -1020,3 +1065,67 @@ Then(
         assert(found);
     },
 );
+
+When('we attempt to create a note with no content', async function () {
+    this.response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}),
+        },
+    );
+});
+
+When('we attempt to create a note with invalid content', async function () {
+    this.response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                content: [],
+            }),
+        },
+    );
+});
+
+When(
+    'we create a note {string} with the content',
+    async function (noteName, noteContent) {
+        this.response = await fetchActivityPub(
+            'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: noteContent,
+                }),
+            },
+        );
+
+        if (this.response.ok) {
+            const activity = await this.response.clone().json();
+
+            this.activities[noteName] = activity;
+        }
+    },
+);
+
+Then('{string} is in our Outbox', async function (activityName) {
+    const activity = this.activities[activityName];
+
+    await waitForOutboxActivity(activity);
+});
+
+Then('{string} has the content {string}', function (activityName, content) {
+    const activity = this.activities[activityName];
+
+    assert(activity.object.content === content);
+});
