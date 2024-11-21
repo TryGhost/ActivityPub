@@ -81,6 +81,7 @@ import {
     likeAction,
     postPublishedWebhook,
     replyAction,
+    noteAction,
     siteChangedWebhook,
     unlikeAction,
 } from './handlers';
@@ -705,6 +706,11 @@ app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(replyAction),
+);
+app.post(
+    '/.ghost/activitypub/actions/note',
+    requireRole(GhostRole.Owner),
+    spanWrapper(noteAction),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
