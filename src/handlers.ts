@@ -241,12 +241,12 @@ export async function noteAction(
     const to = PUBLIC_COLLECTION;
     const cc = [apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
 
-    const replyId = apCtx.getObjectUri(Note, {
+    const noteId = apCtx.getObjectUri(Note, {
         id: uuidv4(),
     });
 
     const note = new Note({
-        id: replyId,
+        id: noteId,
         attribution: actor,
         content: data.content,
         summary: null,
@@ -273,6 +273,7 @@ export async function noteAction(
     await ctx.get('globaldb').set([note.id!.href], await note.toJsonLd());
 
     await addToList(ctx.get('db'), ['outbox'], create.id!.href);
+
     await apCtx.sendActivity(
         { handle: ACTOR_DEFAULT_HANDLE },
         'followers',
