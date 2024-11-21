@@ -21,7 +21,7 @@ Feature: Creating a note
            World
            """
         Then "Note" is in our Outbox
-        And "Note" has the content "<p>Hello</p><p>World</p>"
+        And "Note" has the content "<p>Hello<br />World</p>"
 
     Scenario: Created note is sent to followers
         Given an Actor "Alice"

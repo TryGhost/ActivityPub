@@ -125,9 +125,9 @@ export async function buildActivity(
 }
 
 export function prepareNoteContent(content: string): string {
-    return content
+    return `<p>${content
         .split(/\n/)
-        .filter((line) => line.trim() !== '')
-        .map((line) => `<p>${line.trim()}</p>`)
-        .join('');
+        .map((line) => line.trim())
+        .filter((line) => line !== '')
+        .join('<br />')}</p>`;
 }
