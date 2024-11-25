@@ -78,6 +78,7 @@ import {
 } from './dispatchers';
 import {
     followAction,
+    getSiteDataHandler,
     inboxHandler,
     likeAction,
     noteAction,
@@ -571,23 +572,7 @@ if (queue instanceof GCloudPubSubPushMessageQueue) {
 app.get(
     '/.ghost/activitypub/site',
     requireRole(GhostRole.Owner),
-    async (ctx) => {
-        const request = ctx.req;
-        const host = request.header('host');
-        if (!host) {
-            // TODO handle
-            throw new Error('No Host header');
-        }
-
-        const site = await getSite(host, true);
-
-        return new Response(JSON.stringify(site), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-    },
+    getSiteDataHandler,
 );
 
 app.use(async (ctx, next) => {

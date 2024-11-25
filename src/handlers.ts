@@ -545,6 +545,26 @@ export async function postPublishedWebhook(
     });
 }
 
+export async function getSiteDataHandler(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        // TODO handle
+        throw new Error('No Host header');
+    }
+
+    const site = await getSite(host, true);
+
+    return new Response(JSON.stringify(site), {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+}
+
 async function updateSiteActor(db: KvStore, logger: Logger, host: string) {
     const settings = await getSiteSettings(host);
     const handle = ACTOR_DEFAULT_HANDLE;
