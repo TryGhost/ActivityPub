@@ -1,0 +1,5 @@
+#! /bin/sh
+
+export TAGS=$1
+
+docker compose run --rm migrate-testing up && docker compose up cucumber-tests --exit-code-from cucumber-tests

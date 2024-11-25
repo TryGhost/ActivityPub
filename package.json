@@ -14,7 +14,7 @@
     "db": "docker compose exec mysql mysql -uroot -proot activitypub",
     "fix": "docker compose down --rmi all activitypub activitypub-testing cucumber-tests nginx",
     "logs": "docker compose logs activitypub -f",
-    "test:cucumber": "docker compose run --rm migrate-testing up && docker compose up cucumber-tests --exit-code-from cucumber-tests",
+    "test:cucumber": "./docker/cucumber-tests",
     "test": "docker compose run --rm migrate-testing up && docker compose run --rm activitypub-testing yarn test:all && yarn test:cucumber",
     "test:types": "tsc --noEmit",
     "test:unit": "vitest run --dir src --coverage '.unit.test.ts'",

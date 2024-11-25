@@ -149,6 +149,7 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
+      - TAGS
     command: yarn run cucumber-js
     depends_on:
       fake-ghost-activitypub:
