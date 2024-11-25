@@ -31,6 +31,7 @@ import { lookupActor, lookupObject } from './lookup-helpers';
 
 import type { Logger } from '@logtape/logtape';
 import z from 'zod';
+import { getSite } from './db';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -544,6 +545,28 @@ export async function postPublishedWebhook(
             'Content-Type': 'application/activity+json',
         },
         status: 200,
+    });
+}
+
+export async function getSiteDataHandler(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        ctx.get('logger').info('No Host header');
+        return new Response('No Host header', {
+            status: 401,
+        });
+    }
+
+    const site = await getSite(host, true);
+
+    return new Response(JSON.stringify(site), {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json',
+        },
     });
 }
 
