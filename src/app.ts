@@ -572,6 +572,23 @@ if (queue instanceof GCloudPubSubPushMessageQueue) {
     app.post('/.ghost/activitypub/mq', spanWrapper(handlePushMessage(queue)));
 }
 
+app.use(async (ctx, next) => {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        ctx.get('logger').info('No Host header');
+        return new Response('No Host header', {
+            status: 401,
+        });
+    }
+
+    const scopedDb = scopeKvStore(db, ['sites', host]);
+
+    ctx.set('db', scopedDb);
+    ctx.set('globaldb', db);
+
+    await next();
+});
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
@@ -589,9 +606,6 @@ app.use(async (ctx, next) => {
             status: 401,
         });
     }
-
-    const scopedDb = scopeKvStore(db, ['sites', host]);
-
     const site = await getSite(host);
 
     if (!site) {
@@ -601,8 +615,6 @@ app.use(async (ctx, next) => {
         });
     }
 
-    ctx.set('db', scopedDb);
-    ctx.set('globaldb', db);
     ctx.set('site', site);
 
     await next();

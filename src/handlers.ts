@@ -25,7 +25,7 @@ import {
 } from './helpers/activitypub/activity';
 import { getSiteSettings } from './helpers/ghost';
 import { toURL } from './helpers/uri';
-import type { PersonData } from './helpers/user';
+import { type PersonData, getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
@@ -560,7 +560,43 @@ export async function getSiteDataHandler(
         });
     }
 
+    const handle = ACTOR_DEFAULT_HANDLE;
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
+    });
+
     const site = await getSite(host, true);
+
+    // This is to ensure that the actor exists - e.g. for a brand new a site
+    await getUserData(apCtx, handle);
+    const updated = await updateSiteActor(
+        ctx.get('db'),
+        ctx.get('logger'),
+        host,
+    );
+
+    // Publish activity if the site settings have changed
+    if (updated) {
+        const actor = await apCtx.getActor(handle);
+
+        const update = new Update({
+            id: apCtx.getObjectUri(Update, { id: uuidv4() }),
+            actor: actor?.id,
+            to: PUBLIC_COLLECTION,
+            object: actor?.id,
+            cc: apCtx.getFollowersUri('index'),
+        });
+
+        await ctx
+            .get('globaldb')
+            .set([update.id!.href], await update.toJsonLd());
+
+        await apCtx.sendActivity({ handle }, 'followers', update, {
+            preferSharedInbox: true,
+        });
+    }
 
     return new Response(JSON.stringify(site), {
         status: 200,
