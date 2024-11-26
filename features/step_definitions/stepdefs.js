@@ -93,7 +93,13 @@ async function createActivity(activityType, object, actor, remote = true) {
     }
 }
 
-async function createActor(name = 'Test', remote = true) {
+const ACTOR_TYPE_PERSON = 'Person';
+const ACTOR_TYPE_GROUP = 'Group';
+
+async function createActor(
+    name,
+    { remote = true, type = ACTOR_TYPE_PERSON } = {},
+) {
     if (remote === false) {
         return {
             '@context': [
@@ -102,12 +108,12 @@ async function createActor(name = 'Test', remote = true) {
             ],
             id: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
             url: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
-            type: 'Person',
+            type,
 
             handle: '@index@fake-ghost-activitypub',
 
             preferredUsername: 'index',
-            name: 'Test Actor',
+            name,
             summary: 'A test actor for testing',
 
             inbox: 'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
@@ -136,12 +142,12 @@ async function createActor(name = 'Test', remote = true) {
         ],
         id: `http://fake-external-activitypub/user/${name}`,
         url: `http://fake-external-activitypub/user/${name}`,
-        type: 'Person',
+        type,
 
         handle: `@${name}@fake-external-activitypub`,
 
         preferredUsername: name,
-        name: name,
+        name,
         summary: 'A test actor for testing',
 
         inbox: `http://fake-external-activitypub/inbox/${name}`,
@@ -398,8 +404,11 @@ Before(async function () {
     }
     if (!this.actors) {
         this.actors = {
-            Us: await createActor('Test', false),
+            Us: await createActor('Test', { remote: false }),
         };
+    }
+    if (!this.groups) {
+        this.groups = {};
     }
 });
 
@@ -454,8 +463,16 @@ When('we request the site endpoint', async function () {
     );
 });
 
-Given('an Actor {string}', async function (name) {
+Given('a Person {string}', async function (name) {
     this.actors[name] = await createActor(name);
+});
+
+Given('a Group {string}', async function (name) {
+    this.groups[name] = [];
+
+    this.actors[name] = await createActor(name, {
+        type: ACTOR_TYPE_GROUP,
+    });
 });
 
 Given('we follow {string}', async function (name) {
@@ -1128,4 +1145,57 @@ Then('{string} has the content {string}', function (activityName, content) {
     const activity = this.activities[activityName];
 
     assert(activity.object.content === content);
+});
+
+Given('{string} is a member of {string}', function (actorName, groupName) {
+    this.groups[groupName].push(actorName);
+});
+
+When('{string} announces {string}', async function (actorName, activityName) {
+    const actor = this.actors[actorName];
+    const activity = this.activities[activityName];
+
+    if (actor.type === ACTOR_TYPE_GROUP) {
+        const group = this.groups[actorName];
+
+        let isGroupMember = false;
+
+        for (const groupActorName of group) {
+            const groupActor = this.actors[groupActorName];
+
+            if (groupActor.id === activity.actor.id) {
+                isGroupMember = true;
+            }
+        }
+
+        if (isGroupMember === false) {
+            throw new Error(
+                `Expected activity actor [${activity.actor.name}] to be member of group [${actorName}]`,
+            );
+        }
+    }
+
+    const annouce = {
+        '@context': [
+            'https://www.w3.org/ns/activitystreams',
+            'https://w3id.org/security/data-integrity/v1',
+        ],
+        type: 'Announce',
+        id: `http://fake-external-activitypub/announce/${uuidv4()}`,
+        audience: actor.id,
+        to: 'as:Public',
+        object: { ...activity, audience: actor.id },
+        actor: actor,
+    };
+
+    this.response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/ld+json',
+            },
+            body: JSON.stringify(annouce),
+        },
+    );
 });

@@ -10,7 +10,7 @@ Feature: Create(Note<inReplyTo>)
 
     Given the found "Create(Article)" as "ArticleCreate(OurArticle)"
 
-    Given an Actor "Alice"
+    Given a Person "Alice"
     Given a "Note" Object "Reply" by "Alice"
     And "Reply" is a reply to "OurArticle"
     And a "Create(Reply)" Activity "A" by "Alice"

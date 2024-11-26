@@ -8,6 +8,7 @@ import {
     type Context,
     Create,
     Follow,
+    Group,
     Like,
     Note,
     Person,
@@ -136,14 +137,33 @@ export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
 
 export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     ctx.data.logger.info('Handling Create');
+
     const parsed = ctx.parseUri(create.objectId);
     ctx.data.logger.info('Parsed create object', { parsed });
+
     if (!create.id) {
         ctx.data.logger.info('Create missing id - exit');
         return;
     }
 
-    const sender = await create.getActor(ctx);
+    // Determine the sender of the activity - If the activity has an audience
+    // that is Group, use that as the sender, otherwise fallback to the actor
+    // See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
+    const audience = await create.getAudience(ctx);
+    const actor = await create.getActor(ctx);
+
+    let sender: Actor | null = null;
+
+    if (audience instanceof Group) {
+        ctx.data.logger.info(
+            'Create has audience that is Group, using audience as sender',
+        );
+
+        sender = audience;
+    } else if (actor) {
+        sender = actor;
+    }
+
     if (sender === null || sender.id === null) {
         ctx.data.logger.info('Create sender missing, exit early');
         return;
@@ -177,6 +197,18 @@ export async function handleAnnounce(
     announce: Announce,
 ) {
     ctx.data.logger.info('Handling Announce');
+
+    // Check what was announced - If it's an Activity (which can occur if the
+    // actor annoucing the object is a Group) we need to forward the activity
+    // to the appropriate listener and exit early
+    // See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
+    const announced = await announce.getObject();
+
+    if (announced instanceof Create) {
+        ctx.data.logger.info('Handling Announce as Create');
+
+        return handleCreate(ctx, announced);
+    }
 
     // Validate announce
     if (!announce.id) {

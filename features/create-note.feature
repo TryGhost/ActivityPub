@@ -24,8 +24,8 @@ Feature: Creating a note
         And "Note" has the content "<p>Hello<br />World</p>"
 
     Scenario: Created note is sent to followers
-        Given an Actor "Alice"
-        And an Actor "Bob"
+        Given a Person "Alice"
+        And a Person "Bob"
         And a "Follow(Us)" Activity "F1" by "Alice"
         And a "Follow(Us)" Activity "F2" by "Bob"
         And "Alice" sends "F1" to the Inbox
