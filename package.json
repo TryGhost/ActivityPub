@@ -7,7 +7,7 @@
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/app.ts --platform=neutral --packages=external --bundle --outfile=dist/app.js",
+    "build": "esbuild src/app.ts --sourcemap --platform=neutral --packages=external --bundle --outfile=dist/app.js",
     "build:watch": "concurrently \"yarn build --watch\" \"node --watch dist/app.js\"",
     "dev": "docker compose up activitypub nginx -d --build",
     "stop": "docker compose stop",
