@@ -18,6 +18,7 @@ import {
     Undo,
     Update,
     isActor,
+    verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
@@ -137,33 +138,14 @@ export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
 
 export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     ctx.data.logger.info('Handling Create');
-
     const parsed = ctx.parseUri(create.objectId);
     ctx.data.logger.info('Parsed create object', { parsed });
-
     if (!create.id) {
         ctx.data.logger.info('Create missing id - exit');
         return;
     }
 
-    // Determine the sender of the activity - If the activity has an audience
-    // that is Group, use that as the sender, otherwise fallback to the actor
-    // See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
-    const audience = await create.getAudience(ctx);
-    const actor = await create.getActor(ctx);
-
-    let sender: Actor | null = null;
-
-    if (audience instanceof Group) {
-        ctx.data.logger.info(
-            'Create has audience that is Group, using audience as sender',
-        );
-
-        sender = audience;
-    } else if (actor) {
-        sender = actor;
-    }
-
+    const sender = await create.getActor(ctx);
     if (sender === null || sender.id === null) {
         ctx.data.logger.info('Create sender missing, exit early');
         return;
@@ -192,22 +174,116 @@ export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     }
 }
 
+export async function handleAnnoucedCreate(
+    ctx: Context<ContextData>,
+    announce: Announce,
+) {
+    ctx.data.logger.info('Handling Announced Create');
+
+    // Validate announced create activity is from a Group as we only support
+    // announcements from Groups - See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
+    const announcer = await announce.getActor(ctx);
+
+    if (!(announcer instanceof Group)) {
+        ctx.data.logger.info('Create is not from a Group, exit early');
+
+        return;
+    }
+
+    // Validate that the group is followed
+    if (!(await isFollowing(announcer, { db: ctx.data.db }))) {
+        ctx.data.logger.info('Group is not followed, exit early');
+
+        return;
+    }
+
+    let create: Create | null = null;
+
+    // Verify create activity
+    create = (await announce.getObject()) as Create;
+
+    if (!create.id) {
+        ctx.data.logger.info('Create missing id, exit early');
+
+        return;
+    }
+
+    if (create.proofId || create.proofIds.length > 0) {
+        ctx.data.logger.info('Verifying create with proof(s)');
+
+        if ((await verifyObject(Create, await create.toJsonLd())) === null) {
+            ctx.data.logger.info(
+                'Create cannot be verified with provided proof(s), exit early',
+            );
+
+            return;
+        }
+    } else {
+        ctx.data.logger.info('Verifying create with network lookup');
+
+        const remoteCreate = await lookupObject(ctx, create.id);
+
+        if (
+            remoteCreate === null ||
+            !(remoteCreate instanceof Create) ||
+            remoteCreate.id?.origin !== remoteCreate.actorId?.origin
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup, exit early',
+            );
+
+            return;
+        }
+
+        // If everything checks out, use the remote create activity so we can
+        // guarantee the integrity of the associated object (i.e the object of
+        // the annouced activity has not been tampered with)
+        create = remoteCreate;
+
+        if (!create.id) {
+            ctx.data.logger.info('Remote create missing id, exit early');
+
+            return;
+        }
+    }
+
+    // Persist create activity
+    const createJson = await create.toJsonLd();
+    ctx.data.globaldb.set([create.id.href], createJson);
+
+    const object = await create.getObject();
+    const replyTarget = await object?.getReplyTarget();
+
+    if (replyTarget?.id?.href) {
+        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
+        const replyTargetAuthor = data?.attributedTo?.id;
+        const inboxActor = await getUserData(ctx, 'index');
+
+        if (replyTargetAuthor === inboxActor.id.href) {
+            await addToList(ctx.data.db, ['inbox'], create.id.href);
+            return;
+        }
+    }
+
+    await addToList(ctx.data.db, ['inbox'], create.id.href);
+}
+
 export async function handleAnnounce(
     ctx: Context<ContextData>,
     announce: Announce,
 ) {
     ctx.data.logger.info('Handling Announce');
 
-    // Check what was announced - If it's an Activity (which can occur if the
-    // actor annoucing the object is a Group) we need to forward the activity
-    // to the appropriate listener and exit early
-    // See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
+    // Check what was announced - If it's an Activity rather than an Object
+    // (which can occur if the announcer is a Group - See
+    // https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md),
+    // we need to forward the announce on to an appropriate handler
+    // This routing is something that should be handled by Fedify, but has
+    // not yet been implemented - Tracked here: https://github.com/dahlia/fedify/issues/193
     const announced = await announce.getObject();
 
     if (announced instanceof Create) {
-        ctx.data.logger.info('Handling Announce as Create');
-
-        return handleCreate(ctx, announced);
+        return handleAnnoucedCreate(ctx, announce);
     }
 
     // Validate announce

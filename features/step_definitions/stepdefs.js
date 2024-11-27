@@ -21,80 +21,101 @@ import { WireMock } from 'wiremock-captain';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function createActivity(activityType, object, actor, remote = true) {
-    if (activityType === 'Follow') {
-        return {
+const ACTOR_TYPE_PERSON = 'Person';
+const ACTOR_TYPE_GROUP = 'Group';
+
+const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub';
+const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub';
+
+async function createActivity(type, object, actor) {
+    let activity;
+
+    if (type === 'Follow') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Follow',
-            id: `http://fake-external-activitypub/follow/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/follow/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Accept') {
-        return {
+    if (type === 'Accept') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Accept',
-            id: `http://fake-external-activitypub/accept/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/accept/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Create') {
-        return {
+    if (type === 'Create') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Create',
-            id: `http://fake-external-activitypub/create/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/create/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Announce') {
-        return {
+    if (type === 'Announce') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Announce',
-            id: `http://fake-external-activitypub/announce/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/announce/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Like') {
-        return {
+    if (type === 'Like') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Like',
-            id: `http://fake-external-activitypub/like/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/like/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
-}
 
-const ACTOR_TYPE_PERSON = 'Person';
-const ACTOR_TYPE_GROUP = 'Group';
+    externalActivityPub.register(
+        {
+            method: 'GET',
+            endpoint: activity.id.replace(URL_EXTERNAL_ACTIVITY_PUB, ''),
+        },
+        {
+            status: 200,
+            body: activity,
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+        },
+    );
+
+    return activity;
+}
 
 async function createActor(
     name,
@@ -350,8 +371,8 @@ BeforeAll(async () => {
 });
 
 BeforeAll(async () => {
-    externalActivityPub = new WireMock('http://fake-external-activitypub');
-    ghostActivityPub = new WireMock('http://fake-ghost-activitypub');
+    externalActivityPub = new WireMock(URL_EXTERNAL_ACTIVITY_PUB);
+    ghostActivityPub = new WireMock(URL_GHOST_ACTIVITY_PUB);
 
     const publicKey = fs.readFileSync(
         resolve(__dirname, '../fixtures/private.key'),
