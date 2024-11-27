@@ -21,9 +21,6 @@ import { WireMock } from 'wiremock-captain';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const ACTOR_TYPE_PERSON = 'Person';
-const ACTOR_TYPE_GROUP = 'Group';
-
 const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub';
 const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub';
 
@@ -117,10 +114,7 @@ async function createActivity(type, object, actor) {
     return activity;
 }
 
-async function createActor(
-    name,
-    { remote = true, type = ACTOR_TYPE_PERSON } = {},
-) {
+async function createActor(name, { remote = true, type = 'Person' } = {}) {
     if (remote === false) {
         return {
             '@context': [
@@ -343,6 +337,27 @@ function parseActivityString(string) {
     };
 }
 
+/**
+ *
+ * Splits a string like `Person(Alice)` or `Group(Wonderland)` into its type and name parts
+ *
+ * @param {string} string
+ * @returns {{type: string, name: string} | {type: null, name: null}}
+ */
+function parseActorString(string) {
+    const [match, type, name] = string.match(/(\w+)\((.+)\)/) || [null];
+    if (!match) {
+        return {
+            type: null,
+            name: null,
+        };
+    }
+    return {
+        type,
+        name,
+    };
+}
+
 let /* @type Knex */ client;
 let /* @type WireMock */ externalActivityPub;
 let /* @type WireMock */ ghostActivityPub;
@@ -428,9 +443,6 @@ Before(async function () {
             Us: await createActor('Test', { remote: false }),
         };
     }
-    if (!this.groups) {
-        this.groups = {};
-    }
 });
 
 async function fetchActivityPub(url, options = {}) {
@@ -484,16 +496,18 @@ When('we request the site endpoint', async function () {
     );
 });
 
-Given('a Person {string}', async function (name) {
-    this.actors[name] = await createActor(name);
-});
+Given('an Actor {string}', async function (actorDef) {
+    const { type, name } = parseActorString(actorDef);
 
-Given('a Group {string}', async function (name) {
-    this.groups[name] = [];
+    if (!type) {
+        throw new Error(`could not match ${actorDef} to an actor`);
+    }
 
-    this.actors[name] = await createActor(name, {
-        type: ACTOR_TYPE_GROUP,
-    });
+    if (!name) {
+        throw new Error('could not match name');
+    }
+
+    this.actors[name] = await createActor(name, { type });
 });
 
 Given('we follow {string}', async function (name) {
@@ -742,6 +756,7 @@ async function waitForRequest(
 
 async function waitForInboxActivity(
     activity,
+    object,
     options = {
         retryCount: 0,
         delay: 0,
@@ -759,7 +774,17 @@ async function waitForInboxActivity(
     );
     const inbox = await response.json();
 
-    if (inbox.items.find((item) => item.id === activity.id)) {
+    if (
+        inbox.items.find((item) => {
+            const activityFound = item.id === activity.id;
+
+            if (object) {
+                return activityFound && item.object.id === object.id;
+            }
+
+            return activityFound;
+        })
+    ) {
         return;
     }
 
@@ -773,7 +798,7 @@ async function waitForInboxActivity(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    await waitForInboxActivity(activity, {
+    await waitForInboxActivity(activity, object, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });
@@ -996,6 +1021,16 @@ Then('{string} is in our Inbox', async function (activityName) {
     await waitForInboxActivity(activity);
 });
 
+Then(
+    '{string} is in our Inbox with Object {string}',
+    async function (activityName, objectName) {
+        const activity = this.activities[activityName];
+        const object = this.objects[objectName];
+
+        await waitForInboxActivity(activity, object);
+    },
+);
+
 Then('{string} is not in our Inbox', async function (activityName) {
     const response = await fetchActivityPub(
         'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
@@ -1168,55 +1203,9 @@ Then('{string} has the content {string}', function (activityName, content) {
     assert(activity.object.content === content);
 });
 
-Given('{string} is a member of {string}', function (actorName, groupName) {
-    this.groups[groupName].push(actorName);
-});
-
-When('{string} announces {string}', async function (actorName, activityName) {
-    const actor = this.actors[actorName];
+Given('{string} has Object {string}', function (activityName, objectName) {
     const activity = this.activities[activityName];
+    const object = this.objects[objectName];
 
-    if (actor.type === ACTOR_TYPE_GROUP) {
-        const group = this.groups[actorName];
-
-        let isGroupMember = false;
-
-        for (const groupActorName of group) {
-            const groupActor = this.actors[groupActorName];
-
-            if (groupActor.id === activity.actor.id) {
-                isGroupMember = true;
-            }
-        }
-
-        if (isGroupMember === false) {
-            throw new Error(
-                `Expected activity actor [${activity.actor.name}] to be member of group [${actorName}]`,
-            );
-        }
-    }
-
-    const annouce = {
-        '@context': [
-            'https://www.w3.org/ns/activitystreams',
-            'https://w3id.org/security/data-integrity/v1',
-        ],
-        type: 'Announce',
-        id: `http://fake-external-activitypub/announce/${uuidv4()}`,
-        audience: actor.id,
-        to: 'as:Public',
-        object: { ...activity, audience: actor.id },
-        actor: actor,
-    };
-
-    this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(annouce),
-        },
-    );
+    this.activities[activityName] = { ...activity, object };
 });
