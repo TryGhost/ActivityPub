@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is used to start the Pub/Sub emulator and create the required
 # topic and subscription upfront (defined in the environment variables)

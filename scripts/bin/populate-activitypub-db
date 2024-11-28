@@ -5,21 +5,21 @@ user_count=5000
 wiremock_only=false
 
 while getopts "u:n:w" opt; do
-  case ${opt} in
-    u )
-      activitypub_url=$OPTARG
-      ;;
-    n )
-      user_count=$OPTARG
-      ;;
-    w )
-      wiremock_only=true
-      ;;
-    \? )
-      echo "Usage: cmd [-u activitypub_url] [-n user_count] [-w]"
-      exit 1
-      ;;
-  esac
+    case ${opt} in
+    u)
+        activitypub_url=$OPTARG
+        ;;
+    n)
+        user_count=$OPTARG
+        ;;
+    w)
+        wiremock_only=true
+        ;;
+    \?)
+        echo "Usage: cmd [-u activitypub_url] [-n user_count] [-w]"
+        exit 1
+        ;;
+    esac
 done
 
 curl -X DELETE http://fake-mastodon:8080/__admin/mappings
@@ -37,8 +37,8 @@ PUBLIC_PEM=$(cat public.pem)
 PUBLIC_PEM_JSON=$(printf '%s' "$PUBLIC_PEM" | jq -aRs .)
 
 curl -X POST http://fake-mastodon:8080/__admin/mappings \
-   -H "Content-Type: application/json" \
-   -d '{
+    -H "Content-Type: application/json" \
+    -d '{
     "request": {
         "method": "POST",
         "urlPattern": "/inbox/.*"
@@ -49,8 +49,8 @@ curl -X POST http://fake-mastodon:8080/__admin/mappings \
 }'
 
 curl -X POST http://fake-mastodon:8080/__admin/mappings \
-   -H "Content-Type: application/json" \
-   -d '{
+    -H "Content-Type: application/json" \
+    -d '{
     "request": {
         "method": "GET",
         "urlPattern": "/user/.*"
@@ -113,20 +113,20 @@ curl -X POST http://fake-mastodon:8080/__admin/mappings \
 }'
 
 if [ "$wiremock_only" = true ]; then
-  echo "Wiremock setup only, skipping user creation."
-  exit 0
+    echo "Wiremock setup only, skipping user creation."
+    exit 0
 fi
 
 # Define variables
 PRIVATE_KEY="private.pem"
 
 for i in $(seq 1 $user_count); do
-  NAME="user$i"
-  echo "Processing user: $NAME"
+    NAME="user$i"
+    echo "Processing user: $NAME"
 
-  KEY_ID="http://fake-mastodon:8080/user/$NAME#main-key"
+    KEY_ID="http://fake-mastodon:8080/user/$NAME#main-key"
 
-  BODY=$(jq -n --arg name "$NAME" --arg randomId "$RANDOM" '{
+    BODY=$(jq -n --arg name "$NAME" --arg randomId "$RANDOM" '{
     "@context": "https://www.w3.org/ns/activitystreams",
     "id": "http://fake-mastodon:8080/activity/\($randomId)",
     "type": "Follow",
@@ -136,25 +136,25 @@ for i in $(seq 1 $user_count); do
     "cc": ["http://fake-mastodon:8080/user/\($name)/following"]
   }')
 
-  DIGEST=$(echo -n "$BODY" | openssl dgst -sha256 -binary | openssl base64)
-  REQUEST_TARGET="post /.ghost/activitypub/inbox/index"
-  HOST=$(echo "$activitypub_url" | awk -F/ '{print $3}')
-  DATE=$(date -R)
-  SIGN_STRING="(request-target): $REQUEST_TARGET\nhost: $HOST\ndate: $DATE\ndigest: SHA-256=$DIGEST"
+    DIGEST=$(echo -n "$BODY" | openssl dgst -sha256 -binary | openssl base64)
+    REQUEST_TARGET="post /.ghost/activitypub/inbox/index"
+    HOST=$(echo "$activitypub_url" | awk -F/ '{print $3}')
+    DATE=$(date -R)
+    SIGN_STRING="(request-target): $REQUEST_TARGET\nhost: $HOST\ndate: $DATE\ndigest: SHA-256=$DIGEST"
 
-  SIGNATURE=$(echo -n "$SIGN_STRING" | openssl dgst -sha256 -sign "$PRIVATE_KEY" | openssl base64 -A)
+    SIGNATURE=$(echo -n "$SIGN_STRING" | openssl dgst -sha256 -sign "$PRIVATE_KEY" | openssl base64 -A)
 
-  AUTH_HEADER="keyId=\"$KEY_ID\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date digest\",signature=\"$SIGNATURE\""
+    AUTH_HEADER="keyId=\"$KEY_ID\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date digest\",signature=\"$SIGNATURE\""
 
-  curl -v -X POST "${activitypub_url}/.ghost/activitypub/inbox/index" \
-    -H "Host: $HOST" \
-    -H "Date: $DATE" \
-    -H "Digest: SHA-256=$DIGEST" \
-    -H "Signature: $AUTH_HEADER" \
-    -d "$BODY"
+    curl -v -X POST "${activitypub_url}/.ghost/activitypub/inbox/index" \
+        -H "Host: $HOST" \
+        -H "Date: $DATE" \
+        -H "Digest: SHA-256=$DIGEST" \
+        -H "Signature: $AUTH_HEADER" \
+        -d "$BODY"
 
-  echo "Request sent for user: $NAME"
-  echo "---------------------------------------------"
+    echo "Request sent for user: $NAME"
+    echo "---------------------------------------------"
 done
 
 exit 0
