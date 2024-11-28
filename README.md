@@ -55,10 +55,11 @@ This has only been tested on MacOS using [Docker for Mac](https://docs.docker.co
     - Run `yarn dev` in the root directory of this project
 5. **Open Ghost Admin**
     - Access your Ghost instance via the URL provided by Tailscale
-6. **[Configure a Webhook](https://ghost.org/integrations/custom-integrations/)**
-    - Set up a webhook for the `post.published` event pointing to `https://<your-url>/.ghost/activitypub/webhooks/post/published`.
-7. **Enable ActivityPub Alpha**
+6. **Enable ActivityPub Alpha**
     - Enable the ActivityPub Alpha flag in Settings &rarr; Labs
+7. **Restart Ghost**
+    - This will do the handshake between Ghost and ActivityPub to setup webhooks and Actor data
+
 
 ## Code formatting + linting
 
