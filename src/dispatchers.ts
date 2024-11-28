@@ -221,24 +221,58 @@ export async function handleAnnoucedCreate(
     } else {
         ctx.data.logger.info('Verifying create with network lookup');
 
-        const remoteCreate = await lookupObject(ctx, create.id);
+        const lookupResult = await lookupObject(ctx, create.id);
 
-        if (
-            remoteCreate === null ||
-            !(remoteCreate instanceof Create) ||
-            remoteCreate.id?.origin !== remoteCreate.actorId?.origin
-        ) {
+        if (lookupResult === null) {
             ctx.data.logger.info(
-                'Create cannot be verified with network lookup, exit early',
+                'Create cannot be verified with network lookup due to inability to lookup object, exit early',
             );
 
             return;
         }
 
-        // If everything checks out, use the remote create activity so we can
-        // guarantee the integrity of the associated object (i.e the object of
-        // the annouced activity has not been tampered with)
-        create = remoteCreate;
+        if (
+            lookupResult instanceof Create &&
+            String(create.id) !== String(lookupResult.id)
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to local activity + remote activity ID mismatch, exit early',
+            );
+
+            return;
+        }
+
+        if (
+            lookupResult instanceof Create &&
+            lookupResult.id?.origin !== lookupResult.actorId?.origin
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to remote activity + actor origin mismatch, exit early',
+            );
+
+            return;
+        }
+
+        if (
+            (lookupResult instanceof Note || lookupResult instanceof Article) &&
+            create.objectId?.href !== lookupResult.id?.href
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to lookup returning Object and ID mismatch, exit early',
+            );
+
+            return;
+        }
+
+        // If everything checks out, use the remote create activity where we can
+        // so that we can guarantee the integrity of the associated object (i.e
+        // the object of the annouced activity has not been tampered with). We can
+        // only do this if the lookupResult is a Create (which is not always the
+        // case depending on the remote server's implementation - i.e WordPress is
+        // returning the Note/Article object instead of a Create object).
+        if (lookupResult instanceof Create) {
+            create = lookupResult;
+        }
 
         if (!create.id) {
             ctx.data.logger.info('Remote create missing id, exit early');
