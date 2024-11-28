@@ -1,7 +1,7 @@
 Feature: We automatically accept Follow requests
 
   Scenario: We can be followed
-    Given an Actor "Alice"
+    Given an Actor "Person(Alice)"
     Given a "Follow(Us)" Activity "F" by "Alice"
     When "Alice" sends "F" to the Inbox
     And "F" is in our Inbox
@@ -12,7 +12,7 @@ Feature: We automatically accept Follow requests
   Rule: We can be followed multiple times by the same actor, but we only record them once
 
     Example: An actor attempts to follow us multiple times
-        Given an Actor "Alice"
+        Given an Actor "Person(Alice)"
         And a "Follow(Us)" Activity "F1" by "Alice"
         And a "Follow(Us)" Activity "F2" by "Alice"
         When "Alice" sends "F1" to the Inbox

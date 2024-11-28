@@ -1,7 +1,7 @@
 Feature: Follow accounts from their handle
 
   Scenario: We can follow an account only once
-    Given an Actor "Alice"
+    Given an Actor "Person(Alice)"
     Given we follow "Alice"
     Then the request is accepted
     Given a "Accept(Follow(Alice))" Activity "A" by "Alice"

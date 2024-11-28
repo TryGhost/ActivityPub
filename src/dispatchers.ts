@@ -8,6 +8,7 @@ import {
     type Context,
     Create,
     Follow,
+    Group,
     Like,
     Note,
     Person,
@@ -17,6 +18,7 @@ import {
     Undo,
     Update,
     isActor,
+    verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
@@ -172,11 +174,151 @@ export async function handleCreate(ctx: Context<ContextData>, create: Create) {
     }
 }
 
+export async function handleAnnoucedCreate(
+    ctx: Context<ContextData>,
+    announce: Announce,
+) {
+    ctx.data.logger.info('Handling Announced Create');
+
+    // Validate announced create activity is from a Group as we only support
+    // announcements from Groups - See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
+    const announcer = await announce.getActor(ctx);
+
+    if (!(announcer instanceof Group)) {
+        ctx.data.logger.info('Create is not from a Group, exit early');
+
+        return;
+    }
+
+    // Validate that the group is followed
+    if (!(await isFollowing(announcer, { db: ctx.data.db }))) {
+        ctx.data.logger.info('Group is not followed, exit early');
+
+        return;
+    }
+
+    let create: Create | null = null;
+
+    // Verify create activity
+    create = (await announce.getObject()) as Create;
+
+    if (!create.id) {
+        ctx.data.logger.info('Create missing id, exit early');
+
+        return;
+    }
+
+    if (create.proofId || create.proofIds.length > 0) {
+        ctx.data.logger.info('Verifying create with proof(s)');
+
+        if ((await verifyObject(Create, await create.toJsonLd())) === null) {
+            ctx.data.logger.info(
+                'Create cannot be verified with provided proof(s), exit early',
+            );
+
+            return;
+        }
+    } else {
+        ctx.data.logger.info('Verifying create with network lookup');
+
+        const lookupResult = await lookupObject(ctx, create.id);
+
+        if (lookupResult === null) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to inability to lookup object, exit early',
+            );
+
+            return;
+        }
+
+        if (
+            lookupResult instanceof Create &&
+            String(create.id) !== String(lookupResult.id)
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to local activity + remote activity ID mismatch, exit early',
+            );
+
+            return;
+        }
+
+        if (
+            lookupResult instanceof Create &&
+            lookupResult.id?.origin !== lookupResult.actorId?.origin
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to remote activity + actor origin mismatch, exit early',
+            );
+
+            return;
+        }
+
+        if (
+            (lookupResult instanceof Note || lookupResult instanceof Article) &&
+            create.objectId?.href !== lookupResult.id?.href
+        ) {
+            ctx.data.logger.info(
+                'Create cannot be verified with network lookup due to lookup returning Object and ID mismatch, exit early',
+            );
+
+            return;
+        }
+
+        // If everything checks out, use the remote create activity where we can
+        // so that we can guarantee the integrity of the associated object (i.e
+        // the object of the annouced activity has not been tampered with). We can
+        // only do this if the lookupResult is a Create (which is not always the
+        // case depending on the remote server's implementation - i.e WordPress is
+        // returning the Note/Article object instead of a Create object).
+        if (lookupResult instanceof Create) {
+            create = lookupResult;
+        }
+
+        if (!create.id) {
+            ctx.data.logger.info('Remote create missing id, exit early');
+
+            return;
+        }
+    }
+
+    // Persist create activity
+    const createJson = await create.toJsonLd();
+    ctx.data.globaldb.set([create.id.href], createJson);
+
+    const object = await create.getObject();
+    const replyTarget = await object?.getReplyTarget();
+
+    if (replyTarget?.id?.href) {
+        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
+        const replyTargetAuthor = data?.attributedTo?.id;
+        const inboxActor = await getUserData(ctx, 'index');
+
+        if (replyTargetAuthor === inboxActor.id.href) {
+            await addToList(ctx.data.db, ['inbox'], create.id.href);
+            return;
+        }
+    }
+
+    await addToList(ctx.data.db, ['inbox'], create.id.href);
+}
+
 export async function handleAnnounce(
     ctx: Context<ContextData>,
     announce: Announce,
 ) {
     ctx.data.logger.info('Handling Announce');
+
+    // Check what was announced - If it's an Activity rather than an Object
+    // (which can occur if the announcer is a Group - See
+    // https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md),
+    // we need to forward the announce on to an appropriate handler
+    // This routing is something that should be handled by Fedify, but has
+    // not yet been implemented - Tracked here: https://github.com/dahlia/fedify/issues/193
+    const announced = await announce.getObject();
+
+    if (announced instanceof Create) {
+        return handleAnnoucedCreate(ctx, announce);
+    }
 
     // Validate announce
     if (!announce.id) {

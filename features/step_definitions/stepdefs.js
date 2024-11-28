@@ -21,79 +21,100 @@ import { WireMock } from 'wiremock-captain';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function createActivity(activityType, object, actor, remote = true) {
-    if (activityType === 'Follow') {
-        return {
+const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub';
+const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub';
+
+async function createActivity(type, object, actor) {
+    let activity;
+
+    if (type === 'Follow') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Follow',
-            id: `http://fake-external-activitypub/follow/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/follow/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Accept') {
-        return {
+    if (type === 'Accept') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Accept',
-            id: `http://fake-external-activitypub/accept/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/accept/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Create') {
-        return {
+    if (type === 'Create') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Create',
-            id: `http://fake-external-activitypub/create/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/create/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Announce') {
-        return {
+    if (type === 'Announce') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Announce',
-            id: `http://fake-external-activitypub/announce/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/announce/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
 
-    if (activityType === 'Like') {
-        return {
+    if (type === 'Like') {
+        activity = {
             '@context': [
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Like',
-            id: `http://fake-external-activitypub/like/${uuidv4()}`,
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/like/${uuidv4()}`,
             to: 'as:Public',
             object: object,
             actor: actor,
         };
     }
+
+    externalActivityPub.register(
+        {
+            method: 'GET',
+            endpoint: activity.id.replace(URL_EXTERNAL_ACTIVITY_PUB, ''),
+        },
+        {
+            status: 200,
+            body: activity,
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+        },
+    );
+
+    return activity;
 }
 
-async function createActor(name = 'Test', remote = true) {
+async function createActor(name, { remote = true, type = 'Person' } = {}) {
     if (remote === false) {
         return {
             '@context': [
@@ -102,12 +123,12 @@ async function createActor(name = 'Test', remote = true) {
             ],
             id: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
             url: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
-            type: 'Person',
+            type,
 
             handle: '@index@fake-ghost-activitypub',
 
             preferredUsername: 'index',
-            name: 'Test Actor',
+            name,
             summary: 'A test actor for testing',
 
             inbox: 'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
@@ -136,12 +157,12 @@ async function createActor(name = 'Test', remote = true) {
         ],
         id: `http://fake-external-activitypub/user/${name}`,
         url: `http://fake-external-activitypub/user/${name}`,
-        type: 'Person',
+        type,
 
         handle: `@${name}@fake-external-activitypub`,
 
         preferredUsername: name,
-        name: name,
+        name,
         summary: 'A test actor for testing',
 
         inbox: `http://fake-external-activitypub/inbox/${name}`,
@@ -316,6 +337,27 @@ function parseActivityString(string) {
     };
 }
 
+/**
+ *
+ * Splits a string like `Person(Alice)` or `Group(Wonderland)` into its type and name parts
+ *
+ * @param {string} string
+ * @returns {{type: string, name: string} | {type: null, name: null}}
+ */
+function parseActorString(string) {
+    const [match, type, name] = string.match(/(\w+)\((.+)\)/) || [null];
+    if (!match) {
+        return {
+            type: null,
+            name: null,
+        };
+    }
+    return {
+        type,
+        name,
+    };
+}
+
 let /* @type Knex */ client;
 let /* @type WireMock */ externalActivityPub;
 let /* @type WireMock */ ghostActivityPub;
@@ -344,8 +386,8 @@ BeforeAll(async () => {
 });
 
 BeforeAll(async () => {
-    externalActivityPub = new WireMock('http://fake-external-activitypub');
-    ghostActivityPub = new WireMock('http://fake-ghost-activitypub');
+    externalActivityPub = new WireMock(URL_EXTERNAL_ACTIVITY_PUB);
+    ghostActivityPub = new WireMock(URL_GHOST_ACTIVITY_PUB);
 
     const publicKey = fs.readFileSync(
         resolve(__dirname, '../fixtures/private.key'),
@@ -398,7 +440,7 @@ Before(async function () {
     }
     if (!this.actors) {
         this.actors = {
-            Us: await createActor('Test', false),
+            Us: await createActor('Test', { remote: false }),
         };
     }
 });
@@ -454,8 +496,18 @@ When('we request the site endpoint', async function () {
     );
 });
 
-Given('an Actor {string}', async function (name) {
-    this.actors[name] = await createActor(name);
+Given('an Actor {string}', async function (actorDef) {
+    const { type, name } = parseActorString(actorDef);
+
+    if (!type) {
+        throw new Error(`could not match ${actorDef} to an actor`);
+    }
+
+    if (!name) {
+        throw new Error('could not match name');
+    }
+
+    this.actors[name] = await createActor(name, { type });
 });
 
 Given('we follow {string}', async function (name) {
@@ -704,6 +756,7 @@ async function waitForRequest(
 
 async function waitForInboxActivity(
     activity,
+    object,
     options = {
         retryCount: 0,
         delay: 0,
@@ -721,7 +774,17 @@ async function waitForInboxActivity(
     );
     const inbox = await response.json();
 
-    if (inbox.items.find((item) => item.id === activity.id)) {
+    if (
+        inbox.items.find((item) => {
+            const activityFound = item.id === activity.id;
+
+            if (object) {
+                return activityFound && item.object.id === object.id;
+            }
+
+            return activityFound;
+        })
+    ) {
         return;
     }
 
@@ -735,7 +798,7 @@ async function waitForInboxActivity(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    await waitForInboxActivity(activity, {
+    await waitForInboxActivity(activity, object, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });
@@ -958,6 +1021,16 @@ Then('{string} is in our Inbox', async function (activityName) {
     await waitForInboxActivity(activity);
 });
 
+Then(
+    '{string} is in our Inbox with Object {string}',
+    async function (activityName, objectName) {
+        const activity = this.activities[activityName];
+        const object = this.objects[objectName];
+
+        await waitForInboxActivity(activity, object);
+    },
+);
+
 Then('{string} is not in our Inbox', async function (activityName) {
     const response = await fetchActivityPub(
         'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
@@ -1128,4 +1201,11 @@ Then('{string} has the content {string}', function (activityName, content) {
     const activity = this.activities[activityName];
 
     assert(activity.object.content === content);
+});
+
+Given('{string} has Object {string}', function (activityName, objectName) {
+    const activity = this.activities[activityName];
+    const object = this.objects[objectName];
+
+    this.activities[activityName] = { ...activity, object };
 });
