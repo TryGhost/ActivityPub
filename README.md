@@ -9,7 +9,6 @@
 </p>
 &nbsp;
 
-
 # ActivityPub 🚧
 
 A multitenant ActivityPub server for [Ghost](https://ghost.org/), built with [Fedify](https://fedify.dev/). This service makes it possible for independent websites to publish their content directly to the Fediverse, enabling networked publishing to the open social web.
@@ -25,7 +24,7 @@ We're publishing a weekly build-log about the development of this project. Sign 
 
 # How it works
 
-All requests to `/.ghost/activitypub/*` and `/.well-known/webfinger` are proxied to this ActivityPub service using NGINX. All other requests are forwarded to Ghost.
+All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-known/nodeinfo` are proxied to this ActivityPub service using nginx. All other requests are forwarded to Ghost.
 
 ## Current features
 
@@ -41,14 +40,14 @@ All requests to `/.ghost/activitypub/*` and `/.well-known/webfinger` are proxied
 
 # Running locally for development
 
-This has only been tested on MacOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
+This has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
 
 ## Setup
 
 1. **[Install Ghost](https://ghost.org/docs/install/)**
-    - Ensure Ghost is running locally at `localhost:2368`.
+    - Ensure Ghost is running locally at `localhost:2368`
 2. **Proxy with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
-    - Use `tailscale funnel 80` or `ngrok http 80` to expose your local port 80.
+    - Use `tailscale funnel 80` or `ngrok http 80` to expose your local port 80
 3. **Configure Ghost**
     - Run `ghost config url` and set it to the URL provided by Tailscale
 4. **Start the ActivityPub Service**
@@ -73,23 +72,23 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 - Run `yarn test` to execute tests within a Docker Compose stack.
 
-
 ## Populating the DB
 
 The below command will populate the DB with ~5000 followers for the `activitypub` host
 
 - Run `docker compose run scripts populate-activitypub-db`
 
-&nbsp;
-
-![Leaderboard](https://github.com/TryGhost/ActivityPub/assets/115641230/371e8f36-8293-43d2-912a-772e56517e1d)
-
 ## Migrations
 
-`docker compose run migrate` or `docker compose run migrate-testing` will run the up migrations against your dev or testing db respectively.
+`docker compose run migrate` or `docker compose run migrate-testing` will run the `up` migrations against your dev or testing db respectively.
 
-If you would like to run other commands you can run `docker compose exec -it migrate /bin/bash` or `docker compose exec -it migrate-testing /bin/bash` This will drop you into a shell with the `migrate` binary available as well as a $MYSQL_DB environment variable that is correctly formated for use as the `-database` argument to the `migrate` binary
+If you would like to run other commands you can run `docker compose exec -it migrate /bin/bash` or `docker compose exec -it migrate-testing /bin/bash` - This will drop you into a shell with the `migrate` binary available as well as a `MYSQL_DB` environment variable that is correctly formated for use as the `-database` argument to the `migrate` binary
 
+&nbsp;
+
+# Community leaderboard
+
+![Leaderboard](https://github.com/TryGhost/ActivityPub/assets/115641230/371e8f36-8293-43d2-912a-772e56517e1d)
 
 &nbsp;
 
