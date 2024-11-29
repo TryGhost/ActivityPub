@@ -7,7 +7,6 @@ import {
     getFollowerCount,
     getFollowingCount,
     getHandle,
-    getRecentActivities,
     isFollowing,
     isHandle,
 } from './actor';
@@ -157,78 +156,6 @@ describe('getHandle', () => {
         const actor = {} as unknown as Actor;
 
         expect(getHandle(actor)).toBe('@unknown@unknown');
-    });
-});
-
-describe('getRecentActivities', () => {
-    it('should return an array of recent activities for the actor', async () => {
-        const activityContent = 'Hello, world!';
-        const activityToJsonLdMock = vi
-            .fn()
-            .mockResolvedValue({ content: activityContent });
-        const actor = {
-            getOutbox: vi.fn().mockResolvedValue({
-                getFirst: vi.fn().mockResolvedValue({
-                    getItems: vi.fn().mockImplementation(async function* () {
-                        yield { toJsonLd: activityToJsonLdMock };
-                    }),
-                }),
-            }),
-        } as unknown as Actor;
-
-        expect(await getRecentActivities(actor)).toEqual([
-            { content: activityContent },
-        ]);
-
-        expect(activityToJsonLdMock).toHaveBeenCalledWith({
-            format: 'compact',
-        });
-    });
-
-    it('should return an empty array if the actor outbox is not available', async () => {
-        const actor = {
-            getOutbox: vi.fn().mockResolvedValue(null),
-        } as unknown as Actor;
-
-        expect(await getRecentActivities(actor)).toEqual([]);
-    });
-
-    it('should return an empty array if the first page of the actor outbox is not available', async () => {
-        const actor = {
-            getOutbox: vi.fn().mockResolvedValue({
-                getFirst: vi.fn().mockResolvedValue(null),
-            }),
-        } as unknown as Actor;
-
-        expect(await getRecentActivities(actor)).toEqual([]);
-    });
-
-    it('should sanitize the activity content if a sanitizeContent function is provided', async () => {
-        const actor = {
-            getOutbox: vi.fn().mockResolvedValue({
-                getFirst: vi.fn().mockResolvedValue({
-                    getItems: vi.fn().mockImplementation(async function* () {
-                        yield {
-                            toJsonLd: vi.fn().mockResolvedValue({
-                                content: '<script>alert("XSS")</script>',
-                            }),
-                        };
-                    }),
-                }),
-            }),
-        } as unknown as Actor;
-
-        expect(
-            await getRecentActivities(actor, {
-                sanitizeContent: (content) =>
-                    content
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;'),
-            }),
-        ).toEqual([
-            { content: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;' },
-        ]);
     });
 });
 

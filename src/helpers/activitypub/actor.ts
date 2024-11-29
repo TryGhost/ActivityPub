@@ -49,42 +49,6 @@ export function getHandle(actor: Actor): string {
     return `@${actor?.preferredUsername || 'unknown'}@${host}`;
 }
 
-export async function getRecentActivities(
-    actor: Actor,
-    options?: {
-        sanitizeContent?: (content: string) => string;
-    },
-): Promise<unknown[]> {
-    const activities: unknown[] = [];
-    const outbox = await actor.getOutbox();
-
-    if (!outbox) {
-        return [];
-    }
-
-    const firstPage = await outbox.getFirst();
-
-    if (!firstPage) {
-        return [];
-    }
-
-    for await (const activity of firstPage.getItems()) {
-        const activityJson = (await activity.toJsonLd({
-            format: 'compact',
-        })) as { content: string };
-
-        if (options?.sanitizeContent) {
-            activityJson.content = options.sanitizeContent(
-                activityJson.content,
-            );
-        }
-
-        activities.push(activityJson);
-    }
-
-    return activities;
-}
-
 export async function isFollowing(
     actor: Actor,
     options: {

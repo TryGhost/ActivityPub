@@ -7,7 +7,6 @@ import {
     getFollowerCount,
     getFollowingCount,
     getHandle,
-    getRecentActivities,
     isFollowing,
     isHandle,
 } from '../../helpers/activitypub/actor';
@@ -21,7 +20,6 @@ interface ProfileSearchResult {
     followerCount: number;
     followingCount: number;
     isFollowing: boolean;
-    posts: any[];
 }
 
 interface SearchResults {
@@ -70,7 +68,6 @@ export async function searchAction(
                 followerCount: 0,
                 followingCount: 0,
                 isFollowing: false,
-                posts: [],
             };
 
             result.actor = await actor.toJsonLd();
@@ -83,9 +80,6 @@ export async function searchAction(
             result.followerCount = await getFollowerCount(actor);
             result.followingCount = await getFollowingCount(actor);
             result.isFollowing = await isFollowing(actor, { db });
-            result.posts = await getRecentActivities(actor, {
-                sanitizeContent: (content: string) => sanitizeHtml(content),
-            });
 
             results.profiles.push(result);
         }
