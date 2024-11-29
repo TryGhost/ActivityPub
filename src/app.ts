@@ -41,6 +41,7 @@ import {
     profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
+    profileGetPostsAction,
     searchAction,
 } from './api';
 import { client, getSite } from './db';
@@ -731,6 +732,11 @@ app.get(
     '/.ghost/activitypub/profile/:handle/following',
     requireRole(GhostRole.Owner),
     spanWrapper(profileGetFollowingAction),
+);
+app.get(
+    '/.ghost/activitypub/profile/:handle/posts',
+    requireRole(GhostRole.Owner),
+    spanWrapper(profileGetPostsAction),
 );
 app.get(
     '/.ghost/activitypub/thread/:activity_id',
