@@ -7,7 +7,6 @@ import {
     getFollowerCount,
     getFollowingCount,
     getHandle,
-    getRecentActivities,
     isFollowing,
     isHandle,
 } from '../../../helpers/activitypub/actor';
@@ -20,7 +19,6 @@ interface Profile {
     followerCount: number;
     followingCount: number;
     isFollowing: boolean;
-    posts: any[];
 }
 
 export async function profileGetAction(
@@ -50,7 +48,6 @@ export async function profileGetAction(
         followerCount: 0,
         followingCount: 0,
         isFollowing: false,
-        posts: [],
     };
 
     try {
@@ -64,28 +61,19 @@ export async function profileGetAction(
         result.actor.summary = sanitizeHtml(result.actor.summary);
         result.handle = getHandle(actor);
 
-        const [
-            followerCount,
-            followingCount,
-            isFollowingResult,
-            posts,
-            attachments,
-        ] = await Promise.all([
-            getFollowerCount(actor),
-            getFollowingCount(actor),
-            isFollowing(actor, { db }),
-            getRecentActivities(actor, {
-                sanitizeContent: (content: string) => sanitizeHtml(content),
-            }),
-            getAttachments(actor, {
-                sanitizeValue: (value: string) => sanitizeHtml(value),
-            }),
-        ]);
+        const [followerCount, followingCount, isFollowingResult, attachments] =
+            await Promise.all([
+                getFollowerCount(actor),
+                getFollowingCount(actor),
+                isFollowing(actor, { db }),
+                getAttachments(actor, {
+                    sanitizeValue: (value: string) => sanitizeHtml(value),
+                }),
+            ]);
 
         result.followerCount = followerCount;
         result.followingCount = followingCount;
         result.isFollowing = isFollowingResult;
-        result.posts = posts;
         result.actor.attachment = attachments;
     } catch (err) {
         logger.error('Profile retrieval failed ({handle}): {error}', {
