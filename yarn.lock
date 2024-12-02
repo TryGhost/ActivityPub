@@ -493,10 +493,10 @@
     protobufjs "^7.2.5"
     yargs "^17.7.2"
 
-"@hono/node-server@1.13.5":
-  version "1.13.5"
-  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.13.5.tgz#94d055c3e4007cbb5b9768c8234a58f1af6555f9"
-  integrity sha512-lSo+CFlLqAFB4fX7ePqI9nauEn64wOfJHAfc9duYFTvAG3o416pC0nTGeNjuLHchLedH+XyWda5v79CVx1PIjg==
+"@hono/node-server@1.13.6":
+  version "1.13.6"
+  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.13.6.tgz#c337af782ea312e890c3b5de936b1484b0c3b0e5"
+  integrity sha512-Y2ivw4UmLIBKfzvkFgcsrhc0GLn272diGjlnKOF9T1OiY6ud4RaVO8FKEnifNkuU7meOeCU371/8fmhgeYf7Lw==
 
 "@hugoalh/http-header-link@^1.0.2":
   version "1.0.2"
