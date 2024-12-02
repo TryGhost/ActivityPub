@@ -35,11 +35,11 @@
     "@types/sanitize-html": "2.13.0",
     "@types/sinon": "17.0.3",
     "@types/uuid": "10.0.0",
-    "@vitest/coverage-v8": "2.1.6",
+    "@vitest/coverage-v8": "2.1.7",
     "concurrently": "9.1.0",
     "esbuild": "0.24.0",
     "typescript": "5.7.2",
-    "vitest": "2.1.6",
+    "vitest": "2.1.7",
     "wiremock-captain": "3.5.0"
   },
   "dependencies": {
