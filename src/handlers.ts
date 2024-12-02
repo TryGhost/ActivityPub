@@ -571,32 +571,14 @@ export async function getSiteDataHandler(
 
     // This is to ensure that the actor exists - e.g. for a brand new a site
     await getUserData(apCtx, handle);
-    const updated = await updateSiteActor(
+
+    await updateSiteActor(
         ctx.get('db'),
+        ctx.get('globaldb'),
+        apCtx,
         ctx.get('logger'),
         host,
     );
-
-    // Publish activity if the site settings have changed
-    if (updated) {
-        const actor = await apCtx.getActor(handle);
-
-        const update = new Update({
-            id: apCtx.getObjectUri(Update, { id: uuidv4() }),
-            actor: actor?.id,
-            to: PUBLIC_COLLECTION,
-            object: actor?.id,
-            cc: apCtx.getFollowersUri('index'),
-        });
-
-        await ctx
-            .get('globaldb')
-            .set([update.id!.href], await update.toJsonLd());
-
-        await apCtx.sendActivity({ handle }, 'followers', update, {
-            preferSharedInbox: true,
-        });
-    }
 
     return new Response(JSON.stringify(site), {
         status: 200,
@@ -606,7 +588,13 @@ export async function getSiteDataHandler(
     });
 }
 
-async function updateSiteActor(db: KvStore, logger: Logger, host: string) {
+async function updateSiteActor(
+    db: KvStore,
+    globaldb: KvStore,
+    apCtx: RequestContext<ContextData>,
+    logger: Logger,
+    host: string,
+) {
     const settings = await getSiteSettings(host);
     const handle = ACTOR_DEFAULT_HANDLE;
 
@@ -618,7 +606,7 @@ async function updateSiteActor(db: KvStore, logger: Logger, host: string) {
         current.name === settings.site.title &&
         current.summary === settings.site.description
     ) {
-        logger.info('No site settings changed, nothing to do');
+        logger.info('No site settings changed, not updating site actor');
         return false;
     }
 
@@ -632,62 +620,49 @@ async function updateSiteActor(db: KvStore, logger: Logger, host: string) {
 
     await db.set(['handle', handle], updated);
 
+    logger.info('Site settings changed, will notify followers');
+
+    const actor = await apCtx.getActor(handle);
+
+    const update = new Update({
+        id: apCtx.getObjectUri(Update, { id: uuidv4() }),
+        actor: actor?.id,
+        to: PUBLIC_COLLECTION,
+        object: actor?.id,
+        cc: apCtx.getFollowersUri('index'),
+    });
+
+    await globaldb.set([update.id!.href], await update.toJsonLd());
+
+    await apCtx.sendActivity({ handle }, 'followers', update, {
+        preferSharedInbox: true,
+    });
+
     return true;
 }
 
 export async function siteChangedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     try {
         const host = ctx.req.header('host') || '';
         const db = ctx.get('db');
+        const globaldb = ctx.get('globaldb');
         const logger = ctx.get('logger');
-        const handle = ACTOR_DEFAULT_HANDLE;
 
-        const updated = await updateSiteActor(db, logger, host);
-
-        if (!updated) {
-            return new Response(JSON.stringify({}), {
-                headers: {
-                    'Content-Type': 'application/activity+json',
-                },
-                status: 200,
-            });
-        }
-
-        logger.info('Site settings changed, will notify followers');
-
-        // Publish activity if the site settings have changed
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
-            globaldb: ctx.get('globaldb'),
-            logger: logger,
+            globaldb,
+            logger,
         });
 
-        const actor = await apCtx.getActor(handle);
-
-        const update = new Update({
-            id: apCtx.getObjectUri(Update, { id: uuidv4() }),
-            actor: actor?.id,
-            to: PUBLIC_COLLECTION,
-            object: actor?.id,
-            cc: apCtx.getFollowersUri('index'),
-        });
-
-        await ctx
-            .get('globaldb')
-            .set([update.id!.href], await update.toJsonLd());
-        await apCtx.sendActivity({ handle }, 'followers', update, {
-            preferSharedInbox: true,
-        });
+        await updateSiteActor(db, globaldb, apCtx, logger, host);
     } catch (err) {
         ctx.get('logger').error('Site changed webhook failed: {error}', {
             error: err,
         });
     }
 
-    // Return 200 OK
     return new Response(JSON.stringify({}), {
         headers: {
             'Content-Type': 'application/activity+json',
