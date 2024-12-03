@@ -66,6 +66,8 @@ async function postToArticle(
         published: Temporal.Instant.from(post.published_at),
         preview: preview,
         url: toURL(post.url),
+        to: PUBLIC_COLLECTION,
+        cc: ctx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
     });
 
     return {
