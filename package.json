@@ -59,7 +59,7 @@
     "hono": "4.6.10",
     "jsonwebtoken": "9.0.2",
     "knex": "3.1.0",
-    "ky": "1.7.2",
+    "ky": "1.7.3",
     "mysql2": "3.11.5",
     "node-jose": "2.2.0",
     "sanitize-html": "2.14.0",
