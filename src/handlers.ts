@@ -4,14 +4,12 @@ import {
     Article,
     Create,
     Follow,
-    type KvStore,
     Like,
     Mention,
     Note,
     PUBLIC_COLLECTION,
     type RequestContext,
     Undo,
-    Update,
     isActor,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
@@ -23,15 +21,14 @@ import {
     buildActivity,
     prepareNoteContent,
 } from './helpers/activitypub/activity';
-import { getSiteSettings } from './helpers/ghost';
 import { toURL } from './helpers/uri';
-import { type PersonData, getUserData } from './helpers/user';
+import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
-import type { Logger } from '@logtape/logtape';
 import z from 'zod';
 import { getSite } from './db';
+import { updateSiteActor } from './helpers/activitypub/actor';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -586,59 +583,6 @@ export async function getSiteDataHandler(
             'Content-Type': 'application/json',
         },
     });
-}
-
-async function updateSiteActor(
-    db: KvStore,
-    globaldb: KvStore,
-    apCtx: RequestContext<ContextData>,
-    logger: Logger,
-    host: string,
-) {
-    const settings = await getSiteSettings(host);
-    const handle = ACTOR_DEFAULT_HANDLE;
-
-    const current = await db.get<PersonData>(['handle', handle]);
-
-    if (
-        current &&
-        current.icon === settings.site.icon &&
-        current.name === settings.site.title &&
-        current.summary === settings.site.description
-    ) {
-        logger.info('No site settings changed, not updating site actor');
-        return false;
-    }
-
-    // Update the database if the site settings have changed
-    const updated = {
-        ...current,
-        icon: settings.site.icon,
-        name: settings.site.title,
-        summary: settings.site.description,
-    };
-
-    await db.set(['handle', handle], updated);
-
-    logger.info('Site settings changed, will notify followers');
-
-    const actor = await apCtx.getActor(handle);
-
-    const update = new Update({
-        id: apCtx.getObjectUri(Update, { id: uuidv4() }),
-        actor: actor?.id,
-        to: PUBLIC_COLLECTION,
-        object: actor?.id,
-        cc: apCtx.getFollowersUri('index'),
-    });
-
-    await globaldb.set([update.id!.href], await update.toJsonLd());
-
-    await apCtx.sendActivity({ handle }, 'followers', update, {
-        preferSharedInbox: true,
-    });
-
-    return true;
 }
 
 export async function siteChangedWebhook(

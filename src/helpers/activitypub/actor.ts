@@ -1,4 +1,17 @@
-import { type Actor, type KvStore, PropertyValue } from '@fedify/fedify';
+import {
+    type Actor,
+    type KvStore,
+    PUBLIC_COLLECTION,
+    PropertyValue,
+    type RequestContext,
+    Update,
+} from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
+import { v4 as uuidv4 } from 'uuid';
+import type { ContextData } from '../../app';
+import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { getSiteSettings } from '../ghost';
+import type { PersonData } from '../user';
 
 interface Attachment {
     name: string;
@@ -62,4 +75,56 @@ export async function isFollowing(
 
 export function isHandle(handle: string): boolean {
     return /^@([\w-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
+}
+export async function updateSiteActor(
+    db: KvStore,
+    globaldb: KvStore,
+    apCtx: RequestContext<ContextData>,
+    logger: Logger,
+    host: string,
+) {
+    const settings = await getSiteSettings(host);
+    const handle = ACTOR_DEFAULT_HANDLE;
+
+    const current = await db.get<PersonData>(['handle', handle]);
+
+    if (
+        current &&
+        current.icon === settings.site.icon &&
+        current.name === settings.site.title &&
+        current.summary === settings.site.description
+    ) {
+        logger.info('No site settings changed, not updating site actor');
+        return false;
+    }
+
+    // Update the database if the site settings have changed
+    const updated = {
+        ...current,
+        icon: settings.site.icon,
+        name: settings.site.title,
+        summary: settings.site.description,
+    };
+
+    await db.set(['handle', handle], updated);
+
+    logger.info('Site settings changed, will notify followers');
+
+    const actor = await apCtx.getActor(handle);
+
+    const update = new Update({
+        id: apCtx.getObjectUri(Update, { id: uuidv4() }),
+        actor: actor?.id,
+        to: PUBLIC_COLLECTION,
+        object: actor?.id,
+        cc: apCtx.getFollowersUri('index'),
+    });
+
+    await globaldb.set([update.id!.href], await update.toJsonLd());
+
+    await apCtx.sendActivity({ handle }, 'followers', update, {
+        preferSharedInbox: true,
+    });
+
+    return true;
 }
