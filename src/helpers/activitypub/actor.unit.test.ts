@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { type Actor, type KvStore, PropertyValue } from '@fedify/fedify';
+import { type Actor, type KvStore, PropertyValue, RequestContext } from '@fedify/fedify';
 
 import {
     getAttachments,
@@ -9,7 +9,11 @@ import {
     getHandle,
     isFollowing,
     isHandle,
+    updateSiteActor,
 } from './actor';
+import { Logger } from '@logtape/logtape';
+import { ContextData } from '../../app';
+import assert from 'assert';
 
 describe('getAttachments', () => {
     it('should return an array of attachments for the actor', async () => {
@@ -224,5 +228,39 @@ describe('isHandle', () => {
         expect(isHandle('@@foo')).toBe(false);
         expect(isHandle('@foo@')).toBe(false);
         expect(isHandle('@foo@@example.com')).toBe(false);
+    });
+});
+
+describe('updateSiteActor', () => {
+    it('should return false if the site settings have not changed', async () => {
+        const db = {
+            get: vi.fn().mockResolvedValue({
+                icon: 'https://example.com/baz.png',
+                name: 'Site Title',
+                summary: 'Site Description',
+            }),
+        } as unknown as KvStore;
+
+        const globaldb = {
+            get: vi.fn().mockResolvedValue(null),
+        } as unknown as KvStore;
+
+        const getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                description: 'Site Description',
+                title: 'Site Title',
+                icon: 'https://example.com/icon.png',
+            },
+        });
+
+        const host = 'example.com';
+
+        const logger = console as unknown as Logger;
+
+        const apCtx = {} as unknown as RequestContext<ContextData>;
+
+        const result = await updateSiteActor(db, globaldb, apCtx, logger, getSiteSettings, host);
+
+        assert(result === false);
     });
 });

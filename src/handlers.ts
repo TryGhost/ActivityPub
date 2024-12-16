@@ -29,6 +29,7 @@ import { lookupActor, lookupObject } from './lookup-helpers';
 import z from 'zod';
 import { getSite } from './db';
 import { updateSiteActor } from './helpers/activitypub/actor';
+import { getSiteSettings } from 'helpers/ghost';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -574,6 +575,7 @@ export async function getSiteDataHandler(
         ctx.get('globaldb'),
         apCtx,
         ctx.get('logger'),
+        getSiteSettings,
         host,
     );
 
@@ -600,7 +602,7 @@ export async function siteChangedWebhook(
             logger,
         });
 
-        await updateSiteActor(db, globaldb, apCtx, logger, host);
+        await updateSiteActor(db, globaldb, apCtx, logger, getSiteSettings, host);
     } catch (err) {
         ctx.get('logger').error('Site changed webhook failed: {error}', {
             error: err,

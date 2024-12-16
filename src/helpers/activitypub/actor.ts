@@ -10,7 +10,6 @@ import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 import type { ContextData } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { getSiteSettings } from '../ghost';
 import type { PersonData } from '../user';
 
 interface Attachment {
@@ -76,11 +75,15 @@ export async function isFollowing(
 export function isHandle(handle: string): boolean {
     return /^@([\w-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
 }
+
 export async function updateSiteActor(
     db: KvStore,
     globaldb: KvStore,
     apCtx: RequestContext<ContextData>,
     logger: Logger,
+    getSiteSettings: (
+        host: string,
+    ) => Promise<{ site: { icon: string; title: string; description: string } }>,
     host: string,
 ) {
     const settings = await getSiteSettings(host);
