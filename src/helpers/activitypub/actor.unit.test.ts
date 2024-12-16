@@ -235,14 +235,16 @@ describe('updateSiteActor', () => {
     it('should return false if the site settings have not changed', async () => {
         const db = {
             get: vi.fn().mockResolvedValue({
-                icon: 'https://example.com/baz.png',
+                icon: 'https://example.com/icon.png',
                 name: 'Site Title',
                 summary: 'Site Description',
             }),
+            set: vi.fn()
         } as unknown as KvStore;
 
         const globaldb = {
             get: vi.fn().mockResolvedValue(null),
+            set: vi.fn()
         } as unknown as KvStore;
 
         const getSiteSettings = vi.fn().mockResolvedValue({
@@ -263,4 +265,43 @@ describe('updateSiteActor', () => {
 
         assert(result === false);
     });
+
+    it('Should update the site actor if the site settings have changed', async () => {
+        const db = {
+            get: vi.fn().mockResolvedValue({
+                icon: 'https://example.com/baz.png',
+                name: 'Site Title',
+                summary: 'Site Description',
+            }),
+            set: vi.fn(),
+        } as unknown as KvStore;
+
+        const globaldb = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+        } as unknown as KvStore;
+
+        const getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                description: 'New Site Description',
+                title: 'New Site Title',
+                icon: 'https://example.com/icon.png',
+            },
+        });
+
+        const host = 'example.com';
+
+        const logger = console as unknown as Logger;
+
+        const apCtx = {
+            getActor: vi.fn().mockResolvedValue({}),
+            getObjectUri: vi.fn().mockReturnValue(new URL('https://example.com')),
+            getFollowersUri: vi.fn().mockReturnValue(new URL('https://example.com/followers')),
+            sendActivity: vi.fn(),
+        } as unknown as RequestContext<ContextData>;
+
+        const result = await updateSiteActor(db, globaldb, apCtx, logger, getSiteSettings, host);
+
+        assert(result === true);
+    })
 });
