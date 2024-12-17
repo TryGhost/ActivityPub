@@ -534,8 +534,9 @@ Given('we are followed by:', async function (actors) {
         const object = this.actors.Us;
         const activity = await createActivity('Follow', object, actor);
 
-        this.activities[name] = activity;
-        this.objects[name] = object;
+        const key = `Follow(Us)_${name}`;
+        this.activities[key] = activity;
+        this.objects[key] = object;
 
         // Send the follow activity to the inbox
         this.response = await fetchActivityPub(
