@@ -1,5 +1,6 @@
 import {
     type Actor,
+    Image,
     type KvStore,
     PUBLIC_COLLECTION,
     PropertyValue,
@@ -10,7 +11,7 @@ import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 import type { ContextData } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import type { PersonData } from '../user';
+import { getUserData, setUserData, UserData, type PersonData } from '../user';
 
 interface Attachment {
     name: string;
@@ -89,11 +90,11 @@ export async function updateSiteActor(
     const settings = await getSiteSettings(host);
     const handle = ACTOR_DEFAULT_HANDLE;
 
-    const current = await db.get<PersonData>(['handle', handle]);
+    const current = await getUserData(apCtx, handle);
 
     if (
         current &&
-        current.icon === settings.site.icon &&
+        current.icon.url?.toString() === settings.site.icon &&
         current.name === settings.site.title &&
         current.summary === settings.site.description
     ) {
@@ -101,15 +102,23 @@ export async function updateSiteActor(
         return false;
     }
 
-    // Update the database if the site settings have changed
-    const updated = {
+    const updated: UserData = {
         ...current,
-        icon: settings.site.icon,
-        name: settings.site.title,
-        summary: settings.site.description,
     };
 
-    await db.set(['handle', handle], updated);
+    try {
+        updated.icon = new Image({ url: new URL(settings.site.icon) });
+    } catch (err) {
+        logger.error(
+            'Could not create Image from Icon value ({icon}): {error}',
+            { icon: settings.site.icon, error: err },
+        );
+    }
+
+    updated.name = settings.site.title;
+    updated.summary = settings.site.description;
+
+    await setUserData(apCtx, updated, handle);
 
     logger.info('Site settings changed, will notify followers');
 
