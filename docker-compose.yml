@@ -18,6 +18,7 @@ services:
       - MQ_PUBSUB_HOST=pubsub:8085
       - MQ_PUBSUB_TOPIC_NAME=activitypub_topic_changeme
       - MQ_PUBSUB_SUBSCRIPTION_NAME=activitypub_subscription_changeme
+      - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
     command: yarn build:watch
     depends_on:
       migrate:
@@ -115,6 +116,7 @@ services:
       - MQ_PUBSUB_HOST=pubsub-testing:8085
       - MQ_PUBSUB_TOPIC_NAME=activitypub_topic_changeme
       - MQ_PUBSUB_SUBSCRIPTION_NAME=activitypub_subscription_changeme
+      - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
     command: yarn build:watch
     depends_on:
       mysql-testing:
@@ -166,6 +168,8 @@ services:
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
+    ports:
+      - "3308:3306"
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s

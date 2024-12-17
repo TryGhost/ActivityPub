@@ -81,6 +81,10 @@ describe('dispatchers', () => {
             ctx.data.globaldb.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(following[key[0]]);
             });
+
+            if (!process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE) {
+                process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
+            }
         });
 
         it('returns items from the following collection in the correct order', async () => {
@@ -181,6 +185,10 @@ describe('dispatchers', () => {
             ctx.data.globaldb.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(likeActivities[key[0]]);
             });
+
+            if (!process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE) {
+                process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
+            }
         });
 
         it('returns items from the liked collection in the correct order', async () => {
@@ -358,6 +366,10 @@ describe('dispatchers', () => {
             ctx.data.globaldb.get.mockImplementation((key: string[]) => {
                 return Promise.resolve(outboxActivities[key[0]]);
             });
+
+            if (!process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE) {
+                process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
+            }
         });
 
         it('returns items from the outbox collection in the correct order', async () => {
