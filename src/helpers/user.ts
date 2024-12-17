@@ -70,24 +70,31 @@ export async function getUserData(
             );
             url = new URL(`https://${ctx.host}`);
         }
-        return {
-            id: new URL(existing.id),
-            name: existing.name,
-            summary: existing.summary,
-            preferredUsername: existing.preferredUsername,
-            icon,
-            inbox: new URL(existing.inbox),
-            outbox: new URL(existing.outbox),
-            following: new URL(existing.following),
-            followers: new URL(existing.followers),
-            liked: existing.liked
-                ? new URL(existing.liked)
-                : ctx.getLikedUri(handle),
-            publicKeys: (await ctx.getActorKeyPairs(handle)).map(
-                (key) => key.cryptographicKey,
-            ),
-            url,
-        };
+        try {
+            return {
+                id: new URL(existing.id),
+                name: existing.name,
+                summary: existing.summary,
+                preferredUsername: existing.preferredUsername,
+                icon,
+                inbox: new URL(existing.inbox),
+                outbox: new URL(existing.outbox),
+                following: new URL(existing.following),
+                followers: new URL(existing.followers),
+                liked: existing.liked
+                    ? new URL(existing.liked)
+                    : ctx.getLikedUri(handle),
+                publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+                    (key) => key.cryptographicKey,
+                ),
+                url,
+            };
+        } catch (err) {
+            ctx.data.logger.error(
+                'Could not create UserData from store value (id: {id}): {error}',
+                { id: existing.id, error: err },
+            );
+        }
     }
 
     const data = {
