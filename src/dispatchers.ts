@@ -23,13 +23,7 @@ import {
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
 import { type ContextData, fedify } from './app';
-import {
-    ACTOR_DEFAULT_HANDLE,
-    FOLLOWERS_PAGE_SIZE,
-    FOLLOWING_PAGE_SIZE,
-    LIKED_PAGE_SIZE,
-    OUTBOX_PAGE_SIZE,
-} from './constants';
+import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowing } from './helpers/activitypub/actor';
 import { getUserData, getUserKeypair } from './helpers/user';
 import { addToList } from './kv-helpers';
@@ -470,6 +464,20 @@ export async function followersDispatcher(
 ) {
     ctx.data.logger.info('Followers Dispatcher');
 
+    if (cursor === null) {
+        ctx.data.logger.info('No cursor provided, returning early');
+
+        return null;
+    }
+
+    const pageSize = Number.parseInt(
+        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
+    );
+
+    if (Number.isNaN(pageSize)) {
+        throw new Error(`Page size: ${pageSize} is not valid`);
+    }
+
     const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
@@ -484,11 +492,11 @@ export async function followersDispatcher(
 
     if (fullResults) {
         nextCursor =
-            fullResults.length > offset + FOLLOWERS_PAGE_SIZE
-                ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+            fullResults.length > offset + pageSize
+                ? (offset + pageSize).toString()
                 : null;
 
-        items = fullResults.slice(offset, offset + FOLLOWERS_PAGE_SIZE);
+        items = fullResults.slice(offset, offset + pageSize);
     } else {
         const results = [
             // Remove duplicates
@@ -496,14 +504,11 @@ export async function followersDispatcher(
         ];
 
         nextCursor =
-            results.length > offset + FOLLOWERS_PAGE_SIZE
-                ? (offset + FOLLOWERS_PAGE_SIZE).toString()
+            results.length > offset + pageSize
+                ? (offset + pageSize).toString()
                 : null;
 
-        const slicedResults = results.slice(
-            offset,
-            offset + FOLLOWERS_PAGE_SIZE,
-        );
+        const slicedResults = results.slice(offset, offset + pageSize);
 
         const actors = (
             await Promise.all(
@@ -511,8 +516,8 @@ export async function followersDispatcher(
             )
         )
             // This could potentially mean that the slicedResults is not the size
-            // of FOLLOWERS_PAGE_SIZE if for some reason the lookupActor returns
-            // null for some of the results. TODO: Find a better way to handle this
+            // of pageSize if for some reason the lookupActor returns null for
+            // some of the results. TODO: Find a better way to handle this
             .filter((item): item is Actor => isActor(item));
 
         const toStore = await Promise.all(
@@ -554,17 +559,25 @@ export async function followingDispatcher(
 ) {
     ctx.data.logger.info('Following Dispatcher');
 
+    const pageSize = Number.parseInt(
+        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
+    );
+
+    if (Number.isNaN(pageSize)) {
+        throw new Error(`Page size: ${pageSize} is not valid`);
+    }
+
     const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
     const results = (await ctx.data.db.get<string[]>(['following'])) || [];
 
     nextCursor =
-        results.length > offset + FOLLOWING_PAGE_SIZE
-            ? (offset + FOLLOWING_PAGE_SIZE).toString()
+        results.length > offset + pageSize
+            ? (offset + pageSize).toString()
             : null;
 
-    const slicedResults = results.slice(offset, offset + FOLLOWING_PAGE_SIZE);
+    const slicedResults = results.slice(offset, offset + pageSize);
 
     ctx.data.logger.info('Following results', { results: slicedResults });
 
@@ -611,6 +624,14 @@ export async function outboxDispatcher(
 ) {
     ctx.data.logger.info('Outbox Dispatcher');
 
+    const pageSize = Number.parseInt(
+        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
+    );
+
+    if (Number.isNaN(pageSize)) {
+        throw new Error(`Page size: ${pageSize} is not valid`);
+    }
+
     const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
@@ -619,11 +640,11 @@ export async function outboxDispatcher(
     ).reverse();
 
     nextCursor =
-        results.length > offset + OUTBOX_PAGE_SIZE
-            ? (offset + OUTBOX_PAGE_SIZE).toString()
+        results.length > offset + pageSize
+            ? (offset + pageSize).toString()
             : null;
 
-    const slicedResults = results.slice(offset, offset + OUTBOX_PAGE_SIZE);
+    const slicedResults = results.slice(offset, offset + pageSize);
 
     ctx.data.logger.info('Outbox results', { results: slicedResults });
 
@@ -679,17 +700,25 @@ export async function likedDispatcher(
         logger,
     });
 
+    const pageSize = Number.parseInt(
+        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
+    );
+
+    if (Number.isNaN(pageSize)) {
+        throw new Error(`Page size: ${pageSize} is not valid`);
+    }
+
     const offset = Number.parseInt(cursor ?? '0');
     let nextCursor: string | null = null;
 
     const results = ((await db.get<string[]>(['liked'])) || []).reverse();
 
     nextCursor =
-        results.length > offset + LIKED_PAGE_SIZE
-            ? (offset + LIKED_PAGE_SIZE).toString()
+        results.length > offset + pageSize
+            ? (offset + pageSize).toString()
             : null;
 
-    const slicedResults = results.slice(offset, offset + LIKED_PAGE_SIZE);
+    const slicedResults = results.slice(offset, offset + pageSize);
 
     ctx.data.logger.info('Liked results', { results: slicedResults });
 

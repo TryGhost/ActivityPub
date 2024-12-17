@@ -524,6 +524,51 @@ Given('we follow {string}', async function (name) {
     }
 });
 
+Given('we are followed by:', async function (actors) {
+    for (const { name, type } of actors.hashes()) {
+        // Create the actor
+        this.actors[name] = await createActor(name, { type });
+
+        // Create the follow activity
+        const actor = this.actors[name];
+        const object = this.actors.Us;
+        const activity = await createActivity('Follow', object, actor);
+
+        const key = `Follow(Us)_${name}`;
+        this.activities[key] = activity;
+        this.objects[key] = object;
+
+        // Send the follow activity to the inbox
+        this.response = await fetchActivityPub(
+            'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+            {
+                method: 'POST',
+                body: JSON.stringify(activity),
+            },
+        );
+
+        await waitForInboxActivity(activity);
+    }
+});
+
+Given('the list of followers is paginated across multiple pages', async () => {
+    const followersResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+    );
+    const followersResponseJson = await followersResponse.json();
+
+    const followersFirstPageReponse = await fetchActivityPub(
+        followersResponseJson.first,
+    );
+    const followersFirstPageReponseJson =
+        await followersFirstPageReponse.json();
+
+    assert(
+        followersFirstPageReponseJson.next,
+        'Expected multiple pages of pagination but only got 1',
+    );
+});
+
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
@@ -865,6 +910,63 @@ Then(
         });
 
         assert(found);
+    },
+);
+
+Then(
+    'Activity {string} is sent to all followers',
+    async function (activityName) {
+        // Retrieve all followers
+        const followers = [];
+
+        const followersResponse = await fetchActivityPub(
+            'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+        );
+        const followersResponseJson = await followersResponse.json();
+
+        const followersFirstPageResponse = await fetchActivityPub(
+            followersResponseJson.first,
+        );
+        const followersFirstPageResponseJson =
+            await followersFirstPageResponse.json();
+
+        followers.push(...followersFirstPageResponseJson.orderedItems);
+
+        let nextPage = followersFirstPageResponseJson.next;
+
+        while (nextPage) {
+            const nextPageResponse = await fetchActivityPub(nextPage);
+            const nextPageResponseJson = await nextPageResponse.json();
+
+            followers.push(...nextPageResponseJson.orderedItems);
+
+            nextPage = nextPageResponseJson.next;
+        }
+
+        // Check that the activity was sent to all followers
+        const activity = this.activities[activityName];
+
+        for (const follower of followers) {
+            const inbox = new URL(follower.inbox);
+
+            const found = await waitForRequest(
+                'POST',
+                inbox.pathname,
+                (call) => {
+                    const json = JSON.parse(call.request.body);
+
+                    return (
+                        json.type === activity.type &&
+                        json.object.id === activity.object.id
+                    );
+                },
+            );
+
+            assert(
+                found,
+                `Activity "${activityName}" was not sent to "${follower.name}"`,
+            );
+        }
     },
 );
 
