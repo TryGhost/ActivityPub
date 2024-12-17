@@ -81,9 +81,9 @@ export async function updateSiteActor(
     globaldb: KvStore,
     apCtx: RequestContext<ContextData>,
     logger: Logger,
-    getSiteSettings: (
-        host: string,
-    ) => Promise<{ site: { icon: string; title: string; description: string } }>,
+    getSiteSettings: (host: string) => Promise<{
+        site: { icon: string; title: string; description: string };
+    }>,
     host: string,
 ) {
     const settings = await getSiteSettings(host);

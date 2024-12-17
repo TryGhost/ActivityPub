@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { type Actor, type KvStore, PropertyValue, RequestContext } from '@fedify/fedify';
+import {
+    type Actor,
+    type KvStore,
+    PropertyValue,
+    type RequestContext,
+} from '@fedify/fedify';
 
+import assert from 'assert';
+import type { Logger } from '@logtape/logtape';
+import type { ContextData } from '../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -11,9 +19,6 @@ import {
     isHandle,
     updateSiteActor,
 } from './actor';
-import { Logger } from '@logtape/logtape';
-import { ContextData } from '../../app';
-import assert from 'assert';
 
 describe('getAttachments', () => {
     it('should return an array of attachments for the actor', async () => {
@@ -239,12 +244,12 @@ describe('updateSiteActor', () => {
                 name: 'Site Title',
                 summary: 'Site Description',
             }),
-            set: vi.fn()
+            set: vi.fn(),
         } as unknown as KvStore;
 
         const globaldb = {
             get: vi.fn().mockResolvedValue(null),
-            set: vi.fn()
+            set: vi.fn(),
         } as unknown as KvStore;
 
         const getSiteSettings = vi.fn().mockResolvedValue({
@@ -261,7 +266,14 @@ describe('updateSiteActor', () => {
 
         const apCtx = {} as unknown as RequestContext<ContextData>;
 
-        const result = await updateSiteActor(db, globaldb, apCtx, logger, getSiteSettings, host);
+        const result = await updateSiteActor(
+            db,
+            globaldb,
+            apCtx,
+            logger,
+            getSiteSettings,
+            host,
+        );
 
         assert(result === false);
     });
@@ -295,13 +307,24 @@ describe('updateSiteActor', () => {
 
         const apCtx = {
             getActor: vi.fn().mockResolvedValue({}),
-            getObjectUri: vi.fn().mockReturnValue(new URL('https://example.com')),
-            getFollowersUri: vi.fn().mockReturnValue(new URL('https://example.com/followers')),
+            getObjectUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com')),
+            getFollowersUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/followers')),
             sendActivity: vi.fn(),
         } as unknown as RequestContext<ContextData>;
 
-        const result = await updateSiteActor(db, globaldb, apCtx, logger, getSiteSettings, host);
+        const result = await updateSiteActor(
+            db,
+            globaldb,
+            apCtx,
+            logger,
+            getSiteSettings,
+            host,
+        );
 
         assert(result === true);
-    })
+    });
 });

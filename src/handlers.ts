@@ -26,10 +26,10 @@ import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
+import { getSiteSettings } from './helpers/ghost';
 import z from 'zod';
 import { getSite } from './db';
 import { updateSiteActor } from './helpers/activitypub/actor';
-import { getSiteSettings } from 'helpers/ghost';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -602,7 +602,14 @@ export async function siteChangedWebhook(
             logger,
         });
 
-        await updateSiteActor(db, globaldb, apCtx, logger, getSiteSettings, host);
+        await updateSiteActor(
+            db,
+            globaldb,
+            apCtx,
+            logger,
+            getSiteSettings,
+            host,
+        );
     } catch (err) {
         ctx.get('logger').error('Site changed webhook failed: {error}', {
             error: err,
