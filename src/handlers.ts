@@ -571,10 +571,7 @@ export async function getSiteDataHandler(
     await getUserData(apCtx, handle);
 
     await updateSiteActor(
-        ctx.get('db'),
-        ctx.get('globaldb'),
         apCtx,
-        ctx.get('logger'),
         getSiteSettings,
         host,
     );
@@ -603,10 +600,7 @@ export async function siteChangedWebhook(
         });
 
         await updateSiteActor(
-            db,
-            globaldb,
             apCtx,
-            logger,
             getSiteSettings,
             host,
         );

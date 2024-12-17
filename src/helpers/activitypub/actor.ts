@@ -78,10 +78,7 @@ export function isHandle(handle: string): boolean {
 }
 
 export async function updateSiteActor(
-    db: KvStore,
-    globaldb: KvStore,
     apCtx: RequestContext<ContextData>,
-    logger: Logger,
     getSiteSettings: (host: string) => Promise<{
         site: { icon: string; title: string; description: string };
     }>,
@@ -98,7 +95,7 @@ export async function updateSiteActor(
         current.name === settings.site.title &&
         current.summary === settings.site.description
     ) {
-        logger.info('No site settings changed, not updating site actor');
+        apCtx.data.logger.info('No site settings changed, not updating site actor');
         return false;
     }
 
@@ -109,7 +106,7 @@ export async function updateSiteActor(
     try {
         updated.icon = new Image({ url: new URL(settings.site.icon) });
     } catch (err) {
-        logger.error(
+        apCtx.data.logger.error(
             'Could not create Image from Icon value ({icon}): {error}',
             { icon: settings.site.icon, error: err },
         );
@@ -120,7 +117,7 @@ export async function updateSiteActor(
 
     await setUserData(apCtx, updated, handle);
 
-    logger.info('Site settings changed, will notify followers');
+    apCtx.data.logger.info('Site settings changed, will notify followers');
 
     const actor = await apCtx.getActor(handle);
 
@@ -132,7 +129,7 @@ export async function updateSiteActor(
         cc: apCtx.getFollowersUri('index'),
     });
 
-    await globaldb.set([update.id!.href], await update.toJsonLd());
+    await apCtx.data.globaldb.set([update.id!.href], await update.toJsonLd());
 
     await apCtx.sendActivity({ handle }, 'followers', update, {
         preferSharedInbox: true,
