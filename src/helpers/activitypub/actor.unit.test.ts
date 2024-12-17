@@ -237,12 +237,54 @@ describe('isHandle', () => {
 });
 
 describe('updateSiteActor', () => {
+    function mockApContext(db: KvStore, globaldb: KvStore) {
+        return {
+            data: {
+                db,
+                globaldb,
+                logger: console as unknown as Logger,
+            },
+            getActor: vi.fn().mockResolvedValue({}),
+            getInboxUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/inbox')),
+            getOutboxUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/outbox')),
+            getLikedUri: vi.fn().mockReturnValue(new URL('https://example.com/liked')),
+            getFollowingUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/following')),
+            getActorUri: vi.fn().mockReturnValue(new URL('https://example.com/user/1')),
+            getActorKeyPairs: vi.fn().mockReturnValue([
+                {
+                    cryptographicKey: 'abc123',
+                },
+            ]),
+            getObjectUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com')),
+            getFollowersUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/followers')),
+            sendActivity: vi.fn(),
+        } as unknown as RequestContext<ContextData>;
+    }
+
     it('should return false if the site settings have not changed', async () => {
         const db = {
             get: vi.fn().mockResolvedValue({
-                icon: 'https://example.com/icon.png',
+                id: 'https://example.com/user/1',
                 name: 'Site Title',
                 summary: 'Site Description',
+                preferredUsername: 'index',
+                icon: 'https://example.com/icon.png',
+                inbox: 'https://example.com/inbox',
+                outbox: 'https://example.com/outbox',
+                following: 'https://example.com/following',
+                followers: 'https://example.com/followers',
+                liked: 'https://example.com/liked',
+                url: 'https://example.com',
             }),
             set: vi.fn(),
         } as unknown as KvStore;
@@ -262,15 +304,10 @@ describe('updateSiteActor', () => {
 
         const host = 'example.com';
 
-        const logger = console as unknown as Logger;
-
-        const apCtx = {} as unknown as RequestContext<ContextData>;
+        const apCtx = mockApContext(db, globaldb);
 
         const result = await updateSiteActor(
-            db,
-            globaldb,
             apCtx,
-            logger,
             getSiteSettings,
             host,
         );
@@ -281,9 +318,17 @@ describe('updateSiteActor', () => {
     it('Should update the site actor if the site settings have changed', async () => {
         const db = {
             get: vi.fn().mockResolvedValue({
-                icon: 'https://example.com/baz.png',
+                id: 'https://example.com/user/1',
                 name: 'Site Title',
                 summary: 'Site Description',
+                preferredUsername: 'index',
+                icon: 'https://example.com/icon.png',
+                inbox: 'https://example.com/inbox',
+                outbox: 'https://example.com/outbox',
+                following: 'https://example.com/following',
+                followers: 'https://example.com/followers',
+                liked: 'https://example.com/liked',
+                url: 'https://example.com',
             }),
             set: vi.fn(),
         } as unknown as KvStore;
@@ -303,24 +348,10 @@ describe('updateSiteActor', () => {
 
         const host = 'example.com';
 
-        const logger = console as unknown as Logger;
-
-        const apCtx = {
-            getActor: vi.fn().mockResolvedValue({}),
-            getObjectUri: vi
-                .fn()
-                .mockReturnValue(new URL('https://example.com')),
-            getFollowersUri: vi
-                .fn()
-                .mockReturnValue(new URL('https://example.com/followers')),
-            sendActivity: vi.fn(),
-        } as unknown as RequestContext<ContextData>;
+        const apCtx = mockApContext(db, globaldb);
 
         const result = await updateSiteActor(
-            db,
-            globaldb,
             apCtx,
-            logger,
             getSiteSettings,
             host,
         );
