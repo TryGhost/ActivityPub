@@ -7,11 +7,10 @@ import {
     type RequestContext,
     Update,
 } from '@fedify/fedify';
-import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 import type { ContextData } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { getUserData, setUserData, UserData, type PersonData } from '../user';
+import { type UserData, getUserData, setUserData } from '../user';
 
 interface Attachment {
     name: string;
@@ -95,7 +94,9 @@ export async function updateSiteActor(
         current.name === settings.site.title &&
         current.summary === settings.site.description
     ) {
-        apCtx.data.logger.info('No site settings changed, not updating site actor');
+        apCtx.data.logger.info(
+            'No site settings changed, not updating site actor',
+        );
         return false;
     }
 

@@ -26,10 +26,10 @@ import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
-import { getSiteSettings } from './helpers/ghost';
 import z from 'zod';
 import { getSite } from './db';
 import { updateSiteActor } from './helpers/activitypub/actor';
+import { getSiteSettings } from './helpers/ghost';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -570,11 +570,7 @@ export async function getSiteDataHandler(
     // This is to ensure that the actor exists - e.g. for a brand new a site
     await getUserData(apCtx, handle);
 
-    await updateSiteActor(
-        apCtx,
-        getSiteSettings,
-        host,
-    );
+    await updateSiteActor(apCtx, getSiteSettings, host);
 
     return new Response(JSON.stringify(site), {
         status: 200,
@@ -599,11 +595,7 @@ export async function siteChangedWebhook(
             logger,
         });
 
-        await updateSiteActor(
-            apCtx,
-            getSiteSettings,
-            host,
-        );
+        await updateSiteActor(apCtx, getSiteSettings, host);
     } catch (err) {
         ctx.get('logger').error('Site changed webhook failed: {error}', {
             error: err,

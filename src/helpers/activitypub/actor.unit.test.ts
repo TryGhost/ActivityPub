@@ -7,7 +7,7 @@ import {
     type RequestContext,
 } from '@fedify/fedify';
 
-import assert from 'assert';
+import assert from 'node:assert';
 import type { Logger } from '@logtape/logtape';
 import type { ContextData } from '../../app';
 import {
@@ -251,11 +251,15 @@ describe('updateSiteActor', () => {
             getOutboxUri: vi
                 .fn()
                 .mockReturnValue(new URL('https://example.com/outbox')),
-            getLikedUri: vi.fn().mockReturnValue(new URL('https://example.com/liked')),
+            getLikedUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/liked')),
             getFollowingUri: vi
                 .fn()
                 .mockReturnValue(new URL('https://example.com/following')),
-            getActorUri: vi.fn().mockReturnValue(new URL('https://example.com/user/1')),
+            getActorUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/user/1')),
             getActorKeyPairs: vi.fn().mockReturnValue([
                 {
                     cryptographicKey: 'abc123',
@@ -306,11 +310,7 @@ describe('updateSiteActor', () => {
 
         const apCtx = mockApContext(db, globaldb);
 
-        const result = await updateSiteActor(
-            apCtx,
-            getSiteSettings,
-            host,
-        );
+        const result = await updateSiteActor(apCtx, getSiteSettings, host);
 
         assert(result === false);
     });
@@ -350,11 +350,7 @@ describe('updateSiteActor', () => {
 
         const apCtx = mockApContext(db, globaldb);
 
-        const result = await updateSiteActor(
-            apCtx,
-            getSiteSettings,
-            host,
-        );
+        const result = await updateSiteActor(apCtx, getSiteSettings, host);
 
         assert(result === true);
     });
