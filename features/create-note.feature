@@ -24,6 +24,18 @@ Feature: Creating a note
     Then "Note" is in our Outbox
     And "Note" has the content "<p>Hello<br />World</p>"
 
+  Scenario: Created note has user provided HTML escaped
+    If HTML is provided as user input, it should be escaped. The content
+    should still be wrapped in an unescaped <p> though.
+
+    When we create a note "Note" with the content
+      """
+      <p>Hello, world!</p>
+      <script>alert("Hello, world!");</script>
+      """
+    Then "Note" is in our Outbox
+    And "Note" has the content "<p>&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;<br />&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;</p>"
+
   Scenario: Created note is sent to followers
     Given an Actor "Person(Alice)"
     And an Actor "Person(Bob)"

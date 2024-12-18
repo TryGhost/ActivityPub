@@ -21,6 +21,7 @@ import {
     buildActivity,
     prepareNoteContent,
 } from './helpers/activitypub/activity';
+import { escapeHtml } from './helpers/html';
 import { toURL } from './helpers/uri';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
@@ -238,6 +239,8 @@ export async function noteAction(
 
     try {
         data = NoteActionSchema.parse((await ctx.req.json()) as unknown);
+
+        data.content = escapeHtml(data.content);
     } catch (err) {
         return new Response(JSON.stringify(err), { status: 400 });
     }
@@ -313,7 +316,15 @@ export async function replyAction(
     const logger = ctx.get('logger');
     const id = ctx.req.param('id');
 
-    const data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
+    let data: z.infer<typeof ReplyActionSchema>;
+
+    try {
+        data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
+
+        data.content = escapeHtml(data.content);
+    } catch (err) {
+        return new Response(JSON.stringify(err), { status: 400 });
+    }
 
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),

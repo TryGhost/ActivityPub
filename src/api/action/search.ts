@@ -10,7 +10,7 @@ import {
     isFollowing,
     isHandle,
 } from '../../helpers/activitypub/actor';
-import { sanitizeHtml } from '../../helpers/sanitize';
+import { sanitizeHtml } from '../../helpers/html';
 import { isUri } from '../../helpers/uri';
 import { lookupObject } from '../../lookup-helpers';
 
