@@ -174,7 +174,7 @@ describe('getUserData', () => {
             name: 'foo',
             summary: 'bar',
             preferredUsername: HANDLE,
-            icon: null,
+            icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
             liked: new URL(LIKED_URI),
@@ -220,7 +220,7 @@ describe('getUserData', () => {
             following: new URL(FOLLOWING_URI),
             followers: new URL(FOLLOWERS_URI),
             publicKeys: ['abc123'],
-            url: null,
+            url: new URL(`https://${ctx.host}`),
         };
 
         expect(ctx.data.db.set).toBeCalledTimes(0);

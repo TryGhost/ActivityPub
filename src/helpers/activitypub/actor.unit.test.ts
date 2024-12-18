@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { type Actor, type KvStore, PropertyValue } from '@fedify/fedify';
+import {
+    type Actor,
+    type KvStore,
+    PropertyValue,
+    type RequestContext,
+} from '@fedify/fedify';
 
+import type { Logger } from '@logtape/logtape';
+import type { ContextData } from '../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -9,6 +16,7 @@ import {
     getHandle,
     isFollowing,
     isHandle,
+    updateSiteActor,
 } from './actor';
 
 describe('getAttachments', () => {
@@ -224,5 +232,182 @@ describe('isHandle', () => {
         expect(isHandle('@@foo')).toBe(false);
         expect(isHandle('@foo@')).toBe(false);
         expect(isHandle('@foo@@example.com')).toBe(false);
+    });
+});
+
+describe('updateSiteActor', () => {
+    function mockApContext(db: KvStore, globaldb: KvStore) {
+        return {
+            data: {
+                db,
+                globaldb,
+                logger: console as unknown as Logger,
+            },
+            getActor: vi.fn().mockResolvedValue({}),
+            getInboxUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/inbox')),
+            getOutboxUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/outbox')),
+            getLikedUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/liked')),
+            getFollowingUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/following')),
+            getActorUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/user/1')),
+            getActorKeyPairs: vi.fn().mockReturnValue([
+                {
+                    cryptographicKey: 'abc123',
+                },
+            ]),
+            getObjectUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com')),
+            getFollowersUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/followers')),
+            sendActivity: vi.fn(),
+            host: 'example.com',
+        } as unknown as RequestContext<ContextData>;
+    }
+
+    it('should return false if the site settings have not changed', async () => {
+        const db = {
+            get: vi.fn().mockResolvedValue({
+                id: 'https://example.com/user/1',
+                name: 'Site Title',
+                summary: 'Site Description',
+                preferredUsername: 'index',
+                icon: 'https://example.com/icon.png',
+                inbox: 'https://example.com/inbox',
+                outbox: 'https://example.com/outbox',
+                following: 'https://example.com/following',
+                followers: 'https://example.com/followers',
+                liked: 'https://example.com/liked',
+                url: 'https://example.com/',
+            }),
+            set: vi.fn(),
+            delete: vi.fn(),
+        };
+
+        const globaldb = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+            delete: vi.fn(),
+        };
+
+        const getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                description: 'Site Description',
+                title: 'Site Title',
+                icon: 'https://example.com/icon.png',
+            },
+        });
+
+        const apCtx = mockApContext(db, globaldb);
+
+        const result = await updateSiteActor(apCtx, getSiteSettings);
+
+        expect(result).toBe(false);
+    });
+
+    it('should update the site actor if one does not exist', async () => {
+        const db = {
+            get: vi.fn().mockResolvedValue(undefined),
+            set: vi.fn(),
+            delete: vi.fn(),
+        };
+
+        const globaldb = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+            delete: vi.fn(),
+        };
+
+        const getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                description: 'New Site Description',
+                title: 'New Site Title',
+                icon: 'https://example.com/icon.png',
+            },
+        });
+
+        const apCtx = mockApContext(db, globaldb);
+
+        const result = await updateSiteActor(apCtx, getSiteSettings);
+
+        expect(result).toBe(true);
+
+        expect(db.set.mock.lastCall?.[1]).toStrictEqual({
+            id: 'https://example.com/user/1',
+            name: 'New Site Title',
+            summary: 'New Site Description',
+            preferredUsername: 'index',
+            icon: 'https://example.com/icon.png',
+            inbox: 'https://example.com/inbox',
+            outbox: 'https://example.com/outbox',
+            following: 'https://example.com/following',
+            followers: 'https://example.com/followers',
+            liked: 'https://example.com/liked',
+            url: 'https://example.com/',
+        });
+    });
+
+    it('should update the site actor if the site settings have changed', async () => {
+        const db = {
+            get: vi.fn().mockResolvedValue({
+                id: 'https://example.com/user/1',
+                name: 'Site Title',
+                summary: 'Site Description',
+                preferredUsername: 'index',
+                icon: 'https://example.com/icon.png',
+                inbox: 'https://example.com/inbox',
+                outbox: 'https://example.com/outbox',
+                following: 'https://example.com/following',
+                followers: 'https://example.com/followers',
+                liked: 'https://example.com/liked',
+                url: 'https://example.com/',
+            }),
+            set: vi.fn(),
+            delete: vi.fn(),
+        };
+
+        const globaldb = {
+            get: vi.fn().mockResolvedValue(null),
+            set: vi.fn(),
+            delete: vi.fn(),
+        };
+
+        const getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                description: 'New Site Description',
+                title: 'New Site Title',
+                icon: 'https://example.com/icon.png',
+            },
+        });
+
+        const apCtx = mockApContext(db, globaldb);
+
+        const result = await updateSiteActor(apCtx, getSiteSettings);
+
+        expect(result).toBe(true);
+
+        expect(db.set.mock.calls[0][1]).toStrictEqual({
+            id: 'https://example.com/user/1',
+            name: 'New Site Title',
+            summary: 'New Site Description',
+            preferredUsername: 'index',
+            icon: 'https://example.com/icon.png',
+            inbox: 'https://example.com/inbox',
+            outbox: 'https://example.com/outbox',
+            following: 'https://example.com/following',
+            followers: 'https://example.com/followers',
+            liked: 'https://example.com/liked',
+            url: 'https://example.com/',
+        });
     });
 });

@@ -1,4 +1,16 @@
-import { type Actor, type KvStore, PropertyValue } from '@fedify/fedify';
+import {
+    type Actor,
+    Image,
+    type KvStore,
+    PUBLIC_COLLECTION,
+    PropertyValue,
+    type RequestContext,
+    Update,
+} from '@fedify/fedify';
+import { v4 as uuidv4 } from 'uuid';
+import type { ContextData } from '../../app';
+import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { type UserData, getUserData, setUserData } from '../user';
 
 interface Attachment {
     name: string;
@@ -62,4 +74,66 @@ export async function isFollowing(
 
 export function isHandle(handle: string): boolean {
     return /^@([\w-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
+}
+
+export async function updateSiteActor(
+    apCtx: RequestContext<ContextData>,
+    getSiteSettings: (host: string) => Promise<{
+        site: { icon: string; title: string; description: string };
+    }>,
+) {
+    const settings = await getSiteSettings(apCtx.host);
+    const handle = ACTOR_DEFAULT_HANDLE;
+
+    const current = await getUserData(apCtx, handle);
+
+    if (
+        current &&
+        current.icon.url?.toString() === settings.site.icon &&
+        current.name === settings.site.title &&
+        current.summary === settings.site.description
+    ) {
+        apCtx.data.logger.info(
+            'No site settings changed, not updating site actor',
+        );
+        return false;
+    }
+
+    const updated: UserData = {
+        ...current,
+    };
+
+    try {
+        updated.icon = new Image({ url: new URL(settings.site.icon) });
+    } catch (err) {
+        apCtx.data.logger.error(
+            'Could not create Image from Icon value ({icon}): {error}',
+            { icon: settings.site.icon, error: err },
+        );
+    }
+
+    updated.name = settings.site.title;
+    updated.summary = settings.site.description;
+
+    await setUserData(apCtx, updated, handle);
+
+    apCtx.data.logger.info('Site settings changed, will notify followers');
+
+    const actor = await apCtx.getActor(handle);
+
+    const update = new Update({
+        id: apCtx.getObjectUri(Update, { id: uuidv4() }),
+        actor: actor?.id,
+        to: PUBLIC_COLLECTION,
+        object: actor?.id,
+        cc: apCtx.getFollowersUri('index'),
+    });
+
+    await apCtx.data.globaldb.set([update.id!.href], await update.toJsonLd());
+
+    await apCtx.sendActivity({ handle }, 'followers', update, {
+        preferSharedInbox: true,
+    });
+
+    return true;
 }

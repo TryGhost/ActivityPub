@@ -1,5 +1,6 @@
 import {
     type Context,
+    type CryptographicKey,
     Image,
     exportJwk,
     generateCryptoKeyPair,
@@ -26,7 +27,25 @@ export type PersonData = {
     url: string;
 };
 
-export async function getUserData(ctx: Context<ContextData>, handle: string) {
+export type UserData = {
+    id: URL;
+    name: string;
+    summary: string;
+    preferredUsername: string;
+    icon: Image;
+    inbox: URL;
+    outbox: URL;
+    following: URL;
+    followers: URL;
+    liked: URL;
+    url: URL;
+    publicKeys: CryptographicKey[];
+};
+
+export async function getUserData(
+    ctx: Context<ContextData>,
+    handle: string,
+): Promise<UserData> {
     const existing = await ctx.data.db.get<PersonData>(['handle', handle]);
 
     if (existing) {
@@ -38,6 +57,7 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
                 'Could not create Image from Icon value ({icon}): {error}',
                 { icon: existing.icon, error: err },
             );
+            icon = new Image({ url: new URL(ACTOR_DEFAULT_ICON) });
         }
 
         let url = null;
@@ -48,25 +68,33 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
                 'Could not create URL from value ({url}): {error}',
                 { url: existing.url, error: err },
             );
+            url = new URL(`https://${ctx.host}`);
         }
-        return {
-            id: new URL(existing.id),
-            name: existing.name,
-            summary: existing.summary,
-            preferredUsername: existing.preferredUsername,
-            icon,
-            inbox: new URL(existing.inbox),
-            outbox: new URL(existing.outbox),
-            following: new URL(existing.following),
-            followers: new URL(existing.followers),
-            liked: existing.liked
-                ? new URL(existing.liked)
-                : ctx.getLikedUri(handle),
-            publicKeys: (await ctx.getActorKeyPairs(handle)).map(
-                (key) => key.cryptographicKey,
-            ),
-            url,
-        };
+        try {
+            return {
+                id: new URL(existing.id),
+                name: existing.name,
+                summary: existing.summary,
+                preferredUsername: existing.preferredUsername,
+                icon,
+                inbox: new URL(existing.inbox),
+                outbox: new URL(existing.outbox),
+                following: new URL(existing.following),
+                followers: new URL(existing.followers),
+                liked: existing.liked
+                    ? new URL(existing.liked)
+                    : ctx.getLikedUri(handle),
+                publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+                    (key) => key.cryptographicKey,
+                ),
+                url,
+            };
+        } catch (err) {
+            ctx.data.logger.error(
+                'Could not create UserData from store value (id: {id}): {error}',
+                { id: existing.id, error: err },
+            );
+        }
     }
 
     const data = {
@@ -86,12 +114,24 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
         url: new URL(`https://${ctx.host}`),
     };
 
+    await setUserData(ctx, data, handle);
+
+    return data;
+}
+
+// TODO: Consider using handle from `data`
+export async function setUserData(
+    ctx: Context<ContextData>,
+    data: UserData,
+    handle: string,
+) {
+    const iconUrl = data.icon.url?.toString() || '';
     const dataToStore: PersonData = {
         id: data.id.href,
         name: data.name,
         summary: data.summary,
         preferredUsername: data.preferredUsername,
-        icon: ACTOR_DEFAULT_ICON,
+        icon: iconUrl,
         inbox: data.inbox.href,
         outbox: data.outbox.href,
         following: data.following.href,
@@ -101,8 +141,6 @@ export async function getUserData(ctx: Context<ContextData>, handle: string) {
     };
 
     await ctx.data.db.set(['handle', handle], dataToStore);
-
-    return data;
 }
 
 export async function getUserKeypair(

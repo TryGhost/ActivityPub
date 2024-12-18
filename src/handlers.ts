@@ -10,7 +10,6 @@ import {
     PUBLIC_COLLECTION,
     type RequestContext,
     Undo,
-    Update,
     isActor,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
@@ -22,13 +21,15 @@ import {
     buildActivity,
     prepareNoteContent,
 } from './helpers/activitypub/activity';
-import { getSiteSettings } from './helpers/ghost';
 import { toURL } from './helpers/uri';
-import type { PersonData } from './helpers/user';
+import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
 import z from 'zod';
+import { getSite } from './db';
+import { updateSiteActor } from './helpers/activitypub/actor';
+import { getSiteSettings } from './helpers/ghost';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -545,80 +546,62 @@ export async function postPublishedWebhook(
     });
 }
 
+export async function getSiteDataHandler(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        ctx.get('logger').info('No Host header');
+        return new Response('No Host header', {
+            status: 401,
+        });
+    }
+
+    const handle = ACTOR_DEFAULT_HANDLE;
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
+    });
+
+    const site = await getSite(host, true);
+
+    // This is to ensure that the actor exists - e.g. for a brand new a site
+    await getUserData(apCtx, handle);
+
+    await updateSiteActor(apCtx, getSiteSettings);
+
+    return new Response(JSON.stringify(site), {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+}
+
 export async function siteChangedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     try {
-        // Retrieve site settings from Ghost
         const host = ctx.req.header('host') || '';
-
-        const settings = await getSiteSettings(host);
-
-        // Retrieve the persisted actor details and check if anything has changed
-        const handle = ACTOR_DEFAULT_HANDLE;
         const db = ctx.get('db');
+        const globaldb = ctx.get('globaldb');
+        const logger = ctx.get('logger');
 
-        const current = await db.get<PersonData>(['handle', handle]);
-
-        if (
-            current &&
-            current.icon === settings.site.icon &&
-            current.name === settings.site.title &&
-            current.summary === settings.site.description
-        ) {
-            ctx.get('logger').info('No site settings changed, nothing to do');
-
-            return new Response(JSON.stringify({}), {
-                headers: {
-                    'Content-Type': 'application/activity+json',
-                },
-                status: 200,
-            });
-        }
-
-        ctx.get('logger').info('Site settings changed, will notify followers');
-
-        // Update the database if the site settings have changed
-        const updated = {
-            ...current,
-            icon: settings.site.icon,
-            name: settings.site.title,
-            summary: settings.site.description,
-        };
-
-        await db.set(['handle', handle], updated);
-
-        // Publish activity if the site settings have changed
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db,
-            globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            globaldb,
+            logger,
         });
 
-        const actor = await apCtx.getActor(handle);
-
-        const update = new Update({
-            id: apCtx.getObjectUri(Update, { id: uuidv4() }),
-            actor: actor?.id,
-            to: PUBLIC_COLLECTION,
-            object: actor?.id,
-            cc: apCtx.getFollowersUri('index'),
-        });
-
-        await ctx
-            .get('globaldb')
-            .set([update.id!.href], await update.toJsonLd());
-        await apCtx.sendActivity({ handle }, 'followers', update, {
-            preferSharedInbox: true,
-        });
+        await updateSiteActor(apCtx, getSiteSettings);
     } catch (err) {
         ctx.get('logger').error('Site changed webhook failed: {error}', {
             error: err,
         });
     }
 
-    // Return 200 OK
     return new Response(JSON.stringify({}), {
         headers: {
             'Content-Type': 'application/activity+json',
