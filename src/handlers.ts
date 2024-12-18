@@ -570,7 +570,7 @@ export async function getSiteDataHandler(
     // This is to ensure that the actor exists - e.g. for a brand new a site
     await getUserData(apCtx, handle);
 
-    await updateSiteActor(apCtx, getSiteSettings, host);
+    await updateSiteActor(apCtx, getSiteSettings);
 
     return new Response(JSON.stringify(site), {
         status: 200,
@@ -595,7 +595,7 @@ export async function siteChangedWebhook(
             logger,
         });
 
-        await updateSiteActor(apCtx, getSiteSettings, host);
+        await updateSiteActor(apCtx, getSiteSettings);
     } catch (err) {
         ctx.get('logger').error('Site changed webhook failed: {error}', {
             error: err,

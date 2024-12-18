@@ -81,9 +81,8 @@ export async function updateSiteActor(
     getSiteSettings: (host: string) => Promise<{
         site: { icon: string; title: string; description: string };
     }>,
-    host: string,
 ) {
-    const settings = await getSiteSettings(host);
+    const settings = await getSiteSettings(apCtx.host);
     const handle = ACTOR_DEFAULT_HANDLE;
 
     const current = await getUserData(apCtx, handle);
