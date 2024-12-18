@@ -23,6 +23,7 @@ import {
     prepareNoteContent,
 } from './helpers/activitypub/activity';
 import { getSiteSettings } from './helpers/ghost';
+import { escapeHtml } from './helpers/sanitize';
 import { toURL } from './helpers/uri';
 import type { PersonData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
@@ -237,6 +238,8 @@ export async function noteAction(
 
     try {
         data = NoteActionSchema.parse((await ctx.req.json()) as unknown);
+
+        data.content = escapeHtml(data.content);
     } catch (err) {
         return new Response(JSON.stringify(err), { status: 400 });
     }
