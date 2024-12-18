@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import doSanitizeHtml from 'sanitize-html';
 
-import { escapeHtml, sanitizeHtml } from './sanitize';
+import { escapeHtml, sanitizeHtml } from './html';
 
 vi.mock('sanitize-html');
 

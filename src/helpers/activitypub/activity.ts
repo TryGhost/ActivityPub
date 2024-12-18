@@ -3,8 +3,8 @@ import { type Context, type KvStore, Like } from '@fedify/fedify';
 
 import type { ContextData } from '../../app';
 import { getActivityChildrenCount } from '../../db';
-import { sanitizeHtml } from '../../helpers/sanitize';
 import { lookupActor } from '../../lookup-helpers';
+import { sanitizeHtml } from '../html';
 
 type Activity = {
     id: string;

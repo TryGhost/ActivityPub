@@ -1,9 +1,9 @@
 import { type CollectionPage, isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import { sanitizeHtml } from 'helpers/sanitize';
 import { type HonoContextVariables, fedify } from '../../../app';
 import { isHandle } from '../../../helpers/activitypub/actor';
+import { sanitizeHtml } from '../../../helpers/html';
 import { isUri } from '../../../helpers/uri';
 import { lookupObject } from '../../../lookup-helpers';
 

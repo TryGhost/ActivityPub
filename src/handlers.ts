@@ -23,7 +23,7 @@ import {
     prepareNoteContent,
 } from './helpers/activitypub/activity';
 import { getSiteSettings } from './helpers/ghost';
-import { escapeHtml } from './helpers/sanitize';
+import { escapeHtml } from './helpers/html';
 import { toURL } from './helpers/uri';
 import type { PersonData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
