@@ -7,7 +7,6 @@ import {
     type RequestContext,
 } from '@fedify/fedify';
 
-import assert from 'node:assert';
 import type { Logger } from '@logtape/logtape';
 import type { ContextData } from '../../app';
 import {
@@ -312,10 +311,10 @@ describe('updateSiteActor', () => {
 
         const result = await updateSiteActor(apCtx, getSiteSettings, host);
 
-        assert(result === false);
+        expect(result).toBe(false);
     });
 
-    it('Should update the site actor if the site settings have changed', async () => {
+    it('should update the site actor if the site settings have changed', async () => {
         const db = {
             get: vi.fn().mockResolvedValue({
                 id: 'https://example.com/user/1',
@@ -352,6 +351,6 @@ describe('updateSiteActor', () => {
 
         const result = await updateSiteActor(apCtx, getSiteSettings, host);
 
-        assert(result === true);
+        expect(result).toBe(true);
     });
 });
