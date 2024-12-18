@@ -414,6 +414,28 @@ BeforeAll(async () => {
             },
         },
     );
+
+    ghostActivityPub.register(
+        {
+            method: 'GET',
+            endpoint: '/ghost/api/admin/site',
+        },
+        {
+            status: 200,
+            body: {
+                settings: {
+                    site: {
+                        title: 'Testing Blog',
+                        icon: 'https://ghost.org/favicon.ico',
+                        description: 'A blog for testing',
+                    },
+                },
+            },
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        },
+    );
 });
 
 AfterAll(async () => {

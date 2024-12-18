@@ -78,6 +78,7 @@ import {
 } from './dispatchers';
 import {
     followAction,
+    getSiteDataHandler,
     inboxHandler,
     likeAction,
     noteAction,
@@ -571,32 +572,6 @@ if (queue instanceof GCloudPubSubPushMessageQueue) {
     app.post('/.ghost/activitypub/mq', spanWrapper(handlePushMessage(queue)));
 }
 
-// This needs to go before the middleware which loads the site
-// Because the site doesn't always exist - this is how it's created
-app.get(
-    '/.ghost/activitypub/site',
-    requireRole(GhostRole.Owner),
-    async (ctx) => {
-        const request = ctx.req;
-        const host = request.header('host');
-        if (!host) {
-            ctx.get('logger').info('No Host header');
-            return new Response('No Host header', {
-                status: 401,
-            });
-        }
-
-        const site = await getSite(host, true);
-
-        return new Response(JSON.stringify(site), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-    },
-);
-
 app.use(async (ctx, next) => {
     const request = ctx.req;
     const host = request.header('host');
@@ -609,6 +584,28 @@ app.use(async (ctx, next) => {
 
     const scopedDb = scopeKvStore(db, ['sites', host]);
 
+    ctx.set('db', scopedDb);
+    ctx.set('globaldb', db);
+
+    await next();
+});
+// This needs to go before the middleware which loads the site
+// Because the site doesn't always exist - this is how it's created
+app.get(
+    '/.ghost/activitypub/site',
+    requireRole(GhostRole.Owner),
+    getSiteDataHandler,
+);
+
+app.use(async (ctx, next) => {
+    const request = ctx.req;
+    const host = request.header('host');
+    if (!host) {
+        ctx.get('logger').info('No Host header');
+        return new Response('No Host header', {
+            status: 401,
+        });
+    }
     const site = await getSite(host);
 
     if (!site) {
@@ -618,8 +615,6 @@ app.use(async (ctx, next) => {
         });
     }
 
-    ctx.set('db', scopedDb);
-    ctx.set('globaldb', db);
     ctx.set('site', site);
 
     await next();
