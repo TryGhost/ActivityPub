@@ -308,11 +308,9 @@ describe('updateSiteActor', () => {
             },
         });
 
-        const host = 'example.com';
-
         const apCtx = mockApContext(db, globaldb);
 
-        const result = await updateSiteActor(apCtx, getSiteSettings, host);
+        const result = await updateSiteActor(apCtx, getSiteSettings);
 
         expect(result).toBe(false);
     });
@@ -338,11 +336,9 @@ describe('updateSiteActor', () => {
             },
         });
 
-        const host = 'example.com';
-
         const apCtx = mockApContext(db, globaldb);
 
-        const result = await updateSiteActor(apCtx, getSiteSettings, host);
+        const result = await updateSiteActor(apCtx, getSiteSettings);
 
         expect(result).toBe(true);
 
@@ -394,11 +390,9 @@ describe('updateSiteActor', () => {
             },
         });
 
-        const host = 'example.com';
-
         const apCtx = mockApContext(db, globaldb);
 
-        const result = await updateSiteActor(apCtx, getSiteSettings, host);
+        const result = await updateSiteActor(apCtx, getSiteSettings);
 
         expect(result).toBe(true);
 
