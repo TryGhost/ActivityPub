@@ -315,7 +315,15 @@ export async function replyAction(
     const logger = ctx.get('logger');
     const id = ctx.req.param('id');
 
-    const data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
+    let data: z.infer<typeof ReplyActionSchema>;
+
+    try {
+        data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
+
+        data.content = escapeHtml(data.content);
+    } catch (err) {
+        return new Response(JSON.stringify(err), { status: 400 });
+    }
 
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
