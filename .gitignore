@@ -73,3 +73,5 @@ typings/
 
 # Build
 dist/
+
+cedar/data-generation/output/*

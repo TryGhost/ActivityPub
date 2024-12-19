@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@faker-js/faker": "9.2.0",
+    "cli-progress": "3.12.0"
+  }
+}
