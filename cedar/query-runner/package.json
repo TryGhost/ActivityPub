@@ -1,0 +1,24 @@
+{
+  "name": "query-runner",
+  "private": true,
+  "version": "0.0.0",
+  "author": "Ghost Foundation",
+  "license": "UNLICENSED",
+  "main": "src/app.ts",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/app.ts --sourcemap --platform=neutral --packages=external --bundle --outfile=dist/app.js",
+    "build:watch": "concurrently \"yarn build --watch\" \"node --watch dist/app.js\""
+  },
+  "files": ["src"],
+  "devDependencies": {
+    "concurrently": "9.1.0",
+    "esbuild": "0.24.0",
+    "typescript": "5.7.2"
+  },
+  "dependencies": {
+    "bottleneck": "2.19.5",
+    "mysql2": "3.11.5",
+    "percentile": "1.6.0"
+  }
+}
