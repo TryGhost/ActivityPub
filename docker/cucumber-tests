@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Export the input provided to the script as the TAGS environment variable. This
+# will then be used by the cucumber-tests container to run only the scenarios
+# matching the provided tags expression
 export TAGS=$1
 
-docker compose run --rm migrate-testing up && docker compose up cucumber-tests --exit-code-from cucumber-tests
+docker compose run --rm migrate-testing up && docker compose run --rm cucumber-tests

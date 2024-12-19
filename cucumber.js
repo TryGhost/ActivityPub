@@ -1,10 +1,12 @@
-let cmd = `--format-options '{"snippetInterface": "synchronous"}'`;
+// https://github.com/cucumber/cucumber-js/blob/main/docs/configuration.md
 
-if (process.env.TAGS) {
-    // @see https://cucumber.io/docs/cucumber/api/?lang=javascript#tags
-    cmd += ` --tags '${process.env.TAGS}'`;
-}
-
-console.log(cmd);
-
-export default cmd;
+export default {
+    backtrace: true,
+    format: ['progress'],
+    formatOptions: {
+        snippetInterface: 'synchronous',
+    },
+    failFast: true,
+    // @see https://github.com/cucumber/cucumber-js/blob/main/docs/filtering.md#tags
+    tags: process.env.TAGS,
+};
