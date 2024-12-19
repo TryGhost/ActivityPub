@@ -152,7 +152,7 @@ services:
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
       - TAGS
-    command: yarn run cucumber-js
+    command: /opt/activitypub/node_modules/.bin/cucumber-js
     depends_on:
       fake-ghost-activitypub:
         condition: service_started
