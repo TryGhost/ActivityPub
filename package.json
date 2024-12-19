@@ -65,6 +65,6 @@
     "sanitize-html": "2.13.1",
     "uuid": "10.0.0",
     "x-forwarded-fetch": "0.2.0",
-    "zod": "3.23.8"
+    "zod": "3.24.0"
   }
 }
