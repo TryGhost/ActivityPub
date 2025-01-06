@@ -32,6 +32,13 @@ import { getSite } from './db';
 import { updateSiteActor } from './helpers/activitypub/actor';
 import { getSiteSettings } from './helpers/ghost';
 
+enum PostVisibility {
+    Public = 'public',
+    Members = 'members',
+    Paid = 'paid',
+    Tiers = 'tiers',
+}
+
 const PostSchema = z.object({
     uuid: z.string().uuid(),
     title: z.string(),
@@ -40,6 +47,7 @@ const PostSchema = z.object({
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
+    visibility: z.nativeEnum(PostVisibility),
 });
 
 type Post = z.infer<typeof PostSchema>;
@@ -501,9 +509,22 @@ export async function postPublishedWebhook(
     ctx: Context<{ Variables: HonoContextVariables }>,
     next: Next,
 ) {
+    const logger = ctx.get('logger');
     const data = PostPublishedWebhookSchema.parse(
         (await ctx.req.json()) as unknown,
     );
+
+    if (data.post.current.visibility !== PostVisibility.Public) {
+        logger.info('Post is not public, skipping');
+
+        return new Response(JSON.stringify({}), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        });
+    }
+
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
         db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),

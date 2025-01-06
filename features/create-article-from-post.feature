@@ -23,3 +23,11 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
     Given a valid "post.published" webhook
     When it is sent to the webhook endpoint without a signature
     Then the request is rejected with a 401
+
+  Scenario: We recieve a webhook for the post.published event with a non-public post
+    Given a valid "post.published" webhook:
+      | property                | value |
+      | post.current.visibility | paid  |
+    When it is sent to the webhook endpoint
+    Then the request is accepted
+    And a "Create(Article)" activity is not in the Outbox after 5 seconds

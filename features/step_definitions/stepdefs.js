@@ -11,6 +11,7 @@ import {
     Then,
     When,
 } from '@cucumber/cucumber';
+import { merge } from 'es-toolkit';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
 import jose from 'node-jose';
@@ -1000,7 +1001,7 @@ const webhooks = {
                 title: 'This is a title.',
                 html: '<p> This is some content. </p>',
                 feature_image: null,
-                visibility: 'paid',
+                visibility: 'public',
                 published_at: '1970-01-01T00:00:00.000Z',
                 url: 'http://fake-external-activitypub/post/',
                 excerpt: 'This is some content.',
@@ -1034,9 +1035,29 @@ Given('a valid {string} webhook', function (string) {
     this.payloadType = string;
 });
 
+Given('a valid {string} webhook:', function (string, properties) {
+    this.payloadType = string;
+    this.payloadData = {};
+
+    for (const { property, value } of properties.hashes()) {
+        property.split('.').reduce((acc, key, idx, arr) => {
+            if (idx === arr.length - 1) {
+                acc[key] = value;
+            } else {
+                acc[key] = acc[key] || {};
+            }
+
+            return acc[key];
+        }, this.payloadData);
+    }
+});
+
 When('it is sent to the webhook endpoint', async function () {
     const endpoint = endpoints[this.payloadType];
-    const payload = webhooks[this.payloadType];
+    let payload = webhooks[this.payloadType];
+    if (this.payloadData) {
+        payload = merge(payload, this.payloadData);
+    }
     const body = JSON.stringify(payload);
     const timestamp = Date.now();
     const hmac = createHmac('sha256', webhookSecret)
@@ -1135,6 +1156,46 @@ Then('a {string} activity is in the Outbox', async function (string) {
     this.found[string] = found;
     assert.ok(found);
 });
+
+Then(
+    'a {string} activity is not in the Outbox after {int} seconds',
+    { timeout: 10000 },
+    async (string, seconds) => {
+        const [match, activity, object] = string.match(/(\w+)\((\w+)\)/) || [
+            null,
+        ];
+
+        if (!match) {
+            throw new Error(`Could not match ${string} to an activity`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+
+        const initialResponse = await fetchActivityPub(
+            'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+            {
+                headers: {
+                    Accept: 'application/ld+json',
+                },
+            },
+        );
+        const initialResponseJson = await initialResponse.json();
+        const firstPageReponse = await fetchActivityPub(
+            initialResponseJson.first,
+            {
+                headers: {
+                    Accept: 'application/ld+json',
+                },
+            },
+        );
+        const outbox = await firstPageReponse.json();
+        const found = (outbox.orderedItems || []).find((item) => {
+            return item.type === activity && item.object?.type === object;
+        });
+
+        assert.ok(!found);
+    },
+);
 
 Then('the found {string} as {string}', function (foundName, name) {
     const found = this.found[foundName];
