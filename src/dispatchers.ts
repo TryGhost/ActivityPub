@@ -302,18 +302,6 @@ export async function handleAnnounce(
 ) {
     ctx.data.logger.info('Handling Announce');
 
-    // Check what was announced - If it's an Activity rather than an Object
-    // (which can occur if the announcer is a Group - See
-    // https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md),
-    // we need to forward the announce on to an appropriate handler
-    // This routing is something that should be handled by Fedify, but has
-    // not yet been implemented - Tracked here: https://github.com/dahlia/fedify/issues/193
-    const announced = await announce.getObject();
-
-    if (announced instanceof Create) {
-        return handleAnnoucedCreate(ctx, announce);
-    }
-
     // Validate announce
     if (!announce.id) {
         ctx.data.logger.info('Invalid Announce - no id');
@@ -323,6 +311,18 @@ export async function handleAnnounce(
     if (!announce.objectId) {
         ctx.data.logger.info('Invalid Announce - no object id');
         return;
+    }
+
+    // Check what was announced - If it's an Activity rather than an Object
+    // (which can occur if the announcer is a Group - See
+    // https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md),
+    // we need to forward the announce on to an appropriate handler
+    // This routing is something that should be handled by Fedify, but has
+    // not yet been implemented - Tracked here: https://github.com/dahlia/fedify/issues/193
+    const announced = await lookupObject(ctx, announce.objectId);
+
+    if (announced instanceof Create) {
+        return handleAnnoucedCreate(ctx, announce);
     }
 
     // Validate sender
