@@ -35,8 +35,8 @@ import { getSiteSettings } from './helpers/ghost';
 const PostSchema = z.object({
     uuid: z.string().uuid(),
     title: z.string(),
-    html: z.string(),
-    excerpt: z.string(),
+    html: z.string().nullable(),
+    excerpt: z.string().nullable(),
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
