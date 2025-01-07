@@ -317,6 +317,25 @@ async function createObject(type, actor) {
     return object;
 }
 
+function createWebhookPost() {
+    const uuid = uuidv4();
+
+    return {
+        post: {
+            current: {
+                uuid,
+                title: 'Test Post',
+                html: '<p>This is a test post</p>',
+                excerpt: 'This is a test post',
+                feature_image: null,
+                published_at: new Date().toISOString(),
+                url: `http://fake-external-activitypub/post/${uuid}`,
+                visibility: 'public',
+            },
+        },
+    };
+}
+
 /**
  *
  * Splits a string like `Create(Note)` or `Like(A)` into its activity and object parts
@@ -1043,23 +1062,6 @@ Then(
     },
 );
 
-const webhooks = {
-    'post.published': {
-        post: {
-            current: {
-                uuid: '986108d9-3d50-4701-9808-eab62e0885cf',
-                title: 'This is a title.',
-                html: '<p> This is some content. </p>',
-                feature_image: null,
-                visibility: 'public',
-                published_at: '1970-01-01T00:00:00.000Z',
-                url: 'http://fake-external-activitypub/post/',
-                excerpt: 'This is some content.',
-            },
-        },
-    },
-};
-
 const endpoints = {
     'post.published':
         'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
@@ -1088,7 +1090,7 @@ Given('a {string} webhook:', function (string, properties) {
 
 When('it is sent to the webhook endpoint', async function () {
     const endpoint = endpoints[this.payloadType];
-    let payload = webhooks[this.payloadType];
+    let payload = createWebhookPost();
     if (this.payloadData) {
         payload = merge(payload, this.payloadData);
     }
@@ -1112,7 +1114,7 @@ When(
     'it is sent to the webhook endpoint with an old signature',
     async function () {
         const endpoint = endpoints[this.payloadType];
-        const payload = webhooks[this.payloadType];
+        const payload = createWebhookPost();
         const body = JSON.stringify(payload);
         const timestamp = Date.now() - 60 * 60 * 1000; // An hour old
         const hmac = createHmac('sha256', webhookSecret)
@@ -1134,7 +1136,7 @@ When(
     'it is sent to the webhook endpoint without a signature',
     async function () {
         const endpoint = endpoints[this.payloadType];
-        const payload = webhooks[this.payloadType];
+        const payload = createWebhookPost();
         this.response = await fetchActivityPub(endpoint, {
             method: 'POST',
             headers: {
