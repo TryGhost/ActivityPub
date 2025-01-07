@@ -5,3 +5,4 @@ export { profileGetFollowersAction } from './action/profile/getFollowers';
 export { profileGetFollowingAction } from './action/profile/getFollowing';
 export { profileGetPostsAction } from './action/profile/getPosts';
 export { searchAction } from './action/search';
+export { postPublishedAction } from './action/webhook/postPublished';

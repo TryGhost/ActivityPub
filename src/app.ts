@@ -38,6 +38,7 @@ import { behindProxy } from 'x-forwarded-fetch';
 import {
     getActivitiesAction,
     getActivityThreadAction,
+    postPublishedAction,
     profileGetAction,
     profileGetFollowersAction,
     profileGetFollowingAction,
@@ -82,7 +83,6 @@ import {
     inboxHandler,
     likeAction,
     noteAction,
-    postPublishedWebhook,
     replyAction,
     siteChangedWebhook,
     unlikeAction,
@@ -664,7 +664,7 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    spanWrapper(postPublishedWebhook),
+    spanWrapper(postPublishedAction),
 );
 app.post(
     '/.ghost/activitypub/webhooks/site/changed',
