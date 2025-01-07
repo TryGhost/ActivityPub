@@ -917,6 +917,56 @@ async function waitForOutboxActivity(
     });
 }
 
+async function waitForOutboxActivityType(
+    activityType,
+    objectType,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+
+    const initialResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json',
+        },
+    });
+    const outbox = await firstPageReponse.json();
+
+    const found = (outbox.orderedItems || []).find((item) => {
+        return item.type === activityType && item.object?.type === objectType;
+    });
+
+    if (found) {
+        return found;
+    }
+
+    if (options.retryCount === MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting for ${activityType}(${objectType}) in the outbox`,
+        );
+    }
+
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
+
+    return waitForOutboxActivityType(activityType, objectType, {
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 500,
+    });
+}
+
 Then(
     'Activity {string} is sent to {string}',
     async function (activityName, actorName) {
@@ -1015,7 +1065,7 @@ const webhooks = {
                 title: 'This is a title.',
                 html: null,
                 feature_image: null,
-                visibility: 'paid',
+                visibility: 'public',
                 published_at: '1970-01-01T00:00:00.000Z',
                 url: 'http://fake-external-activitypub/post/',
                 excerpt: null,
@@ -1132,24 +1182,9 @@ Then('a {string} activity is in the Outbox', async function (string) {
     if (!match) {
         throw new Error(`Could not match ${string} to an activity`);
     }
-    const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const initialResponseJson = await initialResponse.json();
-    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
-        headers: {
-            Accept: 'application/ld+json',
-        },
-    });
-    const outbox = await firstPageReponse.json();
-    const found = (outbox.orderedItems || []).find((item) => {
-        return item.type === activity && item.object?.type === object;
-    });
+
+    const found = await waitForOutboxActivityType(activity, object);
+
     if (!this.found) {
         this.found = {};
     }
