@@ -3,7 +3,7 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
   Scenario: We recieve a webhook for the post.published event
     Given a "post.published" webhook
     When it is sent to the webhook endpoint
-    Then the request is accepted
+    Then the request is accepted with a 201
     Then a "Create(Article)" activity is in the Outbox
     And the found "Create(Article)" has property "object.attributedTo"
 
@@ -13,7 +13,7 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
       | post.current.html    | null  |
       | post.current.excerpt | null  |
     When it is sent to the webhook endpoint
-    Then the request is accepted
+    Then the request is accepted with a 201
     Then a "Create(Article)" activity is in the Outbox
     And the found "Create(Article)" has property "object.attributedTo"
 
@@ -32,5 +32,5 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
       | property                | value |
       | post.current.visibility | paid  |
     When it is sent to the webhook endpoint
-    Then the request is accepted
+    Then the request is accepted with a 202
     And a "Create(Article)" activity is not in the Outbox after 5 seconds

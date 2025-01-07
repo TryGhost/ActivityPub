@@ -97,7 +97,7 @@ export async function postPublishedAction(
             headers: {
                 'Content-Type': 'application/activity+json',
             },
-            status: 200,
+            status: 202,
         });
     }
 
@@ -150,6 +150,6 @@ export async function postPublishedAction(
         headers: {
             'Content-Type': 'application/activity+json',
         },
-        status: 200,
+        status: 201,
     });
 }

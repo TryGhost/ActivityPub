@@ -1161,6 +1161,11 @@ Then('the request is accepted', async function () {
     );
 });
 
+Then('the request is accepted with a {int}', async function (statusCode) {
+    assert(this.response.ok);
+    assert.equal(this.response.status, statusCode);
+});
+
 Then('a {string} activity is in the Outbox', async function (string) {
     const [match, activity, object] = string.match(/(\w+)\((\w+)\)/) || [null];
     if (!match) {
