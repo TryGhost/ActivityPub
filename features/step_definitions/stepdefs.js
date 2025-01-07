@@ -1058,26 +1058,10 @@ const webhooks = {
             },
         },
     },
-    'post.published(no content)': {
-        post: {
-            current: {
-                uuid: '986108d9-3d50-4701-9808-eab62e0885cf',
-                title: 'This is a title.',
-                html: null,
-                feature_image: null,
-                visibility: 'public',
-                published_at: '1970-01-01T00:00:00.000Z',
-                url: 'http://fake-external-activitypub/post/',
-                excerpt: null,
-            },
-        },
-    },
 };
 
 const endpoints = {
     'post.published':
-        'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
-    'post.published(no content)':
         'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
 };
 
