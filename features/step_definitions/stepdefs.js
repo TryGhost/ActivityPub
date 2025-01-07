@@ -1081,11 +1081,11 @@ const endpoints = {
         'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
 };
 
-Given('a valid {string} webhook', function (string) {
+Given('a {string} webhook', function (string) {
     this.payloadType = string;
 });
 
-Given('a valid {string} webhook:', function (string, properties) {
+Given('a {string} webhook:', function (string, properties) {
     this.payloadType = string;
     this.payloadData = {};
 
