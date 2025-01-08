@@ -94,8 +94,8 @@ import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 import {
     GCloudPubSubPushMessageQueue,
+    createHandlePushMessageMiddleware,
     createMessageQueue,
-    handlePushMessage,
 } from './mq/gcloud-pubsub-push/mq';
 
 const logging = getLogger(['activitypub']);
@@ -569,7 +569,10 @@ app.use(async (ctx, next) => {
 // This needs to go before the middleware which loads the site
 // because this endpoint does not require the site to exist
 if (queue instanceof GCloudPubSubPushMessageQueue) {
-    app.post('/.ghost/activitypub/mq', spanWrapper(handlePushMessage(queue)));
+    app.post(
+        '/.ghost/activitypub/mq',
+        spanWrapper(createHandlePushMessageMiddleware(queue, logging)),
+    );
 }
 
 app.use(async (ctx, next) => {
