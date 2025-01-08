@@ -6,8 +6,8 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     GCloudPubSubPushMessageQueue,
+    createHandlePushMessageMiddleware,
     createMessageQueue,
-    handlePushMessage,
 } from './mq';
 
 vi.mock('@google-cloud/pubsub', () => ({
@@ -289,6 +289,23 @@ describe('handlePushMessage', () => {
         } as unknown as PubSub;
     });
 
+    it('should return a 429 response if the message queue is not listening', async () => {
+        const mq = new GCloudPubSubPushMessageQueue(
+            mockLogger,
+            mockPubSubClient,
+            TOPIC,
+        );
+
+        const handlePushMessage = createHandlePushMessageMiddleware(
+            mq,
+            mockLogger,
+        );
+
+        const result = await handlePushMessage(ctx);
+
+        expect(result.status).toBe(429);
+    });
+
     it('should return a 400 response if the incoming message data is invalid', async () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
@@ -302,24 +319,17 @@ describe('handlePushMessage', () => {
 
         mq.listen(vi.fn());
 
-        const result = await handlePushMessage(mq)(ctx);
+        const handlePushMessage = createHandlePushMessageMiddleware(
+            mq,
+            mockLogger,
+        );
+
+        const result = await handlePushMessage(ctx);
 
         expect(result.status).toBe(400);
     });
 
-    it('should return a 429 response if the message queue is not listening', async () => {
-        const mq = new GCloudPubSubPushMessageQueue(
-            mockLogger,
-            mockPubSubClient,
-            TOPIC,
-        );
-
-        const result = await handlePushMessage(mq)(ctx);
-
-        expect(result.status).toBe(429);
-    });
-
-    it('should return a 500 response if the incoming message data cannot be parsed', async () => {
+    it('should return a 400 response if the incoming message data cannot be parsed', async () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
@@ -336,9 +346,14 @@ describe('handlePushMessage', () => {
 
         mq.listen(vi.fn());
 
-        const result = await handlePushMessage(mq)(ctx);
+        const handlePushMessage = createHandlePushMessageMiddleware(
+            mq,
+            mockLogger,
+        );
 
-        expect(result.status).toBe(500);
+        const result = await handlePushMessage(ctx);
+
+        expect(result.status).toBe(400);
     });
 
     it('should return a 200 response if the incoming message is successfully handled', async () => {
@@ -350,7 +365,12 @@ describe('handlePushMessage', () => {
 
         mq.listen(vi.fn().mockResolvedValue(undefined));
 
-        const result = await handlePushMessage(mq)(ctx);
+        const handlePushMessage = createHandlePushMessageMiddleware(
+            mq,
+            mockLogger,
+        );
+
+        const result = await handlePushMessage(ctx);
 
         expect(result.status).toBe(200);
     });
@@ -366,7 +386,12 @@ describe('handlePushMessage', () => {
             vi.fn().mockRejectedValue(new Error('Failed to handle message')),
         );
 
-        const result = await handlePushMessage(mq)(ctx);
+        const handlePushMessage = createHandlePushMessageMiddleware(
+            mq,
+            mockLogger,
+        );
+
+        const result = await handlePushMessage(ctx);
 
         expect(result.status).toBe(500);
     });

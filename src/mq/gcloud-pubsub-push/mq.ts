@@ -244,46 +244,57 @@ const IncomingPushMessageSchema = z.object({
  * Hono middleware to handle an incoming message from a Pub/Sub push subscription
  *
  * @param mq {GCloudPubSubPushMessageQueue} Message queue instance
+ * @param logger {Logger} Logger instance
  * @returns {function}
  *
  * @example
  * ```
- * import { createMessageQueue, handlePushMessage } from './mq/gcloud-pubsub-push';
+ * import { createHandlePushMessageMiddleware, createMessageQueue } from './mq/gcloud-pubsub-push';
  *
  * const queue = await createMessageQueue(...);
  *
- * app.post('/mq', handlePushMessage(queue));
+ * app.post('/mq', createHandlePushMessageMiddleware(queue, logging));
  * ```
  */
-export function handlePushMessage(
+export function createHandlePushMessageMiddleware(
     mq: GCloudPubSubPushMessageQueue,
+    logger: Logger,
 ): (ctx: Context) => Promise<Response> {
-    return async (ctx: Context) => {
-        // Check that the incoming JSON is valid
+    return async function handlePushMessage(ctx: Context) {
+        // Check that the message queue is listening and if not, return a non-200
+        // response to instruct GCloud Pub/Sub to back off from pushing messages to
+        // this endpoint - See https://cloud.google.com/pubsub/docs/push#push_backoff
+        if (mq.isListening === false) {
+            logger.info(
+                'Message queue is not listening, cannot handle message',
+            );
+
+            return new Response(null, { status: 429 });
+        }
+
+        // Validate the incoming data
         let json: z.infer<typeof IncomingPushMessageSchema>;
+        let data: FedifyMessage;
 
         try {
             json = IncomingPushMessageSchema.parse(
                 (await ctx.req.json()) as unknown,
             );
-        } catch (error) {
-            return new Response(JSON.stringify(error), { status: 400 });
-        }
 
-        // Check that the message queue is listening
-        if (mq.isListening === false) {
-            return new Response(null, { status: 429 });
-        }
-
-        let data: FedifyMessage;
-
-        // Attempt to parse the incoming message data
-        try {
+            // We expect the message data to be base64 encoded JSON - See
+            //  - https://cloud.google.com/pubsub/docs/publish-message-overview#about-messages
+            //  - https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
+            // (we use https://github.com/googleapis/nodejs-pubsub to publish
+            // messages which uses the REST API)
             data = JSON.parse(
                 Buffer.from(json.message.data, 'base64').toString(),
             );
         } catch (error) {
-            return new Response(null, { status: 500 });
+            logger.error(`Invalid incoming push message received: ${error}`, {
+                error,
+            });
+
+            return new Response(null, { status: 400 });
         }
 
         // Handle the message
