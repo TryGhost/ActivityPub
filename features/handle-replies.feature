@@ -3,7 +3,7 @@ Feature: Create(Note<inReplyTo>)
 
   Scenario: We recieve a Create(Note) in response to our content from someone we don't follow
     # Setup our article
-    Given a valid "post.published" webhook
+    Given a "post.published" webhook
     When it is sent to the webhook endpoint
     Then the request is accepted
     Then a "Create(Article)" activity is in the Outbox

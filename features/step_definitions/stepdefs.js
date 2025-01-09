@@ -11,6 +11,7 @@ import {
     Then,
     When,
 } from '@cucumber/cucumber';
+import { merge } from 'es-toolkit';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
 import jose from 'node-jose';
@@ -314,6 +315,25 @@ async function createObject(type, actor) {
     );
 
     return object;
+}
+
+function createWebhookPost() {
+    const uuid = uuidv4();
+
+    return {
+        post: {
+            current: {
+                uuid,
+                title: 'Test Post',
+                html: '<p>This is a test post</p>',
+                excerpt: 'This is a test post',
+                feature_image: null,
+                published_at: new Date().toISOString(),
+                url: `http://fake-external-activitypub/post/${uuid}`,
+                visibility: 'public',
+            },
+        },
+    };
 }
 
 /**
@@ -916,6 +936,56 @@ async function waitForOutboxActivity(
     });
 }
 
+async function waitForOutboxActivityType(
+    activityType,
+    objectType,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+
+    const initialResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json',
+        },
+    });
+    const outbox = await firstPageReponse.json();
+
+    const found = (outbox.orderedItems || []).find((item) => {
+        return item.type === activityType && item.object?.type === objectType;
+    });
+
+    if (found) {
+        return found;
+    }
+
+    if (options.retryCount === MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting for ${activityType}(${objectType}) in the outbox`,
+        );
+    }
+
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
+
+    return waitForOutboxActivityType(activityType, objectType, {
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 500,
+    });
+}
+
 Then(
     'Activity {string} is sent to {string}',
     async function (activityName, actorName) {
@@ -992,51 +1062,38 @@ Then(
     },
 );
 
-const webhooks = {
-    'post.published': {
-        post: {
-            current: {
-                uuid: '986108d9-3d50-4701-9808-eab62e0885cf',
-                title: 'This is a title.',
-                html: '<p> This is some content. </p>',
-                feature_image: null,
-                visibility: 'paid',
-                published_at: '1970-01-01T00:00:00.000Z',
-                url: 'http://fake-external-activitypub/post/',
-                excerpt: 'This is some content.',
-            },
-        },
-    },
-    'post.published(no content)': {
-        post: {
-            current: {
-                uuid: '986108d9-3d50-4701-9808-eab62e0885cf',
-                title: 'This is a title.',
-                html: null,
-                feature_image: null,
-                visibility: 'paid',
-                published_at: '1970-01-01T00:00:00.000Z',
-                url: 'http://fake-external-activitypub/post/',
-                excerpt: null,
-            },
-        },
-    },
-};
-
 const endpoints = {
     'post.published':
         'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
-    'post.published(no content)':
-        'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
 };
 
-Given('a valid {string} webhook', function (string) {
+Given('a {string} webhook', function (string) {
     this.payloadType = string;
+});
+
+Given('a {string} webhook:', function (string, properties) {
+    this.payloadType = string;
+    this.payloadData = {};
+
+    for (const { property, value } of properties.hashes()) {
+        property.split('.').reduce((acc, key, idx, arr) => {
+            if (idx === arr.length - 1) {
+                acc[key] = value;
+            } else {
+                acc[key] = acc[key] || {};
+            }
+
+            return acc[key];
+        }, this.payloadData);
+    }
 });
 
 When('it is sent to the webhook endpoint', async function () {
     const endpoint = endpoints[this.payloadType];
-    const payload = webhooks[this.payloadType];
+    let payload = createWebhookPost();
+    if (this.payloadData) {
+        payload = merge(payload, this.payloadData);
+    }
     const body = JSON.stringify(payload);
     const timestamp = Date.now();
     const hmac = createHmac('sha256', webhookSecret)
@@ -1057,7 +1114,7 @@ When(
     'it is sent to the webhook endpoint with an old signature',
     async function () {
         const endpoint = endpoints[this.payloadType];
-        const payload = webhooks[this.payloadType];
+        const payload = createWebhookPost();
         const body = JSON.stringify(payload);
         const timestamp = Date.now() - 60 * 60 * 1000; // An hour old
         const hmac = createHmac('sha256', webhookSecret)
@@ -1079,7 +1136,7 @@ When(
     'it is sent to the webhook endpoint without a signature',
     async function () {
         const endpoint = endpoints[this.payloadType];
-        const payload = webhooks[this.payloadType];
+        const payload = createWebhookPost();
         this.response = await fetchActivityPub(endpoint, {
             method: 'POST',
             headers: {
@@ -1111,24 +1168,9 @@ Then('a {string} activity is in the Outbox', async function (string) {
     if (!match) {
         throw new Error(`Could not match ${string} to an activity`);
     }
-    const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const initialResponseJson = await initialResponse.json();
-    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
-        headers: {
-            Accept: 'application/ld+json',
-        },
-    });
-    const outbox = await firstPageReponse.json();
-    const found = (outbox.orderedItems || []).find((item) => {
-        return item.type === activity && item.object?.type === object;
-    });
+
+    const found = await waitForOutboxActivityType(activity, object);
+
     if (!this.found) {
         this.found = {};
     }
