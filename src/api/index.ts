@@ -1,7 +1,7 @@
-export { getActivitiesAction } from './action/getActivities';
-export { getActivityThreadAction } from './action/getActivityThread';
+export { getActivitiesAction } from './action/get-activities';
+export { getActivityThreadAction } from './action/get-activity-thread';
 export { profileGetAction } from './action/profile/get';
-export { profileGetFollowersAction } from './action/profile/getFollowers';
-export { profileGetFollowingAction } from './action/profile/getFollowing';
-export { profileGetPostsAction } from './action/profile/getPosts';
+export { profileGetFollowersAction } from './action/profile/get-followers';
+export { profileGetFollowingAction } from './action/profile/get-following';
+export { profileGetPostsAction } from './action/profile/get-posts';
 export { searchAction } from './action/search';
