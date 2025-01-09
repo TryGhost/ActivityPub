@@ -7,18 +7,16 @@ import {
     type RequestContext,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import type { Context, Next } from 'hono';
+import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-import {
-    type ContextData,
-    type HonoContextVariables,
-    fedify,
-} from '../../../app';
-import { ACTOR_DEFAULT_HANDLE } from '../../../constants';
-import { toURL } from '../../../helpers/uri';
-import { addToList } from '../../../kv-helpers';
+import { updateSiteActor } from 'helpers/activitypub/actor';
+import { getSiteSettings } from 'helpers/ghost';
+import { type ContextData, type HonoContextVariables, fedify } from '../../app';
+import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { toURL } from '../../helpers/uri';
+import { addToList } from '../../kv-helpers';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -72,9 +70,13 @@ const PostPublishedWebhookSchema = z.object({
     }),
 });
 
-export async function webookPostPublishedAction(
+/**
+ * Handle a post.published webhook
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleWebhookPostPublished(
     ctx: Context<{ Variables: HonoContextVariables }>,
-    next: Next,
 ) {
     const data = PostPublishedWebhookSchema.parse(
         (await ctx.req.json()) as unknown,
@@ -124,6 +126,41 @@ export async function webookPostPublishedAction(
             });
         }
     }
+    return new Response(JSON.stringify({}), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
+}
+
+/**
+ * Handle a site.changed webhook
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleWebhookSiteChanged(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    try {
+        const host = ctx.req.header('host') || '';
+        const db = ctx.get('db');
+        const globaldb = ctx.get('globaldb');
+        const logger = ctx.get('logger');
+
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb,
+            logger,
+        });
+
+        await updateSiteActor(apCtx, getSiteSettings);
+    } catch (err) {
+        ctx.get('logger').error('Site changed webhook failed: {error}', {
+            error: err,
+        });
+    }
+
     return new Response(JSON.stringify({}), {
         headers: {
             'Content-Type': 'application/activity+json',

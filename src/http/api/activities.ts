@@ -2,12 +2,19 @@ import type { Context } from 'hono';
 
 import { type HonoContextVariables, fedify } from '../../app';
 import { getActivityMeta } from '../../db';
+import { getActivityChildren, getActivityParents } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
+import { isUri } from '../../helpers/uri';
 import { spanWrapper } from '../../instrumentation';
 
-const DEFAULT_LIMIT = 10;
+const GET_ACTIVITIES_DEFAULT_LIMIT = 10;
 
-export async function getActivitiesAction(
+/**
+ * Handle a request for activities
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleGetActivities(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
@@ -30,7 +37,7 @@ export async function getActivitiesAction(
     const queryCursor = ctx.req.query('cursor');
     const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
     const limit = Number.parseInt(
-        ctx.req.query('limit') || DEFAULT_LIMIT.toString(),
+        ctx.req.query('limit') || GET_ACTIVITIES_DEFAULT_LIMIT.toString(),
         10,
     );
 
@@ -195,15 +202,12 @@ export async function getActivitiesAction(
     // Paginate
     // -------------------------------------------------------------------------
 
-    // Find the starting index based on the cursor
     const startIndex = cursor
         ? activityRefs.findIndex((ref) => ref === cursor) + 1
         : 0;
 
-    // Slice the results array based on the cursor and limit
     const paginatedRefs = activityRefs.slice(startIndex, startIndex + limit);
 
-    // Determine the next cursor
     const nextCursor =
         startIndex + paginatedRefs.length < activityRefs.length
             ? encodeURIComponent(paginatedRefs[paginatedRefs.length - 1])
@@ -235,11 +239,95 @@ export async function getActivitiesAction(
         }),
     ).then((results) => results.filter(Boolean));
 
-    // Return the response
     return new Response(
         JSON.stringify({
             items: activities,
             next: nextCursor,
+        }),
+        {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
+        },
+    );
+}
+
+interface ActivityJsonLd {
+    [key: string]: any;
+}
+
+/**
+ * Handle a request for an activity thread
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleGetActivityThread(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const db = ctx.get('db');
+    const globaldb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db,
+        globaldb,
+        logger,
+    });
+
+    // Parse "activity_id" from request parameters
+    // /thread/:activity_id
+    const paramActivityId = ctx.req.param('activity_id');
+    const activityId = paramActivityId
+        ? decodeURIComponent(paramActivityId)
+        : '';
+
+    // If the provided activityId is invalid, return early
+    if (isUri(activityId) === false) {
+        return new Response(null, { status: 400 });
+    }
+
+    const activityJsonLd = await globaldb.get<ActivityJsonLd>([activityId]);
+
+    // If the activity can not be found, return early
+    if (activityJsonLd === undefined) {
+        return new Response(null, { status: 404 });
+    }
+
+    const items: ActivityJsonLd[] = [activityJsonLd];
+
+    // If the object is a string, fetch the object from the database. We need to
+    // do this because we need the inReplyTo property of the object to find the
+    // parent(s) and children of the activity
+    if (typeof activityJsonLd.object === 'string') {
+        const object = await globaldb.get<ActivityJsonLd>([
+            activityJsonLd.object,
+        ]);
+
+        if (object) {
+            activityJsonLd.object = object;
+        }
+    }
+
+    // Find children (replies) and append to the thread
+    const children = await getActivityChildren(activityJsonLd);
+    items.push(...children);
+
+    // Find parent(s) and prepend to the thread
+    const parents = await getActivityParents(activityJsonLd);
+    items.unshift(...parents);
+
+    // Build the activities so that they have all the data expected by the client
+    const likedRefs = (await db.get<string[]>(['liked'])) || [];
+    const builtActivities = await Promise.all(
+        items.map((item) =>
+            buildActivity(item.id, globaldb, apCtx, likedRefs, true),
+        ),
+    );
+
+    // Return the response
+    return new Response(
+        JSON.stringify({
+            items: builtActivities,
         }),
         {
             headers: {

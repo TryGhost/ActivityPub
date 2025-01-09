@@ -1,18 +1,23 @@
 import { type CollectionPage, isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import { type HonoContextVariables, fedify } from '../../../app';
-import { isHandle } from '../../../helpers/activitypub/actor';
-import { sanitizeHtml } from '../../../helpers/html';
-import { isUri } from '../../../helpers/uri';
-import { lookupObject } from '../../../lookup-helpers';
+import { type HonoContextVariables, fedify } from '../../app';
+import { isHandle } from '../../helpers/activitypub/actor';
+import { sanitizeHtml } from '../../helpers/html';
+import { isUri } from '../../helpers/uri';
+import { lookupObject } from '../../lookup-helpers';
 
-interface ProfilePosts {
+interface PostsResult {
     posts: any[];
     next: string | null;
 }
 
-export async function profileGetPostsAction(
+/**
+ * Handle a request for a profile's posts
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleGetPosts(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
@@ -52,7 +57,7 @@ export async function profileGetPostsAction(
     // Retrieve actor's posts
     // If a next parameter was provided, use it to retrieve a specific page of
     // posts. Otherwise, retrieve the first page of posts
-    const result: ProfilePosts = {
+    const result: PostsResult = {
         posts: [],
         next: null,
     };

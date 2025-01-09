@@ -35,17 +35,6 @@ import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
-import {
-    getActivitiesAction,
-    getActivityThreadAction,
-    profileGetAction,
-    profileGetFollowersAction,
-    profileGetFollowingAction,
-    profileGetPostsAction,
-    searchAction,
-    webhookSiteChangedAction,
-    webookPostPublishedAction,
-} from './api';
 import { client, getSite } from './db';
 import {
     acceptDispatcher,
@@ -89,13 +78,24 @@ import {
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
+import {
+    handleGetActivities,
+    handleGetActivityThread,
+    handleGetFollowers,
+    handleGetFollowing,
+    handleGetPosts,
+    handleGetProfile,
+    handleSearch,
+    handleWebhookPostPublished,
+    handleWebhookSiteChanged,
+} from './http/api';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 import {
     GCloudPubSubPushMessageQueue,
-    createHandlePushMessageMiddleware,
     createMessageQueue,
+    createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
 
 const logging = getLogger(['activitypub']);
@@ -571,7 +571,7 @@ app.use(async (ctx, next) => {
 if (queue instanceof GCloudPubSubPushMessageQueue) {
     app.post(
         '/.ghost/activitypub/mq',
-        spanWrapper(createHandlePushMessageMiddleware(queue, logging)),
+        spanWrapper(createPushMessageHandler(queue, logging)),
     );
 }
 
@@ -667,12 +667,12 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    spanWrapper(webookPostPublishedAction),
+    spanWrapper(handleWebhookPostPublished),
 );
 app.post(
     '/.ghost/activitypub/webhooks/site/changed',
     validateWebhook(),
-    spanWrapper(webhookSiteChangedAction),
+    spanWrapper(handleWebhookSiteChanged),
 );
 
 function requireRole(role: GhostRole) {
@@ -694,7 +694,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/activities/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(getActivitiesAction),
+    spanWrapper(handleGetActivities),
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
@@ -724,31 +724,31 @@ app.post(
 app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner),
-    spanWrapper(searchAction),
+    spanWrapper(handleSearch),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(profileGetAction),
+    spanWrapper(handleGetProfile),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/followers',
     requireRole(GhostRole.Owner),
-    spanWrapper(profileGetFollowersAction),
+    spanWrapper(handleGetFollowers),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/following',
     requireRole(GhostRole.Owner),
-    spanWrapper(profileGetFollowingAction),
+    spanWrapper(handleGetFollowing),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
     requireRole(GhostRole.Owner),
-    spanWrapper(profileGetPostsAction),
+    spanWrapper(handleGetPosts),
 );
 app.get(
     '/.ghost/activitypub/thread/:activity_id',
-    spanWrapper(getActivityThreadAction),
+    spanWrapper(handleGetActivityThread),
 );
 
 /** Federation wire up */

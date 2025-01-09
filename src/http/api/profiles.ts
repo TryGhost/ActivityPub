@@ -1,7 +1,7 @@
 import { isActor } from '@fedify/fedify';
 import type { Context } from 'hono';
 
-import { type HonoContextVariables, fedify } from '../../../app';
+import { type HonoContextVariables, fedify } from '../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -9,9 +9,9 @@ import {
     getHandle,
     isFollowing,
     isHandle,
-} from '../../../helpers/activitypub/actor';
-import { sanitizeHtml } from '../../../helpers/html';
-import { lookupObject } from '../../../lookup-helpers';
+} from '../../helpers/activitypub/actor';
+import { sanitizeHtml } from '../../helpers/html';
+import { lookupObject } from '../../lookup-helpers';
 
 interface Profile {
     actor: any;
@@ -21,7 +21,12 @@ interface Profile {
     isFollowing: boolean;
 }
 
-export async function profileGetAction(
+/**
+ * Handle a request for a profile
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleGetProfile(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
