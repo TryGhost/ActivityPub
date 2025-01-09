@@ -6,8 +6,8 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     GCloudPubSubPushMessageQueue,
-    createHandlePushMessageMiddleware,
     createMessageQueue,
+    createPushMessageHandler,
 } from './mq';
 
 vi.mock('@google-cloud/pubsub', () => ({
@@ -296,10 +296,7 @@ describe('handlePushMessage', () => {
             TOPIC,
         );
 
-        const handlePushMessage = createHandlePushMessageMiddleware(
-            mq,
-            mockLogger,
-        );
+        const handlePushMessage = createPushMessageHandler(mq, mockLogger);
 
         const result = await handlePushMessage(ctx);
 
@@ -319,10 +316,7 @@ describe('handlePushMessage', () => {
 
         mq.listen(vi.fn());
 
-        const handlePushMessage = createHandlePushMessageMiddleware(
-            mq,
-            mockLogger,
-        );
+        const handlePushMessage = createPushMessageHandler(mq, mockLogger);
 
         const result = await handlePushMessage(ctx);
 
@@ -346,10 +340,7 @@ describe('handlePushMessage', () => {
 
         mq.listen(vi.fn());
 
-        const handlePushMessage = createHandlePushMessageMiddleware(
-            mq,
-            mockLogger,
-        );
+        const handlePushMessage = createPushMessageHandler(mq, mockLogger);
 
         const result = await handlePushMessage(ctx);
 
@@ -365,10 +356,7 @@ describe('handlePushMessage', () => {
 
         mq.listen(vi.fn().mockResolvedValue(undefined));
 
-        const handlePushMessage = createHandlePushMessageMiddleware(
-            mq,
-            mockLogger,
-        );
+        const handlePushMessage = createPushMessageHandler(mq, mockLogger);
 
         const result = await handlePushMessage(ctx);
 
@@ -386,10 +374,7 @@ describe('handlePushMessage', () => {
             vi.fn().mockRejectedValue(new Error('Failed to handle message')),
         );
 
-        const handlePushMessage = createHandlePushMessageMiddleware(
-            mq,
-            mockLogger,
-        );
+        const handlePushMessage = createPushMessageHandler(mq, mockLogger);
 
         const result = await handlePushMessage(ctx);
 

@@ -249,14 +249,14 @@ const IncomingPushMessageSchema = z.object({
  *
  * @example
  * ```
- * import { createHandlePushMessageMiddleware, createMessageQueue } from './mq/gcloud-pubsub-push';
+ * import { createPushMessageHandler, createMessageQueue } from './mq/gcloud-pubsub-push';
  *
  * const queue = await createMessageQueue(...);
  *
- * app.post('/mq', createHandlePushMessageMiddleware(queue, logging));
+ * app.post('/mq', createPushMessageHandler(queue, logging));
  * ```
  */
-export function createHandlePushMessageMiddleware(
+export function createPushMessageHandler(
     mq: GCloudPubSubPushMessageQueue,
     logger: Logger,
 ): (ctx: Context) => Promise<Response> {

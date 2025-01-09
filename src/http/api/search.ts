@@ -26,7 +26,12 @@ interface SearchResults {
     profiles: ProfileSearchResult[];
 }
 
-export async function searchAction(
+/**
+ * Handle a search request
+ *
+ * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ */
+export async function handleSearch(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     const db = ctx.get('db');
