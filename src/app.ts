@@ -43,6 +43,8 @@ import {
     profileGetFollowingAction,
     profileGetPostsAction,
     searchAction,
+    webhookSiteChangedAction,
+    webookPostPublishedAction,
 } from './api';
 import { client, getSite } from './db';
 import {
@@ -82,9 +84,7 @@ import {
     inboxHandler,
     likeAction,
     noteAction,
-    postPublishedWebhook,
     replyAction,
-    siteChangedWebhook,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
@@ -667,12 +667,12 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    spanWrapper(postPublishedWebhook),
+    spanWrapper(webookPostPublishedAction),
 );
 app.post(
     '/.ghost/activitypub/webhooks/site/changed',
     validateWebhook(),
-    spanWrapper(siteChangedWebhook),
+    spanWrapper(webhookSiteChangedAction),
 );
 
 function requireRole(role: GhostRole) {
