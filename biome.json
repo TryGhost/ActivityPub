@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": []
+    "ignore": ["**/__snapshots__/**"]
   },
   "formatter": {
     "enabled": true,
