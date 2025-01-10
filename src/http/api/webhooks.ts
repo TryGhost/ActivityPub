@@ -11,10 +11,10 @@ import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
-import { updateSiteActor } from 'helpers/activitypub/actor';
-import { getSiteSettings } from 'helpers/ghost';
 import { type ContextData, type HonoContextVariables, fedify } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { updateSiteActor } from '../../helpers/activitypub/actor';
+import { getSiteSettings } from '../../helpers/ghost';
 import { toURL } from '../../helpers/uri';
 import { addToList } from '../../kv-helpers';
 
@@ -128,7 +128,7 @@ export async function handleWebhookPostPublished(
     }
     return new Response(JSON.stringify({}), {
         headers: {
-            'Content-Type': 'application/activity+json',
+            'Content-Type': 'application/json',
         },
         status: 200,
     });
@@ -143,7 +143,6 @@ export async function handleWebhookSiteChanged(
     ctx: Context<{ Variables: HonoContextVariables }>,
 ) {
     try {
-        const host = ctx.req.header('host') || '';
         const db = ctx.get('db');
         const globaldb = ctx.get('globaldb');
         const logger = ctx.get('logger');
@@ -163,7 +162,7 @@ export async function handleWebhookSiteChanged(
 
     return new Response(JSON.stringify({}), {
         headers: {
-            'Content-Type': 'application/activity+json',
+            'Content-Type': 'application/json',
         },
         status: 200,
     });

@@ -1,8 +1,11 @@
 import type { Context } from 'hono';
 
 import { type HonoContextVariables, fedify } from '../../app';
-import { getActivityMeta } from '../../db';
-import { getActivityChildren, getActivityParents } from '../../db';
+import {
+    getActivityChildren,
+    getActivityMeta,
+    getActivityParents,
+} from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
 import { isUri } from '../../helpers/uri';
 import { spanWrapper } from '../../instrumentation';
