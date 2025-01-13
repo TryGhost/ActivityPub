@@ -6,6 +6,7 @@ import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { updateSiteActor } from '../../helpers/activitypub/actor';
 import { getSiteSettings } from '../../helpers/ghost';
 import { publishPost } from '../../publishing/helpers';
+import { PostVisibility } from '../../publishing/types';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -15,6 +16,7 @@ const PostSchema = z.object({
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
+    visibility: z.nativeEnum(PostVisibility),
 });
 
 type Post = z.infer<typeof PostSchema>;
@@ -55,6 +57,7 @@ export async function handleWebhookPostPublished(ctx: AppContext) {
             author: {
                 handle: ACTOR_DEFAULT_HANDLE,
             },
+            visibility: data.visibility,
         });
     } catch (err) {
         ctx.get('logger').error('Failed to publish post: {error}', {

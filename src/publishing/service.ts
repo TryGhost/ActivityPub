@@ -7,7 +7,7 @@ import {
     Note,
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
-import type { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 
 import type {
@@ -17,56 +17,19 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
+import { type Post, PostVisibility } from './types';
 
 /**
- * Post to be published to the Fediverse
+ * Marker to indicate that content proceeding is not public
  */
-export interface Post {
-    /**
-     * Unique identifier of the post
-     */
-    id: string;
-    /**
-     * Title of the post
-     */
-    title: string;
-    /**
-     * Content of the post
-     */
-    content: string | null;
-    /**
-     * Excerpt of the post
-     */
-    excerpt: string | null;
-    /**
-     * URL to the post's feature image
-     */
-    featureImageUrl: URL | null;
-    /**
-     * Published date of the post
-     */
-    publishedAt: Temporal.Instant;
-    /**
-     * URL to the post
-     */
-    url: URL;
-    /**
-     * Information about the post's author
-     */
-    author: {
-        /**
-         * The author's Fediverse handle
-         */
-        handle: string;
-    };
-}
+export const POST_CONTENT_NON_PUBLIC_MARKER = '<!--members-only-->';
 
 /**
  * Publishes content to the Fediverse
  */
 export interface PublishingService {
     /**
-     * Publishes a post to the Fediverse
+     * Publish a post to the Fediverse
      *
      * @param post Post to publish
      * @param outbox Outbox to record the published post in
@@ -81,6 +44,7 @@ export class FedifyPublishingService implements PublishingService {
     constructor(
         private readonly activitySender: ActivitySender<Activity, Actor>,
         private readonly actorResolver: ActorResolver<Actor>,
+        private readonly logger: Logger,
         private readonly objectStore: ObjectStore<FedifyObject>,
         private readonly uriBuilder: UriBuilder<FedifyObject>,
     ) {}
@@ -100,6 +64,33 @@ export class FedifyPublishingService implements PublishingService {
             );
         }
 
+        // Compute the content to use for the article
+        const isPublic = post.visibility === PostVisibility.Public;
+        let articleContent = post.content;
+
+        if (isPublic === false && post.content !== null) {
+            articleContent = '';
+
+            const nonPublicContentIdx = post.content.indexOf(
+                POST_CONTENT_NON_PUBLIC_MARKER,
+            );
+            if (nonPublicContentIdx !== -1) {
+                articleContent = post.content.substring(0, nonPublicContentIdx);
+            }
+
+            // If there is no public content, do not publish the post
+            if (articleContent === '') {
+                this.logger.info(
+                    'Skipping publishing post: No public content found for post: {post}',
+                    {
+                        post,
+                    },
+                );
+
+                return;
+            }
+        }
+
         // Build the required objects
         const preview = new Note({
             id: this.uriBuilder.buildObjectUri(Note, post.id),
@@ -109,7 +100,7 @@ export class FedifyPublishingService implements PublishingService {
             id: this.uriBuilder.buildObjectUri(Article, post.id),
             attribution: actor,
             name: post.title,
-            content: post.content,
+            content: articleContent,
             image: post.featureImageUrl,
             published: post.publishedAt,
             preview,

@@ -6,10 +6,11 @@ import {
     FedifyUriBuilder,
 } from '../activitypub';
 import { type AppContext, fedify } from '../app';
-import { FedifyPublishingService, type Post } from './service';
+import { FedifyPublishingService } from './service';
+import type { Post } from './types';
 
 /**
- * Publishes a post to the Fediverse
+ * Publish a post to the Fediverse
  *
  * @param ctx App context instance
  * @param post Post to publish
@@ -17,6 +18,7 @@ import { FedifyPublishingService, type Post } from './service';
 export async function publishPost(ctx: AppContext, post: Post) {
     const scopedDb = ctx.get('db');
     const globalDb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
 
     const fedifyCtx = fedify.createContext(ctx.req.raw, {
         db: scopedDb,
@@ -27,6 +29,7 @@ export async function publishPost(ctx: AppContext, post: Post) {
     const publishingService = new FedifyPublishingService(
         new FedifyActivitySender(fedifyCtx),
         new FedifyActorResolver(fedifyCtx),
+        logger,
         new FedifyKvStoreObjectStore(globalDb),
         new FedifyUriBuilder(fedifyCtx),
     );

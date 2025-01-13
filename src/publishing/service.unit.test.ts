@@ -10,6 +10,7 @@ import {
     Person,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 
 import type {
     ActivitySender,
@@ -18,8 +19,11 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-
-import { FedifyPublishingService, type Post } from './service';
+import {
+    FedifyPublishingService,
+    POST_CONTENT_NON_PUBLIC_MARKER,
+} from './service';
+import { type Post, PostVisibility } from './types';
 
 vi.mock('uuid', () => ({
     // Return a fixed UUID for deterministic testing
@@ -31,6 +35,7 @@ describe('FedifyPublishingService', () => {
         let mockActivitySender: ActivitySender<Activity, Actor>;
         let actor: Actor;
         let mockActorResolver: ActorResolver<Actor>;
+        let mockLogger: Logger;
         let mockObjectStore: ObjectStore<FedifyObject>;
         let mockUriBuilder: UriBuilder<FedifyObject>;
         let mockOutbox: Outbox<Activity>;
@@ -49,6 +54,10 @@ describe('FedifyPublishingService', () => {
             mockActorResolver = {
                 resolveActorByHandle: vi.fn().mockResolvedValue(actor),
             } as ActorResolver<Actor>;
+
+            mockLogger = {
+                info: vi.fn().mockResolvedValue(void 0),
+            } as unknown as Logger;
 
             mockObjectStore = {
                 store: vi.fn().mockResolvedValue(void 0),
@@ -85,6 +94,7 @@ describe('FedifyPublishingService', () => {
                 ),
                 publishedAt: Temporal.Instant.from('2025-01-12T10:30:00.000Z'),
                 url: new URL(`https://example.com/post/${postId}`),
+                visibility: PostVisibility.Public,
                 author: {
                     handle,
                 },
@@ -99,6 +109,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -112,6 +123,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -137,6 +149,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -154,6 +167,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -174,6 +188,71 @@ describe('FedifyPublishingService', () => {
                 vi.mocked(mockActivitySender.sendActivityToActorFollowers).mock
                     .calls[0][1],
             ).toBe(actor);
+        });
+
+        it('should ensure that non-public content is not included in the article content', async () => {
+            post.visibility = PostVisibility.Members;
+            post.content = `Public content${POST_CONTENT_NON_PUBLIC_MARKER}Non public content`;
+
+            const service = new FedifyPublishingService(
+                mockActivitySender,
+                mockActorResolver,
+                mockLogger,
+                mockObjectStore,
+                mockUriBuilder,
+            );
+
+            await service.publishPost(post, mockOutbox);
+
+            expect(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).toHaveBeenCalledTimes(1);
+
+            const sentActivity = vi.mocked(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).mock.calls[0][0];
+
+            expect((await sentActivity.getObject())?.content).toBe(
+                'Public content',
+            );
+        });
+
+        it('should not publish a post if there is no public content', async () => {
+            post.visibility = PostVisibility.Members;
+            post.content = 'Non public content';
+
+            const service = new FedifyPublishingService(
+                mockActivitySender,
+                mockActorResolver,
+                mockLogger,
+                mockObjectStore,
+                mockUriBuilder,
+            );
+
+            await service.publishPost(post, mockOutbox);
+
+            expect(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should not publish a post if there is no public content prior to the non-public content marker', async () => {
+            post.visibility = PostVisibility.Members;
+            post.content = `${POST_CONTENT_NON_PUBLIC_MARKER}Non public content`;
+
+            const service = new FedifyPublishingService(
+                mockActivitySender,
+                mockActorResolver,
+                mockLogger,
+                mockObjectStore,
+                mockUriBuilder,
+            );
+
+            await service.publishPost(post, mockOutbox);
+
+            expect(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).not.toHaveBeenCalled();
         });
     });
 });
