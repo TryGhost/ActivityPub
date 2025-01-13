@@ -16,7 +16,12 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-import type { Post } from './types';
+import { type Post, PostVisibility } from './types';
+
+/**
+ * Marker to indicate that content proceeding is not public
+ */
+export const POST_CONTENT_NON_PUBLIC_MARKER = '<!--members-only-->';
 
 /**
  * Publishes content to the Fediverse
@@ -57,6 +62,26 @@ export class FedifyPublishingService implements PublishingService {
             );
         }
 
+        // Compute the content to use for the article
+        const isPublic = post.visibility === PostVisibility.Public;
+        let articleContent = post.content;
+
+        if (isPublic === false && post.content !== null) {
+            articleContent = '';
+
+            const nonPublicContentIdx = post.content.indexOf(
+                POST_CONTENT_NON_PUBLIC_MARKER,
+            );
+            if (nonPublicContentIdx !== -1) {
+                articleContent = post.content.substring(0, nonPublicContentIdx);
+            }
+
+            // If there is no public content, do not publish the post
+            if (articleContent === '') {
+                return;
+            }
+        }
+
         // Build the required objects
         const preview = new Note({
             id: this.uriBuilder.buildObjectUri(Note, post.id),
@@ -66,7 +91,7 @@ export class FedifyPublishingService implements PublishingService {
             id: this.uriBuilder.buildObjectUri(Article, post.id),
             attribution: actor,
             name: post.title,
-            content: post.content,
+            content: articleContent,
             image: post.featureImageUrl,
             published: post.publishedAt,
             preview,

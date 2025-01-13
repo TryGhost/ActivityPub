@@ -19,7 +19,10 @@ import type {
     UriBuilder,
 } from '../activitypub';
 
-import { FedifyPublishingService } from './service';
+import {
+    FedifyPublishingService,
+    POST_CONTENT_NON_PUBLIC_MARKER,
+} from './service';
 import { type Post, PostVisibility } from './types';
 
 vi.mock('uuid', () => ({
@@ -176,6 +179,68 @@ describe('FedifyPublishingService', () => {
                 vi.mocked(mockActivitySender.sendActivityToActorFollowers).mock
                     .calls[0][1],
             ).toBe(actor);
+        });
+
+        it('should ensure that non-public content is not included in the article content', async () => {
+            post.visibility = PostVisibility.Members;
+            post.content = `Public content${POST_CONTENT_NON_PUBLIC_MARKER}Non public content`;
+
+            const service = new FedifyPublishingService(
+                mockActivitySender,
+                mockActorResolver,
+                mockObjectStore,
+                mockUriBuilder,
+            );
+
+            await service.publishPost(post, mockOutbox);
+
+            expect(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).toHaveBeenCalledTimes(1);
+
+            const sentActivity = vi.mocked(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).mock.calls[0][0];
+
+            expect((await sentActivity.getObject())?.content).toBe(
+                'Public content',
+            );
+        });
+
+        it('should not publish a post if there is no public content', async () => {
+            post.visibility = PostVisibility.Members;
+            post.content = 'Non public content';
+
+            const service = new FedifyPublishingService(
+                mockActivitySender,
+                mockActorResolver,
+                mockObjectStore,
+                mockUriBuilder,
+            );
+
+            await service.publishPost(post, mockOutbox);
+
+            expect(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should not publish a post if there is no public content prior to the non-public content marker', async () => {
+            post.visibility = PostVisibility.Members;
+            post.content = `${POST_CONTENT_NON_PUBLIC_MARKER}Non public content`;
+
+            const service = new FedifyPublishingService(
+                mockActivitySender,
+                mockActorResolver,
+                mockObjectStore,
+                mockUriBuilder,
+            );
+
+            await service.publishPost(post, mockOutbox);
+
+            expect(
+                mockActivitySender.sendActivityToActorFollowers,
+            ).not.toHaveBeenCalled();
         });
     });
 });
