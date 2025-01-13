@@ -12,6 +12,7 @@ import {
     type KvStore,
     Like,
     Note,
+    type RequestContext,
     Undo,
     Update,
     createFederation,
@@ -196,6 +197,13 @@ export const fedify = createFederation<ContextData>({
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
 
+/**
+ * Fedify request context with app specific context data
+ *
+ * @see https://fedify.dev/manual/context
+ */
+export type FedifyRequestContext = RequestContext<ContextData>;
+
 export const db = await KnexKvStore.create(client, 'key_value');
 
 /** Fedify */
@@ -354,6 +362,13 @@ export type HonoContextVariables = {
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
+
+/**
+ * Hono context with app specific context variables
+ *
+ * @see https://hono.dev/docs/api/context
+ */
+export type AppContext = HonoContext<{ Variables: HonoContextVariables }>;
 
 app.get('/ping', (ctx) => {
     return new Response('', {
