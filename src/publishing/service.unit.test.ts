@@ -19,7 +19,8 @@ import type {
     UriBuilder,
 } from '../activitypub';
 
-import { FedifyPublishingService, type Post } from './service';
+import { FedifyPublishingService } from './service';
+import { type Post, PostVisibility } from './types';
 
 vi.mock('uuid', () => ({
     // Return a fixed UUID for deterministic testing
@@ -85,6 +86,7 @@ describe('FedifyPublishingService', () => {
                 ),
                 publishedAt: Temporal.Instant.from('2025-01-12T10:30:00.000Z'),
                 url: new URL(`https://example.com/post/${postId}`),
+                visibility: PostVisibility.Public,
                 author: {
                     handle,
                 },

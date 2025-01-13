@@ -6,10 +6,11 @@ import {
     FedifyUriBuilder,
 } from '../activitypub';
 import { type AppContext, fedify } from '../app';
-import { FedifyPublishingService, type Post } from './service';
+import { FedifyPublishingService } from './service';
+import type { Post } from './types';
 
 /**
- * Publishes a post to the Fediverse
+ * Publish a post to the Fediverse
  *
  * @param ctx App context instance
  * @param post Post to publish

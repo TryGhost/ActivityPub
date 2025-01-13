@@ -7,7 +7,6 @@ import {
     Note,
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
-import type { Temporal } from '@js-temporal/polyfill';
 import { v4 as uuidv4 } from 'uuid';
 
 import type {
@@ -17,56 +16,14 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-
-/**
- * Post to be published to the Fediverse
- */
-export interface Post {
-    /**
-     * Unique identifier of the post
-     */
-    id: string;
-    /**
-     * Title of the post
-     */
-    title: string;
-    /**
-     * Content of the post
-     */
-    content: string | null;
-    /**
-     * Excerpt of the post
-     */
-    excerpt: string | null;
-    /**
-     * URL to the post's feature image
-     */
-    featureImageUrl: URL | null;
-    /**
-     * Published date of the post
-     */
-    publishedAt: Temporal.Instant;
-    /**
-     * URL to the post
-     */
-    url: URL;
-    /**
-     * Information about the post's author
-     */
-    author: {
-        /**
-         * The author's Fediverse handle
-         */
-        handle: string;
-    };
-}
+import type { Post } from './types';
 
 /**
  * Publishes content to the Fediverse
  */
 export interface PublishingService {
     /**
-     * Publishes a post to the Fediverse
+     * Publish a post to the Fediverse
      *
      * @param post Post to publish
      * @param outbox Outbox to record the published post in
