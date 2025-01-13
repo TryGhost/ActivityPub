@@ -7,6 +7,7 @@ import {
     Note,
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 
 import type {
@@ -43,6 +44,7 @@ export class FedifyPublishingService implements PublishingService {
     constructor(
         private readonly activitySender: ActivitySender<Activity, Actor>,
         private readonly actorResolver: ActorResolver<Actor>,
+        private readonly logger: Logger,
         private readonly objectStore: ObjectStore<FedifyObject>,
         private readonly uriBuilder: UriBuilder<FedifyObject>,
     ) {}
@@ -78,6 +80,13 @@ export class FedifyPublishingService implements PublishingService {
 
             // If there is no public content, do not publish the post
             if (articleContent === '') {
+                this.logger.info(
+                    'Skipping publishing post: No public content found for post: {post}',
+                    {
+                        post,
+                    },
+                );
+
                 return;
             }
         }

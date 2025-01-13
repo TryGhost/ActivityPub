@@ -10,6 +10,7 @@ import {
     Person,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 
 import type {
     ActivitySender,
@@ -18,7 +19,6 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-
 import {
     FedifyPublishingService,
     POST_CONTENT_NON_PUBLIC_MARKER,
@@ -35,6 +35,7 @@ describe('FedifyPublishingService', () => {
         let mockActivitySender: ActivitySender<Activity, Actor>;
         let actor: Actor;
         let mockActorResolver: ActorResolver<Actor>;
+        let mockLogger: Logger;
         let mockObjectStore: ObjectStore<FedifyObject>;
         let mockUriBuilder: UriBuilder<FedifyObject>;
         let mockOutbox: Outbox<Activity>;
@@ -53,6 +54,10 @@ describe('FedifyPublishingService', () => {
             mockActorResolver = {
                 resolveActorByHandle: vi.fn().mockResolvedValue(actor),
             } as ActorResolver<Actor>;
+
+            mockLogger = {
+                info: vi.fn().mockResolvedValue(void 0),
+            } as unknown as Logger;
 
             mockObjectStore = {
                 store: vi.fn().mockResolvedValue(void 0),
@@ -104,6 +109,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -117,6 +123,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -142,6 +149,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -159,6 +167,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -188,6 +197,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -214,6 +224,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -232,6 +243,7 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
+                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
