@@ -72,6 +72,17 @@ export async function isFollowing(
     return actor.id?.href ? following.includes(actor.id.href) : false;
 }
 
+export async function isFollowedBy(
+    actor: Actor,
+    options: {
+        db: KvStore;
+    },
+): Promise<boolean> {
+    const followers = (await options.db.get<string[]>(['followers'])) || [];
+
+    return actor.id?.href ? followers.includes(actor.id.href) : false;
+}
+
 export function isHandle(handle: string): boolean {
     return /^@([\w-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
 }

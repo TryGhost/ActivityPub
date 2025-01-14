@@ -14,6 +14,7 @@ import {
     getFollowerCount,
     getFollowingCount,
     getHandle,
+    isFollowedBy,
     isFollowing,
     isHandle,
     updateSiteActor,
@@ -170,55 +171,142 @@ describe('getHandle', () => {
 describe('isFollowing', () => {
     it('should return a boolean indicating if the current user is following the given actor', async () => {
         const db = {
-            get: vi
-                .fn()
-                .mockResolvedValue([
-                    'https://example.com/users/foo',
-                    'https://example.com/users/bar',
-                    'https://example.com/users/baz',
-                ]),
+            get: vi.fn().mockImplementation(async ([key]) => {
+                if (key === 'following') {
+                    return [
+                        'https://example.com/users/foo',
+                        'https://example.com/users/bar',
+                        'https://example.com/users/baz',
+                    ];
+                }
+
+                return [];
+            }),
         } as unknown as KvStore;
 
-        const followedActor = {
+        const following = {
             id: new URL('https://example.com/users/bar'),
-        } as unknown as Actor;
+        } as Actor;
 
-        const unfollowedActor = {
+        const nonFollowing = {
             id: new URL('https://example.com/users/qux'),
-        } as unknown as Actor;
+        } as Actor;
 
-        expect(await isFollowing(followedActor, { db })).toBe(true);
-        expect(await isFollowing(unfollowedActor, { db })).toBe(false);
+        expect(await isFollowing(following, { db })).toBe(true);
+        expect(await isFollowing(nonFollowing, { db })).toBe(false);
     });
 
     it('should return false if the follower list is not available', async () => {
         const db = {
-            get: vi.fn().mockResolvedValue(null),
+            get: vi.fn().mockImplementation(async ([key]) => {
+                if (key === 'following') {
+                    return null;
+                }
+
+                return [];
+            }),
         } as unknown as KvStore;
 
         const actor = {
             id: new URL('https://example.com/users/foo'),
-        } as unknown as Actor;
+        } as Actor;
 
         expect(await isFollowing(actor, { db })).toBe(false);
     });
 
     it('should return false if the actor id is not available', async () => {
         const db = {
-            get: vi
-                .fn()
-                .mockResolvedValue([
-                    'https://example.com/users/foo',
-                    'https://example.com/users/bar',
-                    'https://example.com/users/baz',
-                ]),
+            get: vi.fn().mockImplementation(async ([key]) => {
+                if (key === 'following') {
+                    return [
+                        'https://example.com/users/foo',
+                        'https://example.com/users/bar',
+                        'https://example.com/users/baz',
+                    ];
+                }
+
+                return [];
+            }),
         } as unknown as KvStore;
 
         const actor = {
             id: null,
-        } as unknown as Actor;
+        } as Actor;
 
         expect(await isFollowing(actor, { db })).toBe(false);
+    });
+});
+
+describe('isFollowedBy', () => {
+    it('should return a boolean indicating if the current user is followed by the given actor', async () => {
+        const db = {
+            get: vi.fn().mockImplementation(async ([key]) => {
+                if (key === 'followers') {
+                    return [
+                        'https://example.com/users/foo',
+                        'https://example.com/users/bar',
+                        'https://example.com/users/baz',
+                    ];
+                }
+
+                return [];
+            }),
+        } as unknown as KvStore;
+
+        const follower = {
+            id: new URL('https://example.com/users/bar'),
+        } as Actor;
+
+        const nonFollower = {
+            id: new URL('https://example.com/users/qux'),
+        } as Actor;
+
+        expect(await isFollowedBy(follower, { db })).toBe(true);
+        expect(await isFollowedBy(nonFollower, { db })).toBe(false);
+    });
+
+    it('should return false if the follower list is not available', async () => {
+        const db = {
+            get: vi.fn().mockImplementation(async ([key]) => {
+                if (key === 'followers') {
+                    return null;
+                }
+
+                return [
+                    'https://example.com/users/foo',
+                    'https://example.com/users/bar',
+                    'https://example.com/users/baz',
+                ];
+            }),
+        } as unknown as KvStore;
+
+        const actor = {
+            id: new URL('https://example.com/users/foo'),
+        } as Actor;
+
+        expect(await isFollowedBy(actor, { db })).toBe(false);
+    });
+
+    it('should return false if the actor id is not available', async () => {
+        const db = {
+            get: vi.fn().mockImplementation(async (key) => {
+                if (key === 'followers') {
+                    return [
+                        'https://example.com/users/foo',
+                        'https://example.com/users/bar',
+                        'https://example.com/users/baz',
+                    ];
+                }
+
+                return [];
+            }),
+        } as unknown as KvStore;
+
+        const actor = {
+            id: null,
+        } as Actor;
+
+        expect(await isFollowedBy(actor, { db })).toBe(false);
     });
 });
 
