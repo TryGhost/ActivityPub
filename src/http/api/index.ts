@@ -1,11 +1,8 @@
-export { handleGetActivities } from './activities';
-export { handleGetActivityThread } from './activities';
-export { handleGetFollowers } from './follows';
-export { handleGetFollowing } from './follows';
-export { handleGetPosts } from './posts';
-export { handleGetProfile } from './profiles';
-export { handleSearch } from './search';
-export {
-    handleWebhookPostPublished,
-    handleWebhookSiteChanged,
-} from './webhooks';
+export * from './activities';
+export * from './activities';
+export * from './follows';
+export * from './follows';
+export * from './posts';
+export * from './profiles';
+export * from './search';
+export * from './webhooks';

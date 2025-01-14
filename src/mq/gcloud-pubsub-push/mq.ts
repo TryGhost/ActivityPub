@@ -9,7 +9,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 /**
- * Represents a message from Fedify
+ * Message from Fedify
  */
 interface FedifyMessage {
     id: string;
@@ -17,7 +17,7 @@ interface FedifyMessage {
 }
 
 /**
- * Represents a message from a Pub/Sub push subscription
+ * Message from a Pub/Sub push subscription
  */
 interface Message {
     /**
@@ -35,29 +35,27 @@ interface Message {
 }
 
 /**
- * Helper to get the full name of a Pub/Sub topic
+ * Get the full name of a Pub/Sub topic
  *
- * @param projectId {string} ID of the Pub/Sub project
- * @param topic {string} Name of the topic
- * @returns {string}
+ * @param projectId ID of the Pub/Sub project
+ * @param topic Name of the topic
  */
 function getFullTopic(projectId: string, topic: string) {
     return `projects/${projectId}/topics/${topic}`;
 }
 
 /**
- * Helper to get the full name of a Pub/Sub subscription
+ * Get the full name of a Pub/Sub subscription
  *
- * @param projectId {string} ID of the Pub/Sub project
- * @param subscription {string} Name of the subscription
- * @returns {string}
+ * @param projectId ID of the Pub/Sub project
+ * @param subscription Name of the subscription
  */
 function getFullSubscription(projectId: string, subscription: string) {
     return `projects/${projectId}/subscriptions/${subscription}`;
 }
 
 /**
- * Message queue that utilises a GCloud Pub/Sub push subscription
+ * Message queue implementation using a GCloud Pub/Sub push subscription
  */
 export class GCloudPubSubPushMessageQueue implements MessageQueue {
     private logger: Logger;
@@ -66,13 +64,6 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     private messageHandler?: (message: FedifyMessage) => Promise<void> | void;
     private errorListener?: (error: Error) => void;
 
-    /**
-     * Creates a new message queue
-     *
-     * @param logger {Logger} Logger instance
-     * @param pubSubClient {PubSub} Pub/Sub client instance
-     * @param topic {string} Full name of topic to publish messages to
-     */
     constructor(logger: Logger, pubSubClient: PubSub, topic: string) {
         this.logger = logger;
         this.pubSubClient = pubSubClient;
@@ -87,10 +78,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     }
 
     /**
-     * Enqueues a message
+     * Enqueue a message
      *
-     * @param message {FedifyMessage} Message to enqueue
-     * @param options {MessageQueueEnqueueOptions} Options for the enqueue operation
+     * @param message Message to enqueue
+     * @param options Options for the enqueue operation
      */
     async enqueue(
         message: FedifyMessage,
@@ -144,10 +135,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     }
 
     /**
-     * Starts the message queue
+     * Start the message queue
      *
-     * @param handler {function} Message handler
-     * @param options {MessageQueueListenOptions} Options for the listen operation
+     * @param handler Message handler
+     * @param options Options for the listen operation
      */
     async listen(
         handler: (message: FedifyMessage) => Promise<void> | void,
@@ -165,9 +156,9 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     }
 
     /**
-     * Handles a message
+     * Handle a message
      *
-     * @param message {Message} Message to handle
+     * @param message Message to handle
      */
     async handleMessage(message: Message): Promise<void> {
         if (this.messageHandler === undefined) {
@@ -220,9 +211,9 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     }
 
     /**
-     * Registers an error listener
+     * Register an error listener
      *
-     * @param listener {function}
+     * @param listener Error listener
      */
     registerErrorListener(listener: (error: Error) => void): void {
         this.errorListener = listener;
@@ -241,11 +232,10 @@ const IncomingPushMessageSchema = z.object({
 });
 
 /**
- * Hono middleware to handle an incoming message from a Pub/Sub push subscription
+ * Create a handler to handle an incoming message from a Pub/Sub push subscription
  *
- * @param mq {GCloudPubSubPushMessageQueue} Message queue instance
- * @param logger {Logger} Logger instance
- * @returns {function}
+ * @param mq Message queue instance
+ * @param logger Logger instance
  *
  * @example
  * ```
@@ -259,7 +249,12 @@ const IncomingPushMessageSchema = z.object({
 export function createPushMessageHandler(
     mq: GCloudPubSubPushMessageQueue,
     logger: Logger,
-): (ctx: Context) => Promise<Response> {
+) {
+    /**
+     * Handle an incoming message from a Pub/Sub push subscription
+     *
+     * @param ctx Hono context instance
+     */
     return async function handlePushMessage(ctx: Context) {
         // Check that the message queue is listening and if not, return a non-200
         // response to instruct GCloud Pub/Sub to back off from pushing messages to
@@ -337,11 +332,10 @@ export type CreateMessageQueueConfig = {
 };
 
 /**
- * Factory function to create a configured message queue
+ * Create a configured message queue
  *
- * @param logger {Logger} Logger instance
- * @param config {CreateMessageQueueConfig} Configuration for the message queue
- * @returns {GCloudPubSubPushMessageQueue}
+ * @param logger Logger instance
+ * @param config Configuration for the message queue
  */
 export async function createMessageQueue(
     logger: Logger,
@@ -352,7 +346,7 @@ export async function createMessageQueue(
         topic,
         subscription,
     }: CreateMessageQueueConfig,
-): Promise<GCloudPubSubPushMessageQueue> {
+) {
     // Initialise the Pub/Sub client
     const pubsubClientConfig: Partial<ClientConfig> = {};
 

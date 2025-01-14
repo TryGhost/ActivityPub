@@ -20,7 +20,7 @@ import type {
 import { type Post, PostVisibility } from './types';
 
 /**
- * Marker to indicate that content proceeding is not public
+ * Marker to indicate that proceeding content is not public
  */
 export const POST_CONTENT_NON_PUBLIC_MARKER = '<!--members-only-->';
 

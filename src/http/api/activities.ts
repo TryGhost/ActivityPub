@@ -1,6 +1,4 @@
-import type { Context } from 'hono';
-
-import { type HonoContextVariables, fedify } from '../../app';
+import { type AppContext, fedify } from '../../app';
 import {
     getActivityChildren,
     getActivityMeta,
@@ -15,11 +13,9 @@ const GET_ACTIVITIES_DEFAULT_LIMIT = 10;
 /**
  * Handle a request for activities
  *
- * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ * @param ctx App context instance
  */
-export async function handleGetActivities(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+export async function handleGetActivities(ctx: AppContext) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
     const logger = ctx.get('logger');
@@ -263,11 +259,9 @@ interface ActivityJsonLd {
 /**
  * Handle a request for an activity thread
  *
- * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ * @param ctx App context instance
  */
-export async function handleGetActivityThread(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+export async function handleGetActivityThread(ctx: AppContext) {
     const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
     const logger = ctx.get('logger');

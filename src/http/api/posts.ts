@@ -1,7 +1,6 @@
 import { type CollectionPage, isActor } from '@fedify/fedify';
-import type { Context } from 'hono';
 
-import { type HonoContextVariables, fedify } from '../../app';
+import { type AppContext, fedify } from '../../app';
 import { isHandle } from '../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../helpers/html';
 import { isUri } from '../../helpers/uri';
@@ -15,11 +14,9 @@ interface PostsResult {
 /**
  * Handle a request for a profile's posts
  *
- * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ * @param ctx App context instance
  */
-export async function handleGetPosts(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+export async function handleGetPosts(ctx: AppContext) {
     const db = ctx.get('db');
     const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
