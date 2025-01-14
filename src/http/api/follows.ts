@@ -1,7 +1,6 @@
 import { type Actor, type CollectionPage, isActor } from '@fedify/fedify';
-import type { Context } from 'hono';
 
-import { type HonoContextVariables, fedify } from '../../app';
+import { type AppContext, fedify } from '../../app';
 import { isFollowing, isHandle } from '../../helpers/activitypub/actor';
 import { isUri } from '../../helpers/uri';
 import { lookupObject } from '../../lookup-helpers';
@@ -17,11 +16,9 @@ interface FollowersResult {
 /**
  * Handle a request for a profile's followers
  *
- * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ * @param ctx App context instance
  */
-export async function handleGetFollowers(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+export async function handleGetFollowers(ctx: AppContext) {
     const db = ctx.get('db');
     const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
@@ -137,11 +134,9 @@ interface FollowingResult {
 /**
  * Handle a request for a profile's following
  *
- * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ * @param ctx App context instance
  */
-export async function handleGetFollowing(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+export async function handleGetFollowing(ctx: AppContext) {
     const db = ctx.get('db');
     const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {

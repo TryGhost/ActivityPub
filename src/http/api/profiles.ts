@@ -1,7 +1,6 @@
 import { isActor } from '@fedify/fedify';
-import type { Context } from 'hono';
 
-import { type HonoContextVariables, fedify } from '../../app';
+import { type AppContext, fedify } from '../../app';
 import {
     getAttachments,
     getFollowerCount,
@@ -24,11 +23,9 @@ interface Profile {
 /**
  * Handle a request for a profile
  *
- * @param ctx {Context<{ Variables: HonoContextVariables }>} Hono context instance
+ * @param ctx App context instance
  */
-export async function handleGetProfile(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+export async function handleGetProfile(ctx: AppContext) {
     const db = ctx.get('db');
     const logger = ctx.get('logger');
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
