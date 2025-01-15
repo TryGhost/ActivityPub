@@ -68,3 +68,22 @@ export interface Post {
         handle: string;
     };
 }
+
+/**
+ * Note to be published to the Fediverse
+ */
+export interface Note {
+    /**
+     * Content of the note
+     */
+    content: string;
+    /**
+     * Information about the post's author
+     */
+    author: {
+        /**
+         * The author's Fediverse handle
+         */
+        handle: string;
+    };
+}

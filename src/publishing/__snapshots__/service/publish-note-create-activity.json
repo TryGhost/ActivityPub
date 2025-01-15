@@ -1,0 +1,40 @@
+{
+  "@context": [
+    "https://w3id.org/identity/v1",
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    {
+      "ChatMessage": "http://litepub.social/ns#ChatMessage",
+      "Emoji": "toot:Emoji",
+      "Hashtag": "as:Hashtag",
+      "_misskey_quote": "misskey:_misskey_quote",
+      "fedibird": "http://fedibird.com/ns#",
+      "misskey": "https://misskey-hub.net/ns#",
+      "quoteUri": "fedibird:quoteUri",
+      "quoteUrl": "as:quoteUrl",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+      "votersCount": "toot:votersCount",
+    },
+  ],
+  "actor": {
+    "id": "https://example.com/user/foo",
+    "type": "Person",
+  },
+  "cc": "https://example.com/user/foo/followers",
+  "id": "https://example.com/create/cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4",
+  "object": {
+    "attributedTo": {
+      "id": "https://example.com/user/foo",
+      "type": "Person",
+    },
+    "cc": "https://example.com/user/foo/followers",
+    "content": "Note content",
+    "id": "https://example.com/note/cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4",
+    "published": "2025-01-17T10:30:00Z",
+    "to": "as:Public",
+    "type": "Note",
+  },
+  "to": "as:Public",
+  "type": "Create",
+}

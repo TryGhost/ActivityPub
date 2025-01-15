@@ -3,7 +3,7 @@ import type { Activity, Actor } from '@fedify/fedify';
 import type { FedifyRequestContext } from '../app';
 
 /**
- * Sends an ActivityPub activity to other Fediverse actors
+ * Sends an ActivityPub activity to Fediverse actors
  *
  * @template TActivity Type of activity to send
  * @template TActor Type of actor to utilise when sending an activity
