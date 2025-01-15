@@ -134,7 +134,9 @@ async function getLikedCount(db: KvStore) {
  * @param db Database instance
  */
 async function getFollowingCount(db: KvStore) {
-    const following = await db.get<string[]>(['following']);
+    const following = [
+        ...new Set((await db.get<string[]>(['following'])) || []),
+    ];
 
     return following?.length || 0;
 }
@@ -145,7 +147,9 @@ async function getFollowingCount(db: KvStore) {
  * @param db Database instance
  */
 async function getFollowerCount(db: KvStore) {
-    const followers = await db.get<string[]>(['followers']);
+    const followers = [
+        ...new Set((await db.get<string[]>(['followers'])) || []),
+    ];
 
     return followers?.length || 0;
 }
@@ -251,7 +255,7 @@ export async function handleGetAccountFollows(ctx: AppContext) {
     const offset = Number.parseInt(queryNext);
 
     const db = ctx.get('db');
-    const follows = (await db.get<string[]>([type])) || [];
+    const follows = [...new Set((await db.get<string[]>([type])) || [])];
 
     const next =
         follows.length > offset + FOLLOWS_LIMIT
