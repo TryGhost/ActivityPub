@@ -80,6 +80,8 @@ import {
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
 import {
+    handleGetAccount,
+    handleGetAccountFollows,
     handleGetActivities,
     handleGetActivityThread,
     handleGetFollowers,
@@ -765,7 +767,16 @@ app.get(
     '/.ghost/activitypub/thread/:activity_id',
     spanWrapper(handleGetActivityThread),
 );
-
+app.get(
+    '/.ghost/activitypub/account/:handle',
+    requireRole(GhostRole.Owner),
+    spanWrapper(handleGetAccount),
+);
+app.get(
+    '/.ghost/activitypub/account/:handle/follows/:type',
+    requireRole(GhostRole.Owner),
+    spanWrapper(handleGetAccountFollows),
+);
 /** Federation wire up */
 
 app.use(

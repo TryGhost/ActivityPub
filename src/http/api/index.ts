@@ -1,6 +1,5 @@
 export * from './activities';
-export * from './activities';
-export * from './follows';
+export * from './accounts';
 export * from './follows';
 export * from './posts';
 export * from './profiles';
