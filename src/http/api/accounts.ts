@@ -4,6 +4,7 @@ import type { AppContext } from '../../app';
 import { fedify } from '../../app';
 import { sanitizeHtml } from '../../helpers/html';
 import { lookupActor } from '../../lookup-helpers';
+import type { Account } from './types';
 
 /**
  * Maximum number of follows to return
@@ -29,72 +30,9 @@ interface DbAccountData {
 }
 
 /**
- * Account returned by the API - Anywhere an account is returned via the API,
- * it should be this shape, or a partial version of it
+ * Follow account shape - Used when returning a list of follows
  */
-interface Account {
-    /**
-     * Internal ID of the account
-     */
-    id: string;
-    /**
-     * Display name of the account
-     */
-    name: string;
-    /**
-     * Handle of the account
-     */
-    handle: string;
-    /**
-     * Bio of the account
-     */
-    bio: string;
-    /**
-     * Public URL of the account
-     */
-    url: string;
-    /**
-     * URL of the avatar of the account
-     */
-    avatarUrl: string;
-    /**
-     * URL of the banner image of the account
-     */
-    bannerImageUrl: string | null;
-    /**
-     * Custom fields of the account
-     */
-    customFields: Record<string, string>;
-    /**
-     * Number of posts created by the account
-     */
-    postCount: number;
-    /**
-     * Number of liked posts by the account
-     */
-    likedCount: number;
-    /**
-     * Number of accounts this account follows
-     */
-    followingCount: number;
-    /**
-     * Number of accounts following this account
-     */
-    followerCount: number;
-    /**
-     * Whether the account of the current user is followed by this account
-     */
-    followsMe: boolean;
-    /**
-     * Whether the account of the current user is following this account
-     */
-    followedByMe: boolean;
-}
-
-/**
- * Minimal account shape - Used when returning a list of follows
- */
-type MinimalAccount = Pick<Account, 'id' | 'name' | 'handle' | 'avatarUrl'>;
+type FollowAccount = Pick<Account, 'id' | 'name' | 'handle' | 'avatarUrl'>;
 
 /**
  * Compute the handle for an account from the provided host and username
@@ -271,7 +209,7 @@ export async function handleGetAccountFollows(ctx: AppContext) {
         logger: ctx.get('logger'),
     });
 
-    const accounts: MinimalAccount[] = [];
+    const accounts: FollowAccount[] = [];
 
     for (const followId of slicedFollows) {
         try {

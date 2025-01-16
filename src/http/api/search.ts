@@ -2,27 +2,22 @@ import { isActor } from '@fedify/fedify';
 
 import { type AppContext, fedify } from '../../app';
 import {
-    getAttachments,
     getFollowerCount,
-    getFollowingCount,
     getHandle,
     isFollowing,
     isHandle,
 } from '../../helpers/activitypub/actor';
-import { sanitizeHtml } from '../../helpers/html';
 import { isUri } from '../../helpers/uri';
 import { lookupObject } from '../../lookup-helpers';
+import type { Account } from './types';
 
-interface ProfileSearchResult {
-    actor: any;
-    handle: string;
-    followerCount: number;
-    followingCount: number;
-    isFollowing: boolean;
-}
+type AccountSearchResult = Pick<
+    Account,
+    'id' | 'name' | 'handle' | 'avatarUrl' | 'followerCount' | 'followedByMe'
+>;
 
 interface SearchResults {
-    profiles: ProfileSearchResult[];
+    accounts: AccountSearchResult[];
 }
 
 /**
@@ -44,9 +39,9 @@ export async function handleSearch(ctx: AppContext) {
     const queryQuery = ctx.req.query('query');
     const query = queryQuery ? decodeURIComponent(queryQuery) : '';
 
-    // Init search results - At the moment we only support searching for an actor (profile)
+    // Init search results - At the moment we only support searching for an actor (account)
     const results: SearchResults = {
-        profiles: [],
+        accounts: [],
     };
 
     // If the query is not a handle or URI, return early
@@ -64,29 +59,17 @@ export async function handleSearch(ctx: AppContext) {
         const actor = await lookupObject(apCtx, query);
 
         if (isActor(actor)) {
-            const result: ProfileSearchResult = {
-                actor: {},
-                handle: '',
-                followerCount: 0,
-                followingCount: 0,
-                isFollowing: false,
-            };
-
-            result.actor = await actor.toJsonLd();
-
-            result.actor.summary = sanitizeHtml(result.actor.summary);
-            result.actor.attachment = await getAttachments(actor, {
-                sanitizeValue: (value: string) => sanitizeHtml(value),
+            results.accounts.push({
+                id: actor.id?.toString() || '',
+                name: actor.name?.toString() || '',
+                handle: getHandle(actor),
+                avatarUrl: (await actor.getIcon())?.url?.href?.toString() || '',
+                followerCount: await getFollowerCount(actor),
+                followedByMe: await isFollowing(actor, { db }),
             });
-            result.handle = getHandle(actor);
-            result.followerCount = await getFollowerCount(actor);
-            result.followingCount = await getFollowingCount(actor);
-            result.isFollowing = await isFollowing(actor, { db });
-
-            results.profiles.push(result);
         }
     } catch (err) {
-        logger.error('Profile search failed ({query}): {error}', {
+        logger.error('Account search failed ({query}): {error}', {
             query,
             error: err,
         });
