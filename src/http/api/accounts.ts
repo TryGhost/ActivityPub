@@ -54,11 +54,11 @@ interface Account {
      */
     url: string;
     /**
-     * URL pointing to the avatar of the account
+     * URL of the avatar of the account
      */
     avatarUrl: string;
     /**
-     * URL pointing to the banner image of the account
+     * URL of the banner image of the account
      */
     bannerImageUrl: string | null;
     /**
@@ -68,7 +68,7 @@ interface Account {
     /**
      * Number of posts created by the account
      */
-    postsCount: number;
+    postCount: number;
     /**
      * Number of liked posts by the account
      */
@@ -111,7 +111,7 @@ function getHandle(host?: string, username?: string) {
  *
  * @param db Database instance
  */
-async function getPostsCount(db: KvStore) {
+async function getPostCount(db: KvStore) {
     const posts = await db.get<string[]>(['outbox']);
 
     return posts?.length || 0;
@@ -192,7 +192,7 @@ export async function handleGetAccount(ctx: AppContext) {
                 accountData.preferredUsername,
             ),
             bio: sanitizeHtml(accountData.summary),
-            url: accountData.id,
+            url: accountData.url,
             avatarUrl: accountData.icon,
             /**
              * At the moment we don't support banner images for Ghost accounts
@@ -202,7 +202,7 @@ export async function handleGetAccount(ctx: AppContext) {
              * At the moment we don't support custom fields for Ghost accounts
              */
             customFields: {},
-            postsCount: await getPostsCount(db),
+            postCount: await getPostCount(db),
             likedCount: await getLikedCount(db),
             followingCount: await getFollowingCount(db),
             followerCount: await getFollowerCount(db),
