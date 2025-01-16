@@ -99,15 +99,11 @@ describe('dispatchers', () => {
 
             // Check correct items are returned in the correct order
             expect(result.items.length).toEqual(2);
-            expect(result.items[0] instanceof Person).toBeTruthy();
-            expect(result.items[1] instanceof Person).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/person/123',
+            expect(result.items[0]).toEqual(
+                new URL('https://example.com/person/123'),
             );
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[1].id.toString()).toEqual(
-                'https://example.com/person/456',
+            expect(result.items[1]).toEqual(
+                new URL('https://example.com/person/456'),
             );
         });
 
@@ -123,10 +119,8 @@ describe('dispatchers', () => {
 
             // Check correct items are returned
             expect(result.items.length).toEqual(1);
-            expect(result.items[0] instanceof Person).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/person/456',
+            expect(result.items[0]).toEqual(
+                new URL('https://example.com/person/456'),
             );
         });
     });
