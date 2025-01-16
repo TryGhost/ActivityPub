@@ -532,7 +532,14 @@ export async function followersDispatcher(
     return {
         items: (
             await Promise.all(items.map((item) => APObject.fromJsonLd(item)))
-        ).filter((item): item is Actor => isActor(item)),
+        )
+            .filter((item): item is Actor => isActor(item))
+            .map((item) => {
+                return {
+                    id: item.id,
+                    inboxId: item.inboxId,
+                };
+            }),
         nextCursor,
     };
 }
@@ -592,7 +599,11 @@ export async function followingDispatcher(
                 });
             }
         }),
-    ).then((results) => results.filter((r): r is Actor => isActor(r)));
+    ).then((results) =>
+        results
+            .filter((r): r is Actor => isActor(r) && r.id !== null)
+            .map((r) => new URL(r.id!)),
+    );
 
     return {
         items,

@@ -1038,7 +1038,8 @@ Then(
         // Check that the activity was sent to all followers
         const activity = this.activities[activityName];
 
-        for (const follower of followers) {
+        for (const followerUrl of followers) {
+            const follower = await (await fetchActivityPub(followerUrl)).json();
             const inbox = new URL(follower.inbox);
 
             const found = await waitForRequest(
@@ -1253,7 +1254,7 @@ Then('{string} is in our Followers', async function (actorName) {
     const actor = this.actors[actorName];
 
     const found = (followers.orderedItems || []).find(
-        (item) => item.id === actor.id,
+        (item) => item === actor.id,
     );
 
     assert(found);
@@ -1280,7 +1281,7 @@ Then('{string} is in our Followers once only', async function (actorName) {
     const followers = await firstPageResponse.json();
     const actor = this.actors[actorName];
     const found = (followers.orderedItems || []).filter(
-        (item) => item.id === actor.id,
+        (item) => item === actor.id,
     );
 
     assert.equal(found.length, 1);
