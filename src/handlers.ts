@@ -15,10 +15,7 @@ import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import { type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import {
-    buildActivity,
-    prepareNoteContent,
-} from './helpers/activitypub/activity';
+import { buildActivity } from './helpers/activitypub/activity';
 import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
@@ -170,86 +167,6 @@ export async function likeAction(
         preferSharedInbox: true,
     });
     return new Response(JSON.stringify(likeJson), {
-        headers: {
-            'Content-Type': 'application/activity+json',
-        },
-        status: 200,
-    });
-}
-
-const NoteActionSchema = z.object({
-    content: z.string(),
-});
-
-export async function noteAction(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const logger = ctx.get('logger');
-
-    let data: z.infer<typeof NoteActionSchema>;
-
-    try {
-        data = NoteActionSchema.parse((await ctx.req.json()) as unknown);
-
-        data.content = escapeHtml(data.content);
-    } catch (err) {
-        return new Response(JSON.stringify(err), { status: 400 });
-    }
-
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger,
-    });
-
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
-
-    const to = PUBLIC_COLLECTION;
-    const cc = [apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
-
-    const noteId = apCtx.getObjectUri(Note, {
-        id: uuidv4(),
-    });
-
-    const note = new Note({
-        id: noteId,
-        attribution: actor,
-        content: prepareNoteContent(data.content),
-        summary: null,
-        published: Temporal.Now.instant(),
-        to: to,
-        ccs: cc,
-    });
-
-    const createId = apCtx.getObjectUri(Create, {
-        id: uuidv4(),
-    });
-
-    const create = new Create({
-        id: createId,
-        actor: actor,
-        object: note,
-        to: to,
-        ccs: cc,
-    });
-
-    const activityJson = await create.toJsonLd();
-
-    await ctx.get('globaldb').set([create.id!.href], activityJson);
-    await ctx.get('globaldb').set([note.id!.href], await note.toJsonLd());
-
-    await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-
-    await apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
-        'followers',
-        create,
-        {
-            preferSharedInbox: true,
-        },
-    );
-
-    return new Response(JSON.stringify(activityJson), {
         headers: {
             'Content-Type': 'application/activity+json',
         },

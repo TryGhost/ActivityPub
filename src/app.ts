@@ -73,13 +73,13 @@ import {
     getSiteDataHandler,
     inboxHandler,
     likeAction,
-    noteAction,
     replyAction,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
 import {
+    handleCreateNote,
     handleGetAccount,
     handleGetAccountFollows,
     handleGetActivities,
@@ -736,7 +736,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner),
-    spanWrapper(noteAction),
+    spanWrapper(handleCreateNote),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
