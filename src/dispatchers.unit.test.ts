@@ -9,6 +9,7 @@ import {
 } from '@fedify/fedify';
 import {
     actorDispatcher,
+    followersDispatcher,
     followingDispatcher,
     likedDispatcher,
     nodeInfoDispatcher,
@@ -122,6 +123,126 @@ describe('dispatchers', () => {
             expect(result.items[0]).toEqual(
                 new URL('https://example.com/person/456'),
             );
+        });
+    });
+
+    describe('followersDispatcher', () => {
+        const followers: Record<string, any> = {
+            'https://example.com/person/123': {
+                '@context': [
+                    'https://www.w3.org/ns/activitystreams',
+                    'https://w3id.org/security/data-integrity/v1',
+                ],
+                id: 'https://example.com/person/123',
+                type: 'Person',
+                inbox: 'https://example.com/person/123/inbox',
+                endpoints: {
+                    sharedInbox: 'https://example.com/inbox',
+                },
+            },
+            'https://example.com/person/456': {
+                '@context': [
+                    'https://www.w3.org/ns/activitystreams',
+                    'https://w3id.org/security/data-integrity/v1',
+                ],
+                type: 'Person',
+                id: 'https://example.com/person/456',
+                inbox: 'https://example.com/person/456/inbox',
+                endpoints: {
+                    sharedInbox: 'https://example.com/inbox',
+                },
+            },
+        };
+
+        const ctx = {
+            data: {
+                db: {
+                    get: vi.fn(),
+                },
+                globaldb: {
+                    get: vi.fn(),
+                },
+                logger: {
+                    info: vi.fn(),
+                },
+            },
+        } as RequestContext<any>;
+
+        beforeEach(() => {
+            ctx.data.db.get.mockImplementation((key: string[]) => {
+                return Promise.resolve(
+                    key[0] === 'followers' && key[1] === 'expanded'
+                        ? Object.values(followers)
+                        : undefined,
+                );
+            });
+
+            ctx.data.globaldb.get.mockImplementation((key: string[]) => {
+                return Promise.resolve(followers[key[0]]);
+            });
+
+            if (!process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE) {
+                process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
+            }
+        });
+
+        it('returns null if the cursor is null', async () => {
+            const result = await followersDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                null,
+            );
+
+            expect(result).toBeNull();
+        });
+
+        it('returns items from the followers collection in the correct order', async () => {
+            const result = await followersDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                '0',
+            );
+
+            // Check result is not null
+            expect(result).not.toBeNull();
+
+            // Check items exist
+            expect(result!.items).toBeDefined();
+
+            // Check correct items are returned in the correct order
+            expect(result!.items.length).toEqual(2);
+            expect(result!.items[0]).toEqual({
+                id: new URL('https://example.com/person/123'),
+                inboxId: new URL('https://example.com/person/123/inbox'),
+                sharedInboxId: new URL('https://example.com/inbox'),
+            });
+            expect(result!.items[1]).toEqual({
+                id: new URL('https://example.com/person/456'),
+                inboxId: new URL('https://example.com/person/456/inbox'),
+                sharedInboxId: new URL('https://example.com/inbox'),
+            });
+        });
+
+        it('returns items from the followers collection with a cursor', async () => {
+            const result = await followersDispatcher(
+                ctx,
+                ACTOR_DEFAULT_HANDLE,
+                '1',
+            );
+
+            // Check result is not null
+            expect(result).not.toBeNull();
+
+            // Check items exist
+            expect(result!.items).toBeDefined();
+
+            // Check correct items are returned
+            expect(result!.items.length).toEqual(1);
+            expect(result!.items[0]).toEqual({
+                id: new URL('https://example.com/person/456'),
+                inboxId: new URL('https://example.com/person/456/inbox'),
+                sharedInboxId: new URL('https://example.com/inbox'),
+            });
         });
     });
 

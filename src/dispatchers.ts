@@ -538,6 +538,7 @@ export async function followersDispatcher(
                 return {
                     id: item.id,
                     inboxId: item.inboxId,
+                    sharedInboxId: item.endpoints?.sharedInbox,
                 };
             }),
         nextCursor,
