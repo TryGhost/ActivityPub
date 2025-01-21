@@ -22,9 +22,9 @@ import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
 import z from 'zod';
-import { getSite } from './db';
 import { updateSiteActor } from './helpers/activitypub/actor';
 import { getSiteSettings } from './helpers/ghost';
+import type { SiteService } from './site/site.service';
 
 export async function unlikeAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
@@ -359,39 +359,41 @@ export async function followAction(
     });
 }
 
-export async function getSiteDataHandler(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const request = ctx.req;
-    const host = request.header('host');
-    if (!host) {
-        ctx.get('logger').info('No Host header');
-        return new Response('No Host header', {
-            status: 401,
+export const getSiteDataHandler =
+    (siteService: SiteService) =>
+    async (ctx: Context<{ Variables: HonoContextVariables }>) => {
+        const request = ctx.req;
+        const host = request.header('host');
+        if (!host) {
+            ctx.get('logger').info('No Host header');
+            return new Response('No Host header', {
+                status: 401,
+            });
+        }
+
+        const handle = ACTOR_DEFAULT_HANDLE;
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
-    }
 
-    const handle = ACTOR_DEFAULT_HANDLE;
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger: ctx.get('logger'),
-    });
+        const site = await siteService.initialiseSiteForHost(host);
 
-    const site = await getSite(host, true);
+        console.log(site);
 
-    // This is to ensure that the actor exists - e.g. for a brand new a site
-    await getUserData(apCtx, handle);
+        // This is to ensure that the actor exists - e.g. for a brand new a site
+        await getUserData(apCtx, handle);
 
-    await updateSiteActor(apCtx, getSiteSettings);
+        await updateSiteActor(apCtx, getSiteSettings);
 
-    return new Response(JSON.stringify(site), {
-        status: 200,
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-}
+        return new Response(JSON.stringify(site), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    };
 
 export async function inboxHandler(
     ctx: Context<{ Variables: HonoContextVariables }>,
