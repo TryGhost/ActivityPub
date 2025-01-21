@@ -395,9 +395,13 @@ BeforeAll(async () => {
         },
     });
 
+    await client.raw('SET FOREIGN_KEY_CHECKS = 0');
     await client('key_value').truncate();
-
+    await client('follows').truncate();
+    await client('accounts').truncate();
+    await client('users').truncate();
     await client('sites').truncate();
+    await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
     webhookSecret = fs.readFileSync(
         resolve(__dirname, '../fixtures/webhook_secret.txt'),
@@ -464,8 +468,13 @@ AfterAll(async () => {
 
 Before(async () => {
     await externalActivityPub.clearAllRequests();
+    await client.raw('SET FOREIGN_KEY_CHECKS = 0');
     await client('key_value').truncate();
+    await client('follows').truncate();
+    await client('users').truncate();
+    await client('accounts').truncate();
     await client('sites').truncate();
+    await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
     await client('sites').insert({
         host: 'fake-ghost-activitypub',
@@ -513,7 +522,7 @@ async function fetchActivityPub(url, options = {}) {
 }
 
 Given('there is no entry in the sites table', async () => {
-    await client('sites').truncate();
+    await client('sites').del();
 });
 
 When('we request the outbox', async function () {
