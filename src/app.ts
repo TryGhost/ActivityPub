@@ -100,6 +100,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { SiteService } from 'ghost/sites.service';
 
 const logging = getLogger(['activitypub']);
 
@@ -609,12 +610,13 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+const siteService = new SiteService(client);
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
     '/.ghost/activitypub/site',
-    requireRole(GhostRole.Owner),
-    getSiteDataHandler,
+    getSiteDataHandler(siteService),
 );
 
 app.use(async (ctx, next) => {
@@ -626,7 +628,7 @@ app.use(async (ctx, next) => {
             status: 401,
         });
     }
-    const site = await getSite(host);
+    const site = await siteService.getSiteByHost(host);
 
     if (!site) {
         ctx.get('logger').info('No site found for {host}', { host });

@@ -25,6 +25,7 @@ import z from 'zod';
 import { getSite } from './db';
 import { updateSiteActor } from './helpers/activitypub/actor';
 import { getSiteSettings } from './helpers/ghost';
+import { SiteService } from 'ghost/sites.service';
 
 export async function unlikeAction(
     ctx: Context<{ Variables: HonoContextVariables }>,
@@ -359,9 +360,9 @@ export async function followAction(
     });
 }
 
-export async function getSiteDataHandler(
+export const getSiteDataHandler = (siteService: SiteService) => async (
     ctx: Context<{ Variables: HonoContextVariables }>,
-) {
+) => {
     const request = ctx.req;
     const host = request.header('host');
     if (!host) {
@@ -378,7 +379,7 @@ export async function getSiteDataHandler(
         logger: ctx.get('logger'),
     });
 
-    const site = await getSite(host, true);
+    const site = await siteService.initialiseSiteForHost(host);
 
     // This is to ensure that the actor exists - e.g. for a brand new a site
     await getUserData(apCtx, handle);
