@@ -150,4 +150,36 @@ describe('AccountService', () => {
         expect(follow.following_id).toBe(account.id);
         expect(follow.follower_id).toBe(follower.id);
     });
+
+    it('should not record duplicate follows', async () => {
+        const account = await service.createInternalAccount(site, 'account');
+        const follower = await service.createInternalAccount(site, 'follower');
+
+        await service.recordAccountFollow(account, follower);
+
+        const firstFollow = await db(TABLE_FOLLOWS).where({ id: 1 }).first();
+
+        await service.recordAccountFollow(account, follower);
+
+        // Assert the follow was inserted into the database only once
+        const follows = await db(TABLE_FOLLOWS).select('*');
+
+        expect(follows).toHaveLength(1);
+
+        // Assert the data was not changed
+        const follow = follows[0];
+
+        expect(follow.following_id).toBe(firstFollow.following_id);
+        expect(follow.follower_id).toBe(firstFollow.follower_id);
+        expect(follow.created_at).toStrictEqual(firstFollow.created_at);
+        expect(follow.updated_at).toStrictEqual(firstFollow.updated_at);
+    });
+
+    it('should retrieve an account by its ActivityPub ID', async () => {
+        const account = await service.createInternalAccount(site, 'account');
+
+        const retrievedAccount = await service.getAccountByApId(account.ap_id);
+
+        expect(retrievedAccount).toMatchObject(account);
+    });
 });

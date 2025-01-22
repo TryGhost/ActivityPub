@@ -22,6 +22,8 @@ import {
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
+import type { AccountService } from './account/account.service';
+import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowing } from './helpers/activitypub/actor';
@@ -55,55 +57,86 @@ export async function keypairDispatcher(
     return [data];
 }
 
-export async function handleFollow(ctx: Context<ContextData>, follow: Follow) {
-    ctx.data.logger.info('Handling Follow');
-    if (!follow.id) {
-        return;
-    }
-    const parsed = ctx.parseUri(follow.objectId);
-    if (parsed?.type !== 'actor') {
-        // TODO Log
-        return;
-    }
-    const sender = await follow.getActor(ctx);
-    if (sender === null || sender.id === null) {
-        return;
-    }
+export function handleFollow(accountService: AccountService) {
+    return async (ctx: Context<ContextData>, follow: Follow) => {
+        ctx.data.logger.info('Handling Follow');
+        if (!follow.id) {
+            return;
+        }
+        const parsed = ctx.parseUri(follow.objectId);
+        if (parsed?.type !== 'actor') {
+            // TODO Log
+            return;
+        }
+        const sender = await follow.getActor(ctx);
+        if (sender === null || sender.id === null) {
+            return;
+        }
 
-    const currentFollowers =
-        (await ctx.data.db.get<string[]>(['followers'])) ?? [];
-    const shouldRecordFollower =
-        currentFollowers.includes(sender.id.href) === false;
+        const currentFollowers =
+            (await ctx.data.db.get<string[]>(['followers'])) ?? [];
+        const shouldRecordFollower =
+            currentFollowers.includes(sender.id.href) === false;
 
-    // Add follow activity to inbox
-    const followJson = await follow.toJsonLd();
+        // Add follow activity to inbox
+        const followJson = await follow.toJsonLd();
 
-    ctx.data.globaldb.set([follow.id.href], followJson);
-    await addToList(ctx.data.db, ['inbox'], follow.id.href);
+        ctx.data.globaldb.set([follow.id.href], followJson);
+        await addToList(ctx.data.db, ['inbox'], follow.id.href);
 
-    // Record follower in followers list
-    const senderJson = await sender.toJsonLd();
+        // Record follower in followers list
+        const senderJson = await sender.toJsonLd();
 
-    if (shouldRecordFollower) {
-        await addToList(ctx.data.db, ['followers'], sender.id.href);
-        await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
-    }
+        if (shouldRecordFollower) {
+            await addToList(ctx.data.db, ['followers'], sender.id.href);
+            await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
+        }
 
-    // Store or update sender in global db
-    ctx.data.globaldb.set([sender.id.href], senderJson);
+        // Store or update sender in global db
+        ctx.data.globaldb.set([sender.id.href], senderJson);
 
-    // Send accept activity to sender
-    const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
-    const accept = new Accept({
-        id: acceptId,
-        actor: follow.objectId,
-        object: follow,
-    });
-    const acceptJson = await accept.toJsonLd();
+        // Record the account of the sender as well as the follow - This
+        // duplicates the above functionality but is needed to record the
+        // relevant data in the new database schema. The above functionality
+        // will eventually be removed in favour of this. This logic is only
+        // executed if the account for the followee has already been created
+        const followeeAccount = await accountService.getAccountByApId(
+            follow.objectId?.href ?? '',
+        );
+        if (followeeAccount) {
+            let followerAccount = await accountService.getAccountByApId(
+                sender.id.href,
+            );
 
-    await ctx.data.globaldb.set([accept.id!.href], acceptJson);
+            if (!followerAccount) {
+                ctx.data.logger.info(
+                    `Sender account "${sender.id.href}" not found, creating`,
+                );
 
-    await ctx.sendActivity({ handle: parsed.handle }, sender, accept);
+                followerAccount = await accountService.createExternalAccount(
+                    await mapActorToExternalAccountData(sender),
+                );
+            }
+
+            await accountService.recordAccountFollow(
+                followeeAccount,
+                followerAccount,
+            );
+        }
+
+        // Send accept activity to sender
+        const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
+        const accept = new Accept({
+            id: acceptId,
+            actor: follow.objectId,
+            object: follow,
+        });
+        const acceptJson = await accept.toJsonLd();
+
+        await ctx.data.globaldb.set([accept.id!.href], acceptJson);
+
+        await ctx.sendActivity({ handle: parsed.handle }, sender, accept);
+    };
 }
 
 export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
