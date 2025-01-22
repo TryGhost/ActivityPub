@@ -44,54 +44,58 @@ describe('AccountService', () => {
         service = new AccountService(db);
     });
 
-    it('should create an internal account', async () => {
-        const username = 'foobarbaz';
+    it(
+        'should create an internal account',
+        async () => {
+            const username = 'foobarbaz';
 
-        const expectedAccount = {
-            name: ACTOR_DEFAULT_NAME,
-            username,
-            bio: ACTOR_DEFAULT_SUMMARY,
-            avatar_url: ACTOR_DEFAULT_ICON,
-            url: `https://${site.host}`,
-            custom_fields: null,
-            ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
-            ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
-            ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
-            ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
-            ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
-            ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
-            ap_shared_inbox_url: null,
-        };
+            const expectedAccount = {
+                name: ACTOR_DEFAULT_NAME,
+                username,
+                bio: ACTOR_DEFAULT_SUMMARY,
+                avatar_url: ACTOR_DEFAULT_ICON,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_shared_inbox_url: null,
+            };
 
-        const account = await service.createInternalAccount(site, username);
+            const account = await service.createInternalAccount(site, username);
 
-        // Assert the created account was returned
-        expect(account).toMatchObject(expectedAccount);
-        expect(account.id).toBeGreaterThan(0);
-        expect(account.ap_public_key).toBeDefined();
-        expect(account.ap_public_key).toContain('key_ops');
-        expect(account.ap_private_key).toBeDefined();
-        expect(account.ap_private_key).toContain('key_ops');
+            // Assert the created account was returned
+            expect(account).toMatchObject(expectedAccount);
+            expect(account.id).toBeGreaterThan(0);
+            expect(account.ap_public_key).toBeDefined();
+            expect(account.ap_public_key).toContain('key_ops');
+            expect(account.ap_private_key).toBeDefined();
+            expect(account.ap_private_key).toContain('key_ops');
 
-        // Assert the account was inserted into the database
-        const accounts = await db(TABLE_ACCOUNTS).select('*');
+            // Assert the account was inserted into the database
+            const accounts = await db(TABLE_ACCOUNTS).select('*');
 
-        expect(accounts).toHaveLength(1);
+            expect(accounts).toHaveLength(1);
 
-        const dbAccount = accounts[0];
+            const dbAccount = accounts[0];
 
-        expect(dbAccount).toMatchObject(expectedAccount);
+            expect(dbAccount).toMatchObject(expectedAccount);
 
-        // Assert the user was inserted into the database
-        const users = await db(TABLE_USERS).select('*');
+            // Assert the user was inserted into the database
+            const users = await db(TABLE_USERS).select('*');
 
-        expect(users).toHaveLength(1);
+            expect(users).toHaveLength(1);
 
-        const dbUser = users[0];
+            const dbUser = users[0];
 
-        expect(dbUser.account_id).toBe(account.id);
-        expect(dbUser.site_id).toBe(site.id);
-    });
+            expect(dbUser.account_id).toBe(account.id);
+            expect(dbUser.site_id).toBe(site.id);
+        },
+        1000 * 10, // Increase timeout to 10 seconds as 5 seconds seems to be too short on CI
+    );
 
     it('should create an external account', async () => {
         const accountData: ExternalAccountData = {
