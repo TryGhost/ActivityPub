@@ -12,6 +12,12 @@ import {
 } from '../constants';
 import type { Account, ExternalAccountData, Site } from './types';
 
+interface GetFollowedAccountsOptions {
+    limit: number;
+    offset: number;
+    fields: (keyof Account)[];
+}
+
 export class AccountService {
     /**
      * @param db Database client
@@ -114,8 +120,62 @@ export class AccountService {
             return null;
         }
 
-        return (
-            (await this.db(TABLE_ACCOUNTS).where('ap_id', apId).first()) ?? null
-        );
+        return await this.db(TABLE_ACCOUNTS).where('ap_id', apId).first();
+    }
+
+    /**
+     * Get the default account for a site
+     *
+     * @param site Site
+     */
+    async getDefaultAccountForSite(site: Site): Promise<Account | null> {
+        const users = await this.db(TABLE_USERS).where('site_id', site.id);
+
+        if (users.length === 0) {
+            throw new Error(`No user found for site: ${site.id}`);
+        }
+
+        if (users.length > 1) {
+            throw new Error(`Multiple users found for site: ${site.id}`);
+        }
+
+        const user = users[0];
+
+        // We can safely assume that there is an account for the user due to
+        // the foreign key constraint on the users table
+        return await this.db(TABLE_ACCOUNTS)
+            .where('id', user.account_id)
+            .first();
+    }
+
+    /**
+     * Get the accounts that the provided account is following
+     *
+     * The results are ordered in reverse chronological order
+     *
+     * @param account Account
+     * @param options Options for the query
+     */
+    async getFollowedAccounts(
+        account: Account,
+        options: GetFollowedAccountsOptions, // @TODO: Make this optional
+    ): Promise<Account[]> {
+        return await this.db(TABLE_FOLLOWS)
+            .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
+            .where(`${TABLE_FOLLOWS}.follower_id`, account.id)
+            .innerJoin(
+                TABLE_ACCOUNTS,
+                `${TABLE_ACCOUNTS}.id`,
+                `${TABLE_FOLLOWS}.following_id`,
+            )
+            .limit(options.limit)
+            .offset(options.offset)
+            // order by the date created at in descending order and then by the
+            // account id in descending order to ensure the most recent follows
+            // are returned first (i.e in case multiple follows were created at
+            // the same time)
+            // @TODO: Make this configurable via the options?
+            .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
+            .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
     }
 }

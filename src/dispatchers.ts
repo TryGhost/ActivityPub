@@ -21,6 +21,7 @@ import {
     verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
+import type { SiteService } from 'site/site.service';
 import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
@@ -686,6 +687,72 @@ export async function followingDispatcher(
     return {
         items,
         nextCursor,
+    };
+}
+
+/**
+ * This logic duplicates the logic in `followingDispatcher`, the
+ * main difference being that is uses the account service to retrieve the
+ * following. `followingDispatcher` will eventually be removed in favour of this
+ */
+export function createFollowingDispatcher(
+    siteService: SiteService,
+    accountService: AccountService,
+) {
+    return async function dispatchFollowing(
+        ctx: RequestContext<ContextData>,
+        handle: string,
+        cursor: string | null,
+    ) {
+        ctx.data.logger.info('Following Dispatcher');
+
+        const pageSize = Number.parseInt(
+            process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
+        );
+
+        if (Number.isNaN(pageSize)) {
+            throw new Error(`Page size: ${pageSize} is not valid`);
+        }
+
+        const offset = Number.parseInt(cursor ?? '0');
+        let nextCursor: string | null = null;
+
+        const host = ctx.request.headers.get('host')!;
+        const site = await siteService.getSiteByHost(host);
+
+        if (!site) {
+            throw new Error(`Site not found for host: ${host}`);
+        }
+
+        const siteDefaultAccount =
+            await accountService.getDefaultAccountForSite(site);
+
+        if (!siteDefaultAccount) {
+            throw new Error(
+                `Default account for site not found for site: ${site.id}`,
+            );
+        }
+
+        const results = await accountService.getFollowedAccounts(
+            siteDefaultAccount,
+            {
+                fields: ['ap_id'],
+                limit: pageSize,
+                offset,
+            },
+        );
+
+        nextCursor =
+            results.length > offset + pageSize
+                ? (offset + pageSize).toString()
+                : null;
+
+        ctx.data.logger.info('Following results', { results });
+
+        return {
+            items: results.map((result) => new URL(result.ap_id)),
+            nextCursor,
+        };
     };
 }
 
