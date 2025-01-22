@@ -1,12 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TABLE_SITES } from '../constants';
 import { client as db } from '../db';
 
+import { AccountService } from '../account/account.service';
+import type { Account } from '../account/types';
 import { type Site, SiteService } from './site.service';
 
 describe('SiteService', () => {
     let service: SiteService;
+    let accountService: AccountService;
     let site: Site;
 
     beforeEach(async () => {
@@ -15,8 +18,9 @@ describe('SiteService', () => {
         await db(TABLE_SITES).truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
+        accountService = Object.create(AccountService.prototype);
         // Create the service
-        service = new SiteService(db);
+        service = new SiteService(db, accountService);
     });
 
     it('Can initialise a site multiple times and retrieve it', async () => {
@@ -24,11 +28,17 @@ describe('SiteService', () => {
 
         expect(existingSite).toBeNull();
 
+        const createInternalAccount = vi
+            .spyOn(accountService, 'createInternalAccount')
+            .mockResolvedValue({} as unknown as Account);
+
         const site = await service.initialiseSiteForHost('hostname.tld');
 
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
         expect(site.id).toBeDefined();
+
+        expect(createInternalAccount.mock.calls).toHaveLength(1);
 
         const siteRows = await db(TABLE_SITES).select('*');
 

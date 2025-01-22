@@ -36,6 +36,7 @@ import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
+import { AccountService } from './account/account.service';
 import { client } from './db';
 import {
     acceptDispatcher,
@@ -611,7 +612,8 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-const siteService = new SiteService(client);
+const accountService = new AccountService(client);
+const siteService = new SiteService(client, accountService);
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get('/.ghost/activitypub/site', getSiteDataHandler(siteService));
