@@ -57,8 +57,11 @@ export async function keypairDispatcher(
     return [data];
 }
 
-export function handleFollow(accountService: AccountService) {
-    return async (ctx: Context<ContextData>, follow: Follow) => {
+export function createFollowHandler(accountService: AccountService) {
+    return async function handleFollow(
+        ctx: Context<ContextData>,
+        follow: Follow,
+    ) {
         ctx.data.logger.info('Handling Follow');
         if (!follow.id) {
             return;

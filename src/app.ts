@@ -43,6 +43,7 @@ import {
     actorDispatcher,
     articleDispatcher,
     createDispatcher,
+    createFollowHandler,
     followDispatcher,
     followersCounter,
     followersDispatcher,
@@ -53,7 +54,6 @@ import {
     handleAccept,
     handleAnnounce,
     handleCreate,
-    handleFollow,
     handleLike,
     inboxErrorHandler,
     keypairDispatcher,
@@ -256,7 +256,10 @@ const inboxListener = fedify.setInboxListeners(
 );
 
 inboxListener
-    .on(Follow, ensureCorrectContext(spanWrapper(handleFollow(accountService))))
+    .on(
+        Follow,
+        ensureCorrectContext(spanWrapper(createFollowHandler(accountService))),
+    )
     .onError(inboxErrorHandler)
     .on(Accept, ensureCorrectContext(spanWrapper(handleAccept)))
     .onError(inboxErrorHandler)
