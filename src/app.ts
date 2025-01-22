@@ -43,6 +43,7 @@ import {
     actorDispatcher,
     articleDispatcher,
     createDispatcher,
+    createFollowHandler,
     followDispatcher,
     followersCounter,
     followersDispatcher,
@@ -53,7 +54,6 @@ import {
     handleAccept,
     handleAnnounce,
     handleCreate,
-    handleFollow,
     handleLike,
     inboxErrorHandler,
     keypairDispatcher,
@@ -210,6 +210,8 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
 
+const accountService = new AccountService(client);
+
 /** Fedify */
 
 /**
@@ -254,7 +256,10 @@ const inboxListener = fedify.setInboxListeners(
 );
 
 inboxListener
-    .on(Follow, ensureCorrectContext(spanWrapper(handleFollow)))
+    .on(
+        Follow,
+        ensureCorrectContext(spanWrapper(createFollowHandler(accountService))),
+    )
     .onError(inboxErrorHandler)
     .on(Accept, ensureCorrectContext(spanWrapper(handleAccept)))
     .onError(inboxErrorHandler)
@@ -612,7 +617,6 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-const accountService = new AccountService(client);
 const siteService = new SiteService(client, accountService);
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created

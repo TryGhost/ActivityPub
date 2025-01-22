@@ -88,16 +88,34 @@ export class AccountService {
     /**
      * Record an account follow
      *
-     * @param account Account being followed
-     * @param follower Follower account
+     * @param followee Account to follow
+     * @param follower Following account
      */
     async recordAccountFollow(
-        account: Account,
+        followee: Account,
         follower: Account,
     ): Promise<void> {
-        await this.db(TABLE_FOLLOWS).insert({
-            following_id: account.id,
-            follower_id: follower.id,
-        });
+        await this.db(TABLE_FOLLOWS)
+            .insert({
+                following_id: followee.id,
+                follower_id: follower.id,
+            })
+            .onConflict(['following_id', 'follower_id'])
+            .ignore();
+    }
+
+    /**
+     * Get an account by it's ActivityPub ID
+     *
+     * @param apId ActivityPub ID
+     */
+    async getAccountByApId(apId: string): Promise<Account | null> {
+        if (apId === '') {
+            return null;
+        }
+
+        return (
+            (await this.db(TABLE_ACCOUNTS).where('ap_id', apId).first()) ?? null
+        );
     }
 }
