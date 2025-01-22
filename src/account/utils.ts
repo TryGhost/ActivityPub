@@ -1,6 +1,12 @@
 import { type Actor, PropertyValue } from '@fedify/fedify';
 import type { ExternalAccountData } from './types';
 
+interface PublicKey {
+    id: string;
+    owner: string;
+    publicKeyPem: string;
+}
+
 export async function mapActorToExternalAccountData(
     actor: Actor,
 ): Promise<ExternalAccountData> {
@@ -19,28 +25,20 @@ export async function mapActorToExternalAccountData(
         }
     }
 
-    let apPublicKey:
-        | {
-              id: string;
-              owner: string;
-              publicKeyPem: string;
-          }
-        | string = '';
+    let apPublicKey: PublicKey | null = null;
 
     const publicKey = await actor.getPublicKey();
 
     if (publicKey) {
-        const jsonLd = (await publicKey.toJsonLd({ format: 'compact' })) as {
-            id: string;
-            owner: string;
-            publicKeyPem: string;
-        };
+        const jsonLd = (await publicKey.toJsonLd({
+            format: 'compact',
+        })) as Partial<PublicKey>;
 
         if (typeof jsonLd === 'object' && jsonLd !== null) {
             apPublicKey = {
-                id: jsonLd.id,
-                owner: jsonLd.owner,
-                publicKeyPem: jsonLd.publicKeyPem,
+                id: jsonLd.id ?? '',
+                owner: jsonLd.owner ?? '',
+                publicKeyPem: jsonLd.publicKeyPem ?? '',
             };
         }
     }
@@ -61,6 +59,6 @@ export async function mapActorToExternalAccountData(
         ap_following_url: actor.followingId?.href ?? '',
         ap_followers_url: actor.followersId?.href ?? '',
         ap_liked_url: actor.likedId?.href ?? '',
-        ap_public_key: JSON.stringify(apPublicKey),
+        ap_public_key: apPublicKey ? JSON.stringify(apPublicKey) : '',
     };
 }
