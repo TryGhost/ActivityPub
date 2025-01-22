@@ -36,7 +36,7 @@ import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
-import { client, getSite } from './db';
+import { client } from './db';
 import {
     acceptDispatcher,
     actorDispatcher,
@@ -100,6 +100,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
 
@@ -609,14 +610,15 @@ app.use(async (ctx, next) => {
 
     await next();
 });
+
+const siteService = new SiteService(client);
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
-app.get(
-    '/.ghost/activitypub/site',
-    requireRole(GhostRole.Owner),
-    getSiteDataHandler,
-);
+app.get('/.ghost/activitypub/site', getSiteDataHandler(siteService));
 
+/**
+ * Essentially Auth middleware and also handles the multitenancy
+ */
 app.use(async (ctx, next) => {
     const request = ctx.req;
     const host = request.header('host');
@@ -626,7 +628,9 @@ app.use(async (ctx, next) => {
             status: 401,
         });
     }
-    const site = await getSite(host);
+    const site = await siteService.getSiteByHost(host);
+
+    console.log(site);
 
     if (!site) {
         ctx.get('logger').info('No site found for {host}', { host });

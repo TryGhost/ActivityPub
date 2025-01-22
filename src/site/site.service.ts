@@ -51,7 +51,7 @@ export class SiteService {
         };
     }
 
-    public async initialiseSiteForHost(host: string) {
+    public async initialiseSiteForHost(host: string): Promise<Site> {
         const existingSite = await this.getSiteByHost(host);
         if (existingSite !== null) {
             return existingSite;
@@ -60,6 +60,10 @@ export class SiteService {
         await this.createSite(host);
 
         const newSite = await this.getSiteByHost(host);
+
+        if (newSite === null) {
+            throw new Error(`Site initialisation failed for ${host}`);
+        }
 
         return newSite;
     }

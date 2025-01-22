@@ -19,8 +19,8 @@
     "test:types": "tsc --noEmit",
     "test:unit": "vitest run --dir src --coverage '.unit.test.ts'",
     "test:unit:dev": "vitest --dir src --coverage '.unit.test.ts'",
-    "test:integration": "vitest run --dir src --coverage '.integration.test.ts'",
-    "test:code": "vitest run --dir src --coverage '.test.ts'",
+    "test:integration": "vitest run --sequence.concurrent=false --dir src --coverage '.integration.test.ts'",
+    "test:code": "vitest run --sequence.concurrent=false --dir src --coverage '.test.ts'",
     "test:all": "yarn test:types && yarn test:code",
     "lint": "biome check"
   },
