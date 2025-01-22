@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { Knex } from 'knex';
+import type { AccountService } from '../account/account.service';
 
 export type Site = {
     id: number;
@@ -8,7 +9,10 @@ export type Site = {
 };
 
 export class SiteService {
-    constructor(private client: Knex) {}
+    constructor(
+        private client: Knex,
+        private accountService: AccountService,
+    ) {}
 
     private async createSite(host: string): Promise<void> {
         const rows = await this.client
@@ -64,6 +68,11 @@ export class SiteService {
         if (newSite === null) {
             throw new Error(`Site initialisation failed for ${host}`);
         }
+
+        const internalAccount = await this.accountService.createInternalAccount(
+            newSite,
+            'index',
+        );
 
         return newSite;
     }
