@@ -16,6 +16,7 @@ import {
     outboxDispatcher,
 } from './dispatchers';
 
+import type { SiteService } from 'site/site.service';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import * as lookupHelpers from './lookup-helpers';
 
@@ -31,7 +32,10 @@ describe('dispatchers', () => {
             const ctx = {} as RequestContext<any>;
             const handle = 'anything';
 
-            const actual = await actorDispatcher(ctx, handle);
+            const actual = await actorDispatcher({} as unknown as SiteService)(
+                ctx,
+                handle,
+            );
             const expected = null;
 
             expect(actual).toEqual(expected);

@@ -1,10 +1,12 @@
 import type { KvStore } from '@fedify/fedify';
 
+import type { AccountService } from '../../account/account.service';
 import type { AppContext } from '../../app';
 import { fedify } from '../../app';
 import { sanitizeHtml } from '../../helpers/html';
 import { lookupActor } from '../../lookup-helpers';
-import type { Account } from './types';
+import type { SiteService } from '../../site/site.service';
+import type { Account as AccountDTO } from './types';
 
 /**
  * Maximum number of follows to return
@@ -32,7 +34,7 @@ interface DbAccountData {
 /**
  * Follow account shape - Used when returning a list of follows
  */
-type FollowAccount = Pick<Account, 'id' | 'name' | 'handle' | 'avatarUrl'>;
+type FollowAccount = Pick<AccountDTO, 'id' | 'name' | 'handle' | 'avatarUrl'>;
 
 /**
  * Compute the handle for an account from the provided host and username
@@ -97,75 +99,78 @@ async function getFollowerCount(db: KvStore) {
  *
  * @param ctx App context
  */
-export async function handleGetAccount(ctx: AppContext) {
-    const logger = ctx.get('logger');
+export const handleGetAccount = (
+    siteService: SiteService,
+    accountService: AccountService,
+) =>
+    async function handleGetAccount(ctx: AppContext) {
+        const logger = ctx.get('logger');
 
-    // Validate input
-    const handle = ctx.req.param('handle') || '';
+        // Validate input
+        const handle = ctx.req.param('handle') || '';
 
-    if (handle === '') {
-        return new Response(null, { status: 400 });
-    }
+        if (handle === '') {
+            return new Response(null, { status: 400 });
+        }
 
-    // Get account data
-    const db = ctx.get('db');
-    const accountData = await db.get<DbAccountData>(['handle', handle]);
+        const db = ctx.get('db');
+        let accountDto: AccountDTO;
 
-    if (!accountData) {
-        return new Response(null, { status: 404 });
-    }
+        const site = await siteService.getSiteByHost(ctx.get('site').host);
+        if (!site) {
+            return new Response(null, { status: 404 });
+        }
 
-    let account: Account;
+        const account = await siteService.getDefaultAccountForSite(site);
 
-    try {
-        account = {
-            /**
-             * At the moment we don't have an internal ID for Ghost accounts so
-             * we use Fediverse ID
-             */
-            id: accountData.id,
-            name: accountData.name,
-            handle: getHandle(
-                new URL(accountData.id).host,
-                accountData.preferredUsername,
-            ),
-            bio: sanitizeHtml(accountData.summary),
-            url: accountData.url,
-            avatarUrl: accountData.icon,
-            /**
-             * At the moment we don't support banner images for Ghost accounts
-             */
-            bannerImageUrl: null,
-            /**
-             * At the moment we don't support custom fields for Ghost accounts
-             */
-            customFields: {},
-            postCount: await getPostCount(db),
-            likedCount: await getLikedCount(db),
-            followingCount: await getFollowingCount(db),
-            followerCount: await getFollowerCount(db),
-            /**
-             * At the moment we only expect to be returning the account for
-             * the current user, so we can hardcode these values to false as
-             * the account cannot follow, or be followed by itself
-             */
-            followsMe: false,
-            followedByMe: false,
-        };
-    } catch (error) {
-        logger.error('Error getting account: {error}', { error });
+        try {
+            accountDto = {
+                /**
+                 * At the moment we don't have an internal ID for Ghost accounts so
+                 * we use Fediverse ID
+                 */
+                id: account.ap_id,
+                name: account.name || '',
+                handle: getHandle(site.host, account.username),
+                bio: sanitizeHtml(account.bio || ''),
+                url: account.url || '',
+                avatarUrl: account.avatar_url || '',
+                /**
+                 * At the moment we don't support banner images for Ghost accounts
+                 */
+                bannerImageUrl: account.banner_image_url,
+                /**
+                 * At the moment we don't support custom fields for Ghost accounts
+                 */
+                customFields: {},
+                postCount: await getPostCount(db),
+                likedCount: await getLikedCount(db),
+                followingCount:
+                    await accountService.getFollowingAccountsCount(account),
+                followerCount:
+                    await accountService.getFollowerAccountsCount(account),
+                /**
+                 * At the moment we only expect to be returning the account for
+                 * the current user, so we can hardcode these values to false as
+                 * the account cannot follow, or be followed by itself
+                 */
+                followsMe: false,
+                followedByMe: false,
+            };
+        } catch (error) {
+            logger.error('Error getting account: {error}', { error });
 
-        return new Response(null, { status: 500 });
-    }
+            return new Response(null, { status: 500 });
+        }
 
-    // Return response
-    return new Response(JSON.stringify(account), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        status: 200,
-    });
-}
+        // Return response
+        return new Response(JSON.stringify(accountDto), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
+        });
+    };
 
 /**
  * Handle a request for a list of follows

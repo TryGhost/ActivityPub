@@ -11,6 +11,7 @@ import {
     Then,
     When,
 } from '@cucumber/cucumber';
+import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import { merge } from 'es-toolkit';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
@@ -502,6 +503,8 @@ Before(async function () {
     if (!this.actors) {
         const actor = await createActor('Test', { remote: false });
 
+        const keypair = await generateCryptoKeyPair();
+
         const [accountId] = await client(TABLE_ACCOUNTS).insert({
             username: actor.preferredUsername,
             name: actor.name,
@@ -517,8 +520,8 @@ Before(async function () {
             ap_following_url: actor.following,
             ap_followers_url: actor.followers,
             ap_liked_url: actor.liked,
-            ap_public_key: actor['https://w3id.org/security#publicKey'],
-            ap_private_key: null,
+            ap_public_key: JSON.stringify(await exportJwk(keypair.publicKey)),
+            ap_private_key: JSON.stringify(await exportJwk(keypair.privateKey)),
         });
 
         await client(TABLE_USERS).insert({
