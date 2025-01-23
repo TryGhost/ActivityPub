@@ -45,13 +45,13 @@ import {
     createAcceptHandler,
     createDispatcher,
     createFollowHandler,
-    createFollowingDispatcher,
+    // createFollowingDispatcher,
     followDispatcher,
     followersCounter,
     followersDispatcher,
     followersFirstCursor,
     followingCounter,
-    // followingDispatcher,
+    followingDispatcher,
     followingFirstCursor,
     handleAnnounce,
     handleCreate,
@@ -286,8 +286,8 @@ fedify
 fedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{handle}',
-        // spanWrapper(followingDispatcher),
-        spanWrapper(createFollowingDispatcher(siteService, accountService)),
+        spanWrapper(followingDispatcher),
+        // spanWrapper(createFollowingDispatcher(siteService, accountService)),
     )
     .setCounter(followingCounter)
     .setFirstCursor(followingFirstCursor);
