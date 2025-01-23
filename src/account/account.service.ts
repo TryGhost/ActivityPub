@@ -13,7 +13,13 @@ import {
 } from '../constants';
 import type { Account, ExternalAccountData, Site } from './types';
 
-interface GetFollowedAccountsOptions {
+interface GetFollowingAccountsOptions {
+    limit: number;
+    offset: number;
+    fields: (keyof Account)[];
+}
+
+interface GetFollowerAccountsOptions {
     limit: number;
     offset: number;
     fields: (keyof Account)[];
@@ -160,9 +166,9 @@ export class AccountService {
      * @param account Account
      * @param options Options for the query
      */
-    async getFollowedAccounts(
+    async getFollowingAccounts(
         account: Account,
-        options: GetFollowedAccountsOptions, // @TODO: Make this optional
+        options: GetFollowingAccountsOptions, // @TODO: Make this optional
     ): Promise<Account[]> {
         return await this.db(TABLE_FOLLOWS)
             .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
@@ -183,20 +189,61 @@ export class AccountService {
             .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
     }
 
-    async getFollowingCount(account: Account): Promise<number> {
-        const rows = await this.db(TABLE_FOLLOWS)
-            .count('id', { as: 'following' })
-            .where(`${TABLE_FOLLOWS}.follower_id`, account.id);
+    /**
+     * Get the number of accounts that the provided account is following
+     *
+     * @param account Account
+     */
+    async getFollowingAccountsCount(account: Account): Promise<number> {
+        const result = await this.db(TABLE_FOLLOWS)
+            .where('follower_id', account.id)
+            .count('*', { as: 'count' });
 
-        return rows[0].following as number;
+        return Number(result[0].count);
     }
 
-    async getFollowerCount(account: Account): Promise<number> {
-        const rows = await this.db(TABLE_FOLLOWS)
-            .count('id', { as: 'followers' })
-            .where(`${TABLE_FOLLOWS}.following_id`, account.id);
+    /**
+     * Get the accounts that are following the provided account
+     *
+     * The results are ordered in reverse chronological order
+     *
+     * @param account Account
+     * @param options Options for the query
+     */
+    async getFollowerAccounts(
+        account: Account,
+        options: GetFollowerAccountsOptions, // @TODO: Make this optional
+    ): Promise<Account[]> {
+        return await this.db(TABLE_FOLLOWS)
+            .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
+            .where(`${TABLE_FOLLOWS}.following_id`, account.id)
+            .innerJoin(
+                TABLE_ACCOUNTS,
+                `${TABLE_ACCOUNTS}.id`,
+                `${TABLE_FOLLOWS}.follower_id`,
+            )
+            .limit(options.limit)
+            .offset(options.offset)
+            // order by the date created at in descending order and then by the
+            // account id in descending order to ensure the most recent follows
+            // are returned first (i.e in case multiple follows were created at
+            // the same time)
+            // @TODO: Make this configurable via the options?
+            .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
+            .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
+    }
 
-        return rows[0].followers as number;
+    /**
+     * Get the number of accounts that are following the provided account
+     *
+     * @param account Account
+     */
+    async getFollowerAccountsCount(account: Account): Promise<number> {
+        const result = await this.db(TABLE_FOLLOWS)
+            .where('following_id', account.id)
+            .count('*', { as: 'count' });
+
+        return Number(result[0].count);
     }
 
     async getByInternalId(id: number): Promise<Account | null> {

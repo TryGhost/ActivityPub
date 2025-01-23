@@ -145,8 +145,10 @@ export const handleGetAccount = (
                 customFields: {},
                 postCount: await getPostCount(db),
                 likedCount: await getLikedCount(db),
-                followingCount: await accountService.getFollowingCount(account),
-                followerCount: await accountService.getFollowerCount(account),
+                followingCount:
+                    await accountService.getFollowingAccountsCount(account),
+                followerCount:
+                    await accountService.getFollowerAccountsCount(account),
                 /**
                  * At the moment we only expect to be returning the account for
                  * the current user, so we can hardcode these values to false as
