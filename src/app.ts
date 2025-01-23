@@ -258,10 +258,10 @@ fedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher(
         '/.ghost/activitypub/users/{handle}',
-        spanWrapper(actorDispatcher),
+        spanWrapper(actorDispatcher(siteService)),
     )
     .setKeyPairsDispatcher(
-        ensureCorrectContext(spanWrapper(keypairDispatcher)),
+        ensureCorrectContext(spanWrapper(keypairDispatcher(siteService))),
     );
 
 const inboxListener = fedify.setInboxListeners(
