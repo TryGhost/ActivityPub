@@ -84,9 +84,9 @@ import { getTraceContext } from './helpers/context-header';
 import { getSiteSettings } from './helpers/ghost';
 import { getRequestData } from './helpers/request-data';
 import {
+    createGetAccountFollowsHandler,
+    createGetAccountHandler,
     handleCreateNote,
-    handleGetAccount,
-    handleGetAccountFollows,
     handleGetActivities,
     handleGetActivityThread,
     handleGetFollowers,
@@ -809,12 +809,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetAccount(siteService, accountService)),
+    spanWrapper(createGetAccountHandler(siteService, accountService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetAccountFollows),
+    spanWrapper(createGetAccountFollowsHandler(siteService, accountService)),
 );
 /** Federation wire up */
 
