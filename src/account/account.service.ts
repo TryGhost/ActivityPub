@@ -13,7 +13,7 @@ import {
 } from '../constants';
 import type { Account, ExternalAccountData, Site } from './types';
 
-interface GetFollowedAccountsOptions {
+interface GetFollowingAccountsOptions {
     limit: number;
     offset: number;
     fields: (keyof Account)[];
@@ -166,9 +166,9 @@ export class AccountService {
      * @param account Account
      * @param options Options for the query
      */
-    async getFollowedAccounts(
+    async getFollowingAccounts(
         account: Account,
-        options: GetFollowedAccountsOptions, // @TODO: Make this optional
+        options: GetFollowingAccountsOptions, // @TODO: Make this optional
     ): Promise<Account[]> {
         return await this.db(TABLE_FOLLOWS)
             .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))

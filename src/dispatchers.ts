@@ -809,7 +809,7 @@ export function createFollowingDispatcher(
             );
         }
 
-        const results = await accountService.getFollowedAccounts(
+        const results = await accountService.getFollowingAccounts(
             siteDefaultAccount,
             {
                 fields: ['ap_id'],
