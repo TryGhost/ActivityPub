@@ -730,7 +730,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/webhooks/site/changed',
     validateWebhook(),
-    spanWrapper(handleWebhookSiteChanged),
+    spanWrapper(handleWebhookSiteChanged(siteService)),
 );
 
 function requireRole(role: GhostRole) {

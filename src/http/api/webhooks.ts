@@ -1,12 +1,11 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 
-import { type AppContext, fedify } from '../../app';
+import type { AppContext } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { updateSiteActor } from '../../helpers/activitypub/actor';
-import { getSiteSettings } from '../../helpers/ghost';
 import { publishPost } from '../../publishing/helpers';
 import { PostVisibility } from '../../publishing/types';
+import type { SiteService } from '../../site/site.service';
 
 const PostSchema = z.object({
     uuid: z.string().uuid(),
@@ -78,29 +77,20 @@ export async function handleWebhookPostPublished(ctx: AppContext) {
  *
  * @param ctx App context instance
  */
-export async function handleWebhookSiteChanged(ctx: AppContext) {
-    try {
-        const db = ctx.get('db');
-        const globaldb = ctx.get('globaldb');
-        const logger = ctx.get('logger');
+export const handleWebhookSiteChanged = (siteService: SiteService) =>
+    async function handleWebhookSiteChanged(ctx: AppContext) {
+        try {
+            await siteService.refreshSiteDataForHost(ctx.get('site').host);
+        } catch (err) {
+            ctx.get('logger').error('Site changed webhook failed: {error}', {
+                error: err,
+            });
+        }
 
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db,
-            globaldb,
-            logger,
+        return new Response(JSON.stringify({}), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
         });
-
-        await updateSiteActor(apCtx, getSiteSettings);
-    } catch (err) {
-        ctx.get('logger').error('Site changed webhook failed: {error}', {
-            error: err,
-        });
-    }
-
-    return new Response(JSON.stringify({}), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        status: 200,
-    });
-}
+    };
