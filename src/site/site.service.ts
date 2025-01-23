@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { Knex } from 'knex';
 import type { AccountService } from '../account/account.service';
+import type { Account } from '../account/types';
 
 export type Site = {
     id: number;
@@ -75,5 +76,29 @@ export class SiteService {
         );
 
         return newSite;
+    }
+
+    public async getDefaultAccountForSite(site: Site): Promise<Account> {
+        const rows = await this.client('users')
+            .select('account_id')
+            .where({ site_id: site.id });
+
+        if (!rows || !rows.length) {
+            throw new Error(`User not found for site ${site.id}`);
+        }
+
+        if (rows.length !== 1) {
+            throw new Error(`Multiple users found for site ${site.id}`);
+        }
+
+        const account = await this.accountService.getByInternalId(
+            rows[0].account_id,
+        );
+
+        if (account === null) {
+            throw new Error(`Default Account not found for site ${site.id}`);
+        }
+
+        return account;
     }
 }

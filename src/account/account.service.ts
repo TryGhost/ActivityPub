@@ -178,4 +178,38 @@ export class AccountService {
             .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
             .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
     }
+
+    async getByInternalId(id: number): Promise<Account | null> {
+        const rows = await this.db(TABLE_ACCOUNTS).select('*').where({ id });
+
+        if (!rows || !rows.length) {
+            return null;
+        }
+
+        if (rows.length !== 1) {
+            throw new Error(`Multiple accounts found for id ${id}`);
+        }
+
+        const row = rows[0];
+
+        return {
+            id: row.id,
+            username: row.username,
+            name: row.name,
+            bio: row.bio,
+            avatar_url: row.avatar_url,
+            banner_image_url: row.banner_image_url,
+            url: row.url,
+            custom_fields: JSON.parse(row.custom_fields),
+            ap_id: row.ap_id,
+            ap_inbox_url: row.ap_inbox_url,
+            ap_shared_inbox_url: row.ap_shared_inbox_url,
+            ap_outbox_url: row.ap_outbox_url,
+            ap_following_url: row.ap_following_url,
+            ap_followers_url: row.ap_followers_url,
+            ap_liked_url: row.ap_liked_url,
+            ap_public_key: row.ap_public_key,
+            ap_private_key: row.ap_private_key,
+        };
+    }
 }
