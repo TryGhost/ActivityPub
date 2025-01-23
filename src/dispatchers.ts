@@ -113,7 +113,7 @@ export function createFollowHandler(accountService: AccountService) {
 
             if (!followerAccount) {
                 ctx.data.logger.info(
-                    `Sender account "${sender.id.href}" not found, creating`,
+                    `Follower account "${sender.id.href}" not found, creating`,
                 );
 
                 followerAccount = await accountService.createExternalAccount(
@@ -142,28 +142,69 @@ export function createFollowHandler(accountService: AccountService) {
     };
 }
 
-export async function handleAccept(ctx: Context<ContextData>, accept: Accept) {
-    ctx.data.logger.info('Handling Accept');
-    const parsed = ctx.parseUri(accept.objectId);
-    ctx.data.logger.info('Parsed accept object', { parsed });
-    if (!accept.id) {
-        ctx.data.logger.info('Accept missing id - exit');
-        return;
-    }
+export function createAcceptHandler(accountService: AccountService) {
+    return async function handleAccept(
+        ctx: Context<ContextData>,
+        accept: Accept,
+    ) {
+        ctx.data.logger.info('Handling Accept');
+        const parsed = ctx.parseUri(accept.objectId);
+        ctx.data.logger.info('Parsed accept object', { parsed });
+        if (!accept.id) {
+            ctx.data.logger.info('Accept missing id - exit');
+            return;
+        }
 
-    const sender = await accept.getActor(ctx);
-    ctx.data.logger.info('Accept sender', { sender });
-    if (sender === null || sender.id === null) {
-        ctx.data.logger.info('Sender missing, exit early');
-        return;
-    }
+        const sender = await accept.getActor(ctx);
+        ctx.data.logger.info('Accept sender', { sender });
+        if (sender === null || sender.id === null) {
+            ctx.data.logger.info('Sender missing, exit early');
+            return;
+        }
 
-    const senderJson = await sender.toJsonLd();
-    const acceptJson = await accept.toJsonLd();
-    ctx.data.globaldb.set([accept.id.href], acceptJson);
-    ctx.data.globaldb.set([sender.id.href], senderJson);
-    await addToList(ctx.data.db, ['inbox'], accept.id.href);
-    await addToList(ctx.data.db, ['following'], sender.id.href);
+        const object = await accept.getObject();
+        if (object instanceof Follow === false) {
+            ctx.data.logger.info('Accept object is not a Follow, exit early');
+            return;
+        }
+
+        const senderJson = await sender.toJsonLd();
+        const acceptJson = await accept.toJsonLd();
+        ctx.data.globaldb.set([accept.id.href], acceptJson);
+        ctx.data.globaldb.set([sender.id.href], senderJson);
+        await addToList(ctx.data.db, ['inbox'], accept.id.href);
+        await addToList(ctx.data.db, ['following'], sender.id.href);
+
+        // Record the account of the sender as well as the follow - This
+        // duplicates the above functionality but is needed to record the
+        // relevant data in the new database schema. The above functionality
+        // will eventually be removed in favour of this. This logic is only
+        // executed if the account for the followee has already been created
+        const recipient = await (object as Activity).getActor();
+        const followerAccount = await accountService.getAccountByApId(
+            recipient?.id?.href ?? '',
+        );
+        if (followerAccount) {
+            let followeeAccount = await accountService.getAccountByApId(
+                sender.id.href,
+            );
+
+            if (!followeeAccount) {
+                ctx.data.logger.info(
+                    `Accepting account "${sender.id.href}" not found, creating`,
+                );
+
+                followeeAccount = await accountService.createExternalAccount(
+                    await mapActorToExternalAccountData(sender),
+                );
+            }
+
+            await accountService.recordAccountFollow(
+                followeeAccount,
+                followerAccount,
+            );
+        }
+    };
 }
 
 export async function handleCreate(ctx: Context<ContextData>, create: Create) {

@@ -42,6 +42,7 @@ import {
     acceptDispatcher,
     actorDispatcher,
     articleDispatcher,
+    createAcceptHandler,
     createDispatcher,
     createFollowHandler,
     followDispatcher,
@@ -51,7 +52,6 @@ import {
     followingCounter,
     followingDispatcher,
     followingFirstCursor,
-    handleAccept,
     handleAnnounce,
     handleCreate,
     handleLike,
@@ -261,7 +261,10 @@ inboxListener
         ensureCorrectContext(spanWrapper(createFollowHandler(accountService))),
     )
     .onError(inboxErrorHandler)
-    .on(Accept, ensureCorrectContext(spanWrapper(handleAccept)))
+    .on(
+        Accept,
+        ensureCorrectContext(spanWrapper(createAcceptHandler(accountService))),
+    )
     .onError(inboxErrorHandler)
     .on(Create, ensureCorrectContext(spanWrapper(handleCreate)))
     .onError(inboxErrorHandler)
