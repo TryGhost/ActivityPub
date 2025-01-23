@@ -25,6 +25,12 @@ const __dirname = dirname(__filename);
 const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub';
 const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub';
 
+const TABLE_ACCOUNTS = 'accounts';
+const TABLE_FOLLOWS = 'follows';
+const TABLE_KEY_VALUE = 'key_value';
+const TABLE_SITES = 'sites';
+const TABLE_USERS = 'users';
+
 async function createActivity(type, object, actor) {
     let activity;
 
@@ -138,6 +144,7 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
                 'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
             following:
                 'http://fake-ghost-activitypub/.ghost/activitypub/following/index',
+            liked: 'http://fake-ghost-activitypub/.ghost/activitypub/liked/index',
 
             'https://w3id.org/security#publicKey': {
                 id: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index#main-key',
@@ -170,6 +177,7 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
         outbox: `http://fake-external-activitypub/inbox/${name}`,
         followers: `http://fake-external-activitypub/followers/${name}`,
         following: `http://fake-external-activitypub/following/${name}`,
+        liked: `http://fake-external-activitypub/liked/${name}`,
 
         'https://w3id.org/security#publicKey': {
             id: 'http://fake-external-activitypub/user#main-key',
@@ -396,11 +404,11 @@ BeforeAll(async () => {
     });
 
     await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client('key_value').truncate();
-    await client('follows').truncate();
-    await client('accounts').truncate();
-    await client('users').truncate();
-    await client('sites').truncate();
+    await client(TABLE_KEY_VALUE).truncate();
+    await client(TABLE_FOLLOWS).truncate();
+    await client(TABLE_ACCOUNTS).truncate();
+    await client(TABLE_USERS).truncate();
+    await client(TABLE_SITES).truncate();
     await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
     webhookSecret = fs.readFileSync(
@@ -466,20 +474,22 @@ AfterAll(async () => {
     await client.destroy();
 });
 
-Before(async () => {
+Before(async function () {
     await externalActivityPub.clearAllRequests();
     await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client('key_value').truncate();
-    await client('follows').truncate();
-    await client('users').truncate();
-    await client('accounts').truncate();
-    await client('sites').truncate();
+    await client(TABLE_KEY_VALUE).truncate();
+    await client(TABLE_FOLLOWS).truncate();
+    await client(TABLE_USERS).truncate();
+    await client(TABLE_ACCOUNTS).truncate();
+    await client(TABLE_SITES).truncate();
     await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
-    await client('sites').insert({
-        host: 'fake-ghost-activitypub',
+    const [siteId] = await client(TABLE_SITES).insert({
+        host: new URL(URL_GHOST_ACTIVITY_PUB).host,
         webhook_secret: webhookSecret,
     });
+
+    this.SITE_ID = siteId;
 });
 
 Before(async function () {
@@ -490,8 +500,34 @@ Before(async function () {
         this.objects = {};
     }
     if (!this.actors) {
+        const actor = await createActor('Test', { remote: false });
+
+        const [accountId] = await client(TABLE_ACCOUNTS).insert({
+            username: actor.preferredUsername,
+            name: actor.name,
+            bio: actor.summary,
+            avatar_url: null,
+            banner_image_url: null,
+            url: actor.url,
+            custom_fields: null,
+            ap_id: actor.id,
+            ap_inbox_url: actor.inbox,
+            ap_shared_inbox_url: null,
+            ap_outbox_url: actor.outbox,
+            ap_following_url: actor.following,
+            ap_followers_url: actor.followers,
+            ap_liked_url: actor.liked,
+            ap_public_key: actor['https://w3id.org/security#publicKey'],
+            ap_private_key: null,
+        });
+
+        await client(TABLE_USERS).insert({
+            account_id: accountId,
+            site_id: this.SITE_ID,
+        });
+
         this.actors = {
-            Us: await createActor('Test', { remote: false }),
+            Us: actor,
         };
     }
 });
@@ -521,8 +557,10 @@ async function fetchActivityPub(url, options = {}) {
     return fetch(url, options);
 }
 
-Given('there is no entry in the sites table', async () => {
-    await client('sites').del();
+Given('there is no entry in the sites table', async function () {
+    await client(TABLE_SITES).del();
+
+    this.SITE_ID = null;
 });
 
 When('we request the outbox', async function () {

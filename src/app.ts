@@ -45,6 +45,7 @@ import {
     createAcceptHandler,
     createDispatcher,
     createFollowHandler,
+    // createFollowingDispatcher,
     followDispatcher,
     followersCounter,
     followersDispatcher,
@@ -211,6 +212,7 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export const db = await KnexKvStore.create(client, 'key_value');
 
 const accountService = new AccountService(client);
+const siteService = new SiteService(client, accountService);
 
 /** Fedify */
 
@@ -285,6 +287,7 @@ fedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{handle}',
         spanWrapper(followingDispatcher),
+        // spanWrapper(createFollowingDispatcher(siteService, accountService)),
     )
     .setCounter(followingCounter)
     .setFirstCursor(followingFirstCursor);
@@ -620,7 +623,6 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-const siteService = new SiteService(client, accountService);
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get('/.ghost/activitypub/site', getSiteDataHandler(siteService));
