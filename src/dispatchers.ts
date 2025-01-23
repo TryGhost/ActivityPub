@@ -9,6 +9,7 @@ import {
     Create,
     Follow,
     Group,
+    Image,
     Like,
     Note,
     Person,
@@ -17,6 +18,7 @@ import {
     type RequestContext,
     Undo,
     Update,
+    importJwk,
     isActor,
     verifyObject,
 } from '@fedify/fedify';
@@ -28,35 +30,83 @@ import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowing } from './helpers/activitypub/actor';
-import { getUserData, getUserKeypair } from './helpers/user';
+import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 
-export async function actorDispatcher(
-    ctx: RequestContext<ContextData>,
-    handle: string,
-) {
-    if (handle !== ACTOR_DEFAULT_HANDLE) return null;
+export const actorDispatcher = (siteService: SiteService) =>
+    async function actorDispatcher(
+        ctx: RequestContext<ContextData>,
+        handle: string,
+    ) {
+        if (handle !== ACTOR_DEFAULT_HANDLE) return null;
 
-    const data = await getUserData(ctx, handle);
+        const site = await siteService.getSiteByHost(ctx.host);
+        if (site === null) return null;
 
-    const person = new Person(data);
+        const account = await siteService.getDefaultAccountForSite(site);
 
-    return person;
-}
+        const person = new Person({
+            id: new URL(account.ap_id),
+            name: account.name,
+            summary: account.bio,
+            preferredUsername: account.username,
+            icon: account.avatar_url
+                ? new Image({
+                      url: new URL(account.avatar_url),
+                  })
+                : null,
+            inbox: new URL(account.ap_inbox_url),
+            outbox: new URL(account.ap_outbox_url),
+            following: new URL(account.ap_following_url),
+            followers: new URL(account.ap_followers_url),
+            liked: new URL(account.ap_liked_url),
+            url: new URL(account.url || account.ap_id),
+            publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+                (key) => key.cryptographicKey,
+            ),
+        });
 
-export async function keypairDispatcher(
-    ctx: Context<ContextData>,
-    handle: string,
-) {
-    if (handle !== ACTOR_DEFAULT_HANDLE) return [];
+        return person;
+    };
 
-    const data = await getUserKeypair(ctx, handle);
+export const keypairDispatcher = (siteService: SiteService) =>
+    async function keypairDispatcher(
+        ctx: Context<ContextData>,
+        handle: string,
+    ) {
+        if (handle !== ACTOR_DEFAULT_HANDLE) return [];
+        const site = await siteService.getSiteByHost(ctx.host);
+        if (site === null) return [];
 
-    if (!data) return [];
+        const account = await siteService.getDefaultAccountForSite(site);
 
-    return [data];
-}
+        if (!account.ap_public_key) {
+            return [];
+        }
+
+        if (!account.ap_private_key) {
+            return [];
+        }
+
+        try {
+            return [
+                {
+                    publicKey: await importJwk(
+                        JSON.parse(account.ap_public_key) as JsonWebKey,
+                        'public',
+                    ),
+                    privateKey: await importJwk(
+                        JSON.parse(account.ap_private_key) as JsonWebKey,
+                        'private',
+                    ),
+                },
+            ];
+        } catch (err) {
+            ctx.data.logger.warn(`Could not parse keypair for ${handle}`);
+            return [];
+        }
+    };
 
 export function createFollowHandler(accountService: AccountService) {
     return async function handleFollow(
