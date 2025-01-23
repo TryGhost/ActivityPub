@@ -330,6 +330,84 @@ describe('AccountService', () => {
         );
     });
 
+    describe('getFollowingAccounts', () => {
+        it(
+            'should retrieve the accounts that are following an account',
+            async () => {
+                const account = await service.createInternalAccount(
+                    site,
+                    'account',
+                );
+                const follower1 = await service.createInternalAccount(
+                    site,
+                    'follower1',
+                );
+                const follower2 = await service.createInternalAccount(
+                    site,
+                    'follower2',
+                );
+                const follower3 = await service.createInternalAccount(
+                    site,
+                    'follower3',
+                );
+
+                await service.recordAccountFollow(account, follower1);
+                await service.recordAccountFollow(account, follower2);
+                await service.recordAccountFollow(account, follower3);
+
+                // Get a page of following accounts and assert the requested fields are returned
+                const followingAccounts = await service.getFollowingAccounts(
+                    account,
+                    {
+                        limit: 2,
+                        offset: 0,
+                        fields: ['id', 'username', 'ap_inbox_url'],
+                    },
+                );
+
+                expect(followingAccounts).toHaveLength(2);
+                expect(followingAccounts[0]).toMatchObject({
+                    id: follower3.id,
+                    username: follower3.username,
+                });
+                expect(followingAccounts[0].ap_inbox_url).toBeDefined();
+
+                expect(followingAccounts[1]).toMatchObject({
+                    id: follower2.id,
+                    username: follower2.username,
+                });
+                expect(followingAccounts[1].ap_inbox_url).toBeDefined();
+
+                // Get the next page of following accounts and assert the requested fields are returned
+                const nextFollowingAccounts =
+                    await service.getFollowingAccounts(account, {
+                        limit: 2,
+                        offset: 2,
+                        fields: ['id', 'username', 'ap_inbox_url'],
+                    });
+
+                expect(nextFollowingAccounts).toHaveLength(1);
+                expect(nextFollowingAccounts[0]).toMatchObject({
+                    id: follower1.id,
+                    username: follower1.username,
+                });
+                expect(nextFollowingAccounts[0].ap_inbox_url).toBeDefined();
+
+                // Get another page that will return no results and assert the
+                // results are empty
+                const nextFollowingAccountsEmpty =
+                    await service.getFollowingAccounts(account, {
+                        limit: 2,
+                        offset: 3,
+                        fields: ['id', 'username', 'ap_inbox_url'],
+                    });
+
+                expect(nextFollowingAccountsEmpty).toHaveLength(0);
+            },
+            1000 * 10, // Increase timeout to 10 seconds as 5 seconds seems to be too short on CI
+        );
+    });
+
     it('should update accounts and emit an account.updated event if they have changed', async () => {
         const account = await service.createInternalAccount(
             site,

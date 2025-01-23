@@ -49,9 +49,10 @@ import {
     createDispatcher,
     createFollowHandler,
     // createFollowingDispatcher,
+    createFollowersDispatcher,
     followDispatcher,
     followersCounter,
-    followersDispatcher,
+    // followersDispatcher,
     followersFirstCursor,
     followingCounter,
     followingDispatcher,
@@ -290,7 +291,8 @@ inboxListener
 fedify
     .setFollowersDispatcher(
         '/.ghost/activitypub/followers/{handle}',
-        spanWrapper(followersDispatcher),
+        // spanWrapper(followersDispatcher),
+        spanWrapper(createFollowersDispatcher(siteService, accountService)),
     )
     .setCounter(followersCounter)
     .setFirstCursor(followersFirstCursor);

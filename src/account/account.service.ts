@@ -19,6 +19,12 @@ interface GetFollowedAccountsOptions {
     fields: (keyof Account)[];
 }
 
+interface GetFollowingAccountsOptions {
+    limit: number;
+    offset: number;
+    fields: (keyof Account)[];
+}
+
 export class AccountService {
     /**
      * @param db Database client
@@ -171,6 +177,37 @@ export class AccountService {
                 TABLE_ACCOUNTS,
                 `${TABLE_ACCOUNTS}.id`,
                 `${TABLE_FOLLOWS}.following_id`,
+            )
+            .limit(options.limit)
+            .offset(options.offset)
+            // order by the date created at in descending order and then by the
+            // account id in descending order to ensure the most recent follows
+            // are returned first (i.e in case multiple follows were created at
+            // the same time)
+            // @TODO: Make this configurable via the options?
+            .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
+            .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
+    }
+
+    /**
+     * Get the accounts that are following the provided account
+     *
+     * The results are ordered in reverse chronological order
+     *
+     * @param account Account
+     * @param options Options for the query
+     */
+    async getFollowingAccounts(
+        account: Account,
+        options: GetFollowingAccountsOptions, // @TODO: Make this optional
+    ): Promise<Account[]> {
+        return await this.db(TABLE_FOLLOWS)
+            .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
+            .where(`${TABLE_FOLLOWS}.following_id`, account.id)
+            .innerJoin(
+                TABLE_ACCOUNTS,
+                `${TABLE_ACCOUNTS}.id`,
+                `${TABLE_FOLLOWS}.follower_id`,
             )
             .limit(options.limit)
             .offset(options.offset)
