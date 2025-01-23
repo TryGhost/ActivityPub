@@ -1,26 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { TABLE_SITES } from '../constants';
+import { TABLE_ACCOUNTS, TABLE_SITES, TABLE_USERS } from '../constants';
 import { client as db } from '../db';
 
+import EventEmitter from 'node:events';
 import { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
-import { type Site, SiteService } from './site.service';
+import { type IGhostService, type Site, SiteService } from './site.service';
 
 describe('SiteService', () => {
     let service: SiteService;
     let accountService: AccountService;
+    let ghostService: IGhostService;
     let site: Site;
 
     beforeEach(async () => {
         // Clean up the database
         await db.raw('SET FOREIGN_KEY_CHECKS = 0');
         await db(TABLE_SITES).truncate();
+        await db(TABLE_USERS).truncate();
+        await db(TABLE_ACCOUNTS).truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
-        accountService = Object.create(AccountService.prototype);
+        const events = new EventEmitter();
+        accountService = new AccountService(db, events);
+        ghostService = {
+            async getSiteSettings(host: string) {
+                return {
+                    site: {
+                        icon: '',
+                        title: 'Default Title',
+                        description: 'Default Description',
+                    },
+                };
+            },
+        };
         // Create the service
-        service = new SiteService(db, accountService);
+        service = new SiteService(db, accountService, ghostService);
     });
 
     it('Can initialise a site multiple times and retrieve it', async () => {
@@ -28,9 +44,10 @@ describe('SiteService', () => {
 
         expect(existingSite).toBeNull();
 
-        const createInternalAccount = vi
-            .spyOn(accountService, 'createInternalAccount')
-            .mockResolvedValue({} as unknown as Account);
+        const createInternalAccount = vi.spyOn(
+            accountService,
+            'createInternalAccount',
+        );
 
         const site = await service.initialiseSiteForHost('hostname.tld');
 
@@ -61,5 +78,23 @@ describe('SiteService', () => {
         const retrievedSite = await service.getSiteByHost('hostname.tld');
 
         expect(retrievedSite).toMatchObject(site);
+    });
+
+    it('Can update the default account for a host', async () => {
+        const updateAccount = vi
+            .spyOn(accountService, 'updateAccount')
+            .mockResolvedValue({} as unknown as Account);
+
+        const site = await service.initialiseSiteForHost('updating.tld');
+        const account = await service.getDefaultAccountForSite(site);
+
+        await service.refreshSiteDataForHost('updating.tld');
+
+        expect(updateAccount.mock.lastCall?.[0]).toMatchObject(account);
+        expect(updateAccount.mock.lastCall?.[1]).toMatchObject({
+            avatar_url: '',
+            name: 'Default Title',
+            bio: 'Default Description',
+        });
     });
 });

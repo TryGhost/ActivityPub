@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { Knex } from 'knex';
 import type { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
+import type { getSiteSettings } from '../helpers/ghost';
 
 export type Site = {
     id: number;
@@ -9,10 +10,15 @@ export type Site = {
     webhook_secret: string;
 };
 
+export interface IGhostService {
+    getSiteSettings: typeof getSiteSettings;
+}
+
 export class SiteService {
     constructor(
         private client: Knex,
         private accountService: AccountService,
+        private ghostService: IGhostService,
     ) {}
 
     private async createSite(host: string): Promise<void> {
@@ -100,5 +106,22 @@ export class SiteService {
         }
 
         return account;
+    }
+
+    public async refreshSiteDataForHost(host: string): Promise<void> {
+        const site = await this.getSiteByHost(host);
+        if (!site) {
+            throw new Error(`Could not find site for ${host}`);
+        }
+
+        const account = await this.getDefaultAccountForSite(site);
+
+        const settings = await this.ghostService.getSiteSettings(site.host);
+
+        await this.accountService.updateAccount(account, {
+            avatar_url: settings.site.icon,
+            name: settings.site.title,
+            bio: settings.site.description,
+        });
     }
 }
