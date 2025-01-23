@@ -328,6 +328,30 @@ describe('AccountService', () => {
         );
     });
 
+    describe('getFollowingAccountsCount', () => {
+        it('should retrieve the number of accounts that an account follows', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                'account',
+            );
+            const following1 = await service.createInternalAccount(
+                site,
+                'following1',
+            );
+            const following2 = await service.createInternalAccount(
+                site,
+                'following2',
+            );
+
+            await service.recordAccountFollow(following1, account);
+            await service.recordAccountFollow(following2, account);
+
+            const count = await service.getFollowingAccountsCount(account);
+
+            expect(count).toBe(2);
+        });
+    });
+
     describe('getFollowerAccounts', () => {
         it(
             'should retrieve the accounts that are following an account',
@@ -405,6 +429,30 @@ describe('AccountService', () => {
             },
             1000 * 10, // Increase timeout to 10 seconds as 5 seconds seems to be too short on CI
         );
+    });
+
+    describe('getFollowerAccountsCount', () => {
+        it('should retrieve the number of accounts that are following an account', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                'account',
+            );
+            const follower1 = await service.createInternalAccount(
+                site,
+                'follower1',
+            );
+            const follower2 = await service.createInternalAccount(
+                site,
+                'follower2',
+            );
+
+            await service.recordAccountFollow(account, follower1);
+            await service.recordAccountFollow(account, follower2);
+
+            const count = await service.getFollowerAccountsCount(account);
+
+            expect(count).toBe(2);
+        });
     });
 
     it('should update accounts and emit an account.updated event if they have changed', async () => {

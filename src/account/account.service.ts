@@ -190,6 +190,19 @@ export class AccountService {
     }
 
     /**
+     * Get the number of accounts that the provided account is following
+     *
+     * @param account Account
+     */
+    async getFollowingAccountsCount(account: Account): Promise<number> {
+        const result = await this.db(TABLE_FOLLOWS)
+            .where('follower_id', account.id)
+            .count('*', { as: 'count' });
+
+        return Number(result[0].count);
+    }
+
+    /**
      * Get the accounts that are following the provided account
      *
      * The results are ordered in reverse chronological order
@@ -218,6 +231,19 @@ export class AccountService {
             // @TODO: Make this configurable via the options?
             .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
             .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
+    }
+
+    /**
+     * Get the number of accounts that are following the provided account
+     *
+     * @param account Account
+     */
+    async getFollowerAccountsCount(account: Account): Promise<number> {
+        const result = await this.db(TABLE_FOLLOWS)
+            .where('following_id', account.id)
+            .count('*', { as: 'count' });
+
+        return Number(result[0].count);
     }
 
     async getByInternalId(id: number): Promise<Account | null> {

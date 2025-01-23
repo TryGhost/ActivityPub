@@ -678,9 +678,11 @@ export function createFollowersDispatcher(
                 offset,
             },
         );
+        const totalFollowers =
+            await accountService.getFollowerAccountsCount(siteDefaultAccount);
 
         nextCursor =
-            results.length > offset + pageSize
+            totalFollowers > offset + pageSize
                 ? (offset + pageSize).toString()
                 : null;
 
@@ -817,9 +819,11 @@ export function createFollowingDispatcher(
                 offset,
             },
         );
+        const totalFollowing =
+            await accountService.getFollowingAccountsCount(siteDefaultAccount);
 
         nextCursor =
-            results.length > offset + pageSize
+            totalFollowing > offset + pageSize
                 ? (offset + pageSize).toString()
                 : null;
 
