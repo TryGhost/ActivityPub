@@ -80,6 +80,7 @@ import {
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
+import { getSiteSettings } from './helpers/ghost';
 import { getRequestData } from './helpers/request-data';
 import {
     handleCreateNote,
@@ -214,7 +215,9 @@ export const db = await KnexKvStore.create(client, 'key_value');
 
 const events = new EventEmitter();
 const accountService = new AccountService(client, events);
-const siteService = new SiteService(client, accountService);
+const siteService = new SiteService(client, accountService, {
+    getSiteSettings: getSiteSettings,
+});
 
 /** Fedify */
 
