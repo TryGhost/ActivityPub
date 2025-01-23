@@ -38,6 +38,7 @@ import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
+import { FedifyContextFactory } from './activitypub/fedify-context.factory';
 import { client } from './db';
 import {
     acceptDispatcher,
@@ -218,6 +219,8 @@ const accountService = new AccountService(client, events);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
+
+const fedifyContextFactory = new FedifyContextFactory();
 
 /** Fedify */
 
@@ -658,6 +661,20 @@ app.use(async (ctx, next) => {
     ctx.set('site', site);
 
     await next();
+});
+
+app.use(async (ctx, next) => {
+    const db = ctx.get('db');
+    const globaldb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
+
+    const fedifyContext = fedify.createContext(ctx.req.raw as Request, {
+        db,
+        globaldb,
+        logger,
+    });
+
+    await fedifyContextFactory.registerContext(fedifyContext, next);
 });
 
 /** Custom API routes */
