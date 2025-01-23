@@ -811,7 +811,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetAccount),
+    spanWrapper(handleGetAccount(siteService, accountService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',

@@ -330,6 +330,78 @@ describe('AccountService', () => {
         );
     });
 
+    describe('getFollowingCount', () => {
+        it(
+            'should retrieve the following count for an account',
+            async () => {
+                const account = await service.createInternalAccount(
+                    site,
+                    'account',
+                );
+                const following1 = await service.createInternalAccount(
+                    site,
+                    'following1',
+                );
+                const following2 = await service.createInternalAccount(
+                    site,
+                    'following2',
+                );
+                const following3 = await service.createInternalAccount(
+                    site,
+                    'following3',
+                );
+
+                await service.recordAccountFollow(following1, account);
+                await service.recordAccountFollow(following2, account);
+                await service.recordAccountFollow(following3, account);
+
+                const rows = await db('follows').select('*');
+
+                // Get a page of followed accounts and assert the requested fields are returned
+                const followingCount = await service.getFollowingCount(account);
+
+                expect(followingCount).toBe(3);
+            },
+            1000 * 10, // Increase timeout to 10 seconds as 5 seconds seems to be too short on CI
+        );
+    });
+
+    describe('getFollowerCount', () => {
+        it(
+            'should retrieve the follower count for an account',
+            async () => {
+                const account = await service.createInternalAccount(
+                    site,
+                    'account',
+                );
+                const follower1 = await service.createInternalAccount(
+                    site,
+                    'follower1',
+                );
+                const follower2 = await service.createInternalAccount(
+                    site,
+                    'follower2',
+                );
+                const follower3 = await service.createInternalAccount(
+                    site,
+                    'follower3',
+                );
+
+                await service.recordAccountFollow(account, follower1);
+                await service.recordAccountFollow(account, follower2);
+                await service.recordAccountFollow(account, follower3);
+
+                const rows = await db('follows').select('*');
+
+                // Get a page of followed accounts and assert the requested fields are returned
+                const followerCount = await service.getFollowerCount(account);
+
+                expect(followerCount).toBe(3);
+            },
+            1000 * 10, // Increase timeout to 10 seconds as 5 seconds seems to be too short on CI
+        );
+    });
+
     it('should update accounts and emit an account.updated event if they have changed', async () => {
         const account = await service.createInternalAccount(
             site,

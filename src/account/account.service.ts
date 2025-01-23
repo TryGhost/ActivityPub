@@ -183,6 +183,22 @@ export class AccountService {
             .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
     }
 
+    async getFollowingCount(account: Account): Promise<number> {
+        const rows = await this.db(TABLE_FOLLOWS)
+            .count('id', { as: 'following' })
+            .where(`${TABLE_FOLLOWS}.follower_id`, account.id);
+
+        return rows[0].following as number;
+    }
+
+    async getFollowerCount(account: Account): Promise<number> {
+        const rows = await this.db(TABLE_FOLLOWS)
+            .count('id', { as: 'followers' })
+            .where(`${TABLE_FOLLOWS}.following_id`, account.id);
+
+        return rows[0].followers as number;
+    }
+
     async getByInternalId(id: number): Promise<Account | null> {
         const rows = await this.db(TABLE_ACCOUNTS).select('*').where({ id });
 
