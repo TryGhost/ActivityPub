@@ -570,8 +570,13 @@ Given('we follow {string}', async function (name) {
         },
     );
     if (this.response.ok) {
-        const follow = await this.response.clone().json();
-        this.objects[`Follow(${name})`] = follow;
+        const actor = await this.response.clone().json();
+
+        this.activities[`Follow(${name})`] = await createActivity(
+            'Follow',
+            actor,
+            actor,
+        );
     }
 });
 
