@@ -12,11 +12,13 @@ import {
 } from '../constants';
 import { client as db } from '../db';
 
+import EventEmitter from 'node:events';
 import { AccountService } from './account.service';
-import type { ExternalAccountData, Site } from './types';
+import type { Account, ExternalAccountData, Site } from './types';
 
 describe('AccountService', () => {
     let service: AccountService;
+    let events: EventEmitter;
     let site: Site;
 
     beforeEach(async () => {
@@ -40,8 +42,10 @@ describe('AccountService', () => {
             ...siteData,
         };
 
+        events = new EventEmitter();
+
         // Create the service
-        service = new AccountService(db);
+        service = new AccountService(db, events);
     });
 
     describe('createInternalAccount', () => {
@@ -324,5 +328,29 @@ describe('AccountService', () => {
             },
             1000 * 10, // Increase timeout to 10 seconds as 5 seconds seems to be too short on CI
         );
+    });
+
+    it('should update accounts and emit an account.updated event if they have changed', async () => {
+        const account = await service.createInternalAccount(
+            site,
+            'testing-update',
+        );
+
+        let accountFromEvent: Account | undefined;
+
+        events.once('account.updated', (account) => {
+            accountFromEvent = account;
+        });
+
+        await service.updateAccount(account, {
+            name: 'A brand new name!',
+        });
+
+        expect(accountFromEvent).toBeDefined();
+
+        const newAccount = await service.getByInternalId(account.id);
+
+        expect(newAccount).toBeDefined();
+        expect(newAccount!.name).toBe('A brand new name!');
     });
 });

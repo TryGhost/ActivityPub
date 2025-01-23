@@ -1,6 +1,7 @@
 import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
+import type EventEmitter from 'node:events';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
@@ -22,7 +23,10 @@ export class AccountService {
     /**
      * @param db Database client
      */
-    constructor(private readonly db: Knex) {}
+    constructor(
+        private readonly db: Knex,
+        private readonly events: EventEmitter,
+    ) {}
 
     /**
      * Create an internal account
@@ -211,5 +215,30 @@ export class AccountService {
             ap_public_key: row.ap_public_key,
             ap_private_key: row.ap_private_key,
         };
+    }
+
+    async updateAccount(
+        account: Account,
+        data: Omit<Partial<Account>, 'id'>,
+    ): Promise<Account> {
+        await this.db(TABLE_ACCOUNTS).update(data).where({ id: account.id });
+
+        const newAccount = Object.assign({}, account, data);
+
+        const internalAccount = account.ap_private_key !== null;
+
+        if (!internalAccount) {
+            return newAccount;
+        }
+
+        const avatarChanged = account.avatar_url !== data.avatar_url;
+        const nameChanged = account.name !== data.name;
+        const bioChanged = account.bio !== data.bio;
+
+        if (avatarChanged || nameChanged || bioChanged) {
+            this.events.emit('account.updated', newAccount);
+        }
+
+        return newAccount;
     }
 }

@@ -2,6 +2,7 @@ import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
+import EventEmitter from 'node:events';
 import {
     Accept,
     Announce,
@@ -211,7 +212,8 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
 
-const accountService = new AccountService(client);
+const events = new EventEmitter();
+const accountService = new AccountService(client, events);
 const siteService = new SiteService(client, accountService);
 
 /** Fedify */
