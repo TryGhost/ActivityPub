@@ -39,6 +39,7 @@ import jose from 'node-jose';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
+import { FediverseBridge } from './activitypub/fediverse-bridge';
 import { client } from './db';
 import {
     acceptDispatcher,
@@ -221,6 +222,9 @@ const siteService = new SiteService(client, accountService, {
 });
 
 const fedifyContextFactory = new FedifyContextFactory();
+
+const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
+fediverseBridge.init();
 
 /** Fedify */
 
