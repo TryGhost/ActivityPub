@@ -2,37 +2,17 @@ import type { KvStore } from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
 import type { AppContext } from '../../app';
-import { fedify } from '../../app';
 import { sanitizeHtml } from '../../helpers/html';
-import { lookupActor } from '../../lookup-helpers';
 import type { SiteService } from '../../site/site.service';
 import type { Account as AccountDTO } from './types';
 
 /**
- * Maximum number of follows to return
+ * Maximum number of follow accounts to return
  */
 const FOLLOWS_LIMIT = 20;
 
 /**
- * Account data stored in the database - This should correspond to the shape
- * of the data when retrieved from the Fediverse
- */
-interface DbAccountData {
-    id: string;
-    name: string;
-    summary: string;
-    preferredUsername: string;
-    icon: string;
-    inbox: string;
-    outbox: string;
-    following: string;
-    followers: string;
-    liked: string;
-    url: string;
-}
-
-/**
- * Follow account shape - Used when returning a list of follows
+ * Follow account shape - Used when returning a list of follow accounts
  */
 type FollowAccount = Pick<AccountDTO, 'id' | 'name' | 'handle' | 'avatarUrl'>;
 
@@ -69,41 +49,21 @@ async function getLikedCount(db: KvStore) {
 }
 
 /**
- * Retreive the count of accounts this account follows from the database
+ * Create a handler to handle a request for an account
  *
- * @param db Database instance
+ * @param siteService Site service instance
+ * @param accountService Account service instance
  */
-async function getFollowingCount(db: KvStore) {
-    const following = [
-        ...new Set((await db.get<string[]>(['following'])) || []),
-    ];
-
-    return following?.length || 0;
-}
-
-/**
- * Retreive the count of accounts following this account from the database
- *
- * @param db Database instance
- */
-async function getFollowerCount(db: KvStore) {
-    const followers = [
-        ...new Set((await db.get<string[]>(['followers'])) || []),
-    ];
-
-    return followers?.length || 0;
-}
-
-/**
- * Handle a request for an account
- *
- * @param ctx App context
- */
-export const handleGetAccount = (
+export function createGetAccountHandler(
     siteService: SiteService,
     accountService: AccountService,
-) =>
-    async function handleGetAccount(ctx: AppContext) {
+) {
+    /**
+     * Handle a request for an account
+     *
+     * @param ctx App context
+     */
+    return async function handleGetAccount(ctx: AppContext) {
         const logger = ctx.get('logger');
 
         // Validate input
@@ -171,95 +131,110 @@ export const handleGetAccount = (
             status: 200,
         });
     };
+}
 
 /**
- * Handle a request for a list of follows
+ * Create a handler to handle a request for a list of account follows
  *
- * @param ctx App context
+ * @param siteService Site service instance
+ * @param accountService Account service instance
  */
-export async function handleGetAccountFollows(ctx: AppContext) {
-    const logger = ctx.get('logger');
+export function createGetAccountFollowsHandler(
+    siteService: SiteService,
+    accountService: AccountService,
+) {
+    /**
+     * Handle a request for a list of account follows
+     *
+     * @param ctx App context
+     */
+    return async function handleGetAccountFollows(ctx: AppContext) {
+        const logger = ctx.get('logger');
+        const siteHost = ctx.get('site').host;
 
-    // Validate input
-    const handle = ctx.req.param('handle') || '';
+        // Validate input
+        const handle = ctx.req.param('handle') || '';
 
-    if (handle === '') {
-        return new Response(null, { status: 400 });
-    }
-
-    const type = ctx.req.param('type');
-
-    if (!['following', 'followers'].includes(type)) {
-        return new Response(null, { status: 400 });
-    }
-
-    // Get follows and paginate
-    const queryNext = ctx.req.query('next') || '0';
-    const offset = Number.parseInt(queryNext);
-
-    const db = ctx.get('db');
-    const follows = [...new Set((await db.get<string[]>([type])) || [])];
-
-    const next =
-        follows.length > offset + FOLLOWS_LIMIT
-            ? (offset + FOLLOWS_LIMIT).toString()
-            : null;
-
-    const slicedFollows = follows.slice(offset, offset + FOLLOWS_LIMIT);
-
-    // Get required data for each follow account
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db,
-        globaldb: ctx.get('globaldb'),
-        logger: ctx.get('logger'),
-    });
-
-    const accounts: FollowAccount[] = [];
-
-    for (const followId of slicedFollows) {
-        try {
-            const accountData = await lookupActor(apCtx, followId);
-
-            if (accountData) {
-                const id = accountData.id;
-
-                if (!id) {
-                    continue;
-                }
-
-                accounts.push({
-                    /**
-                     * At the moment we don't have an internal ID for accounts
-                     * so we use Fediverse ID
-                     */
-                    id: id.href,
-                    name: accountData.name?.toString() || 'unknown',
-                    handle: getHandle(
-                        id.host,
-                        accountData.preferredUsername?.toString(),
-                    ),
-                    avatarUrl:
-                        (await accountData.getIcon())?.url?.href?.toString() ||
-                        '',
-                });
-            }
-        } catch (error) {
-            logger.error('Error getting account: {error}', { error });
+        if (handle === '') {
+            return new Response(null, { status: 400 });
         }
-    }
 
-    // Return response
-    return new Response(
-        JSON.stringify({
-            accounts,
-            total: follows.length,
-            next,
-        }),
-        {
-            headers: {
-                'Content-Type': 'application/json',
+        const type = ctx.req.param('type');
+
+        if (!['following', 'followers'].includes(type)) {
+            return new Response(null, { status: 400 });
+        }
+
+        // Retrieve data
+        const getAccounts =
+            type === 'following'
+                ? accountService.getFollowingAccounts.bind(accountService)
+                : accountService.getFollowerAccounts.bind(accountService);
+        const getAccountsCount =
+            type === 'following'
+                ? accountService.getFollowingAccountsCount.bind(accountService)
+                : accountService.getFollowerAccountsCount.bind(accountService);
+
+        const site = await siteService.getSiteByHost(siteHost);
+
+        if (!site) {
+            logger.error('No site found for host: {host}', {
+                host: siteHost,
+            });
+
+            return new Response(null, { status: 404 });
+        }
+
+        const account = await accountService.getDefaultAccountForSite(site); // @TODO: Get account by handle
+
+        if (!account) {
+            logger.error('No default account found for site: {siteHost}', {
+                siteHost,
+            });
+
+            return new Response(null, { status: 404 });
+        }
+
+        // Get follows accounts and paginate
+        const queryNext = ctx.req.query('next') || '0';
+        const offset = Number.parseInt(queryNext);
+
+        const results = await getAccounts(account, {
+            limit: FOLLOWS_LIMIT,
+            offset,
+            fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
+        });
+        const total = await getAccountsCount(account);
+
+        const next =
+            total > offset + FOLLOWS_LIMIT
+                ? (offset + FOLLOWS_LIMIT).toString()
+                : null;
+
+        const accounts: FollowAccount[] = [];
+
+        for (const result of results) {
+            accounts.push({
+                id: String(result.id),
+                name: result.name || '',
+                handle: getHandle(new URL(result.ap_id).host, result.username),
+                avatarUrl: result.avatar_url || '',
+            });
+        }
+
+        // Return response
+        return new Response(
+            JSON.stringify({
+                accounts,
+                total,
+                next,
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
             },
-            status: 200,
-        },
-    );
+        );
+    };
 }
