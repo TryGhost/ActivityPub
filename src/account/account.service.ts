@@ -19,7 +19,7 @@ interface GetFollowedAccountsOptions {
     fields: (keyof Account)[];
 }
 
-interface GetFollowingAccountsOptions {
+interface GetFollowerAccountsOptions {
     limit: number;
     offset: number;
     fields: (keyof Account)[];
@@ -197,9 +197,9 @@ export class AccountService {
      * @param account Account
      * @param options Options for the query
      */
-    async getFollowingAccounts(
+    async getFollowerAccounts(
         account: Account,
-        options: GetFollowingAccountsOptions, // @TODO: Make this optional
+        options: GetFollowerAccountsOptions, // @TODO: Make this optional
     ): Promise<Account[]> {
         return await this.db(TABLE_FOLLOWS)
             .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))

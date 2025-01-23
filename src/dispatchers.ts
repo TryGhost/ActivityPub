@@ -670,7 +670,7 @@ export function createFollowersDispatcher(
             );
         }
 
-        const results = await accountService.getFollowingAccounts(
+        const results = await accountService.getFollowerAccounts(
             siteDefaultAccount,
             {
                 fields: ['ap_id', 'ap_inbox_url', 'ap_shared_inbox_url'],
@@ -684,7 +684,7 @@ export function createFollowersDispatcher(
                 ? (offset + pageSize).toString()
                 : null;
 
-        ctx.data.logger.info('Following results', { results });
+        ctx.data.logger.info('Followers results', { results });
 
         return {
             items: results.map((result) => ({
