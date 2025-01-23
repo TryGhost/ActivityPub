@@ -1,12 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { TABLE_ACCOUNTS, TABLE_SITES, TABLE_USERS } from '../constants';
-import { client as db } from '../db';
-
 import EventEmitter from 'node:events';
+
 import { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
+import { TABLE_ACCOUNTS, TABLE_SITES, TABLE_USERS } from '../constants';
+import { client as db } from '../db';
 import { type IGhostService, type Site, SiteService } from './site.service';
+
+vi.mock('@fedify/fedify', async () => {
+    // generateCryptoKeyPair is a slow operation so we generate a key pair
+    // upfront and re-use it for all tests
+    const original = await vi.importActual('@fedify/fedify');
+
+    // @ts-expect-error - generateCryptoKeyPair is not typed
+    const keyPair = await original.generateCryptoKeyPair();
+
+    return {
+        ...original,
+        generateCryptoKeyPair: vi.fn().mockReturnValue(keyPair),
+    };
+});
 
 describe('SiteService', () => {
     let service: SiteService;
