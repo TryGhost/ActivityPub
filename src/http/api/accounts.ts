@@ -185,10 +185,12 @@ export function createGetAccountFollowsHandler(
             return new Response(null, { status: 404 });
         }
 
-        const account = await accountService.getDefaultAccountForSite(site); // @TODO: Get account by handle
+        // @TODO: Get account by provided handle instead of default account?
+        const siteDefaultAccount =
+            await accountService.getDefaultAccountForSite(site);
 
-        if (!account) {
-            logger.error('No default account found for site: {siteHost}', {
+        if (!siteDefaultAccount) {
+            logger.error('Default account not found for site: {siteHost}', {
                 siteHost,
             });
 
@@ -199,12 +201,12 @@ export function createGetAccountFollowsHandler(
         const queryNext = ctx.req.query('next') || '0';
         const offset = Number.parseInt(queryNext);
 
-        const results = await getAccounts(account, {
+        const results = await getAccounts(siteDefaultAccount, {
             limit: FOLLOWS_LIMIT,
             offset,
             fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
         });
-        const total = await getAccountsCount(account);
+        const total = await getAccountsCount(siteDefaultAccount);
 
         const next =
             total > offset + FOLLOWS_LIMIT
