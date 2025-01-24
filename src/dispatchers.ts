@@ -711,13 +711,12 @@ export function createFollowersDispatcher(
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
+        // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
 
         if (!siteDefaultAccount) {
-            throw new Error(
-                `Default account for site not found for site: ${site.id}`,
-            );
+            throw new Error(`Default account not found for site: ${site.id}`);
         }
 
         const results = await accountService.getFollowerAccounts(
@@ -751,15 +750,31 @@ export function createFollowersDispatcher(
     };
 }
 
-export async function followersCounter(
-    ctx: RequestContext<ContextData>,
-    handle: string,
+export function createFollowersCounter(
+    siteService: SiteService,
+    accountService: AccountService,
 ) {
-    const results = [
-        // Remove duplicates
-        ...new Set((await ctx.data.db.get<string[]>(['followers'])) || []),
-    ];
-    return results.length;
+    return async function countFollowers(
+        ctx: RequestContext<ContextData>,
+        handle: string,
+    ) {
+        const site = await siteService.getSiteByHost(ctx.host);
+        if (!site) {
+            throw new Error(`Site not found for host: ${ctx.host}`);
+        }
+
+        // @TODO: Get account by provided handle instead of default account?
+        const siteDefaultAccount =
+            await accountService.getDefaultAccountForSite(site);
+
+        if (!siteDefaultAccount) {
+            throw new Error(`Default account not found for site: ${site.id}`);
+        }
+
+        return await accountService.getFollowerAccountsCount(
+            siteDefaultAccount,
+        );
+    };
 }
 
 export function followersFirstCursor() {
@@ -852,13 +867,12 @@ export function createFollowingDispatcher(
             throw new Error(`Site not found for host: ${host}`);
         }
 
+        // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
 
         if (!siteDefaultAccount) {
-            throw new Error(
-                `Default account for site not found for site: ${site.id}`,
-            );
+            throw new Error(`Default account not found for site: ${site.id}`);
         }
 
         const results = await accountService.getFollowingAccounts(
@@ -886,12 +900,31 @@ export function createFollowingDispatcher(
     };
 }
 
-export async function followingCounter(
-    ctx: RequestContext<ContextData>,
-    handle: string,
+export function createFollowingCounter(
+    siteService: SiteService,
+    accountService: AccountService,
 ) {
-    const results = (await ctx.data.db.get<string[]>(['following'])) || [];
-    return results.length;
+    return async function countFollowing(
+        ctx: RequestContext<ContextData>,
+        handle: string,
+    ) {
+        const site = await siteService.getSiteByHost(ctx.host);
+        if (!site) {
+            throw new Error(`Site not found for host: ${ctx.host}`);
+        }
+
+        // @TODO: Get account by provided handle instead of default account?
+        const siteDefaultAccount =
+            await accountService.getDefaultAccountForSite(site);
+
+        if (!siteDefaultAccount) {
+            throw new Error(`Default account not found for site: ${site.id}`);
+        }
+
+        return await accountService.getFollowingAccountsCount(
+            siteDefaultAccount,
+        );
+    };
 }
 
 export function followingFirstCursor() {
