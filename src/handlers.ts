@@ -13,17 +13,19 @@ import {
 import { Temporal } from '@js-temporal/polyfill';
 import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
+import z from 'zod';
+
+import type { AccountService } from './account/account.service';
+import { mapActorToExternalAccountData } from './account/utils';
 import { type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { buildActivity } from './helpers/activitypub/activity';
+import { updateSiteActor } from './helpers/activitypub/actor';
+import { getSiteSettings } from './helpers/ghost';
 import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
-
-import z from 'zod';
-import { updateSiteActor } from './helpers/activitypub/actor';
-import { getSiteSettings } from './helpers/ghost';
 import type { SiteService } from './site/site.service';
 
 export async function unlikeAction(
@@ -302,61 +304,90 @@ export async function replyAction(
     });
 }
 
-export async function followAction(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const handle = ctx.req.param('handle');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger: ctx.get('logger'),
-    });
-    const actorToFollow = await lookupObject(apCtx, handle);
-    if (!isActor(actorToFollow)) {
-        // Not Found?
-        return new Response(null, {
-            status: 404,
+export function createFollowActionHandler(accountService: AccountService) {
+    return async function followAction(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        const handle = ctx.req.param('handle');
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
-    }
+        const actorToFollow = await lookupObject(apCtx, handle);
 
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+        if (!isActor(actorToFollow)) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
 
-    if (actorToFollow.id!.href === actor!.id!.href) {
-        return new Response(null, {
-            status: 400,
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+        if (actorToFollow.id!.href === actor!.id!.href) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const followerAccount = await accountService.getAccountByApId(
+            actor!.id!.href,
+        );
+
+        if (!followerAccount) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        let followeeAccount = await accountService.getAccountByApId(
+            actorToFollow.id!.href,
+        );
+        if (!followeeAccount) {
+            followeeAccount = await accountService.createExternalAccount(
+                await mapActorToExternalAccountData(actorToFollow),
+            );
+        }
+
+        if (
+            await accountService.checkIfAccountIsFollowing(
+                followerAccount,
+                followeeAccount,
+            )
+        ) {
+            return new Response(null, {
+                status: 409,
+            });
+        }
+
+        const followId = apCtx.getObjectUri(Follow, {
+            id: uuidv4(),
         });
-    }
 
-    const following = (await ctx.get('db').get<string[]>(['following'])) || [];
-    if (following.includes(actorToFollow.id!.href)) {
-        return new Response(null, {
-            status: 409,
+        const follow = new Follow({
+            id: followId,
+            actor: actor,
+            object: actorToFollow,
         });
-    }
 
-    const followId = apCtx.getObjectUri(Follow, {
-        id: uuidv4(),
-    });
-    const follow = new Follow({
-        id: followId,
-        actor: actor,
-        object: actorToFollow,
-    });
-    const followJson = await follow.toJsonLd();
-    ctx.get('globaldb').set([follow.id!.href], followJson);
+        const followJson = await follow.toJsonLd();
 
-    await apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
-        actorToFollow,
-        follow,
-    );
-    // We return the actor because the serialisation of the object property is not working as expected
-    return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
-        headers: {
-            'Content-Type': 'application/activity+json',
-        },
-        status: 200,
-    });
+        ctx.get('globaldb').set([follow.id!.href], followJson);
+
+        await apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            actorToFollow,
+            follow,
+        );
+
+        // We return the actor because the serialisation of the object property is not working as expected
+        return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        });
+    };
 }
 
 export const getSiteDataHandler =

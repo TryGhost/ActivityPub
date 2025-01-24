@@ -611,12 +611,10 @@ Given('we follow {string}', async function (name) {
         },
     );
     if (this.response.ok) {
-        const actor = await this.response.clone().json();
-
         this.activities[`Follow(${name})`] = await createActivity(
             'Follow',
-            actor,
-            actor,
+            this.actors[name],
+            this.actors.Us,
         );
     }
 });

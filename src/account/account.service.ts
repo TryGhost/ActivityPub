@@ -246,6 +246,25 @@ export class AccountService {
         return Number(result[0].count);
     }
 
+    /**
+     * Check if an account is following another account
+     *
+     * @param account Account to check
+     * @param followee Followee account
+     */
+    async checkIfAccountIsFollowing(
+        account: Account,
+        followee: Account,
+    ): Promise<boolean> {
+        const result = await this.db(TABLE_FOLLOWS)
+            .where('follower_id', account.id)
+            .where('following_id', followee.id)
+            .select(1)
+            .first();
+
+        return result !== undefined;
+    }
+
     async getByInternalId(id: number): Promise<Account | null> {
         const rows = await this.db(TABLE_ACCOUNTS).select('*').where({ id });
 
