@@ -453,6 +453,39 @@ describe('AccountService', () => {
         });
     });
 
+    describe('checkIfAccountIsFollowing', () => {
+        it('should check if an account is following another account', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                'account',
+            );
+            const followee = await service.createInternalAccount(
+                site,
+                'followee',
+            );
+            const nonFollowee = await service.createInternalAccount(
+                site,
+                'non-followee',
+            );
+
+            await service.recordAccountFollow(followee, account);
+
+            const isFollowing = await service.checkIfAccountIsFollowing(
+                account,
+                followee,
+            );
+
+            expect(isFollowing).toBe(true);
+
+            const isNotFollowing = await service.checkIfAccountIsFollowing(
+                account,
+                nonFollowee,
+            );
+
+            expect(isNotFollowing).toBe(false);
+        });
+    });
+
     it('should update accounts and emit an account.updated event if they have changed', async () => {
         const account = await service.createInternalAccount(
             site,

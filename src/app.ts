@@ -73,7 +73,7 @@ import {
     updateDispatcher,
 } from './dispatchers';
 import {
-    followAction,
+    createFollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
     likeAction,
@@ -755,7 +755,7 @@ app.get(
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(followAction),
+    spanWrapper(createFollowActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
