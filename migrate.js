@@ -144,10 +144,12 @@ const db = knex({
                     } else if (row.value.actor?.type === 'Person') {
                         accountInfo.set(parsedKey[0], row.value.actor);
                         if (row.value.actor.publicKey) {
-                            publicKeys.set(
-                                row.value.actor.id,
-                                row.value.actor.publicKey.publicKeyPem,
-                            );
+                            if (!publicKeys.has(row.value.actor.id)) {
+                                publicKeys.set(
+                                    row.value.actor.id,
+                                    row.value.actor.publicKey.publicKeyPem,
+                                );
+                            }
                         }
                     } else if (typeof row.value.actor === 'string') {
                         // String-based ID, ignore for now
