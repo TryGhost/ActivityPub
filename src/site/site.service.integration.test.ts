@@ -100,7 +100,7 @@ describe('SiteService', () => {
             .mockResolvedValue({} as unknown as Account);
 
         const site = await service.initialiseSiteForHost('updating.tld');
-        const account = await service.getDefaultAccountForSite(site);
+        const account = await accountService.getDefaultAccountForSite(site);
 
         await service.refreshSiteDataForHost('updating.tld');
 

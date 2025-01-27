@@ -16,9 +16,10 @@ import {
     outboxDispatcher,
 } from './dispatchers';
 
-import type { SiteService } from 'site/site.service';
+import type { AccountService } from './account/account.service';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import * as lookupHelpers from './lookup-helpers';
+import type { SiteService } from './site/site.service';
 
 vi.mock('./app', () => ({
     fedify: {
@@ -32,10 +33,10 @@ describe('dispatchers', () => {
             const ctx = {} as RequestContext<any>;
             const handle = 'anything';
 
-            const actual = await actorDispatcher({} as unknown as SiteService)(
-                ctx,
-                handle,
-            );
+            const actual = await actorDispatcher(
+                {} as unknown as SiteService,
+                {} as unknown as AccountService,
+            )(ctx, handle);
             const expected = null;
 
             expect(actual).toEqual(expected);

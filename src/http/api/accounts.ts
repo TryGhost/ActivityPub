@@ -81,7 +81,7 @@ export function createGetAccountHandler(
             return new Response(null, { status: 404 });
         }
 
-        const account = await siteService.getDefaultAccountForSite(site);
+        const account = await accountService.getDefaultAccountForSite(site);
 
         try {
             accountDto = {
@@ -188,14 +188,6 @@ export function createGetAccountFollowsHandler(
         // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
-
-        if (!siteDefaultAccount) {
-            logger.error('Default account not found for site: {siteHost}', {
-                siteHost,
-            });
-
-            return new Response(null, { status: 404 });
-        }
 
         // Get follows accounts and paginate
         const queryNext = ctx.req.query('next') || '0';
