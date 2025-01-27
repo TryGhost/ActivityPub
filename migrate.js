@@ -339,7 +339,9 @@ const db = knex({
             if (typeof account.liked === 'string') {
                 accountToInsert.ap_liked_url = account.inbox;
             } else {
-                assert.fail(`account.liked is missing for ${acc}`);
+                if (privateKeys.has(acc)) {
+                    assert.fail(`account.liked is missing for ${acc}`);
+                }
             }
 
             if (account.endpoints?.sharedInbox) {
