@@ -23,7 +23,6 @@ import {
     verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
-import type { SiteService } from 'site/site.service';
 import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
@@ -33,18 +32,21 @@ import { isFollowing } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
+import type { SiteService } from './site/site.service';
 
-export const actorDispatcher = (siteService: SiteService) =>
+export const actorDispatcher = (
+    siteService: SiteService,
+    accountService: AccountService,
+) =>
     async function actorDispatcher(
         ctx: RequestContext<ContextData>,
         handle: string,
     ) {
         if (handle !== ACTOR_DEFAULT_HANDLE) return null;
-
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return null;
 
-        const account = await siteService.getDefaultAccountForSite(site);
+        const account = await accountService.getDefaultAccountForSite(site);
 
         const person = new Person({
             id: new URL(account.ap_id),
@@ -70,7 +72,10 @@ export const actorDispatcher = (siteService: SiteService) =>
         return person;
     };
 
-export const keypairDispatcher = (siteService: SiteService) =>
+export const keypairDispatcher = (
+    siteService: SiteService,
+    accountService: AccountService,
+) =>
     async function keypairDispatcher(
         ctx: Context<ContextData>,
         handle: string,
@@ -79,7 +84,7 @@ export const keypairDispatcher = (siteService: SiteService) =>
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 
-        const account = await siteService.getDefaultAccountForSite(site);
+        const account = await accountService.getDefaultAccountForSite(site);
 
         if (!account.ap_public_key) {
             return [];
@@ -715,10 +720,6 @@ export function createFollowersDispatcher(
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
 
-        if (!siteDefaultAccount) {
-            throw new Error(`Default account not found for site: ${site.id}`);
-        }
-
         const results = await accountService.getFollowerAccounts(
             siteDefaultAccount,
             {
@@ -766,10 +767,6 @@ export function createFollowersCounter(
         // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
-
-        if (!siteDefaultAccount) {
-            throw new Error(`Default account not found for site: ${site.id}`);
-        }
 
         return await accountService.getFollowerAccountsCount(
             siteDefaultAccount,
@@ -871,10 +868,6 @@ export function createFollowingDispatcher(
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
 
-        if (!siteDefaultAccount) {
-            throw new Error(`Default account not found for site: ${site.id}`);
-        }
-
         const results = await accountService.getFollowingAccounts(
             siteDefaultAccount,
             {
@@ -916,10 +909,6 @@ export function createFollowingCounter(
         // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
             await accountService.getDefaultAccountForSite(site);
-
-        if (!siteDefaultAccount) {
-            throw new Error(`Default account not found for site: ${site.id}`);
-        }
 
         return await accountService.getFollowingAccountsCount(
             siteDefaultAccount,

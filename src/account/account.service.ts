@@ -138,7 +138,7 @@ export class AccountService {
      *
      * @param site Site
      */
-    async getDefaultAccountForSite(site: Site): Promise<Account | null> {
+    async getDefaultAccountForSite(site: Site): Promise<Account> {
         const users = await this.db(TABLE_USERS).where('site_id', site.id);
 
         if (users.length === 0) {
@@ -153,9 +153,15 @@ export class AccountService {
 
         // We can safely assume that there is an account for the user due to
         // the foreign key constraint on the users table
-        return await this.db(TABLE_ACCOUNTS)
+        const account = await this.db(TABLE_ACCOUNTS)
             .where('id', user.account_id)
             .first();
+
+        if (!account) {
+            throw new Error(`Default account not found for site ${site.id}`);
+        }
+
+        return account;
     }
 
     /**

@@ -255,6 +255,20 @@ describe('AccountService', () => {
                 service.getDefaultAccountForSite(site),
             ).rejects.toThrow(`No user found for site: ${site.id}`);
         });
+
+        it('should throw an error if no account is found for a site user', async () => {
+            await service.createInternalAccount(site, 'account1');
+
+            const rows = await db('users')
+                .select('account_id')
+                .where({ site_id: site.id });
+
+            await db('accounts').where({ id: rows[0].account_id }).del();
+
+            await expect(
+                service.getDefaultAccountForSite(site),
+            ).rejects.toThrow();
+        });
     });
 
     describe('getFollowingAccounts', () => {
