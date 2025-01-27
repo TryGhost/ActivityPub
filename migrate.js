@@ -345,15 +345,15 @@ const db = knex({
                     account.endpoints.sharedInbox;
             }
 
-            if (typeof account.publicKey === 'string') {
+            if (publicKeys.has(acc)) {
+                accountToInsert.ap_public_key = publicKeys.get(acc);
+            } else if (typeof account.publicKey === 'string') {
                 accountToInsert.ap_public_key = account.publicKey;
             } else if (account.publicKey?.publicKeyPem) {
                 accountToInsert.ap_public_key = account.publicKey.publicKeyPem;
             } else if (account['https://w3id.org/security#publicKeyPem']) {
                 accountToInsert.ap_public_key =
                     account['https://w3id.org/security#publicKeyPem'];
-            } else if (publicKeys.has(acc)) {
-                accountToInsert.ap_public_key = publicKeys.get(acc);
             } else {
                 const lookupActor = rows.find(
                     (row) => row.key === JSON.stringify([acc]),
