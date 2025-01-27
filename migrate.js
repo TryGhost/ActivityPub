@@ -223,6 +223,10 @@ const db = knex({
 
                 ap_id: null,
                 ap_inbox_url: null,
+                ap_outbox_url: null,
+                ap_following_url: null,
+                ap_followers_url: null,
+                ap_liked_url: null,
                 ap_shared_inbox_url: null,
                 ap_public_key: null,
                 ap_private_key: null,
@@ -310,6 +314,30 @@ const db = knex({
                 accountToInsert.ap_inbox_url = account.inbox;
             } else {
                 assert.fail(`account.inbox is missing for ${acc}`);
+            }
+
+            if (typeof account.outbox === 'string') {
+                accountToInsert.ap_outbox_url = account.inbox;
+            } else {
+                assert.fail(`account.outbox is missing for ${acc}`);
+            }
+
+            if (typeof account.following === 'string') {
+                accountToInsert.ap_following_url = account.inbox;
+            } else {
+                assert.fail(`account.following is missing for ${acc}`);
+            }
+
+            if (typeof account.followers === 'string') {
+                accountToInsert.ap_followers_url = account.inbox;
+            } else {
+                assert.fail(`account.followers is missing for ${acc}`);
+            }
+
+            if (typeof account.liked) {
+                accountToInsert.ap_liked_url = account.inbox;
+            } else {
+                assert.fail(`account.liked is missing for ${acc}`);
             }
 
             if (account.endpoints?.sharedInbox) {
