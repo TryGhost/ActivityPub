@@ -319,28 +319,28 @@ const db = knex({
             }
 
             if (typeof account.outbox === 'string') {
-                accountToInsert.ap_outbox_url = account.inbox;
+                accountToInsert.ap_outbox_url = account.outbox;
             } else {
                 assert.fail(`account.outbox is missing for ${acc}`);
             }
 
             if (typeof account.following === 'string') {
-                accountToInsert.ap_following_url = account.inbox;
+                accountToInsert.ap_following_url = account.following;
             } else {
                 assert.fail(`account.following is missing for ${acc}`);
             }
 
             if (typeof account.followers === 'string') {
-                accountToInsert.ap_followers_url = account.inbox;
+                accountToInsert.ap_followers_url = account.followers;
             } else {
                 assert.fail(`account.followers is missing for ${acc}`);
             }
 
             if (typeof account.liked === 'string') {
-                accountToInsert.ap_liked_url = account.inbox;
+                accountToInsert.ap_liked_url = account.liked;
             } else {
                 if (privateKeys.has(acc)) {
-                    assert.fail(`account.liked is missing for ${acc}`);
+                    accountToInsert.ap_liked_url = account.followers.replace('followers', 'liked');
                 }
             }
 
