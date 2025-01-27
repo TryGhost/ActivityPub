@@ -3,7 +3,6 @@ import type { KvStore } from '@fedify/fedify';
 import type { AccountService } from '../../account/account.service';
 import type { AppContext } from '../../app';
 import { sanitizeHtml } from '../../helpers/html';
-import type { SiteService } from '../../site/site.service';
 import type { Account as AccountDTO } from './types';
 
 /**
@@ -51,13 +50,9 @@ async function getLikedCount(db: KvStore) {
 /**
  * Create a handler to handle a request for an account
  *
- * @param siteService Site service instance
  * @param accountService Account service instance
  */
-export function createGetAccountHandler(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createGetAccountHandler(accountService: AccountService) {
     /**
      * Handle a request for an account
      *
@@ -65,6 +60,7 @@ export function createGetAccountHandler(
      */
     return async function handleGetAccount(ctx: AppContext) {
         const logger = ctx.get('logger');
+        const site = ctx.get('site');
 
         // Validate input
         const handle = ctx.req.param('handle') || '';
@@ -76,12 +72,11 @@ export function createGetAccountHandler(
         const db = ctx.get('db');
         let accountDto: AccountDTO;
 
-        const site = await siteService.getSiteByHost(ctx.get('site').host);
-        if (!site) {
+        const account = await accountService.getDefaultAccountForSite(site);
+
+        if (!account) {
             return new Response(null, { status: 404 });
         }
-
-        const account = await accountService.getDefaultAccountForSite(site);
 
         try {
             accountDto = {
@@ -136,13 +131,9 @@ export function createGetAccountHandler(
 /**
  * Create a handler to handle a request for a list of account follows
  *
- * @param siteService Site service instance
  * @param accountService Account service instance
  */
-export function createGetAccountFollowsHandler(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createGetAccountFollowsHandler(accountService: AccountService) {
     /**
      * Handle a request for a list of account follows
      *
@@ -150,7 +141,7 @@ export function createGetAccountFollowsHandler(
      */
     return async function handleGetAccountFollows(ctx: AppContext) {
         const logger = ctx.get('logger');
-        const siteHost = ctx.get('site').host;
+        const site = ctx.get('site');
 
         // Validate input
         const handle = ctx.req.param('handle') || '';
@@ -174,16 +165,6 @@ export function createGetAccountFollowsHandler(
             type === 'following'
                 ? accountService.getFollowingAccountsCount.bind(accountService)
                 : accountService.getFollowerAccountsCount.bind(accountService);
-
-        const site = await siteService.getSiteByHost(siteHost);
-
-        if (!site) {
-            logger.error('No site found for host: {host}', {
-                host: siteHost,
-            });
-
-            return new Response(null, { status: 404 });
-        }
 
         // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =

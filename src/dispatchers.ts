@@ -28,7 +28,7 @@ import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { isFollowing } from './helpers/activitypub/actor';
+import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
@@ -263,47 +263,73 @@ export function createAcceptHandler(accountService: AccountService) {
     };
 }
 
-export async function handleCreate(ctx: Context<ContextData>, create: Create) {
-    ctx.data.logger.info('Handling Create');
-    const parsed = ctx.parseUri(create.objectId);
-    ctx.data.logger.info('Parsed create object', { parsed });
-    if (!create.id) {
-        ctx.data.logger.info('Create missing id - exit');
-        return;
-    }
+export function createCreateHandler(
+    siteService: SiteService,
+    accountService: AccountService,
+) {
+    return async function handleCreate(
+        ctx: Context<ContextData>,
+        create: Create,
+    ) {
+        ctx.data.logger.info('Handling Create');
+        const parsed = ctx.parseUri(create.objectId);
+        ctx.data.logger.info('Parsed create object', { parsed });
+        if (!create.id) {
+            ctx.data.logger.info('Create missing id - exit');
+            return;
+        }
 
-    const sender = await create.getActor(ctx);
-    if (sender === null || sender.id === null) {
-        ctx.data.logger.info('Create sender missing, exit early');
-        return;
-    }
+        const sender = await create.getActor(ctx);
+        if (sender === null || sender.id === null) {
+            ctx.data.logger.info('Create sender missing, exit early');
+            return;
+        }
 
-    const createJson = await create.toJsonLd();
-    ctx.data.globaldb.set([create.id.href], createJson);
+        const createJson = await create.toJsonLd();
+        ctx.data.globaldb.set([create.id.href], createJson);
 
-    const object = await create.getObject();
-    const replyTarget = await object?.getReplyTarget();
+        const object = await create.getObject();
+        const replyTarget = await object?.getReplyTarget();
 
-    if (replyTarget?.id?.href) {
-        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
-        const replyTargetAuthor = data?.attributedTo?.id;
-        const inboxActor = await getUserData(ctx, 'index');
+        if (replyTarget?.id?.href) {
+            const data = await ctx.data.globaldb.get<any>([
+                replyTarget.id.href,
+            ]);
+            const replyTargetAuthor = data?.attributedTo?.id;
+            const inboxActor = await getUserData(ctx, 'index');
 
-        if (replyTargetAuthor === inboxActor.id.href) {
+            if (replyTargetAuthor === inboxActor.id.href) {
+                await addToList(ctx.data.db, ['inbox'], create.id.href);
+                return;
+            }
+        }
+
+        let shouldAddToInbox = false;
+
+        const site = await siteService.getSiteByHost(ctx.host);
+
+        if (!site) {
+            throw new Error(`Site not found for host: ${ctx.host}`);
+        }
+
+        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
+            sender,
+            site,
+            accountService,
+        );
+
+        if (shouldAddToInbox) {
             await addToList(ctx.data.db, ['inbox'], create.id.href);
             return;
         }
-    }
-
-    if (await isFollowing(sender, { db: ctx.data.db })) {
-        await addToList(ctx.data.db, ['inbox'], create.id.href);
-        return;
-    }
+    };
 }
 
 export async function handleAnnoucedCreate(
     ctx: Context<ContextData>,
     announce: Announce,
+    siteService: SiteService,
+    accountService: AccountService,
 ) {
     ctx.data.logger.info('Handling Announced Create');
 
@@ -317,8 +343,16 @@ export async function handleAnnoucedCreate(
         return;
     }
 
+    const site = await siteService.getSiteByHost(ctx.host);
+
+    if (!site) {
+        throw new Error(`Site not found for host: ${ctx.host}`);
+    }
+
     // Validate that the group is followed
-    if (!(await isFollowing(announcer, { db: ctx.data.db }))) {
+    if (
+        !(await isFollowedByDefaultSiteAccount(announcer, site, accountService))
+    ) {
         ctx.data.logger.info('Group is not followed, exit early');
 
         return;
@@ -429,93 +463,120 @@ export async function handleAnnoucedCreate(
     await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
-export async function handleAnnounce(
-    ctx: Context<ContextData>,
-    announce: Announce,
+export function createAnnounceHandler(
+    siteService: SiteService,
+    accountService: AccountService,
 ) {
-    ctx.data.logger.info('Handling Announce');
+    return async function handleAnnounce(
+        ctx: Context<ContextData>,
+        announce: Announce,
+    ) {
+        ctx.data.logger.info('Handling Announce');
 
-    // Validate announce
-    if (!announce.id) {
-        ctx.data.logger.info('Invalid Announce - no id');
-        return;
-    }
-
-    if (!announce.objectId) {
-        ctx.data.logger.info('Invalid Announce - no object id');
-        return;
-    }
-
-    // Check what was announced - If it's an Activity rather than an Object
-    // (which can occur if the announcer is a Group - See
-    // https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md),
-    // we need to forward the announce on to an appropriate handler
-    // This routing is something that should be handled by Fedify, but has
-    // not yet been implemented - Tracked here: https://github.com/dahlia/fedify/issues/193
-    const announced = await lookupObject(ctx, announce.objectId);
-
-    if (announced instanceof Create) {
-        return handleAnnoucedCreate(ctx, announce);
-    }
-
-    // Validate sender
-    const sender = await announce.getActor(ctx);
-
-    if (sender === null || sender.id === null) {
-        ctx.data.logger.info('Announce sender missing, exit early');
-        return;
-    }
-
-    // Lookup announced object - If not found in globalDb, perform network lookup
-    let object = null;
-    const existing =
-        (await ctx.data.globaldb.get([announce.objectId.href])) ?? null;
-
-    if (!existing) {
-        ctx.data.logger.info(
-            'Announce object not found in globalDb, performing network lookup',
-        );
-        object = await lookupObject(ctx, announce.objectId);
-    }
-
-    // Validate object
-    if (!existing && !object) {
-        ctx.data.logger.info('Invalid Announce - could not find object');
-        return;
-    }
-
-    if (object && !object.id) {
-        ctx.data.logger.info('Invalid Announce - could not find object id');
-        return;
-    }
-
-    // Persist announce
-    const announceJson = await announce.toJsonLd();
-    ctx.data.globaldb.set([announce.id.href], announceJson);
-
-    // Persist object if not already persisted
-    if (!existing && object && object.id) {
-        ctx.data.logger.info('Storing object in globalDb');
-
-        const objectJson = await object.toJsonLd();
-
-        if (typeof objectJson === 'object' && objectJson !== null) {
-            if (
-                'attributedTo' in objectJson &&
-                typeof objectJson.attributedTo === 'string'
-            ) {
-                const actor = await lookupActor(ctx, objectJson.attributedTo);
-                objectJson.attributedTo = await actor?.toJsonLd();
-            }
+        // Validate announce
+        if (!announce.id) {
+            ctx.data.logger.info('Invalid Announce - no id');
+            return;
         }
 
-        ctx.data.globaldb.set([object.id.href], objectJson);
-    }
+        if (!announce.objectId) {
+            ctx.data.logger.info('Invalid Announce - no object id');
+            return;
+        }
 
-    if (await isFollowing(sender, { db: ctx.data.db })) {
-        await addToList(ctx.data.db, ['inbox'], announce.id.href);
-        return;
-    }
+        // Check what was announced - If it's an Activity rather than an Object
+        // (which can occur if the announcer is a Group - See
+        // https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md),
+        // we need to forward the announce on to an appropriate handler
+        // This routing is something that should be handled by Fedify, but has
+        // not yet been implemented - Tracked here: https://github.com/dahlia/fedify/issues/193
+        const announced = await lookupObject(ctx, announce.objectId);
+
+        if (announced instanceof Create) {
+            return handleAnnoucedCreate(
+                ctx,
+                announce,
+                siteService,
+                accountService,
+            );
+        }
+
+        // Validate sender
+        const sender = await announce.getActor(ctx);
+
+        if (sender === null || sender.id === null) {
+            ctx.data.logger.info('Announce sender missing, exit early');
+            return;
+        }
+
+        // Lookup announced object - If not found in globalDb, perform network lookup
+        let object = null;
+        const existing =
+            (await ctx.data.globaldb.get([announce.objectId.href])) ?? null;
+
+        if (!existing) {
+            ctx.data.logger.info(
+                'Announce object not found in globalDb, performing network lookup',
+            );
+            object = await lookupObject(ctx, announce.objectId);
+        }
+
+        // Validate object
+        if (!existing && !object) {
+            ctx.data.logger.info('Invalid Announce - could not find object');
+            return;
+        }
+
+        if (object && !object.id) {
+            ctx.data.logger.info('Invalid Announce - could not find object id');
+            return;
+        }
+
+        // Persist announce
+        const announceJson = await announce.toJsonLd();
+        ctx.data.globaldb.set([announce.id.href], announceJson);
+
+        // Persist object if not already persisted
+        if (!existing && object && object.id) {
+            ctx.data.logger.info('Storing object in globalDb');
+
+            const objectJson = await object.toJsonLd();
+
+            if (typeof objectJson === 'object' && objectJson !== null) {
+                if (
+                    'attributedTo' in objectJson &&
+                    typeof objectJson.attributedTo === 'string'
+                ) {
+                    const actor = await lookupActor(
+                        ctx,
+                        objectJson.attributedTo,
+                    );
+                    objectJson.attributedTo = await actor?.toJsonLd();
+                }
+            }
+
+            ctx.data.globaldb.set([object.id.href], objectJson);
+        }
+
+        let shouldAddToInbox = false;
+
+        const site = await siteService.getSiteByHost(ctx.host);
+
+        if (!site) {
+            throw new Error(`Site not found for host: ${ctx.host}`);
+        }
+
+        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
+            sender,
+            site,
+            accountService,
+        );
+
+        if (shouldAddToInbox) {
+            await addToList(ctx.data.db, ['inbox'], announce.id.href);
+            return;
+        }
+    };
 }
 
 export async function handleLike(ctx: Context<ContextData>, like: Like) {
