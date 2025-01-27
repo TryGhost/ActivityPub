@@ -336,7 +336,7 @@ const db = knex({
                 assert.fail(`account.followers is missing for ${acc}`);
             }
 
-            if (typeof account.liked) {
+            if (typeof account.liked === 'string') {
                 accountToInsert.ap_liked_url = account.inbox;
             } else {
                 assert.fail(`account.liked is missing for ${acc}`);
