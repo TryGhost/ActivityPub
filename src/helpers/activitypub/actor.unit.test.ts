@@ -8,13 +8,15 @@ import {
 } from '@fedify/fedify';
 
 import type { Logger } from '@logtape/logtape';
+import type { AccountService } from '../../account/account.service';
+import type { Account, Site } from '../../account/types';
 import type { ContextData } from '../../app';
 import {
     getAttachments,
     getFollowerCount,
     getFollowingCount,
     getHandle,
-    isFollowing,
+    isFollowedByDefaultSiteAccount,
     isHandle,
     updateSiteActor,
 } from './actor';
@@ -167,58 +169,117 @@ describe('getHandle', () => {
     });
 });
 
-describe('isFollowing', () => {
-    it('should return a boolean indicating if the current user is following the given actor', async () => {
-        const db = {
-            get: vi
-                .fn()
-                .mockResolvedValue([
-                    'https://example.com/users/foo',
-                    'https://example.com/users/bar',
-                    'https://example.com/users/baz',
-                ]),
-        } as unknown as KvStore;
+describe('isFollowedByDefaultSiteAccount', () => {
+    const site = {
+        id: 123,
+        host: 'example.com',
+    } as unknown as Site;
 
+    it('should return a boolean indicating if the default account associated with the provided site is following the provided actor', async () => {
         const followedActor = {
-            id: new URL('https://example.com/users/bar'),
-        } as unknown as Actor;
-
-        const unfollowedActor = {
-            id: new URL('https://example.com/users/qux'),
-        } as unknown as Actor;
-
-        expect(await isFollowing(followedActor, { db })).toBe(true);
-        expect(await isFollowing(unfollowedActor, { db })).toBe(false);
-    });
-
-    it('should return false if the follower list is not available', async () => {
-        const db = {
-            get: vi.fn().mockResolvedValue(null),
-        } as unknown as KvStore;
-
-        const actor = {
             id: new URL('https://example.com/users/foo'),
         } as unknown as Actor;
 
-        expect(await isFollowing(actor, { db })).toBe(false);
-    });
+        const followedActorAccount = {
+            id: 456,
+        } as unknown as Account;
 
-    it('should return false if the actor id is not available', async () => {
-        const db = {
-            get: vi
-                .fn()
-                .mockResolvedValue([
-                    'https://example.com/users/foo',
-                    'https://example.com/users/bar',
-                    'https://example.com/users/baz',
-                ]),
-        } as unknown as KvStore;
-
-        const actor = {
-            id: null,
+        const unfollowedActor = {
+            id: new URL('https://example.com/users/bar'),
         } as unknown as Actor;
 
-        expect(await isFollowing(actor, { db })).toBe(false);
+        const defaultSiteAccount = {
+            id: 789,
+        } as unknown as Account;
+
+        const accountService = {
+            getAccountByApId: vi.fn().mockImplementation((id: string) => {
+                if (id === followedActor.id?.toString()) {
+                    return Promise.resolve(followedActorAccount);
+                }
+
+                return Promise.resolve(null);
+            }),
+            getDefaultAccountForSite: vi
+                .fn()
+                .mockImplementation(({ host }: Site) => {
+                    if (host === site.host) {
+                        return Promise.resolve(defaultSiteAccount);
+                    }
+
+                    return Promise.resolve(null);
+                }),
+            checkIfAccountIsFollowing: vi
+                .fn()
+                .mockImplementation((a: Account, b: Account) => {
+                    if (
+                        a.id === defaultSiteAccount.id &&
+                        b.id === followedActorAccount.id
+                    ) {
+                        return Promise.resolve(true);
+                    }
+
+                    return Promise.resolve(false);
+                }),
+        } as unknown as AccountService;
+
+        expect(
+            await isFollowedByDefaultSiteAccount(
+                followedActor,
+                site,
+                accountService,
+            ),
+        ).toBe(true);
+        expect(
+            await isFollowedByDefaultSiteAccount(
+                unfollowedActor,
+                site,
+                accountService,
+            ),
+        ).toBe(false);
+    });
+
+    it('should return false if an account is not found for the provided actor', async () => {
+        const followedActor = {
+            id: new URL('https://example.com/users/foo'),
+        } as unknown as Actor;
+
+        const accountService = {
+            getAccountByApId: vi.fn().mockResolvedValue(null),
+        } as unknown as AccountService;
+
+        expect(
+            await isFollowedByDefaultSiteAccount(
+                followedActor,
+                site,
+                accountService,
+            ),
+        ).toBe(false);
+    });
+
+    it('should throw an error if the default account is not found for the provided site', async () => {
+        const followedActor = {
+            id: new URL('https://example.com/users/foo'),
+        } as unknown as Actor;
+
+        const followedActorAccount = {
+            id: 456,
+        } as unknown as Account;
+
+        const accountService = {
+            getAccountByApId: vi.fn().mockImplementation((id: string) => {
+                if (id === followedActor.id?.toString()) {
+                    return Promise.resolve(followedActorAccount);
+                }
+
+                return Promise.resolve(null);
+            }),
+            getDefaultAccountForSite: vi.fn().mockResolvedValue(null),
+        } as unknown as AccountService;
+
+        await expect(
+            isFollowedByDefaultSiteAccount(followedActor, site, accountService),
+        ).rejects.toThrow(`Default account not found for site: ${site.id}`);
     });
 });
 

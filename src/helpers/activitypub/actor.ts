@@ -1,15 +1,16 @@
 import {
     type Actor,
     Image,
-    type KvStore,
     PUBLIC_COLLECTION,
     PropertyValue,
     type RequestContext,
     Update,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
+import type { AccountService } from '../../account/account.service';
 import type { ContextData } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import type { Site } from '../../site/site.service';
 import { type UserData, getUserData, setUserData } from '../user';
 
 interface Attachment {
@@ -61,15 +62,30 @@ export function getHandle(actor: Actor): string {
     return `@${actor?.preferredUsername || 'unknown'}@${host}`;
 }
 
-export async function isFollowing(
+export async function isFollowedByDefaultSiteAccount(
     actor: Actor,
-    options: {
-        db: KvStore;
-    },
-): Promise<boolean> {
-    const following = (await options.db.get<string[]>(['following'])) || [];
+    site: Site,
+    accountService: AccountService,
+) {
+    const followeeAccount = await accountService.getAccountByApId(
+        actor.id?.toString() || '',
+    );
 
-    return actor.id?.href ? following.includes(actor.id.href) : false;
+    if (!followeeAccount) {
+        return false;
+    }
+
+    const siteDefaultAccount =
+        await accountService.getDefaultAccountForSite(site);
+
+    if (!siteDefaultAccount) {
+        throw new Error(`Default account not found for site: ${site.id}`);
+    }
+
+    return await accountService.checkIfAccountIsFollowing(
+        siteDefaultAccount,
+        followeeAccount,
+    );
 }
 
 export function isHandle(handle: string): boolean {

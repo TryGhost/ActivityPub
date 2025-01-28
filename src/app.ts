@@ -46,6 +46,8 @@ import {
     actorDispatcher,
     articleDispatcher,
     createAcceptHandler,
+    createAnnounceHandler,
+    createCreateHandler,
     createDispatcher,
     createFollowHandler,
     createFollowersCounter,
@@ -55,8 +57,6 @@ import {
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
-    handleAnnounce,
-    handleCreate,
     handleLike,
     inboxErrorHandler,
     keypairDispatcher,
@@ -86,14 +86,14 @@ import { getRequestData } from './helpers/request-data';
 import {
     createGetAccountFollowsHandler,
     createGetAccountHandler,
+    createGetFollowersHandler,
+    createGetFollowingHandler,
+    createGetProfileHandler,
+    createSearchHandler,
     handleCreateNote,
     handleGetActivities,
     handleGetActivityThread,
-    handleGetFollowers,
-    handleGetFollowing,
     handleGetPosts,
-    handleGetProfile,
-    handleSearch,
     handleWebhookPostPublished,
     handleWebhookSiteChanged,
 } from './http/api';
@@ -105,7 +105,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
-import { SiteService } from './site/site.service';
+import { type Site, SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
 
@@ -281,9 +281,19 @@ inboxListener
         ensureCorrectContext(spanWrapper(createAcceptHandler(accountService))),
     )
     .onError(inboxErrorHandler)
-    .on(Create, ensureCorrectContext(spanWrapper(handleCreate)))
+    .on(
+        Create,
+        ensureCorrectContext(
+            spanWrapper(createCreateHandler(siteService, accountService)),
+        ),
+    )
     .onError(inboxErrorHandler)
-    .on(Announce, ensureCorrectContext(spanWrapper(handleAnnounce)))
+    .on(
+        Announce,
+        ensureCorrectContext(
+            spanWrapper(createAnnounceHandler(siteService, accountService)),
+        ),
+    )
     .onError(inboxErrorHandler)
     .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
     .onError(inboxErrorHandler);
@@ -382,10 +392,7 @@ export type HonoContextVariables = {
     globaldb: KvStore;
     logger: Logger;
     role: GhostRole;
-    site: {
-        host: string;
-        webhook_secret: string;
-    };
+    site: Site;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -782,22 +789,22 @@ app.post(
 app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleSearch),
+    spanWrapper(createSearchHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetProfile),
+    spanWrapper(createGetProfileHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/followers',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetFollowers),
+    spanWrapper(createGetFollowersHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/following',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetFollowing),
+    spanWrapper(createGetFollowingHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
@@ -811,12 +818,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetAccountHandler(siteService, accountService)),
+    spanWrapper(createGetAccountHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetAccountFollowsHandler(siteService, accountService)),
+    spanWrapper(createGetAccountFollowsHandler(accountService)),
 );
 /** Federation wire up */
 
