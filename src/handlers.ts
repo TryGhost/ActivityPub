@@ -304,6 +304,101 @@ export async function replyAction(
     });
 }
 
+export function createUnfollowActionHandler(accountService: AccountService) {
+    return async function unfollowAction(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        const handle = ctx.req.param('handle');
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
+        });
+
+        const actorToUnfollow = await lookupObject(apCtx, handle);
+
+        if (!isActor(actorToUnfollow)) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (actorToUnfollow.id!.href === account.ap_id) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        let unfolloweeAccount = await accountService.getAccountByApId(
+            actorToUnfollow.id!.href,
+        );
+
+        // TODO I think we can exit early here - there is obviously no follow relation if there is no account
+        if (!unfolloweeAccount) {
+            unfolloweeAccount = await accountService.createExternalAccount(
+                await mapActorToExternalAccountData(actorToUnfollow),
+            );
+        }
+
+        const isFollowing = await accountService.checkIfAccountIsFollowing(
+            account,
+            unfolloweeAccount,
+        );
+
+        if (!isFollowing) {
+            return new Response(null, {
+                status: 409,
+            });
+        }
+
+        // Need to get the follow
+        const unfollowId = apCtx.getObjectUri(Undo, {
+            id: uuidv4(),
+        });
+
+        const follow = new Follow({
+            id: null,
+            actor: new URL(account.ap_id),
+            object: actorToUnfollow,
+        });
+
+        const unfollow = new Undo({
+            id: unfollowId,
+            actor: new URL(account.ap_id),
+            object: follow,
+        });
+
+        const unfollowJson = await unfollow.toJsonLd();
+
+        await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
+
+        await removeFromList(
+            ctx.get('db'),
+            ['following'],
+            actorToUnfollow.id!.href,
+        );
+
+        await apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            actorToUnfollow,
+            unfollow,
+        );
+
+        await accountService.removeAccountFollow(account, unfolloweeAccount);
+
+        // We return the actor because the serialisation of the object property is not working as expected
+        return new Response(JSON.stringify(unfollowJson), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 202,
+        });
+    };
+}
 export function createFollowActionHandler(accountService: AccountService) {
     return async function followAction(
         ctx: Context<{ Variables: HonoContextVariables }>,

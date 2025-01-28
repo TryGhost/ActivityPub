@@ -54,6 +54,7 @@ import {
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
+    createHandleUndo,
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
@@ -74,6 +75,7 @@ import {
 } from './dispatchers';
 import {
     createFollowActionHandler,
+    createUnfollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
     likeAction,
@@ -296,6 +298,11 @@ inboxListener
     )
     .onError(inboxErrorHandler)
     .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
+    .onError(inboxErrorHandler)
+    .on(
+        Undo,
+        ensureCorrectContext(spanWrapper(createHandleUndo(accountService))),
+    )
     .onError(inboxErrorHandler);
 
 fedify
@@ -763,6 +770,11 @@ app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner),
     spanWrapper(createFollowActionHandler(accountService)),
+);
+app.post(
+    '/.ghost/activitypub/actions/unfollow/:handle',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createUnfollowActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',

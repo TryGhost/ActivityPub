@@ -105,6 +105,20 @@ async function createActivity(type, object, actor) {
         };
     }
 
+    if (type === 'Undo') {
+        activity = {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            type: 'Undo',
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/undo/${uuidv4()}`,
+            to: 'as:Public',
+            object: object,
+            actor: actor,
+        };
+    }
+
     externalActivityPub.register(
         {
             method: 'GET',
@@ -616,6 +630,21 @@ Given('we follow {string}', async function (name) {
             this.actors[name],
             this.actors.Us,
         );
+    }
+});
+
+Given('we unfollow {string}', async function (name) {
+    const handle = this.actors[name].handle;
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/actions/unfollow/${handle}`,
+        {
+            method: 'POST',
+        },
+    );
+    if (this.response.ok) {
+        this.activities[`Unfollow(${name})`] = await this.response
+            .clone()
+            .json();
     }
 });
 

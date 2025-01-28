@@ -121,6 +121,24 @@ export class AccountService {
     }
 
     /**
+     * Record an account follow
+     *
+     * @param follower The follower account
+     * @param following This account being followed
+     */
+    async removeAccountFollow(
+        follower: Account,
+        following: Account,
+    ): Promise<void> {
+        await this.db(TABLE_FOLLOWS)
+            .where({
+                following_id: following.id,
+                follower_id: follower.id,
+            })
+            .del();
+    }
+
+    /**
      * Get an account by it's ActivityPub ID
      *
      * @param apId ActivityPub ID
