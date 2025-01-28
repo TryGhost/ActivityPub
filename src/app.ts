@@ -660,8 +660,6 @@ app.use(async (ctx, next) => {
     }
     const site = await siteService.getSiteByHost(host);
 
-    console.log(site);
-
     if (!site) {
         ctx.get('logger').info('No site found for {host}', { host });
         return new Response(null, {
