@@ -55,7 +55,7 @@
     "@opentelemetry/exporter-trace-otlp-proto": "0.56.0",
     "@opentelemetry/resources": "1.29.0",
     "@opentelemetry/sdk-trace-base": "1.29.0",
-    "@sentry/node": "8.43.0",
+    "@sentry/node": "8.49.0",
     "es-toolkit": "1.31.0",
     "hono": "4.6.10",
     "jsonwebtoken": "9.0.2",
