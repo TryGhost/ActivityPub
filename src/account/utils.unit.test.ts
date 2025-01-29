@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { type Actor, PropertyValue } from '@fedify/fedify';
 
-import { mapActorToExternalAccountData } from './utils';
+import { getAccountHandle, mapActorToExternalAccountData } from './utils';
 
 describe('mapActorToExternalAccountData', () => {
-    it('should map actor to external account data', async () => {
+    it('should map an actor to an external account data object', async () => {
         const actor = {
-            id: new URL('https://example.com/actor/example'),
+            id: new URL('https://example.com/users/example'),
             preferredUsername: 'example',
             name: 'Example',
             summary: 'This is an example',
@@ -17,7 +17,7 @@ describe('mapActorToExternalAccountData', () => {
             getImage: vi.fn().mockResolvedValue({
                 url: new URL('https://example.com/image/example'),
             }),
-            url: new URL('https://example.com/actor/example'),
+            url: new URL('https://example.com/users/example'),
             getAttachments: vi.fn().mockImplementation(async function* () {
                 yield new PropertyValue({ name: 'foo', value: 'bar' });
                 yield new PropertyValue({ name: 'baz', value: 'qux' });
@@ -33,7 +33,7 @@ describe('mapActorToExternalAccountData', () => {
             getPublicKey: vi.fn().mockResolvedValue({
                 toJsonLd: vi.fn().mockResolvedValue({
                     id: 'https://example.com/public-key/example',
-                    owner: 'https://example.com/actor/example',
+                    owner: 'https://example.com/users/example',
                     publicKeyPem: 'publicKeyPem',
                 }),
             }),
@@ -47,12 +47,12 @@ describe('mapActorToExternalAccountData', () => {
             bio: 'This is an example',
             avatar_url: 'https://example.com/icon/example',
             banner_image_url: 'https://example.com/image/example',
-            url: 'https://example.com/actor/example',
+            url: 'https://example.com/users/example',
             custom_fields: {
                 foo: 'bar',
                 baz: 'qux',
             },
-            ap_id: 'https://example.com/actor/example',
+            ap_id: 'https://example.com/users/example',
             ap_inbox_url: 'https://example.com/inbox/example',
             ap_shared_inbox_url: 'https://example.com/shared-inbox',
             ap_outbox_url: 'https://example.com/outbox/example',
@@ -61,9 +61,29 @@ describe('mapActorToExternalAccountData', () => {
             ap_liked_url: 'https://example.com/liked/example',
             ap_public_key: JSON.stringify({
                 id: 'https://example.com/public-key/example',
-                owner: 'https://example.com/actor/example',
+                owner: 'https://example.com/users/example',
                 publicKeyPem: 'publicKeyPem',
             }),
         });
+    });
+});
+
+describe('getAccountHandle', () => {
+    it('should return a handle for an account with a username', () => {
+        const handle = getAccountHandle('example.com', 'example');
+
+        expect(handle).toBe('@example@example.com');
+    });
+
+    it('should return a handle for an account with no username', () => {
+        const handle = getAccountHandle('example.com', '');
+
+        expect(handle).toBe('@unknown@example.com');
+    });
+
+    it('should return a handle for an account with no host', () => {
+        const handle = getAccountHandle('', 'example');
+
+        expect(handle).toBe('@example@unknown');
     });
 });

@@ -73,6 +73,7 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
+import { FeedService } from './feed/feed.service';
 import {
     createFollowActionHandler,
     createUnfollowActionHandler,
@@ -88,6 +89,7 @@ import { getRequestData } from './helpers/request-data';
 import {
     createGetAccountFollowsHandler,
     createGetAccountHandler,
+    createGetFeedHandler,
     createGetFollowersHandler,
     createGetFollowingHandler,
     createGetProfileHandler,
@@ -221,6 +223,7 @@ const accountService = new AccountService(client, events);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
+const feedService = new FeedService();
 
 const fedifyContextFactory = new FedifyContextFactory();
 
@@ -834,6 +837,11 @@ app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner),
     spanWrapper(createGetAccountFollowsHandler(accountService)),
+);
+app.get(
+    '/.ghost/activitypub/feed',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createGetFeedHandler(feedService, accountService)),
 );
 /** Federation wire up */
 

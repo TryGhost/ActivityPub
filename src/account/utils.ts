@@ -7,6 +7,11 @@ interface PublicKey {
     publicKeyPem: string;
 }
 
+/**
+ * Map a Fedify Actor to an external account data object
+ *
+ * @param actor Actor
+ */
 export async function mapActorToExternalAccountData(
     actor: Actor,
 ): Promise<ExternalAccountData> {
@@ -61,4 +66,14 @@ export async function mapActorToExternalAccountData(
         ap_liked_url: actor.likedId?.href ?? '',
         ap_public_key: apPublicKey ? JSON.stringify(apPublicKey) : '',
     };
+}
+
+/**
+ * Compute the handle for an account from the provided host and username
+ *
+ * @param host Host of the site the account belongs to
+ * @param username Username of the account
+ */
+export function getAccountHandle(host?: string, username?: string) {
+    return `@${username || 'unknown'}@${host || 'unknown'}`;
 }
