@@ -505,7 +505,7 @@ export const createUndoHandler = (accountService: AccountService) =>
 
         await removeFromList(ctx.data.db, ['following'], follow.objectId.href);
 
-        await accountService.removeAccountFollow(unfollower, unfollowing);
+        await accountService.recordAccountUnfollow(unfollowing, unfollower);
 
         return;
     };
