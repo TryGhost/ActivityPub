@@ -920,7 +920,7 @@ async function waitForRequest(
 
 async function waitForInboxActivity(
     activity,
-    object,
+    object = null,
     options = {
         retryCount: 0,
         delay: 0,
