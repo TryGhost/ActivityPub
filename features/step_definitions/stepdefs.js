@@ -718,68 +718,63 @@ Then('the object {string} should not be liked', async function (name) {
     assert(found.object.liked !== true);
 });
 
+async function getObjectInCollection(objectName, collectionType) {
+    const initialResponse = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/${collectionType}/index`,
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json',
+        },
+    });
+    const collection = await firstPageReponse.json();
+
+    const object = this.objects[objectName] || this.actors[objectName];
+
+    return (collection.orderedItems || []).find((item) => {
+        let id;
+        const itemIsString = typeof item === 'string';
+        if (itemIsString) {
+            id = item;
+        } else if (collectionType === 'liked') {
+            id = item.object.id;
+        } else {
+            id = item.id;
+        }
+
+        return id === object.id;
+    });
+}
+
 Then(
-    'the object {string} should be in the liked collection',
-    async function (name) {
-        const initialResponse = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/liked/index',
-            {
-                headers: {
-                    Accept: 'application/ld+json',
-                },
-            },
-        );
-        const initialResponseJson = await initialResponse.json();
-        const firstPageReponse = await fetchActivityPub(
-            initialResponseJson.first,
-            {
-                headers: {
-                    Accept: 'application/ld+json',
-                },
-            },
-        );
-        const liked = await firstPageReponse.json();
-
-        const object = this.objects[name];
-
-        // TODO Change this when liked collection is fixed to contain objects not Likes
-        const found = (liked.orderedItems || []).find(
-            (item) => item.object.id === object.id,
+    'the object {string} should be in the {string} collection',
+    async function (name, collectionType) {
+        const objectInCollection = await getObjectInCollection.call(
+            this,
+            name,
+            collectionType,
         );
 
-        assert(found);
+        assert(objectInCollection);
     },
 );
 
 Then(
-    'the object {string} should not be in the liked collection',
-    async function (name) {
-        const initialResponse = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/liked/index',
-            {
-                headers: {
-                    Accept: 'application/ld+json',
-                },
-            },
-        );
-        const initialResponseJson = await initialResponse.json();
-        const firstPageReponse = await fetchActivityPub(
-            initialResponseJson.first,
-            {
-                headers: {
-                    Accept: 'application/ld+json',
-                },
-            },
-        );
-        const liked = await firstPageReponse.json();
-        const object = this.objects[name];
-
-        // TODO Change this when liked collection is fixed to contain objects not Likes
-        const found = (liked.orderedItems || []).find(
-            (item) => item.object.id === object.id,
+    'the object {string} should not be in the {string} collection',
+    async function (name, collectionType) {
+        const objectInCollection = await getObjectInCollection.call(
+            this,
+            name,
+            collectionType,
         );
 
-        assert(!found);
+        assert(!objectInCollection);
     },
 );
 
