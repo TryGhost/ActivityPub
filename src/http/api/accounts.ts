@@ -13,7 +13,10 @@ const FOLLOWS_LIMIT = 20;
 /**
  * Follow account shape - Used when returning a list of follow accounts
  */
-type FollowAccount = Pick<AccountDTO, 'id' | 'name' | 'handle' | 'avatarUrl'>;
+type FollowAccount = Pick<
+    AccountDTO,
+    'id' | 'name' | 'handle' | 'avatarUrl'
+> & { isFollowing: boolean };
 
 /**
  * Compute the handle for an account from the provided host and username
@@ -194,6 +197,13 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
                 name: result.name || '',
                 handle: getHandle(new URL(result.ap_id).host, result.username),
                 avatarUrl: result.avatar_url || '',
+                isFollowing:
+                    type === 'following'
+                        ? true
+                        : await accountService.checkIfAccountIsFollowing(
+                              siteDefaultAccount,
+                              result,
+                          ),
             });
         }
 
