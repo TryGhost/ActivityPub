@@ -1,6 +1,7 @@
 import type { KvStore } from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
+import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
 import { sanitizeHtml } from '../../helpers/html';
 import type { Account as AccountDTO } from './types';
@@ -17,16 +18,6 @@ type FollowAccount = Pick<
     AccountDTO,
     'id' | 'name' | 'handle' | 'avatarUrl'
 > & { isFollowing: boolean };
-
-/**
- * Compute the handle for an account from the provided host and username
- *
- * @param host Host of the account
- * @param username Username of the account
- */
-function getHandle(host?: string, username?: string) {
-    return `@${username || 'unknown'}@${host || 'unknown'}`;
-}
 
 /**
  * Retreive the count of posts created by the account from the database
@@ -89,7 +80,7 @@ export function createGetAccountHandler(accountService: AccountService) {
                  */
                 id: account.ap_id,
                 name: account.name || '',
-                handle: getHandle(site.host, account.username),
+                handle: getAccountHandle(site.host, account.username),
                 bio: sanitizeHtml(account.bio || ''),
                 url: account.url || '',
                 avatarUrl: account.avatar_url || '',
@@ -195,7 +186,10 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
             accounts.push({
                 id: String(result.id),
                 name: result.name || '',
-                handle: getHandle(new URL(result.ap_id).host, result.username),
+                handle: getAccountHandle(
+                    new URL(result.ap_id).host,
+                    result.username,
+                ),
                 avatarUrl: result.avatar_url || '',
                 isFollowing:
                     type === 'following'

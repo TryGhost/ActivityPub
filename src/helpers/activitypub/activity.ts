@@ -6,17 +6,25 @@ import { getActivityChildrenCount } from '../../db';
 import { lookupActor } from '../../lookup-helpers';
 import { sanitizeHtml } from '../html';
 
-type Activity = {
+export interface ActivityObjectAttachment {
+    type: string;
+    mediaType: string;
+    name: string;
+    url: string;
+}
+
+export interface ActivityObject {
     id: string;
-    object:
-        | string
-        | {
-              id: string;
-              content: string;
-              [key: string]: any;
-          };
+    content: string;
+    attachment?: ActivityObjectAttachment | ActivityObjectAttachment[];
     [key: string]: any;
-};
+}
+
+export interface Activity {
+    id: string;
+    object: string | ActivityObject;
+    [key: string]: any;
+}
 
 export async function buildActivity(
     uri: string,
