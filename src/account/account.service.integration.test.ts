@@ -156,6 +156,37 @@ describe('AccountService', () => {
         });
     });
 
+    describe('recordAccountUnfollow', () => {
+        it('should record an account being unfollowed', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                'account',
+            );
+            const follower = await service.createInternalAccount(
+                site,
+                'follower',
+            );
+
+            await service.recordAccountFollow(account, follower);
+
+            // Assert the follow was inserted into the database
+            const follows = await db(TABLE_FOLLOWS).select('*');
+
+            expect(follows).toHaveLength(1);
+
+            const follow = follows[0];
+
+            expect(follow.following_id).toBe(account.id);
+            expect(follow.follower_id).toBe(follower.id);
+
+            await service.recordAccountUnfollow(account, follower);
+
+            const followsAfter = await db(TABLE_FOLLOWS).select('*');
+
+            expect(followsAfter).toHaveLength(0);
+        });
+    });
+
     describe('recordAccountFollow', () => {
         it('should record an account being followed', async () => {
             const account = await service.createInternalAccount(

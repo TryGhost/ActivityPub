@@ -121,6 +121,24 @@ export class AccountService {
     }
 
     /**
+     * Record an account unfollow
+     *
+     * @param following The account that is being unfollowed
+     * @param follower The account that is a follower
+     */
+    async recordAccountUnfollow(
+        following: Account,
+        follower: Account,
+    ): Promise<void> {
+        await this.db(TABLE_FOLLOWS)
+            .where({
+                following_id: following.id,
+                follower_id: follower.id,
+            })
+            .del();
+    }
+
+    /**
      * Get an account by it's ActivityPub ID
      *
      * @param apId ActivityPub ID

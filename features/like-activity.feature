@@ -16,7 +16,7 @@ Feature: Liking an object
     And we like the object "Note"
     Then the request is accepted
     And the object "Note" should be liked
-    And the object "Note" should be in the liked collection
+    And the object "Note" should be in the "liked" collection
     And a "Like(Note)" activity is sent to "Alice"
 
   Scenario: Liking an object that has been liked before
@@ -62,5 +62,5 @@ Feature: Liking an object
     Then we unlike the object "Note"
     Then the request is accepted
     And the object "Note" should not be liked
-    And the object "Note" should not be in the liked collection
+    And the object "Note" should not be in the "liked" collection
     And a "Undo(Like)" activity is sent to "Alice"

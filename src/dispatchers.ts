@@ -30,7 +30,7 @@ import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
-import { addToList } from './kv-helpers';
+import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { SiteService } from './site/site.service';
 
@@ -462,6 +462,54 @@ export async function handleAnnoucedCreate(
 
     await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
+
+export const createUndoHandler = (accountService: AccountService) =>
+    async function handleUndo(ctx: Context<ContextData>, undo: Undo) {
+        ctx.data.logger.info('Handling Undo');
+
+        if (!undo.id) {
+            ctx.data.logger.info('Undo missing an id - exiting');
+            return;
+        }
+
+        const follow = await undo.getObject();
+
+        const isFollow = follow instanceof Follow;
+
+        if (!isFollow) {
+            ctx.data.logger.info('Undo does not contain a Follow - exiting');
+            return;
+        }
+
+        if (!follow.actorId || !follow.objectId) {
+            ctx.data.logger.info('Undo contains invalid Follow - exiting');
+            return;
+        }
+
+        const unfollower = await accountService.getAccountByApId(
+            follow.actorId.href,
+        );
+        if (!unfollower) {
+            ctx.data.logger.info('Could not find unfollower');
+            return;
+        }
+        const unfollowing = await accountService.getAccountByApId(
+            follow.objectId.href,
+        );
+        if (!unfollowing) {
+            ctx.data.logger.info('Could not find unfollowing');
+            return;
+        }
+
+        await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
+
+        await accountService.recordAccountUnfollow(unfollowing, unfollower);
+
+        await removeFromList(ctx.data.db, ['following'], follow.objectId.href);
+        await addToList(ctx.data.db, ['inbox'], undo.id.href);
+
+        return;
+    };
 
 export function createAnnounceHandler(
     siteService: SiteService,

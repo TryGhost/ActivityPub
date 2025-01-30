@@ -54,6 +54,7 @@ import {
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
+    createUndoHandler,
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
@@ -74,6 +75,7 @@ import {
 } from './dispatchers';
 import {
     createFollowActionHandler,
+    createUnfollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
     likeAction,
@@ -296,6 +298,11 @@ inboxListener
     )
     .onError(inboxErrorHandler)
     .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
+    .onError(inboxErrorHandler)
+    .on(
+        Undo,
+        ensureCorrectContext(spanWrapper(createUndoHandler(accountService))),
+    )
     .onError(inboxErrorHandler);
 
 fedify
@@ -660,8 +667,6 @@ app.use(async (ctx, next) => {
     }
     const site = await siteService.getSiteByHost(host);
 
-    console.log(site);
-
     if (!site) {
         ctx.get('logger').info('No site found for {host}', { host });
         return new Response(null, {
@@ -765,6 +770,11 @@ app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner),
     spanWrapper(createFollowActionHandler(accountService)),
+);
+app.post(
+    '/.ghost/activitypub/actions/unfollow/:handle',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createUnfollowActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
