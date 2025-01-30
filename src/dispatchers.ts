@@ -463,7 +463,7 @@ export async function handleAnnoucedCreate(
     await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
-export const createHandleUndo = (accountService: AccountService) =>
+export const createUndoHandler = (accountService: AccountService) =>
     async function handleUndo(ctx: Context<ContextData>, undo: Undo) {
         ctx.data.logger.info('Handling Undo');
 

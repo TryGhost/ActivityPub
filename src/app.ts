@@ -54,7 +54,7 @@ import {
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
-    createHandleUndo,
+    createUndoHandler,
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
@@ -301,7 +301,7 @@ inboxListener
     .onError(inboxErrorHandler)
     .on(
         Undo,
-        ensureCorrectContext(spanWrapper(createHandleUndo(accountService))),
+        ensureCorrectContext(spanWrapper(createUndoHandler(accountService))),
     )
     .onError(inboxErrorHandler);
 

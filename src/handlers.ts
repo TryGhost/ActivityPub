@@ -333,20 +333,20 @@ export function createUnfollowActionHandler(accountService: AccountService) {
             });
         }
 
-        let unfolloweeAccount = await accountService.getAccountByApId(
+        let accountToUnfollow = await accountService.getAccountByApId(
             actorToUnfollow.id!.href,
         );
 
         // TODO I think we can exit early here - there is obviously no follow relation if there is no account
-        if (!unfolloweeAccount) {
-            unfolloweeAccount = await accountService.createExternalAccount(
+        if (!accountToUnfollow) {
+            accountToUnfollow = await accountService.createExternalAccount(
                 await mapActorToExternalAccountData(actorToUnfollow),
             );
         }
 
         const isFollowing = await accountService.checkIfAccountIsFollowing(
             account,
-            unfolloweeAccount,
+            accountToUnfollow,
         );
 
         if (!isFollowing) {
@@ -388,9 +388,8 @@ export function createUnfollowActionHandler(accountService: AccountService) {
             unfollow,
         );
 
-        await accountService.removeAccountFollow(account, unfolloweeAccount);
+        await accountService.recordAccountUnfollow(accountToUnfollow, account);
 
-        // We return the actor because the serialisation of the object property is not working as expected
         return new Response(JSON.stringify(unfollowJson), {
             headers: {
                 'Content-Type': 'application/activity+json',

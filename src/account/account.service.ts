@@ -121,14 +121,14 @@ export class AccountService {
     }
 
     /**
-     * Record an account follow
+     * Record an account unfollow
      *
-     * @param follower The follower account
-     * @param following This account being followed
+     * @param following The account that is being unfollowed
+     * @param follower The account that is a follower
      */
-    async removeAccountFollow(
-        follower: Account,
+    async recordAccountUnfollow(
         following: Account,
+        follower: Account,
     ): Promise<void> {
         await this.db(TABLE_FOLLOWS)
             .where({
