@@ -63,7 +63,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.0.31
+    image: mysql:8.4.4
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -162,7 +162,7 @@ services:
         condition: service_healthy
 
   mysql-testing:
-    image: mysql:8.0.31
+    image: mysql:8.4.4
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
