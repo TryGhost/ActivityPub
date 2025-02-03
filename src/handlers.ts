@@ -505,8 +505,6 @@ export const getSiteDataHandler =
 
         const site = await siteService.initialiseSiteForHost(host);
 
-        console.log(site);
-
         // This is to ensure that the actor exists - e.g. for a brand new a site
         await getUserData(apCtx, handle);
 
