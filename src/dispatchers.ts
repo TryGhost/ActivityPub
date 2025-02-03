@@ -581,8 +581,16 @@ export function createAnnounceHandler(
         }
 
         // Persist announce
-        const announceJson = await announce.toJsonLd();
-        ctx.data.globaldb.set([announce.id.href], announceJson);
+        const announceJson = (await announce.toJsonLd()) as {
+            object: object | string;
+            [key: string]: unknown;
+        };
+
+        if (existing) {
+            // If the announced object already exists in globalDb, set it on
+            // the activity
+            announceJson.object = existing;
+        }
 
         // Persist object if not already persisted
         if (!existing && object && object.id) {
@@ -604,7 +612,12 @@ export function createAnnounceHandler(
             }
 
             ctx.data.globaldb.set([object.id.href], objectJson);
+
+            // Set the full object on the activity
+            announceJson.object = objectJson as object;
         }
+
+        ctx.data.globaldb.set([announce.id.href], announceJson);
 
         let shouldAddToInbox = false;
 
