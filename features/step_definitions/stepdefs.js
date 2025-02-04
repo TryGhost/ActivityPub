@@ -549,7 +549,7 @@ Before(async function () {
     }
 });
 
-async function fetchActivityPub(url, options = {}) {
+async function fetchActivityPub(url, options = {}, auth = true) {
     if (!options.headers) {
         options.headers = {};
     }
@@ -570,7 +570,10 @@ async function fetchActivityPub(url, options = {}) {
         },
     );
 
-    options.headers.Authorization = `Bearer ${token}`;
+    if (auth) {
+        options.headers.Authorization = `Bearer ${token}`;
+    }
+
     return fetch(url, options);
 }
 
@@ -588,6 +591,29 @@ When('we request the outbox', async function () {
                 Accept: 'application/ld+json',
             },
         },
+    );
+});
+
+When('an authenticated request is made to {string}', async function (path) {
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub${path}`,
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+});
+
+When('an unauthenticated request is made to {string}', async function (path) {
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub${path}`,
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+        false,
     );
 });
 

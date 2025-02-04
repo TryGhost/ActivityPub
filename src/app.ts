@@ -654,7 +654,11 @@ app.use(async (ctx, next) => {
 
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
-app.get('/.ghost/activitypub/site', getSiteDataHandler(siteService));
+app.get(
+    '/.ghost/activitypub/site',
+    requireRole(GhostRole.Owner),
+    getSiteDataHandler(siteService),
+);
 
 /**
  * Essentially Auth middleware and also handles the multitenancy
