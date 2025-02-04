@@ -6,9 +6,14 @@ import { mapActivityToPost } from './helpers/post';
 import type { Post } from './types';
 
 /**
+ * Default number of feed posts to return
+ */
+const DEFAULT_FEED_POSTS_LIMIT = 20;
+
+/**
  * Maximum number of feed posts to return
  */
-const FEED_POSTS_LIMIT = 20;
+const MAX_FEED_POSTS_LIMIT = 100;
 
 /**
  * Create a handler to handle a request for a user's feed
@@ -48,14 +53,25 @@ export function createGetFeedHandler(
             });
         }
 
-        const queryCursor = ctx.req.query('cursor');
+        const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
 
         // Get feed items
         const { items: feedItems, nextCursor } =
             await feedService.getFeedFromKvStore(db, apCtx, {
                 postType,
-                limit: FEED_POSTS_LIMIT,
+                limit,
                 cursor,
             });
 
@@ -63,7 +79,7 @@ export function createGetFeedHandler(
         const posts: Post[] = [];
 
         for (const item of feedItems) {
-            const post = await mapActivityToPost(item, accountService);
+            const post = await mapActivityToPost(item, accountService, apCtx);
 
             if (post) {
                 posts.push(post);

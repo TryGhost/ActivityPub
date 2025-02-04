@@ -846,7 +846,7 @@ app.get(
     spanWrapper(handleGetProfilePosts),
 );
 app.get(
-    '/.ghost/activitypub/thread/:activity_id',
+    '/.ghost/activitypub/thread/:object_id',
     spanWrapper(handleGetActivityThread),
 );
 app.get(
@@ -860,7 +860,7 @@ app.get(
     spanWrapper(createGetAccountFollowsHandler(accountService)),
 );
 app.get(
-    '/.ghost/activitypub/feed',
+    '/.ghost/activitypub/feed/:handle',
     requireRole(GhostRole.Owner),
     spanWrapper(createGetFeedHandler(feedService, accountService)),
 );
