@@ -1,15 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AccountService } from '../../../account/account.service';
+import type { FedifyRequestContext } from '../../../app';
 import {
     ACTIVITY_OBJECT_TYPE_ARTICLE,
     ACTIVITY_OBJECT_TYPE_NOTE,
+    ACTIVITY_TYPE_ANNOUNCE,
 } from '../../../constants';
 import { PostType } from '../../../feed/types';
 import type { Activity } from '../../../helpers/activitypub/activity';
 import {
     getPostAttachments,
     getPostAuthor,
+    getPostAuthorWithoutAttribution,
     getPostContentReadingTimeMinutes,
     getPostExcerpt,
     getPostFeatureImageUrl,
@@ -17,6 +20,162 @@ import {
 } from './post';
 
 describe('getPostAuthor', () => {
+    it('should return the correct author if the activity actor is a string', async () => {
+        const activity = {
+            actor: 'https://example.com/users/foo',
+            object: {},
+        } as unknown as Activity;
+
+        const expectedAccount = {
+            ap_id: 'https://example.com/users/foo',
+        };
+
+        const mockAccountService = {
+            getAccountByApId: vi.fn().mockImplementation((id) => {
+                if (id === activity.actor) {
+                    return expectedAccount;
+                }
+
+                return null;
+            }),
+        } as unknown as AccountService;
+
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await getPostAuthor(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
+
+        expect(result).toEqual(expectedAccount);
+    });
+
+    it('should return the correct author if the activity actor is an object', async () => {
+        const activity = {
+            actor: {
+                id: 'https://example.com/users/foo',
+            },
+            object: {},
+        } as unknown as Activity;
+
+        const expectedAccount = {
+            ap_id: 'https://example.com/users/foo',
+        };
+
+        const mockAccountService = {
+            getAccountByApId: vi.fn().mockImplementation((id) => {
+                if (id === activity.actor.id) {
+                    return expectedAccount;
+                }
+
+                return null;
+            }),
+        } as unknown as AccountService;
+
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await getPostAuthor(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
+
+        expect(result).toEqual(expectedAccount);
+    });
+
+    it('should return the correct author if the activity has attribution as a string', async () => {
+        const activity = {
+            actor: 'https://example.com/users/foo',
+            object: {
+                attributedTo: 'https://example.com/users/bar',
+            },
+        } as unknown as Activity;
+
+        const actorAccount = {
+            ap_id: 'https://example.com/users/foo',
+        };
+        const attributedAccount = {
+            ap_id: 'https://example.com/users/bar',
+        };
+
+        const mockAccountService = {
+            getAccountByApId: vi.fn().mockImplementation((id) => {
+                if (id === activity.actor) {
+                    return actorAccount;
+                }
+
+                if (
+                    typeof activity.object === 'object' &&
+                    activity.object.attributedTo &&
+                    id === activity.object.attributedTo
+                ) {
+                    return attributedAccount;
+                }
+
+                return null;
+            }),
+        } as unknown as AccountService;
+
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await getPostAuthor(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
+
+        expect(result).toEqual(attributedAccount);
+    });
+
+    it('should return the correct author if the activity has attribution as an object', async () => {
+        const activity = {
+            actor: 'https://example.com/users/foo',
+            object: {
+                attributedTo: {
+                    id: 'https://example.com/users/bar',
+                },
+            },
+        } as unknown as Activity;
+
+        const actorAccount = {
+            ap_id: 'https://example.com/users/foo',
+        };
+        const attributedAccount = {
+            ap_id: 'https://example.com/users/bar',
+        };
+
+        const mockAccountService = {
+            getAccountByApId: vi.fn().mockImplementation((id) => {
+                if (id === activity.actor) {
+                    return actorAccount;
+                }
+
+                if (
+                    typeof activity.object === 'object' &&
+                    activity.object.attributedTo &&
+                    id === activity.object.attributedTo.id
+                ) {
+                    return attributedAccount;
+                }
+
+                return null;
+            }),
+        } as unknown as AccountService;
+
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await getPostAuthor(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
+
+        expect(result).toEqual(attributedAccount);
+    });
+});
+
+describe('getPostAuthorWithoutAttribution', () => {
     it('should return the correct author if the activity actor is a string', async () => {
         const activity = {
             actor: 'https://example.com/users/foo',
@@ -36,7 +195,10 @@ describe('getPostAuthor', () => {
             }),
         } as unknown as AccountService;
 
-        const result = await getPostAuthor(activity, mockAccountService);
+        const result = await getPostAuthorWithoutAttribution(
+            activity,
+            mockAccountService,
+        );
 
         expect(result).toEqual(expectedAccount);
     });
@@ -62,75 +224,12 @@ describe('getPostAuthor', () => {
             }),
         } as unknown as AccountService;
 
-        const result = await getPostAuthor(activity, mockAccountService);
+        const result = await getPostAuthorWithoutAttribution(
+            activity,
+            mockAccountService,
+        );
 
         expect(result).toEqual(expectedAccount);
-    });
-
-    it('should return the correct author if the activity has attribution as a string', async () => {
-        const activity = {
-            actor: 'https://example.com/users/foo',
-            attributedTo: 'https://example.com/users/bar',
-        } as unknown as Activity;
-
-        const actorAccount = {
-            ap_id: 'https://example.com/users/foo',
-        };
-        const attributedAccount = {
-            ap_id: 'https://example.com/users/bar',
-        };
-
-        const mockAccountService = {
-            getAccountByApId: vi.fn().mockImplementation((id) => {
-                if (id === activity.actor) {
-                    return actorAccount;
-                }
-
-                if (id === activity.attributedTo) {
-                    return attributedAccount;
-                }
-
-                return null;
-            }),
-        } as unknown as AccountService;
-
-        const result = await getPostAuthor(activity, mockAccountService);
-
-        expect(result).toEqual(attributedAccount);
-    });
-
-    it('should return the correct author if the activity has attribution as an object', async () => {
-        const activity = {
-            actor: 'https://example.com/users/foo',
-            attributedTo: {
-                id: 'https://example.com/users/bar',
-            },
-        } as unknown as Activity;
-
-        const actorAccount = {
-            ap_id: 'https://example.com/users/foo',
-        };
-        const attributedAccount = {
-            ap_id: 'https://example.com/users/bar',
-        };
-
-        const mockAccountService = {
-            getAccountByApId: vi.fn().mockImplementation((id) => {
-                if (id === activity.actor) {
-                    return actorAccount;
-                }
-
-                if (id === activity.attributedTo.id) {
-                    return attributedAccount;
-                }
-
-                return null;
-            }),
-        } as unknown as AccountService;
-
-        const result = await getPostAuthor(activity, mockAccountService);
-
-        expect(result).toEqual(attributedAccount);
     });
 });
 
@@ -339,7 +438,13 @@ describe('mapActivityToPost', () => {
             },
         } as unknown as Activity;
 
-        const result = await mapActivityToPost(activity, mockAccountService);
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await mapActivityToPost(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
 
         expect(result).toEqual({
             id: 'https://example.com/posts/123',
@@ -369,7 +474,7 @@ describe('mapActivityToPost', () => {
                 name: 'Foo Bar Baz',
                 url: 'https://example.com/users/foobarbaz',
             },
-            sharedBy: null,
+            repostedBy: null,
         });
     });
 
@@ -385,7 +490,13 @@ describe('mapActivityToPost', () => {
             },
         } as unknown as Activity;
 
-        const result = await mapActivityToPost(activity, mockAccountService);
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await mapActivityToPost(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
 
         expect(result).toEqual({
             id: 'https://example.com/posts/123',
@@ -408,7 +519,7 @@ describe('mapActivityToPost', () => {
                 name: 'Foo Bar Baz',
                 url: 'https://example.com/users/foobarbaz',
             },
-            sharedBy: null,
+            repostedBy: null,
         });
     });
 
@@ -423,7 +534,13 @@ describe('mapActivityToPost', () => {
             },
         } as unknown as Activity;
 
-        const result = await mapActivityToPost(activity, mockAccountService);
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await mapActivityToPost(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
 
         expect(result?.content).toBe('');
         expect(result?.readingTimeMinutes).toBe(0);
@@ -443,11 +560,62 @@ describe('mapActivityToPost', () => {
             },
         } as unknown as Activity;
 
+        const fedifyCtx = {} as FedifyRequestContext;
+
         const result = await mapActivityToPost(
             activity,
             mockAccountServiceNoAuthor,
+            fedifyCtx,
         );
 
         expect(result).toBeNull();
+    });
+
+    it('should set the repostedBy property if the activity is an announce', async () => {
+        const activity = {
+            actor: 'https://example.com/users/bazbarqux',
+            type: ACTIVITY_TYPE_ANNOUNCE,
+            object: {
+                id: 'https://example.com/posts/123',
+                type: ACTIVITY_TYPE_ANNOUNCE,
+                content: 'Test',
+                attributedTo: 'https://example.com/users/foobarbaz',
+            },
+        } as unknown as Activity;
+
+        const mockReposter = {
+            id: 456,
+            ap_id: 'https://example.com/users/bazbarqux',
+            username: 'bazbarqux',
+            avatar_url: 'https://example.com/avatars/bazbarqux.jpg',
+            name: 'Baz Bar Qux',
+            url: 'https://example.com/users/bazbarqux',
+        };
+
+        const mockAccountService = {
+            getAccountByApId: vi.fn().mockImplementation((id) => {
+                if (id === activity.actor) {
+                    return mockReposter;
+                }
+
+                return mockAuthor;
+            }),
+        } as unknown as AccountService;
+
+        const fedifyCtx = {} as FedifyRequestContext;
+
+        const result = await mapActivityToPost(
+            activity,
+            mockAccountService,
+            fedifyCtx,
+        );
+
+        expect(result?.repostedBy).toEqual({
+            id: '456',
+            handle: '@bazbarqux@example.com',
+            avatarUrl: 'https://example.com/avatars/bazbarqux.jpg',
+            name: 'Baz Bar Qux',
+            url: 'https://example.com/users/bazbarqux',
+        });
     });
 });

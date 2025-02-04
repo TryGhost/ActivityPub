@@ -48,7 +48,7 @@ export function createGetFeedHandler(
             });
         }
 
-        const queryCursor = ctx.req.query('cursor');
+        const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
         // Get feed items
@@ -63,7 +63,7 @@ export function createGetFeedHandler(
         const posts: Post[] = [];
 
         for (const item of feedItems) {
-            const post = await mapActivityToPost(item, accountService);
+            const post = await mapActivityToPost(item, accountService, apCtx);
 
             if (post) {
                 posts.push(post);

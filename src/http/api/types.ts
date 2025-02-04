@@ -142,7 +142,10 @@ export interface Post {
      */
     author: Pick<Account, 'id' | 'handle' | 'avatarUrl' | 'name' | 'url'>;
     /**
-     * Account that shared the post
+     * Account that reposted the post
      */
-    sharedBy: null;
+    repostedBy: Pick<
+        Account,
+        'id' | 'handle' | 'avatarUrl' | 'name' | 'url'
+    > | null;
 }

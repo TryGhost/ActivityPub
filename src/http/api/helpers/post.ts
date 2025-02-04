@@ -1,8 +1,14 @@
+import { isActor } from '@fedify/fedify';
 import type { AccountService } from '../../../account/account.service';
-import { getAccountHandle } from '../../../account/utils';
+import {
+    getAccountHandle,
+    mapActorToExternalAccountData,
+} from '../../../account/utils';
+import type { FedifyRequestContext } from '../../../app';
 import {
     ACTIVITY_OBJECT_TYPE_ARTICLE,
     ACTIVITY_OBJECT_TYPE_NOTE,
+    ACTIVITY_TYPE_ANNOUNCE,
 } from '../../../constants';
 import { PostType } from '../../../feed/types';
 import type {
@@ -10,6 +16,7 @@ import type {
     ActivityObject,
     ActivityObjectAttachment,
 } from '../../../helpers/activitypub/activity';
+import { lookupActor } from '../../../lookup-helpers';
 import type { Post } from '../types';
 
 /**
@@ -18,8 +25,62 @@ import type { Post } from '../types';
  *
  * @param activity Activity
  * @param accountService Account service instance
+ * @param fedifyCtx Fedify request context instance
  */
 export async function getPostAuthor(
+    activity: Activity,
+    accountService: AccountService,
+    fedifyCtx: FedifyRequestContext,
+) {
+    let activityPubId: string;
+
+    if (typeof activity.actor === 'string') {
+        activityPubId = activity.actor;
+    } else {
+        activityPubId = activity.actor.id;
+    }
+
+    const object = activity.object as ActivityObject;
+
+    if (object.attributedTo && typeof object.attributedTo === 'string') {
+        activityPubId = object.attributedTo;
+    }
+
+    if (object.attributedTo && typeof object.attributedTo === 'object') {
+        activityPubId = object.attributedTo.id;
+    }
+
+    let author = await accountService.getAccountByApId(activityPubId);
+
+    // If we can't find an author, and the activity is an announce, we need to
+    // look up the actor and create a new account, as we may not have created
+    // the account yet - currently, accounts only get created when a follow
+    // occurs, but the user may not be following the original author of the
+    // announced object. This won't be needed when we have the posts table as
+    // this enforces that a post belongs to an account (so the account has to
+    // exist prior to insertion into the posts table)
+    if (!author && activity.type === ACTIVITY_TYPE_ANNOUNCE) {
+        const actor = await lookupActor(fedifyCtx, activityPubId);
+
+        if (isActor(actor)) {
+            const externalAccountData =
+                await mapActorToExternalAccountData(actor);
+
+            author =
+                await accountService.createExternalAccount(externalAccountData);
+        }
+    }
+
+    return author;
+}
+
+/**
+ * Get the author of a post from an activity without attribution
+ *
+ * @param activity Activity
+ * @param accountService Account service instance
+ */
+export async function getPostAuthorWithoutAttribution(
     activity: Activity,
     accountService: AccountService,
 ) {
@@ -31,17 +92,7 @@ export async function getPostAuthor(
         activityPubId = activity.actor.id;
     }
 
-    if (activity.attributedTo && typeof activity.attributedTo === 'string') {
-        activityPubId = activity.attributedTo;
-    }
-
-    if (activity.attributedTo && typeof activity.attributedTo === 'object') {
-        activityPubId = activity.attributedTo.id;
-    }
-
-    const author = await accountService.getAccountByApId(activityPubId);
-
-    return author;
+    return accountService.getAccountByApId(activityPubId);
 }
 
 /**
@@ -139,10 +190,12 @@ export function getPostAttachments(
  *
  * @param activity Activity
  * @param accountService Account service instance
+ * @param fedifyCtx Fedify request context instance
  */
 export async function mapActivityToPost(
     activity: Activity,
     accountService: AccountService,
+    fedifyCtx: FedifyRequestContext,
 ): Promise<Post | null> {
     const object = activity.object as ActivityObject;
 
@@ -150,7 +203,7 @@ export async function mapActivityToPost(
     // content, so we need to handle this case by using an empty string
     const postContent = object.content || '';
 
-    const author = await getPostAuthor(activity, accountService);
+    const author = await getPostAuthor(activity, accountService, fedifyCtx);
 
     // If we can't find an author, we can't map the activity to a post, so we
     // return early
@@ -158,7 +211,7 @@ export async function mapActivityToPost(
         return null;
     }
 
-    return {
+    const post: Post = {
         // At the moment we don't have an internal ID so just use the Fediverse ID
         id: object.id,
         type:
@@ -189,6 +242,28 @@ export async function mapActivityToPost(
             name: author.name ?? '',
             url: author.url ?? '',
         },
-        sharedBy: null,
+        repostedBy: null,
     };
+
+    if (activity.type === ACTIVITY_TYPE_ANNOUNCE) {
+        const repostedBy = await getPostAuthorWithoutAttribution(
+            activity,
+            accountService,
+        );
+
+        if (repostedBy) {
+            post.repostedBy = {
+                id: repostedBy.id.toString(),
+                handle: getAccountHandle(
+                    new URL(repostedBy.ap_id).host,
+                    repostedBy.username,
+                ),
+                avatarUrl: repostedBy.avatar_url ?? '',
+                name: repostedBy.name ?? '',
+                url: repostedBy.url ?? '',
+            };
+        }
+    }
+
+    return post;
 }
