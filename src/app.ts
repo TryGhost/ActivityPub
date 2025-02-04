@@ -43,6 +43,7 @@ import { FediverseBridge } from './activitypub/fediverse-bridge';
 import { client } from './db';
 import {
     acceptDispatcher,
+    announceDispatcher,
     actorDispatcher,
     articleDispatcher,
     createAcceptHandler,
@@ -81,6 +82,7 @@ import {
     inboxHandler,
     likeAction,
     replyAction,
+    repostAction,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
@@ -380,7 +382,11 @@ fedify.setObjectDispatcher(
     '/.ghost/activitypub/undo/{id}',
     spanWrapper(undoDispatcher),
 );
-
+fedify.setObjectDispatcher(
+    Announce,
+    '/.ghost/activitypub/announce/{id}',
+    spanWrapper(announceDispatcher),
+);
 fedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
     spanWrapper(nodeInfoDispatcher),
@@ -793,6 +799,11 @@ app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(replyAction),
+);
+app.post(
+    '/.ghost/activitypub/actions/repost/:id',
+    requireRole(GhostRole.Owner),
+    spanWrapper(repostAction),
 );
 app.post(
     '/.ghost/activitypub/actions/note',

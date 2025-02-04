@@ -6,6 +6,7 @@ import {
     Like,
     Mention,
     Note,
+    Announce,
     PUBLIC_COLLECTION,
     Undo,
     isActor,
@@ -572,4 +573,79 @@ export async function inboxHandler(
             status: 200,
         },
     );
+}
+
+export async function repostAction(
+    ctx: Context<{ Variables: HonoContextVariables }>,
+) {
+    const id = ctx.req.param('id');
+    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        db: ctx.get('db'),
+        globaldb: ctx.get('globaldb'),
+        logger: ctx.get('logger'),
+    });
+
+    const objectToRepost = await lookupObject(apCtx, id);
+    if (!objectToRepost) {
+        return new Response(null, {
+            status: 404,
+        });
+    }
+
+    const announceId = apCtx.getObjectUri(Announce, {
+        id: createHash('sha256').update(objectToRepost.id!.href).digest('hex'),
+    });
+
+    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+    const announce = new Announce({
+        id: announceId,
+        actor: actor,
+        object: objectToRepost,
+        to: PUBLIC_COLLECTION,
+        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+    });
+
+    const announceJson = await announce.toJsonLd();
+
+    console.log('announceJSON is', announceJson);
+
+    // TODO: Share that activity
+    await ctx.get('globaldb').set([announce.id!.href], announceJson);
+
+    await addToList(ctx.get('db'), ['reposted'], announce.id!.href);
+
+    let attributionActor: Actor | null = null;
+    if (objectToRepost.attributionId) {
+        attributionActor = await lookupActor(
+            apCtx,
+            objectToRepost.attributionId.href,
+        );
+    }
+    if (attributionActor) {
+        apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            attributionActor,
+            announce,
+            {
+                preferSharedInbox: true,
+            },
+        );
+    }
+
+    apCtx.sendActivity(
+        { handle: ACTOR_DEFAULT_HANDLE },
+        'followers',
+        announce,
+        {
+            preferSharedInbox: true,
+        },
+    );
+
+    return new Response(JSON.stringify(announceJson), {
+        headers: {
+            'Content-Type': 'application/activity+json',
+        },
+        status: 200,
+    });
 }
