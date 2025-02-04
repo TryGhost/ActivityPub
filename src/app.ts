@@ -90,14 +90,14 @@ import {
     createGetAccountFollowsHandler,
     createGetAccountHandler,
     createGetFeedHandler,
-    createGetFollowersHandler,
-    createGetFollowingHandler,
+    createGetProfileFollowersHandler,
+    createGetProfileFollowingHandler,
     createGetProfileHandler,
     createSearchHandler,
     handleCreateNote,
     handleGetActivities,
     handleGetActivityThread,
-    handleGetPosts,
+    handleGetProfilePosts,
     handleWebhookPostPublished,
     handleWebhookSiteChanged,
 } from './http/api';
@@ -816,17 +816,17 @@ app.get(
 app.get(
     '/.ghost/activitypub/profile/:handle/followers',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetFollowersHandler(accountService)),
+    spanWrapper(createGetProfileFollowersHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/following',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetFollowingHandler(accountService)),
+    spanWrapper(createGetProfileFollowingHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetPosts),
+    spanWrapper(handleGetProfilePosts),
 );
 app.get(
     '/.ghost/activitypub/thread/:activity_id',
