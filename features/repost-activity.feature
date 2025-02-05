@@ -1,4 +1,3 @@
-@only
 Feature: Reposting a post
   In order to share content with my followers
   As a user
