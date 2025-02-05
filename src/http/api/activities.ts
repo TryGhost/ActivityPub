@@ -88,6 +88,12 @@ export async function handleGetActivities(ctx: AppContext) {
     // This is used to add a "liked" property to the item if the user has liked it
     const likedRefs = (await db.get<string[]>(['liked'])) || [];
 
+    // Fetch the reposted object refs from the database:
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    // This is used to add a "reposted" property to the item if the user has reposted it
+    const repostedRefs = (await db.get<string[]>(['reposted'])) || [];
+
     // Fetch the refs of the activities in the inbox from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
@@ -226,6 +232,7 @@ export async function handleGetActivities(ctx: AppContext) {
                     globaldb,
                     apCtx,
                     likedRefs,
+                    repostedRefs,
                     true,
                 );
             } catch (err) {
@@ -315,9 +322,11 @@ export async function handleGetActivityThread(ctx: AppContext) {
 
     // Build the activities so that they have all the data expected by the client
     const likedRefs = (await db.get<string[]>(['liked'])) || [];
+    const repostedRefs = (await db.get<string[]>(['reposted'])) || [];
+
     const builtActivities = await Promise.all(
         items.map((item) =>
-            buildActivity(item.id, globaldb, apCtx, likedRefs, true),
+            buildActivity(item.id, globaldb, apCtx, likedRefs, repostedRefs, true),
         ),
     );
 

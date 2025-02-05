@@ -48,6 +48,9 @@ export class FeedService {
         // Used to look up if a post is liked by the user
         const likedRefs = (await db.get<string[]>(['liked'])) || [];
 
+        // Used to look up if a post is reposted by the user
+        const repostedRefs = (await db.get<string[]>(['reposted'])) || [];
+
         // Used to look up posts from followers
         const inboxRefs = (await db.get<string[]>(['inbox'])) || [];
 
@@ -113,6 +116,7 @@ export class FeedService {
                         fedifyCtx.data.globaldb,
                         fedifyCtx,
                         likedRefs,
+                        repostedRefs,
                         true,
                     );
                 } catch (err) {
