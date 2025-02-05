@@ -1,30 +1,31 @@
-Feature: Reposting an object
+@only
+Feature: Reposting a post
+  In order to share content with my followers
   As a user
-  I want to repost an object in my feed
-  So that I can share the content with my followers
+  I want to be able to repost a post in my feed
 
-  Scenario: Reposting an object that has not been reposted before
+  Scenario: Reposting a post that has not been reposted before
     Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
+    And we follow "Alice"
+    And the request is accepted
+    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
     And "Alice" sends "Accept" to the Inbox
     And "Accept" is in our Inbox
-    Given a "Create(Note)" Activity "Note" by "Alice"
-    When "Alice" sends "Note" to the Inbox
+    And a "Create(Note)" Activity "Note" by "Alice"
+    And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
-    And we repost the object "Note"
+    When we repost the object "Note"
     Then a "Announce(Note)" activity is sent to "Alice"
 
-  Scenario: Reposting an object that has been reposted before
+  Scenario: Reposting an post that has been reposted before
     Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
+    And we follow "Alice"
+    And the request is accepted
+    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
     And "Alice" sends "Accept" to the Inbox
     And "Accept" is in our Inbox
-    Given a "Create(Note)" Activity "Note" by "Alice"
-    When "Alice" sends "Note" to the Inbox
+    And a "Create(Note)" Activity "Note" by "Alice"
+    And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
     And we repost the object "Note"
     Then the request is accepted
