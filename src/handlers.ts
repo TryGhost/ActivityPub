@@ -552,7 +552,13 @@ export async function inboxHandler(
     const items = await Promise.all(
         inbox.map(async (item) => {
             try {
-                return await buildActivity(item, globaldb, apCtx, liked, reposted);
+                return await buildActivity(
+                    item,
+                    globaldb,
+                    apCtx,
+                    liked,
+                    reposted,
+                );
             } catch (err) {
                 ctx.get('logger').error('Inbox handler failed: {error}', {
                     error: err,

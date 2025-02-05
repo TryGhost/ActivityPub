@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { type Context, type KvStore, Like, Announce } from '@fedify/fedify';
+import { Announce, type Context, type KvStore, Like } from '@fedify/fedify';
 
 import type { ContextData } from '../../app';
 import { getActivityChildrenCount } from '../../db';

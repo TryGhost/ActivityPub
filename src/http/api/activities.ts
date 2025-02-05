@@ -326,7 +326,14 @@ export async function handleGetActivityThread(ctx: AppContext) {
 
     const builtActivities = await Promise.all(
         items.map((item) =>
-            buildActivity(item.id, globaldb, apCtx, likedRefs, repostedRefs, true),
+            buildActivity(
+                item.id,
+                globaldb,
+                apCtx,
+                likedRefs,
+                repostedRefs,
+                true,
+            ),
         ),
     );
 
