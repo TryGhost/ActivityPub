@@ -596,6 +596,12 @@ export async function repostAction(
         id: createHash('sha256').update(objectToRepost.id!.href).digest('hex'),
     });
 
+    if (await ctx.get('globaldb').get([announceId.href])) {
+        return new Response(null, {
+            status: 409,
+        });
+    }
+
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
 
     const announce = new Announce({
@@ -608,11 +614,7 @@ export async function repostAction(
 
     const announceJson = await announce.toJsonLd();
 
-    console.log('announceJSON is', announceJson);
-
-    // TODO: Share that activity
     await ctx.get('globaldb').set([announce.id!.href], announceJson);
-
     await addToList(ctx.get('db'), ['reposted'], announce.id!.href);
 
     let attributionActor: Actor | null = null;
