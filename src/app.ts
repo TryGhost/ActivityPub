@@ -77,12 +77,12 @@ import {
 import { FeedService } from './feed/feed.service';
 import {
     createFollowActionHandler,
+    createRepostActionHandler,
     createUnfollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
     likeAction,
     replyAction,
-    repostAction,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
@@ -803,7 +803,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(repostAction),
+    spanWrapper(createRepostActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/note',
