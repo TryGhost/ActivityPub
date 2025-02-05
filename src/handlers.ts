@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import {
     type Actor,
+    Announce,
     Create,
     Follow,
     Like,
     Mention,
     Note,
-    Announce,
     PUBLIC_COLLECTION,
     Undo,
     isActor,

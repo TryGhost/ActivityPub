@@ -43,8 +43,8 @@ import { FediverseBridge } from './activitypub/fediverse-bridge';
 import { client } from './db';
 import {
     acceptDispatcher,
-    announceDispatcher,
     actorDispatcher,
+    announceDispatcher,
     articleDispatcher,
     createAcceptHandler,
     createAnnounceHandler,
