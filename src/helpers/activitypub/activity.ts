@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { type Context, type KvStore, Like } from '@fedify/fedify';
+import { Announce, type Context, type KvStore, Like } from '@fedify/fedify';
 
 import type { ContextData } from '../../app';
 import { getActivityChildrenCount } from '../../db';
@@ -31,6 +31,7 @@ export async function buildActivity(
     db: KvStore,
     apCtx: Context<ContextData>,
     liked: string[] = [],
+    reposted: string[] = [],
     expandInReplyTo = false,
 ): Promise<Activity | null> {
     const item = await db.get<Activity>([uri]);
@@ -106,6 +107,14 @@ export async function buildActivity(
         if (liked.includes(likeId.href)) {
             if (typeof item.object !== 'string') {
                 item.object.liked = true;
+            }
+        }
+        const repostId = apCtx.getObjectUri(Announce, {
+            id: createHash('sha256').update(objectId).digest('hex'),
+        });
+        if (reposted.includes(repostId.href)) {
+            if (typeof item.object !== 'string') {
+                item.object.reposted = true;
             }
         }
     }

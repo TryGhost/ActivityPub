@@ -14,7 +14,9 @@ Feature: Reposting a post
     And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
     When we repost the object "Note"
-    Then a "Announce(Note)" activity is sent to "Alice"
+    Then the request is accepted
+    And the object "Note" should be reposted
+    And a "Announce(Note)" activity is sent to "Alice"
 
   Scenario: Reposting an post that has been reposted before
     Given an Actor "Person(Alice)"

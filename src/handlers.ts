@@ -537,6 +537,12 @@ export async function inboxHandler(
     // This is used to add a "liked" property to the item if the user has liked it
     const liked = (await db.get<string[]>(['liked'])) || [];
 
+    // Fetch the reposted items from the database:
+    //   - Data is structured as an array of strings
+    //   - Each string is a URI to an object in the database
+    //   - This is used to add a "reposted" property to the item if the user has reposted it
+    const reposted = (await db.get<string[]>(['reposted'])) || [];
+
     // Fetch the inbox from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
@@ -546,7 +552,13 @@ export async function inboxHandler(
     const items = await Promise.all(
         inbox.map(async (item) => {
             try {
-                return await buildActivity(item, globaldb, apCtx, liked);
+                return await buildActivity(
+                    item,
+                    globaldb,
+                    apCtx,
+                    liked,
+                    reposted,
+                );
             } catch (err) {
                 ctx.get('logger').error('Inbox handler failed: {error}', {
                     error: err,
