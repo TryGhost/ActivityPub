@@ -3,7 +3,7 @@ import {
     Accept,
     Activity,
     type Actor,
-    type Announce,
+    Announce,
     Article,
     type Context,
     Create,
@@ -1298,6 +1298,18 @@ export async function likeDispatcher(
         return null;
     }
     return Like.fromJsonLd(exists);
+}
+
+export async function announceDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Announce, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
+    if (!exists) {
+        return null;
+    }
+    return Announce.fromJsonLd(exists);
 }
 
 export async function undoDispatcher(

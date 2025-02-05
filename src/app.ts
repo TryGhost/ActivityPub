@@ -44,6 +44,7 @@ import { client } from './db';
 import {
     acceptDispatcher,
     actorDispatcher,
+    announceDispatcher,
     articleDispatcher,
     createAcceptHandler,
     createAnnounceHandler,
@@ -76,6 +77,7 @@ import {
 import { FeedService } from './feed/feed.service';
 import {
     createFollowActionHandler,
+    createRepostActionHandler,
     createUnfollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
@@ -380,7 +382,11 @@ fedify.setObjectDispatcher(
     '/.ghost/activitypub/undo/{id}',
     spanWrapper(undoDispatcher),
 );
-
+fedify.setObjectDispatcher(
+    Announce,
+    '/.ghost/activitypub/announce/{id}',
+    spanWrapper(announceDispatcher),
+);
 fedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
     spanWrapper(nodeInfoDispatcher),
@@ -797,6 +803,11 @@ app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(replyAction),
+);
+app.post(
+    '/.ghost/activitypub/actions/repost/:id',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createRepostActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/note',

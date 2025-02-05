@@ -773,6 +773,16 @@ Then('the object {string} should not be liked', async function (name) {
     assert(found.object.liked !== true);
 });
 
+When('we repost the object {string}', async function (name) {
+    const id = this.objects[name].id;
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/actions/repost/${encodeURIComponent(id)}`,
+        {
+            method: 'POST',
+        },
+    );
+});
+
 async function getObjectInCollection(objectName, collectionType) {
     const initialResponse = await fetchActivityPub(
         `http://fake-ghost-activitypub/.ghost/activitypub/${collectionType}/index`,
