@@ -800,6 +800,26 @@ Then('the object {string} should be reposted', async function (name) {
     assert(found.object.reposted === true);
 });
 
+Then(
+    'the object {string} should have a repost count of {int}',
+    async function (name, repostCount) {
+        const response = await fetchActivityPub(
+            'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+            {
+                headers: {
+                    Accept: 'application/ld+json',
+                },
+            },
+        );
+        const inbox = await response.json();
+        const object = this.objects[name];
+
+        const found = inbox.items.find((item) => item.object.id === object.id);
+
+        assert(found.object.repostCount === repostCount);
+    },
+);
+
 When('we undo the repost of the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(

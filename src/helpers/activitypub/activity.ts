@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Announce, type Context, type KvStore, Like } from '@fedify/fedify';
 
 import type { ContextData } from '../../app';
-import { getActivityChildrenCount } from '../../db';
+import { getActivityChildrenCount, getRepostCount } from '../../db';
 import { lookupActor } from '../../lookup-helpers';
 import { sanitizeHtml } from '../html';
 
@@ -132,9 +132,10 @@ export async function buildActivity(
         }
     }
 
-    // Add the reply count to the object, if it is an object
+    // Add reply count and repost count to the object, if it is an object
     if (typeof item.object !== 'string') {
         item.object.replyCount = await getActivityChildrenCount(item);
+        item.object.repostCount = await getRepostCount(item);
     }
 
     // Return the built item
