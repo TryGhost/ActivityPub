@@ -506,16 +506,16 @@
   resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.3.5.tgz#b0404147d89f95078e8c3488570eb08d963bbc43"
   integrity sha512-kr9Jg2qBXqbF8tlfsJ1zNeYLzYp2ztw4RpBt4epbgoI3ksRvXjSkwOwamtiigJv17ILLxUYdEp20KM0rbjIEVg==
 
-"@fedify/fedify@1.3.5":
-  version "1.3.5"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.3.5.tgz#5d4710f6cf44d9b8eca99c4cae5ea56039506bee"
-  integrity sha512-MIvvk9mBVLcrtnfMDheCmN0AXitkN8fIu+bGLZik6griNME5mA2PlqKBKNbj/YgCLZNApO9ENQjqXPgyw8LDNQ==
+"@fedify/fedify@1.4.0":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.4.0.tgz#3950c5a121d2353fb6b9f7b0e6cae1606358ddf3"
+  integrity sha512-lcCxxN4vSHglYmze7ja/VxSjCm2XzLvPgWUzI90Ad9bT7lDc6biVWfefyTDGosHKuc3Uxou9pKbOIAI1Nw+jkA==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"
     "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.4.4"
-    "@logtape/logtape" "^0.8.0"
+    "@logtape/logtape" "^0.8.1"
     "@opentelemetry/api" "^1.9.0"
     "@opentelemetry/semantic-conventions" "^1.27.0"
     "@phensley/language-tag" "^1.9.0"
@@ -694,10 +694,15 @@
     jsbi "^4.3.0"
     tslib "^2.4.1"
 
-"@logtape/logtape@0.8.0", "@logtape/logtape@^0.8.0":
+"@logtape/logtape@0.8.0":
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.8.0.tgz#e0b3423aa3003d582bb8f4cbe865923b4d238f6a"
   integrity sha512-kTGbRE4tbHGlZk3+k9fIJbrLODcDiAvv9X2q+tHXjWyNjWXEH46efDBjsE63zDzR/b6Q4Abiloa4VNwKSDLyzQ==
+
+"@logtape/logtape@^0.8.1":
+  version "0.8.1"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.8.1.tgz#0b9048658906806e47eed72cd862e0068c7c9831"
+  integrity sha512-I12BwnMgI/M/0AtkSRKRV2QeHZUWm2RWaC9CuhsXTLEr5In8ezc0DXhMI0anP+ux2NRtzitjum2TfHfQ8sFYzg==
 
 "@multiformats/base-x@^4.0.1":
   version "4.0.1"
