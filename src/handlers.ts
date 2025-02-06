@@ -669,8 +669,8 @@ export function createRepostActionHandler(accountService: AccountService) {
     };
 }
 
-export function createDepostActionHandler(accountService: AccountService) {
-    return async function depostAction(
+export function createDerepostActionHandler(accountService: AccountService) {
+    return async function derepostAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
     ) {
         const id = ctx.req.param('id');

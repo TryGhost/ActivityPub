@@ -76,7 +76,7 @@ import {
 } from './dispatchers';
 import { FeedService } from './feed/feed.service';
 import {
-    createDepostActionHandler,
+    createDerepostActionHandler,
     createFollowActionHandler,
     createRepostActionHandler,
     createUnfollowActionHandler,
@@ -811,9 +811,9 @@ app.post(
     spanWrapper(createRepostActionHandler(accountService)),
 );
 app.post(
-    '/.ghost/activitypub/actions/depost/:id',
+    '/.ghost/activitypub/actions/derepost/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createDepostActionHandler(accountService)),
+    spanWrapper(createDerepostActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/note',

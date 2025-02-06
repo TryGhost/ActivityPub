@@ -803,7 +803,7 @@ Then('the object {string} should be reposted', async function (name) {
 When('we undo the repost of the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/depost/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub/.ghost/activitypub/actions/derepost/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
