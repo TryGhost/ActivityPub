@@ -16,6 +16,7 @@ Feature: Reposting a post
     When we repost the object "Note"
     Then the request is accepted
     And the object "Note" should be reposted
+    And the object "Note" should have a repost count greater than 0
     And a "Announce(Note)" activity is sent to "Alice"
 
   Scenario: Reposting an post that has been reposted before

@@ -800,6 +800,26 @@ Then('the object {string} should be reposted', async function (name) {
     assert(found.object.reposted === true);
 });
 
+Then(
+    'the object {string} should have a repost count greater than 0',
+    async function (name) {
+        const response = await fetchActivityPub(
+            'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+            {
+                headers: {
+                    Accept: 'application/ld+json',
+                },
+            },
+        );
+        const inbox = await response.json();
+        const object = this.objects[name];
+
+        const found = inbox.items.find((item) => item.object.id === object.id);
+
+        assert(found.object.repostCount > 0);
+    },
+);
+
 async function getObjectInCollection(objectName, collectionType) {
     const initialResponse = await fetchActivityPub(
         `http://fake-ghost-activitypub/.ghost/activitypub/${collectionType}/index`,

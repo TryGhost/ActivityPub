@@ -148,6 +148,27 @@ export async function getActivityChildrenCount(activity: ActivityJsonLd) {
     return result[0].count;
 }
 
+export async function getRepostCount(activity: ActivityJsonLd) {
+    console.log('objectId: ', activity.object.id);
+    console.log('objectontent: ', activity.object.content);
+    console.log('_______________________________________');
+    const objectId = activity.object.id;
+
+    const result = await client
+        .count('* as count')
+        .from('key_value')
+        .where(function () {
+            this.where(
+                client.raw(
+                    `JSON_EXTRACT(value, "$.object.id") = "${objectId}"`,
+                ),
+            );
+        })
+        .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Announce"`));
+
+    return result[0].count;
+}
+
 export async function getActivityParents(activity: ActivityJsonLd) {
     const parents: ActivityJsonLd[] = [];
 
