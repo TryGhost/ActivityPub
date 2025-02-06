@@ -596,17 +596,15 @@ export function createRepostActionHandler(accountService: AccountService) {
             logger: ctx.get('logger'),
         });
 
-        const objectToRepost = await lookupObject(apCtx, id);
-        if (!objectToRepost) {
+        const post = await lookupObject(apCtx, id);
+        if (!post) {
             return new Response(null, {
                 status: 404,
             });
         }
 
         const announceId = apCtx.getObjectUri(Announce, {
-            id: createHash('sha256')
-                .update(objectToRepost.id!.href)
-                .digest('hex'),
+            id: createHash('sha256').update(post.id!.href).digest('hex'),
         });
 
         if (await ctx.get('globaldb').get([announceId.href])) {
@@ -620,25 +618,26 @@ export function createRepostActionHandler(accountService: AccountService) {
         const announce = new Announce({
             id: announceId,
             actor: actor,
-            object: objectToRepost,
+            object: post,
             to: PUBLIC_COLLECTION,
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
         });
 
         const announceJson = await announce.toJsonLd();
 
+        // Add announce activity to the database
         await ctx.get('globaldb').set([announce.id!.href], announceJson);
         await addToList(ctx.get('db'), ['reposted'], announce.id!.href);
 
-        // Add to the actor's outbox
+        // Add announce activity to the actor's outbox
         await addToList(ctx.get('db'), ['outbox'], announce.id!.href);
 
         // Send the announce activity
         let attributionActor: Actor | null = null;
-        if (objectToRepost.attributionId) {
+        if (post.attributionId) {
             attributionActor = await lookupActor(
                 apCtx,
-                objectToRepost.attributionId.href,
+                post.attributionId.href,
             );
         }
         if (attributionActor) {
@@ -662,6 +661,102 @@ export function createRepostActionHandler(accountService: AccountService) {
         );
 
         return new Response(JSON.stringify(announceJson), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        });
+    };
+}
+
+export function createDerepostActionHandler(accountService: AccountService) {
+    return async function derepostAction(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        const id = ctx.req.param('id');
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
+        });
+
+        const post = await lookupObject(apCtx, id);
+        if (!post) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        const announceId = apCtx.getObjectUri(Announce, {
+            id: createHash('sha256').update(post.id!.href).digest('hex'),
+        });
+
+        const undoId = apCtx.getObjectUri(Undo, {
+            id: createHash('sha256').update(announceId.href).digest('hex'),
+        });
+
+        const announceToUndoJson = await ctx
+            .get('globaldb')
+            .get([announceId.href]);
+
+        if (!announceToUndoJson) {
+            return new Response(null, {
+                status: 409,
+            });
+        }
+
+        const announceToUndo = await Announce.fromJsonLd(announceToUndoJson);
+
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+        const undo = new Undo({
+            id: undoId,
+            actor: actor,
+            object: announceToUndo,
+            to: PUBLIC_COLLECTION,
+            cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+        });
+
+        // Add the undo activity to the database
+        const undoJson = await undo.toJsonLd();
+        await ctx.get('globaldb').set([undo.id!.href], undoJson);
+
+        // Remove announce activity from database
+        await removeFromList(ctx.get('db'), ['reposted'], announceId.href);
+        await ctx.get('globaldb').delete([announceId.href]);
+
+        // Remove announce activity from the actor's outbox
+        await removeFromList(ctx.get('db'), ['outbox'], announceId.href);
+
+        // Send the undo activity
+        let attributionActor: Actor | null = null;
+        if (post.attributionId) {
+            attributionActor = await lookupActor(
+                apCtx,
+                post.attributionId.href,
+            );
+        }
+        if (attributionActor) {
+            apCtx.sendActivity(
+                { handle: ACTOR_DEFAULT_HANDLE },
+                attributionActor,
+                undo,
+                {
+                    preferSharedInbox: true,
+                },
+            );
+        }
+
+        apCtx.sendActivity(
+            { handle: ACTOR_DEFAULT_HANDLE },
+            'followers',
+            undo,
+            {
+                preferSharedInbox: true,
+            },
+        );
+
+        return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
             },
