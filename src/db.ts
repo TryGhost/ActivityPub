@@ -149,9 +149,6 @@ export async function getActivityChildrenCount(activity: ActivityJsonLd) {
 }
 
 export async function getRepostCount(activity: ActivityJsonLd) {
-    console.log('objectId: ', activity.object.id);
-    console.log('objectontent: ', activity.object.content);
-    console.log('_______________________________________');
     const objectId = activity.object.id;
 
     const result = await client
