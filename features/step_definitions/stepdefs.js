@@ -801,8 +801,8 @@ Then('the object {string} should be reposted', async function (name) {
 });
 
 Then(
-    'the object {string} should have a repost count greater than 0',
-    async function (name) {
+    'the object {string} should have a repost count of {int}',
+    async function (name, repostCount) {
         const response = await fetchActivityPub(
             'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
             {
@@ -816,7 +816,7 @@ Then(
 
         const found = inbox.items.find((item) => item.object.id === object.id);
 
-        assert(found.object.repostCount > 0);
+        assert(found.object.repostCount === repostCount);
     },
 );
 
