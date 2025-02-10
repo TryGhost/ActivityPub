@@ -18,6 +18,8 @@ Feature: Reposting a post/note
     And the object "Note" should be reposted
     And the object "Note" should have a repost count of 1
     And a "Announce(Note)" activity is sent to "Alice"
+    And a "Announce(Note)" activity is in the Outbox
+    And the found "Announce(Note)" has property "object.attributedTo" of type "object"
 
   Scenario: Trying to repost a post/note that has already been reposted
     Given an Actor "Person(Alice)"
