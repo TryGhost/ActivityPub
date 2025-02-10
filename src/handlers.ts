@@ -613,6 +613,8 @@ export function createRepostActionHandler(accountService: AccountService) {
             });
         }
 
+        await post.getAttribution();
+
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
 
         const announce = new Announce({
