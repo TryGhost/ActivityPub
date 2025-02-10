@@ -1,4 +1,9 @@
-import { type Actor, type CollectionPage, isActor } from '@fedify/fedify';
+import {
+    Activity,
+    type Actor,
+    type CollectionPage,
+    isActor,
+} from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
 import { type AppContext, fedify } from '../../app';
@@ -203,6 +208,13 @@ export async function handleGetProfilePosts(ctx: AppContext) {
     // Return result
     try {
         for await (const item of page.getItems()) {
+            if (!(item instanceof Activity)) {
+                continue;
+            }
+
+            const object = await item.getObject();
+            const attributedTo = await object?.getAttribution();
+
             const activity = (await item.toJsonLd({
                 format: 'compact',
             })) as any;
