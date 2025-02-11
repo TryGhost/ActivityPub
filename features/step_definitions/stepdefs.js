@@ -1374,6 +1374,19 @@ Then('the found {string} has property {string}', function (name, prop) {
     assert.ok(property);
 });
 
+Then(
+    'the found {string} has property {string} of type {string}',
+    function (name, prop, type) {
+        const found = this.found[name];
+
+        const property = prop
+            .split('.')
+            .reduce((thing, key) => thing?.[key], found);
+
+        assert.equal(typeof property, type);
+    },
+);
+
 Then('{string} is in our Inbox', async function (activityName) {
     const activity = this.activities[activityName];
 
