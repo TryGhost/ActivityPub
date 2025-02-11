@@ -80,7 +80,7 @@ export class SiteService {
         const internalAccount = await this.accountService.createInternalAccount(
             newSite,
             'index',
-            settings
+            settings,
         );
 
         return newSite;
