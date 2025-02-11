@@ -1,14 +1,19 @@
 import type { AccountService } from '../../account/account.service';
 import { type AppContext, fedify } from '../../app';
 import type { FeedService } from '../../feed/feed.service';
-import { PostType } from '../../feed/types';
+import type { PostType } from '../../feed/types';
 import { mapActivityToPost } from './helpers/post';
 import type { Post } from './types';
 
 /**
+ * Default number of feed posts to return
+ */
+const DEFAULT_FEED_POSTS_LIMIT = 20;
+
+/**
  * Maximum number of feed posts to return
  */
-const FEED_POSTS_LIMIT = 20;
+const MAX_FEED_POSTS_LIMIT = 100;
 
 /**
  * Create a handler to handle a request for a user's feed
@@ -19,6 +24,7 @@ const FEED_POSTS_LIMIT = 20;
 export function createGetFeedHandler(
     feedService: FeedService,
     accountService: AccountService,
+    postType: PostType,
 ) {
     /**
      * Handle a request for a user's feed
@@ -35,27 +41,25 @@ export function createGetFeedHandler(
             logger,
         });
 
-        // Validate input
-        const queryType = ctx.req.query('type');
-        const postType = queryType ? Number(queryType) : null;
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
-        if (
-            postType &&
-            [PostType.Article, PostType.Note].includes(postType) === false
-        ) {
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
             return new Response(null, {
                 status: 400,
             });
         }
 
-        const queryCursor = ctx.req.query('cursor');
-        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
         // Get feed items
         const { items: feedItems, nextCursor } =
             await feedService.getFeedFromKvStore(db, apCtx, {
                 postType,
-                limit: FEED_POSTS_LIMIT,
+                limit,
                 cursor,
             });
 
@@ -63,7 +67,7 @@ export function createGetFeedHandler(
         const posts: Post[] = [];
 
         for (const item of feedItems) {
-            const post = await mapActivityToPost(item, accountService);
+            const post = await mapActivityToPost(item, accountService, apCtx);
 
             if (post) {
                 posts.push(post);

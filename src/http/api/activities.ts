@@ -1,6 +1,7 @@
 import { type AppContext, fedify } from '../../app';
 import {
     getActivityChildren,
+    getActivityForObject,
     getActivityMeta,
     getActivityParents,
 } from '../../db';
@@ -278,19 +279,17 @@ export async function handleGetActivityThread(ctx: AppContext) {
         logger,
     });
 
-    // Parse "activity_id" from request parameters
-    // /thread/:activity_id
-    const paramActivityId = ctx.req.param('activity_id');
-    const activityId = paramActivityId
-        ? decodeURIComponent(paramActivityId)
-        : '';
+    // Parse "object_id" from request parameters
+    // /thread/:object_id
+    const paramObjectId = ctx.req.param('object_id');
+    const objectId = paramObjectId ? decodeURIComponent(paramObjectId) : '';
 
-    // If the provided activityId is invalid, return early
-    if (isUri(activityId) === false) {
+    // If the provided objectId is invalid, return early
+    if (isUri(objectId) === false) {
         return new Response(null, { status: 400 });
     }
 
-    const activityJsonLd = await globaldb.get<ActivityJsonLd>([activityId]);
+    const activityJsonLd = await getActivityForObject(objectId);
 
     // If the activity can not be found, return early
     if (activityJsonLd === undefined) {
