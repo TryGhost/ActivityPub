@@ -1,7 +1,7 @@
 import type { AccountService } from '../../account/account.service';
 import { type AppContext, fedify } from '../../app';
 import type { FeedService } from '../../feed/feed.service';
-import { PostType } from '../../feed/types';
+import type { PostType } from '../../feed/types';
 import { mapActivityToPost } from './helpers/post';
 import type { Post } from './types';
 
@@ -24,6 +24,7 @@ const MAX_FEED_POSTS_LIMIT = 100;
 export function createGetFeedHandler(
     feedService: FeedService,
     accountService: AccountService,
+    postType: PostType,
 ) {
     /**
      * Handle a request for a user's feed
@@ -39,19 +40,6 @@ export function createGetFeedHandler(
             globaldb,
             logger,
         });
-
-        // Validate input
-        const queryType = ctx.req.query('type');
-        const postType = queryType ? Number(queryType) : null;
-
-        if (
-            postType &&
-            [PostType.Article, PostType.Note].includes(postType) === false
-        ) {
-            return new Response(null, {
-                status: 400,
-            });
-        }
 
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;

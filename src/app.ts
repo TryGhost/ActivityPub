@@ -32,6 +32,7 @@ import {
     withContext,
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
+import { PostType } from 'feed/types';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -860,9 +861,18 @@ app.get(
     spanWrapper(createGetAccountFollowsHandler(accountService)),
 );
 app.get(
-    '/.ghost/activitypub/feed/:handle',
+    '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetFeedHandler(feedService, accountService)),
+    spanWrapper(
+        createGetFeedHandler(feedService, accountService, PostType.Note),
+    ),
+);
+app.get(
+    '/.ghost/activitypub/inbox',
+    requireRole(GhostRole.Owner),
+    spanWrapper(
+        createGetFeedHandler(feedService, accountService, PostType.Article),
+    ),
 );
 /** Federation wire up */
 

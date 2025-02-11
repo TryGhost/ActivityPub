@@ -11,26 +11,14 @@ Feature: Feed
     And "Alice" sends "Accept" to the Inbox
     And "Accept" is in our Inbox
 
-  Scenario: Querying the feed with no filters
-    Given a "Create(Note)" Activity "Note1" by "Alice"
-    And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
-    And a "Create(Article)" Activity "Article1" by "Alice"
-    And "Alice" sends "Article1" to the Inbox
-    And "Article1" is in our Inbox
-    When we request the feed
-    Then the request is accepted
-    And the feed contains "Note1"
-    And the feed contains "Article1"
-
-  Scenario: Querying the feed filtered by type: Article
+  Scenario: Querying the inbox
     Given a "Create(Article)" Activity "Article1" by "Alice"
     And "Alice" sends "Article1" to the Inbox
     And "Article1" is in our Inbox
     And a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
-    When we request the feed filtered by type "Article"
+    When an authenticated request is made to "/.ghost/activitypub/inbox"
     Then the request is accepted
     And the feed contains "Article1"
     And the feed does not contain "Note1"
@@ -42,7 +30,7 @@ Feature: Feed
     And a "Create(Article)" Activity "Article1" by "Alice"
     And "Alice" sends "Article1" to the Inbox
     And "Article1" is in our Inbox
-    When we request the feed filtered by type "Note"
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
     And the feed does not contain "Article1"
@@ -57,9 +45,12 @@ Feature: Feed
     And a "Like(Note1)" Activity "Like1" by "Alice"
     And "Alice" sends "Like1" to the Inbox
     And "Like1" is in our Inbox
-    When we request the feed
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
+    And the feed does not contain "Like1"
+    When an authenticated request is made to "/.ghost/activitypub/inbox"
+    Then the request is accepted
     And the feed contains "Article1"
     And the feed does not contain "Like1"
 
@@ -73,18 +64,18 @@ Feature: Feed
     And a "Create(Note)" Activity "Note3" by "Alice"
     And "Alice" sends "Note3" to the Inbox
     And "Note3" is in our Inbox
-    When we request the feed with a limit of 2
+    When an authenticated request is made to "/.ghost/activitypub/feed?limit=2"
     Then the request is accepted
     And the feed contains "Note3"
     And the feed contains "Note2"
     And the feed does not contain "Note1"
     And the feed has a next cursor
-    When we request the feed with the next cursor
+    When an authenticated request is made to "/.ghost/activitypub/feed?limit=3"
     Then the request is accepted
     And the feed contains "Note1"
 
   Scenario: Requests with limit over 100 are rejected
-    When we request the feed with a limit of 200
+    When an authenticated request is made to "/.ghost/activitypub/feed?limit=200"
     Then the request is rejected with a 400
 
   Scenario: Feed includes our own posts
@@ -92,7 +83,7 @@ Feature: Feed
       """
       Hello World
       """
-    And we request the feed
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
 
@@ -102,7 +93,7 @@ Feature: Feed
     And "Note1" is in our Inbox
     And we repost the object "Note1"
     And the request is accepted
-    When we request the feed
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
 
@@ -110,7 +101,7 @@ Feature: Feed
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
-    When we request the feed
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
 
@@ -120,7 +111,7 @@ Feature: Feed
     And a "Announce(Note1)" Activity "Repost1" by "Alice"
     And "Alice" sends "Repost1" to the Inbox
     And "Repost1" is in our Inbox
-    When we request the feed
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
 
@@ -133,7 +124,7 @@ Feature: Feed
     And a "Create(Reply1)" Activity "ReplyCreate" by "Alice"
     And "Alice" sends "ReplyCreate" to the Inbox
     And "ReplyCreate" is in our Inbox
-    When we request the feed
+    When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed contains "Note1"
     And the feed does not contain "ReplyCreate"
