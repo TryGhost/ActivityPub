@@ -11,7 +11,7 @@ import {
     TABLE_FOLLOWS,
     TABLE_USERS,
 } from '../constants';
-import type { Account, ExternalAccountData, Site } from './types';
+import type { Account, ExternalAccountData, Site, SiteSettings } from './types';
 
 interface GetFollowingAccountsOptions {
     limit: number;
@@ -45,14 +45,15 @@ export class AccountService {
     async createInternalAccount(
         site: Site,
         username: string,
+        settings: SiteSettings,
     ): Promise<Account> {
         const keyPair = await generateCryptoKeyPair();
 
         const accountData = {
-            name: ACTOR_DEFAULT_NAME,
+            name: settings?.site?.title || ACTOR_DEFAULT_NAME,
             username,
-            bio: ACTOR_DEFAULT_SUMMARY,
-            avatar_url: ACTOR_DEFAULT_ICON,
+            bio: settings?.site?.description || ACTOR_DEFAULT_SUMMARY,
+            avatar_url: settings?.site?.icon || ACTOR_DEFAULT_ICON,
             banner_image_url: null,
             url: `https://${site.host}`,
             custom_fields: null,

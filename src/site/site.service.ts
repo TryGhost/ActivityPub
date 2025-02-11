@@ -75,9 +75,12 @@ export class SiteService {
             throw new Error(`Site initialisation failed for ${host}`);
         }
 
+        const settings = await this.ghostService.getSiteSettings(newSite.host);
+
         const internalAccount = await this.accountService.createInternalAccount(
             newSite,
             'index',
+            settings
         );
 
         return newSite;

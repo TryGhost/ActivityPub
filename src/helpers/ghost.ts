@@ -1,18 +1,11 @@
 import ky from 'ky';
+import type { SiteSettings } from '../account/types';
 
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY,
 } from '../constants';
-
-type SiteSettings = {
-    site: {
-        description: string;
-        icon: string;
-        title: string;
-    };
-};
 
 export async function getSiteSettings(host: string): Promise<SiteSettings> {
     const settings = await ky
