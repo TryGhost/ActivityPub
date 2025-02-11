@@ -76,10 +76,10 @@ describe('AccountService', () => {
             const username = 'foobarbaz';
 
             const expectedAccount = {
-                name: siteSettings?.site?.title || ACTOR_DEFAULT_NAME,
+                name: siteSettings.site.title || ACTOR_DEFAULT_NAME,
                 username,
-                bio: siteSettings?.site?.description || ACTOR_DEFAULT_SUMMARY,
-                avatar_url: siteSettings?.site?.icon || ACTOR_DEFAULT_ICON,
+                bio: siteSettings.site.description || ACTOR_DEFAULT_SUMMARY,
+                avatar_url: siteSettings.site.icon || ACTOR_DEFAULT_ICON,
                 url: `https://${site.host}`,
                 custom_fields: null,
                 ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
