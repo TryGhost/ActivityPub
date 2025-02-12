@@ -706,8 +706,8 @@ async function waitForFollowToBeProcessed(
     followeeId,
     maxAttempts = 20,
 ) {
-    for (let i = 0; i < maxAttempts; i++) {
-        // Get the accounts
+    async function checkFollowExists() {
+        // 1. Get both accounts
         const [followerAccount] = await client(TABLE_ACCOUNTS)
             .where('ap_id', followerId)
             .select('*');
@@ -717,11 +717,10 @@ async function waitForFollowToBeProcessed(
             .select('*');
 
         if (!followerAccount || !followeeAccount) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            continue;
+            return false;
         }
 
-        // Check for follow relationship
+        // 2. Check follow relationship
         const [{ count }] = await client(TABLE_FOLLOWS)
             .where({
                 following_id: followeeAccount.id,
@@ -729,12 +728,17 @@ async function waitForFollowToBeProcessed(
             })
             .count('* as count');
 
-        if (Number.parseInt(count) === 1) {
+        return Number.parseInt(count) === 1;
+    }
+
+    // Try multiple times until follow is found
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (await checkFollowExists()) {
             return true;
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
     }
+
+    return false;
 }
 
 Given('the list of followers is paginated across multiple pages', async () => {
