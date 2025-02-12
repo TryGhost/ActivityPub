@@ -701,29 +701,40 @@ Given('we are followed by:', async function (actors) {
     }
 });
 
-async function waitForFollowToBeProcessed(followerId, followeeId) {
-    // Get the accounts
-    const [followerAccount] = await client(TABLE_ACCOUNTS)
-        .where('ap_id', followerId)
-        .select('*');
+async function waitForFollowToBeProcessed(
+    followerId,
+    followeeId,
+    maxAttempts = 20,
+) {
+    for (let i = 0; i < maxAttempts; i++) {
+        // Get the accounts
+        const [followerAccount] = await client(TABLE_ACCOUNTS)
+            .where('ap_id', followerId)
+            .select('*');
 
-    const [followeeAccount] = await client(TABLE_ACCOUNTS)
-        .where('ap_id', followeeId)
-        .select('*');
+        const [followeeAccount] = await client(TABLE_ACCOUNTS)
+            .where('ap_id', followeeId)
+            .select('*');
 
-    if (!followerAccount || !followeeAccount) {
-        return false;
+        if (!followerAccount || !followeeAccount) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            continue;
+        }
+
+        // Check for follow relationship
+        const [{ count }] = await client(TABLE_FOLLOWS)
+            .where({
+                following_id: followeeAccount.id,
+                follower_id: followerAccount.id,
+            })
+            .count('* as count');
+
+        if (Number.parseInt(count) === 1) {
+            return true;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
     }
-
-    // Check for follow relationship
-    const [{ count }] = await client(TABLE_FOLLOWS)
-        .where({
-            following_id: followeeAccount.id,
-            follower_id: followerAccount.id,
-        })
-        .count('* as count');
-
-    return Number.parseInt(count) === 1;
 }
 
 Given('the list of followers is paginated across multiple pages', async () => {
