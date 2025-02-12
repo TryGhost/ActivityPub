@@ -17,8 +17,8 @@ import { AccountService } from './account.service';
 import type {
     Account,
     ExternalAccountData,
-    Site,
     InternalAccountData,
+    Site,
 } from './types';
 
 vi.mock('@fedify/fedify', async () => {
@@ -96,7 +96,10 @@ describe('AccountService', () => {
                 ap_shared_inbox_url: null,
             };
 
-            const account = await service.createInternalAccount(site, internalAccountData);
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
 
             // Assert the created account was returned
             expect(account).toMatchObject(expectedAccount);

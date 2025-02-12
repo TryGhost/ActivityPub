@@ -11,7 +11,12 @@ import {
     TABLE_FOLLOWS,
     TABLE_USERS,
 } from '../constants';
-import type { Account, ExternalAccountData, Site, InternalAccountData } from './types';
+import type {
+    Account,
+    ExternalAccountData,
+    InternalAccountData,
+    Site,
+} from './types';
 
 interface GetFollowingAccountsOptions {
     limit: number;
@@ -51,7 +56,7 @@ export class AccountService {
 
         const accountData = {
             name: internalAccountData.name || ACTOR_DEFAULT_NAME,
-            username : username,
+            username: username,
             bio: internalAccountData.bio || ACTOR_DEFAULT_SUMMARY,
             avatar_url: internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
             banner_image_url: null,
