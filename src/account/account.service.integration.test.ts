@@ -14,7 +14,12 @@ import {
 } from '../constants';
 import { client as db } from '../db';
 import { AccountService } from './account.service';
-import type { Account, ExternalAccountData, Site } from './types';
+import type {
+    Account,
+    ExternalAccountData,
+    InternalAccountData,
+    Site,
+} from './types';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair
@@ -34,6 +39,7 @@ describe('AccountService', () => {
     let service: AccountService;
     let events: EventEmitter;
     let site: Site;
+    let internalAccountData: InternalAccountData;
 
     beforeEach(async () => {
         // Clean up the database
@@ -56,6 +62,13 @@ describe('AccountService', () => {
             ...siteData,
         };
 
+        internalAccountData = {
+            username: 'index',
+            name: 'Test Site Title',
+            bio: 'Test Site Description',
+            avatar_url: 'Test Site Icon',
+        };
+
         events = new EventEmitter();
 
         // Create the service
@@ -64,13 +77,14 @@ describe('AccountService', () => {
 
     describe('createInternalAccount', () => {
         it('should create an internal account', async () => {
-            const username = 'foobarbaz';
+            const username = internalAccountData.username;
 
             const expectedAccount = {
-                name: ACTOR_DEFAULT_NAME,
-                username,
-                bio: ACTOR_DEFAULT_SUMMARY,
-                avatar_url: ACTOR_DEFAULT_ICON,
+                name: internalAccountData.name || ACTOR_DEFAULT_NAME,
+                username: username,
+                bio: internalAccountData.bio || ACTOR_DEFAULT_SUMMARY,
+                avatar_url:
+                    internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
                 url: `https://${site.host}`,
                 custom_fields: null,
                 ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
@@ -82,7 +96,10 @@ describe('AccountService', () => {
                 ap_shared_inbox_url: null,
             };
 
-            const account = await service.createInternalAccount(site, username);
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
 
             // Assert the created account was returned
             expect(account).toMatchObject(expectedAccount);
@@ -158,14 +175,14 @@ describe('AccountService', () => {
 
     describe('recordAccountUnfollow', () => {
         it('should record an account being unfollowed', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const follower = await service.createInternalAccount(
-                site,
-                'follower',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower',
+            });
 
             await service.recordAccountFollow(account, follower);
 
@@ -189,14 +206,14 @@ describe('AccountService', () => {
 
     describe('recordAccountFollow', () => {
         it('should record an account being followed', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const follower = await service.createInternalAccount(
-                site,
-                'follower',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower',
+            });
 
             await service.recordAccountFollow(account, follower);
 
@@ -212,14 +229,14 @@ describe('AccountService', () => {
         });
 
         it('should not record duplicate follows', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const follower = await service.createInternalAccount(
-                site,
-                'follower',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower',
+            });
 
             await service.recordAccountFollow(account, follower);
 
@@ -246,10 +263,10 @@ describe('AccountService', () => {
 
     describe('getAccountByApId', () => {
         it('should retrieve an account by its ActivityPub ID', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
 
             const retrievedAccount = await service.getAccountByApId(
                 account.ap_id,
@@ -262,10 +279,10 @@ describe('AccountService', () => {
 
     describe('getDefaultAccountForSite', () => {
         it('should retrieve the default account for a site', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
 
             const defaultAccount = await service.getDefaultAccountForSite(site);
 
@@ -273,8 +290,14 @@ describe('AccountService', () => {
         });
 
         it('should throw an error if multiple users are found for a site', async () => {
-            await service.createInternalAccount(site, 'account1');
-            await service.createInternalAccount(site, 'account2');
+            await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account1',
+            });
+            await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account2',
+            });
 
             await expect(
                 service.getDefaultAccountForSite(site),
@@ -288,7 +311,10 @@ describe('AccountService', () => {
         });
 
         it('should throw an error if no account is found for a site user', async () => {
-            await service.createInternalAccount(site, 'account1');
+            await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
 
             const rows = await db('users')
                 .select('account_id')
@@ -304,22 +330,22 @@ describe('AccountService', () => {
 
     describe('getFollowingAccounts', () => {
         it('should retrieve the accounts that an account follows', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const following1 = await service.createInternalAccount(
-                site,
-                'following1',
-            );
-            const following2 = await service.createInternalAccount(
-                site,
-                'following2',
-            );
-            const following3 = await service.createInternalAccount(
-                site,
-                'following3',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const following1 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'following1',
+            });
+            const following2 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'following2',
+            });
+            const following3 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'following3',
+            });
 
             await service.recordAccountFollow(following1, account);
             await service.recordAccountFollow(following2, account);
@@ -380,18 +406,18 @@ describe('AccountService', () => {
 
     describe('getFollowingAccountsCount', () => {
         it('should retrieve the number of accounts that an account follows', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const following1 = await service.createInternalAccount(
-                site,
-                'following1',
-            );
-            const following2 = await service.createInternalAccount(
-                site,
-                'following2',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const following1 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'following1',
+            });
+            const following2 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'following2',
+            });
 
             await service.recordAccountFollow(following1, account);
             await service.recordAccountFollow(following2, account);
@@ -404,22 +430,22 @@ describe('AccountService', () => {
 
     describe('getFollowerAccounts', () => {
         it('should retrieve the accounts that are following an account', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const follower1 = await service.createInternalAccount(
-                site,
-                'follower1',
-            );
-            const follower2 = await service.createInternalAccount(
-                site,
-                'follower2',
-            );
-            const follower3 = await service.createInternalAccount(
-                site,
-                'follower3',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower1 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower1',
+            });
+            const follower2 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower2',
+            });
+            const follower3 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower3',
+            });
 
             await service.recordAccountFollow(account, follower1);
             await service.recordAccountFollow(account, follower2);
@@ -476,18 +502,18 @@ describe('AccountService', () => {
 
     describe('getFollowerAccountsCount', () => {
         it('should retrieve the number of accounts that are following an account', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const follower1 = await service.createInternalAccount(
-                site,
-                'follower1',
-            );
-            const follower2 = await service.createInternalAccount(
-                site,
-                'follower2',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower1 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower1',
+            });
+            const follower2 = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower2',
+            });
 
             await service.recordAccountFollow(account, follower1);
             await service.recordAccountFollow(account, follower2);
@@ -500,18 +526,18 @@ describe('AccountService', () => {
 
     describe('checkIfAccountIsFollowing', () => {
         it('should check if an account is following another account', async () => {
-            const account = await service.createInternalAccount(
-                site,
-                'account',
-            );
-            const followee = await service.createInternalAccount(
-                site,
-                'followee',
-            );
-            const nonFollowee = await service.createInternalAccount(
-                site,
-                'non-followee',
-            );
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const followee = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'followee',
+            });
+            const nonFollowee = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'non-followee',
+            });
 
             await service.recordAccountFollow(followee, account);
 
@@ -532,10 +558,10 @@ describe('AccountService', () => {
     });
 
     it('should update accounts and emit an account.updated event if they have changed', async () => {
-        const account = await service.createInternalAccount(
-            site,
-            'testing-update',
-        );
+        const account = await service.createInternalAccount(site, {
+            ...internalAccountData,
+            username: 'account',
+        });
 
         let accountFromEvent: Account | undefined;
 
