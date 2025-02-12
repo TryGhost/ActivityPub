@@ -1,13 +1,16 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 
+import type { KnexAccountRepository } from '../../account/account.repository.knex';
 import type { AppContext } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { Post } from '../../post/post.entity';
+import type { KnexPostRepository } from '../../post/post.repository.knex';
 import { publishPost } from '../../publishing/helpers';
 import { PostVisibility } from '../../publishing/types';
 import type { SiteService } from '../../site/site.service';
 
-const PostSchema = z.object({
+const PostInputSchema = z.object({
     uuid: z.string().uuid(),
     title: z.string(),
     html: z.string().nullable(),
@@ -18,11 +21,11 @@ const PostSchema = z.object({
     visibility: z.nativeEnum(PostVisibility),
 });
 
-type Post = z.infer<typeof PostSchema>;
+type PostInput = z.infer<typeof PostInputSchema>;
 
 const PostPublishedWebhookSchema = z.object({
     post: z.object({
-        current: PostSchema,
+        current: PostInputSchema,
     }),
 });
 
@@ -31,45 +34,56 @@ const PostPublishedWebhookSchema = z.object({
  *
  * @param ctx App context instance
  */
-export async function handleWebhookPostPublished(ctx: AppContext) {
-    let data: Post;
+export function createPostPublishedWebhookHandler(
+    accountRepository: KnexAccountRepository,
+    postRepository: KnexPostRepository,
+) {
+    return async function handleWebhookPostPublished(ctx: AppContext) {
+        let data: PostInput;
 
-    try {
-        data = PostPublishedWebhookSchema.parse(
-            (await ctx.req.json()) as unknown,
-        ).post.current;
-    } catch (err) {
-        return new Response(JSON.stringify({}), { status: 400 });
-    }
+        try {
+            data = PostPublishedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.current;
+        } catch (err) {
+            return new Response(JSON.stringify({}), { status: 400 });
+        }
 
-    try {
-        await publishPost(ctx, {
-            id: data.uuid,
-            title: data.title,
-            content: data.html,
-            excerpt: data.excerpt,
-            featureImageUrl: data.feature_image
-                ? new URL(data.feature_image)
-                : null,
-            publishedAt: Temporal.Instant.from(data.published_at),
-            url: new URL(data.url),
-            author: {
-                handle: ACTOR_DEFAULT_HANDLE,
+        const account = await accountRepository.getBySite(ctx.get('site'));
+
+        const post = Post.createArticleFromGhostPost(account, data);
+
+        await postRepository.save(post);
+
+        try {
+            await publishPost(ctx, {
+                id: data.uuid,
+                title: data.title,
+                content: data.html,
+                excerpt: data.excerpt,
+                featureImageUrl: data.feature_image
+                    ? new URL(data.feature_image)
+                    : null,
+                publishedAt: Temporal.Instant.from(data.published_at),
+                url: new URL(data.url),
+                author: {
+                    handle: ACTOR_DEFAULT_HANDLE,
+                },
+                visibility: data.visibility,
+            });
+        } catch (err) {
+            ctx.get('logger').error('Failed to publish post: {error}', {
+                error: err,
+            });
+        }
+
+        return new Response(JSON.stringify({}), {
+            headers: {
+                'Content-Type': 'application/json',
             },
-            visibility: data.visibility,
+            status: 200,
         });
-    } catch (err) {
-        ctx.get('logger').error('Failed to publish post: {error}', {
-            error: err,
-        });
-    }
-
-    return new Response(JSON.stringify({}), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        status: 200,
-    });
+    };
 }
 
 /**
