@@ -1,0 +1,12 @@
+CREATE TABLE reposts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    account_id INT UNSIGNED NOT NULL,
+    post_id INT UNSIGNED NOT NULL,
+
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+
+    UNIQUE KEY (account_id, post_id)
+);
