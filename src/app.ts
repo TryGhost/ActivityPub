@@ -32,11 +32,13 @@ import {
     withContext,
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
+import { KnexAccountRepository } from 'account/account.repository.knex';
 import { PostType } from 'feed/types';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
+import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
@@ -97,12 +99,12 @@ import {
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
+    createPostPublishedWebhookHandler,
     createSearchHandler,
     handleCreateNote,
     handleGetActivities,
     handleGetActivityThread,
     handleGetProfilePosts,
-    handleWebhookPostPublished,
     handleWebhookSiteChanged,
 } from './http/api';
 import { spanWrapper } from './instrumentation';
@@ -223,6 +225,10 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export const db = await KnexKvStore.create(client, 'key_value');
 
 const events = new EventEmitter();
+
+const accountRepository = new KnexAccountRepository(client, events);
+const postRepository = new KnexPostRepository(client, events);
+
 const accountService = new AccountService(client, events);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
@@ -752,7 +758,9 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    spanWrapper(handleWebhookPostPublished),
+    spanWrapper(
+        createPostPublishedWebhookHandler(accountRepository, postRepository),
+    ),
 );
 app.post(
     '/.ghost/activitypub/webhooks/site/changed',
