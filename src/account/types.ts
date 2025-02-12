@@ -7,12 +7,11 @@ export interface Site {
     webhook_secret: string;
 }
 
-export interface SiteSettings {
-    site: {
-        description: string;
-        icon: string;
-        title: string;
-    };
+export interface InternalAccountData {
+    username: string;
+    name?: string;
+    bio?: string;
+    avatar_url?: string;
 }
 
 /**

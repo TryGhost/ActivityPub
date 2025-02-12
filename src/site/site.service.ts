@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { Knex } from 'knex';
 import type { AccountService } from '../account/account.service';
 import type { getSiteSettings } from '../helpers/ghost';
+import type { InternalAccountData } from '../account/types';
 
 export type Site = {
     id: number;
@@ -77,10 +78,16 @@ export class SiteService {
 
         const settings = await this.ghostService.getSiteSettings(newSite.host);
 
+        const internalAccountData: InternalAccountData = {
+            username: 'index',
+            name: settings?.site?.title,
+            bio: settings?.site?.description,
+            avatar_url: settings?.site?.icon,
+        };
+
         const internalAccount = await this.accountService.createInternalAccount(
             newSite,
-            'index',
-            settings,
+            internalAccountData,
         );
 
         return newSite;
