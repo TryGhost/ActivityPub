@@ -1,13 +1,15 @@
 Feature: Creating a reply
   Background:
     Given an Actor "Person(Alice)"
-    And a "Follow(Us)" Activity "F1" by "Alice"
-    And "Alice" sends "F1" to the Inbox
-    And "F1" is in our Inbox
     And an Actor "Person(Bob)"
+    And a "Follow(Us)" Activity "F1" by "Alice"
+    When "Alice" sends "F1" to the Inbox
+    Then an "Accept(F1)" Activity "A1" is created by "Us"
+    And Activity "A1" is sent to "Alice"
     And a "Follow(Us)" Activity "F2" by "Bob"
-    And "Bob" sends "F2" to the Inbox
-    And "F2" is in our Inbox
+    When "Bob" sends "F2" to the Inbox
+    Then an "Accept(F2)" Activity "A2" is created by "Us"
+    And Activity "A2" is sent to "Bob"
     And we follow "Alice"
     And the request is accepted
     And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
