@@ -1662,3 +1662,51 @@ Given('{string} has Object {string}', function (activityName, objectName) {
 
     this.activities[activityName] = { ...activity, object };
 });
+
+When('we request the feed with the next cursor', async function () {
+    const responseJson = await this.response.clone().json();
+    const nextCursor = responseJson.next;
+
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/feed/index?next=${encodeURIComponent(nextCursor)}`,
+        {
+            headers: {
+                Accept: 'application/json',
+            },
+        },
+    );
+});
+
+Then('the feed contains {string}', async function (activityOrObjectName) {
+    const responseJson = await this.response.clone().json();
+    const activity = this.activities[activityOrObjectName];
+    const object = this.objects[activityOrObjectName];
+    let found;
+
+    if (activity) {
+        found = responseJson.posts.find(
+            (post) => post.id === activity.object.id,
+        );
+    } else if (object) {
+        found = responseJson.posts.find((post) => post.id === object.id);
+    }
+
+    assert(found, `Expected to find ${activityOrObjectName} in feed`);
+});
+
+Then('the feed does not contain {string}', async function (activityName) {
+    const responseJson = await this.response.clone().json();
+    const activity = this.activities[activityName];
+
+    const found = responseJson.posts.find(
+        (post) => post.id === activity.object.id,
+    );
+
+    assert(!found, `Expected not to find ${activityName} in feed`);
+});
+
+Then('the feed has a next cursor', async function () {
+    const responseJson = await this.response.clone().json();
+
+    assert(responseJson.next, 'Expected feed to have a next cursor');
+});

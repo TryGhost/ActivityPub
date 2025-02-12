@@ -4,8 +4,10 @@ import type { FedifyRequestContext } from '../app';
 import {
     ACTIVITY_OBJECT_TYPE_ARTICLE,
     ACTIVITY_OBJECT_TYPE_NOTE,
+    ACTIVITY_TYPE_ANNOUNCE,
+    ACTIVITY_TYPE_CREATE,
 } from '../constants';
-import { getActivityMeta } from '../db';
+import { getActivityMetaWithoutJoin } from '../db';
 import { type Activity, buildActivity } from '../helpers/activitypub/activity';
 import { spanWrapper } from '../instrumentation';
 import { PostType } from './types';
@@ -59,32 +61,45 @@ export class FeedService {
 
         let activityRefs = [...inboxRefs, ...outboxRefs];
 
-        // Filter the activityRefs by the provided post type
-        const activityMeta = await getActivityMeta(activityRefs);
-        activityRefs = activityRefs
-            // If we can't find the meta data in the database for an activity, we
-            // skip it as this is unexpected
-            .filter((ref) => activityMeta.has(ref))
-            // Filter the activityRefs by the provided post type if provided. If
-            // no post type is provided, we include all articles and notes
-            .filter((ref) => {
-                const meta = activityMeta.get(ref);
+        const activityMeta = await getActivityMetaWithoutJoin(activityRefs);
+        activityRefs = activityRefs.filter((ref) => {
+            const meta = activityMeta.get(ref);
 
-                if (options.postType === null) {
-                    return [
-                        ACTIVITY_OBJECT_TYPE_ARTICLE,
-                        ACTIVITY_OBJECT_TYPE_NOTE,
-                    ].includes(meta!.object_type);
-                }
+            // If we can't find the meta data in the database for an activity,
+            // we skip it as this is unexpected
+            if (!meta) {
+                return false;
+            }
 
-                if (options.postType === PostType.Article) {
-                    return meta!.object_type === ACTIVITY_OBJECT_TYPE_ARTICLE;
-                }
+            // The feed should only contain Create and Announce activities
+            if (
+                meta.activity_type !== ACTIVITY_TYPE_CREATE &&
+                meta.activity_type !== ACTIVITY_TYPE_ANNOUNCE
+            ) {
+                return false;
+            }
 
-                if (options.postType === PostType.Note) {
-                    return meta!.object_type === ACTIVITY_OBJECT_TYPE_NOTE;
-                }
-            });
+            // The feed should not contain replies
+            if (meta.reply_object_url !== null) {
+                return false;
+            }
+
+            // Filter by the provided post type
+            if (options.postType === null) {
+                return [
+                    ACTIVITY_OBJECT_TYPE_ARTICLE,
+                    ACTIVITY_OBJECT_TYPE_NOTE,
+                ].includes(meta!.object_type);
+            }
+
+            if (options.postType === PostType.Article) {
+                return meta!.object_type === ACTIVITY_OBJECT_TYPE_ARTICLE;
+            }
+
+            if (options.postType === PostType.Note) {
+                return meta!.object_type === ACTIVITY_OBJECT_TYPE_NOTE;
+            }
+        });
 
         // Sort the activity refs by the latest first (yes using the ID which
         // is totally gross but we have no other option at the moment)
