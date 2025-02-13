@@ -3,10 +3,10 @@ import { z } from 'zod';
 import type { KnexAccountRepository } from '../../account/account.repository.knex';
 import type { AppContext } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { Audience, Post, PostType } from '../../post/post.entity';
+import type { KnexPostRepository } from '../../post/post.repository.knex';
 import { publishNote } from '../../publishing/helpers';
 import type { PublishResult } from '../../publishing/service';
-import type { KnexPostRepository } from '../../post/post.repository.knex';
-import { Audience, Post, PostType } from '../../post/post.entity';
 
 const NoteSchema = z.object({
     content: z.string(),
