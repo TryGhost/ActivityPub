@@ -221,6 +221,7 @@ export const fedify = createFederation<ContextData>({
  * @see https://fedify.dev/manual/context
  */
 export type FedifyRequestContext = RequestContext<ContextData>;
+export type FedifyContext = Context<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
 
