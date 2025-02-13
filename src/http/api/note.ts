@@ -6,7 +6,7 @@ import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { publishNote } from '../../publishing/helpers';
 import type { PublishResult } from '../../publishing/service';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
-import { Post, PostType, Audience } from '../../post/post.entity';
+import { Audience, Post, PostType } from '../../post/post.entity';
 
 const NoteSchema = z.object({
     content: z.string(),
