@@ -682,49 +682,24 @@ Given('we are followed by:', async function (actors) {
         // Create the follow activity
         const actor = this.actors[name];
         const object = this.actors.Us;
-        const followActivity = await createActivity('Follow', object, actor);
+        const activity = await createActivity('Follow', object, actor);
 
-        const followKey = `Follow(Us)_${name}`;
-        this.activities[followKey] = followActivity;
-        this.objects[followKey] = object;
+        const key = `Follow(Us)_${name}`;
+        this.activities[key] = activity;
+        this.objects[key] = object;
 
         // Send the follow activity to the inbox
         this.response = await fetchActivityPub(
             'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
             {
                 method: 'POST',
-                body: JSON.stringify(followActivity),
+                body: JSON.stringify(activity),
             },
         );
-        // Wait for the follow to be processed
-        await waitForFollowToBeProcessed(actor.id, this.actors.Us.id);
+
+        await waitForInboxActivity(activity);
     }
 });
-
-async function waitForFollowToBeProcessed(followerId, followeeId) {
-    // 1. Get both accounts
-    const [followerAccount] = await client(TABLE_ACCOUNTS)
-        .where('ap_id', followerId)
-        .select('*');
-
-    const [followeeAccount] = await client(TABLE_ACCOUNTS)
-        .where('ap_id', followeeId)
-        .select('*');
-
-    if (!followerAccount || !followeeAccount) {
-        return false;
-    }
-
-    // 2. Check follow relationship
-    const [{ count }] = await client(TABLE_FOLLOWS)
-        .where({
-            following_id: followeeAccount.id,
-            follower_id: followerAccount.id,
-        })
-        .count('* as count');
-
-    return Number.parseInt(count) === 1;
-}
 
 Given('the list of followers is paginated across multiple pages', async () => {
     const followersResponse = await fetchActivityPub(
@@ -1475,46 +1450,30 @@ Then('{string} is in our Followers', async function (actorName) {
 });
 
 Then('{string} is in our Followers once only', async function (actorName) {
-    const actor = this.actors[actorName];
-
-    // Debug: Check if the actor's account exists
-    const [followerAccount] = await client(TABLE_ACCOUNTS)
-        .where('ap_id', actor.id)
-        .select('*');
-
-    if (!followerAccount) {
-        throw new Error(
-            `Account not found for ${actorName} with ap_id ${actor.id}`,
-        );
-    }
-
-    // Debug: Check if Us account exists
-    const [followeeAccount] = await client(TABLE_ACCOUNTS)
-        .where('ap_id', this.actors['Us'].id)
-        .select('*');
-
-    if (!followeeAccount) {
-        throw new Error('Account not found for Us');
-    }
-
-    // Debug: Check follows table
-    const follows = await client(TABLE_FOLLOWS)
-        .where({
-            follower_id: followerAccount.id,
-            following_id: followeeAccount.id,
-        })
-        .select('*');
-
-    // Simplified count query that doesn't use joins
-    const [{ count }] = await client(TABLE_FOLLOWS)
-        .where('follower_id', followerAccount.id)
-        .count('* as count');
-
-    assert.strictEqual(
-        parseInt(count),
-        1,
-        `Expected ${actorName} to appear exactly once in our followers`,
+    const initialResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
     );
+    const initialResponseJson = await initialResponse.json();
+    const firstPageResponse = await fetchActivityPub(
+        initialResponseJson.first,
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const followers = await firstPageResponse.json();
+    const actor = this.actors[actorName];
+    const found = (followers.orderedItems || []).filter(
+        (item) => item === actor.id,
+    );
+
+    assert.equal(found.length, 1);
 });
 
 Then(
@@ -1702,4 +1661,52 @@ Given('{string} has Object {string}', function (activityName, objectName) {
     const object = this.objects[objectName];
 
     this.activities[activityName] = { ...activity, object };
+});
+
+When('we request the feed with the next cursor', async function () {
+    const responseJson = await this.response.clone().json();
+    const nextCursor = responseJson.next;
+
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/feed/index?next=${encodeURIComponent(nextCursor)}`,
+        {
+            headers: {
+                Accept: 'application/json',
+            },
+        },
+    );
+});
+
+Then('the feed contains {string}', async function (activityOrObjectName) {
+    const responseJson = await this.response.clone().json();
+    const activity = this.activities[activityOrObjectName];
+    const object = this.objects[activityOrObjectName];
+    let found;
+
+    if (activity) {
+        found = responseJson.posts.find(
+            (post) => post.id === activity.object.id,
+        );
+    } else if (object) {
+        found = responseJson.posts.find((post) => post.id === object.id);
+    }
+
+    assert(found, `Expected to find ${activityOrObjectName} in feed`);
+});
+
+Then('the feed does not contain {string}', async function (activityName) {
+    const responseJson = await this.response.clone().json();
+    const activity = this.activities[activityName];
+
+    const found = responseJson.posts.find(
+        (post) => post.id === activity.object.id,
+    );
+
+    assert(!found, `Expected not to find ${activityName} in feed`);
+});
+
+Then('the feed has a next cursor', async function () {
+    const responseJson = await this.response.clone().json();
+
+    assert(responseJson.next, 'Expected feed to have a next cursor');
 });
