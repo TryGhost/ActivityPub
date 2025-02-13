@@ -1,5 +1,4 @@
 import {
-    Object as APObject,
     Accept,
     Activity,
     type Actor,
@@ -14,7 +13,6 @@ import {
     Note,
     Person,
     type Protocol,
-    type Recipient,
     type RequestContext,
     Undo,
     Update,
@@ -712,99 +710,6 @@ export async function inboxErrorHandler(
     });
 }
 
-export async function followersDispatcher(
-    ctx: Context<ContextData>,
-    handle: string,
-    cursor: string | null,
-) {
-    ctx.data.logger.info('Followers Dispatcher');
-
-    if (cursor === null) {
-        ctx.data.logger.info('No cursor provided, returning early');
-
-        return null;
-    }
-
-    const pageSize = Number.parseInt(
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-    );
-
-    if (Number.isNaN(pageSize)) {
-        throw new Error(`Page size: ${pageSize} is not valid`);
-    }
-
-    const offset = Number.parseInt(cursor ?? '0');
-    let nextCursor: string | null = null;
-
-    let items: Recipient[] = [];
-
-    const fullResults = (
-        (await ctx.data.db.get<any[]>(['followers', 'expanded'])) ?? []
-    ).filter((v, i, results) => {
-        // Remove duplicates
-        return results.findIndex((r) => r.id === v.id) === i;
-    });
-
-    if (fullResults) {
-        nextCursor =
-            fullResults.length > offset + pageSize
-                ? (offset + pageSize).toString()
-                : null;
-
-        items = fullResults.slice(offset, offset + pageSize);
-    } else {
-        const results = [
-            // Remove duplicates
-            ...new Set((await ctx.data.db.get<string[]>(['followers'])) || []),
-        ];
-
-        nextCursor =
-            results.length > offset + pageSize
-                ? (offset + pageSize).toString()
-                : null;
-
-        const slicedResults = results.slice(offset, offset + pageSize);
-
-        const actors = (
-            await Promise.all(
-                slicedResults.map((result) => lookupActor(ctx, result)),
-            )
-        )
-            // This could potentially mean that the slicedResults is not the size
-            // of pageSize if for some reason the lookupActor returns null for
-            // some of the results. TODO: Find a better way to handle this
-            .filter((item): item is Actor => isActor(item));
-
-        const toStore = await Promise.all(
-            actors.map((actor) => actor.toJsonLd() as any),
-        );
-
-        await ctx.data.db.set(['followers', 'expanded'], toStore);
-
-        items = toStore;
-    }
-
-    return {
-        items: (
-            await Promise.all(items.map((item) => APObject.fromJsonLd(item)))
-        )
-            .filter((item): item is Actor => isActor(item))
-            .map((item) => {
-                return {
-                    id: item.id,
-                    inboxId: item.inboxId,
-                    sharedInboxId: item.endpoints?.sharedInbox,
-                };
-            }),
-        nextCursor,
-    };
-}
-
-/**
- * This logic duplicates the logic in `followersDispatcher`, the
- * main difference being that is uses the account service to retrieve the
- * followers. `followersDispatcher` will eventually be removed in favour of this
- */
 export function createFollowersDispatcher(
     siteService: SiteService,
     accountService: AccountService,
