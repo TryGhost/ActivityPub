@@ -38,4 +38,36 @@ describe('KnexAccountRepository', () => {
             'An Account should have been fetched',
         );
     });
+
+    it('Can get by apId', async () => {
+        const events = new EventEmitter();
+        const accountService = new AccountService(client, events);
+        const siteService = new SiteService(client, accountService, {
+            async getSiteSettings(host: string) {
+                return {
+                    site: {
+                        title: 'Test Site',
+                        description: 'A fake site used for testing',
+                        icon: 'https://testing.com/favicon.ico',
+                    },
+                };
+            },
+        });
+        const accountRepository = new KnexAccountRepository(client, events);
+
+        const site = await siteService.initialiseSiteForHost('testing.com');
+
+        const account = await accountRepository.getBySite(site);
+
+        const row = await client('accounts')
+            .where({ id: account.id })
+            .select('ap_id')
+            .first();
+
+        const url = new URL(row.ap_id);
+
+        const result = await accountRepository.getByApId(url);
+
+        assert(result);
+    });
 });
