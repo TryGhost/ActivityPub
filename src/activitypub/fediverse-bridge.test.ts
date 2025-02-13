@@ -1,7 +1,7 @@
 import EventEmitter from 'node:events';
 import type { Account } from 'account/types';
 import { describe, expect, it, vi } from 'vitest';
-import type { FedifyRequestContext } from '../app';
+import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
 
@@ -10,7 +10,7 @@ const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 describe('FediverseBridge', () => {
     it('Sends update activities on the account.updated event', async () => {
         const events = new EventEmitter();
-        const context: FedifyRequestContext = {
+        const context: FedifyContext = {
             getObjectUri() {
                 return new URL('https://mockupdateurl.com');
             },
@@ -20,7 +20,7 @@ describe('FediverseBridge', () => {
                     set: vi.fn(),
                 },
             },
-        } as unknown as FedifyRequestContext;
+        } as unknown as FedifyContext;
         const fedifyContextFactory = {
             getFedifyContext() {
                 return context;
