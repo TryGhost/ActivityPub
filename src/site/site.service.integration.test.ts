@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
+import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
+import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { TABLE_ACCOUNTS, TABLE_SITES, TABLE_USERS } from '../constants';
 import { client as db } from '../db';
 import { type IGhostService, type Site, SiteService } from './site.service';
@@ -37,7 +39,14 @@ describe('SiteService', () => {
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         const events = new EventEmitter();
-        accountService = new AccountService(db, events);
+        const accountRepository = new KnexAccountRepository(db, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        accountService = new AccountService(
+            db,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
         ghostService = {
             async getSiteSettings(host: string) {
                 return {

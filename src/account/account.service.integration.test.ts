@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
+import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
@@ -13,6 +14,7 @@ import {
     TABLE_USERS,
 } from '../constants';
 import { client as db } from '../db';
+import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
 import type {
     Account,
@@ -71,8 +73,17 @@ describe('AccountService', () => {
 
         events = new EventEmitter();
 
+        const accountRepository = new KnexAccountRepository(db, events);
+
+        const fedifyContextFactory = new FedifyContextFactory();
+
         // Create the service
-        service = new AccountService(db, events);
+        service = new AccountService(
+            db,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
     });
 
     describe('createInternalAccount', () => {
