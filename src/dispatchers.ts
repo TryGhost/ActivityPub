@@ -1,5 +1,4 @@
 import {
-    Object as APObject,
     Accept,
     Activity,
     type Actor,
@@ -14,7 +13,6 @@ import {
     Note,
     Person,
     type Protocol,
-    type Recipient,
     type RequestContext,
     Undo,
     Update,
