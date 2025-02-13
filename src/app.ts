@@ -58,11 +58,11 @@ import {
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
+    createLikeHandler,
     createUndoHandler,
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
-    handleLike,
     inboxErrorHandler,
     keypairDispatcher,
     likeDispatcher,
@@ -315,7 +315,12 @@ inboxListener
         ),
     )
     .onError(inboxErrorHandler)
-    .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
+    .on(
+        Like,
+        ensureCorrectContext(
+            spanWrapper(createLikeHandler(accountService, postRepository)),
+        ),
+    )
     .onError(inboxErrorHandler)
     .on(
         Undo,
