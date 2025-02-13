@@ -26,7 +26,7 @@ import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
-import { addToList, removeFromList } from './kv-helpers';
+import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { SiteService } from './site/site.service';
 
