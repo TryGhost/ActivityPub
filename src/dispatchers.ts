@@ -130,7 +130,33 @@ export function createFollowHandler(accountService: AccountService) {
             return;
         }
 
-        // Record the account of the sender as well as the follow
+        const currentFollowers =
+            (await ctx.data.db.get<string[]>(['followers'])) ?? [];
+        const shouldRecordFollower =
+            currentFollowers.includes(sender.id.href) === false;
+
+        // Add follow activity to inbox
+        const followJson = await follow.toJsonLd();
+
+        ctx.data.globaldb.set([follow.id.href], followJson);
+        await addToList(ctx.data.db, ['inbox'], follow.id.href);
+
+        // Record follower in followers list
+        const senderJson = await sender.toJsonLd();
+
+        if (shouldRecordFollower) {
+            await addToList(ctx.data.db, ['followers'], sender.id.href);
+            await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
+        }
+
+        // Store or update sender in global db
+        ctx.data.globaldb.set([sender.id.href], senderJson);
+
+        // Record the account of the sender as well as the follow - This
+        // duplicates the above functionality but is needed to record the
+        // relevant data in the new database schema. The above functionality
+        // will eventually be removed in favour of this. This logic is only
+        // executed if the account for the followee has already been created
         const followeeAccount = await accountService.getAccountByApId(
             follow.objectId?.href ?? '',
         );

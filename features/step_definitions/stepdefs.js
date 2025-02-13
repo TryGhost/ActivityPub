@@ -675,7 +675,6 @@ Given('we unfollow {string}', async function (name) {
 });
 
 Given('we are followed by:', async function (actors) {
-    // Test failing with a timeout for followers.feature
     for (const { name, type } of actors.hashes()) {
         // Create the actor
         this.actors[name] = await createActor(name, { type });
@@ -895,7 +894,7 @@ Then(
 );
 
 Then(
-    'the object {string} should not be in the {string} collection', // Test failing for accept-follows.feature
+    'the object {string} should not be in the {string} collection',
     async function (name, collectionType) {
         const objectInCollection = await getObjectInCollection.call(
             this,
