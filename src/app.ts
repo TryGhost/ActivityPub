@@ -58,11 +58,11 @@ import {
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
+    createLikeHandler,
     createUndoHandler,
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
-    handleLike,
     inboxErrorHandler,
     keypairDispatcher,
     likeDispatcher,
@@ -115,6 +115,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
@@ -237,6 +238,12 @@ const accountService = new AccountService(
     accountRepository,
     fedifyContextFactory,
 );
+
+const postService = new PostService(
+    postRepository,
+    accountService,
+    fedifyContextFactory,
+);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
@@ -269,7 +276,10 @@ function ensureCorrectContext<B, R>(
         // of this function - Fedify may reuse the context object across
         // multiple executions of an inbox listener
         ctx.data.db = scopeKvStore(db, ['sites', host]);
-        return fn(ctx, b);
+
+        return fedifyContextFactory.registerContext(ctx, () => {
+            return fn(ctx, b);
+        });
     };
 }
 
@@ -315,7 +325,14 @@ inboxListener
         ),
     )
     .onError(inboxErrorHandler)
-    .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
+    .on(
+        Like,
+        ensureCorrectContext(
+            spanWrapper(
+                createLikeHandler(accountService, postRepository, postService),
+            ),
+        ),
+    )
     .onError(inboxErrorHandler)
     .on(
         Undo,
