@@ -7,6 +7,13 @@ export interface Site {
     webhook_secret: string;
 }
 
+export interface InternalAccountData {
+    username: string;
+    name?: string;
+    bio?: string;
+    avatar_url?: string;
+}
+
 /**
  * Account
  */

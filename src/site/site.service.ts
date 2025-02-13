@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { Knex } from 'knex';
 import type { AccountService } from '../account/account.service';
+import type { InternalAccountData } from '../account/types';
 import type { getSiteSettings } from '../helpers/ghost';
 
 export type Site = {
@@ -75,9 +76,18 @@ export class SiteService {
             throw new Error(`Site initialisation failed for ${host}`);
         }
 
+        const settings = await this.ghostService.getSiteSettings(newSite.host);
+
+        const internalAccountData: InternalAccountData = {
+            username: 'index',
+            name: settings?.site?.title,
+            bio: settings?.site?.description,
+            avatar_url: settings?.site?.icon,
+        };
+
         const internalAccount = await this.accountService.createInternalAccount(
             newSite,
-            'index',
+            internalAccountData,
         );
 
         return newSite;

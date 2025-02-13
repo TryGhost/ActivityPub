@@ -96,6 +96,51 @@ export async function getActivityMeta(
     return map;
 }
 
+// This is a variant of getActivityMeta that does not use a join on itself in
+// order to also fetch replies. This is fixes a long standing issue where replies
+// are not correctly being fetched. This is used by the new feed endpoint which
+// does not need to fetch replies. Why not just update getActivityMeta? That
+// method is used by the notifications section of the client which needs replies
+// and somehow works around its quirks of them not being correctly fetched :s
+// Seeming though this is method is only going to be temporary until we have the
+// posts table, I thought it would be easier to do this instead of updating
+// getActivityMeta and potentially breaking notifications
+export async function getActivityMetaWithoutJoin(
+    uris: string[],
+): Promise<Map<string, ActivityMeta>> {
+    const results = await client
+        .select(
+            'key',
+            'id',
+            client.raw('JSON_EXTRACT(value, "$.actor.id") as actor_id'),
+            client.raw('JSON_EXTRACT(value, "$.type") as activity_type'),
+            client.raw('JSON_EXTRACT(value, "$.object.type") as object_type'),
+            client.raw(
+                'COALESCE(JSON_EXTRACT(value, "$.object.inReplyTo.id"), JSON_EXTRACT(value, "$.object.inReplyTo")) as reply_object_url',
+            ),
+        )
+        .from('key_value')
+        .whereIn(
+            'key',
+            uris.map((uri) => `["${uri}"]`),
+        );
+
+    const map = new Map<string, ActivityMeta>();
+
+    for (const result of results) {
+        map.set(result.key.substring(2, result.key.length - 2), {
+            id: result.id,
+            actor_id: result.actor_id,
+            activity_type: result.activity_type,
+            object_type: result.object_type,
+            reply_object_url: result.reply_object_url,
+            reply_object_name: '',
+        });
+    }
+
+    return map;
+}
+
 export async function getActivityChildren(activity: ActivityJsonLd) {
     const objectId = activity.object.id;
 
@@ -202,4 +247,14 @@ export async function getActivityParents(activity: ActivityJsonLd) {
     );
 
     return parents;
+}
+
+export async function getActivityForObject(objectId: string) {
+    const result = await client
+        .select('value')
+        .from('key_value')
+        .where(client.raw(`JSON_EXTRACT(value, "$.object.id") = "${objectId}"`))
+        .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Create"`));
+
+    return result[0].value;
 }
