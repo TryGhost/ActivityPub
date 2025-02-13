@@ -1,7 +1,6 @@
 import {
     Accept,
     Activity,
-    type Actor,
     Announce,
     Article,
     type Context,
@@ -17,7 +16,6 @@ import {
     Undo,
     Update,
     importJwk,
-    isActor,
     verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
@@ -28,7 +26,7 @@ import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
-import { addToList, removeFromList } from './kv-helpers';
+import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { SiteService } from './site/site.service';
 
@@ -130,11 +128,6 @@ export function createFollowHandler(accountService: AccountService) {
             return;
         }
 
-        const currentFollowers =
-            (await ctx.data.db.get<string[]>(['followers'])) ?? [];
-        const shouldRecordFollower =
-            currentFollowers.includes(sender.id.href) === false;
-
         // Add follow activity to inbox
         const followJson = await follow.toJsonLd();
 
@@ -144,19 +137,10 @@ export function createFollowHandler(accountService: AccountService) {
         // Record follower in followers list
         const senderJson = await sender.toJsonLd();
 
-        if (shouldRecordFollower) {
-            await addToList(ctx.data.db, ['followers'], sender.id.href);
-            await addToList(ctx.data.db, ['followers', 'expanded'], senderJson);
-        }
-
         // Store or update sender in global db
         ctx.data.globaldb.set([sender.id.href], senderJson);
 
-        // Record the account of the sender as well as the follow - This
-        // duplicates the above functionality but is needed to record the
-        // relevant data in the new database schema. The above functionality
-        // will eventually be removed in favour of this. This logic is only
-        // executed if the account for the followee has already been created
+        // Record the account of the sender as well as the follow
         const followeeAccount = await accountService.getAccountByApId(
             follow.objectId?.href ?? '',
         );
@@ -227,13 +211,8 @@ export function createAcceptHandler(accountService: AccountService) {
         ctx.data.globaldb.set([accept.id.href], acceptJson);
         ctx.data.globaldb.set([sender.id.href], senderJson);
         await addToList(ctx.data.db, ['inbox'], accept.id.href);
-        await addToList(ctx.data.db, ['following'], sender.id.href);
 
-        // Record the account of the sender as well as the follow - This
-        // duplicates the above functionality but is needed to record the
-        // relevant data in the new database schema. The above functionality
-        // will eventually be removed in favour of this. This logic is only
-        // executed if the account for the followee has already been created
+        // Record the account of the sender as well as the follow
         const recipient = await (object as Activity).getActor();
         const followerAccount = await accountService.getAccountByApId(
             recipient?.id?.href ?? '',
@@ -503,7 +482,6 @@ export const createUndoHandler = (accountService: AccountService) =>
 
         await accountService.recordAccountUnfollow(unfollowing, unfollower);
 
-        await removeFromList(ctx.data.db, ['following'], follow.objectId.href);
         await addToList(ctx.data.db, ['inbox'], undo.id.href);
 
         return;
@@ -805,63 +783,6 @@ export function followersFirstCursor() {
     return '0';
 }
 
-export async function followingDispatcher(
-    ctx: RequestContext<ContextData>,
-    handle: string,
-    cursor: string | null,
-) {
-    ctx.data.logger.info('Following Dispatcher');
-
-    const pageSize = Number.parseInt(
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-    );
-
-    if (Number.isNaN(pageSize)) {
-        throw new Error(`Page size: ${pageSize} is not valid`);
-    }
-
-    const offset = Number.parseInt(cursor ?? '0');
-    let nextCursor: string | null = null;
-
-    const results = (await ctx.data.db.get<string[]>(['following'])) || [];
-
-    nextCursor =
-        results.length > offset + pageSize
-            ? (offset + pageSize).toString()
-            : null;
-
-    const slicedResults = results.slice(offset, offset + pageSize);
-
-    ctx.data.logger.info('Following results', { results: slicedResults });
-
-    const items = await Promise.all(
-        slicedResults.map(async (result) => {
-            try {
-                return await lookupActor(ctx, result);
-            } catch (err) {
-                Sentry.captureException(err);
-                ctx.data.logger.error('Error looking up following actor', {
-                    error: err,
-                });
-            }
-        }),
-    ).then((results) =>
-        results
-            .filter((r): r is Actor => isActor(r) && r.id !== null)
-            .map((r) => new URL(r.id!)),
-    );
-
-    return {
-        items,
-        nextCursor,
-    };
-}
-
-/**
- * This logic duplicates the logic in `followingDispatcher`, the
- * main difference being that is uses the account service to retrieve the
- * following. `followingDispatcher` will eventually be removed in favour of this
- */
 export function createFollowingDispatcher(
     siteService: SiteService,
     accountService: AccountService,
