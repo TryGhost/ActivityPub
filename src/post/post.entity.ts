@@ -24,6 +24,17 @@ interface GhostPost {
     url: string;
 }
 
+interface PostData {
+    type: PostType;
+    audience: Audience;
+    title?: string | null;
+    excerpt?: string | null;
+    content: string | null;
+    url?: URL | null;
+    imageUrl?: URL | null;
+    publishedAt?: Date;
+}
+
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
@@ -37,7 +48,7 @@ export class Post extends BaseEntity {
         public readonly title: string | null,
         public readonly excerpt: string | null,
         public readonly content: string | null,
-        public readonly url: URL,
+        public readonly url: URL | null,
         public readonly imageUrl: URL | null,
         public readonly publishedAt: Date,
         private likeCount = 0,
@@ -58,6 +69,11 @@ export class Post extends BaseEntity {
             this.apId = author.getApIdForPost(this);
         } else {
             this.apId = apId;
+        }
+        if (url === null) {
+            this.url = this.apId;
+        } else {
+            this.url = url;
         }
     }
 
@@ -82,6 +98,22 @@ export class Post extends BaseEntity {
             new URL(ghostPost.url),
             parseURL(ghostPost.feature_image),
             new Date(ghostPost.published_at),
+        );
+    }
+
+    static createFromData(account: Account, data: PostData): Post {
+        return new Post(
+            null,
+            null,
+            account,
+            data.type,
+            data.audience,
+            data.title ?? null,
+            data.excerpt ?? null,
+            data.content,
+            data.url ?? null,
+            data.imageUrl ?? null,
+            data.publishedAt ?? new Date(),
         );
     }
 }
