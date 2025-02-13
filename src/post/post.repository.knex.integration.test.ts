@@ -63,6 +63,49 @@ describe('KnexPostRepository', () => {
         assert(rowInDb, 'A row should have been saved in the DB');
     });
 
+    it('Can get by apId', async () => {
+        const events = new EventEmitter();
+        const accountRepository = new KnexAccountRepository(client, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        const accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
+        const siteService = new SiteService(client, accountService, {
+            async getSiteSettings(host: string) {
+                return {
+                    site: {
+                        title: 'Test Site',
+                        description: 'A fake site used for testing',
+                        icon: 'https://testing.com/favicon.ico',
+                    },
+                };
+            },
+        });
+        const postRepository = new KnexPostRepository(client, events);
+
+        const site = await siteService.initialiseSiteForHost('testing.com');
+
+        const account = await accountRepository.getBySite(site);
+
+        const post = Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+        });
+
+        await postRepository.save(post);
+
+        const result = await postRepository.getByApId(post.apId);
+
+        assert(result);
+    });
+
     it('Handles likes of a new post', async () => {
         const events = new EventEmitter();
         const accountRepository = new KnexAccountRepository(client, events);
