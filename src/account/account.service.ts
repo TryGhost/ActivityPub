@@ -1,7 +1,13 @@
-import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
+import {
+    exportJwk,
+    generateCryptoKeyPair,
+    isActor,
+    lookupObject,
+} from '@fedify/fedify';
 import type { Knex } from 'knex';
 
 import type EventEmitter from 'node:events';
+import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
@@ -11,23 +17,26 @@ import {
     TABLE_FOLLOWS,
     TABLE_USERS,
 } from '../constants';
+import type { Account } from './account.entity';
+import type { KnexAccountRepository } from './account.repository.knex';
 import type {
-    Account,
+    Account as AccountType,
     ExternalAccountData,
     InternalAccountData,
     Site,
 } from './types';
+import { mapActorToExternalAccountData } from './utils';
 
 interface GetFollowingAccountsOptions {
     limit: number;
     offset: number;
-    fields: (keyof Account)[];
+    fields: (keyof AccountType)[];
 }
 
 interface GetFollowerAccountsOptions {
     limit: number;
     offset: number;
-    fields: (keyof Account)[];
+    fields: (keyof AccountType)[];
 }
 
 export class AccountService {
@@ -37,7 +46,43 @@ export class AccountService {
     constructor(
         private readonly db: Knex,
         private readonly events: EventEmitter,
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
+
+    /**
+     * Get an Account by the ActivityPub ID
+     * If it is not found locally in our database it will be
+     * remotely fetched and stored
+     */
+    async getByApId(id: URL): Promise<Account> {
+        const account = await this.accountRepository.getByApId(id);
+        if (account) {
+            return account;
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+        const potentialActor = await lookupObject(id, { documentLoader });
+
+        if (!isActor(potentialActor)) {
+            throw new URL('Account not found');
+        }
+
+        const data = await mapActorToExternalAccountData(potentialActor);
+
+        await this.createExternalAccount(data);
+
+        const newlyCreatedAccount = await this.accountRepository.getByApId(id);
+        if (!newlyCreatedAccount) {
+            throw new Error('Could not find account');
+        }
+
+        return newlyCreatedAccount;
+    }
 
     /**
      * Create an internal account
@@ -50,7 +95,7 @@ export class AccountService {
     async createInternalAccount(
         site: Site,
         internalAccountData: InternalAccountData,
-    ): Promise<Account> {
+    ): Promise<AccountType> {
         const keyPair = await generateCryptoKeyPair();
         const username = internalAccountData.username;
 
@@ -97,7 +142,7 @@ export class AccountService {
      */
     async createExternalAccount(
         accountData: ExternalAccountData,
-    ): Promise<Account> {
+    ): Promise<AccountType> {
         const [accountId] = await this.db(TABLE_ACCOUNTS).insert(accountData);
 
         return {
@@ -114,8 +159,8 @@ export class AccountService {
      * @param follower Following account
      */
     async recordAccountFollow(
-        followee: Account,
-        follower: Account,
+        followee: AccountType,
+        follower: AccountType,
     ): Promise<void> {
         await this.db(TABLE_FOLLOWS)
             .insert({
@@ -133,8 +178,8 @@ export class AccountService {
      * @param follower The account that is a follower
      */
     async recordAccountUnfollow(
-        following: Account,
-        follower: Account,
+        following: AccountType,
+        follower: AccountType,
     ): Promise<void> {
         await this.db(TABLE_FOLLOWS)
             .where({
@@ -149,7 +194,7 @@ export class AccountService {
      *
      * @param apId ActivityPub ID
      */
-    async getAccountByApId(apId: string): Promise<Account | null> {
+    async getAccountByApId(apId: string): Promise<AccountType | null> {
         if (apId === '') {
             return null;
         }
@@ -162,7 +207,7 @@ export class AccountService {
      *
      * @param site Site
      */
-    async getDefaultAccountForSite(site: Site): Promise<Account> {
+    async getDefaultAccountForSite(site: Site): Promise<AccountType> {
         const users = await this.db(TABLE_USERS).where('site_id', site.id);
 
         if (users.length === 0) {
@@ -197,9 +242,9 @@ export class AccountService {
      * @param options Options for the query
      */
     async getFollowingAccounts(
-        account: Account,
+        account: AccountType,
         options: GetFollowingAccountsOptions, // @TODO: Make this optional
-    ): Promise<Account[]> {
+    ): Promise<AccountType[]> {
         return await this.db(TABLE_FOLLOWS)
             .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
             .where(`${TABLE_FOLLOWS}.follower_id`, account.id)
@@ -224,7 +269,7 @@ export class AccountService {
      *
      * @param account Account
      */
-    async getFollowingAccountsCount(account: Account): Promise<number> {
+    async getFollowingAccountsCount(account: AccountType): Promise<number> {
         const result = await this.db(TABLE_FOLLOWS)
             .where('follower_id', account.id)
             .count('*', { as: 'count' });
@@ -241,9 +286,9 @@ export class AccountService {
      * @param options Options for the query
      */
     async getFollowerAccounts(
-        account: Account,
+        account: AccountType,
         options: GetFollowerAccountsOptions, // @TODO: Make this optional
-    ): Promise<Account[]> {
+    ): Promise<AccountType[]> {
         return await this.db(TABLE_FOLLOWS)
             .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
             .where(`${TABLE_FOLLOWS}.following_id`, account.id)
@@ -268,7 +313,7 @@ export class AccountService {
      *
      * @param account Account
      */
-    async getFollowerAccountsCount(account: Account): Promise<number> {
+    async getFollowerAccountsCount(account: AccountType): Promise<number> {
         const result = await this.db(TABLE_FOLLOWS)
             .where('following_id', account.id)
             .count('*', { as: 'count' });
@@ -283,8 +328,8 @@ export class AccountService {
      * @param followee Followee account
      */
     async checkIfAccountIsFollowing(
-        account: Account,
-        followee: Account,
+        account: AccountType,
+        followee: AccountType,
     ): Promise<boolean> {
         const result = await this.db(TABLE_FOLLOWS)
             .where('follower_id', account.id)
@@ -295,7 +340,7 @@ export class AccountService {
         return result !== undefined;
     }
 
-    async getByInternalId(id: number): Promise<Account | null> {
+    async getByInternalId(id: number): Promise<AccountType | null> {
         const rows = await this.db(TABLE_ACCOUNTS).select('*').where({ id });
 
         if (!rows || !rows.length) {
@@ -330,9 +375,9 @@ export class AccountService {
     }
 
     async updateAccount(
-        account: Account,
-        data: Omit<Partial<Account>, 'id'>,
-    ): Promise<Account> {
+        account: AccountType,
+        data: Omit<Partial<AccountType>, 'id'>,
+    ): Promise<AccountType> {
         await this.db(TABLE_ACCOUNTS).update(data).where({ id: account.id });
 
         const newAccount = Object.assign({}, account, data);

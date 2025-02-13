@@ -225,17 +225,21 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export const db = await KnexKvStore.create(client, 'key_value');
 
 const events = new EventEmitter();
+const fedifyContextFactory = new FedifyContextFactory();
 
 const accountRepository = new KnexAccountRepository(client, events);
 const postRepository = new KnexPostRepository(client, events);
 
-const accountService = new AccountService(client, events);
+const accountService = new AccountService(
+    client,
+    events,
+    accountRepository,
+    fedifyContextFactory,
+);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
 const feedService = new FeedService();
-
-const fedifyContextFactory = new FedifyContextFactory();
 
 const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
 fediverseBridge.init();
