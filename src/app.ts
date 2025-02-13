@@ -115,6 +115,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
@@ -235,6 +236,12 @@ const accountService = new AccountService(
     client,
     events,
     accountRepository,
+    fedifyContextFactory,
+);
+
+const postService = new PostService(
+    postRepository,
+    accountService,
     fedifyContextFactory,
 );
 const siteService = new SiteService(client, accountService, {
