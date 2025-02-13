@@ -27,6 +27,7 @@ interface GhostPost {
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
+    private potentiallyNewLikes: Set<number> = new Set();
 
     constructor(
         public readonly id: number | null,
@@ -64,6 +65,19 @@ export class Post extends BaseEntity {
     get readingTime() {
         // TODO Implement reading time calculation
         return this.readingTimeMinutes || 1;
+    }
+
+    addLike(account: Account) {
+        if (!account.id) {
+            throw new Error('Cannot add like for account with no id');
+        }
+        this.potentiallyNewLikes.add(account.id);
+    }
+
+    getPotentiallyNewLikes() {
+        const likes = [...this.potentiallyNewLikes.values()];
+        this.potentiallyNewLikes.clear();
+        return likes;
     }
 
     static createArticleFromGhostPost(

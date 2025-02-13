@@ -42,4 +42,48 @@ export class KnexAccountRepository {
             site,
         );
     }
+
+    async getByApId(apId: URL): Promise<Account | null> {
+        const accountRow = await this.db('accounts')
+            .where('accounts.ap_id', apId.href)
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .leftJoin('sites', 'sites.id', 'users.site_id')
+            .select(
+                'accounts.id',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'users.site_id',
+                'sites.host',
+                'sites.webhook_secret',
+            )
+            .first();
+
+        if (!accountRow) {
+            return null;
+        }
+
+        let site: Site | null = null;
+        if (accountRow.site_id) {
+            site = {
+                id: accountRow.site_id,
+                host: accountRow.host,
+                webhook_secret: accountRow.webhook_secret,
+            };
+        }
+
+        const account = new Account(
+            accountRow.id,
+            accountRow.username,
+            accountRow.name,
+            accountRow.bio,
+            parseURL(accountRow.avatar_url),
+            parseURL(accountRow.banner_image_url),
+            site,
+        );
+
+        return account;
+    }
 }

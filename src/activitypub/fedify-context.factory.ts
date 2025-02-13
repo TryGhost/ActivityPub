@@ -1,10 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { FedifyRequestContext } from 'app';
+import type { FedifyContext } from '../app';
 
 export class FedifyContextFactory {
-    private asyncLocalStorage = new AsyncLocalStorage<FedifyRequestContext>();
+    private asyncLocalStorage = new AsyncLocalStorage<FedifyContext>();
 
-    getFedifyContext(): FedifyRequestContext {
+    getFedifyContext(): FedifyContext {
         const context = this.asyncLocalStorage.getStore();
         if (context === undefined) {
             throw new Error(
@@ -16,7 +16,7 @@ export class FedifyContextFactory {
     }
 
     registerContext(
-        context: FedifyRequestContext,
+        context: FedifyContext,
         fn: (...args: unknown[]) => unknown,
     ) {
         return this.asyncLocalStorage.run(context, fn);

@@ -58,11 +58,11 @@ import {
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
+    createLikeHandler,
     createUndoHandler,
     followDispatcher,
     followersFirstCursor,
     followingFirstCursor,
-    handleLike,
     inboxErrorHandler,
     keypairDispatcher,
     likeDispatcher,
@@ -115,6 +115,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
@@ -221,21 +222,32 @@ export const fedify = createFederation<ContextData>({
  * @see https://fedify.dev/manual/context
  */
 export type FedifyRequestContext = RequestContext<ContextData>;
+export type FedifyContext = Context<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
 
 const events = new EventEmitter();
+const fedifyContextFactory = new FedifyContextFactory();
 
 const accountRepository = new KnexAccountRepository(client, events);
 const postRepository = new KnexPostRepository(client, events);
 
-const accountService = new AccountService(client, events);
+const accountService = new AccountService(
+    client,
+    events,
+    accountRepository,
+    fedifyContextFactory,
+);
+
+const postService = new PostService(
+    postRepository,
+    accountService,
+    fedifyContextFactory,
+);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
 const feedService = new FeedService();
-
-const fedifyContextFactory = new FedifyContextFactory();
 
 const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
 fediverseBridge.init();
@@ -310,7 +322,12 @@ inboxListener
         ),
     )
     .onError(inboxErrorHandler)
-    .on(Like, ensureCorrectContext(spanWrapper(handleLike)))
+    .on(
+        Like,
+        ensureCorrectContext(
+            spanWrapper(createLikeHandler(accountService, postRepository)),
+        ),
+    )
     .onError(inboxErrorHandler)
     .on(
         Undo,
