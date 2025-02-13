@@ -30,3 +30,4 @@ Feature: We automatically accept Follow requests
     And "Alice" is in our Followers
     And a "Undo(F)" Activity "U" by "Alice"
     And "Alice" sends "U" to the Inbox
+    Then the object "Alice" should not be in the "followers" collection
