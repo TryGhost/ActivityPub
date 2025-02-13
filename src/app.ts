@@ -827,7 +827,9 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleCreateNote),
+    spanWrapper((ctx: AppContext) =>
+        handleCreateNote(ctx, accountRepository, postRepository),
+    ),
 );
 app.get(
     '/.ghost/activitypub/actions/search',

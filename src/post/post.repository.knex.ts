@@ -18,7 +18,7 @@ export class KnexPostRepository {
                 title: post.title,
                 excerpt: post.excerpt,
                 content: post.content,
-                url: post.url.href,
+                url: post.url?.href,
                 image_url: post.imageUrl?.href,
                 published_at: post.publishedAt,
                 in_reply_to: post.inReplyTo?.id,
