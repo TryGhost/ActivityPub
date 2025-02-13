@@ -26,7 +26,7 @@ interface GhostPost {
 
 interface PostData {
     type: PostType;
-    audience: Audience;
+    audience?: Audience;
     title?: string | null;
     excerpt?: string | null;
     content: string | null;
@@ -107,7 +107,7 @@ export class Post extends BaseEntity {
             null,
             account,
             data.type,
-            data.audience,
+            data.audience ?? Audience.Public,
             data.title ?? null,
             data.excerpt ?? null,
             data.content,
