@@ -674,7 +674,8 @@ Given('we unfollow {string}', async function (name) {
     }
 });
 
-Given('we are followed by:', async function (actors) { // Test failing with a timeout for followers.feature
+Given('we are followed by:', async function (actors) {
+    // Test failing with a timeout for followers.feature
     for (const { name, type } of actors.hashes()) {
         // Create the actor
         this.actors[name] = await createActor(name, { type });
