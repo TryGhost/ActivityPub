@@ -1,12 +1,81 @@
 import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
-import type { Post } from './post.entity';
+import { Account } from '../account/account.entity';
+import { parseURL } from '../core/url';
+import { Post } from './post.entity';
 
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
         private readonly events: EventEmitter,
     ) {}
+
+    async getByApId(apId: URL): Promise<Post | null> {
+        const row = await this.db('posts')
+            .join('accounts', 'accounts.id', 'posts.author_id')
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
+            .select(
+                'posts.id',
+                'posts.uuid',
+                'posts.type',
+                'posts.audience',
+                'posts.title',
+                'posts.excerpt',
+                'posts.content',
+                'posts.url',
+                'posts.image_url',
+                'posts.published_at',
+                'posts.like_count',
+                'posts.repost_count',
+                'posts.reply_count',
+                'posts.reading_time_minutes',
+                'posts.author_id',
+                'posts.ap_id',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+            )
+            .first();
+
+        if (!row) {
+            return null;
+        }
+
+        const author = new Account(
+            row.author_id,
+            row.username,
+            row.name,
+            row.bio,
+            parseURL(row.avatar_url),
+            parseURL(row.banner_image_url),
+            null,
+        );
+
+        const post = new Post(
+            row.id,
+            row.uuid,
+            author,
+            row.type,
+            row.audience,
+            row.title,
+            row.excerpt,
+            row.content,
+            new URL(row.url),
+            parseURL(row.image_url),
+            new Date(row.published_at),
+            row.like_count,
+            row.repost_count,
+            row.reply_count,
+            null,
+            null,
+            row.reading_time_minutes,
+            new URL(row.ap_id),
+        );
+
+        return post;
+    }
 
     async save(post: Post): Promise<void> {
         const transaction = await this.db.transaction();
