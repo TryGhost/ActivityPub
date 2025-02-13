@@ -4,6 +4,7 @@ import assert from 'node:assert';
 import EventEmitter from 'node:events';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
+import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { Post } from './post.entity';
@@ -16,7 +17,14 @@ afterAll(async () => {
 describe('KnexPostRepository', () => {
     it('Can save a Post', async () => {
         const events = new EventEmitter();
-        const accountService = new AccountService(client, events);
+        const accountRepository = new KnexAccountRepository(client, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        const accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
         const siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
                 return {
@@ -28,7 +36,6 @@ describe('KnexPostRepository', () => {
                 };
             },
         });
-        const accountRepository = new KnexAccountRepository(client, events);
         const postRepository = new KnexPostRepository(client, events);
 
         const site = await siteService.initialiseSiteForHost('testing.com');
@@ -58,7 +65,14 @@ describe('KnexPostRepository', () => {
 
     it('Handles likes of a new post', async () => {
         const events = new EventEmitter();
-        const accountService = new AccountService(client, events);
+        const accountRepository = new KnexAccountRepository(client, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        const accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
         const siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
                 return {
@@ -70,7 +84,6 @@ describe('KnexPostRepository', () => {
                 };
             },
         });
-        const accountRepository = new KnexAccountRepository(client, events);
         const postRepository = new KnexPostRepository(client, events);
 
         async function getAccount(host: string) {
@@ -122,7 +135,14 @@ describe('KnexPostRepository', () => {
 
     it('Handles likes of an existing post', async () => {
         const events = new EventEmitter();
-        const accountService = new AccountService(client, events);
+        const accountRepository = new KnexAccountRepository(client, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        const accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
         const siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
                 return {
@@ -134,7 +154,6 @@ describe('KnexPostRepository', () => {
                 };
             },
         });
-        const accountRepository = new KnexAccountRepository(client, events);
         const postRepository = new KnexPostRepository(client, events);
 
         async function getAccount(host: string) {
