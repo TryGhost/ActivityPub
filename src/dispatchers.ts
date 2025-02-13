@@ -28,6 +28,8 @@ import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
+import type { KnexPostRepository } from './post/post.repository.knex';
+import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
 
 export const actorDispatcher = (
@@ -616,66 +618,84 @@ export function createAnnounceHandler(
     };
 }
 
-export async function handleLike(ctx: Context<ContextData>, like: Like) {
-    ctx.data.logger.info('Handling Like');
+export function createLikeHandler(
+    accountService: AccountService,
+    postRepository: KnexPostRepository,
+    postService: PostService,
+) {
+    return async function handleLike(ctx: Context<ContextData>, like: Like) {
+        ctx.data.logger.info('Handling Like');
 
-    // Validate like
-    if (!like.id) {
-        ctx.data.logger.info('Invalid Like - no id');
-        return;
-    }
+        // Validate like
+        if (!like.id) {
+            ctx.data.logger.info('Invalid Like - no id');
+            return;
+        }
 
-    if (!like.objectId) {
-        ctx.data.logger.info('Invalid Like - no object id');
-        return;
-    }
+        if (!like.objectId) {
+            ctx.data.logger.info('Invalid Like - no object id');
+            return;
+        }
 
-    // Validate sender
-    const sender = await like.getActor(ctx);
+        if (!like.actorId) {
+            ctx.data.logger.info('Invalid Like - no actor id');
+            return;
+        }
 
-    if (sender === null || sender.id === null) {
-        ctx.data.logger.info('Like sender missing, exit early');
-        return;
-    }
+        const account = await accountService.getByApId(like.actorId);
+        const post = await postService.getByApId(like.objectId);
 
-    // Lookup liked object - If not found in globalDb, perform network lookup
-    let object = null;
-    const existing =
-        (await ctx.data.globaldb.get([like.objectId.href])) ?? null;
+        post.addLike(account);
 
-    if (!existing) {
-        ctx.data.logger.info(
-            'Like object not found in globalDb, performing network lookup',
-        );
+        await postRepository.save(post);
 
-        object = await like.getObject();
-    }
+        // Validate sender
+        const sender = await like.getActor(ctx);
 
-    // Validate object
-    if (!existing && !object) {
-        ctx.data.logger.info('Invalid Like - could not find object');
-        return;
-    }
+        if (sender === null || sender.id === null) {
+            ctx.data.logger.info('Like sender missing, exit early');
+            return;
+        }
 
-    if (object && !object.id) {
-        ctx.data.logger.info('Invalid Like - could not find object id');
-        return;
-    }
+        // Lookup liked object - If not found in globalDb, perform network lookup
+        let object = null;
+        const existing =
+            (await ctx.data.globaldb.get([like.objectId.href])) ?? null;
 
-    // Persist like
-    const likeJson = await like.toJsonLd();
-    ctx.data.globaldb.set([like.id.href], likeJson);
+        if (!existing) {
+            ctx.data.logger.info(
+                'Like object not found in globalDb, performing network lookup',
+            );
 
-    // Persist object if not already persisted
-    if (!existing && object && object.id) {
-        ctx.data.logger.info('Storing object in globalDb');
+            object = await like.getObject();
+        }
 
-        const objectJson = await object.toJsonLd();
+        // Validate object
+        if (!existing && !object) {
+            ctx.data.logger.info('Invalid Like - could not find object');
+            return;
+        }
 
-        ctx.data.globaldb.set([object.id.href], objectJson);
-    }
+        if (object && !object.id) {
+            ctx.data.logger.info('Invalid Like - could not find object id');
+            return;
+        }
 
-    await addToList(ctx.data.db, ['inbox'], like.id.href);
+        // Persist like
+        const likeJson = await like.toJsonLd();
+        ctx.data.globaldb.set([like.id.href], likeJson);
+
+        // Persist object if not already persisted
+        if (!existing && object && object.id) {
+            ctx.data.logger.info('Storing object in globalDb');
+
+            const objectJson = await object.toJsonLd();
+
+            ctx.data.globaldb.set([object.id.href], objectJson);
+        }
+
+        await addToList(ctx.data.db, ['inbox'], like.id.href);
+    };
 }
 
 export async function inboxErrorHandler(
