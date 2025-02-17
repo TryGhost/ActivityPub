@@ -36,18 +36,18 @@ Feature: Feed
     And the feed does not contain "Article1"
 
   Scenario: Feed only includes posts
-    Given a "Create(Note)" Activity "Note1" by "Alice"
-    And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
+    Given a "Create(Note)" Activity "CreateNote1(Note1)" by "Alice"
+    And "Alice" sends "CreateNote1" to the Inbox
+    And "CreateNote1" is in our Inbox
     And a "Create(Article)" Activity "Article1" by "Alice"
     And "Alice" sends "Article1" to the Inbox
     And "Article1" is in our Inbox
-    And a "Like(Note1)" Activity "Like1" by "Alice"
+    And a "Like(Note1)" Activity "Like1(Note1)" by "Alice"
     And "Alice" sends "Like1" to the Inbox
     And "Like1" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
+    And the feed contains "CreateNote1"
     And the feed does not contain "Like1"
     When an authenticated request is made to "/.ghost/activitypub/inbox"
     Then the request is accepted
