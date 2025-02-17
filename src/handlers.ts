@@ -377,12 +377,6 @@ export function createUnfollowActionHandler(accountService: AccountService) {
 
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
-        await removeFromList(
-            ctx.get('db'),
-            ['following'],
-            actorToUnfollow.id!.href,
-        );
-
         await apCtx.sendActivity(
             { handle: ACTOR_DEFAULT_HANDLE },
             actorToUnfollow,
