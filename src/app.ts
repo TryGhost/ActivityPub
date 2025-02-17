@@ -86,7 +86,7 @@ import {
     getSiteDataHandler,
     inboxHandler,
     likeAction,
-    replyAction,
+    createReplyActionHandler,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
@@ -834,7 +834,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(replyAction),
+    spanWrapper(createReplyActionHandler(accountService, postService, postRepository)),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',

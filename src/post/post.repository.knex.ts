@@ -31,6 +31,8 @@ export class KnexPostRepository {
                 'posts.reading_time_minutes',
                 'posts.author_id',
                 'posts.ap_id',
+                'posts.in_reply_to',
+                'posts.thread_root',
                 'accounts.username',
                 'accounts.name',
                 'accounts.bio',
@@ -68,8 +70,8 @@ export class KnexPostRepository {
             row.like_count,
             row.repost_count,
             row.reply_count,
-            null,
-            null,
+            row.in_reply_to,
+            row.thread_root,
             row.reading_time_minutes,
             new URL(row.ap_id),
         );
@@ -151,5 +153,93 @@ export class KnexPostRepository {
             await transaction.rollback();
             throw err;
         }
+    }
+
+    async updateReplyCount(postId: number, increment = true): Promise<void> {
+        const transaction = await this.db.transaction();
+
+        try {
+            await transaction('posts')
+                .where({ id: postId })
+                .update({
+                    reply_count: this.db.raw(
+                        `reply_count ${increment ? '+' : '-'} 1`,
+                    ),
+                });
+
+            await transaction.commit();
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    }
+
+    async getById(id: number): Promise<Post | null> {
+        const row = await this.db('posts')
+            .join('accounts', 'accounts.id', 'posts.author_id')
+            .where('posts.id', id)
+            .select(
+                'posts.id',
+                'posts.uuid',
+                'posts.type',
+                'posts.audience',
+                'posts.title',
+                'posts.excerpt',
+                'posts.content',
+                'posts.url',
+                'posts.image_url',
+                'posts.published_at',
+                'posts.like_count',
+                'posts.repost_count',
+                'posts.reply_count',
+                'posts.reading_time_minutes',
+                'posts.author_id',
+                'posts.ap_id',
+                'posts.in_reply_to',
+                'posts.thread_root',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+            )
+            .first();
+
+        if (!row) {
+            return null;
+        }
+
+        const author = new Account(
+            row.author_id,
+            row.username,
+            row.name,
+            row.bio,
+            parseURL(row.avatar_url),
+            parseURL(row.banner_image_url),
+            null,
+        );
+
+        const post = new Post(
+            row.id,
+            row.uuid,
+            author,
+            row.type,
+            row.audience,
+            row.title,
+            row.excerpt,
+            row.content,
+            new URL(row.url),
+            parseURL(row.image_url),
+            new Date(row.published_at),
+            row.like_count,
+            row.repost_count,
+            row.reply_count,
+            row.in_reply_to,
+            row.thread_root,
+            row.reading_time_minutes,
+            new URL(row.ap_id),
+        );
+
+        return post;
     }
 }

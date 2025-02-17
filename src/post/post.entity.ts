@@ -33,6 +33,13 @@ interface PostData {
     url?: URL | null;
     imageUrl?: URL | null;
     publishedAt?: Date;
+    likeCount?: number;
+    repostCount?: number;
+    replyCount?: number;
+    inReplyTo?: Post | null;
+    threadRoot?: Post | null;
+    readingTimeMinutes?: number | null;
+    apId?: URL | null;
 }
 
 export class Post extends BaseEntity {
@@ -128,6 +135,13 @@ export class Post extends BaseEntity {
             data.url ?? null,
             data.imageUrl ?? null,
             data.publishedAt ?? new Date(),
+            data.likeCount ?? 0,
+            data.repostCount ?? 0,
+            data.replyCount ?? 0,
+            data.inReplyTo ?? null,
+            data.threadRoot ?? null,
+            data.readingTimeMinutes ?? null,
+            data.apId ?? null,
         );
     }
 }
