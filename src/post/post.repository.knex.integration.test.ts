@@ -7,7 +7,7 @@ import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { client } from '../db';
 import { SiteService } from '../site/site.service';
-import { Post } from './post.entity';
+import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 afterAll(async () => {
@@ -244,5 +244,107 @@ describe('KnexPostRepository', () => {
             .first();
 
         assert.equal(rowInDb.like_count, 3, 'There should be 3 likes');
+    });
+
+    it('Can get post by ID', async () => {
+        const events = new EventEmitter();
+        const accountRepository = new KnexAccountRepository(client, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        const accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
+        const siteService = new SiteService(client, accountService, {
+            async getSiteSettings(host: string) {
+                return {
+                    site: {
+                        title: 'Test Site',
+                        description: 'A fake site used for testing',
+                        icon: 'https://testing.com/favicon.ico',
+                    },
+                };
+            },
+        });
+        const postRepository = new KnexPostRepository(client, events);
+
+        const site = await siteService.initialiseSiteForHost('testing.com');
+        const account = await accountRepository.getBySite(site);
+
+        const post = Post.createFromData(account, {
+            content: 'Test Post for get by ID',
+            type: PostType.Article,
+            url: new URL(
+                `https://testing.com/test-post-for-id-${crypto.randomUUID()}`,
+            ),
+            apId: new URL(
+                `https://testing.com/test-post-for-id-${crypto.randomUUID()}`,
+            ),
+            publishedAt: new Date('2025-01-01'),
+        });
+
+        await postRepository.save(post);
+        const postSaved = await postRepository.getByApId(post.apId);
+
+        const result = await postRepository.getById(postSaved?.id!);
+        assert(result);
+        assert.equal(result.content, 'Test Post for get by ID');
+    });
+
+    it('Can update reply count', async () => {
+        const events = new EventEmitter();
+        const accountRepository = new KnexAccountRepository(client, events);
+        const fedifyContextFactory = new FedifyContextFactory();
+        const accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+        );
+        const siteService = new SiteService(client, accountService, {
+            async getSiteSettings(host: string) {
+                return {
+                    site: {
+                        title: 'Test Site',
+                        description: 'A fake site used for testing',
+                        icon: 'https://testing.com/favicon.ico',
+                    },
+                };
+            },
+        });
+        const postRepository = new KnexPostRepository(client, events);
+
+        const site = await siteService.initialiseSiteForHost('testing.com');
+        const account = await accountRepository.getBySite(site);
+
+        const post = Post.createFromData(account, {
+            content: 'Reply Test Post',
+            type: PostType.Note,
+            url: new URL(
+                `https://testing.com/test-post-for-reply-count-${crypto.randomUUID()}`,
+            ),
+            apId: new URL(
+                `https://testing.com/test-post-for-reply-count-${crypto.randomUUID()}`,
+            ),
+            publishedAt: new Date('2025-01-01'),
+        });
+
+        await postRepository.save(post);
+        const postSaved = await postRepository.getByApId(post.apId);
+
+        await postRepository.updateReplyCount(postSaved?.id!, true);
+        let dbRow = await client('posts')
+            .where({ id: postSaved?.id! })
+            .select('reply_count')
+            .first();
+        assert.equal(dbRow.reply_count, 1);
+
+        await postRepository.updateReplyCount(postSaved?.id!, false);
+        dbRow = await client('posts')
+            .where({ id: postSaved?.id! })
+            .select('reply_count')
+            .first();
+        assert.equal(dbRow.reply_count, 0);
     });
 });
