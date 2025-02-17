@@ -89,5 +89,5 @@ export interface Note {
     /**
      * The AP ID of the post
      */
-    apId: URL;
+    apId?: URL;
 }
