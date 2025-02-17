@@ -285,7 +285,7 @@ export function createReplyActionHandler(
 
         await addToList(ctx.get('db'), ['outbox'], create.id!.href);
 
-        const account = await accountService.getByApId(attributionActor.id!);
+        const account = await accountService.getByApId(actor?.id!);
 
         const parentPost = await postService.getByApId(objectToReplyTo.id!);
 
