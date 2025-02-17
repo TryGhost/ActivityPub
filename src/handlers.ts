@@ -17,7 +17,6 @@ import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
 import type { AccountService } from './account/account.service';
-import { Audience, Post, PostType } from './post/post.entity';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
@@ -28,6 +27,7 @@ import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
+import { Audience, Post, PostType } from './post/post.entity';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';

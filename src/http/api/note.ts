@@ -44,7 +44,6 @@ export async function handleCreateNote(
                 handle: ACTOR_DEFAULT_HANDLE,
             },
             apId: post.apId,
-
         });
     } catch (err) {
         ctx.get('logger').error('Failed to publish note: {error}', {
