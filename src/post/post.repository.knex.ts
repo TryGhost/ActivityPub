@@ -1,7 +1,9 @@
 import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
+
 import { Account } from '../account/account.entity';
 import { parseURL } from '../core/url';
+import { PostCreatedEvent } from './post-created.event';
 import { Post } from './post.entity';
 
 export class KnexPostRepository {
@@ -103,6 +105,11 @@ export class KnexPostRepository {
                     reading_time_minutes: post.readingTime,
                     ap_id: post.apId.href,
                 });
+
+                this.events.emit(
+                    PostCreatedEvent.getName(),
+                    new PostCreatedEvent(post),
+                );
 
                 if (potentiallyNewLikes.length > 0) {
                     const likesToInsert = potentiallyNewLikes.map(

@@ -1,15 +1,27 @@
+import type { EventEmitter } from 'node:events';
 import type { KvStore } from '@fedify/fedify';
-
+import type { AccountService } from 'account/account.service';
+import type { Knex } from 'knex';
+import type { Account } from '../account/types';
 import type { FedifyRequestContext } from '../app';
 import {
     ACTIVITY_OBJECT_TYPE_ARTICLE,
     ACTIVITY_OBJECT_TYPE_NOTE,
     ACTIVITY_TYPE_ANNOUNCE,
     ACTIVITY_TYPE_CREATE,
+    TABLE_FEEDS,
+    TABLE_FOLLOWS,
+    TABLE_USERS,
 } from '../constants';
 import { getActivityMetaWithoutJoin } from '../db';
 import { type Activity, buildActivity } from '../helpers/activitypub/activity';
 import { spanWrapper } from '../instrumentation';
+import { PostCreatedEvent } from '../post/post-created.event';
+import { Audience, type Post } from '../post/post.entity';
+import {
+    FeedsUpdatedEvent,
+    FeedsUpdatedEventUpdateOperation,
+} from './feeds-updated.event';
 import { PostType } from './types';
 
 export interface GetFeedOptions {
@@ -24,6 +36,24 @@ export interface GetFeedResult {
 }
 
 export class FeedService {
+    /**
+     * @param db Database client
+     * @param events Application event emitter
+     * @param accountService Account service
+     */
+    constructor(
+        private readonly db: Knex,
+        private readonly events: EventEmitter,
+        private readonly accountService: AccountService,
+    ) {
+        this.events.on(
+            PostCreatedEvent.getName(),
+            async (event: PostCreatedEvent) => {
+                await this.addPostToFeeds(event.getPost());
+            },
+        );
+    }
+
     /**
      * Get a user's feed using the KV store
      *
@@ -152,5 +182,75 @@ export class FeedService {
             items: activities.filter((activity) => activity !== null),
             nextCursor,
         };
+    }
+
+    /**
+     * Add a post to the feeds of the users that should see it
+     *
+     * If the post audience = Public then the post should be added to:
+     * - The feed of the user that authored the post
+     * - The feeds of all users that follow the author
+     *
+     * If the post audience = FollowersOnly then the post should be added to:
+     * - The feeds of all users that follow the author
+     *
+     * If the post audience = Direct then the post should be added to:
+     * - @TODO: Implement
+     *
+     * @param event Post created event
+     */
+    private async addPostToFeeds(post: Post) {
+        // Work out which user's feeds the post should be added to
+        const targetUserIds = new Set();
+
+        if (post.audience === Audience.Public) {
+            const authorInternalId =
+                await this.accountService.getInternalIdForAccount(
+                    post.author as unknown as Account,
+                );
+
+            if (authorInternalId) {
+                targetUserIds.add(authorInternalId);
+            }
+        }
+
+        if ([Audience.Public, Audience.FollowersOnly].includes(post.audience)) {
+            const followerIds = await this.db(TABLE_FOLLOWS)
+                .join(TABLE_USERS, 'follows.follower_id', 'users.id')
+                .where('following_id', post.author.id)
+                .select('follows.follower_id');
+
+            for (const follower of followerIds) {
+                targetUserIds.add(follower.follower_id);
+            }
+        }
+
+        if (post.audience === Audience.Direct) {
+            // @TODO: Implement
+        }
+
+        // Add the post to the feeds
+        const userIds = Array.from(targetUserIds).map(Number);
+
+        const feedEntries = userIds.map((userId) => ({
+            post_type: post.type,
+            audience: post.audience,
+            user_id: userId,
+            post_id: post.id,
+            author_id: post.author.id,
+            // @TODO: Handle reposted_by_id
+        }));
+
+        await this.db(TABLE_FEEDS).insert(feedEntries); // @TODO: Is there a limit on the number of rows we can insert at once?
+
+        // Emit event to notify listeners that multiple feeds have been updated
+        this.events.emit(
+            FeedsUpdatedEvent.getName(),
+            new FeedsUpdatedEvent(
+                userIds,
+                FeedsUpdatedEventUpdateOperation.PostAdded,
+                post,
+            ),
+        );
     }
 }
