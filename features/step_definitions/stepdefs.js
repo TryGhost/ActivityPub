@@ -920,51 +920,35 @@ Given('{string} is a reply to {string}', async function (objectA, objectB) {
     this.objects[objectA].inReplyTo = this.objects[objectB].id;
 });
 
-Given(
-    'a {string} Activity {string} by {string}',
-    async function (activityDef, name, actorName) {
-        const { activity: activityType, object: objectName } =
-            parseActivityString(activityDef);
-        if (!activityType) {
-            throw new Error(`could not match ${activityDef} to an activity`);
-        }
+async function activityCreatedBy(activityDef, name, actorName) {
+    const { activity: activityType, object: objectName } =
+        parseActivityString(activityDef);
+    if (!activityType) {
+        throw new Error(`could not match ${activityDef} to an activity`);
+    }
 
-        const actor = this.actors[actorName];
-        const object =
-            this.actors[objectName] ??
-            this.activities[objectName] ??
-            this.objects[objectName] ??
-            (await createObject(objectName, actor));
+    const actor = this.actors[actorName];
+    const object =
+        this.actors[objectName] ??
+        this.activities[objectName] ??
+        this.objects[objectName] ??
+        (await createObject(objectName, actor));
 
-        const activity = await createActivity(activityType, object, actor);
+    const activity = await createActivity(activityType, object, actor);
 
+    const parsed = parseActivityString(name);
+    if (parsed.activity === null || parsed.object === null) {
         this.activities[name] = activity;
         this.objects[name] = object;
-    },
-);
+    } else {
+        this.activities[parsed.activity] = activity;
+        this.objects[parsed.object] = object;
+    }
+}
 
-Then(
-    'an {string} Activity {string} is created by {string}',
-    async function (activityDef, name, actorName) {
-        const { activity: activityType, object: objectName } =
-            parseActivityString(activityDef);
-        if (!activityType) {
-            throw new Error(`could not match ${activityDef} to an activity`);
-        }
+Given('a {string} Activity {string} by {string}', activityCreatedBy);
 
-        const actor = this.actors[actorName];
-        const object =
-            this.actors[objectName] ??
-            this.activities[objectName] ??
-            this.objects[objectName] ??
-            (await createObject(objectName, actor));
-
-        const activity = await createActivity(activityType, object, actor);
-
-        this.activities[name] = activity;
-        this.objects[name] = object;
-    },
-);
+Then('an {string} Activity {string} is created by {string}', activityCreatedBy);
 
 When(
     '{string} sends {string} to the Inbox',
@@ -1694,16 +1678,23 @@ Then('the feed contains {string}', async function (activityOrObjectName) {
     assert(found, `Expected to find ${activityOrObjectName} in feed`);
 });
 
-Then('the feed does not contain {string}', async function (activityName) {
-    const responseJson = await this.response.clone().json();
-    const activity = this.activities[activityName];
+Then(
+    'the feed does not contain {string}',
+    async function (activityOrObjectName) {
+        const responseJson = await this.response.clone().json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        let found;
 
-    const found = responseJson.posts.find(
-        (post) => post.id === activity.object.id,
-    );
+        if (activity) {
+            found = responseJson.posts.find((post) => post.id === activity.id);
+        } else if (object) {
+            found = responseJson.posts.find((post) => post.id === object.id);
+        }
 
-    assert(!found, `Expected not to find ${activityName} in feed`);
-});
+        assert(!found, `Expected not to find ${activityOrObjectName} in feed`);
+    },
+);
 
 Then('the feed has a next cursor', async function () {
     const responseJson = await this.response.clone().json();
