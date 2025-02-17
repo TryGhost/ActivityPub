@@ -9,7 +9,6 @@ import {
 } from '@fedify/fedify';
 import {
     actorDispatcher,
-    followingDispatcher,
     likedDispatcher,
     nodeInfoDispatcher,
     outboxDispatcher,
@@ -39,94 +38,6 @@ describe('dispatchers', () => {
             const expected = null;
 
             expect(actual).toEqual(expected);
-        });
-    });
-
-    describe('followingDispatcher', () => {
-        const following: Record<string, any> = {
-            'https://example.com/person/123': {
-                '@context': [
-                    'https://www.w3.org/ns/activitystreams',
-                    'https://w3id.org/security/data-integrity/v1',
-                ],
-                id: 'https://example.com/person/123',
-                type: 'Person',
-            },
-            'https://example.com/person/456': {
-                '@context': [
-                    'https://www.w3.org/ns/activitystreams',
-                    'https://w3id.org/security/data-integrity/v1',
-                ],
-                type: 'Person',
-                id: 'https://example.com/person/456',
-            },
-        };
-
-        const ctx = {
-            data: {
-                db: {
-                    get: vi.fn(),
-                },
-                globaldb: {
-                    get: vi.fn(),
-                },
-                logger: {
-                    info: vi.fn(),
-                },
-            },
-        } as RequestContext<any>;
-
-        beforeEach(() => {
-            ctx.data.db.get.mockImplementation((key: string[]) => {
-                return Promise.resolve(
-                    key[0] === 'following' ? Object.keys(following) : undefined,
-                );
-            });
-
-            ctx.data.globaldb.get.mockImplementation((key: string[]) => {
-                return Promise.resolve(following[key[0]]);
-            });
-
-            if (!process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE) {
-                process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
-            }
-        });
-
-        it('returns items from the following collection in the correct order', async () => {
-            const result = await followingDispatcher(
-                ctx,
-                ACTOR_DEFAULT_HANDLE,
-                null,
-            );
-
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct items are returned in the correct order
-            expect(result.items.length).toEqual(2);
-            expect(result.items[0]).toEqual(
-                new URL('https://example.com/person/123'),
-            );
-            expect(result.items[1]).toEqual(
-                new URL('https://example.com/person/456'),
-            );
-        });
-
-        it('returns items from the following collection with a cursor', async () => {
-            const result = await followingDispatcher(
-                ctx,
-                ACTOR_DEFAULT_HANDLE,
-                '1',
-            );
-
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct items are returned
-            expect(result.items.length).toEqual(1);
-            expect(result.items[0]).toEqual(
-                new URL('https://example.com/person/456'),
-            );
         });
     });
 
