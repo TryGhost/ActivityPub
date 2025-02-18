@@ -17,7 +17,12 @@ import { getActivityMetaWithoutJoin } from '../db';
 import { type Activity, buildActivity } from '../helpers/activitypub/activity';
 import { spanWrapper } from '../instrumentation';
 import { PostCreatedEvent } from '../post/post-created.event';
-import { Audience, type Post } from '../post/post.entity';
+import {
+    type FollowersOnlyPost,
+    type PublicPost,
+    isFollowersOnlyPost,
+    isPublicPost,
+} from '../post/post.entity';
 import {
     FeedsUpdatedEvent,
     FeedsUpdatedEventUpdateOperation,
@@ -49,7 +54,7 @@ export class FeedService {
         this.events.on(
             PostCreatedEvent.getName(),
             async (event: PostCreatedEvent) => {
-                await this.addPostToFeeds(event.getPost());
+                await this.handlePostCreatedEvent(event);
             },
         );
     }
@@ -184,6 +189,14 @@ export class FeedService {
         };
     }
 
+    private async handlePostCreatedEvent(event: PostCreatedEvent) {
+        const post = event.getPost();
+
+        if (isPublicPost(post) || isFollowersOnlyPost(post)) {
+            this.addPostToFeeds(post);
+        }
+    }
+
     /**
      * Add a post to the feeds of the users that should see it
      *
@@ -192,41 +205,31 @@ export class FeedService {
      * - The feeds of all users that follow the author
      *
      * If the post audience = FollowersOnly then the post should be added to:
+     * - The feed of the user that authored the post
      * - The feeds of all users that follow the author
-     *
-     * If the post audience = Direct then the post should be added to:
-     * - @TODO: Implement
      *
      * @param event Post created event
      */
-    private async addPostToFeeds(post: Post) {
+    private async addPostToFeeds(post: PublicPost | FollowersOnlyPost) {
         // Work out which user's feeds the post should be added to
         const targetUserIds = new Set();
 
-        if (post.audience === Audience.Public) {
-            const authorInternalId =
-                await this.accountService.getInternalIdForAccount(
-                    post.author as unknown as Account,
-                );
+        const authorInternalId =
+            await this.accountService.getInternalIdForAccount(
+                post.author as unknown as AccountType,
+            );
 
-            if (authorInternalId) {
-                targetUserIds.add(authorInternalId);
-            }
+        if (authorInternalId) {
+            targetUserIds.add(authorInternalId);
         }
 
-        if ([Audience.Public, Audience.FollowersOnly].includes(post.audience)) {
-            const followerIds = await this.db(TABLE_FOLLOWS)
-                .join(TABLE_USERS, 'follows.follower_id', 'users.id')
-                .where('following_id', post.author.id)
-                .select('follows.follower_id');
+        const followerIds = await this.db(TABLE_FOLLOWS)
+            .join(TABLE_USERS, 'follows.follower_id', 'users.id')
+            .where('following_id', post.author.id)
+            .select('follows.follower_id');
 
-            for (const follower of followerIds) {
-                targetUserIds.add(follower.follower_id);
-            }
-        }
-
-        if (post.audience === Audience.Direct) {
-            // @TODO: Implement
+        for (const follower of followerIds) {
+            targetUserIds.add(follower.follower_id);
         }
 
         // Add the post to the feeds

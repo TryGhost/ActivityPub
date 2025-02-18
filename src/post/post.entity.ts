@@ -35,6 +35,22 @@ interface PostData {
     publishedAt?: Date;
 }
 
+export type PublicPost = Post & {
+    audience: Audience.Public;
+};
+
+export type FollowersOnlyPost = Post & {
+    audience: Audience.FollowersOnly;
+};
+
+export function isPublicPost(post: Post): post is PublicPost {
+    return post.audience === Audience.Public;
+}
+
+export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
+    return post.audience === Audience.FollowersOnly;
+}
+
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
