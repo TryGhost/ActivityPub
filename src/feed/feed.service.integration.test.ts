@@ -14,6 +14,7 @@ import {
     TABLE_USERS,
 } from '../constants';
 import { client } from '../db';
+import { Audience, PostType } from '../post/post.entity';
 import { Post } from '../post/post.entity';
 import { KnexPostRepository } from '../post/post.repository.knex';
 import { SiteService } from '../site/site.service';
@@ -84,7 +85,7 @@ describe('FeedService', () => {
     });
 
     describe('handling a post being created', () => {
-        it("should add to the user's feed and any follower feeds if the post audience is: Public", async () => {
+        it("should add to the user's feed and any follower feeds if the post audience is: Public or FollowersOnly", async () => {
             const feedService = new FeedService(client, events);
 
             // Initialise user internal account
@@ -139,30 +140,32 @@ describe('FeedService', () => {
 
             // Create posts
             const fooAccountPost = Post.createArticleFromGhostPost(fooAccount, {
-                title: 'Title',
-                html: '<p>Hello, world!</p>',
-                excerpt: 'Hello, world!',
+                title: 'Foo Account Post',
+                html: '<p>Hello, world! (from foo.com)</p>',
+                excerpt: 'Hello, world! (from foo.com)',
                 feature_image: null,
                 url: 'https://foo.com/hello-world',
                 published_at: '2025-01-01',
             });
 
-            const barAccountPost = Post.createArticleFromGhostPost(barAccount, {
-                title: 'Title',
-                html: '<p>Hello, world!</p>',
-                excerpt: 'Hello, world!',
-                feature_image: null,
-                url: 'https://bar.com/hello-world',
-                published_at: '2025-01-01',
+            const barAccountPost = Post.createFromData(barAccount, {
+                type: PostType.Article,
+                audience: Audience.FollowersOnly,
+                title: 'Bar Account Post',
+                excerpt: 'Hello, world! (from bar.com)',
+                content: '<p>Hello, world! (from bar.com)</p>',
+                url: new URL('https://bar.com/hello-world'),
+                imageUrl: null,
+                publishedAt: new Date('2025-01-02'),
             });
 
             const bazAccountPost = Post.createArticleFromGhostPost(bazAccount, {
-                title: 'Title',
-                html: '<p>Hello, world!</p>',
-                excerpt: 'Hello, world!',
+                title: 'Baz Account Post',
+                html: '<p>Hello, world! (from baz.com)</p>',
+                excerpt: 'Hello, world! (from baz.com)',
                 feature_image: null,
                 url: 'https://baz.com/hello-world',
-                published_at: '2025-01-01',
+                published_at: '2025-01-03',
             });
 
             await postRepository.save(fooAccountPost);
@@ -223,13 +226,5 @@ describe('FeedService', () => {
                 author_id: bazAccount.id,
             });
         }, 10000);
-
-        it.skip('should only add to follower feeds if the post audience is: FollowersOnly', async () => {
-            // @TODO: Implement
-        });
-
-        it.skip('should not add to any feeds if the post audience is: Direct', async () => {
-            // @TODO: Implement
-        });
     });
 });
