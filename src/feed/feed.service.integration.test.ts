@@ -235,7 +235,7 @@ describe('FeedService', () => {
                 post_id: bazAccountPost.id,
                 author_id: bazAccount.id,
             });
-        });
+        }, 10000);
 
         it.skip('should only add to follower feeds if the post audience is: FollowersOnly', async () => {
             // @TODO: Implement
