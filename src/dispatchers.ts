@@ -245,6 +245,7 @@ export function createAcceptHandler(accountService: AccountService) {
 export function createCreateHandler(
     siteService: SiteService,
     accountService: AccountService,
+    postService: PostService,
 ) {
     return async function handleCreate(
         ctx: Context<ContextData>,
@@ -263,6 +264,14 @@ export function createCreateHandler(
             ctx.data.logger.info('Create sender missing, exit early');
             return;
         }
+
+        if (!create.objectId) {
+            ctx.data.logger.info('Create object id missing, exit early');
+            return;
+        }
+
+        // This handles storing the posts in the posts table
+        const post = await postService.getByApId(create.objectId);
 
         const createJson = await create.toJsonLd();
         ctx.data.globaldb.set([create.id.href], createJson);
@@ -309,6 +318,7 @@ export async function handleAnnoucedCreate(
     announce: Announce,
     siteService: SiteService,
     accountService: AccountService,
+    postService: PostService,
 ) {
     ctx.data.logger.info('Handling Announced Create');
 
@@ -425,6 +435,13 @@ export async function handleAnnoucedCreate(
     const createJson = await create.toJsonLd();
     ctx.data.globaldb.set([create.id.href], createJson);
 
+    if (!create.objectId) {
+        ctx.data.logger.info('Create object id missing, exit early');
+        return;
+    }
+    // This handles storing the posts in the posts table
+    const post = await postService.getByApId(create.objectId);
+
     const object = await create.getObject();
     const replyTarget = await object?.getReplyTarget();
 
@@ -492,6 +509,7 @@ export const createUndoHandler = (accountService: AccountService) =>
 export function createAnnounceHandler(
     siteService: SiteService,
     accountService: AccountService,
+    postService: PostService,
 ) {
     return async function handleAnnounce(
         ctx: Context<ContextData>,
@@ -524,6 +542,7 @@ export function createAnnounceHandler(
                 announce,
                 siteService,
                 accountService,
+                postService,
             );
         }
 
