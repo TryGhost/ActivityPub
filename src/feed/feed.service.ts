@@ -214,6 +214,17 @@ export class FeedService {
             targetUserIds.add(authorInternalId.id);
         }
 
+        const inReplyToAuthorId =
+            post.inReplyTo &&
+            (await this.db(TABLE_USERS)
+                .where('account_id', post.inReplyTo.id)
+                .select('id')
+                .first());
+
+        if (inReplyToAuthorId) {
+            targetUserIds.add(inReplyToAuthorId.id);
+        }
+
         const followerIds = await this.db(TABLE_FOLLOWS)
             .join(TABLE_USERS, 'follows.follower_id', 'users.id')
             .where('following_id', post.author.id)

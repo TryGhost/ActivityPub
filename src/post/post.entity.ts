@@ -33,6 +33,7 @@ interface PostData {
     url?: URL | null;
     imageUrl?: URL | null;
     publishedAt?: Date;
+    inReplyTo?: Post;
 }
 
 export type PublicPost = Post & {
@@ -144,6 +145,10 @@ export class Post extends BaseEntity {
             data.url ?? null,
             data.imageUrl ?? null,
             data.publishedAt ?? new Date(),
+            0,
+            0,
+            0,
+            data.inReplyTo ?? null,
         );
     }
 }

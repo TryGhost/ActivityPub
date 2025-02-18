@@ -85,7 +85,7 @@ describe('FeedService', () => {
     });
 
     describe('handling a post being created', () => {
-        it("should add to the user's feed and any follower feeds if the post audience is: Public or FollowersOnly", async () => {
+        it("should add to the user's feed, the reply target authors feed, and any follower feeds if the post audience is: Public or FollowersOnly", async () => {
             const feedService = new FeedService(client, events);
 
             // Initialise user internal account
@@ -172,6 +172,16 @@ describe('FeedService', () => {
                 publishedAt: new Date('2025-01-03'),
             });
 
+            const bazAccountReply = Post.createFromData(bazAccount, {
+                type: PostType.Note,
+                audience: Audience.Public,
+                content: '<p>Reply! (from baz.com)</p>',
+                url: new URL('https://baz.com/reply'),
+                imageUrl: null,
+                publishedAt: new Date('2025-01-03'),
+                inReplyTo: fooAccountPost,
+            });
+
             await postRepository.save(fooAccountPost);
             await waitForPostAddedToFeeds(fooAccountPost);
 
@@ -181,6 +191,9 @@ describe('FeedService', () => {
             await postRepository.save(bazAccountPost);
             await waitForPostAddedToFeeds(bazAccountPost);
 
+            await postRepository.save(bazAccountReply);
+            await waitForPostAddedToFeeds(bazAccountReply);
+
             // fooAccount should have 2 posts in their feed - Their own and barAccount's
             // (because fooAccount follows barAccount)
             const fooFeed = await client('feeds')
@@ -188,7 +201,7 @@ describe('FeedService', () => {
                 .join('accounts', 'accounts.id', 'users.account_id')
                 .where('accounts.id', fooAccount.id);
 
-            expect(fooFeed.length).toBe(2);
+            expect(fooFeed.length).toBe(3);
             expect(fooFeed[0]).toMatchObject({
                 post_type: fooAccountPost.type,
                 audience: fooAccountPost.audience,
@@ -200,6 +213,12 @@ describe('FeedService', () => {
                 audience: barAccountPost.audience,
                 post_id: barAccountPost.id,
                 author_id: barAccount.id,
+            });
+            expect(fooFeed[2]).toMatchObject({
+                post_type: bazAccountReply.type,
+                audience: bazAccountReply.audience,
+                post_id: bazAccountReply.id,
+                author_id: bazAccount.id,
             });
 
             // barAccount should have 1 post in their feed - Their own
@@ -216,17 +235,23 @@ describe('FeedService', () => {
                 author_id: barAccount.id,
             });
 
-            // bazAccount should have 1 posts in their feed - Their own
+            // bazAccount should have 2 posts in their feed - Their own
             // (because they do not follow anyone)
             const bazFeed = await client('feeds')
                 .join('users', 'users.id', 'feeds.user_id')
                 .join('accounts', 'accounts.id', 'users.account_id')
                 .where('accounts.id', bazAccount.id);
-            expect(bazFeed.length).toBe(1);
+            expect(bazFeed.length).toBe(2);
             expect(bazFeed[0]).toMatchObject({
                 post_type: bazAccountPost.type,
                 audience: bazAccountPost.audience,
                 post_id: bazAccountPost.id,
+                author_id: bazAccount.id,
+            });
+            expect(bazFeed[1]).toMatchObject({
+                post_type: bazAccountReply.type,
+                audience: bazAccountReply.audience,
+                post_id: bazAccountReply.id,
                 author_id: bazAccount.id,
             });
         }, 10000);
