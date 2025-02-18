@@ -16,4 +16,5 @@ export const TABLE_SITES = 'sites';
 export const TABLE_USERS = 'users';
 export const TABLE_POSTS = 'posts';
 export const TABLE_LIKES = 'likes';
+export const TABLE_REPOSTS = 'reposts';
 export const TABLE_FEEDS = 'feeds';
