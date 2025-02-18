@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { TABLE_LIKES, TABLE_POSTS } from '../constants';
+import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
@@ -22,10 +22,19 @@ describe('KnexPostRepository', () => {
     let fedifyContextFactory: FedifyContextFactory;
     let accountService: AccountService;
     let siteService: SiteService;
+    let postRepository: KnexPostRepository;
+
+    const getAccount = async (host: string) => {
+        const site = await siteService.initialiseSiteForHost(host);
+        const account = await accountRepository.getBySite(site);
+
+        return account;
+    };
 
     beforeEach(async () => {
         // Clean up the database
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
+        await client(TABLE_REPOSTS).truncate();
         await client(TABLE_LIKES).truncate();
         await client(TABLE_POSTS).truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
@@ -51,14 +60,12 @@ describe('KnexPostRepository', () => {
                 };
             },
         });
+        postRepository = new KnexPostRepository(client, events);
     });
 
     it('Can save a Post', async () => {
-        const postRepository = new KnexPostRepository(client, events);
-
         const site = await siteService.initialiseSiteForHost('testing.com');
         const account = await accountRepository.getBySite(site);
-
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
             html: '<p>Hello, world!</p>',
@@ -70,7 +77,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client('posts')
+        const rowInDb = await client(TABLE_POSTS)
             .where({
                 uuid: post.uuid,
             })
@@ -82,9 +89,6 @@ describe('KnexPostRepository', () => {
 
     it('Emits a PostCreatedEvent when a Post is saved', async () => {
         const eventsEmitSpy = vi.spyOn(events, 'emit');
-
-        const postRepository = new KnexPostRepository(client, events);
-
         const site = await siteService.initialiseSiteForHost('testing.com');
         const account = await accountRepository.getBySite(site);
 
@@ -110,7 +114,6 @@ describe('KnexPostRepository', () => {
 
         const site = await siteService.initialiseSiteForHost('testing.com');
         const account = await accountRepository.getBySite(site);
-
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
             html: '<p>Hello, world!</p>',
@@ -128,15 +131,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles likes of a new post', async () => {
-        const postRepository = new KnexPostRepository(client, events);
-
-        async function getAccount(host: string) {
-            const site = await siteService.initialiseSiteForHost(host);
-            const account = await accountRepository.getBySite(site);
-
-            return account;
-        }
-
         const accounts = await Promise.all(
             ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
                 getAccount,
@@ -158,7 +152,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client('posts')
+        const rowInDb = await client(TABLE_POSTS)
             .where({
                 uuid: post.uuid,
             })
@@ -166,8 +160,9 @@ describe('KnexPostRepository', () => {
             .first();
 
         assert(rowInDb, 'A row should have been saved in the DB');
+        assert.equal(rowInDb.like_count, 3, 'There should be 3 likes');
 
-        const likesInDb = await client('likes')
+        const likesInDb = await client(TABLE_LIKES)
             .where({
                 post_id: post.id,
             })
@@ -177,15 +172,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles likes of an existing post', async () => {
-        const postRepository = new KnexPostRepository(client, events);
-
-        async function getAccount(host: string) {
-            const site = await siteService.initialiseSiteForHost(host);
-            const account = await accountRepository.getBySite(site);
-
-            return account;
-        }
-
         const accounts = await Promise.all(
             ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
                 getAccount,
@@ -215,7 +201,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client('posts')
+        const rowInDb = await client(TABLE_POSTS)
             .where({
                 uuid: post.uuid,
             })
@@ -223,5 +209,89 @@ describe('KnexPostRepository', () => {
             .first();
 
         assert.equal(rowInDb.like_count, 3, 'There should be 3 likes');
+    });
+
+    it('Handles reposts of a new post', async () => {
+        const accounts = await Promise.all(
+            ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
+                getAccount,
+            ),
+        );
+
+        const post = Post.createArticleFromGhostPost(accounts[0], {
+            title: 'Title',
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+        });
+
+        post.addRepost(accounts[1]);
+        post.addRepost(accounts[2]);
+
+        await postRepository.save(post);
+
+        const rowInDb = await client(TABLE_POSTS)
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'A row should have been saved in the DB');
+        assert.equal(rowInDb.repost_count, 2, 'There should be 2 reposts');
+
+        const repostsInDb = await client(TABLE_REPOSTS)
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+
+        assert.equal(
+            repostsInDb.length,
+            2,
+            'There should be 2 reposts in the DB',
+        );
+    });
+
+    it('Handles reposts of an existing post', async () => {
+        const accounts = await Promise.all(
+            ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
+                getAccount,
+            ),
+        );
+
+        const post = Post.createArticleFromGhostPost(accounts[0], {
+            title: 'Title',
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+        });
+
+        post.addRepost(accounts[1]);
+
+        await postRepository.save(post);
+
+        post.addRepost(accounts[0]);
+        post.addRepost(accounts[1]);
+
+        await postRepository.save(post);
+
+        post.addRepost(accounts[0]);
+        post.addRepost(accounts[2]);
+
+        await postRepository.save(post);
+
+        const rowInDb = await client(TABLE_POSTS)
+            .where({
+                uuid: post.uuid,
+            })
+            .select('repost_count')
+            .first();
+
+        assert.equal(rowInDb.repost_count, 3, 'There should be 3 reposts');
     });
 });
