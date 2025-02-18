@@ -237,7 +237,7 @@ export class FeedService {
             user_id: userId,
             post_id: post.id,
             author_id: post.author.id,
-            // @TODO: Handle reposted_by_id
+            reposted_by_id: null,
         }));
 
         await this.db.batchInsert(TABLE_FEEDS, feedEntries);
