@@ -42,6 +42,7 @@ describe('AccountService', () => {
     let events: EventEmitter;
     let site: Site;
     let internalAccountData: InternalAccountData;
+    let externalAccountData: ExternalAccountData;
 
     beforeEach(async () => {
         // Clean up the database
@@ -64,17 +65,40 @@ describe('AccountService', () => {
             ...siteData,
         };
 
+        // Init reusable account data
         internalAccountData = {
             username: 'index',
             name: 'Test Site Title',
             bio: 'Test Site Description',
             avatar_url: 'Test Site Icon',
         };
+        externalAccountData = {
+            username: 'external-account',
+            name: 'External Account',
+            bio: 'External Account Bio',
+            avatar_url: 'https://example.com/avatars/external-account.png',
+            banner_image_url:
+                'https://example.com/banners/external-account.png',
+            url: 'https://example.com/users/external-account',
+            custom_fields: {},
+            ap_id: 'https://example.com/activitypub/users/external-account',
+            ap_inbox_url:
+                'https://example.com/activitypub/inbox/external-account',
+            ap_outbox_url:
+                'https://example.com/activitypub/outbox/external-account',
+            ap_following_url:
+                'https://example.com/activitypub/following/external-account',
+            ap_followers_url:
+                'https://example.com/activitypub/followers/external-account',
+            ap_liked_url:
+                'https://example.com/activitypub/liked/external-account',
+            ap_shared_inbox_url: null,
+            ap_public_key: '',
+        };
 
+        // Init dependencies
         events = new EventEmitter();
-
         const accountRepository = new KnexAccountRepository(db, events);
-
         const fedifyContextFactory = new FedifyContextFactory();
 
         // Create the service
@@ -143,34 +167,11 @@ describe('AccountService', () => {
 
     describe('createExternalAccount', () => {
         it('should create an external account', async () => {
-            const accountData: ExternalAccountData = {
-                username: 'external-account',
-                name: 'External Account',
-                bio: 'External Account Bio',
-                avatar_url: 'https://example.com/avatars/external-account.png',
-                banner_image_url:
-                    'https://example.com/banners/external-account.png',
-                url: 'https://example.com/users/external-account',
-                custom_fields: {},
-                ap_id: 'https://example.com/activitypub/users/external-account',
-                ap_inbox_url:
-                    'https://example.com/activitypub/inbox/external-account',
-                ap_outbox_url:
-                    'https://example.com/activitypub/outbox/external-account',
-                ap_following_url:
-                    'https://example.com/activitypub/following/external-account',
-                ap_followers_url:
-                    'https://example.com/activitypub/followers/external-account',
-                ap_liked_url:
-                    'https://example.com/activitypub/liked/external-account',
-                ap_shared_inbox_url: null,
-                ap_public_key: '',
-            };
-
-            const account = await service.createExternalAccount(accountData);
+            const account =
+                await service.createExternalAccount(externalAccountData);
 
             // Assert the created account was returned
-            expect(account).toMatchObject(accountData);
+            expect(account).toMatchObject(externalAccountData);
             expect(account.id).toBeGreaterThan(0);
 
             // Assert the account was inserted into the database
@@ -180,7 +181,7 @@ describe('AccountService', () => {
 
             const dbAccount = accounts[0];
 
-            expect(dbAccount).toMatchObject(accountData);
+            expect(dbAccount).toMatchObject(externalAccountData);
         });
     });
 

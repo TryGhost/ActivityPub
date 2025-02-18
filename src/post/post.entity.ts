@@ -33,6 +33,23 @@ interface PostData {
     url?: URL | null;
     imageUrl?: URL | null;
     publishedAt?: Date;
+    inReplyTo?: Post;
+}
+
+export type PublicPost = Post & {
+    audience: Audience.Public;
+};
+
+export type FollowersOnlyPost = Post & {
+    audience: Audience.FollowersOnly;
+};
+
+export function isPublicPost(post: Post): post is PublicPost {
+    return post.audience === Audience.Public;
+}
+
+export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
+    return post.audience === Audience.FollowersOnly;
 }
 
 export class Post extends BaseEntity {
@@ -128,6 +145,10 @@ export class Post extends BaseEntity {
             data.url ?? null,
             data.imageUrl ?? null,
             data.publishedAt ?? new Date(),
+            0,
+            0,
+            0,
+            data.inReplyTo ?? null,
         );
     }
 }

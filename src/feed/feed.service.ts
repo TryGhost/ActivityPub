@@ -1,15 +1,30 @@
+import type { EventEmitter } from 'node:events';
 import type { KvStore } from '@fedify/fedify';
-
+import type { Knex } from 'knex';
 import type { FedifyRequestContext } from '../app';
 import {
     ACTIVITY_OBJECT_TYPE_ARTICLE,
     ACTIVITY_OBJECT_TYPE_NOTE,
     ACTIVITY_TYPE_ANNOUNCE,
     ACTIVITY_TYPE_CREATE,
+    TABLE_FEEDS,
+    TABLE_FOLLOWS,
+    TABLE_USERS,
 } from '../constants';
 import { getActivityMetaWithoutJoin } from '../db';
 import { type Activity, buildActivity } from '../helpers/activitypub/activity';
 import { spanWrapper } from '../instrumentation';
+import { PostCreatedEvent } from '../post/post-created.event';
+import {
+    type FollowersOnlyPost,
+    type PublicPost,
+    isFollowersOnlyPost,
+    isPublicPost,
+} from '../post/post.entity';
+import {
+    FeedsUpdatedEvent,
+    FeedsUpdatedEventUpdateOperation,
+} from './feeds-updated.event';
 import { PostType } from './types';
 
 export interface GetFeedOptions {
@@ -24,6 +39,20 @@ export interface GetFeedResult {
 }
 
 export class FeedService {
+    /**
+     * @param db Database client
+     * @param events Application event emitter
+     */
+    constructor(
+        private readonly db: Knex,
+        private readonly events: EventEmitter,
+    ) {
+        this.events.on(
+            PostCreatedEvent.getName(),
+            this.handlePostCreatedEvent.bind(this),
+        );
+    }
+
     /**
      * Get a user's feed using the KV store
      *
@@ -152,5 +181,81 @@ export class FeedService {
             items: activities.filter((activity) => activity !== null),
             nextCursor,
         };
+    }
+
+    /**
+     * Handle a post created event
+     *
+     * @param event Post created event
+     */
+    private async handlePostCreatedEvent(event: PostCreatedEvent) {
+        const post = event.getPost();
+
+        if (isPublicPost(post) || isFollowersOnlyPost(post)) {
+            await this.addPostToFeeds(post);
+        }
+    }
+
+    /**
+     * Add a post to the feeds of the users that should see it
+     *
+     * @param post Post to add to feeds
+     */
+    private async addPostToFeeds(post: PublicPost | FollowersOnlyPost) {
+        // Work out which user's feeds the post should be added to
+        const targetUserIds = new Set();
+
+        const authorInternalId = await this.db(TABLE_USERS)
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
+
+        if (authorInternalId) {
+            targetUserIds.add(authorInternalId.id);
+        }
+
+        const inReplyToAuthorId =
+            post.inReplyTo &&
+            (await this.db(TABLE_USERS)
+                .where('account_id', post.inReplyTo.id)
+                .select('id')
+                .first());
+
+        if (inReplyToAuthorId) {
+            targetUserIds.add(inReplyToAuthorId.id);
+        }
+
+        const followerIds = await this.db(TABLE_FOLLOWS)
+            .join(TABLE_USERS, 'follows.follower_id', 'users.id')
+            .where('following_id', post.author.id)
+            .select('follows.follower_id');
+
+        for (const follower of followerIds) {
+            targetUserIds.add(follower.follower_id);
+        }
+
+        // Add the post to the feeds
+        const userIds = Array.from(targetUserIds).map(Number);
+
+        const feedEntries = userIds.map((userId) => ({
+            post_type: post.type,
+            audience: post.audience,
+            user_id: userId,
+            post_id: post.id,
+            author_id: post.author.id,
+            reposted_by_id: null,
+        }));
+
+        await this.db.batchInsert(TABLE_FEEDS, feedEntries);
+
+        // Emit event to notify listeners that multiple feeds have been updated
+        this.events.emit(
+            FeedsUpdatedEvent.getName(),
+            new FeedsUpdatedEvent(
+                userIds,
+                FeedsUpdatedEventUpdateOperation.PostAdded,
+                post,
+            ),
+        );
     }
 }
