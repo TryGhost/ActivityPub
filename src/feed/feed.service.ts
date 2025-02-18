@@ -240,7 +240,7 @@ export class FeedService {
             // @TODO: Handle reposted_by_id
         }));
 
-        await this.db(TABLE_FEEDS).insert(feedEntries); // @TODO: Is there a limit on the number of rows we can insert at once?
+        await this.db.batchInsert(TABLE_FEEDS, feedEntries);
 
         // Emit event to notify listeners that multiple feeds have been updated
         this.events.emit(
