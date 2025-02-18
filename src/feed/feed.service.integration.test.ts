@@ -139,13 +139,15 @@ describe('FeedService', () => {
             );
 
             // Create posts
-            const fooAccountPost = Post.createArticleFromGhostPost(fooAccount, {
+            const fooAccountPost = Post.createFromData(fooAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
                 title: 'Foo Account Post',
-                html: '<p>Hello, world! (from foo.com)</p>',
                 excerpt: 'Hello, world! (from foo.com)',
-                feature_image: null,
-                url: 'https://foo.com/hello-world',
-                published_at: '2025-01-01',
+                content: '<p>Hello, world! (from foo.com)</p>',
+                url: new URL('https://foo.com/hello-world'),
+                imageUrl: null,
+                publishedAt: new Date('2025-01-01'),
             });
 
             const barAccountPost = Post.createFromData(barAccount, {
@@ -159,13 +161,15 @@ describe('FeedService', () => {
                 publishedAt: new Date('2025-01-02'),
             });
 
-            const bazAccountPost = Post.createArticleFromGhostPost(bazAccount, {
+            const bazAccountPost = Post.createFromData(bazAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
                 title: 'Baz Account Post',
-                html: '<p>Hello, world! (from baz.com)</p>',
                 excerpt: 'Hello, world! (from baz.com)',
-                feature_image: null,
-                url: 'https://baz.com/hello-world',
-                published_at: '2025-01-03',
+                content: '<p>Hello, world! (from baz.com)</p>',
+                url: new URL('https://baz.com/hello-world'),
+                imageUrl: null,
+                publishedAt: new Date('2025-01-03'),
             });
 
             await postRepository.save(fooAccountPost);
