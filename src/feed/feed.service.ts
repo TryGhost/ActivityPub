@@ -1,8 +1,6 @@
 import type { EventEmitter } from 'node:events';
 import type { KvStore } from '@fedify/fedify';
-import type { AccountService } from 'account/account.service';
 import type { Knex } from 'knex';
-import type { Account } from '../account/types';
 import type { FedifyRequestContext } from '../app';
 import {
     ACTIVITY_OBJECT_TYPE_ARTICLE,
@@ -44,12 +42,10 @@ export class FeedService {
     /**
      * @param db Database client
      * @param events Application event emitter
-     * @param accountService Account service
      */
     constructor(
         private readonly db: Knex,
         private readonly events: EventEmitter,
-        private readonly accountService: AccountService,
     ) {
         this.events.on(
             PostCreatedEvent.getName(),
@@ -214,13 +210,13 @@ export class FeedService {
         // Work out which user's feeds the post should be added to
         const targetUserIds = new Set();
 
-        const authorInternalId =
-            await this.accountService.getInternalIdForAccount(
-                post.author as unknown as AccountType,
-            );
+        const authorInternalId = await this.db(TABLE_USERS)
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
 
         if (authorInternalId) {
-            targetUserIds.add(authorInternalId);
+            targetUserIds.add(authorInternalId.id);
         }
 
         const followerIds = await this.db(TABLE_FOLLOWS)

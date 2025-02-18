@@ -289,28 +289,6 @@ describe('AccountService', () => {
         });
     });
 
-    describe('getInternalIdForAccount', () => {
-        it('should retrieve the internal ID for an account', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-
-            const internalId = await service.getInternalIdForAccount(account);
-
-            expect(internalId).toBe(account.id);
-        });
-
-        it('should return null if no user is found for an account', async () => {
-            const account =
-                await service.createExternalAccount(externalAccountData);
-
-            const internalId = await service.getInternalIdForAccount(account);
-
-            expect(internalId).toBeNull();
-        });
-    });
-
     describe('getDefaultAccountForSite', () => {
         it('should retrieve the default account for a site', async () => {
             const account = await service.createInternalAccount(site, {

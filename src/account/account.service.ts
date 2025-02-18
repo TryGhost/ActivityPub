@@ -374,22 +374,6 @@ export class AccountService {
         };
     }
 
-    /**
-     * Get the internal ID for an account
-     *
-     * @param account Account
-     */
-    async getInternalIdForAccount(
-        account: AccountType,
-    ): Promise<number | null> {
-        const result = await this.db(TABLE_USERS)
-            .where('account_id', account.id)
-            .select('id')
-            .first();
-
-        return result?.id ?? null;
-    }
-
     async updateAccount(
         account: AccountType,
         data: Omit<Partial<AccountType>, 'id'>,

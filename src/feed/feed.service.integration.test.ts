@@ -85,21 +85,15 @@ describe('FeedService', () => {
 
     describe('handling a post being created', () => {
         it("should add to the user's feed and any follower feeds if the post audience is: Public", async () => {
-            const feedService = new FeedService(client, events, accountService);
+            const feedService = new FeedService(client, events);
 
             // Initialise user internal account
             const fooSite = await siteService.initialiseSiteForHost('foo.com');
             const fooAccount = await accountRepository.getBySite(fooSite);
-            const fooUserId = await accountService.getInternalIdForAccount(
-                fooAccount as unknown as AccountType,
-            );
 
             // Initialise an internal account that the user will follow
             const barSite = await siteService.initialiseSiteForHost('bar.com');
             const barAccount = await accountRepository.getBySite(barSite);
-            const barUserId = await accountService.getInternalIdForAccount(
-                barAccount as unknown as AccountType,
-            );
 
             await accountService.recordAccountFollow(
                 barAccount as unknown as AccountType,
@@ -109,9 +103,6 @@ describe('FeedService', () => {
             // Initialise an internal account that the user will not follow
             const bazSite = await siteService.initialiseSiteForHost('baz.com');
             const bazAccount = await accountRepository.getBySite(bazSite);
-            const bazUserId = await accountService.getInternalIdForAccount(
-                bazAccount as unknown as AccountType,
-            );
 
             // Initialise an external account that follows the user - This account
             // should not have a feed so we should not try and add a post to it.
@@ -185,53 +176,49 @@ describe('FeedService', () => {
 
             // fooAccount should have 2 posts in their feed - Their own and barAccount's
             // (because fooAccount follows barAccount)
-            const fooFeed = await client(TABLE_FEEDS).where(
-                'user_id',
-                fooUserId,
-            );
+            const fooFeed = await client('feeds')
+                .join('users', 'users.id', 'feeds.user_id')
+                .join('accounts', 'accounts.id', 'users.account_id')
+                .where('accounts.id', fooAccount.id);
 
             expect(fooFeed.length).toBe(2);
             expect(fooFeed[0]).toMatchObject({
                 post_type: fooAccountPost.type,
                 audience: fooAccountPost.audience,
-                user_id: fooUserId,
                 post_id: fooAccountPost.id,
                 author_id: fooAccount.id,
             });
             expect(fooFeed[1]).toMatchObject({
                 post_type: barAccountPost.type,
                 audience: barAccountPost.audience,
-                user_id: fooUserId,
                 post_id: barAccountPost.id,
                 author_id: barAccount.id,
             });
 
             // barAccount should have 1 post in their feed - Their own
             // (because they do not follow anyone)
-            const barFeed = await client(TABLE_FEEDS).where(
-                'user_id',
-                barUserId,
-            );
+            const barFeed = await client('feeds')
+                .join('users', 'users.id', 'feeds.user_id')
+                .join('accounts', 'accounts.id', 'users.account_id')
+                .where('accounts.id', barAccount.id);
             expect(barFeed.length).toBe(1);
             expect(barFeed[0]).toMatchObject({
                 post_type: barAccountPost.type,
                 audience: barAccountPost.audience,
-                user_id: barUserId,
                 post_id: barAccountPost.id,
                 author_id: barAccount.id,
             });
 
             // bazAccount should have 1 posts in their feed - Their own
             // (because they do not follow anyone)
-            const bazFeed = await client(TABLE_FEEDS).where(
-                'user_id',
-                bazUserId,
-            );
+            const bazFeed = await client('feeds')
+                .join('users', 'users.id', 'feeds.user_id')
+                .join('accounts', 'accounts.id', 'users.account_id')
+                .where('accounts.id', bazAccount.id);
             expect(bazFeed.length).toBe(1);
             expect(bazFeed[0]).toMatchObject({
                 post_type: bazAccountPost.type,
                 audience: bazAccountPost.audience,
-                user_id: bazUserId,
                 post_id: bazAccountPost.id,
                 author_id: bazAccount.id,
             });
