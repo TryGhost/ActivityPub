@@ -49,9 +49,7 @@ export class FeedService {
     ) {
         this.events.on(
             PostCreatedEvent.getName(),
-            async (event: PostCreatedEvent) => {
-                await this.handlePostCreatedEvent(event);
-            },
+            this.handlePostCreatedEvent.bind(this),
         );
     }
 
@@ -196,15 +194,7 @@ export class FeedService {
     /**
      * Add a post to the feeds of the users that should see it
      *
-     * If the post audience = Public then the post should be added to:
-     * - The feed of the user that authored the post
-     * - The feeds of all users that follow the author
-     *
-     * If the post audience = FollowersOnly then the post should be added to:
-     * - The feed of the user that authored the post
-     * - The feeds of all users that follow the author
-     *
-     * @param event Post created event
+     * @param post Post to add to feeds
      */
     private async addPostToFeeds(post: PublicPost | FollowersOnlyPost) {
         // Work out which user's feeds the post should be added to
