@@ -314,14 +314,18 @@ inboxListener
     .on(
         Create,
         ensureCorrectContext(
-            spanWrapper(createCreateHandler(siteService, accountService)),
+            spanWrapper(
+                createCreateHandler(siteService, accountService, postService),
+            ),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Announce,
         ensureCorrectContext(
-            spanWrapper(createAnnounceHandler(siteService, accountService)),
+            spanWrapper(
+                createAnnounceHandler(siteService, accountService, postService),
+            ),
         ),
     )
     .onError(inboxErrorHandler)
