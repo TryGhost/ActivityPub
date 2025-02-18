@@ -183,11 +183,16 @@ export class FeedService {
         };
     }
 
+    /**
+     * Handle a post created event
+     *
+     * @param event Post created event
+     */
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
         const post = event.getPost();
 
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            this.addPostToFeeds(post);
+            await this.addPostToFeeds(post);
         }
     }
 
