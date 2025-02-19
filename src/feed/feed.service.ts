@@ -283,6 +283,10 @@ export class FeedService {
         // Add the post to the feeds
         const userIds = Array.from(targetUserIds).map(Number);
 
+        if (userIds.length === 0) {
+            return;
+        }
+
         const feedEntries = userIds.map((userId) => ({
             post_type: post.type,
             audience: post.audience,
