@@ -242,73 +242,12 @@ export function createAcceptHandler(accountService: AccountService) {
     };
 }
 
-export function createCreateHandler(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
-    return async function handleCreate(
-        ctx: Context<ContextData>,
-        create: Create,
-    ) {
-        ctx.data.logger.info('Handling Create');
-        const parsed = ctx.parseUri(create.objectId);
-        ctx.data.logger.info('Parsed create object', { parsed });
-        if (!create.id) {
-            ctx.data.logger.info('Create missing id - exit');
-            return;
-        }
-
-        const sender = await create.getActor(ctx);
-        if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Create sender missing, exit early');
-            return;
-        }
-
-        const createJson = await create.toJsonLd();
-        ctx.data.globaldb.set([create.id.href], createJson);
-
-        const object = await create.getObject();
-        const replyTarget = await object?.getReplyTarget();
-
-        if (replyTarget?.id?.href) {
-            const data = await ctx.data.globaldb.get<any>([
-                replyTarget.id.href,
-            ]);
-            const replyTargetAuthor = data?.attributedTo?.id;
-            const inboxActor = await getUserData(ctx, 'index');
-
-            if (replyTargetAuthor === inboxActor.id.href) {
-                await addToList(ctx.data.db, ['inbox'], create.id.href);
-                return;
-            }
-        }
-
-        let shouldAddToInbox = false;
-
-        const site = await siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            accountService,
-        );
-
-        if (shouldAddToInbox) {
-            await addToList(ctx.data.db, ['inbox'], create.id.href);
-            return;
-        }
-    };
-}
-
 export async function handleAnnoucedCreate(
     ctx: Context<ContextData>,
     announce: Announce,
     siteService: SiteService,
     accountService: AccountService,
+    postService: PostService,
 ) {
     ctx.data.logger.info('Handling Announced Create');
 
@@ -425,6 +364,13 @@ export async function handleAnnoucedCreate(
     const createJson = await create.toJsonLd();
     ctx.data.globaldb.set([create.id.href], createJson);
 
+    if (!create.objectId) {
+        ctx.data.logger.info('Create object id missing, exit early');
+        return;
+    }
+    // This handles storing the posts in the posts table
+    const post = await postService.getByApId(create.objectId);
+
     const object = await create.getObject();
     const replyTarget = await object?.getReplyTarget();
 
@@ -492,6 +438,7 @@ export const createUndoHandler = (accountService: AccountService) =>
 export function createAnnounceHandler(
     siteService: SiteService,
     accountService: AccountService,
+    postService: PostService,
 ) {
     return async function handleAnnounce(
         ctx: Context<ContextData>,
@@ -524,6 +471,7 @@ export function createAnnounceHandler(
                 announce,
                 siteService,
                 accountService,
+                postService,
             );
         }
 

@@ -2218,6 +2218,11 @@ global-dirs@^3.0.0:
   dependencies:
     ini "2.0.0"
 
+globrex@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/globrex/-/globrex-0.1.2.tgz#dd5d9ec826232730cd6793a5e33a9302985e6098"
+  integrity sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==
+
 google-auth-library@^9.0.0, google-auth-library@^9.3.0:
   version "9.14.2"
   resolved "https://registry.yarnpkg.com/google-auth-library/-/google-auth-library-9.14.2.tgz#92a53ba32b3a9ff9ced8ed34129edb5a7fa7fb52"
@@ -3698,6 +3703,11 @@ tree-kill@^1.2.2:
   resolved "https://registry.yarnpkg.com/tree-kill/-/tree-kill-1.2.2.tgz#4ca09a9092c88b73a7cdc5e8a01b507b0790a0cc"
   integrity sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==
 
+tsconfck@^3.0.3:
+  version "3.1.5"
+  resolved "https://registry.yarnpkg.com/tsconfck/-/tsconfck-3.1.5.tgz#2f07f9be6576825e7a77470a5304ce06c7746e61"
+  integrity sha512-CLDfGgUp7XPswWnezWwsCRxNmgQjhYq3VXHM0/XIRxhVrKw0M1if9agzryh1QS3nxjCROvV+xWxoJO1YctzzWg==
+
 tslib@^2.0.3, tslib@^2.1.0, tslib@^2.4.0, tslib@^2.4.1, tslib@^2.6.1, tslib@^2.6.3, tslib@^2.7.0:
   version "2.8.1"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.1.tgz#612efe4ed235d567e8aba5f2a5fab70280ade83f"
@@ -3812,6 +3822,15 @@ vite-node@2.1.7:
     es-module-lexer "^1.5.4"
     pathe "^1.1.2"
     vite "^5.0.0"
+
+vite-tsconfig-paths@^5.1.4:
+  version "5.1.4"
+  resolved "https://registry.yarnpkg.com/vite-tsconfig-paths/-/vite-tsconfig-paths-5.1.4.tgz#d9a71106a7ff2c1c840c6f1708042f76a9212ed4"
+  integrity sha512-cYj0LRuLV2c2sMqhqhGpaO3LretdtMn/BVX4cPLanIZuwwrkVl+lK84E/miEXkCHWXuq65rhNN4rXsBcOB3S4w==
+  dependencies:
+    debug "^4.1.1"
+    globrex "^0.1.2"
+    tsconfck "^3.0.3"
 
 vite@^5.0.0:
   version "5.4.11"
