@@ -27,6 +27,7 @@ import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
+import type { KnexAccountRepository } from './account/account.repository.knex';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
@@ -582,7 +583,7 @@ export async function inboxHandler(
 }
 
 export function createRepostActionHandler(
-    accountService: AccountService,
+    accountRepository: KnexAccountRepository,
     postService: PostService,
     postRepository: KnexPostRepository,
 ) {
@@ -627,7 +628,7 @@ export function createRepostActionHandler(
             return;
         }
 
-        const account = await accountService.getByApId(actor.id);
+        const account = await accountRepository.getBySite(ctx.get('site'));
         const originalPost = await postService.getByApId(post.id);
 
         originalPost.addRepost(account);
