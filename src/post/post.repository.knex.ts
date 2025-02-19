@@ -235,7 +235,7 @@ export class KnexPostRepository {
     }
 
     /**
-     * Insert likes associated with a post into the database
+     * Insert likes of a post into the database
      *
      * @param post Post to insert likes for
      * @param likeAccountIds Account IDs to insert likes for
@@ -255,7 +255,7 @@ export class KnexPostRepository {
     }
 
     /**
-     * Insert likes associated with a post into the database, ignoring
+     * Insert likes of a post into the database, ignoring
      * duplicates
      *
      * @param post Post to insert likes for
@@ -286,7 +286,7 @@ export class KnexPostRepository {
     }
 
     /**
-     * Insert reposts associated with a post into the database
+     * Insert reposts of a post into the database
      *
      * @param post Post to insert reposts for
      * @param repostAccountIds Account IDs to insert reposts for
@@ -306,7 +306,7 @@ export class KnexPostRepository {
     }
 
     /**
-     * Insert reposts associated with a post into the database, ignoring
+     * Insert reposts of a post into the database, ignoring
      * duplicates
      *
      * @param post Post to insert reposts for
@@ -333,6 +333,13 @@ export class KnexPostRepository {
         const newRepostAccountIds = repostAccountIds.filter(
             (accountId) => !currentRepostAccountIds.includes(accountId),
         );
+
+        if (newRepostAccountIds.length === 0) {
+            return {
+                count: 0,
+                accountIds: [],
+            };
+        }
 
         const repostsToInsert = newRepostAccountIds.map((accountId) => ({
             account_id: accountId,
