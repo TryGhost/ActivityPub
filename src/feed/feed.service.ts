@@ -196,8 +196,21 @@ export class FeedService {
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
         const post = event.getPost();
 
+        let updatedFeedUserIds: number[] = [];
+
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            await this.addPostToFeeds(post);
+            updatedFeedUserIds = await this.addPostToFeeds(post);
+        }
+
+        if (updatedFeedUserIds.length > 0) {
+            this.events.emit(
+                FeedsUpdatedEvent.getName(),
+                new FeedsUpdatedEvent(
+                    updatedFeedUserIds,
+                    FeedsUpdatedEventUpdateOperation.PostAdded,
+                    post,
+                ),
+            );
         }
     }
 
@@ -210,8 +223,21 @@ export class FeedService {
         const post = event.getPost();
         const repostedBy = event.getAccountId();
 
+        let updatedFeedUserIds: number[] = [];
+
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            await this.addPostToFeeds(post, repostedBy);
+            updatedFeedUserIds = await this.addPostToFeeds(post, repostedBy);
+        }
+
+        if (updatedFeedUserIds.length > 0) {
+            this.events.emit(
+                FeedsUpdatedEvent.getName(),
+                new FeedsUpdatedEvent(
+                    updatedFeedUserIds,
+                    FeedsUpdatedEventUpdateOperation.PostAdded,
+                    post,
+                ),
+            );
         }
     }
 
@@ -220,6 +246,7 @@ export class FeedService {
      *
      * @param post Post to add to feeds
      * @param repostedBy ID of the account that reposted the post
+     * @returns IDs of the users that had their feed updated
      */
     private async addPostToFeeds(
         post: PublicPost | FollowersOnlyPost,
@@ -284,7 +311,7 @@ export class FeedService {
         const userIds = Array.from(targetUserIds).map(Number);
 
         if (userIds.length === 0) {
-            return;
+            return [];
         }
 
         const feedEntries = userIds.map((userId) => ({
@@ -298,14 +325,6 @@ export class FeedService {
 
         await this.db.batchInsert(TABLE_FEEDS, feedEntries);
 
-        // Emit event to notify listeners that multiple feeds have been updated
-        this.events.emit(
-            FeedsUpdatedEvent.getName(),
-            new FeedsUpdatedEvent(
-                userIds,
-                FeedsUpdatedEventUpdateOperation.PostAdded,
-                post,
-            ),
-        );
+        return userIds;
     }
 }
