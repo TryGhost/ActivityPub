@@ -24,7 +24,7 @@ interface GhostPost {
     url: string;
 }
 
-interface PostData {
+export interface PostData {
     type: PostType;
     audience?: Audience;
     title?: string | null;

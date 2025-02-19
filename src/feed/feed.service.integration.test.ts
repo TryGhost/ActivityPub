@@ -1,9 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
-import type { Account as AccountType } from '../account/types';
+import type { Account as AccountType, Site } from '../account/types';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     TABLE_ACCOUNTS,
@@ -15,7 +16,7 @@ import {
     TABLE_USERS,
 } from '../constants';
 import { client } from '../db';
-import { Audience, PostType } from '../post/post.entity';
+import { Audience, type PostData, PostType } from '../post/post.entity';
 import { Post } from '../post/post.entity';
 import { KnexPostRepository } from '../post/post.repository.knex';
 import { SiteService } from '../site/site.service';
@@ -32,6 +33,77 @@ describe('FeedService', () => {
     let accountService: AccountService;
     let siteService: SiteService;
     let postRepository: KnexPostRepository;
+
+    const accountSitesMap: Map<number, Site> = new Map();
+    const createInternalAccount = async (host: string) => {
+        const site = await siteService.initialiseSiteForHost(host);
+        const account = await accountRepository.getBySite(site);
+
+        accountSitesMap.set(Number(account.id), site);
+
+        return account;
+    };
+
+    let externalAccountCount = 0;
+    const createExternalAccount = async (host: string) => {
+        externalAccountCount++;
+
+        const account = await accountService.createExternalAccount({
+            username: `external-account-${externalAccountCount}-${host}`,
+            name: `External Account ${externalAccountCount} ${host}`,
+            bio: `External Account Bio ${externalAccountCount} ${host}`,
+            avatar_url: `https://${host}/avatars/external-account-${externalAccountCount}.png`,
+            banner_image_url: `https://${host}/banners/external-account-${externalAccountCount}.png`,
+            url: `https://${host}/users/external-account-${externalAccountCount}`,
+            custom_fields: {},
+            ap_id: `https://${host}/activitypub/users/external-account-${externalAccountCount}`,
+            ap_inbox_url: `https://${host}/activitypub/inbox/external-account-${externalAccountCount}`,
+            ap_outbox_url: `https://${host}/activitypub/outbox/external-account-${externalAccountCount}`,
+            ap_following_url: `https://${host}/activitypub/following/external-account-${externalAccountCount}`,
+            ap_followers_url: `https://${host}/activitypub/followers/external-account-${externalAccountCount}`,
+            ap_liked_url: `https://${host}/activitypub/liked/external-account-${externalAccountCount}`,
+            ap_shared_inbox_url: null,
+            ap_public_key: '',
+        });
+
+        return account;
+    };
+
+    let postCount = 0;
+    const createPost = async (account: Account, data: Partial<PostData>) => {
+        postCount++;
+
+        const site = accountSitesMap.get(Number(account.id)) ?? {
+            host: 'unknown',
+        };
+
+        const post = Post.createFromData(account, {
+            type: PostType.Article,
+            audience: Audience.Public,
+            title: `Post ${postCount}`,
+            excerpt: `Post ${postCount} excerpt`,
+            content: `Post ${postCount} content`,
+            url: new URL(`https://${site.host}/post-${postCount}`),
+            imageUrl: null,
+            publishedAt: new Date('2025-01-01'),
+            ...data,
+        });
+
+        return post;
+    };
+
+    const getFeedForAccount = async (account: Account) => {
+        const feed = await client(TABLE_FEEDS)
+            .join(TABLE_USERS, `${TABLE_USERS}.id`, `${TABLE_FEEDS}.user_id`)
+            .join(
+                TABLE_ACCOUNTS,
+                `${TABLE_ACCOUNTS}.id`,
+                `${TABLE_USERS}.account_id`,
+            )
+            .where(`${TABLE_ACCOUNTS}.id`, account.id);
+
+        return feed;
+    };
 
     const waitForPostAddedToFeeds = (post: Post) => {
         return new Promise<void>((resolve) => {
@@ -62,6 +134,11 @@ describe('FeedService', () => {
         await client(TABLE_SITES).truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
+        // Reset test state
+        accountSitesMap.clear();
+        externalAccountCount = 0;
+        postCount = 0;
+
         // Init dependencies
         events = new EventEmitter();
         accountRepository = new KnexAccountRepository(client, events);
@@ -91,176 +168,124 @@ describe('FeedService', () => {
             const feedService = new FeedService(client, events);
 
             // Initialise user internal account
-            const fooSite = await siteService.initialiseSiteForHost('foo.com');
-            const fooAccount = await accountRepository.getBySite(fooSite);
+            const userAccount = await createInternalAccount('foo.com');
 
             // Initialise an internal account that the user will follow
-            const barSite = await siteService.initialiseSiteForHost('bar.com');
-            const barAccount = await accountRepository.getBySite(barSite);
+            const followedAccount = await createInternalAccount('bar.com');
 
             await accountService.recordAccountFollow(
-                barAccount as unknown as AccountType,
-                fooAccount as unknown as AccountType,
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
             );
 
             // Initialise an internal account that the user will not follow
-            const bazSite = await siteService.initialiseSiteForHost('baz.com');
-            const bazAccount = await accountRepository.getBySite(bazSite);
+            const unfollowedAccount = await createInternalAccount('baz.com');
 
             // Initialise an external account that follows the user - This account
             // should not have a feed so we should not try and add a post to it.
             // If we did, an error would be thrown and the test would fail.
             // @TODO: Is there a better way to test this?
-            const quxAccount = await accountService.createExternalAccount({
-                username: 'external-account',
-                name: 'External Account',
-                bio: 'External Account Bio',
-                avatar_url: 'https://example.com/avatars/external-account.png',
-                banner_image_url:
-                    'https://example.com/banners/external-account.png',
-                url: 'https://example.com/users/external-account',
-                custom_fields: {},
-                ap_id: 'https://example.com/activitypub/users/external-account',
-                ap_inbox_url:
-                    'https://example.com/activitypub/inbox/external-account',
-                ap_outbox_url:
-                    'https://example.com/activitypub/outbox/external-account',
-                ap_following_url:
-                    'https://example.com/activitypub/following/external-account',
-                ap_followers_url:
-                    'https://example.com/activitypub/followers/external-account',
-                ap_liked_url:
-                    'https://example.com/activitypub/liked/external-account',
-                ap_shared_inbox_url: null,
-                ap_public_key: '',
-            });
+            const externalAccount = await createExternalAccount('qux.com');
 
             await accountService.recordAccountFollow(
-                fooAccount as unknown as AccountType,
-                quxAccount as unknown as AccountType,
+                userAccount as unknown as AccountType, // @TODO: Update this when AccountEntity is used everywhere
+                externalAccount,
             );
 
             // Create posts
-            const fooAccountPost = Post.createFromData(fooAccount, {
-                type: PostType.Article,
+            const userAccountPost = await createPost(userAccount, {
                 audience: Audience.Public,
-                title: 'Foo Account Post',
-                excerpt: 'Hello, world! (from foo.com)',
-                content: '<p>Hello, world! (from foo.com)</p>',
-                url: new URL('https://foo.com/hello-world'),
-                imageUrl: null,
-                publishedAt: new Date('2025-01-01'),
             });
 
-            const barAccountPost = Post.createFromData(barAccount, {
-                type: PostType.Article,
+            const followedAccountPost = await createPost(followedAccount, {
                 audience: Audience.FollowersOnly,
-                title: 'Bar Account Post',
-                excerpt: 'Hello, world! (from bar.com)',
-                content: '<p>Hello, world! (from bar.com)</p>',
-                url: new URL('https://bar.com/hello-world'),
-                imageUrl: null,
-                publishedAt: new Date('2025-01-02'),
             });
 
-            const bazAccountPost = Post.createFromData(bazAccount, {
-                type: PostType.Article,
+            const unfollowedAccountPost = await createPost(unfollowedAccount, {
                 audience: Audience.Public,
-                title: 'Baz Account Post',
-                excerpt: 'Hello, world! (from baz.com)',
-                content: '<p>Hello, world! (from baz.com)</p>',
-                url: new URL('https://baz.com/hello-world'),
-                imageUrl: null,
-                publishedAt: new Date('2025-01-03'),
             });
 
-            const bazAccountReply = Post.createFromData(bazAccount, {
+            const unfollowedAccountReply = await createPost(unfollowedAccount, {
                 type: PostType.Note,
                 audience: Audience.Public,
-                content: '<p>Reply! (from baz.com)</p>',
-                url: new URL('https://baz.com/reply'),
-                imageUrl: null,
-                publishedAt: new Date('2025-01-03'),
-                inReplyTo: fooAccountPost,
+                content: `This is a reply to ${userAccountPost.title}`,
+                inReplyTo: userAccountPost,
             });
 
-            await postRepository.save(fooAccountPost);
-            await waitForPostAddedToFeeds(fooAccountPost);
+            await postRepository.save(userAccountPost);
+            await waitForPostAddedToFeeds(userAccountPost);
 
-            await postRepository.save(barAccountPost);
-            await waitForPostAddedToFeeds(barAccountPost);
+            await postRepository.save(followedAccountPost);
+            await waitForPostAddedToFeeds(followedAccountPost);
 
-            await postRepository.save(bazAccountPost);
-            await waitForPostAddedToFeeds(bazAccountPost);
+            await postRepository.save(unfollowedAccountPost);
+            await waitForPostAddedToFeeds(unfollowedAccountPost);
 
-            await postRepository.save(bazAccountReply);
-            await waitForPostAddedToFeeds(bazAccountReply);
+            await postRepository.save(unfollowedAccountReply);
+            await waitForPostAddedToFeeds(unfollowedAccountReply);
 
-            // fooAccount should have 3 posts in their feed - Their own, barAccount's
-            //  post (because fooAccount follows barAccount) & bazAccount's reply
-            //  (because fooAccount's post was replied to in bazAccount's reply post)
-            const fooFeed = await client('feeds')
-                .join('users', 'users.id', 'feeds.user_id')
-                .join('accounts', 'accounts.id', 'users.account_id')
-                .where('accounts.id', fooAccount.id);
+            // Assert feeds for each account are as expected
 
-            expect(fooFeed.length).toBe(3);
-            expect(fooFeed[0]).toMatchObject({
-                post_type: fooAccountPost.type,
-                audience: fooAccountPost.audience,
-                post_id: fooAccountPost.id,
-                author_id: fooAccount.id,
+            // userAccount should have 3 posts in their feed:
+            // - Their own
+            // - followedAccount's post (because userAccount follows followedAccount)
+            // - unfollowedAccount's reply (because userAccount's post was replied
+            //   to in unfollowedAccount's reply post)
+            const userAccountFeed = await getFeedForAccount(userAccount);
+
+            expect(userAccountFeed.length).toBe(3);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_type: userAccountPost.type,
+                audience: userAccountPost.audience,
+                post_id: userAccountPost.id,
+                author_id: userAccount.id,
                 reposted_by_id: null,
             });
-            expect(fooFeed[1]).toMatchObject({
-                post_type: barAccountPost.type,
-                audience: barAccountPost.audience,
-                post_id: barAccountPost.id,
-                author_id: barAccount.id,
+            expect(userAccountFeed[1]).toMatchObject({
+                post_type: followedAccountPost.type,
+                audience: followedAccountPost.audience,
+                post_id: followedAccountPost.id,
+                author_id: followedAccount.id,
                 reposted_by_id: null,
             });
-            expect(fooFeed[2]).toMatchObject({
-                post_type: bazAccountReply.type,
-                audience: bazAccountReply.audience,
-                post_id: bazAccountReply.id,
-                author_id: bazAccount.id,
-                reposted_by_id: null,
-            });
-
-            // barAccount should have 1 post in their feed - Their own
-            // (because they do not follow anyone)
-            const barFeed = await client('feeds')
-                .join('users', 'users.id', 'feeds.user_id')
-                .join('accounts', 'accounts.id', 'users.account_id')
-                .where('accounts.id', barAccount.id);
-            expect(barFeed.length).toBe(1);
-            expect(barFeed[0]).toMatchObject({
-                post_type: barAccountPost.type,
-                audience: barAccountPost.audience,
-                post_id: barAccountPost.id,
-                author_id: barAccount.id,
+            expect(userAccountFeed[2]).toMatchObject({
+                post_type: unfollowedAccountReply.type,
+                audience: unfollowedAccountReply.audience,
+                post_id: unfollowedAccountReply.id,
+                author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
 
-            // bazAccount should have 2 posts in their feed - Their own
-            // (because they do not follow anyone)
-            const bazFeed = await client('feeds')
-                .join('users', 'users.id', 'feeds.user_id')
-                .join('accounts', 'accounts.id', 'users.account_id')
-                .where('accounts.id', bazAccount.id);
-            expect(bazFeed.length).toBe(2);
-            expect(bazFeed[0]).toMatchObject({
-                post_type: bazAccountPost.type,
-                audience: bazAccountPost.audience,
-                post_id: bazAccountPost.id,
-                author_id: bazAccount.id,
+            // followedAccount should have 1 post in their feed:
+            // - Their own (because they do not follow anyone)
+            const followedAccountFeed =
+                await getFeedForAccount(followedAccount);
+            expect(followedAccountFeed.length).toBe(1);
+            expect(followedAccountFeed[0]).toMatchObject({
+                post_type: followedAccountPost.type,
+                audience: followedAccountPost.audience,
+                post_id: followedAccountPost.id,
+                author_id: followedAccount.id,
                 reposted_by_id: null,
             });
-            expect(bazFeed[1]).toMatchObject({
-                post_type: bazAccountReply.type,
-                audience: bazAccountReply.audience,
-                post_id: bazAccountReply.id,
-                author_id: bazAccount.id,
+
+            // unfollowedAccount should have 2 posts in their feed:
+            // - Their own (because they do not follow anyone)
+            const unfollowedAccountFeed =
+                await getFeedForAccount(unfollowedAccount);
+            expect(unfollowedAccountFeed.length).toBe(2);
+            expect(unfollowedAccountFeed[0]).toMatchObject({
+                post_type: unfollowedAccountPost.type,
+                audience: unfollowedAccountPost.audience,
+                post_id: unfollowedAccountPost.id,
+                author_id: unfollowedAccount.id,
+                reposted_by_id: null,
+            });
+            expect(unfollowedAccountFeed[1]).toMatchObject({
+                post_type: unfollowedAccountReply.type,
+                audience: unfollowedAccountReply.audience,
+                post_id: unfollowedAccountReply.id,
+                author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
         }, 10000);
@@ -271,85 +296,72 @@ describe('FeedService', () => {
             const feedService = new FeedService(client, events);
 
             // Initialise user internal account
-            const fooSite = await siteService.initialiseSiteForHost('foo.com');
-            const fooAccount = await accountRepository.getBySite(fooSite);
+            const userAccount = await createInternalAccount('foo.com');
 
-            // Initialise an internal account that will follow the user
-            const barSite = await siteService.initialiseSiteForHost('bar.com');
-            const barAccount = await accountRepository.getBySite(barSite);
+            // Initialise an internal account that the user will follow
+            const followedAccount = await createInternalAccount('bar.com');
 
             await accountService.recordAccountFollow(
-                fooAccount as unknown as AccountType,
-                barAccount as unknown as AccountType,
+                // @TODO: Update this when AccountEntity is used everywhere
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
             );
 
             // Initialise an internal account that the user will not follow
-            const bazSite = await siteService.initialiseSiteForHost('baz.com');
-            const bazAccount = await accountRepository.getBySite(bazSite);
+            const unfollowedAccount = await createInternalAccount('baz.com');
 
             // Create posts
-            const bazAccountPost = Post.createFromData(bazAccount, {
-                type: PostType.Article,
+            const unfollowedAccountPost = await createPost(unfollowedAccount, {
                 audience: Audience.Public,
-                title: 'Baz Account Post',
-                excerpt: 'Hello, world! (from baz.com)',
-                content: '<p>Hello, world! (from baz.com)</p>',
-                url: new URL('https://baz.com/hello-world'),
-                imageUrl: null,
-                publishedAt: new Date('2025-01-03'),
             });
 
-            await postRepository.save(bazAccountPost);
-            await waitForPostAddedToFeeds(bazAccountPost);
+            await postRepository.save(unfollowedAccountPost);
+            await waitForPostAddedToFeeds(unfollowedAccountPost);
 
-            bazAccountPost.addRepost(fooAccount);
-            await postRepository.save(bazAccountPost);
-            await waitForPostAddedToFeeds(bazAccountPost);
+            unfollowedAccountPost.addRepost(followedAccount);
+            await postRepository.save(unfollowedAccountPost);
+            await waitForPostAddedToFeeds(unfollowedAccountPost);
 
-            // fooAccount should have 1 posts in their feed - The reposted post
-            const fooFeed = await client('feeds')
-                .join('users', 'users.id', 'feeds.user_id')
-                .join('accounts', 'accounts.id', 'users.account_id')
-                .where('accounts.id', fooAccount.id);
+            // Assert feeds for each account are as expected
 
-            expect(fooFeed.length).toBe(1);
-            expect(fooFeed[0]).toMatchObject({
-                post_type: bazAccountPost.type,
-                audience: bazAccountPost.audience,
-                post_id: bazAccountPost.id,
-                author_id: bazAccount.id,
-                reposted_by_id: fooAccount.id,
+            // userAccount should have 1 posts in their feed:
+            // - The reposted post (because they follow followedAccount)
+            const userAccountFeed = await getFeedForAccount(userAccount);
+
+            expect(userAccountFeed.length).toBe(1);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_type: unfollowedAccountPost.type,
+                audience: unfollowedAccountPost.audience,
+                post_id: unfollowedAccountPost.id,
+                author_id: unfollowedAccount.id,
+                reposted_by_id: followedAccount.id,
             });
 
-            // barAccount should have 1 post in their feed - the post that was
-            // reposted by fooAccount
-            const barFeed = await client('feeds')
-                .join('users', 'users.id', 'feeds.user_id')
-                .join('accounts', 'accounts.id', 'users.account_id')
-                .where('accounts.id', barAccount.id);
+            // followedAccount should have 1 post in their feed:
+            // - Their own (because they do not follow anyone)
+            const followedAccountFeed =
+                await getFeedForAccount(followedAccount);
 
-            expect(barFeed.length).toBe(1);
-            expect(barFeed[0]).toMatchObject({
-                post_type: bazAccountPost.type,
-                audience: bazAccountPost.audience,
-                post_id: bazAccountPost.id,
-                author_id: bazAccount.id,
-                reposted_by_id: fooAccount.id,
+            expect(followedAccountFeed.length).toBe(1);
+            expect(followedAccountFeed[0]).toMatchObject({
+                post_type: unfollowedAccountPost.type,
+                audience: unfollowedAccountPost.audience,
+                post_id: unfollowedAccountPost.id,
+                author_id: unfollowedAccount.id,
+                reposted_by_id: followedAccount.id,
             });
 
-            // bazAccount should have 1 post in their feed - Their own
-            // (because they do not follow anyone)
-            const bazFeed = await client('feeds')
-                .join('users', 'users.id', 'feeds.user_id')
-                .join('accounts', 'accounts.id', 'users.account_id')
-                .where('accounts.id', bazAccount.id);
+            // unfollowedAccount should have 1 post in their feed:
+            // - Their own (because they do not follow anyone)
+            const unfollowedAccountFeed =
+                await getFeedForAccount(unfollowedAccount);
 
-            expect(bazFeed.length).toBe(1);
-            expect(bazFeed[0]).toMatchObject({
-                post_type: bazAccountPost.type,
-                audience: bazAccountPost.audience,
-                post_id: bazAccountPost.id,
-                author_id: bazAccount.id,
+            expect(unfollowedAccountFeed.length).toBe(1);
+            expect(unfollowedAccountFeed[0]).toMatchObject({
+                post_type: unfollowedAccountPost.type,
+                audience: unfollowedAccountPost.audience,
+                post_id: unfollowedAccountPost.id,
+                author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
         }, 10000);
