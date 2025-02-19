@@ -16,6 +16,7 @@ import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
+import type { KnexAccountRepository } from './account/account.repository.knex';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type HonoContextVariables, fedify } from './app';
@@ -27,6 +28,8 @@ import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
+import type { KnexPostRepository } from './post/post.repository.knex';
+import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
 
 export async function unlikeAction(
@@ -579,7 +582,11 @@ export async function inboxHandler(
     );
 }
 
-export function createRepostActionHandler(accountService: AccountService) {
+export function createRepostActionHandler(
+    accountRepository: KnexAccountRepository,
+    postService: PostService,
+    postRepository: KnexPostRepository,
+) {
     return async function repostAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
     ) {
@@ -610,6 +617,18 @@ export function createRepostActionHandler(accountService: AccountService) {
         await post.getAttribution();
 
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+        if (!post.id) {
+            ctx.get('logger').info('Invalid Repost - no post id');
+            return;
+        }
+
+        const account = await accountRepository.getBySite(ctx.get('site'));
+        const originalPost = await postService.getByApId(post.id);
+
+        originalPost.addRepost(account);
+
+        await postRepository.save(originalPost);
 
         const announce = new Announce({
             id: announceId,
