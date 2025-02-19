@@ -439,6 +439,7 @@ export function createAnnounceHandler(
     siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
+    postRepository: KnexPostRepository,
 ) {
     return async function handleAnnounce(
         ctx: Context<ContextData>,
@@ -552,6 +553,15 @@ export function createAnnounceHandler(
         if (!site) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
+
+        // This will save the account if it doesn't already exist
+        const senderAccount = await accountService.getByApId(sender.id);
+
+        // This will save the post if it doesn't already exist
+        const post = await postService.getByApId(announce.objectId);
+
+        post.addRepost(senderAccount);
+        await postRepository.save(post);
 
         shouldAddToInbox = await isFollowedByDefaultSiteAccount(
             sender,

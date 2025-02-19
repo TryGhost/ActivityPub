@@ -328,7 +328,12 @@ inboxListener
         Announce,
         ensureCorrectContext(
             spanWrapper(
-                createAnnounceHandler(siteService, accountService, postService),
+                createAnnounceHandler(
+                    siteService,
+                    accountService,
+                    postService,
+                    postRepository,
+                ),
             ),
         ),
     )
