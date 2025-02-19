@@ -33,6 +33,7 @@ import {
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
+import { CreateHandler } from 'activity-handlers/create.handler';
 import { PostType } from 'feed/types';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
@@ -51,7 +52,6 @@ import {
     articleDispatcher,
     createAcceptHandler,
     createAnnounceHandler,
-    createCreateHandler,
     createDispatcher,
     createFollowHandler,
     createFollowersCounter,
@@ -300,6 +300,12 @@ const inboxListener = fedify.setInboxListeners(
     '/.ghost/activitypub/inbox',
 );
 
+const createHandler = new CreateHandler(
+    postService,
+    accountService,
+    siteService,
+);
+
 inboxListener
     .on(
         Follow,
@@ -314,9 +320,7 @@ inboxListener
     .on(
         Create,
         ensureCorrectContext(
-            spanWrapper(
-                createCreateHandler(siteService, accountService, postService),
-            ),
+            spanWrapper(createHandler.handle.bind(createHandler)),
         ),
     )
     .onError(inboxErrorHandler)
