@@ -618,11 +618,6 @@ export function createRepostActionHandler(
 
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
 
-        if (!actor?.id) {
-            ctx.get('logger').info('Invalid Repost - no actor id');
-            return;
-        }
-
         if (!post.id) {
             ctx.get('logger').info('Invalid Repost - no post id');
             return;
