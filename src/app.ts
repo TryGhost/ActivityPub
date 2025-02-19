@@ -840,7 +840,11 @@ app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(
-        createRepostActionHandler(accountRepository, postService, postRepository),
+        createRepostActionHandler(
+            accountRepository,
+            postService,
+            postRepository,
+        ),
     ),
 );
 app.post(
