@@ -10,6 +10,7 @@ import {
     TABLE_FEEDS,
     TABLE_FOLLOWS,
     TABLE_POSTS,
+    TABLE_REPOSTS,
     TABLE_SITES,
     TABLE_USERS,
 } from '../constants';
@@ -53,6 +54,7 @@ describe('FeedService', () => {
         // Clean up the database
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
         await client(TABLE_FEEDS).truncate();
+        await client(TABLE_REPOSTS).truncate();
         await client(TABLE_POSTS).truncate();
         await client(TABLE_FOLLOWS).truncate();
         await client(TABLE_ACCOUNTS).truncate();
@@ -207,18 +209,21 @@ describe('FeedService', () => {
                 audience: fooAccountPost.audience,
                 post_id: fooAccountPost.id,
                 author_id: fooAccount.id,
+                reposted_by_id: null,
             });
             expect(fooFeed[1]).toMatchObject({
                 post_type: barAccountPost.type,
                 audience: barAccountPost.audience,
                 post_id: barAccountPost.id,
                 author_id: barAccount.id,
+                reposted_by_id: null,
             });
             expect(fooFeed[2]).toMatchObject({
                 post_type: bazAccountReply.type,
                 audience: bazAccountReply.audience,
                 post_id: bazAccountReply.id,
                 author_id: bazAccount.id,
+                reposted_by_id: null,
             });
 
             // barAccount should have 1 post in their feed - Their own
@@ -233,6 +238,7 @@ describe('FeedService', () => {
                 audience: barAccountPost.audience,
                 post_id: barAccountPost.id,
                 author_id: barAccount.id,
+                reposted_by_id: null,
             });
 
             // bazAccount should have 2 posts in their feed - Their own
@@ -247,12 +253,103 @@ describe('FeedService', () => {
                 audience: bazAccountPost.audience,
                 post_id: bazAccountPost.id,
                 author_id: bazAccount.id,
+                reposted_by_id: null,
             });
             expect(bazFeed[1]).toMatchObject({
                 post_type: bazAccountReply.type,
                 audience: bazAccountReply.audience,
                 post_id: bazAccountReply.id,
                 author_id: bazAccount.id,
+                reposted_by_id: null,
+            });
+        }, 10000);
+    });
+
+    describe('handling a post being reposted', () => {
+        it("should add to the reposter's feed and any follower feeds if the post audience is: Public or FollowersOnly", async () => {
+            const feedService = new FeedService(client, events);
+
+            // Initialise user internal account
+            const fooSite = await siteService.initialiseSiteForHost('foo.com');
+            const fooAccount = await accountRepository.getBySite(fooSite);
+
+            // Initialise an internal account that will follow the user
+            const barSite = await siteService.initialiseSiteForHost('bar.com');
+            const barAccount = await accountRepository.getBySite(barSite);
+
+            await accountService.recordAccountFollow(
+                fooAccount as unknown as AccountType,
+                barAccount as unknown as AccountType,
+            );
+
+            // Initialise an internal account that the user will not follow
+            const bazSite = await siteService.initialiseSiteForHost('baz.com');
+            const bazAccount = await accountRepository.getBySite(bazSite);
+
+            // Create posts
+            const bazAccountPost = Post.createFromData(bazAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                title: 'Baz Account Post',
+                excerpt: 'Hello, world! (from baz.com)',
+                content: '<p>Hello, world! (from baz.com)</p>',
+                url: new URL('https://baz.com/hello-world'),
+                imageUrl: null,
+                publishedAt: new Date('2025-01-03'),
+            });
+
+            await postRepository.save(bazAccountPost);
+            await waitForPostAddedToFeeds(bazAccountPost);
+
+            bazAccountPost.addRepost(fooAccount);
+            await postRepository.save(bazAccountPost);
+            await waitForPostAddedToFeeds(bazAccountPost);
+
+            // fooAccount should have 1 posts in their feed - The reposted post
+            const fooFeed = await client('feeds')
+                .join('users', 'users.id', 'feeds.user_id')
+                .join('accounts', 'accounts.id', 'users.account_id')
+                .where('accounts.id', fooAccount.id);
+
+            expect(fooFeed.length).toBe(1);
+            expect(fooFeed[0]).toMatchObject({
+                post_type: bazAccountPost.type,
+                audience: bazAccountPost.audience,
+                post_id: bazAccountPost.id,
+                author_id: bazAccount.id,
+                reposted_by_id: fooAccount.id,
+            });
+
+            // barAccount should have 1 post in their feed - the post that was
+            // reposted by fooAccount
+            const barFeed = await client('feeds')
+                .join('users', 'users.id', 'feeds.user_id')
+                .join('accounts', 'accounts.id', 'users.account_id')
+                .where('accounts.id', barAccount.id);
+
+            expect(barFeed.length).toBe(1);
+            expect(barFeed[0]).toMatchObject({
+                post_type: bazAccountPost.type,
+                audience: bazAccountPost.audience,
+                post_id: bazAccountPost.id,
+                author_id: bazAccount.id,
+                reposted_by_id: fooAccount.id,
+            });
+
+            // bazAccount should have 1 post in their feed - Their own
+            // (because they do not follow anyone)
+            const bazFeed = await client('feeds')
+                .join('users', 'users.id', 'feeds.user_id')
+                .join('accounts', 'accounts.id', 'users.account_id')
+                .where('accounts.id', bazAccount.id);
+
+            expect(bazFeed.length).toBe(1);
+            expect(bazFeed[0]).toMatchObject({
+                post_type: bazAccountPost.type,
+                audience: bazAccountPost.audience,
+                post_id: bazAccountPost.id,
+                author_id: bazAccount.id,
+                reposted_by_id: null,
             });
         }, 10000);
     });

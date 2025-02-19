@@ -15,6 +15,7 @@ import { getActivityMetaWithoutJoin } from '../db';
 import { type Activity, buildActivity } from '../helpers/activitypub/activity';
 import { spanWrapper } from '../instrumentation';
 import { PostCreatedEvent } from '../post/post-created.event';
+import { PostRepostedEvent } from '../post/post-reposted.event';
 import {
     type FollowersOnlyPost,
     type PublicPost,
@@ -50,6 +51,10 @@ export class FeedService {
         this.events.on(
             PostCreatedEvent.getName(),
             this.handlePostCreatedEvent.bind(this),
+        );
+        this.events.on(
+            PostRepostedEvent.getName(),
+            this.handlePostRepostedEvent.bind(this),
         );
     }
 
@@ -197,37 +202,71 @@ export class FeedService {
     }
 
     /**
+     * Handle a post reposted event
+     *
+     * @param event Post reposted event
+     */
+    private async handlePostRepostedEvent(event: PostRepostedEvent) {
+        const post = event.getPost();
+        const repostedBy = event.getAccountId();
+
+        if (isPublicPost(post) || isFollowersOnlyPost(post)) {
+            await this.addPostToFeeds(post, repostedBy);
+        }
+    }
+
+    /**
      * Add a post to the feeds of the users that should see it
      *
      * @param post Post to add to feeds
+     * @param repostedBy ID of the account that reposted the post
      */
-    private async addPostToFeeds(post: PublicPost | FollowersOnlyPost) {
+    private async addPostToFeeds(
+        post: PublicPost | FollowersOnlyPost,
+        repostedBy: number | null = null,
+    ) {
         // Work out which user's feeds the post should be added to
-        const targetUserIds = new Set();
+        const targetUserIds = new Set<number>();
+        let followersAccountId: number;
 
-        const authorInternalId = await this.db(TABLE_USERS)
-            .where('account_id', post.author.id)
-            .select('id')
-            .first();
+        if (repostedBy) {
+            // If the post is a repost, we should add the it to:
+            // - The feed of the account that reposted it
+            // - The feeds of the followers of the account that reposted it
+            targetUserIds.add(repostedBy);
 
-        if (authorInternalId) {
-            targetUserIds.add(authorInternalId.id);
-        }
-
-        const inReplyToAuthorId =
-            post.inReplyTo &&
-            (await this.db(TABLE_USERS)
-                .where('account_id', post.inReplyTo.id)
+            followersAccountId = repostedBy;
+        } else {
+            // Otherwise, we should add the post to:
+            // - The feed of the author
+            // - The feeds of the followers of the author
+            // - The feed of any users that are being replied to
+            const authorInternalId = await this.db(TABLE_USERS)
+                .where('account_id', post.author.id)
                 .select('id')
-                .first());
+                .first();
 
-        if (inReplyToAuthorId) {
-            targetUserIds.add(inReplyToAuthorId.id);
+            if (authorInternalId) {
+                targetUserIds.add(authorInternalId.id);
+            }
+
+            const inReplyToAuthorId =
+                post.inReplyTo &&
+                (await this.db(TABLE_USERS)
+                    .where('account_id', post.inReplyTo.id)
+                    .select('id')
+                    .first());
+
+            if (inReplyToAuthorId) {
+                targetUserIds.add(inReplyToAuthorId.id);
+            }
+
+            followersAccountId = Number(post.author.id);
         }
 
         const followerIds = await this.db(TABLE_FOLLOWS)
             .join(TABLE_USERS, 'follows.follower_id', 'users.id')
-            .where('following_id', post.author.id)
+            .where('following_id', followersAccountId)
             .select('follows.follower_id');
 
         for (const follower of followerIds) {
@@ -243,7 +282,7 @@ export class FeedService {
             user_id: userId,
             post_id: post.id,
             author_id: post.author.id,
-            reposted_by_id: null,
+            reposted_by_id: repostedBy,
         }));
 
         await this.db.batchInsert(TABLE_FEEDS, feedEntries);
