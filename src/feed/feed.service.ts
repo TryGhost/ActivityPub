@@ -1,5 +1,6 @@
 import type { EventEmitter } from 'node:events';
 import type { KvStore } from '@fedify/fedify';
+import { chunk } from 'es-toolkit';
 import type { Knex } from 'knex';
 import type { FedifyRequestContext } from '../app';
 import {
@@ -7,7 +8,6 @@ import {
     ACTIVITY_OBJECT_TYPE_NOTE,
     ACTIVITY_TYPE_ANNOUNCE,
     ACTIVITY_TYPE_CREATE,
-    TABLE_FEEDS,
     TABLE_FOLLOWS,
     TABLE_USERS,
 } from '../constants';
@@ -323,7 +323,23 @@ export class FeedService {
             reposted_by_id: repostedBy,
         }));
 
-        await this.db.batchInsert(TABLE_FEEDS, feedEntries);
+        const feedEntriesChunks = chunk(feedEntries, 1000);
+
+        const transaction = await this.db.transaction();
+
+        try {
+            for (const feedEntries of feedEntriesChunks) {
+                await transaction('feeds')
+                    .insert(feedEntries)
+                    .onConflict()
+                    .ignore();
+            }
+
+            await transaction.commit();
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
 
         return userIds;
     }
