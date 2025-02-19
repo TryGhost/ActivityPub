@@ -39,6 +39,7 @@
     "concurrently": "9.1.0",
     "esbuild": "0.24.2",
     "typescript": "5.7.2",
+    "vite-tsconfig-paths": "5.1.4",
     "vitest": "2.1.7",
     "wiremock-captain": "3.5.0"
   },
