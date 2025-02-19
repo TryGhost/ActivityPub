@@ -231,16 +231,23 @@ export class FeedService {
 
         if (repostedBy) {
             // If the post is a repost, we should add the it to:
-            // - The feed of the account that reposted it
-            // - The feeds of the followers of the account that reposted it
-            targetUserIds.add(repostedBy);
+            // - The feed of the user associated with the account that reposted the post
+            // - The feeds of the users who's accounts are followers of the account that reposted the post
+            const repostedByInternalId = await this.db(TABLE_USERS)
+                .where('account_id', repostedBy)
+                .select('id')
+                .first();
+
+            if (repostedByInternalId) {
+                targetUserIds.add(repostedByInternalId.id);
+            }
 
             followersAccountId = repostedBy;
         } else {
             // Otherwise, we should add the post to:
-            // - The feed of the author
-            // - The feeds of the followers of the author
-            // - The feed of any users that are being replied to
+            // - The feed of the user associated with the author
+            // - The feeds of the users who's accounts are followers of the account that authored the post
+            // - The feed of any users that are being replied to in the post
             const authorInternalId = await this.db(TABLE_USERS)
                 .where('account_id', post.author.id)
                 .select('id')
@@ -250,27 +257,27 @@ export class FeedService {
                 targetUserIds.add(authorInternalId.id);
             }
 
-            const inReplyToAuthorId =
+            const inReplyToInternalId =
                 post.inReplyTo &&
                 (await this.db(TABLE_USERS)
                     .where('account_id', post.inReplyTo.id)
                     .select('id')
                     .first());
 
-            if (inReplyToAuthorId) {
-                targetUserIds.add(inReplyToAuthorId.id);
+            if (inReplyToInternalId) {
+                targetUserIds.add(inReplyToInternalId.id);
             }
 
             followersAccountId = Number(post.author.id);
         }
 
         const followerIds = await this.db(TABLE_FOLLOWS)
-            .join(TABLE_USERS, 'follows.follower_id', 'users.id')
+            .join(TABLE_USERS, 'follows.follower_id', 'users.account_id')
             .where('following_id', followersAccountId)
-            .select('follows.follower_id');
+            .select('users.id as user_id');
 
         for (const follower of followerIds) {
-            targetUserIds.add(follower.follower_id);
+            targetUserIds.add(follower.user_id);
         }
 
         // Add the post to the feeds

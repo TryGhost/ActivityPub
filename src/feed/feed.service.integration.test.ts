@@ -196,8 +196,9 @@ describe('FeedService', () => {
             await postRepository.save(bazAccountReply);
             await waitForPostAddedToFeeds(bazAccountReply);
 
-            // fooAccount should have 2 posts in their feed - Their own and barAccount's
-            // (because fooAccount follows barAccount)
+            // fooAccount should have 3 posts in their feed - Their own, barAccount's
+            //  post (because fooAccount follows barAccount) & bazAccount's reply
+            //  (because fooAccount's post was replied to in bazAccount's reply post)
             const fooFeed = await client('feeds')
                 .join('users', 'users.id', 'feeds.user_id')
                 .join('accounts', 'accounts.id', 'users.account_id')
