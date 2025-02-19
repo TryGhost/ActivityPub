@@ -56,6 +56,7 @@ export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
     private potentiallyNewLikes: Set<number> = new Set();
+    private potentiallyNewReposts: Set<number> = new Set();
 
     constructor(
         public readonly id: number | null,
@@ -111,6 +112,19 @@ export class Post extends BaseEntity {
         const likes = [...this.potentiallyNewLikes.values()];
         this.potentiallyNewLikes.clear();
         return likes;
+    }
+
+    addRepost(account: Account) {
+        if (!account.id) {
+            throw new Error('Cannot add repost for account with no id');
+        }
+        this.potentiallyNewReposts.add(account.id);
+    }
+
+    getPotentiallyNewReposts() {
+        const reposts = [...this.potentiallyNewReposts.values()];
+        this.potentiallyNewReposts.clear();
+        return reposts;
     }
 
     static createArticleFromGhostPost(
