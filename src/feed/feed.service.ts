@@ -1,244 +1,206 @@
-import type { EventEmitter } from 'node:events';
-import type { KvStore } from '@fedify/fedify';
 import { chunk } from 'es-toolkit';
 import type { Knex } from 'knex';
-import type { FedifyRequestContext } from '../app';
-import {
-    ACTIVITY_OBJECT_TYPE_ARTICLE,
-    ACTIVITY_OBJECT_TYPE_NOTE,
-    ACTIVITY_TYPE_ANNOUNCE,
-    ACTIVITY_TYPE_CREATE,
-    TABLE_FOLLOWS,
-    TABLE_USERS,
-} from '../constants';
-import { getActivityMetaWithoutJoin } from '../db';
-import { type Activity, buildActivity } from '../helpers/activitypub/activity';
-import { spanWrapper } from '../instrumentation';
-import { PostCreatedEvent } from '../post/post-created.event';
-import { PostRepostedEvent } from '../post/post-reposted.event';
-import {
-    type FollowersOnlyPost,
-    type PublicPost,
-    isFollowersOnlyPost,
-    isPublicPost,
-} from '../post/post.entity';
-import {
-    FeedsUpdatedEvent,
-    FeedsUpdatedEventUpdateOperation,
-} from './feeds-updated.event';
-import { PostType } from './types';
 
-export interface GetFeedOptions {
-    postType: PostType | null;
+import type { FollowersOnlyPost, PostType, PublicPost } from 'post/post.entity';
+
+export interface GetFeedDataOptions {
+    /**
+     * ID of the account associated with the user to get the feed for
+     */
+    accountId: number;
+    /**
+     * Type of posts to include in the feed
+     */
+    postType: PostType;
+    /**
+     * Maximum number of posts to return
+     */
     limit: number;
+    /**
+     * Cursor to use for pagination
+     */
     cursor: string | null;
 }
 
-export interface GetFeedResult {
-    items: Activity[];
+interface BaseGetFeedDataResultRow {
+    post_id: number;
+    post_type: PostType;
+    post_title: string | null;
+    post_excerpt: string | null;
+    post_content: string | null;
+    post_url: string;
+    post_image_url: string | null;
+    post_published_at: Date;
+    post_like_count: number;
+    post_liked_by_user: 0 | 1;
+    post_reply_count: number;
+    post_reading_time_minutes: number;
+    post_repost_count: number;
+    post_reposted_by_user: 0 | 1;
+    post_ap_id: string;
+    author_id: number;
+    author_name: string | null;
+    author_username: string;
+    author_url: string | null;
+    author_avatar_url: string | null;
+}
+
+interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
+    reposter_id: number;
+    reposter_name: string | null;
+    reposter_username: string;
+    reposter_url: string | null;
+    reposter_avatar_url: string | null;
+}
+
+interface GetFeedDataResultRowWithoutReposted extends BaseGetFeedDataResultRow {
+    reposter_id: null;
+    reposter_name: null;
+    reposter_username: null;
+    reposter_url: null;
+    reposter_avatar_url: null;
+}
+
+export type GetFeedDataResultRow =
+    | GetFeedDataResultRowReposted
+    | GetFeedDataResultRowWithoutReposted;
+
+export interface GetFeedDataResult {
+    results: GetFeedDataResultRow[];
     nextCursor: string | null;
 }
 
 export class FeedService {
     /**
      * @param db Database client
-     * @param events Application event emitter
      */
-    constructor(
-        private readonly db: Knex,
-        private readonly events: EventEmitter,
-    ) {
-        this.events.on(
-            PostCreatedEvent.getName(),
-            this.handlePostCreatedEvent.bind(this),
-        );
-        this.events.on(
-            PostRepostedEvent.getName(),
-            this.handlePostRepostedEvent.bind(this),
-        );
-    }
+    constructor(private readonly db: Knex) {}
 
     /**
-     * Get a user's feed using the KV store
+     * Get data for a feed based on the provided options
      *
-     * The feed should contain posts that:
-     * - Have been authored by the user (i.e Create(Article), Create(Note) in the user's outbox)
-     * - Have been reposted by the user (i.e Announce(Article), Announce(Note) in the user's outbox)
-     * - Have been authored by an account that the user follows (i.e Create(Article), Create(Note) in the user's inbox)
-     * - Have been reposted by an account that the user follows (i.e Announce(Article), Announce(Note) in the user's inbox)
-     * - Are not replies to other posts (i.e Create(Note).inReplyTo)
-     *
-     * The feed should be ordered reverse chronologically
-     *
-     * This method can be deprecated once we are reading data from the dedicated `posts` table
-     *
-     * @param db User scoped KV store
-     * @param fedifyCtx Fedify request context
      * @param options Options for the query
      */
-    async getFeedFromKvStore(
-        db: KvStore,
-        fedifyCtx: FedifyRequestContext,
-        options: GetFeedOptions,
-    ): Promise<GetFeedResult> {
-        // Used to look up if a post is liked by the user
-        const likedRefs = (await db.get<string[]>(['liked'])) || [];
+    async getFeedData(options: GetFeedDataOptions): Promise<GetFeedDataResult> {
+        const query = this.db('feeds')
+            .select(
+                // Post fields
+                this.db.raw('posts.id as post_id'),
+                this.db.raw('posts.type as post_type'),
+                this.db.raw('posts.title as post_title'),
+                this.db.raw('posts.excerpt as post_excerpt'),
+                this.db.raw('posts.content as post_content'),
+                this.db.raw('posts.url as post_url'),
+                this.db.raw('posts.image_url as post_image_url'),
+                this.db.raw('posts.published_at as post_published_at'),
+                this.db.raw('posts.like_count as post_like_count'),
+                this.db.raw(`
+                    CASE
+                        WHEN likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_user
+                `),
+                this.db.raw('posts.reply_count as post_reply_count'),
+                this.db.raw(
+                    'posts.reading_time_minutes as post_reading_time_minutes',
+                ),
+                // TODO: attachments
+                this.db.raw('posts.repost_count as post_repost_count'),
+                this.db.raw(`
+                    CASE
+                        WHEN reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_user
+                `),
+                this.db.raw('posts.ap_id as post_ap_id'),
+                // Author fields
+                this.db.raw('author_account.id as author_id'),
+                this.db.raw('author_account.name as author_name'),
+                this.db.raw('author_account.username as author_username'),
+                this.db.raw('author_account.url as author_url'),
+                this.db.raw('author_account.avatar_url as author_avatar_url'),
+                // Reposter fields
+                this.db.raw('reposter_account.id as reposter_id'),
+                this.db.raw('reposter_account.name as reposter_name'),
+                this.db.raw('reposter_account.username as reposter_username'),
+                this.db.raw('reposter_account.url as reposter_url'),
+                this.db.raw(
+                    'reposter_account.avatar_url as reposter_avatar_url',
+                ),
+                // Feed fields
+                this.db.raw('feeds.created_at as feed_inserted_at'),
+            )
+            .innerJoin('posts', 'posts.id', 'feeds.post_id')
+            .innerJoin(
+                this.db.raw('accounts as author_account'),
+                'author_account.id',
+                'posts.author_id',
+            )
+            .leftJoin(
+                this.db.raw('accounts as reposter_account'),
+                'reposter_account.id',
+                'feeds.reposted_by_id',
+            )
+            .innerJoin(
+                'users',
+                this.db.raw('users.account_id = ?', [options.accountId]),
+            )
+            .innerJoin(
+                this.db.raw('accounts as user_account'),
+                'users.account_id',
+                'user_account.id',
+            )
+            .leftJoin('likes', function () {
+                this.on('likes.account_id', 'user_account.id').andOn(
+                    'likes.post_id',
+                    'posts.id',
+                );
+            })
+            .leftJoin('reposts', function () {
+                this.on('reposts.account_id', 'user_account.id').andOn(
+                    'reposts.post_id',
+                    'posts.id',
+                );
+            })
+            .whereRaw('feeds.user_id = users.id')
+            .where('feeds.post_type', options.postType)
+            .modify((query) => {
+                if (options.cursor) {
+                    const [timestamp, id] = options.cursor.split('_');
 
-        // Used to look up if a post is reposted by the user
-        const repostedRefs = (await db.get<string[]>(['reposted'])) || [];
-
-        // Used to look up posts from followers
-        const inboxRefs = (await db.get<string[]>(['inbox'])) || [];
-
-        // Used to look up the users own posts
-        const outboxRefs = (await db.get<string[]>(['outbox'])) || [];
-
-        let activityRefs = [...inboxRefs, ...outboxRefs];
-
-        const activityMeta = await getActivityMetaWithoutJoin(activityRefs);
-        activityRefs = activityRefs.filter((ref) => {
-            const meta = activityMeta.get(ref);
-
-            // If we can't find the meta data in the database for an activity,
-            // we skip it as this is unexpected
-            if (!meta) {
-                return false;
-            }
-
-            // The feed should only contain Create and Announce activities
-            if (
-                meta.activity_type !== ACTIVITY_TYPE_CREATE &&
-                meta.activity_type !== ACTIVITY_TYPE_ANNOUNCE
-            ) {
-                return false;
-            }
-
-            // The feed should not contain replies
-            if (meta.reply_object_url !== null) {
-                return false;
-            }
-
-            // Filter by the provided post type
-            if (options.postType === null) {
-                return [
-                    ACTIVITY_OBJECT_TYPE_ARTICLE,
-                    ACTIVITY_OBJECT_TYPE_NOTE,
-                ].includes(meta!.object_type);
-            }
-
-            if (options.postType === PostType.Article) {
-                return meta!.object_type === ACTIVITY_OBJECT_TYPE_ARTICLE;
-            }
-
-            if (options.postType === PostType.Note) {
-                return meta!.object_type === ACTIVITY_OBJECT_TYPE_NOTE;
-            }
-        });
-
-        // Sort the activity refs by the latest first (yes using the ID which
-        // is totally gross but we have no other option at the moment)
-        activityRefs.sort((a, b) => {
-            return activityMeta.get(b)!.id - activityMeta.get(a)!.id;
-        });
-
-        // Paginate the activity refs
-        const startIndex = options.cursor
-            ? activityRefs.findIndex((ref) => ref === options.cursor) + 1
-            : 0;
-
-        const paginatedRefs = activityRefs.slice(
-            startIndex,
-            startIndex + options.limit,
-        );
-
-        const nextCursor =
-            startIndex + paginatedRefs.length < activityRefs.length
-                ? encodeURIComponent(paginatedRefs[paginatedRefs.length - 1])
-                : null;
-
-        // Build the activities
-        const activities = await Promise.all(
-            paginatedRefs.map(async (ref) => {
-                try {
-                    return await spanWrapper(buildActivity)(
-                        ref,
-                        fedifyCtx.data.globaldb,
-                        fedifyCtx,
-                        likedRefs,
-                        repostedRefs,
-                        true,
-                    );
-                } catch (err) {
-                    fedifyCtx.data.logger.error(
-                        'Error building activity ({ref}): {error}',
-                        {
-                            ref,
-                            error: err,
-                        },
-                    );
-
-                    return null;
+                    query.where((builder) => {
+                        builder
+                            .where('feeds.created_at', '<', new Date(timestamp))
+                            .orWhere((subBuilder) => {
+                                subBuilder
+                                    .where(
+                                        'feeds.created_at',
+                                        '=',
+                                        new Date(timestamp),
+                                    )
+                                    .andWhere('feeds.post_id', '<', id);
+                            });
+                    });
                 }
-            }),
-        );
+            })
+            .orderBy([
+                { column: 'feeds.created_at', order: 'desc' },
+                { column: 'feeds.post_id', order: 'desc' },
+            ])
+            .limit(options.limit + 1);
+
+        const results = await query;
+
+        const hasMore = results.length > options.limit;
+        const items = results.slice(0, options.limit);
+        const lastItem = items[items.length - 1];
 
         return {
-            items: activities.filter((activity) => activity !== null),
-            nextCursor,
+            results: items,
+            nextCursor: hasMore
+                ? `${lastItem.feed_inserted_at.toISOString()}_${lastItem.post_id}`
+                : null,
         };
-    }
-
-    /**
-     * Handle a post created event
-     *
-     * @param event Post created event
-     */
-    private async handlePostCreatedEvent(event: PostCreatedEvent) {
-        const post = event.getPost();
-
-        let updatedFeedUserIds: number[] = [];
-
-        if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            updatedFeedUserIds = await this.addPostToFeeds(post);
-        }
-
-        if (updatedFeedUserIds.length > 0) {
-            this.events.emit(
-                FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(
-                    updatedFeedUserIds,
-                    FeedsUpdatedEventUpdateOperation.PostAdded,
-                    post,
-                ),
-            );
-        }
-    }
-
-    /**
-     * Handle a post reposted event
-     *
-     * @param event Post reposted event
-     */
-    private async handlePostRepostedEvent(event: PostRepostedEvent) {
-        const post = event.getPost();
-        const repostedBy = event.getAccountId();
-
-        let updatedFeedUserIds: number[] = [];
-
-        if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            updatedFeedUserIds = await this.addPostToFeeds(post, repostedBy);
-        }
-
-        if (updatedFeedUserIds.length > 0) {
-            this.events.emit(
-                FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(
-                    updatedFeedUserIds,
-                    FeedsUpdatedEventUpdateOperation.PostAdded,
-                    post,
-                ),
-            );
-        }
     }
 
     /**
@@ -248,7 +210,7 @@ export class FeedService {
      * @param repostedBy ID of the account that reposted the post
      * @returns IDs of the users that had their feed updated
      */
-    private async addPostToFeeds(
+    async addPostToFeeds(
         post: PublicPost | FollowersOnlyPost,
         repostedBy: number | null = null,
     ) {
@@ -256,11 +218,16 @@ export class FeedService {
         const targetUserIds = new Set<number>();
         let followersAccountId: number;
 
+        // If the post is a reply, we should not add it to any feeds
+        if (post.inReplyTo) {
+            return [];
+        }
+
         if (repostedBy) {
             // If the post is a repost, we should add the it to:
             // - The feed of the user associated with the account that reposted the post
             // - The feeds of the users who's accounts are followers of the account that reposted the post
-            const repostedByInternalId = await this.db(TABLE_USERS)
+            const repostedByInternalId = await this.db('users')
                 .where('account_id', repostedBy)
                 .select('id')
                 .first();
@@ -275,7 +242,7 @@ export class FeedService {
             // - The feed of the user associated with the author
             // - The feeds of the users who's accounts are followers of the account that authored the post
             // - The feed of any users that are being replied to in the post
-            const authorInternalId = await this.db(TABLE_USERS)
+            const authorInternalId = await this.db('users')
                 .where('account_id', post.author.id)
                 .select('id')
                 .first();
@@ -284,28 +251,11 @@ export class FeedService {
                 targetUserIds.add(authorInternalId.id);
             }
 
-            const inReplyToAuthor =
-                post.inReplyTo &&
-                (await this.db('posts')
-                    .select('author_id')
-                    .where({ id: post.inReplyTo })
-                    .first());
-            const inReplyToInternalId =
-                inReplyToAuthor &&
-                (await this.db(TABLE_USERS)
-                    .where('account_id', inReplyToAuthor.author_id)
-                    .select('id')
-                    .first());
-
-            if (inReplyToInternalId) {
-                targetUserIds.add(inReplyToInternalId.id);
-            }
-
             followersAccountId = Number(post.author.id);
         }
 
-        const followerIds = await this.db(TABLE_FOLLOWS)
-            .join(TABLE_USERS, 'follows.follower_id', 'users.account_id')
+        const followerIds = await this.db('follows')
+            .join('users', 'follows.follower_id', 'users.account_id')
             .where('following_id', followersAccountId)
             .select('users.id as user_id');
 
@@ -344,6 +294,7 @@ export class FeedService {
             await transaction.commit();
         } catch (err) {
             await transaction.rollback();
+
             throw err;
         }
 

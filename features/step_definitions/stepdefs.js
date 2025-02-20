@@ -1669,10 +1669,10 @@ Then('the feed contains {string}', async function (activityOrObjectName) {
 
     if (activity) {
         found = responseJson.posts.find(
-            (post) => post.id === activity.object.id,
+            (post) => post.url === activity.object.id,
         );
     } else if (object) {
-        found = responseJson.posts.find((post) => post.id === object.id);
+        found = responseJson.posts.find((post) => post.url === object.id);
     }
 
     assert(found, `Expected to find ${activityOrObjectName} in feed`);
@@ -1687,9 +1687,9 @@ Then(
         let found;
 
         if (activity) {
-            found = responseJson.posts.find((post) => post.id === activity.id);
+            found = responseJson.posts.find((post) => post.url === activity.id);
         } else if (object) {
-            found = responseJson.posts.find((post) => post.id === object.id);
+            found = responseJson.posts.find((post) => post.url === object.id);
         }
 
         assert(!found, `Expected not to find ${activityOrObjectName} in feed`);

@@ -10,13 +10,13 @@ import {
     ACTIVITY_OBJECT_TYPE_NOTE,
     ACTIVITY_TYPE_ANNOUNCE,
 } from '../../../constants';
-import { PostType } from '../../../feed/types';
 import type {
     Activity,
     ActivityObject,
     ActivityObjectAttachment,
 } from '../../../helpers/activitypub/activity';
 import { lookupActor } from '../../../lookup-helpers';
+import { PostType } from '../../../post/post.entity';
 import type { Post } from '../types';
 
 /**

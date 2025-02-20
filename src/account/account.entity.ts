@@ -3,6 +3,16 @@ import { BaseEntity } from '../core/base.entity';
 import { type Post, PostType } from '../post/post.entity';
 import type { Site } from '../site/site.service';
 
+export interface AccountData {
+    id: number;
+    username: string;
+    name: string | null;
+    bio: string | null;
+    avatarUrl: URL | null;
+    bannerImageUrl: URL | null;
+    site: Site | null;
+}
+
 export class Account extends BaseEntity {
     public readonly uuid: string;
 
@@ -50,6 +60,18 @@ export class Account extends BaseEntity {
         return new URL(
             `.ghost/activitypub/${type}/${post.uuid}`,
             `https://${this.site!.host}`,
+        );
+    }
+
+    static createFromData(data: AccountData) {
+        return new Account(
+            data.id,
+            data.username,
+            data.name,
+            data.bio,
+            data.avatarUrl,
+            data.bannerImageUrl,
+            data.site,
         );
     }
 }

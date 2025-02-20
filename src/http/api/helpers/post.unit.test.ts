@@ -7,8 +7,8 @@ import {
     ACTIVITY_OBJECT_TYPE_NOTE,
     ACTIVITY_TYPE_ANNOUNCE,
 } from '../../../constants';
-import { PostType } from '../../../feed/types';
 import type { Activity } from '../../../helpers/activitypub/activity';
+import { PostType } from '../../../post/post.entity';
 import {
     getPostAttachments,
     getPostAuthor,
