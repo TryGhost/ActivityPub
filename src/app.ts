@@ -81,12 +81,12 @@ import { FeedService } from './feed/feed.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
+    createReplyActionHandler,
     createRepostActionHandler,
     createUnfollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
     likeAction,
-    replyAction,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
@@ -847,7 +847,13 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(replyAction),
+    spanWrapper(
+        createReplyActionHandler(
+            accountRepository,
+            postService,
+            postRepository,
+        ),
+    ),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',

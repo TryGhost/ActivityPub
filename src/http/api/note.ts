@@ -25,21 +25,6 @@ export async function handleCreateNote(
         return new Response(JSON.stringify({}), { status: 400 });
     }
 
-    let result: PublishResult | null = null;
-
-    try {
-        result = await publishNote(ctx, {
-            content: data.content,
-            author: {
-                handle: ACTOR_DEFAULT_HANDLE,
-            },
-        });
-    } catch (err) {
-        ctx.get('logger').error('Failed to publish note: {error}', {
-            error: err,
-        });
-    }
-
     // Save to posts table when a note is created
     const account = await accountRepository.getBySite(ctx.get('site'));
     const postData = {
@@ -49,6 +34,22 @@ export async function handleCreateNote(
     };
     const post = Post.createFromData(account, postData);
     await postRepository.save(post);
+
+    let result: PublishResult | null = null;
+
+    try {
+        result = await publishNote(ctx, {
+            content: data.content,
+            author: {
+                handle: ACTOR_DEFAULT_HANDLE,
+            },
+            apId: post.apId,
+        });
+    } catch (err) {
+        ctx.get('logger').error('Failed to publish note: {error}', {
+            error: err,
+        });
+    }
 
     return new Response(JSON.stringify(result ? result.activityJsonLd : {}), {
         headers: {

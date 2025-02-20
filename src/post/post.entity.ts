@@ -177,6 +177,8 @@ export class Post extends BaseEntity {
             0,
             inReplyTo,
             threadRoot,
+            null,
+            data.apId ?? null,
         );
     }
 }

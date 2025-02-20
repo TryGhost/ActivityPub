@@ -86,4 +86,8 @@ export interface Note {
          */
         handle: string;
     };
+    /**
+     * The AP ID of the post
+     */
+    apId?: URL;
 }

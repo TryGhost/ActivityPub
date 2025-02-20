@@ -28,6 +28,7 @@ import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
+import { Audience, Post, PostType } from './post/post.entity';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
@@ -184,128 +185,165 @@ const ReplyActionSchema = z.object({
     content: z.string(),
 });
 
-export async function replyAction(
-    ctx: Context<{ Variables: HonoContextVariables }>,
+export function createReplyActionHandler(
+    accountRepository: KnexAccountRepository,
+    postService: PostService,
+    postRepository: KnexPostRepository,
 ) {
-    const logger = ctx.get('logger');
-    const id = ctx.req.param('id');
+    return async function replyAction(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        const logger = ctx.get('logger');
+        const id = ctx.req.param('id');
 
-    let data: z.infer<typeof ReplyActionSchema>;
+        let data: z.infer<typeof ReplyActionSchema>;
 
-    try {
-        data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
+        try {
+            data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
 
-        data.content = escapeHtml(data.content);
-    } catch (err) {
-        return new Response(JSON.stringify(err), { status: 400 });
-    }
+            data.content = escapeHtml(data.content);
+        } catch (err) {
+            return new Response(JSON.stringify(err), { status: 400 });
+        }
 
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger,
-    });
-
-    const objectToReplyTo = await lookupObject(apCtx, id);
-    if (!objectToReplyTo) {
-        return new Response(null, {
-            status: 404,
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger,
         });
-    }
 
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
+        const objectToReplyTo = await lookupObject(apCtx, id);
+        if (!objectToReplyTo) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
 
-    let attributionActor: Actor | null = null;
-    if (objectToReplyTo.attributionId) {
-        attributionActor = await lookupActor(
-            apCtx,
-            objectToReplyTo.attributionId.href,
-        );
-    }
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
 
-    if (!attributionActor) {
-        return new Response(null, {
-            status: 400,
+        let attributionActor: Actor | null = null;
+        if (objectToReplyTo.attributionId) {
+            attributionActor = await lookupActor(
+                apCtx,
+                objectToReplyTo.attributionId.href,
+            );
+        }
+
+        if (!attributionActor) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const to = PUBLIC_COLLECTION;
+        const cc = [
+            attributionActor,
+            apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+        ];
+
+        const conversation =
+            objectToReplyTo.replyTargetId || objectToReplyTo.id!;
+        const mentions = [
+            new Mention({
+                href: attributionActor.id,
+                name: attributionActor.name,
+            }),
+        ];
+
+        const replyId = apCtx.getObjectUri(Note, {
+            id: uuidv4(),
         });
-    }
 
-    const to = PUBLIC_COLLECTION;
-    const cc = [attributionActor, apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
+        const reply = new Note({
+            id: replyId,
+            attribution: actor,
+            replyTarget: objectToReplyTo,
+            content: data.content,
+            summary: null,
+            published: Temporal.Now.instant(),
+            contexts: [conversation],
+            tags: mentions,
+            to: to,
+            ccs: cc,
+        });
 
-    const conversation = objectToReplyTo.replyTargetId || objectToReplyTo.id!;
-    const mentions = [
-        new Mention({
-            href: attributionActor.id,
-            name: attributionActor.name,
-        }),
-    ];
+        const createId = apCtx.getObjectUri(Create, {
+            id: uuidv4(),
+        });
 
-    const replyId = apCtx.getObjectUri(Note, {
-        id: uuidv4(),
-    });
+        const create = new Create({
+            id: createId,
+            actor: actor,
+            object: reply,
+            to: to,
+            ccs: cc,
+        });
 
-    const reply = new Note({
-        id: replyId,
-        attribution: actor,
-        replyTarget: objectToReplyTo,
-        content: data.content,
-        summary: null,
-        published: Temporal.Now.instant(),
-        contexts: [conversation],
-        tags: mentions,
-        to: to,
-        ccs: cc,
-    });
+        const activityJson = await create.toJsonLd();
 
-    const createId = apCtx.getObjectUri(Create, {
-        id: uuidv4(),
-    });
+        await ctx.get('globaldb').set([create.id!.href], activityJson);
+        await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
-    const create = new Create({
-        id: createId,
-        actor: actor,
-        object: reply,
-        to: to,
-        ccs: cc,
-    });
+        await addToList(ctx.get('db'), ['outbox'], create.id!.href);
 
-    const activityJson = await create.toJsonLd();
+        const account = await accountRepository.getBySite(ctx.get('site'));
 
-    await ctx.get('globaldb').set([create.id!.href], activityJson);
-    await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
+        if (!objectToReplyTo.id) {
+            return new Response('Invalid Reply - no object to reply id', {
+                status: 400,
+            });
+        }
 
-    await addToList(ctx.get('db'), ['outbox'], create.id!.href);
+        const parentPost = await postService.getByApId(objectToReplyTo.id);
 
-    apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
-        attributionActor,
-        create,
-        {
-            preferSharedInbox: true,
-        },
-    );
+        if (!parentPost) {
+            return new Response('Invalid Reply - could not find object', {
+                status: 404,
+            });
+        }
 
-    try {
-        await apCtx.sendActivity(
+        const replyData = {
+            content: data.content,
+            type: PostType.Note,
+            audience: Audience.Public,
+            apId: replyId,
+            inReplyTo: parentPost,
+        };
+
+        const newReply = Post.createFromData(account, replyData);
+        await postRepository.save(newReply);
+
+        apCtx.sendActivity(
             { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
+            attributionActor,
             create,
             {
                 preferSharedInbox: true,
             },
         );
-    } catch (err) {
-        logger.error('Error sending reply activity - {error}', {
-            error: err,
-        });
-    }
 
-    return new Response(JSON.stringify(activityJson), {
-        headers: {
-            'Content-Type': 'application/activity+json',
-        },
-        status: 200,
-    });
+        try {
+            await apCtx.sendActivity(
+                { handle: ACTOR_DEFAULT_HANDLE },
+                'followers',
+                create,
+                {
+                    preferSharedInbox: true,
+                },
+            );
+        } catch (err) {
+            logger.error('Error sending reply activity - {error}', {
+                error: err,
+            });
+        }
+
+        return new Response(JSON.stringify(activityJson), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        });
+    };
 }
 
 export function createUnfollowActionHandler(accountService: AccountService) {
