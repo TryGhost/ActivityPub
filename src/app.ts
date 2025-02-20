@@ -34,7 +34,6 @@ import {
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
-import { PostType } from 'feed/types';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -115,6 +114,7 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { PostType } from './post/post.entity';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 
@@ -920,16 +920,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner),
-    spanWrapper(
-        createGetFeedHandler(feedService, accountService, PostType.Note),
-    ),
+    spanWrapper(createGetFeedHandler(feedService, PostType.Note)),
 );
 app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner),
-    spanWrapper(
-        createGetFeedHandler(feedService, accountService, PostType.Article),
-    ),
+    spanWrapper(createGetFeedHandler(feedService, PostType.Article)),
 );
 /** Federation wire up */
 
