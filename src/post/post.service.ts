@@ -1,7 +1,7 @@
 import { Article, Note, lookupObject } from '@fedify/fedify';
 import type { AccountService } from '../account/account.service';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { Audience, Post, PostType } from './post.entity';
+import { Post, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export class PostService {
@@ -55,28 +55,21 @@ export class PostService {
             return null;
         }
 
-        const newlyCreatedPost = new Post(
-            null,
-            null,
-            author,
+        let inReplyTo = null;
+        if (foundObject.replyTargetId) {
+            inReplyTo = await this.getByApId(foundObject.replyTargetId);
+        }
+
+        const newlyCreatedPost = Post.createFromData(author, {
             type,
-            Audience.Public,
-            foundObject.name?.toString() || null,
-            null,
-            foundObject.content?.toString() || null,
-            foundObject.url instanceof URL ? foundObject.url : id,
-            foundObject.imageId,
-            foundObject.published
-                ? new Date(foundObject.published?.toString())
-                : new Date(),
-            0,
-            0,
-            0,
-            null,
-            null,
-            null,
-            id,
-        );
+            title: foundObject.name?.toString(),
+            content: foundObject.content?.toString(),
+            imageUrl: foundObject.imageId,
+            publishedAt: new Date(foundObject.published?.toString() || ''),
+            url: foundObject.url instanceof URL ? foundObject.url : id,
+            apId: id,
+            inReplyTo,
+        });
 
         await this.postRepository.save(newlyCreatedPost);
 

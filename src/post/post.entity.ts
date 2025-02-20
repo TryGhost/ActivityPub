@@ -29,7 +29,7 @@ export interface PostData {
     audience?: Audience;
     title?: string | null;
     excerpt?: string | null;
-    content: string | null;
+    content?: string | null;
     url?: URL | null;
     imageUrl?: URL | null;
     publishedAt?: Date;
@@ -168,7 +168,7 @@ export class Post extends BaseEntity {
             data.audience ?? Audience.Public,
             data.title ?? null,
             data.excerpt ?? null,
-            data.content,
+            data.content ?? null,
             data.url ?? null,
             data.imageUrl ?? null,
             data.publishedAt ?? new Date(),
