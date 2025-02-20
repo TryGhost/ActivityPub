@@ -284,10 +284,16 @@ export class FeedService {
                 targetUserIds.add(authorInternalId.id);
             }
 
-            const inReplyToInternalId =
+            const inReplyToAuthor =
                 post.inReplyTo &&
+                (await this.db('posts')
+                    .select('author_id')
+                    .where({ id: post.inReplyTo })
+                    .first());
+            const inReplyToInternalId =
+                inReplyToAuthor &&
                 (await this.db(TABLE_USERS)
-                    .where('account_id', post.inReplyTo.id)
+                    .where('account_id', inReplyToAuthor.author_id)
                     .select('id')
                     .first());
 

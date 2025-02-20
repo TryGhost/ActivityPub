@@ -10,7 +10,7 @@ import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Post } from './post.entity';
+import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 afterAll(async () => {
@@ -342,6 +342,78 @@ describe('KnexPostRepository', () => {
             4,
             PostRepostedEvent.getName(),
             new PostRepostedEvent(post, Number(accounts[2].id)),
+        );
+    });
+
+    it('Handles replies to an existing post', async () => {
+        const accounts = await Promise.all(
+            ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
+                getAccount,
+            ),
+        );
+
+        const originalPost = Post.createArticleFromGhostPost(accounts[0], {
+            title: 'Original Post',
+            html: '<p>Original content</p>',
+            excerpt: 'Original content',
+            feature_image: null,
+            url: 'https://testing.com/original-post',
+            published_at: '2025-01-01',
+        });
+
+        await postRepository.save(originalPost);
+
+        const reply1 = Post.createFromData(accounts[1], {
+            content: 'Reply 1',
+            type: PostType.Note,
+            url: new URL('https://testing.com/reply-1'),
+            apId: new URL('https://testing.com/reply-1'),
+            publishedAt: new Date('2025-01-01'),
+            inReplyTo: originalPost,
+        });
+
+        await postRepository.save(reply1);
+
+        const reply2 = Post.createFromData(accounts[2], {
+            content: 'Reply 2',
+            type: PostType.Note,
+            url: new URL('https://testing.com/reply-2'),
+            apId: new URL('https://testing.com/reply-2'),
+            publishedAt: new Date('2025-01-01'),
+            inReplyTo: originalPost,
+        });
+
+        const reply3 = Post.createFromData(accounts[0], {
+            content: 'Reply 3',
+            type: PostType.Note,
+            url: new URL('https://testing.com/reply-3'),
+            apId: new URL('https://testing.com/reply-3'),
+            publishedAt: new Date('2025-01-01'),
+            inReplyTo: originalPost,
+        });
+
+        await postRepository.save(reply2);
+        await postRepository.save(reply3);
+
+        const rowInDb = await client(TABLE_POSTS)
+            .where({
+                uuid: originalPost.uuid,
+            })
+            .select('reply_count')
+            .first();
+
+        assert.equal(rowInDb.reply_count, 3, 'There should be 3 replies');
+
+        const repliesInDb = await client(TABLE_POSTS)
+            .where({
+                thread_root: originalPost.id,
+            })
+            .select('*');
+
+        assert.equal(
+            repliesInDb.length,
+            3,
+            'There should be 3 replies in the DB',
         );
     });
 });
