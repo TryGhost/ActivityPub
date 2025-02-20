@@ -21,6 +21,21 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
+  check-yarn-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'yarn'
+
+      - name: Check yarn.lock
+        run: yarn install --frozen-lockfile
+
   build-test-deploy:
     name: Build, Test and Deploy
     environment: build
