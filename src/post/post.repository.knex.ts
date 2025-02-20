@@ -35,6 +35,8 @@ export class KnexPostRepository {
                 'posts.reading_time_minutes',
                 'posts.author_id',
                 'posts.ap_id',
+                'posts.in_reply_to',
+                'posts.thread_root',
                 'accounts.username',
                 'accounts.name',
                 'accounts.bio',
@@ -72,8 +74,8 @@ export class KnexPostRepository {
             row.like_count,
             row.repost_count,
             row.reply_count,
-            null,
-            null,
+            row.in_reply_to,
+            row.thread_root,
             row.reading_time_minutes,
             new URL(row.ap_id),
         );
@@ -102,6 +104,14 @@ export class KnexPostRepository {
                     potentiallyNewReposts.length,
                     transaction,
                 );
+
+                if (post.inReplyTo) {
+                    await transaction(TABLE_POSTS)
+                        .update({
+                            reply_count: this.db.raw('reply_count + 1'),
+                        })
+                        .where({ id: post.inReplyTo });
+                }
 
                 // Hacks? Mutate the Post so `isNew` returns false.
                 (post as any).id = postId;
@@ -215,8 +225,8 @@ export class KnexPostRepository {
             url: post.url?.href,
             image_url: post.imageUrl?.href,
             published_at: post.publishedAt,
-            in_reply_to: post.inReplyTo?.id,
-            thread_root: post.threadRoot?.id,
+            in_reply_to: post.inReplyTo,
+            thread_root: post.threadRoot,
             like_count: likeCount,
             repost_count: repostCount,
             reply_count: 0,

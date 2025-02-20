@@ -196,14 +196,20 @@ describe('FeedService', () => {
             const userAccountPost = await createPost(userAccount, {
                 audience: Audience.Public,
             });
+            await postRepository.save(userAccountPost);
+            await waitForPostAddedToFeeds(userAccountPost);
 
             const followedAccountPost = await createPost(followedAccount, {
                 audience: Audience.FollowersOnly,
             });
+            await postRepository.save(followedAccountPost);
+            await waitForPostAddedToFeeds(followedAccountPost);
 
             const unfollowedAccountPost = await createPost(unfollowedAccount, {
                 audience: Audience.Public,
             });
+            await postRepository.save(unfollowedAccountPost);
+            await waitForPostAddedToFeeds(unfollowedAccountPost);
 
             const unfollowedAccountReply = await createPost(unfollowedAccount, {
                 type: PostType.Note,
@@ -211,16 +217,6 @@ describe('FeedService', () => {
                 content: `This is a reply to ${userAccountPost.title}`,
                 inReplyTo: userAccountPost,
             });
-
-            await postRepository.save(userAccountPost);
-            await waitForPostAddedToFeeds(userAccountPost);
-
-            await postRepository.save(followedAccountPost);
-            await waitForPostAddedToFeeds(followedAccountPost);
-
-            await postRepository.save(unfollowedAccountPost);
-            await waitForPostAddedToFeeds(unfollowedAccountPost);
-
             await postRepository.save(unfollowedAccountReply);
             await waitForPostAddedToFeeds(unfollowedAccountReply);
 

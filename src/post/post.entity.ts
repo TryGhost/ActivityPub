@@ -33,7 +33,8 @@ export interface PostData {
     url?: URL | null;
     imageUrl?: URL | null;
     publishedAt?: Date;
-    inReplyTo?: Post;
+    inReplyTo?: Post | null;
+    apId?: URL | null;
 }
 
 export type PublicPost = Post & {
@@ -73,8 +74,8 @@ export class Post extends BaseEntity {
         private likeCount = 0,
         private repostCount = 0,
         private replyCount = 0,
-        public readonly inReplyTo: Post | null = null,
-        public readonly threadRoot: Post | null = null,
+        public readonly inReplyTo: number | null = null,
+        public readonly threadRoot: number | null = null,
         private readonly readingTimeMinutes: number | null = null,
         apId: URL | null = null,
     ) {
@@ -147,6 +148,18 @@ export class Post extends BaseEntity {
     }
 
     static createFromData(account: Account, data: PostData): Post {
+        let inReplyTo = null;
+        let threadRoot = null;
+
+        if (data.inReplyTo) {
+            if (!data.inReplyTo.id) {
+                throw new Error('Cannot reply to a Post without an id');
+            }
+
+            inReplyTo = data.inReplyTo.id;
+            threadRoot = data.inReplyTo.threadRoot ?? data.inReplyTo.id;
+        }
+
         return new Post(
             null,
             null,
@@ -162,7 +175,8 @@ export class Post extends BaseEntity {
             0,
             0,
             0,
-            data.inReplyTo ?? null,
+            inReplyTo,
+            threadRoot,
         );
     }
 }
