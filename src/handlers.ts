@@ -624,11 +624,13 @@ export function createRepostActionHandler(
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
-        const originalPost = await postService.getByApId(post.id);
-
-        originalPost.addRepost(account);
-
-        await postRepository.save(originalPost);
+        if (account !== null) {
+            const originalPost = await postService.getByApId(post.id);
+            if (originalPost !== null) {
+                originalPost.addRepost(account);
+                await postRepository.save(originalPost);
+            }
+        }
 
         const announce = new Announce({
             id: announceId,

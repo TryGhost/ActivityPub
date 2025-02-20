@@ -557,11 +557,15 @@ export function createAnnounceHandler(
         // This will save the account if it doesn't already exist
         const senderAccount = await accountService.getByApId(sender.id);
 
-        // This will save the post if it doesn't already exist
-        const post = await postService.getByApId(announce.objectId);
+        if (senderAccount !== null) {
+            // This will save the post if it doesn't already exist
+            const post = await postService.getByApId(announce.objectId);
 
-        post.addRepost(senderAccount);
-        await postRepository.save(post);
+            if (post !== null) {
+                post.addRepost(senderAccount);
+                await postRepository.save(post);
+            }
+        }
 
         shouldAddToInbox = await isFollowedByDefaultSiteAccount(
             sender,
@@ -601,11 +605,15 @@ export function createLikeHandler(
         }
 
         const account = await accountService.getByApId(like.actorId);
-        const post = await postService.getByApId(like.objectId);
+        if (account !== null) {
+            const post = await postService.getByApId(like.objectId);
 
-        post.addLike(account);
+            if (post !== null) {
+                post.addLike(account);
 
-        await postRepository.save(post);
+                await postRepository.save(post);
+            }
+        }
 
         // Validate sender
         const sender = await like.getActor(ctx);

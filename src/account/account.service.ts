@@ -55,7 +55,7 @@ export class AccountService {
      * If it is not found locally in our database it will be
      * remotely fetched and stored
      */
-    async getByApId(id: URL): Promise<Account> {
+    async getByApId(id: URL): Promise<Account | null> {
         const account = await this.accountRepository.getByApId(id);
         if (account) {
             return account;
@@ -68,20 +68,23 @@ export class AccountService {
         });
         const potentialActor = await lookupObject(id, { documentLoader });
 
+        // If potentialActor is null - we could not find anything for this URL
+        // Error because could be upstream server issues and we want a retry
+        if (potentialActor === null) {
+            throw new Error(`Could not find Actor ${id}`);
+        }
+
+        // If we do find an Object, and it's not an Actor - we return null because
+        // it's invalid, we don't expect this to be a temporary error
         if (!isActor(potentialActor)) {
-            throw new URL('Account not found');
+            return null;
         }
 
         const data = await mapActorToExternalAccountData(potentialActor);
 
         await this.createExternalAccount(data);
 
-        const newlyCreatedAccount = await this.accountRepository.getByApId(id);
-        if (!newlyCreatedAccount) {
-            throw new Error('Could not find account');
-        }
-
-        return newlyCreatedAccount;
+        return this.accountRepository.getByApId(id);
     }
 
     /**
