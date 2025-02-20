@@ -192,7 +192,9 @@ export class FedifyPublishingService implements PublishingService {
         ];
 
         const fedifyNote = new FedifyNote({
-            id: this.uriBuilder.buildObjectUri(FedifyNote, uuidv4()),
+            id:
+                note.apId ||
+                this.uriBuilder.buildObjectUri(FedifyNote, uuidv4()),
             attribution: actor,
             content: this.contentPreparer.prepare(note.content, {
                 escapeHtml: true,
