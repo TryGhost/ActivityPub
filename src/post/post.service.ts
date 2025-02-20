@@ -11,7 +11,7 @@ export class PostService {
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
-    async getByApId(id: URL): Promise<Post> {
+    async getByApId(id: URL): Promise<Post | null> {
         const post = await this.postRepository.getByApId(id);
         if (post) {
             return post;
@@ -24,27 +24,36 @@ export class PostService {
         });
         const foundObject = await lookupObject(id, { documentLoader });
 
-        if (!foundObject) {
-            throw new Error('Could not find');
+        // If foundObject is null - we could not find anything for this URL
+        // Error because could be upstream server issues and we want a retry
+        if (foundObject === null) {
+            throw new Error(`Could not find Object ${id}`);
         }
 
+        // If we do find an Object, and it's not a Note or Article
+        // we return null because we're unable to handle it.
         if (
             !(foundObject instanceof Note) &&
             !(foundObject instanceof Article)
         ) {
-            throw new Error('Was not Note or Article');
+            return null;
         }
 
         const type =
             foundObject instanceof Note ? PostType.Note : PostType.Article;
 
+        // We're also unable to handle objects without an author
         if (!foundObject.attributionId) {
-            throw new Error('No author');
+            return null;
         }
 
         const author = await this.accountService.getByApId(
             foundObject.attributionId,
         );
+
+        if (author === null) {
+            return null;
+        }
 
         const newlyCreatedPost = new Post(
             null,
