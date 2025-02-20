@@ -8,11 +8,6 @@ import { PostCreatedEvent } from './post-created.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post } from './post.entity';
 
-enum PostCountType {
-    Like = 'like',
-    Repost = 'repost',
-}
-
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
@@ -131,11 +126,8 @@ export class KnexPostRepository {
                     );
                 }
             } else {
-                let insertedLikesCount = 0;
-                let insertedRepostsCount = 0;
-
                 if (potentiallyNewLikes.length > 0) {
-                    insertedLikesCount =
+                    const insertedLikesCount =
                         await this.insertLikesIgnoringDuplicates(
                             post,
                             potentiallyNewLikes,
@@ -143,12 +135,13 @@ export class KnexPostRepository {
                         );
 
                     if (insertedLikesCount > 0) {
-                        await this.incrementCount(
-                            post,
-                            PostCountType.Like,
-                            insertedLikesCount,
-                            transaction,
-                        );
+                        await transaction(TABLE_POSTS)
+                            .update({
+                                like_count: transaction.raw(
+                                    `like_count + ${insertedLikesCount}`,
+                                ),
+                            })
+                            .where({ id: post.id });
                     }
                 }
 
@@ -160,16 +153,16 @@ export class KnexPostRepository {
                             transaction,
                         );
 
-                    insertedRepostsCount = count;
                     repostAccountIds = accountIds;
 
-                    if (insertedRepostsCount > 0) {
-                        await this.incrementCount(
-                            post,
-                            PostCountType.Repost,
-                            insertedRepostsCount,
-                            transaction,
-                        );
+                    if (count > 0) {
+                        await transaction(TABLE_POSTS)
+                            .update({
+                                repost_count: transaction.raw(
+                                    `repost_count + ${count}`,
+                                ),
+                            })
+                            .where({ id: post.id });
                     }
                 }
             }
@@ -359,30 +352,5 @@ export class KnexPostRepository {
             count: count,
             accountIds: newRepostAccountIds,
         };
-    }
-
-    /**
-     * Increment a count stored on a post by a given amount
-     *
-     * @param post Post to increment the count of
-     * @param countType Type of count to increment
-     * @param incrementBy Amount to increment the count by
-     * @param transaction Database transaction to use
-     */
-    private async incrementCount(
-        post: Post,
-        countType: PostCountType,
-        incrementBy: number,
-        transaction: Knex.Transaction,
-    ) {
-        const update: Record<string, Knex.Raw> = {};
-
-        if (countType === PostCountType.Like) {
-            update.like_count = this.db.raw(`like_count + ${incrementBy}`);
-        } else {
-            update.repost_count = this.db.raw(`repost_count + ${incrementBy}`);
-        }
-
-        await transaction(TABLE_POSTS).update(update).where({ id: post.id });
     }
 }
