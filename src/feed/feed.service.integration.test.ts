@@ -94,7 +94,7 @@ describe('FeedService', () => {
         return post;
     };
 
-    const getFeedForAccount = async (account: Account) => {
+    const getFeedDataForAccount = async (account: Account) => {
         const feed = await client(TABLE_FEEDS)
             .join(TABLE_USERS, `${TABLE_USERS}.id`, `${TABLE_FEEDS}.user_id`)
             .join(
@@ -205,7 +205,7 @@ describe('FeedService', () => {
             // userAccount should have 2 posts in their feed:
             // - Their own
             // - followedAccount's post (because userAccount follows followedAccount)
-            const userAccountFeed = await getFeedForAccount(userAccount);
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
 
             expect(userAccountFeed.length).toBe(2);
             expect(userAccountFeed[0]).toMatchObject({
@@ -226,7 +226,7 @@ describe('FeedService', () => {
             // followedAccount should have 1 post in their feed:
             // - Their own (because they do not follow anyone)
             const followedAccountFeed =
-                await getFeedForAccount(followedAccount);
+                await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(1);
             expect(followedAccountFeed[0]).toMatchObject({
                 post_type: followedAccountPost.type,
@@ -239,7 +239,7 @@ describe('FeedService', () => {
             // unfollowedAccount should have 1 post in their feed:
             // - Their own (because they do not follow anyone)
             const unfollowedAccountFeed =
-                await getFeedForAccount(unfollowedAccount);
+                await getFeedDataForAccount(unfollowedAccount);
             expect(unfollowedAccountFeed.length).toBe(1);
             expect(unfollowedAccountFeed[0]).toMatchObject({
                 post_type: unfollowedAccountPost.type,
@@ -291,7 +291,7 @@ describe('FeedService', () => {
 
             // userAccount should have 1 posts in their feed:
             // - The reposted post (because they follow followedAccount)
-            const userAccountFeed = await getFeedForAccount(userAccount);
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
 
             expect(userAccountFeed.length).toBe(1);
             expect(userAccountFeed[0]).toMatchObject({
@@ -305,7 +305,7 @@ describe('FeedService', () => {
             // followedAccount should have 1 post in their feed:
             // - The post they reposted
             const followedAccountFeed =
-                await getFeedForAccount(followedAccount);
+                await getFeedDataForAccount(followedAccount);
 
             expect(followedAccountFeed.length).toBe(1);
             expect(followedAccountFeed[0]).toMatchObject({
@@ -319,7 +319,7 @@ describe('FeedService', () => {
             // unfollowedAccount should have 1 post in their feed:
             // - Their own (because they do not follow anyone)
             const unfollowedAccountFeed =
-                await getFeedForAccount(unfollowedAccount);
+                await getFeedDataForAccount(unfollowedAccount);
 
             expect(unfollowedAccountFeed.length).toBe(1);
             expect(unfollowedAccountFeed[0]).toMatchObject({
@@ -367,7 +367,7 @@ describe('FeedService', () => {
             // userAccount should have 1 posts in their feed:
             // - followedAccount's post (because they follow followedAccount and
             //   replies are not added to feeds)
-            const userAccountFeed = await getFeedForAccount(userAccount);
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
             expect(userAccountFeed.length).toBe(1);
             expect(userAccountFeed[0]).toMatchObject({
                 post_type: post.type,
@@ -380,7 +380,7 @@ describe('FeedService', () => {
             // - They replied to userAccount's post but we do not add replies to
             //   feeds
             const followedAccountFeed =
-                await getFeedForAccount(followedAccount);
+                await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(0);
         }, 10000);
     });

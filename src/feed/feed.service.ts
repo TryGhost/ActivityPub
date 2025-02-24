@@ -189,13 +189,13 @@ export class FeedService {
         const results = await query;
 
         const hasMore = results.length > options.limit;
-        const items = results.slice(0, options.limit);
-        const lastItem = items[items.length - 1];
+        const paginatedResults = results.slice(0, options.limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
-            results: items,
+            results: paginatedResults,
             nextCursor: hasMore
-                ? `${lastItem.feed_inserted_at.toISOString()}_${lastItem.post_id}`
+                ? `${lastResult.feed_inserted_at.toISOString()}_${lastResult.post_id}`
                 : null,
         };
     }
