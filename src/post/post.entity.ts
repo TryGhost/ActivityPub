@@ -56,6 +56,7 @@ export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
+    private likesToRemove: Set<number> = new Set();
     private potentiallyNewLikes: Set<number> = new Set();
     private potentiallyNewReposts: Set<number> = new Set();
 
@@ -106,7 +107,27 @@ export class Post extends BaseEntity {
         if (!account.id) {
             throw new Error('Cannot add like for account with no id');
         }
+        this.likesToRemove.delete(account.id);
         this.potentiallyNewLikes.add(account.id);
+    }
+
+    removeLike(account: Account) {
+        if (!account.id) {
+            throw new Error('Cannot add like for account with no id');
+        }
+        this.potentiallyNewLikes.delete(account.id);
+        this.likesToRemove.add(account.id);
+    }
+
+    getChangedLikes() {
+        const likesToRemove = [...this.likesToRemove.values()];
+        this.likesToRemove.clear();
+        const likesToAdd = [...this.potentiallyNewLikes.values()];
+        this.potentiallyNewLikes.clear();
+        return {
+            likesToRemove,
+            likesToAdd,
+        };
     }
 
     getPotentiallyNewLikes() {
