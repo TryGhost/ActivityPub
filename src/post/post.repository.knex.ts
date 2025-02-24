@@ -6,6 +6,7 @@ import { Account } from '../account/account.entity';
 import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { parseURL } from '../core/url';
 import { PostCreatedEvent } from './post-created.event';
+import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post } from './post.entity';
 
@@ -219,6 +220,13 @@ export class KnexPostRepository {
                 this.events.emit(
                     PostRepostedEvent.getName(),
                     new PostRepostedEvent(post, accountId),
+                );
+            }
+
+            for (const accountId of repostsToRemove) {
+                this.events.emit(
+                    PostDerepostedEvent.getName(),
+                    new PostDerepostedEvent(post, accountId),
                 );
             }
         } catch (err) {
