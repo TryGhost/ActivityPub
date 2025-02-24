@@ -6,6 +6,7 @@ import {
 } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
+import { randomUUID } from 'node:crypto';
 import type EventEmitter from 'node:events';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
@@ -104,6 +105,7 @@ export class AccountService {
 
         const accountData = {
             name: internalAccountData.name || ACTOR_DEFAULT_NAME,
+            uuid: randomUUID(),
             username: username,
             bio: internalAccountData.bio || ACTOR_DEFAULT_SUMMARY,
             avatar_url: internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
@@ -146,7 +148,10 @@ export class AccountService {
     async createExternalAccount(
         accountData: ExternalAccountData,
     ): Promise<AccountType> {
-        const [accountId] = await this.db(TABLE_ACCOUNTS).insert(accountData);
+        const [accountId] = await this.db(TABLE_ACCOUNTS).insert({
+            ...accountData,
+            uuid: randomUUID(),
+        });
 
         return {
             id: accountId,
