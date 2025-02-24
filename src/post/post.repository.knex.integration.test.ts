@@ -328,7 +328,7 @@ describe('KnexPostRepository', () => {
         );
     });
 
-    it('Handles reposts of an existing post', async () => {
+    it('Handles reposts and dereposts of an existing post', async () => {
         const eventsEmitSpy = vi.spyOn(events, 'emit');
         const accounts = await Promise.all(
             ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
@@ -356,6 +356,7 @@ describe('KnexPostRepository', () => {
 
         post.addRepost(accounts[0]);
         post.addRepost(accounts[2]);
+        post.removeRepost(accounts[1]);
 
         await postRepository.save(post);
 
@@ -366,7 +367,7 @@ describe('KnexPostRepository', () => {
             .select('repost_count')
             .first();
 
-        assert.equal(rowInDb.repost_count, 3, 'There should be 3 reposts');
+        assert.equal(rowInDb.repost_count, 2, 'There should be 2 reposts');
 
         expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 post reposted
         expect(eventsEmitSpy).nthCalledWith(

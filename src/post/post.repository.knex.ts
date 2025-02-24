@@ -104,14 +104,14 @@ export class KnexPostRepository {
 
         try {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
-            const potentiallyNewReposts = post.getPotentiallyNewReposts();
+            const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             let repostAccountIds: number[] = [];
 
             if (isNewPost) {
                 const postId = await this.insertPost(
                     post,
                     likesToAdd.length,
-                    potentiallyNewReposts.length,
+                    repostsToAdd.length,
                     transaction,
                 );
 
@@ -130,14 +130,10 @@ export class KnexPostRepository {
                     await this.insertLikes(post, likesToAdd, transaction);
                 }
 
-                if (potentiallyNewReposts.length > 0) {
-                    await this.insertReposts(
-                        post,
-                        potentiallyNewReposts,
-                        transaction,
-                    );
+                if (repostsToAdd.length > 0) {
+                    await this.insertReposts(post, repostsToAdd, transaction);
 
-                    repostAccountIds = potentiallyNewReposts.map(
+                    repostAccountIds = repostsToAdd.map(
                         (accountId) => accountId,
                     );
                 }
@@ -172,21 +168,34 @@ export class KnexPostRepository {
                     }
                 }
 
-                if (potentiallyNewReposts.length > 0) {
-                    const { count, accountIds } =
-                        await this.insertRepostsIgnoringDuplicates(
-                            post,
-                            potentiallyNewReposts,
-                            transaction,
-                        );
+                if (repostsToAdd.length > 0 || repostsToRemove.length > 0) {
+                    const { insertedRepostsCount, accountIdsInserted } =
+                        repostsToAdd.length > 0
+                            ? await this.insertRepostsIgnoringDuplicates(
+                                  post,
+                                  repostsToAdd,
+                                  transaction,
+                              )
+                            : { insertedRepostsCount: 0, accountIdsInserted: [] };
 
-                    repostAccountIds = accountIds;
+                    const removedRepostsCount =
+                        repostsToRemove.length > 0
+                            ? await this.removeReposts(
+                                  post,
+                                  repostsToRemove,
+                                  transaction,
+                              )
+                            : 0;
 
-                    if (count > 0) {
+                    repostAccountIds = accountIdsInserted.filter(
+                        (accountId) => !repostsToRemove.includes(accountId),
+                    );
+
+                    if (insertedRepostsCount - removedRepostsCount !== 0) {
                         await transaction(TABLE_POSTS)
                             .update({
                                 repost_count: transaction.raw(
-                                    `repost_count + ${count}`,
+                                    `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
                                 ),
                             })
                             .where({ id: post.id });
@@ -346,6 +355,27 @@ export class KnexPostRepository {
     }
 
     /**
+     * Remove reposts of a post from the database
+     *
+     * @param post Post to remove reposts for
+     * @param accountIds Account IDs to remove reposts for
+     * @param transaction Database transaction to use
+     * @returns The number of reposts removed
+     */
+    private async removeReposts(
+        post: Post,
+        accountIds: number[],
+        transaction: Knex.Transaction,
+    ): Promise<number> {
+        return await transaction(TABLE_REPOSTS)
+            .where({
+                post_id: post.id,
+            })
+            .whereIn('account_id', accountIds)
+            .del();
+    }
+
+    /**
      * Insert reposts of a post into the database, ignoring
      * duplicates
      *
@@ -359,7 +389,7 @@ export class KnexPostRepository {
         post: Post,
         repostAccountIds: number[],
         transaction: Knex.Transaction,
-    ): Promise<{ count: number; accountIds: number[] }> {
+    ): Promise<{ insertedRepostsCount: number; accountIdsInserted: number[] }> {
         // Retrieve the account IDs of the reposts that are already in the
         // database - This is so we can report exactly which reposts were
         // inserted so that we do not emit events for reposts that were
@@ -376,8 +406,8 @@ export class KnexPostRepository {
 
         if (newRepostAccountIds.length === 0) {
             return {
-                count: 0,
-                accountIds: [],
+                insertedRepostsCount: 0,
+                accountIdsInserted: [],
             };
         }
 
@@ -396,8 +426,8 @@ export class KnexPostRepository {
         );
 
         return {
-            count: count,
-            accountIds: newRepostAccountIds,
+            insertedRepostsCount: count,
+            accountIdsInserted: newRepostAccountIds,
         };
     }
 }

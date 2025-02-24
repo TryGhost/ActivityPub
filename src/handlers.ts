@@ -789,7 +789,11 @@ export function createRepostActionHandler(
     };
 }
 
-export function createDerepostActionHandler(accountService: AccountService) {
+export function createDerepostActionHandler(
+    accountRepository: KnexAccountRepository,
+    postService: PostService,
+    postRepository: KnexPostRepository,
+) {
     return async function derepostAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
     ) {
@@ -828,6 +832,21 @@ export function createDerepostActionHandler(accountService: AccountService) {
         const announceToUndo = await Announce.fromJsonLd(announceToUndoJson);
 
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+
+        if (!post.id) {
+            ctx.get('logger').info('Invalid Derepost - no post id');
+            return;
+        }
+
+        const account = await accountRepository.getBySite(ctx.get('site'));
+        if (account !== null) {
+            const originalPost = await postService.getByApId(post.id);
+
+            if (originalPost) {
+                originalPost.removeRepost(account);
+                await postRepository.save(originalPost);
+            }
+        }
 
         const undo = new Undo({
             id: undoId,

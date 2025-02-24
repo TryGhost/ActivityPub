@@ -4,7 +4,7 @@ import { Account } from '../account/account.entity';
 import { Post, PostType } from './post.entity';
 
 describe('Post', () => {
-    it('should add a repost', () => {
+    it('should handle adding and removing reposts', () => {
         const postAuthorSite = {
             id: 123,
             host: 'foobar.com',
@@ -20,6 +20,7 @@ describe('Post', () => {
             new URL('https://foobar.com/banner/foobar.png'),
             postAuthorSite,
         );
+
         const postReposterAccount = new Account(
             789,
             null,
@@ -30,6 +31,27 @@ describe('Post', () => {
             new URL('https://bazqux.com/banner/bazqux.png'),
             null,
         );
+
+        const postDereposterAccount = new Account(
+            987,
+            'bazqux',
+            'Baz Qux',
+            'Just a bazqux',
+            new URL('https://bazqux.com/avatar/bazqux.png'),
+            new URL('https://bazqux.com/banner/bazqux.png'),
+            null,
+        );
+
+        const accidentalPostDereposterAccount = new Account(
+            654,
+            'bazqux',
+            'Baz Qux',
+            'Just a bazqux',
+            new URL('https://bazqux.com/avatar/bazqux.png'),
+            new URL('https://bazqux.com/banner/bazqux.png'),
+            null,
+        );
+
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
             content: 'Hello, world!',
@@ -37,7 +59,19 @@ describe('Post', () => {
 
         post.addRepost(postReposterAccount);
 
-        expect(post.getPotentiallyNewReposts()).toEqual([789]);
+        post.removeRepost(postDereposterAccount);
+
+        post.addRepost(accidentalPostDereposterAccount);
+        post.removeRepost(accidentalPostDereposterAccount);
+        post.addRepost(accidentalPostDereposterAccount);
+
+        expect(post.getChangedReposts()).toEqual({
+            repostsToAdd: [
+                postReposterAccount.id,
+                accidentalPostDereposterAccount.id,
+            ],
+            repostsToRemove: [postDereposterAccount.id],
+        });
     });
 
     it('should not add a repost for an account with no id', () => {

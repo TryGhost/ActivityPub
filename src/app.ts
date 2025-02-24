@@ -873,7 +873,13 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createDerepostActionHandler(accountService)),
+    spanWrapper(
+        createDerepostActionHandler(
+            accountRepository,
+            postService,
+            postRepository,
+        ),
+    ),
 );
 app.post(
     '/.ghost/activitypub/actions/note',

@@ -58,7 +58,8 @@ export class Post extends BaseEntity {
     public readonly apId: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
-    private potentiallyNewReposts: Set<number> = new Set();
+    private repostsToAdd: Set<number> = new Set();
+    private repostsToRemove: Set<number> = new Set();
 
     constructor(
         public readonly id: number | null,
@@ -134,13 +135,27 @@ export class Post extends BaseEntity {
         if (!account.id) {
             throw new Error('Cannot add repost for account with no id');
         }
-        this.potentiallyNewReposts.add(account.id);
+        this.repostsToRemove.delete(account.id);
+        this.repostsToAdd.add(account.id);
     }
 
-    getPotentiallyNewReposts() {
-        const reposts = [...this.potentiallyNewReposts.values()];
-        this.potentiallyNewReposts.clear();
-        return reposts;
+    removeRepost(account: Account) {
+        if (!account.id) {
+            throw new Error('Cannot add repost for account with no id');
+        }
+        this.repostsToAdd.delete(account.id);
+        this.repostsToRemove.add(account.id);
+    }
+
+    getChangedReposts() {
+        const repostsToRemove = [...this.repostsToRemove.values()];
+        this.repostsToRemove.clear();
+        const repostsToAdd = [...this.repostsToAdd.values()];
+        this.repostsToAdd.clear();
+        return {
+            repostsToRemove,
+            repostsToAdd,
+        };
     }
 
     static createArticleFromGhostPost(
