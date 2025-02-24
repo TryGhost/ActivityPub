@@ -117,6 +117,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+import { asClass, asValue, createContainer } from 'awilix';
 
 const logging = getLogger(['activitypub']);
 
@@ -224,33 +225,40 @@ export const fedify = createFederation<ContextData>({
 export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
-export const db = await KnexKvStore.create(client, 'key_value');
+const container = createContainer({
+    injectionMode: 'CLASSIC',
+    strict: true
+});
 
 const events = new EventEmitter();
-const fedifyContextFactory = new FedifyContextFactory();
 
-const accountRepository = new KnexAccountRepository(client, events);
-const postRepository = new KnexPostRepository(client, events);
-
-const accountService = new AccountService(
-    client,
-    events,
-    accountRepository,
-    fedifyContextFactory,
-);
-
-const postService = new PostService(
-    postRepository,
-    accountService,
-    fedifyContextFactory,
-);
-const siteService = new SiteService(client, accountService, {
+container.register('db', asValue(client))
+container.register('client', asValue(client))
+container.register('events', asValue(events))
+container.register('fedifyContextFactory', asClass(FedifyContextFactory).singleton());
+container.register('accountRepository', asClass(KnexAccountRepository).singleton());
+container.register('postRepository', asClass(KnexPostRepository).singleton());
+container.register('accountService', asClass(AccountService).singleton());
+container.register('postService', asClass(PostService).singleton());
+container.register('ghostService', asValue({
     getSiteSettings: getSiteSettings,
-});
-const feedService = new FeedService(client, events);
+}))
+container.register('siteService', asClass(SiteService).singleton());
+container.register('feedService', asClass(FeedService).singleton());
+container.register('fediverseBridge', asClass(FediverseBridge).singleton());
 
-const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
+export const db = await KnexKvStore.create(client, 'key_value');
+
+const fediverseBridge = container.resolve('fediverseBridge');
 fediverseBridge.init();
+
+const postRepository = container.resolve('postRepository');
+const accountRepository = container.resolve('accountRepository');
+const accountService = container.resolve('accountService');
+const feedService = container.resolve('feedService');
+const postService = container.resolve('postService');
+const siteService = container.resolve('siteService');
+const fedifyContextFactory = container.resolve('fedifyContextFactory');
 
 /** Fedify */
 
