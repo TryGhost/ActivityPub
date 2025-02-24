@@ -111,74 +111,83 @@ export async function unlikeAction(
     });
 }
 
-export async function likeAction(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const id = ctx.req.param('id');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger: ctx.get('logger'),
-    });
-
-    const objectToLike = await lookupObject(apCtx, id);
-    if (!objectToLike) {
-        return new Response(null, {
-            status: 404,
+export function createLikeAction () {
+    return async function likeAction(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        const id = ctx.req.param('id');
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
-    }
 
-    const likeId = apCtx.getObjectUri(Like, {
-        id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
-    });
+        const objectToLike = await lookupObject(apCtx, id);
+        if (!objectToLike) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
 
-    if (await ctx.get('globaldb').get([likeId.href])) {
-        return new Response(null, {
-            status: 409,
+        const likeId = apCtx.getObjectUri(Like, {
+            id: createHash('sha256')
+                .update(objectToLike.id!.href)
+                .digest('hex'),
         });
-    }
 
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+        if (await ctx.get('globaldb').get([likeId.href])) {
+            return new Response(null, {
+                status: 409,
+            });
+        }
 
-    const like = new Like({
-        id: likeId,
-        actor: actor,
-        object: objectToLike,
-        to: PUBLIC_COLLECTION,
-        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
-    });
-    const likeJson = await like.toJsonLd();
-    await ctx.get('globaldb').set([like.id!.href], likeJson);
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
 
-    await addToList(ctx.get('db'), ['liked'], like.id!.href);
+        const like = new Like({
+            id: likeId,
+            actor: actor,
+            object: objectToLike,
+            to: PUBLIC_COLLECTION,
+            cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+        });
+        const likeJson = await like.toJsonLd();
+        await ctx.get('globaldb').set([like.id!.href], likeJson);
 
-    let attributionActor: Actor | null = null;
-    if (objectToLike.attributionId) {
-        attributionActor = await lookupActor(
-            apCtx,
-            objectToLike.attributionId.href,
-        );
-    }
-    if (attributionActor) {
+        await addToList(ctx.get('db'), ['liked'], like.id!.href);
+
+        let attributionActor: Actor | null = null;
+        if (objectToLike.attributionId) {
+            attributionActor = await lookupActor(
+                apCtx,
+                objectToLike.attributionId.href,
+            );
+        }
+        if (attributionActor) {
+            apCtx.sendActivity(
+                { handle: ACTOR_DEFAULT_HANDLE },
+                attributionActor,
+                like,
+                {
+                    preferSharedInbox: true,
+                },
+            );
+        }
+
         apCtx.sendActivity(
             { handle: ACTOR_DEFAULT_HANDLE },
-            attributionActor,
+            'followers',
             like,
             {
                 preferSharedInbox: true,
             },
         );
-    }
-
-    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', like, {
-        preferSharedInbox: true,
-    });
-    return new Response(JSON.stringify(likeJson), {
-        headers: {
-            'Content-Type': 'application/activity+json',
-        },
-        status: 200,
-    });
+        return new Response(JSON.stringify(likeJson), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        });
+    };
 }
 
 const ReplyActionSchema = z.object({

@@ -81,12 +81,12 @@ import { FeedService } from './feed/feed.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
+    createLikeAction,
     createReplyActionHandler,
     createRepostActionHandler,
     createUnfollowActionHandler,
     getSiteDataHandler,
     inboxHandler,
-    likeAction,
     unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
@@ -837,7 +837,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/like/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(likeAction),
+    spanWrapper(createLikeAction()),
 );
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
