@@ -16,6 +16,7 @@ import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
+import { parseURL } from 'core/url';
 import type { KnexAccountRepository } from './account/account.repository.knex';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
@@ -111,7 +112,11 @@ export async function unlikeAction(
     });
 }
 
-export function createLikeAction () {
+export function createLikeAction(
+    accountRepository: KnexAccountRepository,
+    postService: PostService,
+    postRepository: KnexPostRepository,
+) {
     return async function likeAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
     ) {
@@ -127,6 +132,25 @@ export function createLikeAction () {
             return new Response(null, {
                 status: 404,
             });
+        }
+
+        const idAsUrl = parseURL(id);
+
+        if (!idAsUrl) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const account = await accountRepository.getBySite(ctx.get('site'));
+        if (account !== null) {
+            const post = await postService.getByApId(idAsUrl);
+
+            if (post !== null) {
+                post.addLike(account);
+
+                await postRepository.save(post);
+            }
         }
 
         const likeId = apCtx.getObjectUri(Like, {

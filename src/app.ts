@@ -837,7 +837,9 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/like/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createLikeAction()),
+    spanWrapper(
+        createLikeAction(accountRepository, postService, postRepository),
+    ),
 );
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
