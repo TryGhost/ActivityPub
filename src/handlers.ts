@@ -34,82 +34,91 @@ import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
 
-export async function unlikeAction(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const id = ctx.req.param('id');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger: ctx.get('logger'),
-    });
-
-    const objectToLike = await lookupObject(apCtx, id);
-    if (!objectToLike) {
-        return new Response(null, {
-            status: 404,
+export function createUnlikeAction() {
+    return async function unlikeAction(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        const id = ctx.req.param('id');
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db: ctx.get('db'),
+            globaldb: ctx.get('globaldb'),
+            logger: ctx.get('logger'),
         });
-    }
 
-    const likeId = apCtx.getObjectUri(Like, {
-        id: createHash('sha256').update(objectToLike.id!.href).digest('hex'),
-    });
+        const objectToLike = await lookupObject(apCtx, id);
+        if (!objectToLike) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
 
-    const undoId = apCtx.getObjectUri(Undo, {
-        id: createHash('sha256').update(likeId.href).digest('hex'),
-    });
-
-    const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
-    if (!likeToUndoJson) {
-        return new Response(null, {
-            status: 409,
+        const likeId = apCtx.getObjectUri(Like, {
+            id: createHash('sha256')
+                .update(objectToLike.id!.href)
+                .digest('hex'),
         });
-    }
 
-    const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
+        const undoId = apCtx.getObjectUri(Undo, {
+            id: createHash('sha256').update(likeId.href).digest('hex'),
+        });
 
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
+        const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
+        if (!likeToUndoJson) {
+            return new Response(null, {
+                status: 409,
+            });
+        }
 
-    const undo = new Undo({
-        id: undoId,
-        actor: actor,
-        object: likeToUndo,
-        to: PUBLIC_COLLECTION,
-        cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
-    });
-    const undoJson = await undo.toJsonLd();
-    await ctx.get('globaldb').set([undo.id!.href], undoJson);
+        const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
 
-    await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
-    await ctx.get('globaldb').delete([likeId!.href]);
+        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
 
-    let attributionActor: Actor | null = null;
-    if (objectToLike.attributionId) {
-        attributionActor = await lookupActor(
-            apCtx,
-            objectToLike.attributionId.href,
-        );
-    }
-    if (attributionActor) {
+        const undo = new Undo({
+            id: undoId,
+            actor: actor,
+            object: likeToUndo,
+            to: PUBLIC_COLLECTION,
+            cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+        });
+        const undoJson = await undo.toJsonLd();
+        await ctx.get('globaldb').set([undo.id!.href], undoJson);
+
+        await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
+        await ctx.get('globaldb').delete([likeId!.href]);
+
+        let attributionActor: Actor | null = null;
+        if (objectToLike.attributionId) {
+            attributionActor = await lookupActor(
+                apCtx,
+                objectToLike.attributionId.href,
+            );
+        }
+        if (attributionActor) {
+            apCtx.sendActivity(
+                { handle: ACTOR_DEFAULT_HANDLE },
+                attributionActor,
+                undo,
+                {
+                    preferSharedInbox: true,
+                },
+            );
+        }
+
         apCtx.sendActivity(
             { handle: ACTOR_DEFAULT_HANDLE },
-            attributionActor,
+            'followers',
             undo,
             {
                 preferSharedInbox: true,
             },
         );
-    }
-
-    apCtx.sendActivity({ handle: ACTOR_DEFAULT_HANDLE }, 'followers', undo, {
-        preferSharedInbox: true,
-    });
-    return new Response(JSON.stringify(undoJson), {
-        headers: {
-            'Content-Type': 'application/activity+json',
-        },
-        status: 200,
-    });
+        return new Response(JSON.stringify(undoJson), {
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+            status: 200,
+        });
+    };
 }
 
 export function createLikeAction(
