@@ -1,10 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import { BaseEntity } from '../core/base.entity';
 import { type Post, PostType } from '../post/post.entity';
 import type { Site } from '../site/site.service';
 
 export class Account extends BaseEntity {
+    public readonly uuid: string;
+
     constructor(
         public readonly id: number | null,
+        uuid: string | null,
         public readonly username: string,
         public readonly name: string | null,
         public readonly bio: string | null,
@@ -13,6 +17,11 @@ export class Account extends BaseEntity {
         private readonly site: Site | null,
     ) {
         super(id);
+        if (uuid === null) {
+            this.uuid = randomUUID();
+        } else {
+            this.uuid = uuid;
+        }
     }
 
     get isInternal() {

@@ -147,6 +147,46 @@ describe('KnexPostRepository', () => {
         const result = await postRepository.getByApId(post.apId);
 
         assert(result);
+
+        assert(result.author.uuid === account.uuid);
+        assert(result.uuid === post.uuid);
+    });
+
+    it('Ensures an account associated with a post has a uuid when retrieved by apId', async () => {
+        const site = await siteService.initialiseSiteForHost('testing.com');
+        const account = await accountRepository.getBySite(site);
+
+        if (!account.id) {
+            throw new Error('Expected account to have an id');
+        }
+
+        // Remove the uuid from the account & verify
+        await client('accounts').update({ uuid: null }).where('id', account.id);
+        let accountInDb = await client('accounts')
+            .where('id', account.id)
+            .first();
+        assert(accountInDb.uuid === null, 'Account should not have a uuid');
+
+        const post = Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+        });
+
+        await postRepository.save(post);
+
+        const result = await postRepository.getByApId(post.apId);
+
+        assert(result);
+
+        assert(result.author.uuid !== null);
+
+        // Verify the uuid was added to the account
+        accountInDb = await client('accounts').where('id', account.id).first();
+        assert(accountInDb.uuid === result.author.uuid);
     });
 
     it('Handles likes of a new post', async () => {

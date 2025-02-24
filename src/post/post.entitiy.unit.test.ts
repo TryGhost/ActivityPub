@@ -12,6 +12,7 @@ describe('Post', () => {
         };
         const postAuthorAccount = new Account(
             456,
+            null,
             'foobar',
             'Foo Bar',
             'Just a foobar',
@@ -21,6 +22,7 @@ describe('Post', () => {
         );
         const postReposterAccount = new Account(
             789,
+            null,
             'bazqux',
             'Baz Qux',
             'Just a bazqux',
@@ -46,6 +48,7 @@ describe('Post', () => {
         };
         const postAuthorAccount = new Account(
             456,
+            null,
             'foobar',
             'Foo Bar',
             'Just a foobar',
@@ -54,6 +57,7 @@ describe('Post', () => {
             postAuthorSite,
         );
         const postReposterAccount = new Account(
+            null,
             null,
             'bazqux',
             'Baz Qux',
