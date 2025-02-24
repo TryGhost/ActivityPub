@@ -57,7 +57,7 @@ export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
     private likesToRemove: Set<number> = new Set();
-    private potentiallyNewLikes: Set<number> = new Set();
+    private likesToAdd: Set<number> = new Set();
     private potentiallyNewReposts: Set<number> = new Set();
 
     constructor(
@@ -108,32 +108,26 @@ export class Post extends BaseEntity {
             throw new Error('Cannot add like for account with no id');
         }
         this.likesToRemove.delete(account.id);
-        this.potentiallyNewLikes.add(account.id);
+        this.likesToAdd.add(account.id);
     }
 
     removeLike(account: Account) {
         if (!account.id) {
             throw new Error('Cannot add like for account with no id');
         }
-        this.potentiallyNewLikes.delete(account.id);
+        this.likesToAdd.delete(account.id);
         this.likesToRemove.add(account.id);
     }
 
     getChangedLikes() {
         const likesToRemove = [...this.likesToRemove.values()];
         this.likesToRemove.clear();
-        const likesToAdd = [...this.potentiallyNewLikes.values()];
-        this.potentiallyNewLikes.clear();
+        const likesToAdd = [...this.likesToAdd.values()];
+        this.likesToAdd.clear();
         return {
             likesToRemove,
             likesToAdd,
         };
-    }
-
-    getPotentiallyNewLikes() {
-        const likes = [...this.potentiallyNewLikes.values()];
-        this.potentiallyNewLikes.clear();
-        return likes;
     }
 
     addRepost(account: Account) {
