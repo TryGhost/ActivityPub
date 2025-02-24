@@ -34,7 +34,11 @@ import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
 
-export function createUnlikeAction() {
+export function createUnlikeAction(
+    accountRepository: KnexAccountRepository,
+    postService: PostService,
+    postRepository: KnexPostRepository,
+) {
     return async function unlikeAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
     ) {
@@ -67,6 +71,25 @@ export function createUnlikeAction() {
             return new Response(null, {
                 status: 409,
             });
+        }
+
+        const idAsUrl = parseURL(id);
+
+        if (!idAsUrl) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const account = await accountRepository.getBySite(ctx.get('site'));
+        if (account !== null) {
+            const post = await postService.getByApId(idAsUrl);
+
+            if (post !== null) {
+                post.removeLike(account);
+
+                await postRepository.save(post);
+            }
         }
 
         const likeToUndo = await Like.fromJsonLd(likeToUndoJson);

@@ -844,7 +844,9 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createUnlikeAction()),
+    spanWrapper(
+        createUnlikeAction(accountRepository, postService, postRepository),
+    ),
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
