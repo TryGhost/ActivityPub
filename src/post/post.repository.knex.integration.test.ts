@@ -230,7 +230,7 @@ describe('KnexPostRepository', () => {
         assert.equal(likesInDb.length, 3, 'There should be 3 likes in the DB');
     });
 
-    it('Handles likes of an existing post', async () => {
+    it('Handles likes and unlikes of an existing post', async () => {
         const accounts = await Promise.all(
             ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
                 getAccount,
@@ -257,6 +257,7 @@ describe('KnexPostRepository', () => {
 
         post.addLike(accounts[0]);
         post.addLike(accounts[2]);
+        post.removeLike(accounts[1]);
 
         await postRepository.save(post);
 
@@ -267,7 +268,7 @@ describe('KnexPostRepository', () => {
             .select('like_count')
             .first();
 
-        assert.equal(rowInDb.like_count, 3, 'There should be 3 likes');
+        assert.equal(rowInDb.like_count, 2, 'There should be 2 likes');
     });
 
     it('Handles reposts of a new post', async () => {
