@@ -75,4 +75,73 @@ describe('Post', () => {
             'Cannot add repost for account with no id',
         );
     });
+
+    it('should handle adding and removing likes', () => {
+        const postAuthorSite = {
+            id: 123,
+            host: 'foobar.com',
+            webhook_secret: 'secret',
+        };
+        const postAuthorAccount = new Account(
+            456,
+            null,
+            'foobar',
+            'Foo Bar',
+            'Just a foobar',
+            new URL('https://foobar.com/avatar/foobar.png'),
+            new URL('https://foobar.com/banner/foobar.png'),
+            postAuthorSite,
+        );
+
+        const liker = new Account(
+            789,
+            null,
+            'bazqux',
+            'Baz Qux',
+            'Just a bazqux',
+            new URL('https://bazqux.com/avatar/bazqux.png'),
+            new URL('https://bazqux.com/banner/bazqux.png'),
+            null,
+        );
+
+        const unliker = new Account(
+            987,
+            null,
+            'bazqux',
+            'Baz Qux',
+            'Just a bazqux',
+            new URL('https://bazqux.com/avatar/bazqux.png'),
+            new URL('https://bazqux.com/banner/bazqux.png'),
+            null,
+        );
+
+        const accidentalUnliker = new Account(
+            654,
+            null,
+            'bazqux',
+            'Baz Qux',
+            'Just a bazqux',
+            new URL('https://bazqux.com/avatar/bazqux.png'),
+            new URL('https://bazqux.com/banner/bazqux.png'),
+            null,
+        );
+
+        const post = Post.createFromData(postAuthorAccount, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        post.addLike(liker);
+
+        post.removeLike(unliker);
+
+        post.addLike(accidentalUnliker);
+        post.removeLike(accidentalUnliker);
+        post.addLike(accidentalUnliker);
+
+        expect(post.getChangedLikes()).toEqual({
+            likesToAdd: [liker.id, accidentalUnliker.id],
+            likesToRemove: [unliker.id],
+        });
+    });
 });
