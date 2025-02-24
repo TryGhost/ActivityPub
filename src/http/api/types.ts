@@ -4,7 +4,7 @@ import type { PostType } from '../../post/post.entity';
  * Account returned by the API - Anywhere an account is returned via the API,
  * it should be this shape, or a partial version of it
  */
-export interface Account {
+export interface AccountDTO {
     /**
      * Internal ID of the account
      */
@@ -67,7 +67,7 @@ export interface Account {
  * Post returned by the API - Anywhere a post is returned via the API,
  * it should be this shape, or a partial version of it
  */
-export interface Post {
+export interface PostDTO {
     /**
      * Internal ID of the post
      */
@@ -140,7 +140,7 @@ export interface Post {
     /**
      * Author of the post (partial account)
      */
-    author: Pick<Account, 'id' | 'handle' | 'avatarUrl' | 'name' | 'url'>;
+    author: Pick<AccountDTO, 'id' | 'handle' | 'avatarUrl' | 'name' | 'url'>;
     /**
      * Number of reposts of the post
      */
@@ -153,7 +153,7 @@ export interface Post {
      * Account that reposted the post
      */
     repostedBy: Pick<
-        Account,
+        AccountDTO,
         'id' | 'handle' | 'avatarUrl' | 'name' | 'url'
     > | null;
 }
