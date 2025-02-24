@@ -176,7 +176,10 @@ export class KnexPostRepository {
                                   repostsToAdd,
                                   transaction,
                               )
-                            : { insertedRepostsCount: 0, accountIdsInserted: [] };
+                            : {
+                                  insertedRepostsCount: 0,
+                                  accountIdsInserted: [],
+                              };
 
                     const removedRepostsCount =
                         repostsToRemove.length > 0
