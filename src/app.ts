@@ -85,9 +85,9 @@ import {
     createReplyActionHandler,
     createRepostActionHandler,
     createUnfollowActionHandler,
+    createUnlikeAction,
     getSiteDataHandler,
     inboxHandler,
-    unlikeAction,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
 import { getSiteSettings } from './helpers/ghost';
@@ -844,7 +844,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(unlikeAction),
+    spanWrapper(createUnlikeAction()),
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
