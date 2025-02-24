@@ -1701,3 +1701,19 @@ Then('the feed has a next cursor', async function () {
 
     assert(responseJson.next, 'Expected feed to have a next cursor');
 });
+
+Then(
+    'post {string} in the feed is {string}',
+    async function (postNumber, activityOrObjectName) {
+        const responseJson = await this.response.clone().json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        const post = responseJson.posts[Number(postNumber) - 1];
+
+        if (activity) {
+            assert(post.url === activity.object.id);
+        } else if (object) {
+            assert(post.url === object.id);
+        }
+    },
+);

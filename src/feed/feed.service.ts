@@ -183,10 +183,7 @@ export class FeedService {
                     });
                 }
             })
-            .orderBy([
-                { column: 'feeds.created_at', order: 'desc' },
-                { column: 'feeds.post_id', order: 'desc' },
-            ])
+            .orderBy('feeds.id', 'desc')
             .limit(options.limit + 1);
 
         const results = await query;

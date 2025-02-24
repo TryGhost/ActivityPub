@@ -11,19 +11,7 @@ Feature: Feed
     And "Alice" sends "Accept" to the Inbox
     And "Accept" is in our Inbox
 
-  Scenario: Querying the inbox
-    Given a "Create(Article)" Activity "Article1" by "Alice"
-    And "Alice" sends "Article1" to the Inbox
-    And "Article1" is in our Inbox
-    And a "Create(Note)" Activity "Note1" by "Alice"
-    And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
-    When an authenticated request is made to "/.ghost/activitypub/inbox"
-    Then the request is accepted
-    And the feed contains "Article1"
-    And the feed does not contain "Note1"
-
-  Scenario: Querying the feed filtered by type: Note
+  Scenario: Querying the feed
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
@@ -34,6 +22,18 @@ Feature: Feed
     Then the request is accepted
     And the feed contains "Note1"
     And the feed does not contain "Article1"
+
+  Scenario: Feed is sorted by date descending
+    Given a "Create(Note)" Activity "Note1" by "Alice"
+    And "Alice" sends "Note1" to the Inbox
+    And "Note1" is in our Inbox
+    And a "Create(Note)" Activity "Note2" by "Alice"
+    And "Alice" sends "Note2" to the Inbox
+    And "Note2" is in our Inbox
+    When an authenticated request is made to "/.ghost/activitypub/feed"
+    Then the request is accepted
+    And post "1" in the feed is "Note2"
+    And post "2" in the feed is "Note1"
 
   Scenario: Feed is paginated
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -109,3 +109,19 @@ Feature: Feed
     Then the request is accepted
     And the feed contains "Note1"
     And the feed does not contain "ReplyCreate"
+
+  Scenario: Querying the inbox (feed filtered to only return articles)
+    Given a "Create(Article)" Activity "Article1" by "Alice"
+    And "Alice" sends "Article1" to the Inbox
+    And "Article1" is in our Inbox
+    And a "Create(Article)" Activity "Article2" by "Alice"
+    And "Alice" sends "Article2" to the Inbox
+    And "Article2" is in our Inbox
+    And a "Create(Note)" Activity "Note1" by "Alice"
+    And "Alice" sends "Note1" to the Inbox
+    And "Note1" is in our Inbox
+    When an authenticated request is made to "/.ghost/activitypub/inbox"
+    Then the request is accepted
+    And post "1" in the feed is "Article2"
+    And post "2" in the feed is "Article1"
+    And the feed does not contain "Note1"
