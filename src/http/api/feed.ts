@@ -2,7 +2,7 @@ import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
 import type { FeedService, FeedType } from '../../feed/feed.service';
-import type { Post } from './types';
+import type { PostDTO } from './types';
 
 /**
  * Default number of posts to return in a feed
@@ -57,7 +57,7 @@ export function createGetFeedHandler(
             cursor,
         });
 
-        const posts: Post[] = results.map((result) => {
+        const posts: PostDTO[] = results.map((result) => {
             return {
                 id: result.post_ap_id,
                 type: result.post_type,

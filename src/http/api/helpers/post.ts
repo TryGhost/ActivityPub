@@ -17,7 +17,7 @@ import type {
 } from '../../../helpers/activitypub/activity';
 import { lookupActor } from '../../../lookup-helpers';
 import { PostType } from '../../../post/post.entity';
-import type { Post } from '../types';
+import type { PostDTO } from '../types';
 
 /**
  * Get the author of a post from an activity: If the activity has attribution,
@@ -196,7 +196,7 @@ export async function mapActivityToPost(
     activity: Activity,
     accountService: AccountService,
     fedifyCtx: FedifyRequestContext,
-): Promise<Post | null> {
+): Promise<PostDTO | null> {
     const object = activity.object as ActivityObject;
 
     // At the moment it is possible that a post can be published without any
@@ -211,7 +211,7 @@ export async function mapActivityToPost(
         return null;
     }
 
-    const post: Post = {
+    const post: PostDTO = {
         id: object.id,
         type:
             object.type === ACTIVITY_OBJECT_TYPE_ARTICLE
