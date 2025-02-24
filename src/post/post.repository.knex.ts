@@ -1,6 +1,7 @@
 import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 
+import { randomUUID } from 'node:crypto';
 import { Account } from '../account/account.entity';
 import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { parseURL } from '../core/url';
@@ -38,6 +39,7 @@ export class KnexPostRepository {
                 'posts.in_reply_to',
                 'posts.thread_root',
                 'accounts.username',
+                'accounts.uuid as author_uuid',
                 'accounts.name',
                 'accounts.bio',
                 'accounts.avatar_url',
@@ -49,8 +51,16 @@ export class KnexPostRepository {
             return null;
         }
 
+        if (!row.author_uuid) {
+            row.author_uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: row.author_uuid })
+                .where({ id: row.author_id });
+        }
+
         const author = new Account(
             row.author_id,
+            row.author_uuid,
             row.username,
             row.name,
             row.bio,

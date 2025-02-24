@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
@@ -32,8 +33,16 @@ export class KnexAccountRepository {
             throw new Error(`Default account not found for site ${site.id}`);
         }
 
+        if (!account.uuid) {
+            account.uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: account.uuid })
+                .where({ id: account.id });
+        }
+
         return new Account(
             user.account_id,
+            account.uuid,
             account.username,
             account.name,
             account.bio,
@@ -74,8 +83,16 @@ export class KnexAccountRepository {
             };
         }
 
+        if (!accountRow.uuid) {
+            accountRow.uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: accountRow.uuid })
+                .where({ id: accountRow.id });
+        }
+
         const account = new Account(
             accountRow.id,
+            accountRow.uuid,
             accountRow.username,
             accountRow.name,
             accountRow.bio,
