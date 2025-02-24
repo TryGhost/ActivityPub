@@ -103,14 +103,14 @@ export class KnexPostRepository {
         const isNewPost = post.isNew;
 
         try {
-            const potentiallyNewLikes = post.getPotentiallyNewLikes();
+            const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const potentiallyNewReposts = post.getPotentiallyNewReposts();
             let repostAccountIds: number[] = [];
 
             if (isNewPost) {
                 const postId = await this.insertPost(
                     post,
-                    potentiallyNewLikes.length,
+                    likesToAdd.length,
                     potentiallyNewReposts.length,
                     transaction,
                 );
@@ -126,12 +126,8 @@ export class KnexPostRepository {
                 // Hacks? Mutate the Post so `isNew` returns false.
                 (post as any).id = postId;
 
-                if (potentiallyNewLikes.length > 0) {
-                    await this.insertLikes(
-                        post,
-                        potentiallyNewLikes,
-                        transaction,
-                    );
+                if (likesToAdd.length > 0) {
+                    await this.insertLikes(post, likesToAdd, transaction);
                 }
 
                 if (potentiallyNewReposts.length > 0) {
@@ -146,19 +142,30 @@ export class KnexPostRepository {
                     );
                 }
             } else {
-                if (potentiallyNewLikes.length > 0) {
+                if (likesToAdd.length > 0 || likesToRemove.length > 0) {
                     const insertedLikesCount =
-                        await this.insertLikesIgnoringDuplicates(
-                            post,
-                            potentiallyNewLikes,
-                            transaction,
-                        );
+                        likesToAdd.length > 0
+                            ? await this.insertLikesIgnoringDuplicates(
+                                  post,
+                                  likesToAdd,
+                                  transaction,
+                              )
+                            : 0;
 
-                    if (insertedLikesCount > 0) {
+                    const removedLikesCount =
+                        likesToRemove.length > 0
+                            ? await this.removeLikes(
+                                  post,
+                                  likesToRemove,
+                                  transaction,
+                              )
+                            : 0;
+
+                    if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction(TABLE_POSTS)
                             .update({
                                 like_count: transaction.raw(
-                                    `like_count + ${insertedLikesCount}`,
+                                    `like_count + ${insertedLikesCount - removedLikesCount}`,
                                 ),
                             })
                             .where({ id: post.id });
@@ -265,6 +272,26 @@ export class KnexPostRepository {
         }));
 
         await transaction(TABLE_LIKES).insert(likesToInsert);
+    }
+
+    /**
+     * Remove likes of a post from the database
+     *
+     * @param post Post to remove likes for
+     * @param accountIds Account IDs to remove likes for
+     * @param transaction Database transaction to use
+     */
+    private async removeLikes(
+        post: Post,
+        accountIds: number[],
+        transaction: Knex.Transaction,
+    ): Promise<number> {
+        return await transaction(TABLE_LIKES)
+            .where({
+                post_id: post.id,
+            })
+            .whereIn('account_id', accountIds)
+            .del();
     }
 
     /**
