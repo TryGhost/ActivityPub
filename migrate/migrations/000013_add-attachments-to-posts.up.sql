@@ -1,1 +1,1 @@
-ALTER TABLE posts ADD COLUMN attachments JSON NULL; 
+ALTER TABLE posts ADD COLUMN attachments JSON NULL;

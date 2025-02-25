@@ -1,1 +1,1 @@
-ALTER TABLE posts DROP COLUMN attachments; 
+ALTER TABLE posts DROP COLUMN attachments;

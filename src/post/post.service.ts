@@ -1,7 +1,7 @@
 import { Article, Note, lookupObject } from '@fedify/fedify';
 import type { AccountService } from '../account/account.service';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { Post, PostType, type PostAttachment } from './post.entity';
+import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export class PostService {
