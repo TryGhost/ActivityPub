@@ -464,4 +464,56 @@ describe('KnexPostRepository', () => {
             'There should be 3 replies in the DB',
         );
     });
+
+    it('Can save and retrieve a Post with attachments', async () => {
+        const site = await siteService.initialiseSiteForHost('testing.com');
+        const account = await accountRepository.getBySite(site);
+        const attachments = [
+            {
+                type: 'Document',
+                mediaType: 'image/jpeg',
+                name: 'test-image.jpg',
+                url: 'https://testing.com/test-image.jpg',
+            },
+            {
+                type: 'Document',
+                mediaType: 'application/pdf',
+                name: 'test-document.pdf',
+                url: 'https://testing.com/test-document.pdf',
+            },
+        ];
+
+        const post = Post.createFromData(account, {
+            type: PostType.Note,
+            content: 'Post with attachments',
+            url: new URL('https://testing.com/post-with-attachments'),
+            publishedAt: new Date('2025-01-01'),
+            attachments: attachments,
+        });
+
+        await postRepository.save(post);
+
+        const retrievedPost = await postRepository.getByApId(post.apId);
+
+        assert(retrievedPost, 'Post should be retrieved from DB');
+        assert.deepStrictEqual(
+            retrievedPost.attachments,
+            attachments,
+            'Attachments should match',
+        );
+
+        const rowInDb = await client(TABLE_POSTS)
+            .where({
+                uuid: post.uuid,
+            })
+            .select('attachments')
+            .first();
+
+        assert(rowInDb.attachments, 'Attachments should be saved in DB');
+        assert.deepStrictEqual(
+            rowInDb.attachments,
+            attachments,
+            'Attachments in DB should match',
+        );
+    });
 });

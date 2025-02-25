@@ -1,7 +1,7 @@
 import { Article, Note, lookupObject } from '@fedify/fedify';
 import type { AccountService } from '../account/account.service';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { Post, PostType } from './post.entity';
+import { Post, PostType, type PostAttachment } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export class PostService {
@@ -10,6 +10,40 @@ export class PostService {
         private readonly accountService: AccountService,
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
+
+    /**
+     * Get the attachments for a post
+     *
+     * @param attachments
+     */
+    private async getPostAttachments(
+        foundObject: Note | Article,
+    ): Promise<PostAttachment[] | null> {
+        const attachmentIds = foundObject.attachmentIds;
+        if (!attachmentIds || attachmentIds.length === 0) {
+            return null;
+        }
+
+        console.log('attachmentIds: ', attachmentIds);
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+
+        const attachments = await Promise.all(
+            attachmentIds.map((id) => lookupObject(id, { documentLoader })),
+        );
+
+        return attachments
+            .filter((a): a is NonNullable<typeof a> => a !== null)
+            .map((a: any) => ({
+                type: a.type?.toString(),
+                mediaType: a.mediaType?.toString(),
+                name: a.name?.toString(),
+                url: a.url?.toString(),
+            }));
+    }
 
     async getByApId(id: URL): Promise<Post | null> {
         const post = await this.postRepository.getByApId(id);
@@ -60,6 +94,8 @@ export class PostService {
             inReplyTo = await this.getByApId(foundObject.replyTargetId);
         }
 
+        const attachments = await this.getPostAttachments(foundObject);
+
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
@@ -69,7 +105,10 @@ export class PostService {
             url: foundObject.url instanceof URL ? foundObject.url : id,
             apId: id,
             inReplyTo,
+            attachments,
         });
+
+        console.log('newlyCreatedPost: ', newlyCreatedPost);
 
         await this.postRepository.save(newlyCreatedPost);
 

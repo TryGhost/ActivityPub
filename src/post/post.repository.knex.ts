@@ -35,6 +35,7 @@ export class KnexPostRepository {
                 'posts.repost_count',
                 'posts.reply_count',
                 'posts.reading_time_minutes',
+                'posts.attachments',
                 'posts.author_id',
                 'posts.ap_id',
                 'posts.in_reply_to',
@@ -88,6 +89,7 @@ export class KnexPostRepository {
             row.in_reply_to,
             row.thread_root,
             row.reading_time_minutes,
+            row.attachments,
             new URL(row.ap_id),
         );
 
@@ -268,6 +270,9 @@ export class KnexPostRepository {
             repost_count: repostCount,
             reply_count: 0,
             reading_time_minutes: post.readingTime,
+            attachments: post.attachments
+                ? JSON.stringify(post.attachments)
+                : null,
             ap_id: post.apId.href,
         });
 
