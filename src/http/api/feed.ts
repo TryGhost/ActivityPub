@@ -62,7 +62,7 @@ export function createGetFeedHandler(
 
             const posts: Post[] = results.map((result) => {
                 return {
-                    id: result.post_id.toString(),
+                    id: result.post_ap_id,
                     type: result.post_type,
                     title: result.post_title ?? '',
                     excerpt: result.post_excerpt ?? '',
