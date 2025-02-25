@@ -94,6 +94,11 @@ export class FeedService {
             postType = PostType.Note;
         }
 
+        const { id: userId } = await this.db('users')
+            .where('account_id', options.accountId)
+            .select('id')
+            .first();
+
         const query = this.db('feeds')
             .select(
                 // Post fields
@@ -149,28 +154,21 @@ export class FeedService {
                 'reposter_account.id',
                 'feeds.reposted_by_id',
             )
-            .innerJoin(
-                'users',
-                this.db.raw('users.account_id = ?', [options.accountId]),
-            )
-            .innerJoin(
-                'accounts as user_account',
-                'users.account_id',
-                'user_account.id',
-            )
             .leftJoin('likes', function () {
-                this.on('likes.account_id', 'user_account.id').andOn(
-                    'likes.post_id',
-                    'posts.id',
+                this.on('likes.post_id', 'posts.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    options.accountId.toString(),
                 );
             })
             .leftJoin('reposts', function () {
-                this.on('reposts.account_id', 'user_account.id').andOn(
-                    'reposts.post_id',
-                    'posts.id',
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    options.accountId.toString(),
                 );
             })
-            .whereRaw('feeds.user_id = users.id')
+            .whereRaw('feeds.user_id = ?', [userId])
             .where('feeds.post_type', postType)
             .modify((query) => {
                 if (options.cursor) {
