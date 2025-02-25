@@ -97,59 +97,55 @@ export class FeedService {
         const query = this.db('feeds')
             .select(
                 // Post fields
-                this.db.raw('posts.id as post_id'),
-                this.db.raw('posts.type as post_type'),
-                this.db.raw('posts.title as post_title'),
-                this.db.raw('posts.excerpt as post_excerpt'),
-                this.db.raw('posts.content as post_content'),
-                this.db.raw('posts.url as post_url'),
-                this.db.raw('posts.image_url as post_image_url'),
-                this.db.raw('posts.published_at as post_published_at'),
-                this.db.raw('posts.like_count as post_like_count'),
+                'posts.id as post_id',
+                'posts.type as post_type',
+                'posts.title as post_title',
+                'posts.excerpt as post_excerpt',
+                'posts.content as post_content',
+                'posts.url as post_url',
+                'posts.image_url as post_image_url',
+                'posts.published_at as post_published_at',
+                'posts.like_count as post_like_count',
                 this.db.raw(`
                     CASE
                         WHEN likes.account_id IS NOT NULL THEN 1
                         ELSE 0
                     END AS post_liked_by_user
                 `),
-                this.db.raw('posts.reply_count as post_reply_count'),
-                this.db.raw(
-                    'posts.reading_time_minutes as post_reading_time_minutes',
-                ),
+                'posts.reply_count as post_reply_count',
+                'posts.reading_time_minutes as post_reading_time_minutes',
                 // TODO: attachments
-                this.db.raw('posts.repost_count as post_repost_count'),
+                'posts.repost_count as post_repost_count',
                 this.db.raw(`
                     CASE
                         WHEN reposts.account_id IS NOT NULL THEN 1
                         ELSE 0
                     END AS post_reposted_by_user
                 `),
-                this.db.raw('posts.ap_id as post_ap_id'),
+                'posts.ap_id as post_ap_id',
                 // Author fields
-                this.db.raw('author_account.id as author_id'),
-                this.db.raw('author_account.name as author_name'),
-                this.db.raw('author_account.username as author_username'),
-                this.db.raw('author_account.url as author_url'),
-                this.db.raw('author_account.avatar_url as author_avatar_url'),
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.avatar_url as author_avatar_url',
                 // Reposter fields
-                this.db.raw('reposter_account.id as reposter_id'),
-                this.db.raw('reposter_account.name as reposter_name'),
-                this.db.raw('reposter_account.username as reposter_username'),
-                this.db.raw('reposter_account.url as reposter_url'),
-                this.db.raw(
-                    'reposter_account.avatar_url as reposter_avatar_url',
-                ),
+                'reposter_account.id as reposter_id',
+                'reposter_account.name as reposter_name',
+                'reposter_account.username as reposter_username',
+                'reposter_account.url as reposter_url',
+                'reposter_account.avatar_url as reposter_avatar_url',
                 // Feed fields
-                this.db.raw('feeds.created_at as feed_inserted_at'),
+                'feeds.created_at as feed_inserted_at',
             )
             .innerJoin('posts', 'posts.id', 'feeds.post_id')
             .innerJoin(
-                this.db.raw('accounts as author_account'),
+                'accounts as author_account',
                 'author_account.id',
                 'posts.author_id',
             )
             .leftJoin(
-                this.db.raw('accounts as reposter_account'),
+                'accounts as reposter_account',
                 'reposter_account.id',
                 'feeds.reposted_by_id',
             )
@@ -158,7 +154,7 @@ export class FeedService {
                 this.db.raw('users.account_id = ?', [options.accountId]),
             )
             .innerJoin(
-                this.db.raw('accounts as user_account'),
+                'accounts as user_account',
                 'users.account_id',
                 'user_account.id',
             )
