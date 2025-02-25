@@ -114,7 +114,7 @@ export class Post extends BaseEntity {
 
     removeLike(account: Account) {
         if (!account.id) {
-            throw new Error('Cannot add like for account with no id');
+            throw new Error('Cannot remove like for account with no id');
         }
         this.likesToAdd.delete(account.id);
         this.likesToRemove.add(account.id);
@@ -141,7 +141,7 @@ export class Post extends BaseEntity {
 
     removeRepost(account: Account) {
         if (!account.id) {
-            throw new Error('Cannot add repost for account with no id');
+            throw new Error('Cannot remove repost for account with no id');
         }
         this.repostsToAdd.delete(account.id);
         this.repostsToRemove.add(account.id);

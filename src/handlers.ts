@@ -833,19 +833,20 @@ export function createDerepostActionHandler(
 
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
 
-        if (!post.id) {
-            ctx.get('logger').info('Invalid Derepost - no post id');
-            return;
+        const idAsUrl = parseURL(id);
+
+        if (!idAsUrl) {
+            return new Response(null, {
+                status: 400,
+            });
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
-        if (account !== null) {
-            const originalPost = await postService.getByApId(post.id);
+        const originalPost = await postService.getByApId(idAsUrl);
 
-            if (originalPost) {
-                originalPost.removeRepost(account);
-                await postRepository.save(originalPost);
-            }
+        if (originalPost) {
+            originalPost.removeRepost(account);
+            await postRepository.save(originalPost);
         }
 
         const undo = new Undo({
