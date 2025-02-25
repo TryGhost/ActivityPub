@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import '../../app';
 import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
