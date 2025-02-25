@@ -34,6 +34,7 @@ describe('Post', () => {
 
         const postDereposterAccount = new Account(
             987,
+            null,
             'bazqux',
             'Baz Qux',
             'Just a bazqux',
@@ -44,6 +45,7 @@ describe('Post', () => {
 
         const accidentalPostDereposterAccount = new Account(
             654,
+            null,
             'bazqux',
             'Baz Qux',
             'Just a bazqux',
