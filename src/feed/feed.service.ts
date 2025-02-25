@@ -136,7 +136,7 @@ export class FeedService {
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Feed fields
-                'feeds.created_at as feed_inserted_at',
+                'feeds.id as feed_id',
             )
             .innerJoin('posts', 'posts.id', 'feeds.post_id')
             .innerJoin(
@@ -174,21 +174,7 @@ export class FeedService {
             .where('feeds.post_type', postType)
             .modify((query) => {
                 if (options.cursor) {
-                    const [timestamp, id] = options.cursor.split('_');
-
-                    query.where((builder) => {
-                        builder
-                            .where('feeds.created_at', '<', new Date(timestamp))
-                            .orWhere((subBuilder) => {
-                                subBuilder
-                                    .where(
-                                        'feeds.created_at',
-                                        '=',
-                                        new Date(timestamp),
-                                    )
-                                    .andWhere('feeds.post_id', '<', id);
-                            });
-                    });
+                    query.where('feeds.id', '<', options.cursor);
                 }
             })
             .orderBy('feeds.id', 'desc')
@@ -202,9 +188,7 @@ export class FeedService {
 
         return {
             results: paginatedResults,
-            nextCursor: hasMore
-                ? `${lastResult.feed_inserted_at.toISOString()}_${lastResult.post_id}`
-                : null,
+            nextCursor: hasMore ? lastResult.feed_id.toString() : null,
         };
     }
 
