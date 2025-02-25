@@ -1669,10 +1669,10 @@ Then('the feed contains {string}', async function (activityOrObjectName) {
 
     if (activity) {
         found = responseJson.posts.find(
-            (post) => post.id === activity.object.id,
+            (post) => post.url === activity.object.id,
         );
     } else if (object) {
-        found = responseJson.posts.find((post) => post.id === object.id);
+        found = responseJson.posts.find((post) => post.url === object.id);
     }
 
     assert(found, `Expected to find ${activityOrObjectName} in feed`);
@@ -1687,9 +1687,9 @@ Then(
         let found;
 
         if (activity) {
-            found = responseJson.posts.find((post) => post.id === activity.id);
+            found = responseJson.posts.find((post) => post.url === activity.id);
         } else if (object) {
-            found = responseJson.posts.find((post) => post.id === object.id);
+            found = responseJson.posts.find((post) => post.url === object.id);
         }
 
         assert(!found, `Expected not to find ${activityOrObjectName} in feed`);
@@ -1701,3 +1701,19 @@ Then('the feed has a next cursor', async function () {
 
     assert(responseJson.next, 'Expected feed to have a next cursor');
 });
+
+Then(
+    'post {string} in the feed is {string}',
+    async function (postNumber, activityOrObjectName) {
+        const responseJson = await this.response.clone().json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        const post = responseJson.posts[Number(postNumber) - 1];
+
+        if (activity) {
+            assert(post.url === activity.object.id);
+        } else if (object) {
+            assert(post.url === object.id);
+        }
+    },
+);

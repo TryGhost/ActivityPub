@@ -1,4 +1,4 @@
-import type { PostType } from '../../feed/types';
+import type { PostType } from '../../post/post.entity';
 
 /**
  * Account returned by the API - Anywhere an account is returned via the API,
@@ -99,7 +99,7 @@ export interface Post {
     /**
      * Date the post was published
      */
-    publishedAt: string;
+    publishedAt: Date;
     /**
      * Number of likes the post has
      */

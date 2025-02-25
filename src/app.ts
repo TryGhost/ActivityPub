@@ -34,7 +34,6 @@ import {
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
-import { PostType } from 'feed/types';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -77,6 +76,7 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
+import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
 import {
     createDerepostActionHandler,
@@ -247,7 +247,9 @@ const postService = new PostService(
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
-const feedService = new FeedService(client, events);
+const feedService = new FeedService(client);
+const feedUpdateService = new FeedUpdateService(events, feedService);
+feedUpdateService.init();
 
 const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
 fediverseBridge.init();
@@ -924,16 +926,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner),
-    spanWrapper(
-        createGetFeedHandler(feedService, accountService, PostType.Note),
-    ),
+    spanWrapper(createGetFeedHandler(feedService, accountService, 'Feed')),
 );
 app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner),
-    spanWrapper(
-        createGetFeedHandler(feedService, accountService, PostType.Article),
-    ),
+    spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
 );
 /** Federation wire up */
 

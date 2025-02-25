@@ -16,15 +16,17 @@ import {
     TABLE_USERS,
 } from '../constants';
 import { client } from '../db';
-import { Audience, type PostData, PostType } from '../post/post.entity';
+import {
+    Audience,
+    type FollowersOnlyPost,
+    type PostData,
+    PostType,
+    type PublicPost,
+} from '../post/post.entity';
 import { Post } from '../post/post.entity';
 import { KnexPostRepository } from '../post/post.repository.knex';
 import { SiteService } from '../site/site.service';
 import { FeedService } from './feed.service';
-import {
-    FeedsUpdatedEvent,
-    FeedsUpdatedEventUpdateOperation,
-} from './feeds-updated.event';
 
 describe('FeedService', () => {
     let events: EventEmitter;
@@ -92,7 +94,7 @@ describe('FeedService', () => {
         return post;
     };
 
-    const getFeedForAccount = async (account: Account) => {
+    const getFeedDataForAccount = async (account: Account) => {
         const feed = await client(TABLE_FEEDS)
             .join(TABLE_USERS, `${TABLE_USERS}.id`, `${TABLE_FEEDS}.user_id`)
             .join(
@@ -103,23 +105,6 @@ describe('FeedService', () => {
             .where(`${TABLE_ACCOUNTS}.id`, account.id);
 
         return feed;
-    };
-
-    const waitForPostAddedToFeeds = (post: Post) => {
-        return new Promise<void>((resolve) => {
-            events.on(
-                FeedsUpdatedEvent.getName(),
-                (event: FeedsUpdatedEvent) => {
-                    if (
-                        event.post.id === post.id &&
-                        event.updateOperation ===
-                            FeedsUpdatedEventUpdateOperation.PostAdded
-                    ) {
-                        resolve();
-                    }
-                },
-            );
-        });
     };
 
     beforeEach(async () => {
@@ -139,7 +124,7 @@ describe('FeedService', () => {
         externalAccountCount = 0;
         postCount = 0;
 
-        // Init dependencies
+        // Init deps / support
         events = new EventEmitter();
         accountRepository = new KnexAccountRepository(client, events);
         fedifyContextFactory = new FedifyContextFactory();
@@ -163,9 +148,9 @@ describe('FeedService', () => {
         postRepository = new KnexPostRepository(client, events);
     });
 
-    describe('handling a post being created', () => {
-        it("should add to the user's feed, the reply target authors feed, and any follower feeds if the post audience is: Public or FollowersOnly", async () => {
-            const feedService = new FeedService(client, events);
+    describe('addPostToFeeds', () => {
+        it('should add a post to the feeds of the users that should see it', async () => {
+            const feedService = new FeedService(client);
 
             // Initialise user internal account
             const userAccount = await createInternalAccount('foo.com');
@@ -183,8 +168,6 @@ describe('FeedService', () => {
 
             // Initialise an external account that follows the user - This account
             // should not have a feed so we should not try and add a post to it.
-            // If we did, an error would be thrown and the test would fail.
-            // @TODO: Is there a better way to test this?
             const externalAccount = await createExternalAccount('qux.com');
 
             await accountService.recordAccountFollow(
@@ -192,44 +175,39 @@ describe('FeedService', () => {
                 externalAccount,
             );
 
-            // Create posts
+            // Initialise posts
             const userAccountPost = await createPost(userAccount, {
                 audience: Audience.Public,
             });
             await postRepository.save(userAccountPost);
-            await waitForPostAddedToFeeds(userAccountPost);
 
             const followedAccountPost = await createPost(followedAccount, {
                 audience: Audience.FollowersOnly,
             });
             await postRepository.save(followedAccountPost);
-            await waitForPostAddedToFeeds(followedAccountPost);
 
             const unfollowedAccountPost = await createPost(unfollowedAccount, {
                 audience: Audience.Public,
             });
             await postRepository.save(unfollowedAccountPost);
-            await waitForPostAddedToFeeds(unfollowedAccountPost);
 
-            const unfollowedAccountReply = await createPost(unfollowedAccount, {
-                type: PostType.Note,
-                audience: Audience.Public,
-                content: `This is a reply to ${userAccountPost.title}`,
-                inReplyTo: userAccountPost,
-            });
-            await postRepository.save(unfollowedAccountReply);
-            await waitForPostAddedToFeeds(unfollowedAccountReply);
+            // Update feeds
+            await feedService.addPostToFeeds(userAccountPost as PublicPost);
+            await feedService.addPostToFeeds(
+                followedAccountPost as FollowersOnlyPost,
+            );
+            await feedService.addPostToFeeds(
+                unfollowedAccountPost as PublicPost,
+            );
 
             // Assert feeds for each account are as expected
 
-            // userAccount should have 3 posts in their feed:
+            // userAccount should have 2 posts in their feed:
             // - Their own
             // - followedAccount's post (because userAccount follows followedAccount)
-            // - unfollowedAccount's reply (because userAccount's post was replied
-            //   to in unfollowedAccount's reply post)
-            const userAccountFeed = await getFeedForAccount(userAccount);
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
 
-            expect(userAccountFeed.length).toBe(3);
+            expect(userAccountFeed.length).toBe(2);
             expect(userAccountFeed[0]).toMatchObject({
                 post_type: userAccountPost.type,
                 audience: userAccountPost.audience,
@@ -244,18 +222,11 @@ describe('FeedService', () => {
                 author_id: followedAccount.id,
                 reposted_by_id: null,
             });
-            expect(userAccountFeed[2]).toMatchObject({
-                post_type: unfollowedAccountReply.type,
-                audience: unfollowedAccountReply.audience,
-                post_id: unfollowedAccountReply.id,
-                author_id: unfollowedAccount.id,
-                reposted_by_id: null,
-            });
 
             // followedAccount should have 1 post in their feed:
             // - Their own (because they do not follow anyone)
             const followedAccountFeed =
-                await getFeedForAccount(followedAccount);
+                await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(1);
             expect(followedAccountFeed[0]).toMatchObject({
                 post_type: followedAccountPost.type,
@@ -265,11 +236,11 @@ describe('FeedService', () => {
                 reposted_by_id: null,
             });
 
-            // unfollowedAccount should have 2 posts in their feed:
+            // unfollowedAccount should have 1 post in their feed:
             // - Their own (because they do not follow anyone)
             const unfollowedAccountFeed =
-                await getFeedForAccount(unfollowedAccount);
-            expect(unfollowedAccountFeed.length).toBe(2);
+                await getFeedDataForAccount(unfollowedAccount);
+            expect(unfollowedAccountFeed.length).toBe(1);
             expect(unfollowedAccountFeed[0]).toMatchObject({
                 post_type: unfollowedAccountPost.type,
                 audience: unfollowedAccountPost.audience,
@@ -277,19 +248,10 @@ describe('FeedService', () => {
                 author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
-            expect(unfollowedAccountFeed[1]).toMatchObject({
-                post_type: unfollowedAccountReply.type,
-                audience: unfollowedAccountReply.audience,
-                post_id: unfollowedAccountReply.id,
-                author_id: unfollowedAccount.id,
-                reposted_by_id: null,
-            });
         }, 10000);
-    });
 
-    describe('handling a post being reposted', () => {
-        it("should add to the reposter's feed and any follower feeds if the post audience is: Public or FollowersOnly", async () => {
-            const feedService = new FeedService(client, events);
+        it('should addd reposted posts to the feeds of the users that should see it', async () => {
+            const feedService = new FeedService(client);
 
             // Initialise user internal account
             const userAccount = await createInternalAccount('foo.com');
@@ -306,23 +268,30 @@ describe('FeedService', () => {
             // Initialise an internal account that the user will not follow
             const unfollowedAccount = await createInternalAccount('baz.com');
 
-            // Create posts
+            // Initialise posts
             const unfollowedAccountPost = await createPost(unfollowedAccount, {
                 audience: Audience.Public,
             });
-
             await postRepository.save(unfollowedAccountPost);
-            await waitForPostAddedToFeeds(unfollowedAccountPost);
 
             unfollowedAccountPost.addRepost(followedAccount);
             await postRepository.save(unfollowedAccountPost);
-            await waitForPostAddedToFeeds(unfollowedAccountPost);
+
+            // Update feeds
+            await feedService.addPostToFeeds(
+                unfollowedAccountPost as PublicPost,
+            );
+
+            await feedService.addPostToFeeds(
+                unfollowedAccountPost as PublicPost,
+                followedAccount.id,
+            );
 
             // Assert feeds for each account are as expected
 
             // userAccount should have 1 posts in their feed:
             // - The reposted post (because they follow followedAccount)
-            const userAccountFeed = await getFeedForAccount(userAccount);
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
 
             expect(userAccountFeed.length).toBe(1);
             expect(userAccountFeed[0]).toMatchObject({
@@ -334,9 +303,9 @@ describe('FeedService', () => {
             });
 
             // followedAccount should have 1 post in their feed:
-            // - Their own (because they do not follow anyone)
+            // - The post they reposted
             const followedAccountFeed =
-                await getFeedForAccount(followedAccount);
+                await getFeedDataForAccount(followedAccount);
 
             expect(followedAccountFeed.length).toBe(1);
             expect(followedAccountFeed[0]).toMatchObject({
@@ -350,7 +319,7 @@ describe('FeedService', () => {
             // unfollowedAccount should have 1 post in their feed:
             // - Their own (because they do not follow anyone)
             const unfollowedAccountFeed =
-                await getFeedForAccount(unfollowedAccount);
+                await getFeedDataForAccount(unfollowedAccount);
 
             expect(unfollowedAccountFeed.length).toBe(1);
             expect(unfollowedAccountFeed[0]).toMatchObject({
@@ -360,6 +329,59 @@ describe('FeedService', () => {
                 author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
+        }, 10000);
+
+        it('should not add replies to feeds', async () => {
+            const feedService = new FeedService(client);
+
+            // Initialise user internal account
+            const userAccount = await createInternalAccount('foo.com');
+
+            // Initialise an internal account that the user will follow
+            const followedAccount = await createInternalAccount('bar.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Initialise a post that the user will reply to
+            const post = await createPost(userAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Initialise a reply to the post
+            const reply = await createPost(followedAccount, {
+                audience: Audience.Public,
+                inReplyTo: post,
+            });
+            await postRepository.save(reply);
+
+            // Update feeds
+            await feedService.addPostToFeeds(post as PublicPost);
+            await feedService.addPostToFeeds(reply as PublicPost);
+
+            // Assert feeds for each account are as expected
+
+            // userAccount should have 1 posts in their feed:
+            // - followedAccount's post (because they follow followedAccount and
+            //   replies are not added to feeds)
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
+            expect(userAccountFeed.length).toBe(1);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_type: post.type,
+                audience: post.audience,
+                post_id: post.id,
+                author_id: post.author.id,
+            });
+
+            // followedAccount should have 0 posts in their feed:
+            // - They replied to userAccount's post but we do not add replies to
+            //   feeds
+            const followedAccountFeed =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeed.length).toBe(0);
         }, 10000);
     });
 });

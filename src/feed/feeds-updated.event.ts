@@ -7,10 +7,22 @@ export enum FeedsUpdatedEventUpdateOperation {
 
 export class FeedsUpdatedEvent {
     constructor(
-        public readonly userIds: number[],
-        public readonly updateOperation: FeedsUpdatedEventUpdateOperation,
-        public readonly post: Post,
+        private readonly userIds: number[],
+        private readonly updateOperation: FeedsUpdatedEventUpdateOperation,
+        private readonly post: Post,
     ) {}
+
+    getUserIds(): number[] {
+        return this.userIds;
+    }
+
+    getUpdateOperation(): FeedsUpdatedEventUpdateOperation {
+        return this.updateOperation;
+    }
+
+    getPost(): Post {
+        return this.post;
+    }
 
     static getName(): string {
         return 'feeds.updated';
