@@ -5,6 +5,7 @@ import type { Site } from '../site/site.service';
 
 export interface AccountData {
     id: number;
+    uuid: string | null;
     username: string;
     name: string | null;
     bio: string | null;
@@ -66,6 +67,7 @@ export class Account extends BaseEntity {
     static createFromData(data: AccountData) {
         return new Account(
             data.id,
+            data.uuid,
             data.username,
             data.name,
             data.bio,

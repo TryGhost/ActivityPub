@@ -1,8 +1,7 @@
 import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
-import type { FeedService } from '../../feed/feed.service';
-import type { PostType } from '../../post/post.entity';
+import type { FeedService, FeedType } from '../../feed/feed.service';
 import type { Post } from './types';
 
 /**
@@ -25,7 +24,7 @@ const MAX_FEED_POSTS_LIMIT = 100;
 export function createGetFeedHandler(
     feedService: FeedService,
     accountService: AccountService,
-    postType: PostType,
+    feedType: FeedType,
 ) {
     /**
      * Handle a request for a user's feed
@@ -53,7 +52,7 @@ export function createGetFeedHandler(
 
         const { results, nextCursor } = await feedService.getFeedData({
             accountId: account.id,
-            postType,
+            feedType,
             limit,
             cursor,
         });

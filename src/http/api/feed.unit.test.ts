@@ -67,13 +67,13 @@ describe('Feed API', () => {
             const handler = createGetFeedHandler(
                 feedService,
                 accountService,
-                PostType.Article,
+                'Inbox',
             );
 
             feedService.getFeedData = vi.fn().mockImplementation((options) => {
                 if (
                     options.accountId === account.id &&
-                    options.postType === PostType.Article &&
+                    options.feedType === 'Inbox' &&
                     options.limit === 2 &&
                     options.cursor === null
                 ) {

@@ -1,7 +1,13 @@
 import { chunk } from 'es-toolkit';
 import type { Knex } from 'knex';
 
-import type { FollowersOnlyPost, PostType, PublicPost } from 'post/post.entity';
+import {
+    type FollowersOnlyPost,
+    PostType,
+    type PublicPost,
+} from 'post/post.entity';
+
+export type FeedType = 'Inbox' | 'Feed';
 
 export interface GetFeedDataOptions {
     /**
@@ -9,9 +15,9 @@ export interface GetFeedDataOptions {
      */
     accountId: number;
     /**
-     * Type of posts to include in the feed
+     * Type of feed to get
      */
-    postType: PostType;
+    feedType: FeedType;
     /**
      * Maximum number of posts to return
      */
@@ -82,6 +88,12 @@ export class FeedService {
      * @param options Options for the query
      */
     async getFeedData(options: GetFeedDataOptions): Promise<GetFeedDataResult> {
+        let postType: PostType = PostType.Article;
+
+        if (options.feedType === 'Feed') {
+            postType = PostType.Note;
+        }
+
         const query = this.db('feeds')
             .select(
                 // Post fields
@@ -163,7 +175,7 @@ export class FeedService {
                 );
             })
             .whereRaw('feeds.user_id = users.id')
-            .where('feeds.post_type', options.postType)
+            .where('feeds.post_type', postType)
             .modify((query) => {
                 if (options.cursor) {
                     const [timestamp, id] = options.cursor.split('_');

@@ -115,7 +115,6 @@ import {
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
-import { PostType } from './post/post.entity';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 
@@ -927,16 +926,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner),
-    spanWrapper(
-        createGetFeedHandler(feedService, accountService, PostType.Note),
-    ),
+    spanWrapper(createGetFeedHandler(feedService, accountService, 'Feed')),
 );
 app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner),
-    spanWrapper(
-        createGetFeedHandler(feedService, accountService, PostType.Article),
-    ),
+    spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
 );
 /** Federation wire up */
 
