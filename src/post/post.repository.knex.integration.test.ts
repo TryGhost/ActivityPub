@@ -9,6 +9,7 @@ import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
+import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
@@ -328,7 +329,7 @@ describe('KnexPostRepository', () => {
         );
     });
 
-    it('Handles reposts of an existing post', async () => {
+    it('Handles reposts and dereposts of an existing post', async () => {
         const eventsEmitSpy = vi.spyOn(events, 'emit');
         const accounts = await Promise.all(
             ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
@@ -356,6 +357,7 @@ describe('KnexPostRepository', () => {
 
         post.addRepost(accounts[0]);
         post.addRepost(accounts[2]);
+        post.removeRepost(accounts[1]);
 
         await postRepository.save(post);
 
@@ -366,9 +368,9 @@ describe('KnexPostRepository', () => {
             .select('repost_count')
             .first();
 
-        assert.equal(rowInDb.repost_count, 3, 'There should be 3 reposts');
+        assert.equal(rowInDb.repost_count, 2, 'There should be 2 reposts');
 
-        expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 post reposted
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(5); // 1 post created + 3 post reposted + 1 post dereposted
         expect(eventsEmitSpy).nthCalledWith(
             2,
             PostRepostedEvent.getName(),
@@ -383,6 +385,11 @@ describe('KnexPostRepository', () => {
             4,
             PostRepostedEvent.getName(),
             new PostRepostedEvent(post, Number(accounts[2].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            5,
+            PostDerepostedEvent.getName(),
+            new PostDerepostedEvent(post, Number(accounts[1].id)),
         );
     });
 
