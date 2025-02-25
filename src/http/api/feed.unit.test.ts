@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import '../../app';
 import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
@@ -24,6 +25,7 @@ describe('Feed API', () => {
         };
         account = Account.createFromData({
             id: 456,
+            uuid: '9ea8fcd3-ec80-4b97-b95c-e3d227ccbd01',
             username: 'foobar',
             name: 'Foo Bar',
             bio: 'Just a foo bar',
