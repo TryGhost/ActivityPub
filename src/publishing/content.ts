@@ -28,6 +28,20 @@ interface PrepareContentOptions {
 }
 
 export class ContentPreparer {
+    static instance = new ContentPreparer();
+
+    static prepare(
+        content: string,
+        options: PrepareContentOptions = {
+            removeMemberContent: false,
+            escapeHtml: false,
+            convertLineBreaks: false,
+            wrapInParagraph: false,
+        },
+    ) {
+        return ContentPreparer.instance.prepare(content, options);
+    }
+
     /**
      * Prepare the content
      *
