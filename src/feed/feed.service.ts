@@ -3,7 +3,6 @@ import type { Knex } from 'knex';
 
 import {
     type FollowersOnlyPost,
-    type PostAttachment,
     PostType,
     type PublicPost,
 } from 'post/post.entity';
@@ -45,7 +44,12 @@ interface BaseGetFeedDataResultRow {
     post_repost_count: number;
     post_reposted_by_user: 0 | 1;
     post_ap_id: string;
-    post_attachments: PostAttachment[];
+    post_attachments: {
+        type: string | null;
+        mediaType: string | null;
+        name: string | null;
+        url: string;
+    }[];
     author_id: number;
     author_name: string | null;
     author_username: string;
