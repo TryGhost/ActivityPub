@@ -3,56 +3,34 @@ import { describe, expect, it } from 'vitest';
 import { Account } from '../account/account.entity';
 import { Post, PostType } from './post.entity';
 
+function mockAccount(id: number | null, internal: boolean) {
+    return new Account(
+        id,
+        null,
+        'foobar',
+        'Foo Bar',
+        'Just a foobar',
+        new URL('https://foobar.com/avatar/foobar.png'),
+        new URL('https://foobar.com/banner/foobar.png'),
+        internal
+            ? {
+                  id: 123,
+                  host: 'foobar.com',
+                  webhook_secret: 'secret',
+              }
+            : null,
+    );
+}
+
+const externalAccount = (id: number | null = 456) => mockAccount(id, false);
+const internalAccount = (id: number | null = 123) => mockAccount(id, true);
+
 describe('Post', () => {
     it('should handle adding and removing reposts', () => {
-        const postAuthorSite = {
-            id: 123,
-            host: 'foobar.com',
-            webhook_secret: 'secret',
-        };
-        const postAuthorAccount = new Account(
-            456,
-            null,
-            'foobar',
-            'Foo Bar',
-            'Just a foobar',
-            new URL('https://foobar.com/avatar/foobar.png'),
-            new URL('https://foobar.com/banner/foobar.png'),
-            postAuthorSite,
-        );
-
-        const postReposterAccount = new Account(
-            789,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
-
-        const postDereposterAccount = new Account(
-            987,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
-
-        const accidentalPostDereposterAccount = new Account(
-            654,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
+        const postAuthorAccount = internalAccount(456);
+        const postReposterAccount = externalAccount(789);
+        const postDereposterAccount = externalAccount(987);
+        const accidentalPostDereposterAccount = externalAccount(654);
 
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
@@ -77,31 +55,8 @@ describe('Post', () => {
     });
 
     it('should not add a repost for an account with no id', () => {
-        const postAuthorSite = {
-            id: 123,
-            host: 'foobar.com',
-            webhook_secret: 'secret',
-        };
-        const postAuthorAccount = new Account(
-            456,
-            null,
-            'foobar',
-            'Foo Bar',
-            'Just a foobar',
-            new URL('https://foobar.com/avatar/foobar.png'),
-            new URL('https://foobar.com/banner/foobar.png'),
-            postAuthorSite,
-        );
-        const postReposterAccount = new Account(
-            null,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
+        const postAuthorAccount = internalAccount(456);
+        const postReposterAccount = externalAccount(null);
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
             content: 'Hello, world!',
@@ -113,54 +68,10 @@ describe('Post', () => {
     });
 
     it('should handle adding and removing likes', () => {
-        const postAuthorSite = {
-            id: 123,
-            host: 'foobar.com',
-            webhook_secret: 'secret',
-        };
-        const postAuthorAccount = new Account(
-            456,
-            null,
-            'foobar',
-            'Foo Bar',
-            'Just a foobar',
-            new URL('https://foobar.com/avatar/foobar.png'),
-            new URL('https://foobar.com/banner/foobar.png'),
-            postAuthorSite,
-        );
-
-        const liker = new Account(
-            789,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
-
-        const unliker = new Account(
-            987,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
-
-        const accidentalUnliker = new Account(
-            654,
-            null,
-            'bazqux',
-            'Baz Qux',
-            'Just a bazqux',
-            new URL('https://bazqux.com/avatar/bazqux.png'),
-            new URL('https://bazqux.com/banner/bazqux.png'),
-            null,
-        );
+        const postAuthorAccount = internalAccount(456);
+        const liker = externalAccount(789);
+        const unliker = externalAccount(987);
+        const accidentalUnliker = externalAccount(654);
 
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
