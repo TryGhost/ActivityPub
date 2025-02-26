@@ -75,6 +75,14 @@ export class KnexPostRepository {
             parseURL(row.author_url),
         );
 
+        // Parse attachments and convert URLs back to URL objects
+        const attachments = row.attachments
+            ? row.attachments.map((attachment: any) => ({
+                  ...attachment,
+                  url: new URL(attachment.url),
+              }))
+            : null;
+
         const post = new Post(
             row.id,
             row.uuid,
@@ -93,7 +101,7 @@ export class KnexPostRepository {
             row.in_reply_to,
             row.thread_root,
             row.reading_time_minutes,
-            row.attachments,
+            attachments,
             new URL(row.ap_id),
         );
 
