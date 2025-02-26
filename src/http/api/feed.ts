@@ -76,7 +76,7 @@ export function createGetFeedHandler(
                           type: attachment.type ?? '',
                           mediaType: attachment.mediaType ?? '',
                           name: attachment.name ?? '',
-                          url: attachment.url.toString(),
+                          url: attachment.url,
                       }))
                     : [],
                 author: {
