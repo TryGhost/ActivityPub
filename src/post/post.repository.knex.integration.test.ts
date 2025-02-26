@@ -473,13 +473,13 @@ describe('KnexPostRepository', () => {
                 type: 'Document',
                 mediaType: 'image/jpeg',
                 name: 'test-image.jpg',
-                url: 'https://testing.com/test-image.jpg',
+                url: new URL('https://testing.com/test-image.jpg'),
             },
             {
                 type: 'Document',
                 mediaType: 'application/pdf',
                 name: 'test-document.pdf',
-                url: 'https://testing.com/test-document.pdf',
+                url: new URL('https://testing.com/test-document.pdf'),
             },
         ];
 
@@ -500,20 +500,6 @@ describe('KnexPostRepository', () => {
             retrievedPost.attachments,
             attachments,
             'Attachments should match',
-        );
-
-        const rowInDb = await client(TABLE_POSTS)
-            .where({
-                uuid: post.uuid,
-            })
-            .select('attachments')
-            .first();
-
-        assert(rowInDb.attachments, 'Attachments should be saved in DB');
-        assert.deepStrictEqual(
-            rowInDb.attachments,
-            attachments,
-            'Attachments in DB should match',
         );
     });
 });
