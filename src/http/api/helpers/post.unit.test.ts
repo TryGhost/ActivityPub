@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { Account } from 'account/account.entity';
+import { Post, PostType } from 'post/post.entity';
 import type { AccountService } from '../../../account/account.service';
 import type { FedifyRequestContext } from '../../../app';
 import {
@@ -8,7 +10,6 @@ import {
     ACTIVITY_TYPE_ANNOUNCE,
 } from '../../../constants';
 import type { Activity } from '../../../helpers/activitypub/activity';
-import { PostType } from '../../../post/post.entity';
 import {
     getPostAttachments,
     getPostAuthor,
@@ -17,6 +18,7 @@ import {
     getPostExcerpt,
     getPostFeatureImageUrl,
     mapActivityToPost,
+    postToDTO,
 } from './post';
 
 describe('getPostAuthor', () => {
@@ -645,5 +647,65 @@ describe('mapActivityToPost', () => {
         );
 
         expect(result?.publishedAt).toEqual('2024-02-02T00:00:00Z');
+    });
+});
+
+describe('postToPostDTO', () => {
+    it('Should use apIds as the id', () => {
+        const author = new Account(
+            123,
+            null,
+            'foobar',
+            'Foo Bar',
+            'Just a foobar',
+            new URL('https://foobar.com/avatar/foobar.png'),
+            new URL('https://foobar.com/banner/foobar.png'),
+            {
+                id: 123,
+                host: 'foobar.com',
+                webhook_secret: 'secret',
+            },
+            new URL('https://foobar.com/user/123'),
+            null,
+        );
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto.id).toEqual(post.apId.href);
+        expect(dto.author.id).toEqual(post.author.apId.href);
+    });
+
+    it('Should default title, excerpt and content to empty strings', () => {
+        const author = new Account(
+            123,
+            null,
+            'foobar',
+            'Foo Bar',
+            'Just a foobar',
+            new URL('https://foobar.com/avatar/foobar.png'),
+            new URL('https://foobar.com/banner/foobar.png'),
+            {
+                id: 123,
+                host: 'foobar.com',
+                webhook_secret: 'secret',
+            },
+            new URL('https://foobar.com/user/123'),
+            null,
+        );
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto.title).toEqual('');
+        expect(dto.excerpt).toEqual('');
+        expect(dto.content).toEqual('');
     });
 });

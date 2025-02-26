@@ -1,4 +1,6 @@
 import { isActor } from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
+import type { Post } from 'post/post.entity';
 import type { AccountService } from '../../../account/account.service';
 import {
     getAccountHandle,
@@ -17,7 +19,7 @@ import type {
 } from '../../../helpers/activitypub/activity';
 import { lookupActor } from '../../../lookup-helpers';
 import { PostType } from '../../../post/post.entity';
-import type { PostDTO } from '../types';
+import type { AuthorDTO, PostDTO } from '../types';
 
 /**
  * Get the author of a post from an activity: If the activity has attribution,
@@ -273,4 +275,56 @@ export async function mapActivityToPost(
     }
 
     return post;
+}
+
+function accountToAuthorDTO(account: Account): AuthorDTO {
+    return {
+        id: account.apId.href,
+        name: account.name || '',
+        handle: account.username,
+        avatarUrl: account.avatarUrl?.href || '',
+        url: account.url.href,
+    };
+}
+
+export function postToDTO(
+    post: Post,
+    meta: {
+        likedByMe: boolean;
+        repostedByMe: boolean;
+        repostedBy: Account | null;
+    } = {
+        likedByMe: false,
+        repostedByMe: false,
+        repostedBy: null,
+    },
+): PostDTO {
+    return {
+        id: post.apId.href,
+        type: post.type,
+        title: post.title ?? '',
+        excerpt: post.excerpt ?? '',
+        content: post.content ?? '',
+        url: post.url.href,
+        featureImageUrl: post.imageUrl?.href ?? null,
+        publishedAt: post.publishedAt,
+        likeCount: post.likeCount,
+        likedByMe: meta.likedByMe,
+        replyCount: post.replyCount,
+        readingTimeMinutes: post.readingTimeMinutes,
+        attachments: post.attachments.map((attachment) => {
+            return {
+                name: attachment.name ?? '',
+                type: attachment.type ?? '',
+                mediaType: attachment.mediaType ?? '',
+                url: attachment.url.href,
+            };
+        }),
+        author: accountToAuthorDTO(post.author),
+        repostCount: post.repostCount,
+        repostedByMe: meta.repostedByMe,
+        repostedBy: meta.repostedBy
+            ? accountToAuthorDTO(meta.repostedBy)
+            : null,
+    };
 }
