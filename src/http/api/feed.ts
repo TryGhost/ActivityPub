@@ -72,7 +72,12 @@ export function createGetFeedHandler(
                 replyCount: result.post_reply_count,
                 readingTimeMinutes: result.post_reading_time_minutes,
                 attachments: result.post_attachments
-                    ? result.post_attachments
+                    ? result.post_attachments.map((attachment) => ({
+                          type: attachment.type ?? '',
+                          mediaType: attachment.mediaType ?? '',
+                          name: attachment.name ?? '',
+                          url: attachment.url.toString(),
+                      }))
                     : [],
                 author: {
                     id: result.author_id.toString(),

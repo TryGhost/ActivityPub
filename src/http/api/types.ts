@@ -1,4 +1,4 @@
-import type { PostAttachment, PostType } from '../../post/post.entity';
+import type { PostType } from '../../post/post.entity';
 
 /**
  * Account returned by the API - Anywhere an account is returned via the API,
@@ -119,7 +119,24 @@ export interface PostDTO {
     /**
      * Attachments of the post
      */
-    attachments: PostAttachment[];
+    attachments: {
+        /**
+         * Type of the attachment
+         */
+        type: string;
+        /**
+         * Media type of the attachment
+         */
+        mediaType: string;
+        /**
+         * Name of the attachment
+         */
+        name: string;
+        /**
+         * URL of the attachment
+         */
+        url: string;
+    }[];
     /**
      * Author of the post (partial account)
      */

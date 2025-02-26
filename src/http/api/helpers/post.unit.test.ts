@@ -372,7 +372,7 @@ describe('getPostAttachments', () => {
                 type: 'Image',
                 mediaType: 'image/jpeg',
                 name: 'test.jpg',
-                url: new URL('https://example.com/test.jpg'),
+                url: 'https://example.com/test.jpg',
             },
         ]);
     });
@@ -396,7 +396,7 @@ describe('getPostAttachments', () => {
                 type: 'Image',
                 mediaType: 'image/jpeg',
                 name: 'test.jpg',
-                url: new URL('https://example.com/test.jpg'),
+                url: 'https://example.com/test.jpg',
             },
         ]);
     });
@@ -465,7 +465,7 @@ describe('mapActivityToPost', () => {
                     type: 'Image',
                     mediaType: 'image/jpeg',
                     name: 'test.jpg',
-                    url: new URL('https://example.com/test.jpg'),
+                    url: 'https://example.com/test.jpg',
                 },
             ],
             author: {

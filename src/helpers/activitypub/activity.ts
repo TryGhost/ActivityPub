@@ -10,7 +10,7 @@ export interface ActivityObjectAttachment {
     type: string;
     mediaType: string;
     name: string;
-    url: URL;
+    url: string;
 }
 
 export interface ActivityObject {

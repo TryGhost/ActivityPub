@@ -180,7 +180,7 @@ export function getPostAttachments(
             type: attachment.type,
             mediaType: attachment.mediaType,
             name: attachment.name,
-            url: new URL(attachment.url),
+            url: attachment.url,
         };
     });
 }
