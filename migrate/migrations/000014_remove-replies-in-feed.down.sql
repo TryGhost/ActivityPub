@@ -1,0 +1,1 @@
+-- This migration isn't possible to roll back
