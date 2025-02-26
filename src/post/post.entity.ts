@@ -17,6 +17,7 @@ export enum Audience {
 // TODO Deduplicate this with the webhook handler
 interface GhostPost {
     title: string;
+    uuid: string;
     html: string | null;
     excerpt: string | null;
     feature_image: string | null;
@@ -165,7 +166,7 @@ export class Post extends BaseEntity {
     ): Post {
         return new Post(
             null,
-            null,
+            ghostPost.uuid,
             account,
             PostType.Article,
             Audience.Public,
