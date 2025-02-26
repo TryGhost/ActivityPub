@@ -28,7 +28,7 @@ export interface PostAttachment {
     type: string | null;
     mediaType: string | null;
     name: string | null;
-    url: string;
+    url: URL;
 }
 
 export interface PostData {
