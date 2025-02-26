@@ -38,12 +38,50 @@ describe('Post', () => {
             feature_image: 'https://ghost.org/feature-image.jpeg',
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
+            visibility: 'public',
         };
 
         const post = Post.createArticleFromGhostPost(account, ghostPost);
 
         expect(post.uuid).toEqual(ghostPost.uuid);
         expect(post.content).toEqual(ghostPost.html);
+    });
+
+    it('should refuse to create an article from a private Ghost Post with no public content', () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<!--members-only--><p> This is such a great post </p>',
+            excerpt: 'This is such a great...',
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'members',
+        };
+
+        expect(() =>
+            Post.createArticleFromGhostPost(account, ghostPost),
+        ).toThrow();
+    });
+
+    it('should create an article with restricted content from a private Ghost Post', () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p>Welcome!</p><!--members-only--><p> This is such a great post </p>',
+            excerpt: 'This is such a great...',
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'members',
+        };
+
+        const post = Post.createArticleFromGhostPost(account, ghostPost);
+
+        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.content).toEqual('<p>Welcome!</p>');
     });
 
     it('should handle adding and removing reposts', () => {

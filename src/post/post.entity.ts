@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ContentPreparer } from 'publishing/content';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
@@ -23,6 +24,7 @@ interface GhostPost {
     feature_image: string | null;
     published_at: string;
     url: string;
+    visibility: string;
 }
 
 export interface PostData {
@@ -164,6 +166,23 @@ export class Post extends BaseEntity {
         account: Account,
         ghostPost: GhostPost,
     ): Post {
+        const isPublic = ghostPost.visibility === 'public';
+
+        let content = ghostPost.html;
+        if (isPublic === false && ghostPost.html !== null) {
+            content = ContentPreparer.prepare(ghostPost.html, {
+                removeMemberContent: true,
+            });
+
+            if (content === ghostPost.html) {
+                content = '';
+            }
+        }
+
+        if (isPublic === false && content === '') {
+            throw new Error('Cannot create Post from private content');
+        }
+
         return new Post(
             null,
             ghostPost.uuid,
@@ -172,7 +191,7 @@ export class Post extends BaseEntity {
             Audience.Public,
             ghostPost.title,
             ghostPost.excerpt,
-            ghostPost.html,
+            content,
             new URL(ghostPost.url),
             parseURL(ghostPost.feature_image),
             new Date(ghostPost.published_at),
