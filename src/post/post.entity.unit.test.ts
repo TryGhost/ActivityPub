@@ -28,6 +28,24 @@ const externalAccount = (id: number | null = 456) => mockAccount(id, false);
 const internalAccount = (id: number | null = 123) => mockAccount(id, true);
 
 describe('Post', () => {
+    it('should correctly create an article from a Ghost Post', () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p> This is such a great post </p>',
+            excerpt: 'This is such a great...',
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+        };
+
+        const post = Post.createArticleFromGhostPost(account, ghostPost);
+
+        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.content).toEqual(ghostPost.html);
+    });
+
     it('should handle adding and removing reposts', () => {
         const postAuthorAccount = internalAccount(456);
         const postReposterAccount = externalAccount(789);
