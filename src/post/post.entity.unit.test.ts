@@ -19,6 +19,8 @@ function mockAccount(id: number | null, internal: boolean) {
                   webhook_secret: 'secret',
               }
             : null,
+        new URL(`https://foobar.com/user/${id}`),
+        null,
     );
 }
 

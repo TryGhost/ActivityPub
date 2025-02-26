@@ -49,6 +49,8 @@ export class KnexAccountRepository {
             parseURL(account.avatar_url),
             parseURL(account.banner_image_url),
             site,
+            parseURL(account.ap_id),
+            parseURL(account.url),
         );
     }
 
@@ -64,6 +66,8 @@ export class KnexAccountRepository {
                 'accounts.bio',
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.url',
                 'users.site_id',
                 'sites.host',
                 'sites.webhook_secret',
@@ -99,6 +103,8 @@ export class KnexAccountRepository {
             parseURL(accountRow.avatar_url),
             parseURL(accountRow.banner_image_url),
             site,
+            parseURL(accountRow.ap_id),
+            parseURL(accountRow.url),
         );
 
         return account;

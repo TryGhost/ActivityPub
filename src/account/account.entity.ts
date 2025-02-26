@@ -12,11 +12,14 @@ export interface AccountData {
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
     site: Site | null;
+    apId: URL | null;
+    url: URL | null;
 }
 
 export class Account extends BaseEntity {
     public readonly uuid: string;
-
+    public readonly url: URL;
+    public readonly apId: URL;
     constructor(
         public readonly id: number | null,
         uuid: string | null,
@@ -26,6 +29,8 @@ export class Account extends BaseEntity {
         public readonly avatarUrl: URL | null,
         public readonly bannerImageUrl: URL | null,
         private readonly site: Site | null,
+        apId: URL | null,
+        url: URL | null,
     ) {
         super(id);
         if (uuid === null) {
@@ -33,10 +38,31 @@ export class Account extends BaseEntity {
         } else {
             this.uuid = uuid;
         }
+        if (apId === null) {
+            this.apId = this.getApId();
+        } else {
+            this.apId = apId;
+        }
+        if (url === null) {
+            this.url = this.apId;
+        } else {
+            this.url = url;
+        }
     }
 
     get isInternal() {
         return this.site !== null;
+    }
+
+    getApId() {
+        if (!this.isInternal) {
+            throw new Error('Cannot get AP ID for External Accounts');
+        }
+
+        return new URL(
+            `.ghost/activitypub/users/${this.username}`,
+            `https://${this.site!.host}`,
+        );
     }
 
     getApIdForPost(post: Post) {
@@ -74,6 +100,8 @@ export class Account extends BaseEntity {
             data.avatarUrl,
             data.bannerImageUrl,
             data.site,
+            data.apId,
+            data.url,
         );
     }
 }
