@@ -70,6 +70,7 @@ export class Post extends BaseEntity {
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
+    public readonly attachments: PostAttachment[];
 
     constructor(
         public readonly id: number | null,
@@ -89,7 +90,7 @@ export class Post extends BaseEntity {
         public readonly inReplyTo: number | null = null,
         public readonly threadRoot: number | null = null,
         private readonly readingTimeMinutes: number | null = null,
-        public readonly attachments: PostAttachment[] | null = null,
+        attachments: PostAttachment[] | null = null,
         apId: URL | null = null,
     ) {
         super(id);
@@ -108,6 +109,7 @@ export class Post extends BaseEntity {
         } else {
             this.url = url;
         }
+        this.attachments = attachments ?? [];
     }
 
     get readingTime() {
@@ -219,7 +221,7 @@ export class Post extends BaseEntity {
             inReplyTo,
             threadRoot,
             null,
-            data.attachments ?? null,
+            data.attachments ?? [],
             data.apId ?? null,
         );
     }

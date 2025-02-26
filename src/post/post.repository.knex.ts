@@ -75,13 +75,13 @@ export class KnexPostRepository {
             parseURL(row.author_url),
         );
 
-        // Parse attachments and convert URLs back to URL objects
+        // Parse attachments and convert URL strings back to URL objects
         const attachments = row.attachments
             ? row.attachments.map((attachment: any) => ({
                   ...attachment,
                   url: new URL(attachment.url),
               }))
-            : null;
+            : [];
 
         const post = new Post(
             row.id,
@@ -282,9 +282,10 @@ export class KnexPostRepository {
             repost_count: repostCount,
             reply_count: 0,
             reading_time_minutes: post.readingTime,
-            attachments: post.attachments
-                ? JSON.stringify(post.attachments)
-                : null,
+            attachments:
+                post.attachments && post.attachments.length > 0
+                    ? JSON.stringify(post.attachments)
+                    : null,
             ap_id: post.apId.href,
         });
 
