@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 
 import {
     type FollowersOnlyPost,
+    type PostAttachment,
     PostType,
     type PublicPost,
 } from 'post/post.entity';
@@ -44,6 +45,7 @@ interface BaseGetFeedDataResultRow {
     post_repost_count: number;
     post_reposted_by_user: 0 | 1;
     post_ap_id: string;
+    post_attachments: PostAttachment[];
     author_id: number;
     author_name: string | null;
     author_username: string;
@@ -119,7 +121,7 @@ export class FeedService {
                 `),
                 'posts.reply_count as post_reply_count',
                 'posts.reading_time_minutes as post_reading_time_minutes',
-                // TODO: attachments
+                'posts.attachments as post_attachments',
                 'posts.repost_count as post_repost_count',
                 this.db.raw(`
                     CASE
