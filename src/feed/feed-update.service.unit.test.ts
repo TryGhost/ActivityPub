@@ -50,6 +50,8 @@ describe('FeedUpdateService', () => {
             avatarUrl: new URL('https://example.com/avatars/foobar.png'),
             bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
             site,
+            apId: new URL('https://example.com/users/456'),
+            url: new URL('https://example.com/users/456'),
         });
         post = Post.createFromData(account, {
             type: PostType.Article,

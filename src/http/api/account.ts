@@ -4,7 +4,7 @@ import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
 import { sanitizeHtml } from '../../helpers/html';
-import type { Account as AccountDTO } from './types';
+import type { AccountDTO } from './types';
 
 /**
  * Maximum number of follow accounts to return

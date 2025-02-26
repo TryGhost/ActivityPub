@@ -10,10 +10,10 @@ import {
 } from '../../helpers/activitypub/actor';
 import { isUri } from '../../helpers/uri';
 import { lookupObject } from '../../lookup-helpers';
-import type { Account } from './types';
+import type { AccountDTO } from './types';
 
 type AccountSearchResult = Pick<
-    Account,
+    AccountDTO,
     'id' | 'name' | 'handle' | 'avatarUrl' | 'followerCount' | 'followedByMe'
 >;
 

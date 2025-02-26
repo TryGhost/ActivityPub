@@ -46,6 +46,8 @@ export class KnexPostRepository {
                 'accounts.bio',
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
+                'accounts.ap_id as author_ap_id',
+                'accounts.url as author_url',
             )
             .first();
 
@@ -69,6 +71,8 @@ export class KnexPostRepository {
             parseURL(row.avatar_url),
             parseURL(row.banner_image_url),
             null,
+            parseURL(row.author_ap_id),
+            parseURL(row.author_url),
         );
 
         const post = new Post(

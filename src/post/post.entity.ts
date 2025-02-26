@@ -64,6 +64,7 @@ export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
+    public readonly url: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
@@ -78,7 +79,7 @@ export class Post extends BaseEntity {
         public readonly title: string | null,
         public readonly excerpt: string | null,
         public readonly content: string | null,
-        public readonly url: URL | null,
+        url: URL | null,
         public readonly imageUrl: URL | null,
         public readonly publishedAt: Date,
         private likeCount = 0,
