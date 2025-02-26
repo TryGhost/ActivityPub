@@ -19,30 +19,28 @@ export class PostService {
     private async getPostAttachments(
         foundObject: Note | Article,
     ): Promise<PostAttachment[] | null> {
-        const attachmentIds = foundObject.attachmentIds;
-        if (!attachmentIds || attachmentIds.length === 0) {
+        const attachments = foundObject.getAttachments();
+        const postAttachments: PostAttachment[] = [];
+
+        for await (const attachment of attachments) {
+            if (attachment instanceof Object) {
+                const attachmentList = Array.isArray(attachment)
+                    ? attachment
+                    : [attachment].filter((a) => a !== undefined);
+                for (const a of attachmentList) {
+                    postAttachments.push({
+                        type: a.type,
+                        mediaType: a.mediaType,
+                        name: a.name,
+                        url: a.url?.toString(),
+                    });
+                }
+            }
+        }
+        if (!postAttachments.length) {
             return null;
         }
-
-        console.log('attachmentIds: ', attachmentIds);
-
-        const context = this.fedifyContextFactory.getFedifyContext();
-        const documentLoader = await context.getDocumentLoader({
-            handle: 'index',
-        });
-
-        const attachments = await Promise.all(
-            attachmentIds.map((id) => lookupObject(id, { documentLoader })),
-        );
-
-        return attachments
-            .filter((a): a is NonNullable<typeof a> => a !== null)
-            .map((a: any) => ({
-                type: a.type?.toString(),
-                mediaType: a.mediaType?.toString(),
-                name: a.name?.toString(),
-                url: a.url?.toString(),
-            }));
+        return postAttachments;
     }
 
     async getByApId(id: URL): Promise<Post | null> {
@@ -94,8 +92,6 @@ export class PostService {
             inReplyTo = await this.getByApId(foundObject.replyTargetId);
         }
 
-        const attachments = await this.getPostAttachments(foundObject);
-
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
@@ -105,10 +101,8 @@ export class PostService {
             url: foundObject.url instanceof URL ? foundObject.url : id,
             apId: id,
             inReplyTo,
-            attachments,
+            attachments: await this.getPostAttachments(foundObject),
         });
-
-        console.log('newlyCreatedPost: ', newlyCreatedPost);
 
         await this.postRepository.save(newlyCreatedPost);
 
