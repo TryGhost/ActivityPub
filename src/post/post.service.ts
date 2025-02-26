@@ -32,7 +32,7 @@ export class PostService {
                         type: a.type,
                         mediaType: a.mediaType,
                         name: a.name,
-                        url: a.url?.toString(),
+                        url: a.url,
                     });
                 }
             }
