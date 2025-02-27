@@ -271,7 +271,7 @@ export class KnexPostRepository {
             like_count: likeCount,
             repost_count: repostCount,
             reply_count: 0,
-            reading_time_minutes: post.readingTime,
+            reading_time_minutes: post.readingTimeMinutes,
             ap_id: post.apId.href,
         });
 

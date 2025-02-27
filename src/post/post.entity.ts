@@ -82,7 +82,7 @@ export class Post extends BaseEntity {
         public readonly replyCount = 0,
         public readonly inReplyTo: number | null = null,
         public readonly threadRoot: number | null = null,
-        private readonly readingTimeMinutes: number | null = null,
+        private readonly _readingTimeMinutes: number | null = null,
         apId: URL | null = null,
     ) {
         super(id);
@@ -103,9 +103,9 @@ export class Post extends BaseEntity {
         }
     }
 
-    get readingTime() {
+    get readingTimeMinutes() {
         // TODO Implement reading time calculation
-        return this.readingTimeMinutes || 1;
+        return this._readingTimeMinutes || 1;
     }
 
     addLike(account: Account) {
