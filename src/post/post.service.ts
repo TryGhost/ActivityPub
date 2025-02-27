@@ -18,7 +18,7 @@ export class PostService {
      */
     private async getPostAttachments(
         foundObject: Note | Article,
-    ): Promise<PostAttachment[] | null> {
+    ): Promise<PostAttachment[]> {
         const attachments = foundObject.getAttachments();
         const postAttachments: PostAttachment[] = [];
 
@@ -36,9 +36,6 @@ export class PostService {
                     });
                 }
             }
-        }
-        if (!postAttachments.length) {
-            return null;
         }
         return postAttachments;
     }

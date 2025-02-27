@@ -51,9 +51,14 @@ export function createPostPublishedWebhookHandler(
 
         const account = await accountRepository.getBySite(ctx.get('site'));
 
-        const post = Post.createArticleFromGhostPost(account, data);
-
-        await postRepository.save(post);
+        try {
+            const post = Post.createArticleFromGhostPost(account, data);
+            await postRepository.save(post);
+        } catch (err) {
+            ctx.get('logger').error('Failed to store post: {error}', {
+                error: err,
+            });
+        }
 
         try {
             await publishPost(ctx, {
