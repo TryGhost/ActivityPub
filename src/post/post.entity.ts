@@ -34,13 +34,6 @@ export interface PostAttachment {
     url: URL;
 }
 
-export interface PostAttachment {
-    type: string | null;
-    mediaType: string | null;
-    name: string | null;
-    url: URL;
-}
-
 export interface PostData {
     type: PostType;
     audience?: Audience;
@@ -79,7 +72,6 @@ export class Post extends BaseEntity {
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
-    public readonly attachments: PostAttachment[];
 
     constructor(
         public readonly id: number | null,
@@ -118,7 +110,6 @@ export class Post extends BaseEntity {
         } else {
             this.url = url;
         }
-        this.attachments = attachments ?? [];
     }
 
     get readingTimeMinutes() {
