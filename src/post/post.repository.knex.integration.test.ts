@@ -76,6 +76,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         await postRepository.save(post);
@@ -103,6 +104,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         await postRepository.save(post);
@@ -126,6 +128,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         await postRepository.save(post);
@@ -145,6 +148,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         await postRepository.save(post);
@@ -180,6 +184,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         await postRepository.save(post);
@@ -210,6 +215,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         post.addLike(accounts[0]);
@@ -252,6 +258,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         post.addLike(accounts[1]);
@@ -295,6 +302,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         post.addRepost(accounts[1]);
@@ -353,6 +361,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         post.addRepost(accounts[1]);
@@ -417,6 +426,7 @@ describe('KnexPostRepository', () => {
             feature_image: null,
             url: 'https://testing.com/original-post',
             published_at: '2025-01-01',
+            visibility: 'public',
         });
 
         await postRepository.save(originalPost);

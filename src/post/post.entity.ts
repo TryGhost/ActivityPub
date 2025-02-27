@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ContentPreparer } from 'publishing/content';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
@@ -23,6 +24,7 @@ interface GhostPost {
     feature_image: string | null;
     published_at: string;
     url: string;
+    visibility: string;
 }
 
 export interface PostAttachment {
@@ -84,13 +86,13 @@ export class Post extends BaseEntity {
         url: URL | null,
         public readonly imageUrl: URL | null,
         public readonly publishedAt: Date,
-        private likeCount = 0,
-        private repostCount = 0,
-        private replyCount = 0,
+        public readonly likeCount = 0,
+        public readonly repostCount = 0,
+        public readonly replyCount = 0,
         public readonly inReplyTo: number | null = null,
         public readonly threadRoot: number | null = null,
-        private readonly readingTimeMinutes: number | null = null,
         attachments: PostAttachment[] | null = null,
+        private readonly _readingTimeMinutes: number | null = null,
         apId: URL | null = null,
     ) {
         super(id);
@@ -112,9 +114,9 @@ export class Post extends BaseEntity {
         this.attachments = attachments ?? [];
     }
 
-    get readingTime() {
+    get readingTimeMinutes() {
         // TODO Implement reading time calculation
-        return this.readingTimeMinutes || 1;
+        return this._readingTimeMinutes || 1;
     }
 
     addLike(account: Account) {
@@ -175,6 +177,23 @@ export class Post extends BaseEntity {
         account: Account,
         ghostPost: GhostPost,
     ): Post {
+        const isPublic = ghostPost.visibility === 'public';
+
+        let content = ghostPost.html;
+        if (isPublic === false && ghostPost.html !== null) {
+            content = ContentPreparer.prepare(ghostPost.html, {
+                removeMemberContent: true,
+            });
+
+            if (content === ghostPost.html) {
+                content = '';
+            }
+        }
+
+        if (isPublic === false && content === '') {
+            throw new Error('Cannot create Post from private content');
+        }
+
         return new Post(
             null,
             ghostPost.uuid,
@@ -183,7 +202,7 @@ export class Post extends BaseEntity {
             Audience.Public,
             ghostPost.title,
             ghostPost.excerpt,
-            ghostPost.html,
+            content,
             new URL(ghostPost.url),
             parseURL(ghostPost.feature_image),
             new Date(ghostPost.published_at),
