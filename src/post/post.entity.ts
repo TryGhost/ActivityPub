@@ -27,6 +27,13 @@ interface GhostPost {
     visibility: string;
 }
 
+export interface PostAttachment {
+    type: string | null;
+    mediaType: string | null;
+    name: string | null;
+    url: URL;
+}
+
 export interface PostData {
     type: PostType;
     audience?: Audience;
@@ -38,6 +45,7 @@ export interface PostData {
     publishedAt?: Date;
     inReplyTo?: Post | null;
     apId?: URL | null;
+    attachments?: PostAttachment[] | null;
 }
 
 export type PublicPost = Post & {
@@ -83,6 +91,7 @@ export class Post extends BaseEntity {
         public readonly inReplyTo: number | null = null,
         public readonly threadRoot: number | null = null,
         private readonly _readingTimeMinutes: number | null = null,
+        public readonly attachments: PostAttachment[] = [],
         apId: URL | null = null,
     ) {
         super(id);
@@ -229,6 +238,7 @@ export class Post extends BaseEntity {
             inReplyTo,
             threadRoot,
             null,
+            data.attachments ?? [],
             data.apId ?? null,
         );
     }

@@ -1,7 +1,7 @@
 import { Article, Note, lookupObject } from '@fedify/fedify';
 import type { AccountService } from '../account/account.service';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { Post, PostType } from './post.entity';
+import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export class PostService {
@@ -10,6 +10,35 @@ export class PostService {
         private readonly accountService: AccountService,
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
+
+    /**
+     * Get the attachments for a post
+     *
+     * @param attachments
+     */
+    private async getPostAttachments(
+        foundObject: Note | Article,
+    ): Promise<PostAttachment[]> {
+        const attachments = foundObject.getAttachments();
+        const postAttachments: PostAttachment[] = [];
+
+        for await (const attachment of attachments) {
+            if (attachment instanceof Object) {
+                const attachmentList = Array.isArray(attachment)
+                    ? attachment
+                    : [attachment].filter((a) => a !== undefined);
+                for (const a of attachmentList) {
+                    postAttachments.push({
+                        type: a.type,
+                        mediaType: a.mediaType,
+                        name: a.name,
+                        url: a.url,
+                    });
+                }
+            }
+        }
+        return postAttachments;
+    }
 
     async getByApId(id: URL): Promise<Post | null> {
         const post = await this.postRepository.getByApId(id);
@@ -69,6 +98,7 @@ export class PostService {
             url: foundObject.url instanceof URL ? foundObject.url : id,
             apId: id,
             inReplyTo,
+            attachments: await this.getPostAttachments(foundObject),
         });
 
         await this.postRepository.save(newlyCreatedPost);

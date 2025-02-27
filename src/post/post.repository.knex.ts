@@ -35,6 +35,7 @@ export class KnexPostRepository {
                 'posts.repost_count',
                 'posts.reply_count',
                 'posts.reading_time_minutes',
+                'posts.attachments',
                 'posts.author_id',
                 'posts.ap_id',
                 'posts.in_reply_to',
@@ -74,6 +75,14 @@ export class KnexPostRepository {
             parseURL(row.author_url),
         );
 
+        // Parse attachments and convert URL strings back to URL objects
+        const attachments = row.attachments
+            ? row.attachments.map((attachment: any) => ({
+                  ...attachment,
+                  url: new URL(attachment.url),
+              }))
+            : [];
+
         const post = new Post(
             row.id,
             row.uuid,
@@ -92,6 +101,7 @@ export class KnexPostRepository {
             row.in_reply_to,
             row.thread_root,
             row.reading_time_minutes,
+            attachments,
             new URL(row.ap_id),
         );
 
@@ -271,6 +281,10 @@ export class KnexPostRepository {
             like_count: likeCount,
             repost_count: repostCount,
             reply_count: 0,
+            attachments:
+                post.attachments && post.attachments.length > 0
+                    ? JSON.stringify(post.attachments)
+                    : null,
             reading_time_minutes: post.readingTimeMinutes,
             ap_id: post.apId.href,
         });
