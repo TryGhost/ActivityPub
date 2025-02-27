@@ -63,6 +63,11 @@ export interface AccountDTO {
     followedByMe: boolean;
 }
 
+export type AuthorDTO = Pick<
+    AccountDTO,
+    'id' | 'handle' | 'avatarUrl' | 'name' | 'url'
+>;
+
 /**
  * Post returned by the API - Anywhere a post is returned via the API,
  * it should be this shape, or a partial version of it
@@ -140,7 +145,7 @@ export interface PostDTO {
     /**
      * Author of the post (partial account)
      */
-    author: Pick<AccountDTO, 'id' | 'handle' | 'avatarUrl' | 'name' | 'url'>;
+    author: AuthorDTO;
     /**
      * Number of reposts of the post
      */
@@ -152,8 +157,5 @@ export interface PostDTO {
     /**
      * Account that reposted the post
      */
-    repostedBy: Pick<
-        AccountDTO,
-        'id' | 'handle' | 'avatarUrl' | 'name' | 'url'
-    > | null;
+    repostedBy: AuthorDTO | null;
 }
