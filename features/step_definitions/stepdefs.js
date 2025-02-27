@@ -595,8 +595,25 @@ When('we request the outbox', async function () {
 });
 
 When('an authenticated request is made to {string}', async function (path) {
+    let requestPath = path;
+
+    // If this is a request to the /thread/ endpoint, we need to replace the
+    // object name with the object ID as we don't have a way to know the object
+    // ID ahead of time
+    if (path.includes('/thread/')) {
+        const objectName = path.split('/').pop(); // Object name is the last part of the path
+        const object = this.objects[objectName];
+
+        if (object) {
+            requestPath = path.replace(
+                objectName,
+                encodeURIComponent(object.id),
+            );
+        }
+    }
+
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub${path}`,
+        `http://fake-ghost-activitypub${requestPath}`,
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1624,6 +1641,7 @@ When(
             const activity = await this.response.clone().json();
 
             this.activities[replyName] = activity;
+            this.objects[replyName] = activity.object;
         }
     },
 );
@@ -1717,3 +1735,30 @@ Then(
         }
     },
 );
+
+Then(
+    'post {string} in the thread is {string}',
+    async function (postNumber, objectName) {
+        const responseJson = await this.response.clone().json();
+
+        const object = this.objects[objectName];
+        const post = responseJson.posts[Number(postNumber) - 1];
+
+        assert(post, `Expected to find ${objectName} in thread`);
+
+        assert(
+            post.url === object.id,
+            `Expected ${objectName} to be at position ${postNumber} in thread`,
+        );
+    },
+);
+
+Then('the thread contains {string} posts', async function (string) {
+    const responseJson = await this.response.clone().json();
+
+    assert.equal(
+        responseJson.posts.length,
+        Number(string),
+        `Expected thread to contain ${string} posts, but got ${responseJson.posts.length}`,
+    );
+});

@@ -10,6 +10,12 @@ import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post } from './post.entity';
 
+type ThreadPosts = {
+    post: Post;
+    likedByAccount: boolean;
+    repostedByAccount: boolean;
+}[];
+
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
@@ -106,6 +112,227 @@ export class KnexPostRepository {
         );
 
         return post;
+    }
+
+    /**
+     * Get a thread of posts by AP ID
+     *
+     * A thread should include all ancestors (the entire chain of parent posts)
+     * and all immediate children (direct replies) of the given post
+     *
+     * For example, if we have the following posts:
+     *
+     * ```text
+     * POST 1
+     * POST 1.1 (child of POST 1)
+     * POST 1.2 (child of POST 1)
+     * POST 1.2.1 (child of POST 1.2)
+     * POST 1.2.2 (child of POST 1.2)
+     * POST 1.2.2.1 (child of POST 1.2.2)
+     * POST 1.2.3 (child of POST 1.2)
+     * POST 2
+     * POST 2.1 (child of POST 2)
+     * POST 2.1.1 (child of POST 2.1)
+     * POST 3
+     * ```
+     *
+     * If we request a thread for POST 1 we should get back:
+     *
+     * ```text
+     * POST 1 (requested post)
+     * POST 1.1 (immediate child)
+     * POST 1.2 (immediate child)
+     * ```
+     *
+     * If we request a thread for post 1.2.2 we should get back:
+     *
+     * ```text
+     * POST 1 (root ancestor)
+     * POST 1.2 (immediate parent)
+     * POST 1.2.2 (requested post)
+     * POST 1.2.2.1 (immediate child)
+     * ```
+     *
+     * If we request a thread for post 2.1.1 we should get back:
+     *
+     * ```text
+     * POST 2 (root ancestor)
+     * POST 2.1 (immediate parent)
+     * POST 2.1.1 (requested post)
+     * ```
+     *
+     * @param apId AP ID of the post to get the thread for
+     * @param accountId ID of the account to resolve post metadata for (i.e is
+     * a post in the thread liked by the account, or reposted by the account, etc)
+     */
+    async getThreadByApId(
+        apId: string,
+        accountId: number,
+    ): Promise<ThreadPosts> {
+        // Get the post for the given AP ID
+        const post = await this.db('posts')
+            .select('id', 'in_reply_to')
+            .where('ap_id', apId)
+            .first();
+
+        if (!post) {
+            return [];
+        }
+
+        const postIdsForThread = [];
+
+        // Recursively find the parent posts of the resolved post
+        // and add them to the thread in reverse order so that we can
+        // eventually return the thread in the correct order
+        let nextParentId = post.in_reply_to;
+
+        while (nextParentId) {
+            const parent = await this.db('posts')
+                .select('in_reply_to')
+                .where('id', nextParentId)
+                .first();
+
+            if (parent) {
+                postIdsForThread.unshift(nextParentId);
+            }
+
+            nextParentId = parent.in_reply_to;
+        }
+
+        // Add the resolved post to the thread after all the parent posts
+        postIdsForThread.push(post.id);
+
+        // Find all the posts that are immediate children of the resolved post
+        for (const row of await this.db('posts')
+            .select('id')
+            .where('in_reply_to', post.id)) {
+            postIdsForThread.push(row.id);
+        }
+
+        // Get all the posts that are in the thread
+        const thread = await this.db('posts')
+            .select(
+                // Post fields
+                'posts.id',
+                'posts.uuid',
+                'posts.type',
+                'posts.audience',
+                'posts.title',
+                'posts.excerpt',
+                'posts.content',
+                'posts.url',
+                'posts.image_url',
+                'posts.published_at',
+                'posts.like_count',
+                'posts.repost_count',
+                'posts.reply_count',
+                'posts.reading_time_minutes',
+                'posts.attachments',
+                'posts.author_id',
+                'posts.ap_id',
+                'posts.in_reply_to',
+                'posts.thread_root',
+                // Author account fields
+                'accounts.username',
+                'accounts.uuid as author_uuid',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id as author_ap_id',
+                'accounts.url as author_url',
+                // Account metadata fields
+                this.db.raw(`
+                    CASE
+                        WHEN likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS liked_by_account
+                `),
+                this.db.raw(`
+                    CASE
+                        WHEN reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS reposted_by_account
+                `),
+            )
+            .join('accounts', 'accounts.id', 'posts.author_id')
+            .leftJoin('likes', function () {
+                this.on('likes.post_id', 'posts.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    accountId,
+                );
+            })
+            .leftJoin('reposts', function () {
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    accountId,
+                );
+            })
+            .whereIn('posts.id', postIdsForThread)
+            .orderBy('posts.published_at', 'asc');
+
+        const posts = [];
+
+        for (const row of thread) {
+            if (!row.author_uuid) {
+                row.author_uuid = randomUUID();
+                await this.db('accounts')
+                    .update({ uuid: row.author_uuid })
+                    .where({ id: row.author_id });
+            }
+
+            const author = new Account(
+                row.author_id,
+                row.author_uuid,
+                row.username,
+                row.name,
+                row.bio,
+                parseURL(row.avatar_url),
+                parseURL(row.banner_image_url),
+                null,
+                parseURL(row.author_ap_id),
+                parseURL(row.author_url),
+            );
+
+            const attachments = row.attachments
+                ? row.attachments.map((attachment: any) => ({
+                      ...attachment,
+                      url: new URL(attachment.url),
+                  }))
+                : [];
+
+            const post = new Post(
+                row.id,
+                row.uuid,
+                author,
+                row.type,
+                row.audience,
+                row.title,
+                row.excerpt,
+                row.content,
+                new URL(row.url),
+                parseURL(row.image_url),
+                new Date(row.published_at),
+                row.like_count,
+                row.repost_count,
+                row.reply_count,
+                row.in_reply_to,
+                row.thread_root,
+                row.reading_time_minutes,
+                attachments,
+                new URL(row.ap_id),
+            );
+
+            posts.push({
+                post,
+                likedByAccount: row.liked_by_account === 1,
+                repostedByAccount: row.reposted_by_account === 1,
+            });
+        }
+
+        return posts;
     }
 
     /**
