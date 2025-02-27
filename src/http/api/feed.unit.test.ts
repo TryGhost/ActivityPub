@@ -109,6 +109,20 @@ describe('Feed API', () => {
                                 reposter_username: null,
                                 reposter_url: null,
                                 reposter_avatar_url: null,
+                                post_attachments: [
+                                    {
+                                        type: 'Image',
+                                        mediaType: 'image/jpeg',
+                                        name: 'test.jpg',
+                                        url: 'https://example.com/test.jpg',
+                                    },
+                                    {
+                                        type: 'Image',
+                                        mediaType: 'image/jpeg',
+                                        name: 'test1.jpg',
+                                        url: 'https://example.com/test1.jpg',
+                                    },
+                                ],
                             },
                             {
                                 post_id: 790,
@@ -138,6 +152,7 @@ describe('Feed API', () => {
                                 reposter_url: 'https://example.com/bazqux',
                                 reposter_avatar_url:
                                     'https://example.com/images/bazqux.png',
+                                post_attachments: [],
                             },
                         ],
                         nextCursor: null,

@@ -2,7 +2,20 @@
   "next": null,
   "posts": [
     {
-      "attachments": [],
+      "attachments": [
+        {
+          "mediaType": "image/jpeg",
+          "name": "test.jpg",
+          "type": "Image",
+          "url": "https://example.com/test.jpg",
+        },
+        {
+          "mediaType": "image/jpeg",
+          "name": "test1.jpg",
+          "type": "Image",
+          "url": "https://example.com/test1.jpg",
+        },
+      ],
       "author": {
         "avatarUrl": "",
         "handle": "@foobar@example.com",

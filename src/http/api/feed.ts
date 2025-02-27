@@ -71,7 +71,14 @@ export function createGetFeedHandler(
                 likedByMe: result.post_liked_by_user === 1,
                 replyCount: result.post_reply_count,
                 readingTimeMinutes: result.post_reading_time_minutes,
-                attachments: [], // TODO
+                attachments: result.post_attachments
+                    ? result.post_attachments.map((attachment) => ({
+                          type: attachment.type ?? '',
+                          mediaType: attachment.mediaType ?? '',
+                          name: attachment.name ?? '',
+                          url: attachment.url,
+                      }))
+                    : [],
                 author: {
                     id: result.author_id.toString(),
                     handle: getAccountHandle(
