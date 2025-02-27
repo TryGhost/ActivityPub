@@ -281,7 +281,7 @@ function accountToAuthorDTO(account: Account): AuthorDTO {
     return {
         id: account.apId.href,
         name: account.name || '',
-        handle: account.username,
+        handle: getAccountHandle(new URL(account.apId).host, account.username),
         avatarUrl: account.avatarUrl?.href || '',
         url: account.url.href,
     };

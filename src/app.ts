@@ -99,11 +99,11 @@ import {
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
+    createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
     handleCreateNote,
     handleGetActivities,
-    handleGetActivityThread,
     handleGetProfilePosts,
     handleWebhookSiteChanged,
 } from './http/api';
@@ -916,8 +916,8 @@ app.get(
     spanWrapper(handleGetProfilePosts),
 );
 app.get(
-    '/.ghost/activitypub/thread/:object_id',
-    spanWrapper(handleGetActivityThread),
+    '/.ghost/activitypub/thread/:post_ap_id',
+    spanWrapper(createGetThreadHandler(postRepository, accountService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle',

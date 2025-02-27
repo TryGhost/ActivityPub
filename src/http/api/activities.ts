@@ -1,12 +1,6 @@
 import { type AppContext, fedify } from '../../app';
-import {
-    getActivityChildren,
-    getActivityForObject,
-    getActivityMeta,
-    getActivityParents,
-} from '../../db';
+import { getActivityMeta } from '../../db';
 import { buildActivity } from '../../helpers/activitypub/activity';
-import { isUri } from '../../helpers/uri';
 import { spanWrapper } from '../../instrumentation';
 
 const GET_ACTIVITIES_DEFAULT_LIMIT = 10;
@@ -250,96 +244,6 @@ export async function handleGetActivities(ctx: AppContext) {
         JSON.stringify({
             items: activities,
             next: nextCursor,
-        }),
-        {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 200,
-        },
-    );
-}
-
-interface ActivityJsonLd {
-    [key: string]: any;
-}
-
-/**
- * Handle a request for an activity thread
- *
- * @param ctx App context instance
- */
-export async function handleGetActivityThread(ctx: AppContext) {
-    const db = ctx.get('db');
-    const globaldb = ctx.get('globaldb');
-    const logger = ctx.get('logger');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db,
-        globaldb,
-        logger,
-    });
-
-    // Parse "object_id" from request parameters
-    // /thread/:object_id
-    const paramObjectId = ctx.req.param('object_id');
-    const objectId = paramObjectId ? decodeURIComponent(paramObjectId) : '';
-
-    // If the provided objectId is invalid, return early
-    if (isUri(objectId) === false) {
-        return new Response(null, { status: 400 });
-    }
-
-    const activityJsonLd = await getActivityForObject(objectId);
-
-    // If the activity can not be found, return early
-    if (activityJsonLd === undefined) {
-        return new Response(null, { status: 404 });
-    }
-
-    const items: ActivityJsonLd[] = [activityJsonLd];
-
-    // If the object is a string, fetch the object from the database. We need to
-    // do this because we need the inReplyTo property of the object to find the
-    // parent(s) and children of the activity
-    if (typeof activityJsonLd.object === 'string') {
-        const object = await globaldb.get<ActivityJsonLd>([
-            activityJsonLd.object,
-        ]);
-
-        if (object) {
-            activityJsonLd.object = object;
-        }
-    }
-
-    // Find children (replies) and append to the thread
-    const children = await getActivityChildren(activityJsonLd);
-    items.push(...children);
-
-    // Find parent(s) and prepend to the thread
-    const parents = await getActivityParents(activityJsonLd);
-    items.unshift(...parents);
-
-    // Build the activities so that they have all the data expected by the client
-    const likedRefs = (await db.get<string[]>(['liked'])) || [];
-    const repostedRefs = (await db.get<string[]>(['reposted'])) || [];
-
-    const builtActivities = await Promise.all(
-        items.map((item) =>
-            buildActivity(
-                item.id,
-                globaldb,
-                apCtx,
-                likedRefs,
-                repostedRefs,
-                true,
-            ),
-        ),
-    );
-
-    // Return the response
-    return new Response(
-        JSON.stringify({
-            items: builtActivities,
         }),
         {
             headers: {
