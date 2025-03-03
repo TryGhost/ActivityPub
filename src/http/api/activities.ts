@@ -228,6 +228,7 @@ export async function handleGetActivities(ctx: AppContext) {
                     apCtx,
                     likedRefs,
                     repostedRefs,
+                    outboxRefs,
                     true,
                 );
             } catch (err) {

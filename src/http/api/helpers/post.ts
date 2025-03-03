@@ -17,10 +17,12 @@ function accountToAuthorDTO(account: Account): AuthorDTO {
 export function postToDTO(
     post: Post,
     meta: {
+        authoredByMe: boolean;
         likedByMe: boolean;
         repostedByMe: boolean;
         repostedBy: Account | null;
     } = {
+        authoredByMe: false,
         likedByMe: false,
         repostedByMe: false,
         repostedBy: null,
@@ -48,6 +50,7 @@ export function postToDTO(
             };
         }),
         author: accountToAuthorDTO(post.author),
+        authoredByMe: meta.authoredByMe,
         repostCount: post.repostCount,
         repostedByMe: meta.repostedByMe,
         repostedBy: meta.repostedBy
