@@ -152,7 +152,7 @@ describe('FeedService', () => {
         it('should add a post to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client);
 
-            // Initialise user internal account
+            // Initialise an internal account for user
             const userAccount = await createInternalAccount('foo.com');
 
             // Initialise an internal account that the user will follow
@@ -253,7 +253,7 @@ describe('FeedService', () => {
         it('should addd reposted posts to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client);
 
-            // Initialise user internal account
+            // Initialise an internal account for user
             const userAccount = await createInternalAccount('foo.com');
 
             // Initialise an internal account that the user will follow
@@ -334,7 +334,7 @@ describe('FeedService', () => {
         it('should not add replies to feeds', async () => {
             const feedService = new FeedService(client);
 
-            // Initialise user internal account
+            // Initialise an internal account for user
             const userAccount = await createInternalAccount('foo.com');
 
             // Initialise an internal account that the user will follow
@@ -382,6 +382,72 @@ describe('FeedService', () => {
             const followedAccountFeed =
                 await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(0);
+        }, 10000);
+    });
+
+    describe('removePostFromFeeds', () => {
+        it('should remove a post from the feeds of the users that can already see it', async () => {
+            const feedService = new FeedService(client);
+
+            // Initialise an internal account for user
+            const userAccount = await createInternalAccount('foo.com');
+
+            // Initialise an internal account that the user will follow
+            const followedAccount = await createInternalAccount('bar.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Initialise another internal account that will follow the internal
+            // account that is not the user
+            const otherAccount = await createInternalAccount('baz.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                otherAccount as unknown as AccountType,
+            );
+
+            // Initialise posts
+            const userAccountPost = await createPost(userAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(userAccountPost);
+
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAccountPost);
+
+            // Add the posts to the feeds of the users that should see them
+            await feedService.addPostToFeeds(userAccountPost as PublicPost);
+            await feedService.addPostToFeeds(followedAccountPost as PublicPost);
+
+            // Remove followedAccountPost from the feeds of the users that can
+            // already see it
+            await feedService.removePostFromFeeds(
+                followedAccountPost as PublicPost,
+            );
+
+            // Assert feeds for each account are as expected
+
+            // userAccount should have 1 post in their feed:
+            // - Their own (because the post from followedAccount was removed)
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
+            expect(userAccountFeed.length).toBe(1);
+
+            // followedAccount should have 0 posts in their feed:
+            // - The post they posted is no longer in their feed because it was
+            //   removed
+            const followedAccountFeed =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeed.length).toBe(0);
+
+            // otherAccount should have 0 posts in their feed:
+            // - The post from followedAccount was removed
+            const otherAccountFeed = await getFeedDataForAccount(otherAccount);
+            expect(otherAccountFeed.length).toBe(0);
         }, 10000);
     });
 });

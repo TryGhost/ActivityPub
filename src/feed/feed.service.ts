@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 
 import {
     type FollowersOnlyPost,
+    type Post,
     PostType,
     type PublicPost,
 } from 'post/post.entity';
@@ -292,5 +293,23 @@ export class FeedService {
         }
 
         return userIds;
+    }
+
+    /**
+     * Remove a post from the feeds of the users that can already see it
+     *
+     * @param post Post to remove from feeds
+     * @returns IDs of the users that had their feed updated
+     */
+    async removePostFromFeeds(post: Post) {
+        // Work out which user's feeds the post should be removed from
+        const updatedFeedUserIds = (
+            await this.db('feeds').where('post_id', post.id).select('user_id')
+        ).map((user) => user.user_id);
+
+        // Remove the post from the feeds
+        await this.db('feeds').where('post_id', post.id).delete();
+
+        return updatedFeedUserIds;
     }
 }

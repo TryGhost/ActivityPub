@@ -17,6 +17,7 @@ import {
     FeedsUpdatedEventUpdateOperation,
 } from 'feed/feeds-updated.event';
 import { PostCreatedEvent } from 'post/post-created.event';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import { Audience, Post, PostType } from 'post/post.entity';
 
@@ -63,7 +64,7 @@ describe('FeedUpdateService', () => {
 
     describe('handling a newly created post', () => {
         it('should emit a FeedsUpdatedEvent', async () => {
-            const expectedUpdatedFeedUserIds = [456, 789];
+            const expectedUpdatedFeedUserIds = [789, 987];
 
             feedService.addPostToFeeds = vi
                 .fn()
@@ -92,13 +93,11 @@ describe('FeedUpdateService', () => {
         });
 
         it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
-            const expectedUpdatedFeedUserIds: number[] = [];
-
             feedService.addPostToFeeds = vi
                 .fn()
                 .mockImplementation(async (incomingPost) => {
                     if (incomingPost === post) {
-                        return expectedUpdatedFeedUserIds;
+                        return [];
                     }
                     return [1123, 4456];
                 });
@@ -140,7 +139,7 @@ describe('FeedUpdateService', () => {
         const repostedById = 789;
 
         it('should emit a FeedsUpdatedEvent', async () => {
-            const expectedUpdatedFeedUserIds = [789, 987];
+            const expectedUpdatedFeedUserIds = [987, 654];
 
             feedService.addPostToFeeds = vi
                 .fn()
@@ -177,8 +176,6 @@ describe('FeedUpdateService', () => {
         });
 
         it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
-            const expectedUpdatedFeedUserIds: number[] = [];
-
             feedService.addPostToFeeds = vi
                 .fn()
                 .mockImplementation(
@@ -187,7 +184,7 @@ describe('FeedUpdateService', () => {
                             incomingPost === post &&
                             incomingRepostedBy === repostedById
                         ) {
-                            return expectedUpdatedFeedUserIds;
+                            return [];
                         }
                         return [1123, 4456];
                     },
@@ -222,6 +219,64 @@ describe('FeedUpdateService', () => {
             events.emit(
                 PostRepostedEvent.getName(),
                 new PostRepostedEvent(post, repostedById),
+            );
+
+            await vi.advanceTimersByTimeAsync(1000 * 10);
+
+            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
+                FeedsUpdatedEvent.getName(),
+            );
+        });
+    });
+
+    describe('handling a deleted post', () => {
+        const deletedById = 789;
+
+        it('should emit a FeedsUpdatedEvent', async () => {
+            const expectedUpdatedFeedUserIds = [987, 654];
+
+            feedService.removePostFromFeeds = vi
+                .fn()
+                .mockImplementation(async (incomingPost) => {
+                    if (incomingPost === post) {
+                        return expectedUpdatedFeedUserIds;
+                    }
+                    return [];
+                });
+
+            events.emit(
+                PostDeletedEvent.getName(),
+                new PostDeletedEvent(post, deletedById),
+            );
+
+            await vi.advanceTimersByTimeAsync(1000 * 10);
+
+            expect(eventsEmitSpy).toHaveBeenCalledTimes(2);
+
+            const [eventName, event] = eventsEmitSpy.mock.calls[1];
+
+            expect(eventName).toEqual(FeedsUpdatedEvent.getName());
+            expect(event).instanceOf(FeedsUpdatedEvent);
+            expect(event.getUserIds()).toEqual(expectedUpdatedFeedUserIds);
+            expect(event.getUpdateOperation()).toEqual(
+                FeedsUpdatedEventUpdateOperation.PostRemoved,
+            );
+            expect(event.getPost()).toEqual(post);
+        });
+
+        it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
+            feedService.removePostFromFeeds = vi
+                .fn()
+                .mockImplementation(async (incomingPost) => {
+                    if (incomingPost === post) {
+                        return [];
+                    }
+                    return [1123, 4456];
+                });
+
+            events.emit(
+                PostDeletedEvent.getName(),
+                new PostDeletedEvent(post, deletedById),
             );
 
             await vi.advanceTimersByTimeAsync(1000 * 10);
