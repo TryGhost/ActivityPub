@@ -32,6 +32,7 @@ export async function buildActivity(
     apCtx: Context<ContextData>,
     liked: string[] = [],
     reposted: string[] = [],
+    authored: string[] = [],
     expandInReplyTo = false,
 ): Promise<Activity | null> {
     const item = await db.get<Activity>([uri]);
@@ -115,6 +116,11 @@ export async function buildActivity(
         if (reposted.includes(repostId.href)) {
             if (typeof item.object !== 'string') {
                 item.object.reposted = true;
+            }
+        }
+        if (authored.includes(item.id)) {
+            if (typeof item.object !== 'string') {
+                item.object.authored = true;
             }
         }
     }

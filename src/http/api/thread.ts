@@ -29,6 +29,7 @@ export function createGetThreadHandler(
             await postRepository.getThreadByApId(postApId, account.id)
         ).map(({ post, likedByAccount, repostedByAccount }) => {
             return postToDTO(post, {
+                authoredByMe: post.author.id === account.id,
                 likedByMe: likedByAccount,
                 repostedByMe: repostedByAccount,
                 repostedBy: null,

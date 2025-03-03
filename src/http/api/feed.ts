@@ -91,6 +91,7 @@ export function createGetFeedHandler(
                     url: result.author_url ?? '',
                     avatarUrl: result.author_avatar_url ?? '',
                 },
+                authoredByMe: result.author_id === account.id,
                 repostCount: result.post_repost_count,
                 repostedByMe: result.post_reposted_by_user === 1,
                 repostedBy: result.reposter_id
