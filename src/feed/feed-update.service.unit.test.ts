@@ -17,8 +17,8 @@ import {
     FeedsUpdatedEventUpdateOperation,
 } from 'feed/feeds-updated.event';
 import { PostCreatedEvent } from 'post/post-created.event';
-import { PostRepostedEvent } from 'post/post-reposted.event';
 import { PostDerepostedEvent } from 'post/post-dereposted.event';
+import { PostRepostedEvent } from 'post/post-reposted.event';
 import { Audience, Post, PostType } from 'post/post.entity';
 
 describe('FeedUpdateService', () => {

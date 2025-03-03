@@ -4,7 +4,7 @@ import type { FeedService } from 'feed/feed.service';
 import { FeedsUpdatedEventUpdateOperation } from 'feed/feeds-updated.event';
 import { FeedsUpdatedEvent } from 'feed/feeds-updated.event';
 import { PostCreatedEvent } from 'post/post-created.event';
-import { PostDerepostedEvent } from 'post/post-dereposted.event'
+import { PostDerepostedEvent } from 'post/post-dereposted.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import { isFollowersOnlyPost, isPublicPost } from 'post/post.entity';
 
@@ -89,8 +89,6 @@ export class FeedUpdateService {
                 derepostedBy,
             );
         }
-
-        console.log(`Post removed for ${updatedFeedUserIds.length} users: ${updatedFeedUserIds}`);
 
         if (updatedFeedUserIds.length > 0) {
             this.events.emit(

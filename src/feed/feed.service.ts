@@ -366,10 +366,10 @@ export class FeedService {
             await transaction('feeds')
                 .where('post_id', post.id)
                 .whereIn('user_id', userIds)
-                .where(function () {
-                    this.where('reposted_by_id', derepostedBy).orWhereNull(
-                        'reposted_by_id',
-                    );
+                .modify((queryBuilder) => {
+                    if (derepostedBy) {
+                        queryBuilder.where('reposted_by_id', derepostedBy);
+                    }
                 })
                 .delete();
 

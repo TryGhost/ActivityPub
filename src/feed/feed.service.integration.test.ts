@@ -480,28 +480,44 @@ describe('FeedService', () => {
             const reposter2 = await createInternalAccount('baz.com');
             const postAuthorAccount = await createInternalAccount('qux.com');
 
+            console.log(`LOGS WE CARE 1: reposter1: ${reposter1}`);
+            console.log(`LOGS WE CARE 2: reposter2: ${reposter2}`);
+            console.log(
+                `LOGS WE CARE 3: postAuthorAccount: ${postAuthorAccount}`,
+            );
+
             await accountService.recordAccountFollow(
                 reposter1 as unknown as AccountType,
                 userAccount as unknown as AccountType,
             );
+
+            console.log(`LOGS WE CARE 4: reposter1: ${reposter1}`);
             await accountService.recordAccountFollow(
                 reposter2 as unknown as AccountType,
                 userAccount as unknown as AccountType,
             );
 
+            console.log(`LOGS WE CARE 5: reposter2: ${reposter2}`);
+
             // Create post and add two reposts
             const post = await createPost(postAuthorAccount, {
                 audience: Audience.Public,
             });
+            console.log(`LOGS WE CARE 6: post: ${post}`);
             await postRepository.save(post);
             post.addRepost(reposter1);
+            await postRepository.save(post);
             post.addRepost(reposter2);
             await postRepository.save(post);
+
+            console.log(`LOGS WE CARE 7: post: ${post}`);
 
             // Add to feeds
             await feedService.addPostToFeeds(post as PublicPost);
             await feedService.addPostToFeeds(post as PublicPost, reposter1.id);
             await feedService.addPostToFeeds(post as PublicPost, reposter2.id);
+
+            console.log(`LOGS WE CARE 8: post: ${post}`);
 
             // Remove only reposter1's repost
             await feedService.removePostFromFeeds(
@@ -509,14 +525,25 @@ describe('FeedService', () => {
                 reposter1.id,
             );
 
+            console.log(`LOGS WE CARE 9: post: ${post}`);
+
             // Verify only reposter2's repost remains
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);
+            console.log(
+                `LOGS WE CARE 10: feedAfterRemoval: ${feedAfterRemoval}`,
+            );
             expect(feedAfterRemoval.length).toBe(1);
+            console.log(
+                `LOGS WE CARE 11: feedAfterRemoval[0]: ${feedAfterRemoval[0]}`,
+            );
             expect(feedAfterRemoval[0]).toMatchObject({
                 post_id: post.id,
                 author_id: postAuthorAccount.id,
                 reposted_by_id: reposter2.id,
             });
+            console.log(
+                `LOGS WE CARE 12: feedAfterRemoval[0]: ${feedAfterRemoval[0]}`,
+            );
         });
     });
 });
