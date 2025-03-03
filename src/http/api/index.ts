@@ -2,6 +2,7 @@ export * from './activities';
 export * from './account';
 export * from './feed';
 export * from './note';
+export * from './post';
 export * from './profile';
 export * from './search';
 export * from './thread';
