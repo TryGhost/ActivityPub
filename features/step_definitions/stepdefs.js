@@ -594,33 +594,38 @@ When('we request the outbox', async function () {
     );
 });
 
-When('an authenticated request is made to {string}', async function (path) {
-    let requestPath = path;
+When(
+    /an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"/,
+    async function (method, path) {
+        const requestMethod = method || 'get';
+        let requestPath = path;
 
-    // If this is a request to the /thread/ endpoint, we need to replace the
-    // object name with the object ID as we don't have a way to know the object
-    // ID ahead of time
-    if (path.includes('/thread/')) {
-        const objectName = path.split('/').pop(); // Object name is the last part of the path
-        const object = this.objects[objectName];
+        // If this is a request to the /thread/ endpoint, we need to replace the
+        // object name with the object ID as we don't have a way to know the object
+        // ID ahead of time
+        if (path.includes('/thread/')) {
+            const objectName = path.split('/').pop(); // Object name is the last part of the path
+            const object = this.objects[objectName];
 
-        if (object) {
-            requestPath = path.replace(
-                objectName,
-                encodeURIComponent(object.id),
-            );
+            if (object) {
+                requestPath = path.replace(
+                    objectName,
+                    encodeURIComponent(object.id),
+                );
+            }
         }
-    }
 
-    this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub${requestPath}`,
-        {
-            headers: {
-                Accept: 'application/ld+json',
+        this.response = await fetchActivityPub(
+            `http://fake-ghost-activitypub${requestPath}`,
+            {
+                method: requestMethod,
+                headers: {
+                    Accept: 'application/ld+json',
+                },
             },
-        },
-    );
-});
+        );
+    },
+);
 
 When('an unauthenticated request is made to {string}', async function (path) {
     this.response = await fetchActivityPub(
@@ -1338,6 +1343,15 @@ Then('the request is accepted', async function () {
     assert(
         this.response.ok,
         `Expected OK response - got ${this.response.status} ${await this.response.clone().text()}`,
+    );
+});
+
+Then('the request is accepted with a {int}', function (statusCode) {
+    assert(this.response.ok);
+    assert.equal(
+        this.response.status,
+        statusCode,
+        `Expected status code ${statusCode} - got ${this.response.status}`,
     );
 });
 
