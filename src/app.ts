@@ -93,6 +93,7 @@ import { getTraceContext } from './helpers/context-header';
 import { getSiteSettings } from './helpers/ghost';
 import { getRequestData } from './helpers/request-data';
 import {
+    createDeletePostHandler,
     createGetAccountFollowsHandler,
     createGetAccountHandler,
     createGetFeedHandler,
@@ -938,6 +939,11 @@ app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner),
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
+);
+app.delete(
+    '/.ghost/activitypub/post/:uuid',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createDeletePostHandler()),
 );
 /** Federation wire up */
 
