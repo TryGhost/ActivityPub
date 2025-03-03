@@ -305,80 +305,27 @@ export class FeedService {
         post: PublicPost | FollowersOnlyPost,
         derepostedBy: number | null = null,
     ) {
-        // Work out which user's feeds the post should be removed from
-        const targetUserIds = new Set<number>();
-        let followersAccountId: number;
-
-        // If the post is a reply, it was not added to the feed so we don't need to remove it from any feeds
-        if (post.inReplyTo) {
-            return [];
-        }
-
-        if (derepostedBy) {
-            // If the post is a derepost, we should remove it from:
-            // - The feed of the user associated with the account that dereposted the post
-            // - The feeds of the users whose accounts are followers of the account that dereposted the post
-            const derepostedByInternalId = await this.db('users')
-                .where('account_id', derepostedBy)
-                .select('id')
-                .first();
-
-            if (derepostedByInternalId) {
-                targetUserIds.add(derepostedByInternalId.id);
-            }
-
-            followersAccountId = derepostedBy;
-        } else {
-            // Otherwise, we should remove the post from:
-            // - The feed of the user associated with the author
-            // - The feeds of the users whose accounts are followers of the account that authored the post
-            // - The feed of any users that are being replied to in the post
-            const authorInternalId = await this.db('users')
-                .where('account_id', post.author.id)
-                .select('id')
-                .first();
-
-            if (authorInternalId) {
-                targetUserIds.add(authorInternalId.id);
-            }
-
-            followersAccountId = Number(post.author.id);
-        }
-
-        const followerIds = await this.db('follows')
-            .join('users', 'follows.follower_id', 'users.account_id')
-            .where('following_id', followersAccountId)
-            .select('users.id as user_id');
-
-        for (const follower of followerIds) {
-            targetUserIds.add(follower.user_id);
-        }
-
-        const userIds = Array.from(targetUserIds).map(Number);
-
-        if (userIds.length === 0) {
-            return [];
-        }
-
-        const transaction = await this.db.transaction();
-
-        try {
-            await transaction('feeds')
+        const updatedFeedUserIds = (
+            await this.db('feeds')
                 .where('post_id', post.id)
-                .whereIn('user_id', userIds)
                 .modify((queryBuilder) => {
                     if (derepostedBy) {
                         queryBuilder.where('reposted_by_id', derepostedBy);
                     }
                 })
-                .delete();
+                .select('user_id')
+        ).map((user: { user_id: number }) => user.user_id);
 
-            await transaction.commit();
-        } catch (err) {
-            await transaction.rollback();
-            throw err;
-        }
+        // Remove the post from the feeds
+        await this.db('feeds')
+            .where('post_id', post.id)
+            .modify((queryBuilder) => {
+                if (derepostedBy) {
+                    queryBuilder.where('reposted_by_id', derepostedBy);
+                }
+            })
+            .delete();
 
-        return userIds;
+        return updatedFeedUserIds;
     }
 }
