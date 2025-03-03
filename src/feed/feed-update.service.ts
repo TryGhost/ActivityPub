@@ -79,8 +79,6 @@ export class FeedUpdateService {
         const post = event.getPost();
         const derepostedBy = event.getAccountId();
 
-        console.log(`post ${post}, Dereposted by: ${derepostedBy}`);
-
         let updatedFeedUserIds: number[] = [];
 
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
