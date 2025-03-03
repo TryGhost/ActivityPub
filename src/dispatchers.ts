@@ -433,13 +433,17 @@ export const createUndoHandler = (
         } else if (object instanceof Announce) {
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
-                ctx.data.logger.info('Undo announce activity sender missing, exit early');
+                ctx.data.logger.info(
+                    'Undo announce activity sender missing, exit early',
+                );
                 return;
             }
             const senderAccount = await accountService.getByApId(sender.id);
 
             if (object.objectId === null) {
-                ctx.data.logger.info('Undo announce activity object id missing, exit early');
+                ctx.data.logger.info(
+                    'Undo announce activity object id missing, exit early',
+                );
                 return;
             }
 
