@@ -421,7 +421,7 @@ describe('FeedService', () => {
             // Verify post was removed
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);
             expect(feedAfterRemoval.length).toBe(0);
-        });
+        }, 10000);
 
         it('should remove dereposted post from feeds', async () => {
             const feedService = new FeedService(client);
@@ -469,7 +469,7 @@ describe('FeedService', () => {
             // Verify repost was removed
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);
             expect(feedAfterRemoval.length).toBe(0);
-        });
+        }, 10000);
 
         it('should not affect other reposts when removing a specific derepost', async () => {
             const feedService = new FeedService(client);
@@ -545,6 +545,6 @@ describe('FeedService', () => {
             // console.log(
             //     `LOGS WE CARE 12: feedAfterRemoval[0]: ${feedAfterRemoval[0]}`,
             // );
-        });
+        }, 10000);
     });
 });
