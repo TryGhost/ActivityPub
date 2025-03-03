@@ -293,4 +293,39 @@ export class FeedService {
 
         return userIds;
     }
+
+    /**
+     * Remove a post from the feeds of the users that should no longer see it
+     *
+     * @param post Post to remove from feeds
+     * @param derepostedBy ID of the account that dereposted the post (if applicable)
+     * @returns IDs of the users that had their feed updated
+     */
+    async removePostFromFeeds(
+        post: PublicPost | FollowersOnlyPost,
+        derepostedBy: number | null = null,
+    ) {
+        const updatedFeedUserIds = (
+            await this.db('feeds')
+                .where('post_id', post.id)
+                .modify((queryBuilder) => {
+                    if (derepostedBy) {
+                        queryBuilder.where('reposted_by_id', derepostedBy);
+                    }
+                })
+                .select('user_id')
+        ).map((user: { user_id: number }) => user.user_id);
+
+        // Remove the post from the feeds
+        await this.db('feeds')
+            .where('post_id', post.id)
+            .modify((queryBuilder) => {
+                if (derepostedBy) {
+                    queryBuilder.where('reposted_by_id', derepostedBy);
+                }
+            })
+            .delete();
+
+        return updatedFeedUserIds;
+    }
 }

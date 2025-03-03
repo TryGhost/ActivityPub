@@ -352,7 +352,11 @@ inboxListener
     .onError(inboxErrorHandler)
     .on(
         Undo,
-        ensureCorrectContext(spanWrapper(createUndoHandler(accountService))),
+        ensureCorrectContext(
+            spanWrapper(
+                createUndoHandler(accountService, postRepository, postService),
+            ),
+        ),
     )
     .onError(inboxErrorHandler);
 

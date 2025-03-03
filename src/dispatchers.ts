@@ -388,7 +388,11 @@ export async function handleAnnoucedCreate(
     await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
-export const createUndoHandler = (accountService: AccountService) =>
+export const createUndoHandler = (
+    accountService: AccountService,
+    postRepository: KnexPostRepository,
+    postService: PostService,
+) =>
     async function handleUndo(ctx: Context<ContextData>, undo: Undo) {
         ctx.data.logger.info('Handling Undo');
 
@@ -397,40 +401,63 @@ export const createUndoHandler = (accountService: AccountService) =>
             return;
         }
 
-        const follow = await undo.getObject();
+        const object = await undo.getObject();
 
-        const isFollow = follow instanceof Follow;
+        if (object instanceof Follow) {
+            const follow = object as Follow;
+            if (!follow.actorId || !follow.objectId) {
+                ctx.data.logger.info('Undo contains invalid Follow - exiting');
+                return;
+            }
 
-        if (!isFollow) {
-            ctx.data.logger.info('Undo does not contain a Follow - exiting');
-            return;
+            const unfollower = await accountService.getAccountByApId(
+                follow.actorId.href,
+            );
+            if (!unfollower) {
+                ctx.data.logger.info('Could not find unfollower');
+                return;
+            }
+            const unfollowing = await accountService.getAccountByApId(
+                follow.objectId.href,
+            );
+            if (!unfollowing) {
+                ctx.data.logger.info('Could not find unfollowing');
+                return;
+            }
+
+            await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
+
+            await accountService.recordAccountUnfollow(unfollowing, unfollower);
+
+            await addToList(ctx.data.db, ['inbox'], undo.id.href);
+        } else if (object instanceof Announce) {
+            const sender = await object.getActor(ctx);
+            if (sender === null || sender.id === null) {
+                ctx.data.logger.info(
+                    'Undo announce activity sender missing, exit early',
+                );
+                return;
+            }
+            const senderAccount = await accountService.getByApId(sender.id);
+
+            if (object.objectId === null) {
+                ctx.data.logger.info(
+                    'Undo announce activity object id missing, exit early',
+                );
+                return;
+            }
+
+            if (senderAccount !== null) {
+                const originalPost = await postService.getByApId(
+                    object.objectId,
+                );
+
+                if (originalPost !== null) {
+                    originalPost.removeRepost(senderAccount);
+                    await postRepository.save(originalPost);
+                }
+            }
         }
-
-        if (!follow.actorId || !follow.objectId) {
-            ctx.data.logger.info('Undo contains invalid Follow - exiting');
-            return;
-        }
-
-        const unfollower = await accountService.getAccountByApId(
-            follow.actorId.href,
-        );
-        if (!unfollower) {
-            ctx.data.logger.info('Could not find unfollower');
-            return;
-        }
-        const unfollowing = await accountService.getAccountByApId(
-            follow.objectId.href,
-        );
-        if (!unfollowing) {
-            ctx.data.logger.info('Could not find unfollowing');
-            return;
-        }
-
-        await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
-
-        await accountService.recordAccountUnfollow(unfollowing, unfollower);
-
-        await addToList(ctx.data.db, ['inbox'], undo.id.href);
 
         return;
     };
