@@ -945,9 +945,11 @@ app.get(
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
 );
 app.delete(
-    '/.ghost/activitypub/post/:uuid',
+    '/.ghost/activitypub/post/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createDeletePostHandler()),
+    spanWrapper(
+        createDeletePostHandler(accountRepository, postRepository, postService),
+    ),
 );
 /** Federation wire up */
 
