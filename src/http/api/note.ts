@@ -27,12 +27,11 @@ export async function handleCreateNote(
 
     // Save to posts table when a note is created
     const account = await accountRepository.getBySite(ctx.get('site'));
-    const postData = {
+    const post = Post.createFromData(account, {
         content: data.content,
         type: PostType.Note,
         audience: Audience.Public,
-    };
-    const post = Post.createFromData(account, postData);
+    });
     await postRepository.save(post);
 
     let result: PublishResult | null = null;

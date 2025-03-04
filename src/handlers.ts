@@ -367,15 +367,13 @@ export function createReplyActionHandler(
             });
         }
 
-        const replyData = {
+        const newReply = Post.createFromData(account, {
             content: data.content,
             type: PostType.Note,
             audience: Audience.Public,
             apId: replyId,
             inReplyTo: parentPost,
-        };
-
-        const newReply = Post.createFromData(account, replyData);
+        });
         await postRepository.save(newReply);
 
         apCtx.sendActivity(

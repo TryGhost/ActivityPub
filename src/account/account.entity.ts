@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { BaseEntity } from '../core/base.entity';
-import { type Post, PostType } from '../post/post.entity';
+import { type CreatePostType, PostType } from '../post/post.entity';
 import type { Site } from '../site/site.service';
 
 export interface AccountData {
@@ -65,7 +65,7 @@ export class Account extends BaseEntity {
         );
     }
 
-    getApIdForPost(post: Post) {
+    getApIdForPost(post: { type: CreatePostType; uuid: string }) {
         if (!this.isInternal) {
             throw new Error('Cannot get AP ID for External Accounts');
         }
