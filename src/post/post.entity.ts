@@ -7,7 +7,10 @@ import { parseURL } from '../core/url';
 export enum PostType {
     Note = 0,
     Article = 1,
+    Tombstone = 2,
 }
+
+export type CreatePostType = Exclude<PostType, PostType.Tombstone>;
 
 export enum Audience {
     Public = 0,
@@ -35,7 +38,7 @@ export interface PostAttachment {
 }
 
 export interface PostData {
-    type: PostType;
+    type: CreatePostType;
     audience?: Audience;
     title?: string | null;
     excerpt?: string | null;
@@ -72,12 +75,13 @@ export class Post extends BaseEntity {
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
+    private deleted = false;
 
     constructor(
         public readonly id: number | null,
         uuid: string | null,
         public readonly author: Account,
-        public readonly type: PostType,
+        public readonly type: CreatePostType,
         public readonly audience: Audience,
         public readonly title: string | null,
         public readonly excerpt: string | null,
@@ -93,6 +97,7 @@ export class Post extends BaseEntity {
         private readonly _readingTimeMinutes: number | null = null,
         public readonly attachments: PostAttachment[] = [],
         apId: URL | null = null,
+        _deleted = false,
     ) {
         super(id);
         if (uuid === null) {
@@ -101,7 +106,10 @@ export class Post extends BaseEntity {
             this.uuid = uuid;
         }
         if (apId === null) {
-            this.apId = author.getApIdForPost(this);
+            this.apId = author.getApIdForPost({
+                uuid: this.uuid,
+                type,
+            });
         } else {
             this.apId = apId;
         }
@@ -110,6 +118,35 @@ export class Post extends BaseEntity {
         } else {
             this.url = url;
         }
+        if (_deleted) {
+            this.deleted = true;
+            this.handleDeleted();
+        }
+    }
+
+    delete(account: Account) {
+        if (account.uuid !== this.author.uuid) {
+            throw new Error(
+                `Account ${account.uuid} cannot delete Post ${this.uuid}`,
+            );
+        }
+
+        this.deleted = true;
+        this.handleDeleted();
+    }
+
+    private handleDeleted() {
+        const self = this as any;
+        self.type = PostType.Tombstone;
+        self.title = null;
+        self.content = null;
+        self.excerpt = null;
+        self.imageUrl = null;
+        self.attachments = [];
+    }
+
+    static isDeleted(post: Post) {
+        return post.deleted;
     }
 
     get readingTimeMinutes() {
