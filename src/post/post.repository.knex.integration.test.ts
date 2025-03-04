@@ -9,6 +9,7 @@ import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
+import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post, PostType } from './post.entity';
@@ -63,6 +64,146 @@ describe('KnexPostRepository', () => {
             },
         });
         postRepository = new KnexPostRepository(client, events);
+    });
+
+    describe('Delete', () => {
+        it('Can handle a deleted post', async () => {
+            const site = await siteService.initialiseSiteForHost('testing.com');
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+            });
+
+            await postRepository.save(post);
+
+            post.delete(account);
+
+            const postDeletedEventPromise: Promise<PostDeletedEvent> =
+                new Promise((resolve) => {
+                    events.once(PostDeletedEvent.getName(), resolve);
+                });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client(TABLE_POSTS)
+                .where({
+                    uuid: post.uuid,
+                })
+                .select('*')
+                .first();
+
+            assert(rowInDb, 'A row should have been saved in the DB');
+            expect(rowInDb.deleted_at).not.toBe(null);
+            expect(rowInDb.title).toBe('Title');
+            expect(rowInDb.content).toBe('<p>Hello, world!</p>');
+            expect(rowInDb.excerpt).toBe('Hello, world!');
+
+            const postDeletedEvent = await postDeletedEventPromise;
+
+            expect(postDeletedEvent.getPost().id).toBe(post.id);
+        });
+
+        it('Can handle a deleted reply', async () => {
+            const site = await siteService.initialiseSiteForHost('testing.com');
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+            });
+
+            await postRepository.save(post);
+
+            const reply = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Hey',
+                inReplyTo: post,
+            });
+
+            await postRepository.save(reply);
+
+            const postRowInDb = await client(TABLE_POSTS)
+                .where({
+                    uuid: post.uuid,
+                })
+                .select('*')
+                .first();
+
+            expect(postRowInDb.reply_count).toBe(1);
+
+            reply.delete(account);
+
+            const postDeletedEventPromise: Promise<PostDeletedEvent> =
+                new Promise((resolve) => {
+                    events.once(PostDeletedEvent.getName(), resolve);
+                });
+
+            await postRepository.save(reply);
+
+            const replyRowInDb = await client(TABLE_POSTS)
+                .where({
+                    uuid: reply.uuid,
+                })
+                .select('*')
+                .first();
+
+            assert(replyRowInDb, 'A row should have been saved in the DB');
+            expect(replyRowInDb.deleted_at).not.toBe(null);
+            expect(replyRowInDb.content).toBe('Hey');
+
+            const postDeletedEvent = await postDeletedEventPromise;
+
+            expect(postDeletedEvent.getPost().id).toBe(reply.id);
+
+            const postRowAfterDelete = await client(TABLE_POSTS)
+                .where({
+                    uuid: post.uuid,
+                })
+                .select('*')
+                .first();
+
+            expect(postRowAfterDelete.reply_count).toBe(0);
+        });
+
+        it('Can handle a new deleted post', async () => {
+            const site = await siteService.initialiseSiteForHost('testing.com');
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+            });
+
+            post.delete(account);
+
+            await postRepository.save(post);
+
+            const rowInDb = await client(TABLE_POSTS)
+                .where({
+                    uuid: post.uuid,
+                })
+                .select('*')
+                .first();
+
+            expect(rowInDb).toBe(undefined);
+        });
     });
 
     it('Can save a Post', async () => {

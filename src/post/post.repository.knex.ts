@@ -6,6 +6,7 @@ import { Account } from '../account/account.entity';
 import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { parseURL } from '../core/url';
 import { PostCreatedEvent } from './post-created.event';
+import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post } from './post.entity';
@@ -341,13 +342,26 @@ export class KnexPostRepository {
      * @param post Post to save
      */
     async save(post: Post): Promise<void> {
-        const transaction = await this.db.transaction();
         const isNewPost = post.isNew;
+        const isDeletedPost = Post.isDeleted(post);
+
+        if (post.author.id === null) {
+            throw new Error(
+                `Unable to save Post ${post.uuid} - The author is missing an id.`,
+            );
+        }
+
+        if (isNewPost && isDeletedPost) {
+            return;
+        }
+
+        const transaction = await this.db.transaction();
 
         try {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             let repostAccountIds: number[] = [];
+            let wasDeleted = false;
 
             if (isNewPost) {
                 const postId = await this.insertPost(
@@ -378,6 +392,31 @@ export class KnexPostRepository {
                     repostAccountIds = repostsToAdd.map(
                         (accountId) => accountId,
                     );
+                }
+            } else if (isDeletedPost) {
+                const existingRow = await transaction('posts')
+                    .select('deleted_at')
+                    .where({
+                        id: post.id,
+                    })
+                    .first();
+
+                if (existingRow && existingRow.deleted_at === null) {
+                    await transaction('posts')
+                        .update({
+                            deleted_at: transaction.raw('CURRENT_TIMESTAMP'),
+                        })
+                        .where({ id: post.id });
+
+                    if (post.inReplyTo) {
+                        await transaction('posts')
+                            .update({
+                                reply_count: this.db.raw('reply_count - 1'),
+                            })
+                            .where({ id: post.inReplyTo });
+                    }
+
+                    wasDeleted = true;
                 }
             } else {
                 if (likesToAdd.length > 0 || likesToRemove.length > 0) {
@@ -454,6 +493,13 @@ export class KnexPostRepository {
                 this.events.emit(
                     PostCreatedEvent.getName(),
                     new PostCreatedEvent(post),
+                );
+            }
+
+            if (wasDeleted) {
+                this.events.emit(
+                    PostDeletedEvent.getName(),
+                    new PostDeletedEvent(post, post.author.id),
                 );
             }
 
