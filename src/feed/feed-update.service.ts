@@ -5,6 +5,7 @@ import { FeedsUpdatedEventUpdateOperation } from 'feed/feeds-updated.event';
 import { FeedsUpdatedEvent } from 'feed/feeds-updated.event';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
+import { PostDerepostedEvent } from 'post/post-dereposted.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import { isFollowersOnlyPost, isPublicPost } from 'post/post.entity';
 
@@ -26,6 +27,10 @@ export class FeedUpdateService {
         this.events.on(
             PostDeletedEvent.getName(),
             this.handlePostDeletedEvent.bind(this),
+        );
+        this.events.on(
+            PostDerepostedEvent.getName(),
+            this.handlePostDerepostedEvent.bind(this),
         );
     }
 
@@ -80,6 +85,27 @@ export class FeedUpdateService {
 
         const updatedFeedUserIds =
             await this.feedService.removePostFromFeeds(post);
+
+        if (updatedFeedUserIds.length > 0) {
+            this.events.emit(
+                FeedsUpdatedEvent.getName(),
+                new FeedsUpdatedEvent(
+                    updatedFeedUserIds,
+                    FeedsUpdatedEventUpdateOperation.PostRemoved,
+                    post,
+                ),
+            );
+        }
+    }
+
+    private async handlePostDerepostedEvent(event: PostDerepostedEvent) {
+        const post = event.getPost();
+        const derepostedBy = event.getAccountId();
+
+        const updatedFeedUserIds = await this.feedService.removePostFromFeeds(
+            post,
+            derepostedBy,
+        );
 
         if (updatedFeedUserIds.length > 0) {
             this.events.emit(

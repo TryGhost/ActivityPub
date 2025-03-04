@@ -299,16 +299,31 @@ export class FeedService {
      * Remove a post from the feeds of the users that can already see it
      *
      * @param post Post to remove from feeds
+     * @param derepostedBy ID of the account that dereposted the post (if applicable)
      * @returns IDs of the users that had their feed updated
      */
-    async removePostFromFeeds(post: Post) {
+    async removePostFromFeeds(post: Post, derepostedBy: number | null = null) {
         // Work out which user's feeds the post should be removed from
         const updatedFeedUserIds = (
-            await this.db('feeds').where('post_id', post.id).select('user_id')
-        ).map((user) => user.user_id);
+            await this.db('feeds')
+                .where('post_id', post.id)
+                .modify((queryBuilder) => {
+                    if (derepostedBy) {
+                        queryBuilder.where('reposted_by_id', derepostedBy);
+                    }
+                })
+                .select('user_id')
+        ).map((user: { user_id: number }) => user.user_id);
 
         // Remove the post from the feeds
-        await this.db('feeds').where('post_id', post.id).delete();
+        await this.db('feeds')
+            .where('post_id', post.id)
+            .modify((queryBuilder) => {
+                if (derepostedBy) {
+                    queryBuilder.where('reposted_by_id', derepostedBy);
+                }
+            })
+            .delete();
 
         return updatedFeedUserIds;
     }
