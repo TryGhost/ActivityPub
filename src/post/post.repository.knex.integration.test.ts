@@ -165,7 +165,7 @@ describe('KnexPostRepository', () => {
 
             const postDeletedEvent = await postDeletedEventPromise;
 
-            expect(postDeletedEvent.getPost().id).toBe(post.id);
+            expect(postDeletedEvent.getPost().id).toBe(reply.id);
 
             const postRowAfterDelete = await client(TABLE_POSTS)
                 .where({
