@@ -1776,3 +1776,13 @@ Then('the thread contains {string} posts', async function (string) {
         `Expected thread to contain ${string} posts, but got ${responseJson.posts.length}`,
     );
 });
+
+When('we delete the post {string}', async function (name) {
+    const id = this.activities[name].object.id;
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/post/${encodeURIComponent(id)}`,
+        {
+            method: 'DELETE',
+        },
+    );
+});

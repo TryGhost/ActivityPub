@@ -1,8 +1,8 @@
-import type { AppContext } from '../../app';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
+import { parseURL } from 'core/url';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
-import { parseURL } from 'core/url';
+import type { AppContext } from '../../app';
 /**
  * Create a handler for a request to delete a post
  */
