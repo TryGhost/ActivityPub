@@ -449,5 +449,108 @@ describe('FeedService', () => {
             const otherAccountFeed = await getFeedDataForAccount(otherAccount);
             expect(otherAccountFeed.length).toBe(0);
         }, 10000);
+
+        it('should remove dereposted post from feeds', async () => {
+            const feedService = new FeedService(client);
+
+            // Initialise accounts
+            const userAccount = await createInternalAccount('foo.com');
+            const followedAccount = await createInternalAccount('bar.com');
+            const postAuthorAccount = await createInternalAccount('baz.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Create post and repost
+            const post = await createPost(postAuthorAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+            post.addRepost(followedAccount);
+            await postRepository.save(post);
+
+            // Add to feeds
+            await feedService.addPostToFeeds(post as PublicPost);
+            await feedService.addPostToFeeds(
+                post as PublicPost,
+                followedAccount.id,
+            );
+
+            // Verify repost is in feed initially
+            const feedBeforeRemoval = await getFeedDataForAccount(userAccount);
+            expect(feedBeforeRemoval.length).toBe(1);
+            expect(feedBeforeRemoval[0]).toMatchObject({
+                post_id: post.id,
+                author_id: postAuthorAccount.id,
+                reposted_by_id: followedAccount.id,
+            });
+
+            // Remove repost from feeds
+            await feedService.removePostFromFeeds(
+                post as PublicPost,
+                followedAccount.id,
+            );
+
+            // Verify repost was removed
+            const feedAfterRemoval = await getFeedDataForAccount(userAccount);
+            expect(feedAfterRemoval.length).toBe(0);
+        }, 10000);
+
+        it('should not affect other reposts when removing a specific derepost', async () => {
+            const feedService = new FeedService(client);
+
+            // Initialise accounts
+            const userAccount = await createInternalAccount('foo.com');
+            const reposter1 = await createInternalAccount('bar.com');
+            const reposter2 = await createInternalAccount('baz.com');
+            const postAuthorAccount = await createInternalAccount('qux.com');
+
+            await accountService.recordAccountFollow(
+                reposter1 as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            await accountService.recordAccountFollow(
+                reposter2 as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Create post and add two reposts
+            const post = await createPost(postAuthorAccount, {
+                audience: Audience.Public,
+            });
+
+            await postRepository.save(post);
+            post.addRepost(reposter1);
+            await postRepository.save(post);
+            post.addRepost(reposter2);
+            await postRepository.save(post);
+
+            // Add to feeds
+            await feedService.addPostToFeeds(post as PublicPost);
+            await feedService.addPostToFeeds(post as PublicPost, reposter1.id);
+            await feedService.addPostToFeeds(post as PublicPost, reposter2.id);
+
+            expect(true).toBe(true);
+
+            // Remove only reposter1's repost
+            await feedService.removePostFromFeeds(
+                post as PublicPost,
+                reposter1.id,
+            );
+
+            // Verify only reposter2's repost remains
+            const feedAfterRemoval = await getFeedDataForAccount(userAccount);
+
+            expect(feedAfterRemoval.length).toBe(1);
+
+            expect(feedAfterRemoval[0]).toMatchObject({
+                post_id: post.id,
+                author_id: postAuthorAccount.id,
+                reposted_by_id: reposter2.id,
+            });
+        }, 10000);
     });
 });
