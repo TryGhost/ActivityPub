@@ -102,13 +102,15 @@ export class FeedUpdateService {
         const post = event.getPost();
         const derepostedBy = event.getAccountId();
 
-        const updatedFeedUserIds =
-            await this.feedService.removePostFromFeeds(post, derepostedBy);
+        const updatedFeedUserIds = await this.feedService.removePostFromFeeds(
+            post,
+            derepostedBy,
+        );
 
         if (updatedFeedUserIds.length > 0) {
             this.events.emit(
                 FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(,
+                new FeedsUpdatedEvent(
                     updatedFeedUserIds,
                     FeedsUpdatedEventUpdateOperation.PostRemoved,
                     post,
