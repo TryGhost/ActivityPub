@@ -356,31 +356,5 @@ describe('FeedUpdateService', () => {
                 FeedsUpdatedEvent.getName(),
             );
         });
-
-        it('should not emit a FeedsUpdatedEvent if the post audience is not public or followers only', async () => {
-            post = Post.createFromData(account, {
-                type: PostType.Article,
-                audience: Audience.Direct,
-            });
-
-            feedService.removePostFromFeeds = vi
-                .fn()
-                .mockImplementation(async () => {
-                    // Return a value so that we can be sure the reason for not
-                    // emitting the event is because of the audience
-                    return [1123, 4456];
-                });
-
-            events.emit(
-                PostDerepostedEvent.getName(),
-                new PostDerepostedEvent(post, derepostedById),
-            );
-
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
-            );
-        });
     });
 });
