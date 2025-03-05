@@ -63,3 +63,33 @@ Feature: Thread
     And post "1" in the thread is "Article"
     And post "2" in the thread is "Reply1"
     And post "3" in the thread is "Reply3"
+
+  Scenario: Retrieving the thread for a top level post that has replies that have been deleted
+    Given we reply "Reply1" to "Article" with the content
+        """
+        This is a great article!
+        """
+    And "Reply1" is in our Outbox
+    And we reply "Reply2" to "Article" with the content
+        """
+        This is still a great article!
+        """
+    And "Reply2" is in our Outbox
+    And we reply "Reply3" to "Article" with the content
+        """
+        This is probably the best article I have ever read!
+        """
+    And "Reply3" is in our Outbox
+    And we reply "Reply4" to "Article" with the content
+        """
+        Maybe its just an ok article after all!
+        """
+    And "Reply4" is in our Outbox
+    And an authenticated "delete" request is made to "/.ghost/activitypub/post/Reply2"
+    And an authenticated "delete" request is made to "/.ghost/activitypub/post/Reply4"
+    When an authenticated request is made to "/.ghost/activitypub/thread/Article"
+    Then the request is accepted
+    And the thread contains "3" posts
+    And post "1" in the thread is "Article"
+    And post "2" in the thread is "Reply1"
+    And post "3" in the thread is "Reply3"

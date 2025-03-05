@@ -204,9 +204,11 @@ export class KnexPostRepository {
         postIdsForThread.push(post.id);
 
         // Find all the posts that are immediate children of the resolved post
+        // and have not been deleted
         for (const row of await this.db('posts')
             .select('id')
-            .where('in_reply_to', post.id)) {
+            .where('in_reply_to', post.id)
+            .andWhere('deleted_at', null)) {
             postIdsForThread.push(row.id);
         }
 
@@ -233,6 +235,7 @@ export class KnexPostRepository {
                 'posts.ap_id',
                 'posts.in_reply_to',
                 'posts.thread_root',
+                'posts.deleted_at',
                 // Author account fields
                 'accounts.username',
                 'accounts.uuid as author_uuid',
