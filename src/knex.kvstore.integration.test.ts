@@ -1,13 +1,15 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-import { client } from './db';
+import type { Knex } from 'knex';
+import { createTestDb } from 'test/db';
 import { KnexKvStore } from './knex.kvstore';
 
-afterAll(async () => {
-    await client.destroy();
-});
-
 describe('KnexKvStore', () => {
+    let client: Knex;
+
+    beforeAll(async () => {
+        client = await createTestDb();
+    });
     it('Implements a basic KvStore', async () => {
         const table = 'key_value';
         const store = await KnexKvStore.create(client, table);

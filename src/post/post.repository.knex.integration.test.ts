@@ -1,12 +1,12 @@
 import assert from 'node:assert';
 import EventEmitter from 'node:events';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import type { Knex } from 'knex';
+import { createTestDb } from 'test/db';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
-import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
@@ -15,10 +15,6 @@ import { PostRepostedEvent } from './post-reposted.event';
 import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
-afterAll(async () => {
-    await client.destroy();
-});
-
 describe('KnexPostRepository', () => {
     let events: EventEmitter;
     let accountRepository: KnexAccountRepository;
@@ -26,6 +22,7 @@ describe('KnexPostRepository', () => {
     let accountService: AccountService;
     let siteService: SiteService;
     let postRepository: KnexPostRepository;
+    let client: Knex;
 
     const getAccount = async (host: string) => {
         const site = await siteService.initialiseSiteForHost(host);
@@ -33,6 +30,10 @@ describe('KnexPostRepository', () => {
 
         return account;
     };
+
+    beforeAll(async () => {
+        client = await createTestDb();
+    });
 
     beforeEach(async () => {
         // Clean up the database
