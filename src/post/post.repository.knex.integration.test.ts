@@ -342,6 +342,46 @@ describe('KnexPostRepository', () => {
         assert(accountInDb.uuid === result.author.uuid);
     });
 
+    it('Handles a deleted post when retrieved by apId', async () => {
+        const site = await siteService.initialiseSiteForHost('testing.com');
+        const account = await accountRepository.getBySite(site);
+        const post = Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+            visibility: 'public',
+        });
+
+        await postRepository.save(post);
+
+        post.delete(account);
+
+        const postDeletedEventPromise: Promise<PostDeletedEvent> = new Promise(
+            (resolve) => {
+                events.once(PostDeletedEvent.getName(), resolve);
+            },
+        );
+
+        await postRepository.save(post);
+
+        await postDeletedEventPromise;
+
+        const result = await postRepository.getByApId(post.apId);
+
+        assert(result);
+
+        expect(result.type).toBe(PostType.Tombstone);
+        expect(result.title).toBe(null);
+        expect(result.content).toBe(null);
+        expect(result.excerpt).toBe(null);
+        expect(result.imageUrl).toBe(null);
+        expect(result.attachments).toEqual([]);
+    });
+
     it('Handles likes of a new post', async () => {
         const accounts = await Promise.all(
             ['testing-one.com', 'testing-two.com', 'testing-three.com'].map(
