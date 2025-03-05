@@ -1781,3 +1781,18 @@ Then('the thread contains {string} posts', async function (string) {
         `Expected thread to contain ${string} posts, but got ${responseJson.posts.length}`,
     );
 });
+
+Then(
+    'post {string} has {string} set to {string}',
+    async function (postNumber, key, value) {
+        const responseJson = await this.response.clone().json();
+        const post = responseJson.posts[Number(postNumber) - 1];
+
+        assert(post, `Expected to find post ${postNumber} in thread`);
+
+        assert(
+            String(post[key]) === String(value),
+            `Expected post ${postNumber} to have ${key} ${value}`,
+        );
+    },
+);

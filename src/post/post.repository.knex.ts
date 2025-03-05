@@ -47,6 +47,7 @@ export class KnexPostRepository {
                 'posts.ap_id',
                 'posts.in_reply_to',
                 'posts.thread_root',
+                'posts.deleted_at',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
                 'accounts.name',
@@ -111,6 +112,10 @@ export class KnexPostRepository {
             attachments,
             new URL(row.ap_id),
         );
+
+        if (row.deleted_at !== null) {
+            post.delete(author);
+        }
 
         return post;
     }
@@ -328,6 +333,10 @@ export class KnexPostRepository {
                 attachments,
                 new URL(row.ap_id),
             );
+
+            if (row.deleted_at !== null) {
+                post.delete(author);
+            }
 
             posts.push({
                 post,
