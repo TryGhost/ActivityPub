@@ -20,6 +20,7 @@ function mockAccount(id: number | null, internal: boolean) {
             : null,
         new URL(`https://foobar.com/user/${id}`),
         null,
+        new URL(`https://foobar.com/followers/${id}`),
     );
 }
 
