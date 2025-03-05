@@ -600,29 +600,23 @@ When(
         const requestMethod = method || 'get';
         let requestPath = path;
 
-        // If this is a request to the /thread/ endpoint, we need to replace the
+        // If this is a request to the /thread/ or delete post endpoint, we need to replace the
         // object name with the object ID as we don't have a way to know the object
         // ID ahead of time
-        if (path.includes('/thread/')) {
+        if (
+            path.includes('/thread/') ||
+            (requestMethod === 'delete' && path.includes('/post/'))
+        ) {
             const objectName = path.split('/').pop(); // Object name is the last part of the path
-            const object = this.objects[objectName];
+
+            const object =
+                this.objects[objectName] || this.activities[objectName]?.object;
 
             if (object) {
                 requestPath = path.replace(
                     objectName,
                     encodeURIComponent(object.id),
                 );
-            }
-        }
-
-        // If this is a request to delete a post, we need to replace the object
-        // name with the object ID as we don't have a way to know the object
-        // ID ahead of time
-        if (requestMethod === 'delete' && path.includes('/post/')) {
-            const objectName = path.split('/').pop();
-            const id = this.activities[objectName].object.id;
-            if (id) {
-                requestPath = path.replace(objectName, encodeURIComponent(id));
             }
         }
 
