@@ -100,12 +100,12 @@ import {
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
+    createGetProfilePostsHandler,
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
     handleCreateNote,
     handleGetActivities,
-    handleGetProfilePosts,
     handleWebhookSiteChanged,
 } from './http/api';
 import { spanWrapper } from './instrumentation';
@@ -920,7 +920,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
     requireRole(GhostRole.Owner),
-    spanWrapper(handleGetProfilePosts),
+    spanWrapper(createGetProfilePostsHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',

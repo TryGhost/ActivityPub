@@ -147,6 +147,10 @@ export interface PostDTO {
      */
     author: AuthorDTO;
     /**
+     * Whether the current user is the author of the post
+     */
+    authoredByMe: boolean;
+    /**
      * Number of reposts of the post
      */
     repostCount: number;
