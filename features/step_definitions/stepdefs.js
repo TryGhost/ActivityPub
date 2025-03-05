@@ -1518,12 +1518,18 @@ Then(
             inboxUrl.pathname,
             (call) => {
                 const body = JSON.parse(call.request.body);
-                return (
-                    body.type === activityType &&
-                    (object
-                        ? body.object.id === object.id
-                        : body.object.type === objectNameOrType)
-                );
+                if (body.type !== activityType) {
+                    return false;
+                }
+
+                if (object) {
+                    if (typeof body.object === 'string') {
+                        return body.object === object.id;
+                    }
+                    return body.object.id === object.id;
+                }
+
+                return body.object.type === objectNameOrType;
             },
         );
 
@@ -1579,6 +1585,7 @@ When(
             const activity = await this.response.clone().json();
 
             this.activities[noteName] = activity;
+            this.objects[noteName] = activity.object;
         }
     },
 );
