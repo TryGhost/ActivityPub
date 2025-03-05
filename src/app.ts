@@ -83,7 +83,7 @@ import {
     createFollowActionHandler,
     createLikeAction,
     createReplyActionHandler,
-    createRepostActionHandler,
+    //createRepostActionHandler,
     createUnfollowActionHandler,
     createUnlikeAction,
     getSiteDataHandler,
@@ -870,11 +870,7 @@ app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(
-        createRepostActionHandler(
-            accountRepository,
-            postService,
-            postRepository,
-        ),
+        spanWrapper(createDeletePostHandler(accountRepository, postRepository, postService)),
     ),
 );
 app.post(
@@ -945,9 +941,9 @@ app.get(
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
 );
 app.delete(
-    '/.ghost/activitypub/post/:uuid',
+    '/.ghost/activitypub/post/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createDeletePostHandler(accountRepository, postRepository)),
+    spanWrapper(createDeletePostHandler(accountRepository, postRepository, postService)),
 );
 /** Federation wire up */
 

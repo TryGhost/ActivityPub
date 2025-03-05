@@ -619,15 +619,12 @@ When(
             console.log('LOGGING: We got here');
             const objectName = path.split('/').pop();
             const id = this.activities[objectName].object.id;
-            console.log('LOGGING: id: ', id);
+            console.log('LOGGING: id in stepdefs: ', id);
 
-            const uuid = id.split('/').pop();
-            console.log('LOGGING: uuid: ', uuid);
-
-            if (uuid) {
+            if (id) {
                 requestPath = path.replace(
                     objectName,
-                    encodeURIComponent(uuid),
+                    encodeURIComponent(id),
                 );
             }
         }
@@ -1806,6 +1803,7 @@ When(
             throw new Error(`Could not find Actor ${actorName}`);
         }
 
+        console.log('LOGGING: actor: ', actor);
         this.response = await fetchActivityPub(
             'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
             {
