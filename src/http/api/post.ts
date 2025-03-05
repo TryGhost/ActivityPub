@@ -36,6 +36,12 @@ export function createDeletePostHandler(
             });
         }
 
+        if (post.author.uuid !== account.uuid) {
+            return new Response(null, {
+                status: 403,
+            });
+        }
+
         try {
             post.delete(account);
             await postRepository.save(post);
@@ -47,7 +53,7 @@ export function createDeletePostHandler(
             logger.error('Error deleting post - {error}', {
                 error: err,
             });
-            return new Response(JSON.stringify(err), { status: 400 });
+            return new Response(JSON.stringify(err), { status: 500 });
         }
     };
 }
