@@ -870,10 +870,12 @@ app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(
-        createRepostActionHandler(
-            accountRepository,
-            postService,
-            postRepository,
+        spanWrapper(
+            createRepostActionHandler(
+                accountRepository,
+                postService,
+                postRepository,
+            ),
         ),
     ),
 );
@@ -945,9 +947,11 @@ app.get(
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
 );
 app.delete(
-    '/.ghost/activitypub/post/:uuid',
+    '/.ghost/activitypub/post/:id',
     requireRole(GhostRole.Owner),
-    spanWrapper(createDeletePostHandler()),
+    spanWrapper(
+        createDeletePostHandler(accountRepository, postRepository, postService),
+    ),
 );
 /** Federation wire up */
 
