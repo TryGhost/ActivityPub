@@ -21,8 +21,6 @@ export function createDeletePostHandler(
 
         const idAsUrl = parseURL(id);
 
-        logger.info('LOGGING: id in post: {id}', { id: id });
-
         if (!idAsUrl) {
             return new Response(null, {
                 status: 400,
@@ -30,11 +28,7 @@ export function createDeletePostHandler(
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
-        logger.info('LOGGING: account: {account}', {
-            account: JSON.stringify(account),
-        });
         const post = await postService.getByApId(idAsUrl);
-        logger.info('LOGGING: post: {post}', { post: JSON.stringify(post) });
 
         if (!post) {
             return new Response(null, {

@@ -615,21 +615,16 @@ When(
             }
         }
 
+        // If this is a request to delete a post, we need to replace the object
+        // name with the object ID as we don't have a way to know the object
+        // ID ahead of time
         if (requestMethod === 'delete' && path.includes('/post/')) {
-            console.log('LOGGING: We got here');
             const objectName = path.split('/').pop();
             const id = this.activities[objectName].object.id;
-            console.log('LOGGING: id in stepdefs: ', id);
-
             if (id) {
-                requestPath = path.replace(
-                    objectName,
-                    encodeURIComponent(id),
-                );
+                requestPath = path.replace(objectName, encodeURIComponent(id));
             }
         }
-
-        console.log('LOGGING: requestPath: ', requestPath);
 
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub${requestPath}`,
@@ -640,8 +635,6 @@ When(
                 },
             },
         );
-        console.log('LOGGING: response: ', this.response);
-        console.log('LOGGING: response.ok: ', this.response.status);
     },
 );
 
@@ -1794,33 +1787,3 @@ Then('the thread contains {string} posts', async function (string) {
         `Expected thread to contain ${string} posts, but got ${responseJson.posts.length}`,
     );
 });
-
-When(
-    '{string} creates a note {string} with the content',
-    async function (actorName, noteName, noteContent) {
-        const actor = this.actors[actorName];
-        if (!actor) {
-            throw new Error(`Could not find Actor ${actorName}`);
-        }
-
-        console.log('LOGGING: actor: ', actor);
-        this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content: noteContent,
-                    author: actor.id,
-                }),
-            },
-        );
-
-        if (this.response.ok) {
-            const activity = await this.response.clone().json();
-            this.activities[noteName] = activity;
-        }
-    },
-);
