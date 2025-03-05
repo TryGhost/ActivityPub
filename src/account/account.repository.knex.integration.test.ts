@@ -1,35 +1,35 @@
-import { afterAll, describe, it } from 'vitest';
+import { beforeAll, describe, it } from 'vitest';
 
 import assert from 'node:assert';
 import EventEmitter from 'node:events';
+import type { Knex } from 'knex';
+import { createTestDb } from 'test/db';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { client } from '../db';
 import { SiteService } from '../site/site.service';
 import { Account } from './account.entity';
 
-const getSiteDefaultAccount = async (siteId: number) => {
-    return await client('accounts')
-        .innerJoin('users', 'accounts.id', 'users.account_id')
-        .innerJoin('sites', 'users.site_id', 'sites.id')
-        .where('sites.id', siteId)
-        .first();
-};
-
-const removeUUIDFromAccount = async (accountId: number) => {
-    await client('accounts').update({ uuid: null }).where('id', accountId);
-
-    const account = await client('accounts').where('id', accountId).first();
-
-    assert(account.uuid === null, 'Account should not have a uuid');
-};
-
-afterAll(async () => {
-    await client.destroy();
-});
-
 describe('KnexAccountRepository', () => {
+    let client: Knex;
+    beforeAll(async () => {
+        client = await createTestDb();
+    });
+    const getSiteDefaultAccount = async (siteId: number) => {
+        return await client('accounts')
+            .innerJoin('users', 'accounts.id', 'users.account_id')
+            .innerJoin('sites', 'users.site_id', 'sites.id')
+            .where('sites.id', siteId)
+            .first();
+    };
+
+    const removeUUIDFromAccount = async (accountId: number) => {
+        await client('accounts').update({ uuid: null }).where('id', accountId);
+
+        const account = await client('accounts').where('id', accountId).first();
+
+        assert(account.uuid === null, 'Account should not have a uuid');
+    };
     it('Can get by site', async () => {
         const events = new EventEmitter();
         const accountRepository = new KnexAccountRepository(client, events);

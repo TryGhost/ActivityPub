@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
+import type { Knex } from 'knex';
+import { createTestDb } from 'test/db';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
@@ -13,7 +15,6 @@ import {
     TABLE_SITES,
     TABLE_USERS,
 } from '../constants';
-import { client as db } from '../db';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
 import type {
@@ -43,6 +44,11 @@ describe('AccountService', () => {
     let site: Site;
     let internalAccountData: InternalAccountData;
     let externalAccountData: ExternalAccountData;
+    let db: Knex;
+
+    beforeAll(async () => {
+        db = await createTestDb();
+    });
 
     beforeEach(async () => {
         // Clean up the database
