@@ -103,8 +103,8 @@ services:
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
     environment:
       - PORT=8083
-      - MYSQL_USER=ghost
-      - MYSQL_PASSWORD=password
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
       - MYSQL_HOST=mysql-testing
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub

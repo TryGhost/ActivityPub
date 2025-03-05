@@ -1,13 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
+import type { Knex } from 'knex';
+import { createTestDb } from 'test/db';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { TABLE_ACCOUNTS, TABLE_SITES, TABLE_USERS } from '../constants';
-import { client as db } from '../db';
 import { type IGhostService, type Site, SiteService } from './site.service';
 
 vi.mock('@fedify/fedify', async () => {
@@ -29,6 +30,11 @@ describe('SiteService', () => {
     let accountService: AccountService;
     let ghostService: IGhostService;
     let site: Site;
+    let db: Knex;
+
+    beforeAll(async () => {
+        db = await createTestDb();
+    });
 
     beforeEach(async () => {
         // Clean up the database

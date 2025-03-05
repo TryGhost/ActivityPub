@@ -1,6 +1,8 @@
 import { EventEmitter } from 'node:events';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import type { Knex } from 'knex';
+import { createTestDb } from 'test/db';
 import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
@@ -15,7 +17,6 @@ import {
     TABLE_SITES,
     TABLE_USERS,
 } from '../constants';
-import { client } from '../db';
 import {
     Audience,
     type FollowersOnlyPost,
@@ -35,6 +36,11 @@ describe('FeedService', () => {
     let accountService: AccountService;
     let siteService: SiteService;
     let postRepository: KnexPostRepository;
+    let client: Knex;
+
+    beforeAll(async () => {
+        client = await createTestDb();
+    });
 
     const accountSitesMap: Map<number, Site> = new Map();
     const createInternalAccount = async (host: string) => {
