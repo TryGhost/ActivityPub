@@ -55,6 +55,7 @@ export class KnexPostRepository {
                 'accounts.banner_image_url',
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
+                'accounts.ap_followers_url as author_ap_followers_url',
             )
             .first();
 
@@ -80,6 +81,7 @@ export class KnexPostRepository {
             null,
             parseURL(row.author_ap_id),
             parseURL(row.author_url),
+            parseURL(row.author_ap_followers_url),
         );
 
         // Parse attachments and convert URL strings back to URL objects
@@ -242,6 +244,7 @@ export class KnexPostRepository {
                 'accounts.banner_image_url',
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
+                'accounts.ap_followers_url as author_ap_followers_url',
                 // Account metadata fields
                 this.db.raw(`
                     CASE
@@ -295,6 +298,7 @@ export class KnexPostRepository {
                 null,
                 parseURL(row.author_ap_id),
                 parseURL(row.author_url),
+                parseURL(row.author_ap_followers_url),
             );
 
             const attachments = row.attachments
