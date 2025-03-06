@@ -1,13 +1,8 @@
 Feature: Follow accounts from their handle
 
   Scenario: We can follow an account only once
-    Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "A" by "Alice"
-    And "Alice" sends "A" to the Inbox
-    And "A" is in our Inbox
-    Given we follow "Alice"
+    Given we are following "Alice"
+    When we follow "Alice"
     Then the request is rejected with a 409
 
   Scenario: We cannot follow ourselves
@@ -15,12 +10,7 @@ Feature: Follow accounts from their handle
     Then the request is rejected with a 400
 
   Scenario: We can unfollow an account
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "A" by "Alice"
-    And "Alice" sends "A" to the Inbox
-    And "A" is in our Inbox
+    Given we are following "Alice"
     And the object "Alice" should be in the "following" collection
     When we unfollow "Alice"
     Then the request is accepted

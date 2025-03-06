@@ -4,12 +4,7 @@ Feature: Reposting a post/note
   I want to be able to repost a post in my feed
 
   Scenario: Reposting a post/note
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
@@ -22,12 +17,7 @@ Feature: Reposting a post/note
     And the found "Announce(Note)" has property "object.attributedTo" of type "object"
 
   Scenario: Trying to repost a post/note that has already been reposted
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
@@ -37,12 +27,7 @@ Feature: Reposting a post/note
     Then the request is rejected with a 409
 
   Scenario: Undoing a repost
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
@@ -54,12 +39,7 @@ Feature: Reposting a post/note
     And a "Undo(Announce)" activity is sent to "Alice"
 
   Scenario: Trying to undo a repost on a post/note that has not been reposted
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
