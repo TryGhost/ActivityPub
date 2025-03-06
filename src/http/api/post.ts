@@ -53,7 +53,7 @@ export function createDeletePostHandler(
             // Find all activities that reference this post and remove them from the kv-store
             const relatedActivities = await getRelatedActivities(idAsUrl.href);
 
-            const activities = (await relatedActivities) as any[];
+            const activities = await relatedActivities;
             for (const activity of activities) {
                 const activityId = activity.id;
 

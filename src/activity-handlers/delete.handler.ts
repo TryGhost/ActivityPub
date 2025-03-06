@@ -3,6 +3,8 @@ import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
+import { getRelatedActivities } from '../db';
+import { removeFromList } from '../kv-helpers';
 
 export class DeleteHandler {
     constructor(
@@ -48,6 +50,21 @@ export class DeleteHandler {
         post.delete(senderAccount);
         await this.postRepository.save(post);
 
-        return;
+        // Find all activities that reference this post and remove them from the kv-store
+        const relatedActivities = await getRelatedActivities(
+            deleteActivity.objectId.href,
+        );
+
+        const activities = await relatedActivities;
+        for (const activity of activities) {
+            const activityId = activity.id;
+
+            await ctx.data.globaldb.delete([activityId]);
+
+            await removeFromList(ctx.data.db, ['inbox'], activityId);
+            await removeFromList(ctx.data.db, ['outbox'], activityId);
+            await removeFromList(ctx.data.db, ['liked'], activityId);
+            await removeFromList(ctx.data.db, ['reposted'], activityId);
+        }
     }
 }
