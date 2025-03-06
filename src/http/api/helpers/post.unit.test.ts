@@ -17,7 +17,6 @@ describe('postToPostDTO', () => {
             {
                 id: 123,
                 host: 'foobar.com',
-                webhook_secret: 'secret',
             },
             new URL('https://foobar.com/user/123'),
             null,
@@ -46,7 +45,6 @@ describe('postToPostDTO', () => {
             {
                 id: 123,
                 host: 'foobar.com',
-                webhook_secret: 'secret',
             },
             new URL('https://foobar.com/user/123'),
             null,
