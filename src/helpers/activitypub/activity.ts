@@ -33,7 +33,15 @@ export async function buildActivity(
     liked: string[] = [],
     reposted: string[] = [],
     authored: string[] = [],
-    expandInReplyTo = false,
+    options: {
+        expandInReplyTo?: boolean;
+        showReplyCount?: boolean;
+        showRepostCount?: boolean;
+    } = {
+        expandInReplyTo: false,
+        showReplyCount: false,
+        showRepostCount: false,
+    },
 ): Promise<Activity | null> {
     const item = await db.get<Activity>([uri]);
 
@@ -127,7 +135,7 @@ export async function buildActivity(
 
     // Expand the inReplyTo object if it is a string and we are expanding inReplyTo
     if (
-        expandInReplyTo &&
+        options.expandInReplyTo &&
         typeof item.object !== 'string' &&
         item.object.inReplyTo
     ) {
@@ -139,9 +147,14 @@ export async function buildActivity(
     }
 
     // Add reply count and repost count to the object, if it is an object
+    // and they have been requested
     if (typeof item.object !== 'string') {
-        item.object.replyCount = await getActivityChildrenCount(item);
-        item.object.repostCount = await getRepostCount(item);
+        if (options.showReplyCount) {
+            item.object.replyCount = await getActivityChildrenCount(item);
+        }
+        if (options.showRepostCount) {
+            item.object.repostCount = await getRepostCount(item);
+        }
     }
 
     // Return the built item
