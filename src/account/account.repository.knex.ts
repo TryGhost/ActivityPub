@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type EventEmitter from 'node:events';
+import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
@@ -8,7 +8,7 @@ import { Account, type AccountSite } from './account.entity';
 export class KnexAccountRepository {
     constructor(
         private readonly db: Knex,
-        private readonly events: EventEmitter,
+        private readonly events: AsyncEvents,
     ) {}
 
     async getBySite(site: Site): Promise<Account> {

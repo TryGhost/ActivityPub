@@ -1,7 +1,7 @@
-import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
+import type { AsyncEvents } from 'core/events';
 import { Account, type AccountSite } from '../account/account.entity';
 import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { parseURL } from '../core/url';
@@ -20,7 +20,7 @@ type ThreadPosts = {
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
-        private readonly events: EventEmitter,
+        private readonly events: AsyncEvents,
     ) {}
 
     async getByApId(apId: URL): Promise<Post | null> {
@@ -530,28 +530,28 @@ export class KnexPostRepository {
             await transaction.commit();
 
             if (isNewPost) {
-                this.events.emit(
+                await this.events.emitAsync(
                     PostCreatedEvent.getName(),
                     new PostCreatedEvent(post),
                 );
             }
 
             if (wasDeleted) {
-                this.events.emit(
+                await this.events.emitAsync(
                     PostDeletedEvent.getName(),
                     new PostDeletedEvent(post, post.author.id),
                 );
             }
 
             for (const accountId of repostAccountIds) {
-                this.events.emit(
+                await this.events.emitAsync(
                     PostRepostedEvent.getName(),
                     new PostRepostedEvent(post, accountId),
                 );
             }
 
             for (const accountId of repostsToRemove) {
-                this.events.emit(
+                await this.events.emitAsync(
                     PostDerepostedEvent.getName(),
                     new PostDerepostedEvent(post, accountId),
                 );

@@ -85,7 +85,7 @@ export class SiteService {
             avatar_url: settings?.site?.icon,
         };
 
-        const internalAccount = await this.accountService.createInternalAccount(
+        await this.accountService.createInternalAccount(
             newSite,
             internalAccountData,
         );

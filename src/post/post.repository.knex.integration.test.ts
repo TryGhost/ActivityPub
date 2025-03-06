@@ -1,6 +1,8 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
-import EventEmitter from 'node:events';
+import { AsyncEvents } from 'core/events';
+import { FeedUpdateService } from 'feed/feed-update.service';
+import { FeedService } from 'feed/feed.service';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,7 +19,7 @@ import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 describe('KnexPostRepository', () => {
-    let events: EventEmitter;
+    let events: AsyncEvents;
     let accountRepository: KnexAccountRepository;
     let fedifyContextFactory: FedifyContextFactory;
     let accountService: AccountService;
@@ -45,7 +47,7 @@ describe('KnexPostRepository', () => {
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         // Init dependencies
-        events = new EventEmitter();
+        events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(client, events);
         fedifyContextFactory = new FedifyContextFactory();
         accountService = new AccountService(
@@ -66,6 +68,82 @@ describe('KnexPostRepository', () => {
             },
         });
         postRepository = new KnexPostRepository(client, events);
+        const feedService = new FeedService(client);
+        const feedUpdateService = new FeedUpdateService(events, feedService);
+        feedUpdateService.init();
+    });
+
+    describe('Events', () => {
+        it('Waits for the post to be added to feeds before returning', async () => {
+            const site = await siteService.initialiseSiteForHost('testing.com');
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('feeds')
+                .where({
+                    post_id: post.id,
+                })
+                .select('*')
+                .first();
+
+            assert(rowInDb, 'A row should have been saved in the DB');
+        });
+
+        it('Waits for the deleted post to be removed from feeds before returning', async () => {
+            const site = await siteService.initialiseSiteForHost('testing.com');
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+            });
+
+            await postRepository.save(post);
+
+            const rowInFeedsAfterCreate = await client('feeds')
+                .where({
+                    post_id: post.id,
+                })
+                .select('*')
+                .first();
+
+            assert(
+                rowInFeedsAfterCreate,
+                'A row should have been saved in the DB',
+            );
+
+            post.delete(account);
+
+            await postRepository.save(post);
+
+            const rowInFeedsAfterDelete = await client('feeds')
+                .where({
+                    post_id: post.id,
+                })
+                .select('*')
+                .first();
+
+            assert(
+                !rowInFeedsAfterDelete,
+                'A row should have been removed from the DB',
+            );
+        });
     });
 
     describe('Delete', () => {
@@ -241,7 +319,7 @@ describe('KnexPostRepository', () => {
     });
 
     it('Emits a PostCreatedEvent when a Post is saved', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emit');
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const site = await siteService.initialiseSiteForHost(
             'testing-post-created-event.com',
         );
@@ -267,7 +345,7 @@ describe('KnexPostRepository', () => {
     });
 
     it('Does not emit a PostCreatedEvent when a Post is updated', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emit');
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const site = await siteService.initialiseSiteForHost(
             'testing-post-update.com',
         );
@@ -490,7 +568,7 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles reposts of a new post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emit');
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const accounts = await Promise.all(
             [
                 'testing-reposts-one.com',
@@ -551,7 +629,7 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles reposts and dereposts of an existing post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emit');
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const accounts = await Promise.all(
             [
                 'testing-derepost-one.com',
