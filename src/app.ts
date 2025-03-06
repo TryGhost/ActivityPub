@@ -43,6 +43,7 @@ import jose from 'node-jose';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
+import { DeleteHandler } from './activity-handlers/delete.handler';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
 import { FediverseBridge } from './activitypub/fediverse-bridge';
 import { client } from './db';
@@ -311,6 +312,12 @@ const createHandler = new CreateHandler(
     siteService,
 );
 
+const deleteHandler = new DeleteHandler(
+    postService,
+    accountService,
+    postRepository,
+);
+
 const deleteDispatcher = new DeleteDispatcher();
 
 inboxListener
@@ -328,6 +335,13 @@ inboxListener
         Create,
         ensureCorrectContext(
             spanWrapper(createHandler.handle.bind(createHandler)),
+        ),
+    )
+    .onError(inboxErrorHandler)
+    .on(
+        Delete,
+        ensureCorrectContext(
+            spanWrapper(deleteHandler.handle.bind(deleteHandler)),
         ),
     )
     .onError(inboxErrorHandler)

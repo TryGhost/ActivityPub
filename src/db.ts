@@ -185,7 +185,9 @@ export async function getRepostCount(activity: ActivityJsonLd) {
     return result[0].count;
 }
 
-export async function getRelatedActivities(postUrl: string) {
+export async function getRelatedActivities(
+    postUrl: string,
+): Promise<{ id: string }[]> {
     return client
         .select(client.raw('JSON_EXTRACT(value, "$.id") as id'))
         .from('key_value')
@@ -201,5 +203,5 @@ export async function getRelatedActivities(postUrl: string) {
                 .orWhere(
                     client.raw('JSON_EXTRACT(value, "$.id") = ?', [postUrl]),
                 );
-        });
+        }) as unknown as Promise<{ id: string }[]>;
 }
