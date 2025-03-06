@@ -45,11 +45,6 @@ export class DeleteHandler {
             return;
         }
 
-        if (post.author.uuid !== senderAccount.uuid) {
-            ctx.data.logger.info('Post not owned by sender, exit early');
-            return;
-        }
-
         post.delete(senderAccount);
         await this.postRepository.save(post);
 
