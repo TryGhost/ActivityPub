@@ -663,6 +663,11 @@ export async function inboxHandler(
                     liked,
                     reposted,
                     outbox,
+                    {
+                        expandInReplyTo: false,
+                        showReplyCount: true,
+                        showRepostCount: true,
+                    },
                 );
             } catch (err) {
                 ctx.get('logger').error('Inbox handler failed: {error}', {

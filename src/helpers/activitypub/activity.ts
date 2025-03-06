@@ -33,7 +33,15 @@ export async function buildActivity(
     liked: string[] = [],
     reposted: string[] = [],
     authored: string[] = [],
-    expandInReplyTo = false,
+    options: {
+        expandInReplyTo?: boolean;
+        showReplyCount?: boolean;
+        showRepostCount?: boolean;
+    } = {
+        expandInReplyTo: false,
+        showReplyCount: false,
+        showRepostCount: false,
+    },
 ): Promise<Activity | null> {
     const item = await db.get<Activity>([uri]);
 
@@ -91,8 +99,6 @@ export async function buildActivity(
         item.object.content = sanitizeHtml(item.object.content);
     }
 
-    // If the associated object is a Like, we should check if it's in the provided
-    // liked list and add a liked property to the item if it is
     let objectId = '';
 
     if (typeof item.object === 'string') {
@@ -101,7 +107,7 @@ export async function buildActivity(
         objectId = item.object.id;
     }
 
-    if (objectId) {
+    if (objectId && liked.length > 0) {
         const likeId = apCtx.getObjectUri(Like, {
             id: createHash('sha256').update(objectId).digest('hex'),
         });
@@ -110,6 +116,9 @@ export async function buildActivity(
                 item.object.liked = true;
             }
         }
+    }
+
+    if (objectId && reposted.length > 0) {
         const repostId = apCtx.getObjectUri(Announce, {
             id: createHash('sha256').update(objectId).digest('hex'),
         });
@@ -118,16 +127,17 @@ export async function buildActivity(
                 item.object.reposted = true;
             }
         }
-        if (authored.includes(item.id)) {
-            if (typeof item.object !== 'string') {
-                item.object.authored = true;
-            }
+    }
+
+    if (authored.includes(item.id)) {
+        if (typeof item.object !== 'string') {
+            item.object.authored = true;
         }
     }
 
     // Expand the inReplyTo object if it is a string and we are expanding inReplyTo
     if (
-        expandInReplyTo &&
+        options.expandInReplyTo &&
         typeof item.object !== 'string' &&
         item.object.inReplyTo
     ) {
@@ -139,9 +149,14 @@ export async function buildActivity(
     }
 
     // Add reply count and repost count to the object, if it is an object
+    // and they have been requested
     if (typeof item.object !== 'string') {
-        item.object.replyCount = await getActivityChildrenCount(item);
-        item.object.repostCount = await getRepostCount(item);
+        if (options.showReplyCount) {
+            item.object.replyCount = await getActivityChildrenCount(item);
+        }
+        if (options.showRepostCount) {
+            item.object.repostCount = await getRepostCount(item);
+        }
     }
 
     // Return the built item

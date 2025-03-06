@@ -42,7 +42,7 @@ export async function handleGetActivities(ctx: AppContext) {
 
     // Parse "filter" from query parameters
     // This is used to filter the activities by various criteria
-    // ?filter={type: ['<activityType>', '<activityType>:<objectType>', '<activityType>:<objectType>:<criteria>']}
+    // ?filter={type: ['<activityType>', '<activityType>:<objectType>']}
     const queryFilters = ctx.req.query('filter') || '[]';
     const filters = JSON.parse(decodeURIComponent(queryFilters));
 
@@ -57,11 +57,6 @@ export async function handleGetActivities(ctx: AppContext) {
         };
     });
 
-    // Parse "excludeNonFollowers" from query parameters
-    // This is used to exclude activities from non-followers
-    // ?excludeNonFollowers=<boolean>
-    const excludeNonFollowers = ctx.req.query('excludeNonFollowers') === 'true';
-
     logger.info('Request query = {query}', { query: ctx.req.query() });
     logger.info('Processed query params = {params}', {
         params: JSON.stringify({
@@ -69,25 +64,12 @@ export async function handleGetActivities(ctx: AppContext) {
             limit,
             includeOwn,
             typeFilters,
-            excludeNonFollowers,
         }),
     });
 
     // -------------------------------------------------------------------------
     // Fetch required data from the database
     // -------------------------------------------------------------------------
-
-    // Fetch the liked object refs from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "liked" property to the item if the user has liked it
-    const likedRefs = (await db.get<string[]>(['liked'])) || [];
-
-    // Fetch the reposted object refs from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "reposted" property to the item if the user has reposted it
-    const repostedRefs = (await db.get<string[]>(['reposted'])) || [];
 
     // Fetch the refs of the activities in the inbox from the database:
     //   - Data is structured as an array of strings
@@ -147,47 +129,10 @@ export async function handleGetActivities(ctx: AppContext) {
                         return false;
                     }
 
-                    // ?filter={type: ['<activityType>:<objectType>:isReplyToOwn']}
-                    if (filter.criteria?.startsWith('isReplyToOwn')) {
-                        // If the activity does not have a reply object url or name,
-                        // we can't determine if it's a reply to an own object so
-                        // we skip it
-                        if (!meta.reply_object_url || !meta.reply_object_name) {
-                            return false;
-                        }
-
-                        // Verify that the reply is to an object created by the user by
-                        // checking that the hostname associated with the reply object
-                        // is the same as the hostname of the site. This is not a bullet
-                        // proof check, but it's a good enough for now (i think 😅)
-                        const siteHost = ctx.get('site').host;
-                        const { hostname: replyHost } = new URL(
-                            meta.reply_object_url,
-                        );
-
-                        return siteHost === replyHost;
-                    }
-
-                    // ?filter={type: ['<activityType>:<objectType>:notReply']}
-                    if (filter.criteria?.startsWith('notReply')) {
-                        if (meta.reply_object_url) {
-                            return false;
-                        }
-                    }
-
                     return true;
                 },
             );
         });
-    }
-
-    // Filter the activity refs by excluding non-followers if the query parameter is set
-    if (excludeNonFollowers) {
-        // const followers = await db.get<string[]>(['following']) || [];
-        // activityRefs = activityRefs.filter(ref => {
-        //     const meta = activityMeta.get(ref)!;
-        //     return followers.includes(meta.actor_id);
-        // });
     }
 
     // Sort the activity refs by the id of the activity (newest first).
@@ -226,10 +171,14 @@ export async function handleGetActivities(ctx: AppContext) {
                     ref,
                     globaldb,
                     apCtx,
-                    likedRefs,
-                    repostedRefs,
+                    [],
+                    [],
                     outboxRefs,
-                    true,
+                    {
+                        expandInReplyTo: true,
+                        showReplyCount: true,
+                        showRepostCount: true,
+                    },
                 );
             } catch (err) {
                 logger.error('Error building activity ({ref}): {error}', {
