@@ -35,11 +35,6 @@ export async function handleGetActivities(ctx: AppContext) {
         10,
     );
 
-    // Parse "includeOwn" from query parameters
-    // This is used to include the user's own activities in the results
-    // ?includeOwn=<boolean>
-    const includeOwn = ctx.req.query('includeOwn') === 'true';
-
     // Parse "filter" from query parameters
     // This is used to filter the activities by various criteria
     // ?filter={type: ['<activityType>', '<activityType>:<objectType>']}
@@ -62,7 +57,6 @@ export async function handleGetActivities(ctx: AppContext) {
         params: JSON.stringify({
             cursor,
             limit,
-            includeOwn,
             typeFilters,
         }),
     });
@@ -75,26 +69,32 @@ export async function handleGetActivities(ctx: AppContext) {
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
     //   - First item is the oldest, last item is the newest
-    const inboxRefs = (await db.get<string[]>(['inbox'])) || [];
+    const inboxRefs = ((await db.get<string[]>(['inbox'])) || [])
+        // Sort the refs by newest first
+        .reverse();
 
-    // Fetch the refs of the activities in the outbox from the database (if
-    // user is requesting their own activities):
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    //   - First item is the oldest, last item is the newest
-    let outboxRefs: string[] = [];
+    // -------------------------------------------------------------------------
+    // Paginate
+    // -------------------------------------------------------------------------
 
-    if (includeOwn) {
-        outboxRefs = (await db.get<string[]>(['outbox'])) || [];
-    }
+    const startIndex = cursor
+        ? inboxRefs.findIndex((ref) => ref === cursor) + 1
+        : 0;
 
-    // To be able to return a sorted / filtered list of activities, we need to
+    const slicedInboxRefs = inboxRefs.slice(startIndex, startIndex + limit);
+
+    const nextCursor =
+        startIndex + slicedInboxRefs.length < inboxRefs.length
+            ? encodeURIComponent(slicedInboxRefs[slicedInboxRefs.length - 1])
+            : null;
+
+    // To be able to return a filtered list of activities, we need to
     // fetch some additional meta data about the referenced activities. Doing this
-    // upfront allows us to sort, filter and paginate the activities before
+    // upfront allows us to filter the activities before
     // building them for the response which saves us from having to perform
     // unnecessary database lookups for referenced activities that will not be
     // included in the response
-    let activityRefs = [...inboxRefs, ...outboxRefs];
+    let activityRefs = [...slicedInboxRefs];
     const activityMeta = await getActivityMeta(activityRefs);
 
     // If we can't find the meta data in the database for an activity, we skip
@@ -102,7 +102,7 @@ export async function handleGetActivities(ctx: AppContext) {
     activityRefs = activityRefs.filter((ref) => activityMeta.has(ref));
 
     // -------------------------------------------------------------------------
-    // Apply filtering and sorting
+    // Apply filtering
     // -------------------------------------------------------------------------
 
     // Filter the activity refs by any provided type filters
@@ -135,35 +135,12 @@ export async function handleGetActivities(ctx: AppContext) {
         });
     }
 
-    // Sort the activity refs by the id of the activity (newest first).
-    // We are using the id to sort because currently not all activity types have
-    // a timestamp. The id property is a unique auto incremented number at the
-    // database level
-    activityRefs.sort((a, b) => {
-        return activityMeta.get(b)!.id - activityMeta.get(a)!.id;
-    });
-
-    // -------------------------------------------------------------------------
-    // Paginate
-    // -------------------------------------------------------------------------
-
-    const startIndex = cursor
-        ? activityRefs.findIndex((ref) => ref === cursor) + 1
-        : 0;
-
-    const paginatedRefs = activityRefs.slice(startIndex, startIndex + limit);
-
-    const nextCursor =
-        startIndex + paginatedRefs.length < activityRefs.length
-            ? encodeURIComponent(paginatedRefs[paginatedRefs.length - 1])
-            : null;
-
     // -------------------------------------------------------------------------
     // Build the activities and return the response
     // -------------------------------------------------------------------------
 
     const activities = await Promise.all(
-        paginatedRefs.map(async (ref) => {
+        activityRefs.map(async (ref) => {
             const wrappedBuildActivity = spanWrapper(buildActivity);
 
             try {
@@ -173,7 +150,7 @@ export async function handleGetActivities(ctx: AppContext) {
                     apCtx,
                     [],
                     [],
-                    outboxRefs,
+                    [],
                     {
                         expandInReplyTo: true,
                         showReplyCount: true,
