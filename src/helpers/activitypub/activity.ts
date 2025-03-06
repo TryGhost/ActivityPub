@@ -99,8 +99,6 @@ export async function buildActivity(
         item.object.content = sanitizeHtml(item.object.content);
     }
 
-    // If the associated object is a Like, we should check if it's in the provided
-    // liked list and add a liked property to the item if it is
     let objectId = '';
 
     if (typeof item.object === 'string') {
@@ -109,7 +107,7 @@ export async function buildActivity(
         objectId = item.object.id;
     }
 
-    if (objectId) {
+    if (objectId && liked.length > 0) {
         const likeId = apCtx.getObjectUri(Like, {
             id: createHash('sha256').update(objectId).digest('hex'),
         });
@@ -118,6 +116,9 @@ export async function buildActivity(
                 item.object.liked = true;
             }
         }
+    }
+
+    if (objectId && reposted.length > 0) {
         const repostId = apCtx.getObjectUri(Announce, {
             id: createHash('sha256').update(objectId).digest('hex'),
         });
@@ -126,10 +127,11 @@ export async function buildActivity(
                 item.object.reposted = true;
             }
         }
-        if (authored.includes(item.id)) {
-            if (typeof item.object !== 'string') {
-                item.object.authored = true;
-            }
+    }
+
+    if (authored.includes(item.id)) {
+        if (typeof item.object !== 'string') {
+            item.object.authored = true;
         }
     }
 
