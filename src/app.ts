@@ -9,6 +9,7 @@ import {
     Article,
     type Context,
     Create,
+    Delete,
     Follow,
     type KvStore,
     Like,
@@ -34,6 +35,7 @@ import {
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
+import { DeleteHandler } from './activity-handlers/delete.handler';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -309,6 +311,12 @@ const createHandler = new CreateHandler(
     siteService,
 );
 
+const deleteHandler = new DeleteHandler(
+    postService,
+    accountService,
+    postRepository,
+);
+
 inboxListener
     .on(
         Follow,
@@ -324,6 +332,13 @@ inboxListener
         Create,
         ensureCorrectContext(
             spanWrapper(createHandler.handle.bind(createHandler)),
+        ),
+    )
+    .onError(inboxErrorHandler)
+    .on(
+        Delete,
+        ensureCorrectContext(
+            spanWrapper(deleteHandler.handle.bind(deleteHandler)),
         ),
     )
     .onError(inboxErrorHandler)
