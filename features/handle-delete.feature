@@ -1,4 +1,4 @@
-Feature: Create(Article)
+Feature: Delete(Note)
   We want to handle Delete(Note) activities in the Inbox
 
   Background:
