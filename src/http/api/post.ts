@@ -3,8 +3,8 @@ import { parseURL } from 'core/url';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
-import { removeFromList } from '../../kv-helpers';
 import { getRelatedActivities } from '../../db';
+import { removeFromList } from '../../kv-helpers';
 
 /**
  * Create a handler for a request to delete a post
