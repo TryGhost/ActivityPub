@@ -3,7 +3,7 @@ import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
-import { Account } from './account.entity';
+import { Account, type AccountSite } from './account.entity';
 
 export class KnexAccountRepository {
     constructor(
@@ -48,7 +48,10 @@ export class KnexAccountRepository {
             account.bio,
             parseURL(account.avatar_url),
             parseURL(account.banner_image_url),
-            site,
+            {
+                id: site.id,
+                host: site.host,
+            },
             parseURL(account.ap_id),
             parseURL(account.url),
         );
@@ -70,7 +73,6 @@ export class KnexAccountRepository {
                 'accounts.url',
                 'users.site_id',
                 'sites.host',
-                'sites.webhook_secret',
             )
             .first();
 
@@ -78,12 +80,14 @@ export class KnexAccountRepository {
             return null;
         }
 
-        let site: Site | null = null;
-        if (accountRow.site_id) {
+        let site: AccountSite | null = null;
+        if (
+            typeof accountRow.site_id === 'number' &&
+            typeof accountRow.host === 'string'
+        ) {
             site = {
                 id: accountRow.site_id,
                 host: accountRow.host,
-                webhook_secret: accountRow.webhook_secret,
             };
         }
 
