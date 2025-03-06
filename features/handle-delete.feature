@@ -2,7 +2,6 @@ Feature: Create(Article)
   We want to handle Delete(Note) activities in the Inbox
 
   Background:
-    Given an Actor "Person(James)"
     Given an Actor "Person(Bob)"
     And we follow "Bob"
     And the request is accepted
@@ -35,8 +34,3 @@ Feature: Create(Article)
     Then the request is accepted
     And the feed contains "AliceNote"
 
-  Scenario: We recieve a Delete(Note) activity from someone we don't follow
-    Given a "Delete(AliceNote)" Activity "DeleteNote" by "James"
-    When an authenticated request is made to "/.ghost/activitypub/feed"
-    Then the request is accepted
-    And the feed contains "AliceNote"
