@@ -1,12 +1,10 @@
-import { createHash } from 'node:crypto';
-import { Like } from '@fedify/fedify';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import { parseURL } from 'core/url';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
-import { fedify } from '../../app';
 import type { AppContext } from '../../app';
 import { removeFromList } from '../../kv-helpers';
+import { getRelatedActivities } from '../../db';
 
 /**
  * Create a handler for a request to delete a post
@@ -52,37 +50,18 @@ export function createDeletePostHandler(
             post.delete(account);
             await postRepository.save(post);
 
-            const apCtx = fedify.createContext(ctx.req.raw as Request, {
-                db: ctx.get('db'),
-                globaldb: ctx.get('globaldb'),
-                logger: ctx.get('logger'),
-            });
+            // Find all activities that reference this post and remove them from the kv-store
+            const relatedActivities = await getRelatedActivities(idAsUrl.href);
 
-            const outboxActivityIds =
-                (await ctx.get('db').get<string[]>(['outbox'])) || [];
-            for (const activityId of outboxActivityIds) {
-                const activity = (await ctx
-                    .get('globaldb')
-                    .get([activityId])) as {
-                    object: { id: string };
-                };
-                // Remove the create activity which contains the post
-                if (activity?.object?.id === idAsUrl.href) {
-                    await removeFromList(ctx.get('db'), ['outbox'], activityId);
-                    await ctx.get('globaldb').delete([activityId]);
-                }
+            const activities = (await relatedActivities) as any[];
+            for (const activity of activities) {
+                const activityId = activity.id;
+
+                await ctx.get('globaldb').delete([activityId]);
+                await removeFromList(ctx.get('db'), ['outbox'], activityId);
+                await removeFromList(ctx.get('db'), ['liked'], activityId);
+                await removeFromList(ctx.get('db'), ['reposted'], activityId);
             }
-
-            const likeId = apCtx.getObjectUri(Like, {
-                id: createHash('sha256').update(idAsUrl.href).digest('hex'),
-            });
-
-            // Remove the like from the kvStore
-            await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
-            await ctx.get('globaldb').delete([likeId!.href]);
-
-            // Remove the post from the kvStore
-            await ctx.get('globaldb').delete([idAsUrl.href]);
 
             return new Response(null, {
                 status: 204,
