@@ -16,6 +16,11 @@ export interface AccountData {
     url: URL | null;
 }
 
+export type AccountSite = {
+    id: number;
+    host: string;
+};
+
 export class Account extends BaseEntity {
     public readonly uuid: string;
     public readonly url: URL;
@@ -28,7 +33,7 @@ export class Account extends BaseEntity {
         public readonly bio: string | null,
         public readonly avatarUrl: URL | null,
         public readonly bannerImageUrl: URL | null,
-        private readonly site: Site | null,
+        private readonly site: AccountSite | null,
         apId: URL | null,
         url: URL | null,
     ) {

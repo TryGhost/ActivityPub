@@ -16,7 +16,6 @@ function mockAccount(id: number | null, internal: boolean) {
             ? {
                   id: 123,
                   host: 'foobar.com',
-                  webhook_secret: 'secret',
               }
             : null,
         new URL(`https://foobar.com/user/${id}`),
