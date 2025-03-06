@@ -119,6 +119,20 @@ async function createActivity(type, object, actor) {
         };
     }
 
+    if (type === 'Delete') {
+        activity = {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            type: 'Delete',
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/delete/${uuidv4()}`,
+            to: 'as:Public',
+            object: object,
+            actor: actor,
+        };
+    }
+
     externalActivityPub.register(
         {
             method: 'GET',
