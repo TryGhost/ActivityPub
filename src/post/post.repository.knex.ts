@@ -111,11 +111,8 @@ export class KnexPostRepository {
             row.reading_time_minutes,
             attachments,
             new URL(row.ap_id),
+            row.deleted_at !== null,
         );
-
-        if (row.deleted_at !== null) {
-            post.delete(author);
-        }
 
         return post;
     }
@@ -332,11 +329,8 @@ export class KnexPostRepository {
                 row.reading_time_minutes,
                 attachments,
                 new URL(row.ap_id),
+                row.deleted_at !== null,
             );
-
-            if (row.deleted_at !== null) {
-                post.delete(author);
-            }
 
             posts.push({
                 post,
