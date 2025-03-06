@@ -35,6 +35,7 @@ import {
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
+import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -317,6 +318,8 @@ const deleteHandler = new DeleteHandler(
     postRepository,
 );
 
+const deleteDispatcher = new DeleteDispatcher();
+
 inboxListener
     .on(
         Follow,
@@ -451,6 +454,11 @@ fedify.setObjectDispatcher(
     Announce,
     '/.ghost/activitypub/announce/{id}',
     spanWrapper(announceDispatcher),
+);
+fedify.setObjectDispatcher(
+    Delete,
+    '/.ghost/activitypub/delete/{id}',
+    spanWrapper(deleteDispatcher.dispatch.bind(deleteDispatcher)),
 );
 fedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',

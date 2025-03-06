@@ -2,7 +2,7 @@ import type EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
-import { Account } from '../account/account.entity';
+import { Account, type AccountSite } from '../account/account.entity';
 import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { parseURL } from '../core/url';
 import { PostCreatedEvent } from './post-created.event';
@@ -26,6 +26,8 @@ export class KnexPostRepository {
     async getByApId(apId: URL): Promise<Post | null> {
         const row = await this.db(TABLE_POSTS)
             .join('accounts', 'accounts.id', 'posts.author_id')
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .leftJoin('sites', 'sites.id', 'users.site_id')
             .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
             .select(
                 'posts.id',
@@ -47,6 +49,7 @@ export class KnexPostRepository {
                 'posts.ap_id',
                 'posts.in_reply_to',
                 'posts.thread_root',
+                'posts.deleted_at',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
                 'accounts.name',
@@ -55,6 +58,9 @@ export class KnexPostRepository {
                 'accounts.banner_image_url',
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
+                'accounts.ap_followers_url as author_ap_followers_url',
+                'sites.id as site_id',
+                'sites.host as site_host',
             )
             .first();
 
@@ -69,6 +75,18 @@ export class KnexPostRepository {
                 .where({ id: row.author_id });
         }
 
+        let site: AccountSite | null = null;
+
+        if (
+            typeof row.site_id === 'number' &&
+            typeof row.site_host === 'string'
+        ) {
+            site = {
+                id: row.site_id,
+                host: row.site_host,
+            };
+        }
+
         const author = new Account(
             row.author_id,
             row.author_uuid,
@@ -77,9 +95,10 @@ export class KnexPostRepository {
             row.bio,
             parseURL(row.avatar_url),
             parseURL(row.banner_image_url),
-            null,
+            site,
             parseURL(row.author_ap_id),
             parseURL(row.author_url),
+            parseURL(row.author_ap_followers_url),
         );
 
         // Parse attachments and convert URL strings back to URL objects
@@ -110,6 +129,7 @@ export class KnexPostRepository {
             row.reading_time_minutes,
             attachments,
             new URL(row.ap_id),
+            row.deleted_at !== null,
         );
 
         return post;
@@ -204,9 +224,11 @@ export class KnexPostRepository {
         postIdsForThread.push(post.id);
 
         // Find all the posts that are immediate children of the resolved post
+        // and have not been deleted
         for (const row of await this.db('posts')
             .select('id')
-            .where('in_reply_to', post.id)) {
+            .where('in_reply_to', post.id)
+            .andWhere('deleted_at', null)) {
             postIdsForThread.push(row.id);
         }
 
@@ -233,6 +255,7 @@ export class KnexPostRepository {
                 'posts.ap_id',
                 'posts.in_reply_to',
                 'posts.thread_root',
+                'posts.deleted_at',
                 // Author account fields
                 'accounts.username',
                 'accounts.uuid as author_uuid',
@@ -242,6 +265,7 @@ export class KnexPostRepository {
                 'accounts.banner_image_url',
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
+                'accounts.ap_followers_url as author_ap_followers_url',
                 // Account metadata fields
                 this.db.raw(`
                     CASE
@@ -257,6 +281,8 @@ export class KnexPostRepository {
                 `),
             )
             .join('accounts', 'accounts.id', 'posts.author_id')
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .leftJoin('sites', 'sites.id', 'users.site_id')
             .leftJoin('likes', function () {
                 this.on('likes.post_id', 'posts.id').andOnVal(
                     'likes.account_id',
@@ -284,6 +310,18 @@ export class KnexPostRepository {
                     .where({ id: row.author_id });
             }
 
+            let site: AccountSite | null = null;
+
+            if (
+                typeof row.site_id === 'number' &&
+                typeof row.site_host === 'string'
+            ) {
+                site = {
+                    id: row.site_id,
+                    host: row.site_host,
+                };
+            }
+
             const author = new Account(
                 row.author_id,
                 row.author_uuid,
@@ -292,9 +330,10 @@ export class KnexPostRepository {
                 row.bio,
                 parseURL(row.avatar_url),
                 parseURL(row.banner_image_url),
-                null,
+                site,
                 parseURL(row.author_ap_id),
                 parseURL(row.author_url),
+                parseURL(row.author_ap_followers_url),
             );
 
             const attachments = row.attachments
@@ -324,6 +363,7 @@ export class KnexPostRepository {
                 row.reading_time_minutes,
                 attachments,
                 new URL(row.ap_id),
+                row.deleted_at !== null,
             );
 
             posts.push({

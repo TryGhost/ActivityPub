@@ -1092,15 +1092,7 @@ async function waitForInboxActivity(
     });
 }
 
-async function waitForOutboxActivity(
-    activity,
-    options = {
-        retryCount: 0,
-        delay: 0,
-    },
-) {
-    const MAX_RETRIES = 5;
-
+async function findInOutbox(activity) {
     const initialResponse = await fetchActivityPub(
         'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
         {
@@ -1117,11 +1109,24 @@ async function waitForOutboxActivity(
     });
     const outbox = await firstPageReponse.json();
 
-    if (outbox.orderedItems.find((item) => item.id === activity.id)) {
+    return (outbox.orderedItems || []).find((item) => item.id === activity.id);
+}
+
+async function waitForOutboxActivity(
+    activity,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+    const found = await findInOutbox(activity);
+
+    if (found) {
         return;
     }
 
-    if (options.retryCount === MAX_RETRIES) {
+    if (options.retryCount >= MAX_RETRIES) {
         throw new Error(
             `Max retries reached (${MAX_RETRIES}) when waiting on an activity in the outbox`,
         );
@@ -1136,6 +1141,20 @@ async function waitForOutboxActivity(
         delay: options.delay + 500,
     });
 }
+
+Then('{string} is not in our Outbox', async function (activityName) {
+    const activity = this.activities[activityName];
+    const found = await findInOutbox(activity);
+    assert(
+        !found,
+        `Expected not to find activity "${activityName}" in outbox, but it was found`,
+    );
+});
+
+Then('{string} is in our Outbox', async function (activityName) {
+    const activity = this.activities[activityName];
+    await waitForOutboxActivity(activity);
+});
 
 async function waitForOutboxActivityType(
     activityType,
@@ -1532,12 +1551,18 @@ Then(
             inboxUrl.pathname,
             (call) => {
                 const body = JSON.parse(call.request.body);
-                return (
-                    body.type === activityType &&
-                    (object
-                        ? body.object.id === object.id
-                        : body.object.type === objectNameOrType)
-                );
+                if (body.type !== activityType) {
+                    return false;
+                }
+
+                if (object) {
+                    if (typeof body.object === 'string') {
+                        return body.object === object.id;
+                    }
+                    return body.object.id === object.id;
+                }
+
+                return body.object.type === objectNameOrType;
             },
         );
 
@@ -1593,6 +1618,7 @@ When(
             const activity = await this.response.clone().json();
 
             this.activities[noteName] = activity;
+            this.objects[noteName] = activity.object;
         }
     },
 );
@@ -1678,12 +1704,6 @@ When(
         }
     },
 );
-
-Then('{string} is in our Outbox', async function (activityName) {
-    const activity = this.activities[activityName];
-
-    await waitForOutboxActivity(activity);
-});
 
 Then('{string} has the content {string}', function (activityName, content) {
     const activity = this.activities[activityName];
@@ -1795,3 +1815,18 @@ Then('the thread contains {string} posts', async function (string) {
         `Expected thread to contain ${string} posts, but got ${responseJson.posts.length}`,
     );
 });
+
+Then(
+    'post {string} has {string} set to {string}',
+    async function (postNumber, key, value) {
+        const responseJson = await this.response.clone().json();
+        const post = responseJson.posts[Number(postNumber) - 1];
+
+        assert(post, `Expected to find post ${postNumber} in thread`);
+
+        assert(
+            String(post[key]) === String(value),
+            `Expected post ${postNumber} to have ${key} ${value}`,
+        );
+    },
+);

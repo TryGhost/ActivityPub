@@ -184,3 +184,22 @@ export async function getRepostCount(activity: ActivityJsonLd) {
 
     return result[0].count;
 }
+
+export async function getRelatedActivities(postUrl: string) {
+    return client
+        .select(client.raw('JSON_EXTRACT(value, "$.id") as id'))
+        .from('key_value')
+        .where(function () {
+            this.where(
+                client.raw('JSON_EXTRACT(value, "$.object.id") = ?', [postUrl]),
+            )
+                .orWhere(
+                    client.raw('JSON_EXTRACT(value, "$.object") = ?', [
+                        postUrl,
+                    ]),
+                )
+                .orWhere(
+                    client.raw('JSON_EXTRACT(value, "$.id") = ?', [postUrl]),
+                );
+        });
+}

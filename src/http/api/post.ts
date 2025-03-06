@@ -3,6 +3,9 @@ import { parseURL } from 'core/url';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
+import { getRelatedActivities } from '../../db';
+import { removeFromList } from '../../kv-helpers';
+
 /**
  * Create a handler for a request to delete a post
  */
@@ -43,8 +46,24 @@ export function createDeletePostHandler(
         }
 
         try {
+            // Delete the post from the database
             post.delete(account);
             await postRepository.save(post);
+
+            // Find all activities that reference this post and remove them from the kv-store
+            const relatedActivities = await getRelatedActivities(idAsUrl.href);
+
+            const activities = (await relatedActivities) as any[];
+            for (const activity of activities) {
+                const activityId = activity.id;
+
+                await ctx.get('globaldb').delete([activityId]);
+
+                await removeFromList(ctx.get('db'), ['inbox'], activityId);
+                await removeFromList(ctx.get('db'), ['outbox'], activityId);
+                await removeFromList(ctx.get('db'), ['liked'], activityId);
+                await removeFromList(ctx.get('db'), ['reposted'], activityId);
+            }
 
             return new Response(null, {
                 status: 204,
