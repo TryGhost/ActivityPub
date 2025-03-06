@@ -14,6 +14,7 @@ export interface AccountData {
     site: Site | null;
     apId: URL | null;
     url: URL | null;
+    apFollowers: URL | null;
 }
 
 export type AccountSite = {
@@ -25,6 +26,7 @@ export class Account extends BaseEntity {
     public readonly uuid: string;
     public readonly url: URL;
     public readonly apId: URL;
+    public readonly apFollowers: URL;
     constructor(
         public readonly id: number | null,
         uuid: string | null,
@@ -36,6 +38,7 @@ export class Account extends BaseEntity {
         private readonly site: AccountSite | null,
         apId: URL | null,
         url: URL | null,
+        apFollowers: URL | null,
     ) {
         super(id);
         if (uuid === null) {
@@ -47,6 +50,11 @@ export class Account extends BaseEntity {
             this.apId = this.getApId();
         } else {
             this.apId = apId;
+        }
+        if (apFollowers === null) {
+            this.apFollowers = this.getApFollowers();
+        } else {
+            this.apFollowers = apFollowers;
         }
         if (url === null) {
             this.url = this.apId;
@@ -66,6 +74,17 @@ export class Account extends BaseEntity {
 
         return new URL(
             `.ghost/activitypub/users/${this.username}`,
+            `https://${this.site!.host}`,
+        );
+    }
+
+    getApFollowers() {
+        if (!this.isInternal) {
+            throw new Error('Cannot get AP Followers for External Accounts');
+        }
+
+        return new URL(
+            `.ghost/activitypub/followers/${this.username}`,
             `https://${this.site!.host}`,
         );
     }
@@ -107,6 +126,7 @@ export class Account extends BaseEntity {
             data.site,
             data.apId,
             data.url,
+            data.apFollowers,
         );
     }
 }

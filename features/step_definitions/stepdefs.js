@@ -1537,12 +1537,18 @@ Then(
             inboxUrl.pathname,
             (call) => {
                 const body = JSON.parse(call.request.body);
-                return (
-                    body.type === activityType &&
-                    (object
-                        ? body.object.id === object.id
-                        : body.object.type === objectNameOrType)
-                );
+                if (body.type !== activityType) {
+                    return false;
+                }
+
+                if (object) {
+                    if (typeof body.object === 'string') {
+                        return body.object === object.id;
+                    }
+                    return body.object.id === object.id;
+                }
+
+                return body.object.type === objectNameOrType;
             },
         );
 
@@ -1598,6 +1604,7 @@ When(
             const activity = await this.response.clone().json();
 
             this.activities[noteName] = activity;
+            this.objects[noteName] = activity.object;
         }
     },
 );
@@ -1794,3 +1801,18 @@ Then('the thread contains {string} posts', async function (string) {
         `Expected thread to contain ${string} posts, but got ${responseJson.posts.length}`,
     );
 });
+
+Then(
+    'post {string} has {string} set to {string}',
+    async function (postNumber, key, value) {
+        const responseJson = await this.response.clone().json();
+        const post = responseJson.posts[Number(postNumber) - 1];
+
+        assert(post, `Expected to find post ${postNumber} in thread`);
+
+        assert(
+            String(post[key]) === String(value),
+            `Expected post ${postNumber} to have ${key} ${value}`,
+        );
+    },
+);

@@ -54,6 +54,7 @@ describe('FeedUpdateService', () => {
             site,
             apId: new URL('https://example.com/users/456'),
             url: new URL('https://example.com/users/456'),
+            apFollowers: new URL('https://example.com/followers/456'),
         });
         post = Post.createFromData(account, {
             type: PostType.Article,
