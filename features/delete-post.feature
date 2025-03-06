@@ -30,6 +30,7 @@ Feature: Delete a post
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And the feed does not contain "OurNote"
+    And "OurNote" is not in our Outbox
     And a "Delete(OurNote)" activity is sent to "Alice"
 
   Scenario: Attempting to delete another user's post

@@ -1078,15 +1078,7 @@ async function waitForInboxActivity(
     });
 }
 
-async function waitForOutboxActivity(
-    activity,
-    options = {
-        retryCount: 0,
-        delay: 0,
-    },
-) {
-    const MAX_RETRIES = 5;
-
+async function findInOutbox(activity) {
     const initialResponse = await fetchActivityPub(
         'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
         {
@@ -1103,11 +1095,24 @@ async function waitForOutboxActivity(
     });
     const outbox = await firstPageReponse.json();
 
-    if (outbox.orderedItems.find((item) => item.id === activity.id)) {
+    return (outbox.orderedItems || []).find((item) => item.id === activity.id);
+}
+
+async function waitForOutboxActivity(
+    activity,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+    const found = await findInOutbox(activity);
+
+    if (found) {
         return;
     }
 
-    if (options.retryCount === MAX_RETRIES) {
+    if (options.retryCount >= MAX_RETRIES) {
         throw new Error(
             `Max retries reached (${MAX_RETRIES}) when waiting on an activity in the outbox`,
         );
@@ -1122,6 +1127,20 @@ async function waitForOutboxActivity(
         delay: options.delay + 500,
     });
 }
+
+Then('{string} is not in our Outbox', async function (activityName) {
+    const activity = this.activities[activityName];
+    const found = await findInOutbox(activity);
+    assert(
+        !found,
+        `Expected not to find activity "${activityName}" in outbox, but it was found`,
+    );
+});
+
+Then('{string} is in our Outbox', async function (activityName) {
+    const activity = this.activities[activityName];
+    await waitForOutboxActivity(activity);
+});
 
 async function waitForOutboxActivityType(
     activityType,
@@ -1671,12 +1690,6 @@ When(
         }
     },
 );
-
-Then('{string} is in our Outbox', async function (activityName) {
-    const activity = this.activities[activityName];
-
-    await waitForOutboxActivity(activity);
-});
 
 Then('{string} has the content {string}', function (activityName, content) {
     const activity = this.activities[activityName];
