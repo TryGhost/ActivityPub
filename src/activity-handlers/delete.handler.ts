@@ -1,8 +1,8 @@
 import type { Context, Delete } from '@fedify/fedify';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
-import type { PostService } from 'post/post.service';
 import type { KnexPostRepository } from 'post/post.repository.knex';
+import type { PostService } from 'post/post.service';
 
 export class DeleteHandler {
     constructor(
@@ -38,9 +38,7 @@ export class DeleteHandler {
             return;
         }
 
-        const post = await this.postService.getByApId(
-            deleteActivity.objectId,
-        );
+        const post = await this.postService.getByApId(deleteActivity.objectId);
 
         if (post === null) {
             ctx.data.logger.info('Post not found, exit early');

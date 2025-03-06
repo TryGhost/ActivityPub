@@ -35,7 +35,6 @@ import {
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
-import { DeleteHandler } from './activity-handlers/delete.handler';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -43,6 +42,7 @@ import jose from 'node-jose';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
+import { DeleteHandler } from './activity-handlers/delete.handler';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
 import { FediverseBridge } from './activitypub/fediverse-bridge';
 import { client } from './db';
