@@ -37,17 +37,12 @@ Feature: Creating a note
     And "Note" has the content "<p>&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;<br />&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;</p>"
 
   Scenario: Created note is sent to followers
-    Given an Actor "Person(Alice)"
-    And an Actor "Person(Bob)"
-    And a "Follow(Us)" Activity "F1" by "Alice"
-    And a "Follow(Us)" Activity "F2" by "Bob"
-    And "Alice" sends "F1" to the Inbox
-    And "F1" is in our Inbox
-    And "Bob" sends "F2" to the Inbox
-    And "F2" is in our Inbox
+    Given we are followed by:
+      | name    | type   |
+      | Alice   | Person |
+      | Bob     | Person |
     When we create a note "Note" with the content
       """
       Hello, world!
       """
-    Then Activity "Note" is sent to "Alice"
-    And Activity "Note" is sent to "Bob"
+    Then Activity "Note" is sent to all followers
