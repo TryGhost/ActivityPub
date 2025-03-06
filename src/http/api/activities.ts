@@ -153,8 +153,8 @@ export async function handleGetActivities(ctx: AppContext) {
                     [],
                     {
                         expandInReplyTo: true,
-                        showReplyCount: true,
-                        showRepostCount: true,
+                        showReplyCount: false,
+                        showRepostCount: false,
                     },
                 );
             } catch (err) {
