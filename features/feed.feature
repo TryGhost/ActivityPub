@@ -4,12 +4,7 @@ Feature: Feed
   I want to query my feed
 
   Background:
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
 
   Scenario: Querying the feed
     Given a "Create(Note)" Activity "Note1" by "Alice"

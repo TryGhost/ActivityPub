@@ -1,12 +1,7 @@
 Feature: Handling activities announced by a Group
   Background:
     Given an Actor "Person(Alice)"
-    And an Actor "Group(Wonderland)"
-    And we follow "Wonderland"
-    And the request is accepted
-    And a "Accept(Follow(Wonderland))" Activity "Accept" by "Wonderland"
-    And "Wonderland" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    And we are following "Group(Wonderland)"
 
   Scenario: We recieve a Create(Article) activity announced by a Group
     Given a "Create(Article)" Activity "Create" by "Alice"

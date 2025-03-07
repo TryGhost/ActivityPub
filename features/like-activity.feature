@@ -4,12 +4,7 @@ Feature: Liking an object
   So that I can express my approval of the content
 
   Scenario: Liking an object that has not been liked before
-    Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
@@ -20,12 +15,7 @@ Feature: Liking an object
     And a "Like(Note)" activity is sent to "Alice"
 
   Scenario: Liking an object that has been liked before
-    Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
@@ -35,12 +25,7 @@ Feature: Liking an object
     Then the request is rejected with a 409
 
   Scenario: Unliking an object that has not been liked before
-    Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox
@@ -48,12 +33,7 @@ Feature: Liking an object
     Then the request is rejected with a 409
 
   Scenario: Unliking an object that has been liked before
-    Given an Actor "Person(Alice)"
-    Given we follow "Alice"
-    Then the request is accepted
-    Given a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
     And "Note" is in our Inbox

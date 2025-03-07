@@ -683,6 +683,64 @@ Given('an Actor {string}', async function (actorDef) {
     this.actors[name] = await createActor(name, { type });
 });
 
+async function getActor(input) {
+    const existingActor = this.actors[input];
+
+    let type = 'Person';
+    let name = input;
+
+    if (!existingActor) {
+        const parsed = parseActorString(input);
+        if (parsed.type && parsed.name) {
+            type = parsed.type;
+            name = parsed.name;
+        }
+        this.actors[name] = await createActor(name, { type });
+    }
+
+    return {
+        type,
+        name,
+        actor: this.actors[name],
+    };
+}
+
+Given('we are following {string}', async function (input) {
+    const { actor } = await getActor.call(this, input);
+
+    const followResponse = await fetchActivityPub(
+        `http://fake-ghost-activitypub/.ghost/activitypub/actions/follow/${actor.handle}`,
+        {
+            method: 'POST',
+        },
+    );
+
+    if (!followResponse.ok) {
+        throw new Error('Something went wrong');
+    }
+
+    const follow = await createActivity('Follow', actor, this.actors.Us);
+
+    const accept = await createActivity('Accept', follow, actor);
+
+    const acceptResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/ld+json',
+            },
+            body: JSON.stringify(accept),
+        },
+    );
+
+    if (!acceptResponse.ok) {
+        throw new Error('Something went wrong');
+    }
+
+    await waitForInboxActivity(accept);
+});
+
 Given('we follow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
@@ -715,30 +773,37 @@ Given('we unfollow {string}', async function (name) {
     }
 });
 
+async function weAreFollowedBy(actor) {
+    const object = this.actors.Us;
+    const activity = await createActivity('Follow', object, actor);
+
+    // Send the follow activity to the inbox
+    const response = await fetchActivityPub(
+        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            body: JSON.stringify(activity),
+        },
+    );
+
+    if (!response.ok) {
+        throw new Error('Something went wrong');
+    }
+
+    await waitForInboxActivity(activity);
+}
+
+Given('we are followed by {string}', async function (input) {
+    const { actor } = await getActor.call(this, input);
+    await weAreFollowedBy.call(this, actor);
+});
+
 Given('we are followed by:', async function (actors) {
     for (const { name, type } of actors.hashes()) {
         // Create the actor
         this.actors[name] = await createActor(name, { type });
 
-        // Create the follow activity
-        const actor = this.actors[name];
-        const object = this.actors.Us;
-        const activity = await createActivity('Follow', object, actor);
-
-        const key = `Follow(Us)_${name}`;
-        this.activities[key] = activity;
-        this.objects[key] = object;
-
-        // Send the follow activity to the inbox
-        this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
-            {
-                method: 'POST',
-                body: JSON.stringify(activity),
-            },
-        );
-
-        await waitForInboxActivity(activity);
+        await weAreFollowedBy.call(this, this.actors[name]);
     }
 });
 

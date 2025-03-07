@@ -1,15 +1,8 @@
 Feature: Delete a post
 
   Background:
-    Given an Actor "Person(Alice)"
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
-    And a "Follow(Us)" Activity "Follow" by "Alice"
-    And "Alice" sends "Follow" to the Inbox
-    And "Follow" is in our Inbox
+    Given we are following "Alice"
+    And we are followed by "Alice"
     And a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
     And "AliceNote" is in our Inbox

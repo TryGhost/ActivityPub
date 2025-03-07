@@ -4,15 +4,8 @@ Feature: Thread
   I want to request the thread for a post
 
   Background:
-    Given an Actor "Person(Alice)"
-    And a "Follow(Us)" Activity "Follow" by "Alice"
-    And "Alice" sends "Follow" to the Inbox
-    And "Follow" is in our Inbox
-    And we follow "Alice"
-    And the request is accepted
-    And a "Accept(Follow(Alice))" Activity "Accept" by "Alice"
-    And "Alice" sends "Accept" to the Inbox
-    And "Accept" is in our Inbox
+    Given we are following "Alice"
+    And we are followed by "Alice"
     And a "Note" Object "Article" by "Alice"
     And a "Create(Article)" Activity "Create" by "Alice"
     And "Alice" sends "Create" to the Inbox
