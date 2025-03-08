@@ -1,3 +1,5 @@
+console.log(`Process uptime before imports: ${process.uptime() * 1000}ms`);
+
 import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -122,6 +124,22 @@ import {
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 
+console.log(`Process uptime after imports: ${process.uptime() * 1000}ms`);
+// Temporary to collect CPU profiles and reduce boot time
+if (process.env.USE_CPU_PROFILER === 'true') {
+    import('@google-cloud/profiler')
+        .then(profiler => {
+            profiler.start({
+                serviceContext: {
+                    service: 'activitypub',
+                    version: '1.0.0',
+                },
+            });
+            console.log('Profiler started');
+        })
+        .catch(err => console.error("Profiler failed to start:", err));
+}
+
 const logging = getLogger(['activitypub']);
 
 function toLogLevel(level: unknown): LogLevel | null {
@@ -134,24 +152,25 @@ function toLogLevel(level: unknown): LogLevel | null {
     return null;
 }
 
+console.log(`Process uptime after logger: ${process.uptime() * 1000}ms`);
 await configure({
     contextLocalStorage: new AsyncLocalStorage(),
     sinks: {
         console: getConsoleSink({
             formatter: process.env.K_SERVICE
                 ? (record: LogRecord) => {
-                      const loggingObject = {
-                          timestamp: new Date(record.timestamp).toISOString(),
-                          severity: record.level.toUpperCase(),
-                          message: record.message.join(''),
-                          ...record.properties,
-                      };
+                    const loggingObject = {
+                        timestamp: new Date(record.timestamp).toISOString(),
+                        severity: record.level.toUpperCase(),
+                        message: record.message.join(''),
+                        ...record.properties,
+                    };
 
-                      return JSON.stringify(loggingObject);
-                  }
+                    return JSON.stringify(loggingObject);
+                }
                 : getAnsiColorFormatter({
-                      timestamp: 'time',
-                  }),
+                    timestamp: 'time',
+                }),
         }),
     },
     filters: {},
@@ -174,6 +193,7 @@ await configure({
         },
     ],
 });
+console.log(`Process uptime after configure: ${process.uptime() * 1000}ms`);
 
 export type ContextData = {
     db: KvStore;
@@ -182,6 +202,7 @@ export type ContextData = {
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
+console.log(`Process uptime after fedifyKv: ${process.uptime() * 1000}ms`);
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
@@ -208,6 +229,7 @@ if (process.env.USE_MQ === 'true') {
 } else {
     logging.info('Message queue is disabled');
 }
+console.log(`Process uptime after MQ: ${process.uptime() * 1000}ms`);
 
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
@@ -219,6 +241,7 @@ export const fedify = createFederation<ContextData>({
         process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
+console.log(`Process uptime after createFederation: ${process.uptime() * 1000}ms`);
 
 /**
  * Fedify request context with app specific context data
@@ -229,6 +252,7 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
+console.log(`Process uptime after db: ${process.uptime() * 1000}ms`);
 
 const events = new EventEmitter();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -686,12 +710,12 @@ app.use(async (ctx, next) => {
             ctx.set(
                 'role',
                 GhostRole[
-                    claims.role as
-                        | 'Owner'
-                        | 'Administrator'
-                        | 'Editor'
-                        | 'Author'
-                        | 'Contributor'
+                claims.role as
+                | 'Owner'
+                | 'Administrator'
+                | 'Editor'
+                | 'Author'
+                | 'Contributor'
                 ],
             );
         } else {
@@ -1008,7 +1032,7 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
         return fn(request);
     };
 }
-
+console.log(`Process uptime before serve(): ${process.uptime() * 1000}ms`);
 serve(
     {
         fetch: forceAcceptHeader(behindProxy(app.fetch)),
