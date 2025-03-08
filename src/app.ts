@@ -1,5 +1,10 @@
+console.time("instrumentation");
+
 import './instrumentation';
 
+console.timeEnd("instrumentation");
+
+console.time("imports 1");
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 import {
@@ -19,6 +24,8 @@ import {
     createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
+console.timeEnd("imports 1");
+console.time("imports 2");
 import { serve } from '@hono/node-server';
 import {
     type LogLevel,
@@ -37,11 +44,15 @@ import { CreateHandler } from 'activity-handlers/create.handler';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
+console.timeEnd("imports 2");
+console.time("imports 3");
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
+console.timeEnd("imports 3");
+console.time("imports 4");
 import { AccountService } from './account/account.service';
 import { DeleteHandler } from './activity-handlers/delete.handler';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
@@ -114,13 +125,34 @@ import {
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
+console.timeEnd("imports 4");
+console.time("imports 5");
 import {
     GCloudPubSubPushMessageQueue,
     createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+console.timeEnd("imports 5");
+console.time("imports 6");
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+console.timeEnd("imports 6");
+
+console.log(`Process uptime after imports: ${process.uptime() * 1000}ms`);
+// Temporary to collect CPU profiles and reduce boot time
+if (process.env.USE_CPU_PROFILER === 'true') {
+    import('@google-cloud/profiler')
+        .then(profiler => {
+            profiler.start({
+                serviceContext: {
+                    service: 'activitypub',
+                    version: '1.0.0',
+                },
+            });
+            console.log('Profiler started');
+        })
+        .catch(err => console.error("Profiler failed to start:", err));
+}
 
 const logging = getLogger(['activitypub']);
 
@@ -134,24 +166,25 @@ function toLogLevel(level: unknown): LogLevel | null {
     return null;
 }
 
+console.log(`Process uptime after logger: ${process.uptime() * 1000}ms`);
 await configure({
     contextLocalStorage: new AsyncLocalStorage(),
     sinks: {
         console: getConsoleSink({
             formatter: process.env.K_SERVICE
                 ? (record: LogRecord) => {
-                      const loggingObject = {
-                          timestamp: new Date(record.timestamp).toISOString(),
-                          severity: record.level.toUpperCase(),
-                          message: record.message.join(''),
-                          ...record.properties,
-                      };
+                    const loggingObject = {
+                        timestamp: new Date(record.timestamp).toISOString(),
+                        severity: record.level.toUpperCase(),
+                        message: record.message.join(''),
+                        ...record.properties,
+                    };
 
-                      return JSON.stringify(loggingObject);
-                  }
+                    return JSON.stringify(loggingObject);
+                }
                 : getAnsiColorFormatter({
-                      timestamp: 'time',
-                  }),
+                    timestamp: 'time',
+                }),
         }),
     },
     filters: {},
@@ -174,6 +207,7 @@ await configure({
         },
     ],
 });
+console.log(`Process uptime after configure: ${process.uptime() * 1000}ms`);
 
 export type ContextData = {
     db: KvStore;
@@ -182,6 +216,7 @@ export type ContextData = {
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
+console.log(`Process uptime after fedifyKv: ${process.uptime() * 1000}ms`);
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
@@ -208,6 +243,7 @@ if (process.env.USE_MQ === 'true') {
 } else {
     logging.info('Message queue is disabled');
 }
+console.log(`Process uptime after MQ: ${process.uptime() * 1000}ms`);
 
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
@@ -220,6 +256,7 @@ export const fedify = createFederation<ContextData>({
         process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
+console.log(`Process uptime after createFederation: ${process.uptime() * 1000}ms`);
 
 /**
  * Fedify request context with app specific context data
@@ -230,6 +267,7 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
+console.log(`Process uptime after db: ${process.uptime() * 1000}ms`);
 
 if (process.env.MANUALLY_START_QUEUE === 'true') {
     fedify.startQueue({
@@ -704,12 +742,12 @@ app.use(async (ctx, next) => {
             ctx.set(
                 'role',
                 GhostRole[
-                    claims.role as
-                        | 'Owner'
-                        | 'Administrator'
-                        | 'Editor'
-                        | 'Author'
-                        | 'Contributor'
+                claims.role as
+                | 'Owner'
+                | 'Administrator'
+                | 'Editor'
+                | 'Author'
+                | 'Contributor'
                 ],
             );
         } else {
@@ -1017,7 +1055,7 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
         return fn(request);
     };
 }
-
+console.log(`Process uptime before serve(): ${process.uptime() * 1000}ms`);
 serve(
     {
         fetch: forceAcceptHeader(behindProxy(app.fetch)),
