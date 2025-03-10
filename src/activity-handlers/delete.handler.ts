@@ -1,4 +1,4 @@
-import type { Context, Delete } from '@fedify/fedify';
+import type { Actor, Context, Delete } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
@@ -24,7 +24,17 @@ export class DeleteHandler {
             return;
         }
 
-        const sender = await deleteActivity.getActor(ctx);
+        let sender: Actor | null = null;
+        try {
+            sender = await deleteActivity.getActor(ctx);
+        } catch (error) {
+            ctx.data.logger.error(
+                'Error fetching sender from delete activity',
+                { error },
+            );
+            return;
+        }
+
         if (sender === null || sender.id === null) {
             ctx.data.logger.info('Delete sender missing, exit early');
             return;
