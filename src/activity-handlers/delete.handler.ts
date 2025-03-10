@@ -16,7 +16,6 @@ export class DeleteHandler {
     ) {}
 
     async handle(ctx: Context<ContextData>, deleteActivity: Delete) {
-
         ctx.data.logger.info('Handling Delete');
         const parsed = ctx.parseUri(deleteActivity.objectId);
         ctx.data.logger.info('Parsed delete object', { parsed });
@@ -29,10 +28,13 @@ export class DeleteHandler {
         try {
             sender = await deleteActivity.getActor(ctx);
         } catch (error) {
-            ctx.data.logger.error('Error fetching sender from delete activity', { error });
+            ctx.data.logger.error(
+                'Error fetching sender from delete activity',
+                { error },
+            );
             return;
         }
-        
+
         if (sender === null || sender.id === null) {
             ctx.data.logger.info('Delete sender missing, exit early');
             return;
