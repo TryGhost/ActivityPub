@@ -1,6 +1,8 @@
 import type { Context, Delete } from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
+import type { Post } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { getRelatedActivities } from '../db';
@@ -17,7 +19,7 @@ export class DeleteHandler {
         ctx.data.logger.info('Handling Delete');
         const parsed = ctx.parseUri(deleteActivity.objectId);
         ctx.data.logger.info('Parsed delete object', { parsed });
-        if (!deleteActivity.id) {
+        if (deleteActivity === null || !deleteActivity.id) {
             ctx.data.logger.info('Missing delete id - exit');
             return;
         }
@@ -33,14 +35,28 @@ export class DeleteHandler {
             return;
         }
 
-        const senderAccount = await this.accountService.getByApId(sender.id);
+        let senderAccount: Account | null = null;
+
+        try {
+            senderAccount = await this.accountService.getByApId(sender.id);
+        } catch (error) {
+            ctx.data.logger.info('Error fetching sender account', { error });
+            return;
+        }
 
         if (senderAccount === null) {
             ctx.data.logger.info('Sender account not found, exit early');
             return;
         }
 
-        const post = await this.postService.getByApId(deleteActivity.objectId);
+        let post: Post | null = null;
+
+        try {
+            post = await this.postService.getByApId(deleteActivity.objectId);
+        } catch (error) {
+            ctx.data.logger.info('Error fetching post', { error });
+            return;
+        }
 
         if (post === null) {
             ctx.data.logger.info('Post not found, exit early');
