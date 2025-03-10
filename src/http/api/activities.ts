@@ -139,33 +139,42 @@ export async function handleGetActivities(ctx: AppContext) {
     // Build the activities and return the response
     // -------------------------------------------------------------------------
 
-    const activities = await Promise.all(
-        activityRefs.map(async (ref) => {
-            const wrappedBuildActivity = spanWrapper(buildActivity);
+    // Build the activities in batches to avoid resource exhaustion
+    const batchSize = 10;
+    const activities = [];
 
-            try {
-                return await wrappedBuildActivity(
-                    ref,
-                    globaldb,
-                    apCtx,
-                    [],
-                    [],
-                    [],
-                    {
-                        expandInReplyTo: true,
-                        showReplyCount: false,
-                        showRepostCount: false,
-                    },
-                );
-            } catch (err) {
-                logger.error('Error building activity ({ref}): {error}', {
-                    ref,
-                    error: err,
-                });
-                return null;
-            }
-        }),
-    ).then((results) => results.filter(Boolean));
+    for (let i = 0; i < activityRefs.length; i += batchSize) {
+        const batch = activityRefs.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+            batch.map(async (ref) => {
+                const wrappedBuildActivity = spanWrapper(buildActivity);
+
+                try {
+                    return await wrappedBuildActivity(
+                        ref,
+                        globaldb,
+                        apCtx,
+                        [],
+                        [],
+                        [],
+                        {
+                            expandInReplyTo: true,
+                            showReplyCount: false,
+                            showRepostCount: false,
+                        },
+                    );
+                } catch (err) {
+                    logger.error('Error building activity ({ref}): {error}', {
+                        ref,
+                        error: err,
+                    });
+                    return null;
+                }
+            }),
+        );
+
+        activities.push(...batchResults.filter(Boolean));
+    }
 
     return new Response(
         JSON.stringify({
