@@ -19,7 +19,7 @@ export class DeleteHandler {
         ctx.data.logger.info('Handling Delete');
         const parsed = ctx.parseUri(deleteActivity.objectId);
         ctx.data.logger.info('Parsed delete object', { parsed });
-        if (deleteActivity === null || !deleteActivity.id) {
+        if (!deleteActivity.id) {
             ctx.data.logger.info('Missing delete id - exit');
             return;
         }
