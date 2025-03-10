@@ -279,4 +279,85 @@ export class Post extends BaseEntity {
             data.apId ?? null,
         );
     }
+
+    static createNote(account: Account, noteContent: string): Post {
+        if (!account.isInternal) {
+            throw new Error('createNote is for use with internal accounts');
+        }
+
+        const content = ContentPreparer.prepare(noteContent, {
+            removeMemberContent: false,
+            escapeHtml: true,
+            convertLineBreaks: true,
+            wrapInParagraph: true,
+        });
+
+        return new Post(
+            null,
+            null,
+            account,
+            PostType.Note,
+            Audience.Public,
+            null,
+            null,
+            content,
+            null,
+            null,
+            new Date(),
+            0,
+            0,
+            0,
+            null,
+            null,
+            null,
+            [],
+            null,
+        );
+    }
+
+    static createReply(
+        account: Account,
+        replyContent: string,
+        inReplyTo: Post,
+    ): Post {
+        if (!account.isInternal) {
+            throw new Error('createReply is for use with internal accounts');
+        }
+
+        if (!inReplyTo.id) {
+            throw new Error('Cannot reply to a Post without an id');
+        }
+
+        const inReplyToId = inReplyTo.id;
+        const threadRootId = inReplyTo.threadRoot ?? inReplyTo.id;
+
+        const content = ContentPreparer.prepare(replyContent, {
+            removeMemberContent: false,
+            escapeHtml: true,
+            convertLineBreaks: true,
+            wrapInParagraph: true,
+        });
+
+        return new Post(
+            null,
+            null,
+            account,
+            PostType.Note,
+            Audience.Public,
+            null,
+            null,
+            content,
+            null,
+            null,
+            new Date(),
+            0,
+            0,
+            0,
+            inReplyToId,
+            threadRootId,
+            null,
+            [],
+            null,
+        );
+    }
 }

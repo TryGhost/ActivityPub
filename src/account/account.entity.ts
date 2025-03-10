@@ -74,7 +74,7 @@ export class Account extends BaseEntity {
 
         return new URL(
             `.ghost/activitypub/users/${this.username}`,
-            `https://${this.site!.host}`,
+            `${Account.protocol}://${this.site!.host}`,
         );
     }
 
@@ -85,7 +85,7 @@ export class Account extends BaseEntity {
 
         return new URL(
             `.ghost/activitypub/followers/${this.username}`,
-            `https://${this.site!.host}`,
+            `${Account.protocol}://${this.site!.host}`,
         );
     }
 
@@ -110,9 +110,12 @@ export class Account extends BaseEntity {
 
         return new URL(
             `.ghost/activitypub/${type}/${post.uuid}`,
-            `https://${this.site!.host}`,
+            `${Account.protocol}://${this.site!.host}`,
         );
     }
+
+    private static protocol: 'http' | 'https' =
+        process.env.NODE_ENV === 'testing' ? 'http' : 'https';
 
     static createFromData(data: AccountData) {
         return new Account(

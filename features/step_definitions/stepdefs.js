@@ -1773,7 +1773,7 @@ When(
 Then('{string} has the content {string}', function (activityName, content) {
     const activity = this.activities[activityName];
 
-    assert(activity.object.content === content);
+    assert.equal(activity.object.content, content);
 });
 
 Given('{string} has Object {string}', function (activityName, objectName) {
