@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { KnexAccountRepository } from '../../account/account.repository.knex';
 import type { AppContext } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { Audience, Post, PostType } from '../../post/post.entity';
+import { Post } from '../../post/post.entity';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
 import { publishNote } from '../../publishing/helpers';
 import type { PublishResult } from '../../publishing/service';
@@ -27,18 +27,14 @@ export async function handleCreateNote(
 
     // Save to posts table when a note is created
     const account = await accountRepository.getBySite(ctx.get('site'));
-    const post = Post.createFromData(account, {
-        content: data.content,
-        type: PostType.Note,
-        audience: Audience.Public,
-    });
+    const post = Post.createNote(account, data.content);
     await postRepository.save(post);
 
     let result: PublishResult | null = null;
 
     try {
         result = await publishNote(ctx, {
-            content: data.content,
+            content: post.content ?? '',
             author: {
                 handle: ACTOR_DEFAULT_HANDLE,
             },

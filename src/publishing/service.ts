@@ -196,11 +196,7 @@ export class FedifyPublishingService implements PublishingService {
                 note.apId ||
                 this.uriBuilder.buildObjectUri(FedifyNote, uuidv4()),
             attribution: actor,
-            content: this.contentPreparer.prepare(note.content, {
-                escapeHtml: true,
-                convertLineBreaks: true,
-                wrapInParagraph: true,
-            }),
+            content: note.content,
             summary: null,
             published: Temporal.Now.instant(),
             to: to,

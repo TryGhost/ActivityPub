@@ -25,11 +25,10 @@ import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { buildActivity } from './helpers/activitypub/activity';
 import { updateSiteActor } from './helpers/activitypub/actor';
 import { getSiteSettings } from './helpers/ghost';
-import { escapeHtml } from './helpers/html';
 import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
-import { Audience, Post, PostType } from './post/post.entity';
+import { Post } from './post/post.entity';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
 import type { SiteService } from './site/site.service';
@@ -265,8 +264,6 @@ export function createReplyActionHandler(
 
         try {
             data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
-
-            data.content = escapeHtml(data.content);
         } catch (err) {
             return new Response(JSON.stringify(err), { status: 400 });
         }
@@ -315,15 +312,31 @@ export function createReplyActionHandler(
             }),
         ];
 
-        const replyId = apCtx.getObjectUri(Note, {
-            id: uuidv4(),
-        });
+        const account = await accountRepository.getBySite(ctx.get('site'));
+
+        if (!objectToReplyTo.id) {
+            return new Response('Invalid Reply - no object to reply id', {
+                status: 400,
+            });
+        }
+
+        const parentPost = await postService.getByApId(objectToReplyTo.id);
+
+        if (!parentPost) {
+            return new Response('Invalid Reply - could not find object', {
+                status: 404,
+            });
+        }
+
+        const newReply = Post.createReply(account, data.content, parentPost);
+
+        await postRepository.save(newReply);
 
         const reply = new Note({
-            id: replyId,
+            id: newReply.apId,
             attribution: actor,
             replyTarget: objectToReplyTo,
-            content: data.content,
+            content: newReply.content,
             summary: null,
             published: Temporal.Now.instant(),
             contexts: [conversation],
@@ -350,31 +363,6 @@ export function createReplyActionHandler(
         await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
         await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-
-        const account = await accountRepository.getBySite(ctx.get('site'));
-
-        if (!objectToReplyTo.id) {
-            return new Response('Invalid Reply - no object to reply id', {
-                status: 400,
-            });
-        }
-
-        const parentPost = await postService.getByApId(objectToReplyTo.id);
-
-        if (!parentPost) {
-            return new Response('Invalid Reply - could not find object', {
-                status: 404,
-            });
-        }
-
-        const newReply = Post.createFromData(account, {
-            content: data.content,
-            type: PostType.Note,
-            audience: Audience.Public,
-            apId: replyId,
-            inReplyTo: parentPost,
-        });
-        await postRepository.save(newReply);
 
         apCtx.sendActivity(
             { handle: ACTOR_DEFAULT_HANDLE },
