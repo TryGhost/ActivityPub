@@ -159,10 +159,13 @@ describe('FeedService', () => {
             const feedService = new FeedService(client);
 
             // Initialise an internal account for user
-            const userAccount = await createInternalAccount('foo.com');
+            const userAccount =
+                await createInternalAccount('add-post-user.com');
 
             // Initialise an internal account that the user will follow
-            const followedAccount = await createInternalAccount('bar.com');
+            const followedAccount = await createInternalAccount(
+                'add-post-followed.com',
+            );
 
             await accountService.recordAccountFollow(
                 followedAccount as unknown as AccountType,
@@ -170,11 +173,15 @@ describe('FeedService', () => {
             );
 
             // Initialise an internal account that the user will not follow
-            const unfollowedAccount = await createInternalAccount('baz.com');
+            const unfollowedAccount = await createInternalAccount(
+                'add-post-unfollowed.com',
+            );
 
             // Initialise an external account that follows the user - This account
             // should not have a feed so we should not try and add a post to it.
-            const externalAccount = await createExternalAccount('qux.com');
+            const externalAccount = await createExternalAccount(
+                'add-post-external.com',
+            );
 
             await accountService.recordAccountFollow(
                 userAccount as unknown as AccountType, // @TODO: Update this when AccountEntity is used everywhere
@@ -256,14 +263,18 @@ describe('FeedService', () => {
             });
         }, 10000);
 
-        it('should addd reposted posts to the feeds of the users that should see it', async () => {
+        it('should add reposted posts to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client);
 
             // Initialise an internal account for user
-            const userAccount = await createInternalAccount('foo.com');
+            const userAccount = await createInternalAccount(
+                'add-reposted-user.com',
+            );
 
             // Initialise an internal account that the user will follow
-            const followedAccount = await createInternalAccount('bar.com');
+            const followedAccount = await createInternalAccount(
+                'add-reposted-followed.com',
+            );
 
             await accountService.recordAccountFollow(
                 // @TODO: Update this when AccountEntity is used everywhere
@@ -272,7 +283,9 @@ describe('FeedService', () => {
             );
 
             // Initialise an internal account that the user will not follow
-            const unfollowedAccount = await createInternalAccount('baz.com');
+            const unfollowedAccount = await createInternalAccount(
+                'add-reposted-unfollowed.com',
+            );
 
             // Initialise posts
             const unfollowedAccountPost = await createPost(unfollowedAccount, {
@@ -341,10 +354,14 @@ describe('FeedService', () => {
             const feedService = new FeedService(client);
 
             // Initialise an internal account for user
-            const userAccount = await createInternalAccount('foo.com');
+            const userAccount = await createInternalAccount(
+                'add-replies-user.com',
+            );
 
             // Initialise an internal account that the user will follow
-            const followedAccount = await createInternalAccount('bar.com');
+            const followedAccount = await createInternalAccount(
+                'add-replies-followed.com',
+            );
 
             await accountService.recordAccountFollow(
                 followedAccount as unknown as AccountType,
@@ -396,10 +413,13 @@ describe('FeedService', () => {
             const feedService = new FeedService(client);
 
             // Initialise an internal account for user
-            const userAccount = await createInternalAccount('foo.com');
+            const userAccount =
+                await createInternalAccount('add-post-user.com');
 
             // Initialise an internal account that the user will follow
-            const followedAccount = await createInternalAccount('bar.com');
+            const followedAccount = await createInternalAccount(
+                'add-post-followed.com',
+            );
 
             await accountService.recordAccountFollow(
                 followedAccount as unknown as AccountType,
@@ -408,7 +428,8 @@ describe('FeedService', () => {
 
             // Initialise another internal account that will follow the internal
             // account that is not the user
-            const otherAccount = await createInternalAccount('baz.com');
+            const otherAccount =
+                await createInternalAccount('add-post-other.com');
 
             await accountService.recordAccountFollow(
                 followedAccount as unknown as AccountType,
@@ -460,9 +481,15 @@ describe('FeedService', () => {
             const feedService = new FeedService(client);
 
             // Initialise accounts
-            const userAccount = await createInternalAccount('foo.com');
-            const followedAccount = await createInternalAccount('bar.com');
-            const postAuthorAccount = await createInternalAccount('baz.com');
+            const userAccount = await createInternalAccount(
+                'remove-derepost-user.com',
+            );
+            const followedAccount = await createInternalAccount(
+                'remove-derepost-followed.com',
+            );
+            const postAuthorAccount = await createInternalAccount(
+                'remove-derepost-author.com',
+            );
 
             await accountService.recordAccountFollow(
                 followedAccount as unknown as AccountType,
@@ -508,10 +535,17 @@ describe('FeedService', () => {
             const feedService = new FeedService(client);
 
             // Initialise accounts
-            const userAccount = await createInternalAccount('foo.com');
-            const reposter1 = await createInternalAccount('bar.com');
-            const reposter2 = await createInternalAccount('baz.com');
-            const postAuthorAccount = await createInternalAccount('qux.com');
+            const userAccount =
+                await createInternalAccount('derepost-user.com');
+            const reposter1 = await createInternalAccount(
+                'derepost-reposter1.com',
+            );
+            const reposter2 = await createInternalAccount(
+                'derepost-reposter2.com',
+            );
+            const postAuthorAccount = await createInternalAccount(
+                'derepost-post-author.com',
+            );
 
             await accountService.recordAccountFollow(
                 reposter1 as unknown as AccountType,
