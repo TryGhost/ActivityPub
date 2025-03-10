@@ -40,7 +40,7 @@ export class DeleteHandler {
         try {
             senderAccount = await this.accountService.getByApId(sender.id);
         } catch (error) {
-            ctx.data.logger.info('Error fetching sender account', { error });
+            ctx.data.logger.error('Error fetching sender account', { error });
             return;
         }
 
@@ -54,7 +54,7 @@ export class DeleteHandler {
         try {
             post = await this.postService.getByApId(deleteActivity.objectId);
         } catch (error) {
-            ctx.data.logger.info('Error fetching post', { error });
+            ctx.data.logger.error('Error fetching post', { error });
             return;
         }
 
