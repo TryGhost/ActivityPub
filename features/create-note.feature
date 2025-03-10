@@ -34,7 +34,7 @@ Feature: Creating a note
       <script>alert("Hello, world!");</script>
       """
     Then "Note" is in our Outbox
-    And "Note" has the content "<p>&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;<br />&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;</p>"
+    And "Note" has the content "<p>&lt;p&gt;Hello, world!&lt;/p&gt;<br />&lt;script&gt;alert(\"Hello, world!\");&lt;/script&gt;</p>"
 
   Scenario: Created note is sent to followers
     Given we are followed by:

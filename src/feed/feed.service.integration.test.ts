@@ -154,6 +154,52 @@ describe('FeedService', () => {
         postRepository = new KnexPostRepository(client, events);
     });
 
+    describe('getFeedData', () => {
+        it('should get the posts for a users feed, and make sure the content is sanitised', async () => {
+            const feedService = new FeedService(client);
+
+            // Initialise an internal account for user
+            const userAccount = await createInternalAccount('foo.com');
+
+            // Initialise an internal account that the user will follow
+            const followedAccount = await createInternalAccount('bar.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAccountPost);
+
+            // Update feeds
+            await feedService.addPostToFeeds(
+                followedAccountPost as FollowersOnlyPost,
+            );
+
+            await client('posts')
+                .update({
+                    content: 'Hello world!<script>alert("hax")</script>',
+                })
+                .where({ id: followedAccountPost.id });
+
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            expect(feed.results).toMatchInlineSnapshot([
+                {
+                    post_content: 'Hello world!',
+                },
+            ]);
+        });
+    });
+
     describe('addPostToFeeds', () => {
         it('should add a post to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client);
