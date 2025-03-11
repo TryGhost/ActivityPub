@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
     Accept,
     Activity,
@@ -24,6 +25,7 @@ import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
+import { getActivityChildrenCount, getRepostCount } from './db';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
@@ -1024,7 +1026,52 @@ export async function likedDispatcher(
                     }
 
                     const activity = await Like.fromJsonLd(thing);
-                    return activity;
+
+                    // Add reply count and repost count to the object
+                    const activityJson = (await activity.toJsonLd()) as {
+                        object: {
+                            id?: string;
+                            replyCount?: number;
+                            repostCount?: number;
+                            liked?: boolean;
+                            reposted?: boolean;
+                            [key: string]: unknown;
+                        };
+                        [key: string]: unknown;
+                    };
+                    activityJson.object.replyCount = Number(
+                        await getActivityChildrenCount(activityJson),
+                    );
+                    activityJson.object.repostCount = Number(
+                        await getRepostCount(activityJson),
+                    );
+
+                    // Add liked/reposted status
+                    if (activityJson.object.id) {
+                        const likeId = ctx.getObjectUri(Like, {
+                            id: createHash('sha256')
+                                .update(activityJson.object.id)
+                                .digest('hex'),
+                        });
+                        const repostId = ctx.getObjectUri(Announce, {
+                            id: createHash('sha256')
+                                .update(activityJson.object.id)
+                                .digest('hex'),
+                        });
+
+                        const reposted =
+                            (await ctx.data.db.get<string[]>(['reposted'])) ||
+                            [];
+
+                        activityJson.object.liked = results.includes(
+                            likeId.href,
+                        );
+                        activityJson.object.reposted = reposted.includes(
+                            repostId.href,
+                        );
+                    }
+
+                    return Like.fromJsonLd(activityJson);
                 } catch (err) {
                     Sentry.captureException(err);
                     ctx.data.logger.error('Error getting liked activity', {
