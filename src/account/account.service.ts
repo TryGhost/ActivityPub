@@ -99,6 +99,7 @@ export class AccountService {
     async createInternalAccount(
         site: Site,
         internalAccountData: InternalAccountData,
+        transaction?: Knex.Transaction,
     ): Promise<AccountType> {
         const keyPair = await generateCryptoKeyPair();
         const username = internalAccountData.username;
@@ -122,8 +123,7 @@ export class AccountService {
             ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
         };
-
-        return await this.db.transaction(async (tx) => {
+        async function createAccountAndUser(tx: Knex.Transaction) {
             const [accountId] = await tx(TABLE_ACCOUNTS).insert(accountData);
 
             await tx(TABLE_USERS).insert({
@@ -135,7 +135,11 @@ export class AccountService {
                 id: accountId,
                 ...accountData,
             };
-        });
+        }
+        if (!transaction) {
+            return await this.db.transaction(createAccountAndUser);
+        }
+        return await createAccountAndUser(transaction);
     }
 
     /**
