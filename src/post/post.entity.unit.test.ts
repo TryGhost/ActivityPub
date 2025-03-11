@@ -238,6 +238,19 @@ describe('Post', () => {
         );
     });
 
+    it('should sanitize HTML content when creating a new post', () => {
+        const author = internalAccount();
+        const maliciousContent =
+            '<p>Hello world!</p><script>alert("hax")</script>';
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: maliciousContent,
+        });
+
+        expect(post.content).toEqual('<p>Hello world!</p>');
+    });
+
     it('should handle adding and removing likes', () => {
         const postAuthorAccount = internalAccount(456);
         const liker = externalAccount(789);
