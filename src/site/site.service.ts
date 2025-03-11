@@ -21,33 +21,29 @@ export class SiteService {
         private ghostService: IGhostService,
     ) {}
 
-    private async createSite(host: string, conn: Knex): Promise<Site> {
-        const rows = await conn.select('*').from('sites').where({ host });
+    private async createSite(host: string): Promise<void> {
+        const rows = await this.client
+            .select('*')
+            .from('sites')
+            .where({ host });
 
         if (rows && rows.length !== 0) {
             throw new Error(`Site already exists for ${host}`);
         }
 
         const webhook_secret = crypto.randomBytes(32).toString('hex');
-        const [id] = await conn
+        await this.client
             .insert({
                 host,
                 webhook_secret,
             })
             .into('sites');
 
-        return {
-            id,
-            host,
-            webhook_secret,
-        };
+        return;
     }
 
-    public async getSiteByHost(
-        host: string,
-        conn: Knex = this.client,
-    ): Promise<Site | null> {
-        const rows = await conn.select('*').from('sites').where({
+    public async getSiteByHost(host: string): Promise<Site | null> {
+        const rows = await this.client.select('*').from('sites').where({
             host,
         });
 
@@ -67,33 +63,34 @@ export class SiteService {
     }
 
     public async initialiseSiteForHost(host: string): Promise<Site> {
-        return await this.client.transaction(async (tx) => {
-            const existingSite = await this.getSiteByHost(host, tx);
-            if (existingSite !== null) {
-                return existingSite;
-            }
+        const existingSite = await this.getSiteByHost(host);
+        if (existingSite !== null) {
+            return existingSite;
+        }
 
-            const newSite = await this.createSite(host, tx);
+        await this.createSite(host);
 
-            const settings = await this.ghostService.getSiteSettings(
-                newSite.host,
-            );
+        const newSite = await this.getSiteByHost(host);
 
-            const internalAccountData: InternalAccountData = {
-                username: 'index',
-                name: settings?.site?.title,
-                bio: settings?.site?.description,
-                avatar_url: settings?.site?.icon,
-            };
+        if (newSite === null) {
+            throw new Error(`Site initialisation failed for ${host}`);
+        }
 
-            await this.accountService.createInternalAccount(
-                newSite,
-                internalAccountData,
-                tx,
-            );
+        const settings = await this.ghostService.getSiteSettings(newSite.host);
 
-            return newSite;
-        });
+        const internalAccountData: InternalAccountData = {
+            username: 'index',
+            name: settings?.site?.title,
+            bio: settings?.site?.description,
+            avatar_url: settings?.site?.icon,
+        };
+
+        const internalAccount = await this.accountService.createInternalAccount(
+            newSite,
+            internalAccountData,
+        );
+
+        return newSite;
     }
 
     public async refreshSiteDataForHost(host: string): Promise<void> {
