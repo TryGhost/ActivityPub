@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import {
     Activity,
+    type Actor,
     Announce,
+    type CollectionPage,
     Like,
     isActor,
-    type Actor,
-    type CollectionPage,
 } from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
@@ -243,37 +243,28 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                 activity.object.authored =
                     defaultSiteAccount.ap_id === activity.actor.id;
 
-                // Add reply count and repost count to the object, if it is an object
-                if (typeof activity.object !== 'string') {
-                    activity.object.replyCount =
-                        await getActivityChildrenCount(activity);
-                    activity.object.repostCount =
-                        await getRepostCount(activity);
+                // Add reply count and repost count to the object
+                activity.object.replyCount =
+                    await getActivityChildrenCount(activity);
+                activity.object.repostCount = await getRepostCount(activity);
 
-                    // Check if the activity is liked or reposted by default site account
-                    const objectId = activity.object.id;
-                    if (objectId) {
-                        const likeId = apCtx.getObjectUri(Like, {
-                            id: createHash('sha256')
-                                .update(objectId)
-                                .digest('hex'),
-                        });
-                        const repostId = apCtx.getObjectUri(Announce, {
-                            id: createHash('sha256')
-                                .update(objectId)
-                                .digest('hex'),
-                        });
+                // Check if the activity is liked or reposted by default site account
+                const objectId = activity.object.id;
+                if (objectId) {
+                    const likeId = apCtx.getObjectUri(Like, {
+                        id: createHash('sha256').update(objectId).digest('hex'),
+                    });
+                    const repostId = apCtx.getObjectUri(Announce, {
+                        id: createHash('sha256').update(objectId).digest('hex'),
+                    });
 
-                        const liked = (await db.get<string[]>(['liked'])) || [];
+                    const liked = (await db.get<string[]>(['liked'])) || [];
 
-                        const reposted =
-                            (await db.get<string[]>(['reposted'])) || [];
+                    const reposted =
+                        (await db.get<string[]>(['reposted'])) || [];
 
-                        activity.object.liked = liked.includes(likeId.href);
-                        activity.object.reposted = reposted.includes(
-                            repostId.href,
-                        );
-                    }
+                    activity.object.liked = liked.includes(likeId.href);
+                    activity.object.reposted = reposted.includes(repostId.href);
                 }
 
                 if (typeof activity.actor === 'string') {
