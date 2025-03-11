@@ -925,7 +925,68 @@ export async function outboxDispatcher(
                 const thing = await ctx.data.globaldb.get([result]);
                 const activity = await Activity.fromJsonLd(thing);
 
-                return activity;
+                // Convert to JSON to add the additional fields
+                const activityJson = (await activity.toJsonLd()) as {
+                    object?: {
+                        id?: string;
+                        replyCount?: number;
+                        repostCount?: number;
+                        liked?: boolean;
+                        reposted?: boolean;
+                        [key: string]: unknown;
+                    };
+                    [key: string]: unknown;
+                };
+
+                // Add reply count and repost count to the object if it exists
+                if (
+                    'object' in activityJson &&
+                    typeof activityJson.object === 'object' &&
+                    activityJson.object !== null
+                ) {
+                    const objectJson = activityJson.object as {
+                        id?: string;
+                        replyCount?: number;
+                        repostCount?: number;
+                        liked?: boolean;
+                        reposted?: boolean;
+                        [key: string]: unknown;
+                    };
+
+                    objectJson.replyCount = Number(
+                        await getActivityChildrenCount(activityJson),
+                    );
+                    objectJson.repostCount = Number(
+                        await getRepostCount(activityJson),
+                    );
+
+                    // Add liked/reposted status
+                    if (objectJson.id) {
+                        const likeId = ctx.getObjectUri(Like, {
+                            id: createHash('sha256')
+                                .update(objectJson.id)
+                                .digest('hex'),
+                        });
+                        const repostId = ctx.getObjectUri(Announce, {
+                            id: createHash('sha256')
+                                .update(objectJson.id)
+                                .digest('hex'),
+                        });
+
+                        const liked =
+                            (await ctx.data.db.get<string[]>(['liked'])) || [];
+                        const reposted =
+                            (await ctx.data.db.get<string[]>(['reposted'])) ||
+                            [];
+
+                        objectJson.liked = liked.includes(likeId.href);
+                        objectJson.reposted = reposted.includes(repostId.href);
+                    }
+                }
+
+                console.log('activityJson is here', activityJson);
+
+                return Activity.fromJsonLd(activityJson);
             } catch (err) {
                 Sentry.captureException(err);
                 ctx.data.logger.error('Error getting outbox activity', {
