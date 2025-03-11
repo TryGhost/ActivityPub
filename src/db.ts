@@ -67,13 +67,9 @@ export async function getActivityMeta(
         // @ts-ignore: This works as expected but the type definitions complain 🤔
         .leftJoin(
             { right: 'key_value' },
-            client.raw(
-                'right.object_id',
-            ),
+            client.raw('right.object_id'),
             '=',
-            client.raw(
-                'left.object_in_reply_to',
-            ),
+            client.raw('left.object_in_reply_to'),
         )
         .whereIn(
             'left.key',
