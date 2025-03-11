@@ -100,6 +100,8 @@ import {
     createGetAccountFollowsHandler,
     createGetAccountHandler,
     createGetFeedHandler,
+    createGetLikedPostsHandler,
+    createGetPostsHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
@@ -953,6 +955,16 @@ app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner),
     spanWrapper(createGetAccountHandler(accountService)),
+);
+// app.get(
+//     '/.ghost/activitypub/posts',
+//     requireRole(GhostRole.Owner),
+//     spanWrapper(createGetPostsHandler(accountService)),
+// );
+app.get(
+    '/.ghost/activitypub/posts/liked',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createGetLikedPostsHandler(accountService, feedService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',

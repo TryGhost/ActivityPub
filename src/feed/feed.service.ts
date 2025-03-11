@@ -327,4 +327,93 @@ export class FeedService {
 
         return updatedFeedUserIds;
     }
+
+    /**
+     * Get posts liked by an account
+     *
+     * @param accountId ID of the account to get posts for
+     * @param limit Maximum number of posts to return
+     * @param cursor Cursor to use for pagination
+     */
+    async getPostsLikedByAccount(
+        accountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<GetFeedDataResult> {
+        const query = this.db('likes')
+            .select(
+                'likes.id as likes_id',
+                // Post fields
+                'posts.id as post_id',
+                'posts.type as post_type',
+                'posts.title as post_title',
+                'posts.excerpt as post_excerpt',
+                'posts.content as post_content',
+                'posts.url as post_url',
+                'posts.image_url as post_image_url',
+                'posts.published_at as post_published_at',
+                'posts.like_count as post_like_count',
+                this.db.raw('1 AS post_liked_by_user'), // Since we are selecting from `likes`, this is always 1
+                'posts.reply_count as post_reply_count',
+                'posts.reading_time_minutes as post_reading_time_minutes',
+                'posts.attachments as post_attachments',
+                'posts.repost_count as post_repost_count',
+                this.db.raw(
+                    `CASE
+                        WHEN reposts.post_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_user`,
+                ),
+                'posts.ap_id as post_ap_id',
+                // Author fields
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.avatar_url as author_avatar_url',
+                // Reposter fields
+                'reposter_account.id as reposter_id',
+                'reposter_account.name as reposter_name',
+                'reposter_account.username as reposter_username',
+                'reposter_account.url as reposter_url',
+                'reposter_account.avatar_url as reposter_avatar_url',
+            )
+            .innerJoin('posts', 'posts.id', 'likes.post_id')
+            .innerJoin(
+                'accounts as author_account',
+                'author_account.id',
+                'posts.author_id',
+            )
+            .leftJoin('reposts', function () {
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .leftJoin(
+                'accounts as reposter_account',
+                'reposter_account.id',
+                'reposts.account_id',
+            )
+            .where('likes.account_id', accountId)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('likes.id', '<', cursor);
+                }
+            })
+            .orderBy('likes.id', 'desc')
+            .limit(limit + 1);
+
+        const results = await query;
+
+        const hasMore = results.length > limit;
+        const paginatedResults = results.slice(0, limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+
+        return {
+            results: paginatedResults,
+            nextCursor: hasMore ? lastResult.likes_id.toString() : null,
+        };
+    }
 }
