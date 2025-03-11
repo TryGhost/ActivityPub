@@ -68,11 +68,11 @@ export async function getActivityMeta(
         .leftJoin(
             { right: 'key_value' },
             client.raw(
-                'JSON_UNQUOTE(JSON_EXTRACT(right.value, "$.object.id"))',
+                'right.object_id',
             ),
             '=',
             client.raw(
-                'JSON_UNQUOTE(JSON_EXTRACT(left.value, "$.object.inReplyTo"))',
+                'left.object_in_reply_to',
             ),
         )
         .whereIn(
