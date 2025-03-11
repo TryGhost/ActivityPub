@@ -43,7 +43,7 @@ Feature: Creating a reply
       This is a great article!<script>alert("Hello, world!");</script>
       """
     Then "Reply" is in our Outbox
-    And "Reply" has the content "<p>This is a great article!&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;</p>"
+    And "Reply" has the content "<p>This is a great article!&lt;script&gt;alert(\"Hello, world!\");&lt;/script&gt;</p>"
 
   Scenario: Created reply is sent to followers
     When we reply "Reply" to "Create" with the content

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { sanitizeHtml } from 'helpers/html';
 import { ContentPreparer } from 'publishing/content';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
@@ -76,6 +77,7 @@ export class Post extends BaseEntity {
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
+    public readonly content: string | null;
 
     constructor(
         public readonly id: number | null,
@@ -85,7 +87,7 @@ export class Post extends BaseEntity {
         public readonly audience: Audience,
         public readonly title: string | null,
         public readonly excerpt: string | null,
-        public readonly content: string | null,
+        content: string | null,
         url: URL | null,
         public readonly imageUrl: URL | null,
         public readonly publishedAt: Date,
@@ -118,6 +120,7 @@ export class Post extends BaseEntity {
         } else {
             this.url = url;
         }
+        this.content = content !== null ? sanitizeHtml(content) : null;
         if (_deleted) {
             this.deleted = true;
             this.handleDeleted();

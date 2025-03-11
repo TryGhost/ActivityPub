@@ -275,7 +275,7 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
     return user;
 }
 
-function generateObject(type) {
+function generateObject(type, content) {
     if (type === 'Article') {
         const uuid = uuidv4();
         return {
@@ -288,7 +288,7 @@ function generateObject(type) {
             url: `http://fake-external-activitypub/article/${uuid}`,
             to: 'as:Public',
             cc: 'http://fake-external-activitypub/followers',
-            content: '<p>This is a test article</p>',
+            content: content ?? '<p>This is a test article</p>',
             published: '2020-04-20T04:20:00Z',
             attributedTo: 'http://fake-external-activitypub/user',
         };
@@ -306,7 +306,7 @@ function generateObject(type) {
             url: `http://fake-external-activitypub/note/${uuid}`,
             to: 'as:Public',
             cc: 'http://fake-external-activitypub/followers',
-            content: '<p>This is a test note</p>',
+            content: content ?? '<p>This is a test note</p>',
             published: '2020-04-20T04:20:00Z',
             attributedTo: 'http://fake-external-activitypub/user',
         };
@@ -326,8 +326,8 @@ function generateObject(type) {
     }
 }
 
-async function createObject(type, actor) {
-    const object = generateObject(type);
+async function createObject(type, actor, content) {
+    const object = generateObject(type, content);
 
     if (!object) {
         throw new Error(`Cannot create objects of type ${type}`);
@@ -1052,9 +1052,48 @@ async function activityCreatedBy(activityDef, name, actorName) {
     }
 }
 
+async function activityCreatedByWithContent(
+    activityDef,
+    name,
+    actorName,
+    content,
+) {
+    const { activity: activityType, object: objectName } =
+        parseActivityString(activityDef);
+    if (!activityType) {
+        throw new Error(`could not match ${activityDef} to an activity`);
+    }
+
+    const actor = this.actors[actorName];
+    const object =
+        this.actors[objectName] ??
+        this.activities[objectName] ??
+        this.objects[objectName] ??
+        (await createObject(objectName, actor, content));
+
+    const activity = await createActivity(activityType, object, actor);
+
+    const parsed = parseActivityString(name);
+    if (parsed.activity === null || parsed.object === null) {
+        this.activities[name] = activity;
+        this.objects[name] = object;
+    } else {
+        this.activities[parsed.activity] = activity;
+        this.objects[parsed.object] = object;
+    }
+}
+
 Given('a {string} Activity {string} by {string}', activityCreatedBy);
 
-Then('an {string} Activity {string} is created by {string}', activityCreatedBy);
+Given(
+    'a {string} Activity {string} by {string} with content {string}',
+    activityCreatedByWithContent,
+);
+
+Given(
+    'an {string} Activity {string} is created by {string}',
+    activityCreatedBy,
+);
 
 When(
     '{string} sends {string} to the Inbox',
@@ -1813,6 +1852,26 @@ Then('the feed contains {string}', async function (activityOrObjectName) {
 
     assert(found, `Expected to find ${activityOrObjectName} in feed`);
 });
+
+Then(
+    'the {string} in the feed has content {string}',
+    async function (activityOrObjectName, content) {
+        const responseJson = await this.response.clone().json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        let found;
+
+        if (activity) {
+            found = responseJson.posts.find(
+                (post) => post.url === activity.object.id,
+            );
+        } else if (object) {
+            found = responseJson.posts.find((post) => post.url === object.id);
+        }
+
+        assert.equal(found.content, content);
+    },
+);
 
 Then(
     'the feed does not contain {string}',
