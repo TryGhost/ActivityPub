@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import { randomUUID } from 'node:crypto';
 import EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
@@ -188,7 +189,7 @@ describe('KnexPostRepository', () => {
             const account = await accountRepository.getBySite(site);
             const post = Post.createArticleFromGhostPost(account, {
                 title: 'Title',
-                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
                 feature_image: null,
@@ -218,7 +219,7 @@ describe('KnexPostRepository', () => {
         const account = await accountRepository.getBySite(site);
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -248,7 +249,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -274,7 +275,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -296,7 +297,7 @@ describe('KnexPostRepository', () => {
         const account = await accountRepository.getBySite(site);
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -334,7 +335,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -363,7 +364,7 @@ describe('KnexPostRepository', () => {
         const account = await accountRepository.getBySite(site);
         const post = Post.createArticleFromGhostPost(account, {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -409,7 +410,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -454,7 +455,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -500,7 +501,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -561,7 +562,7 @@ describe('KnexPostRepository', () => {
 
         const post = Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
             feature_image: null,
@@ -628,7 +629,7 @@ describe('KnexPostRepository', () => {
 
         const originalPost = Post.createArticleFromGhostPost(accounts[0], {
             title: 'Original Post',
-            uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+            uuid: randomUUID(),
             html: '<p>Original content</p>',
             excerpt: 'Original content',
             feature_image: null,
