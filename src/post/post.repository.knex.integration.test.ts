@@ -2,7 +2,6 @@ import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import EventEmitter from 'node:events';
 import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
@@ -54,7 +53,6 @@ describe('KnexPostRepository', () => {
             events,
             accountRepository,
             fedifyContextFactory,
-            generateTestCryptoKeyPair,
         );
         siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
