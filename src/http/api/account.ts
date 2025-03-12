@@ -1,4 +1,5 @@
 import type { KvStore } from '@fedify/fedify';
+
 import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';

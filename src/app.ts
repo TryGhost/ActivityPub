@@ -81,6 +81,7 @@ import {
 } from './dispatchers';
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
+import { ProfileService } from './profile/profile.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
@@ -254,6 +255,7 @@ const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
 const feedService = new FeedService(client);
+const profileService = new ProfileService(client);
 const feedUpdateService = new FeedUpdateService(events, feedService);
 feedUpdateService.init();
 
@@ -959,12 +961,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/posts',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetPostsHandler(accountService, feedService)),
+    spanWrapper(createGetPostsHandler(accountService, profileService)),
 );
 app.get(
     '/.ghost/activitypub/posts/liked',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetLikedPostsHandler(accountService, feedService)),
+    spanWrapper(createGetLikedPostsHandler(accountService, profileService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
