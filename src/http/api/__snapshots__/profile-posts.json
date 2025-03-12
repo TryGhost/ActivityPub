@@ -1,0 +1,31 @@
+{
+    "posts": [
+        {
+            "id": "https://example.com/.activitypub/post/post-789",
+            "type": "Article",
+            "title": "Post 789",
+            "excerpt": "Excerpt 789",
+            "content": "Content 789",
+            "url": "https://example.com/post-789",
+            "featureImageUrl": "https://example.com/images/post-789.png",
+            "publishedAt": "2025-02-24T16:40:00.000Z",
+            "likeCount": 1,
+            "likedByMe": false,
+            "replyCount": 2,
+            "readingTimeMinutes": 3,
+            "attachments": [],
+            "author": {
+                "id": "987",
+                "handle": "foobar@example.com",
+                "name": "Foo Bar",
+                "url": "https://example.com/foobar",
+                "avatarUrl": null
+            },
+            "authoredByMe": false,
+            "repostCount": 4,
+            "repostedByMe": false,
+            "repostedBy": null
+        }
+    ],
+    "next": null
+} 
