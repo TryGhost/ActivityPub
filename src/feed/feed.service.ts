@@ -329,6 +329,165 @@ export class FeedService {
     }
 
     /**
+     * Get posts by an account
+     *
+     * @param accountId ID of the account to get posts for
+     * @param limit Maximum number of posts to return
+     * @param cursor Cursor to use for pagination
+     */
+    async getPostsByAccount(
+        accountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<GetFeedDataResult> {
+        const query = this.db
+            .select(
+                // Post fields
+                'posts_with_source.id as post_id',
+                'posts_with_source.type as post_type',
+                'posts_with_source.title as post_title',
+                'posts_with_source.excerpt as post_excerpt',
+                'posts_with_source.content as post_content',
+                'posts_with_source.url as post_url',
+                'posts_with_source.image_url as post_image_url',
+                'posts_with_source.published_at as post_published_at',
+                'posts_with_source.like_count as post_like_count',
+                this.db.raw(`
+                    CASE 
+                        WHEN likes.post_id IS NOT NULL THEN 1 
+                        ELSE 0 
+                    END AS post_liked_by_user
+                `),
+                'posts_with_source.reply_count as post_reply_count',
+                'posts_with_source.reading_time_minutes as post_reading_time_minutes',
+                'posts_with_source.attachments as post_attachments',
+                'posts_with_source.repost_count as post_repost_count',
+                this.db.raw(`
+                    CASE 
+                        WHEN user_reposts.post_id IS NOT NULL THEN 1 
+                        ELSE 0 
+                    END AS post_reposted_by_user
+                `),
+                'posts_with_source.ap_id as post_ap_id',
+                // Author fields
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.avatar_url as author_avatar_url',
+                // Reposter fields
+                'reposter_account.id as reposter_id',
+                'reposter_account.name as reposter_name',
+                'reposter_account.username as reposter_username',
+                'reposter_account.url as reposter_url',
+                'reposter_account.avatar_url as reposter_avatar_url',
+                this.db.raw(`
+                    CASE 
+                        WHEN posts_with_source.source = 'original' THEN posts_with_source.published_at 
+                        ELSE posts_with_source.repost_created_at 
+                    END AS sort_timestamp
+                `),
+            )
+            .from(
+                this.db
+                    .select(
+                        'posts.id',
+                        'posts.type',
+                        'posts.title',
+                        'posts.excerpt',
+                        'posts.content',
+                        'posts.url',
+                        'posts.image_url',
+                        'posts.published_at',
+                        'posts.like_count',
+                        'posts.reply_count',
+                        'posts.reading_time_minutes',
+                        'posts.attachments',
+                        'posts.repost_count',
+                        'posts.ap_id',
+                        'posts.author_id',
+                        this.db.raw('NULL as reposter_id'),
+                        this.db.raw('NULL as repost_created_at'),
+                        this.db.raw(`'original' as source`),
+                    )
+                    .from('posts')
+                    .where('posts.author_id', accountId)
+                    .unionAll([
+                        this.db
+                            .select(
+                                'posts.id',
+                                'posts.type',
+                                'posts.title',
+                                'posts.excerpt',
+                                'posts.content',
+                                'posts.url',
+                                'posts.image_url',
+                                'posts.published_at',
+                                'posts.like_count',
+                                'posts.reply_count',
+                                'posts.reading_time_minutes',
+                                'posts.attachments',
+                                'posts.repost_count',
+                                'posts.ap_id',
+                                'posts.author_id',
+                                'reposts.account_id as reposter_id',
+                                'reposts.created_at as repost_created_at',
+                                this.db.raw(`'repost' as source`),
+                            )
+                            .from('reposts')
+                            .innerJoin('posts', 'posts.id', 'reposts.post_id')
+                            .where('reposts.account_id', accountId),
+                    ])
+                    .as('posts_with_source'),
+            )
+            .innerJoin(
+                'accounts as author_account',
+                'author_account.id',
+                'posts_with_source.author_id',
+            )
+            .leftJoin(
+                'accounts as reposter_account',
+                'reposter_account.id',
+                'posts_with_source.reposter_id',
+            )
+            .leftJoin('likes', function () {
+                this.on('likes.post_id', 'posts_with_source.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .leftJoin('reposts as user_reposts', function () {
+                this.on(
+                    'user_reposts.post_id',
+                    'posts_with_source.id',
+                ).andOnVal(
+                    'user_reposts.account_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .modify((query) => {
+                if (cursor) {
+                    query.where('sort_timestamp', '<', cursor);
+                }
+            })
+            .orderBy('sort_timestamp', 'desc')
+            .limit(limit + 1);
+
+        const results = await query;
+
+        const hasMore = results.length > limit;
+        const paginatedResults = results.slice(0, limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+
+        return {
+            results: paginatedResults,
+            nextCursor: hasMore ? lastResult.sort_timestamp.toString() : null,
+        };
+    }
+
+    /**
      * Get posts liked by an account
      *
      * @param accountId ID of the account to get posts for

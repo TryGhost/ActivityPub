@@ -956,11 +956,11 @@ app.get(
     requireRole(GhostRole.Owner),
     spanWrapper(createGetAccountHandler(accountService)),
 );
-// app.get(
-//     '/.ghost/activitypub/posts',
-//     requireRole(GhostRole.Owner),
-//     spanWrapper(createGetPostsHandler(accountService)),
-// );
+app.get(
+    '/.ghost/activitypub/posts',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createGetPostsHandler(accountService, feedService)),
+);
 app.get(
     '/.ghost/activitypub/posts/liked',
     requireRole(GhostRole.Owner),
