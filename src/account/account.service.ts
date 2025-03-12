@@ -7,7 +7,7 @@ import {
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
-import type EventEmitter from 'node:events';
+import type { AsyncEvents } from 'core/events';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
@@ -46,9 +46,10 @@ export class AccountService {
      */
     constructor(
         private readonly db: Knex,
-        private readonly events: EventEmitter,
+        private readonly events: AsyncEvents,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
     ) {}
 
     /**
@@ -99,8 +100,9 @@ export class AccountService {
     async createInternalAccount(
         site: Site,
         internalAccountData: InternalAccountData,
+        transaction?: Knex.Transaction,
     ): Promise<AccountType> {
-        const keyPair = await generateCryptoKeyPair();
+        const keyPair = await this.generateKeyPair();
         const username = internalAccountData.username;
 
         const accountData = {
@@ -122,8 +124,7 @@ export class AccountService {
             ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
         };
-
-        return await this.db.transaction(async (tx) => {
+        async function createAccountAndUser(tx: Knex.Transaction) {
             const [accountId] = await tx(TABLE_ACCOUNTS).insert(accountData);
 
             await tx(TABLE_USERS).insert({
@@ -135,7 +136,11 @@ export class AccountService {
                 id: accountId,
                 ...accountData,
             };
-        });
+        }
+        if (!transaction) {
+            return await this.db.transaction(createAccountAndUser);
+        }
+        return await createAccountAndUser(transaction);
     }
 
     /**
@@ -401,7 +406,7 @@ export class AccountService {
         const bioChanged = account.bio !== data.bio;
 
         if (avatarChanged || nameChanged || bioChanged) {
-            this.events.emit('account.updated', newAccount);
+            await this.events.emitAsync('account.updated', newAccount);
         }
 
         return newAccount;

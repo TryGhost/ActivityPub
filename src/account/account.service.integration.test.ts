@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import EventEmitter from 'node:events';
-
+import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
@@ -40,7 +40,7 @@ vi.mock('@fedify/fedify', async () => {
 
 describe('AccountService', () => {
     let service: AccountService;
-    let events: EventEmitter;
+    let events: AsyncEvents;
     let site: Site;
     let internalAccountData: InternalAccountData;
     let externalAccountData: ExternalAccountData;
@@ -103,7 +103,7 @@ describe('AccountService', () => {
         };
 
         // Init dependencies
-        events = new EventEmitter();
+        events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
         const fedifyContextFactory = new FedifyContextFactory();
 
@@ -113,6 +113,7 @@ describe('AccountService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair,
         );
     });
 

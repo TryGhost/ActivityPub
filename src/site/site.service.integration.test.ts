@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import EventEmitter from 'node:events';
-
+import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
@@ -44,7 +44,7 @@ describe('SiteService', () => {
         await db(TABLE_ACCOUNTS).truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
-        const events = new EventEmitter();
+        const events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
         const fedifyContextFactory = new FedifyContextFactory();
         accountService = new AccountService(
@@ -52,6 +52,7 @@ describe('SiteService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair,
         );
         ghostService = {
             async getSiteSettings(host: string) {

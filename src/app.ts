@@ -2,7 +2,6 @@ import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
-import EventEmitter from 'node:events';
 import {
     Accept,
     Announce,
@@ -36,6 +35,7 @@ import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
+import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
@@ -233,7 +233,7 @@ export type FedifyContext = Context<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
 
-const events = new EventEmitter();
+const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
 
 const accountRepository = new KnexAccountRepository(client, events);

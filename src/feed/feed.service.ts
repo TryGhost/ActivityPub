@@ -1,4 +1,5 @@
 import { chunk } from 'es-toolkit';
+import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 
 import {
@@ -192,7 +193,12 @@ export class FeedService {
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
-            results: paginatedResults,
+            results: paginatedResults.map((item: BaseGetFeedDataResultRow) => {
+                return {
+                    ...item,
+                    post_content: sanitizeHtml(item.post_content ?? ''),
+                };
+            }),
             nextCursor: hasMore ? lastResult.feed_id.toString() : null,
         };
     }

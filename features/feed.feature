@@ -120,3 +120,12 @@ Feature: Feed
     And post "1" in the "feed" response is "Article2"
     And post "2" in the "feed" response is "Article1"
     And the "feed" response does not contain "Note1"
+
+  Scenario: Feed is sanitised
+    Given a "Create(Note)" Activity "Note" by "Alice" with content "Hello, world!<script>alert('boo')</script>"
+    And "Alice" sends "Note" to the Inbox
+    And "Note" is in our Inbox
+    When an authenticated request is made to "/.ghost/activitypub/feed"
+    Then the request is accepted
+    And the "feed" response contains "Note"
+    And the "Note" in the feed has content "Hello, world!"
