@@ -3,7 +3,7 @@ import { beforeAll, describe, it } from 'vitest';
 import assert from 'node:assert';
 import EventEmitter from 'node:events';
 import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'src/test/crypto-key-pair';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
