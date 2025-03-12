@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import EventEmitter from 'node:events';
 
 import type { Knex } from 'knex';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
@@ -113,6 +114,7 @@ describe('AccountService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair,
         );
     });
 

@@ -22,19 +22,32 @@ export class SiteService {
     ) {}
 
     private async createSite(host: string, conn: Knex): Promise<Site> {
+        console.time(`createSite internal for ${host}`);
+
+        console.time(`check existing site for ${host}`);
         const rows = await conn.select('*').from('sites').where({ host });
+        console.timeEnd(`check existing site for ${host}`);
 
         if (rows && rows.length !== 0) {
+            console.log(`Site already exists for ${host}, throwing error`);
             throw new Error(`Site already exists for ${host}`);
         }
 
+        console.time(`generate webhook_secret for ${host}`);
         const webhook_secret = crypto.randomBytes(32).toString('hex');
+        console.timeEnd(`generate webhook_secret for ${host}`);
+
+        console.time(`insert site for ${host}`);
         const [id] = await conn
             .insert({
                 host,
                 webhook_secret,
             })
             .into('sites');
+        console.timeEnd(`insert site for ${host}`);
+
+        console.log(`Site created with id ${id} for ${host}`);
+        console.timeEnd(`createSite internal for ${host}`);
 
         return {
             id,
@@ -67,32 +80,58 @@ export class SiteService {
     }
 
     public async initialiseSiteForHost(host: string): Promise<Site> {
+        console.time(`initialiseSiteForHost ${host}`);
         return await this.client.transaction(async (tx) => {
-            const existingSite = await this.getSiteByHost(host, tx);
-            if (existingSite !== null) {
-                return existingSite;
+            try {
+                console.log(`Transaction started for host: ${host}`);
+
+                console.time(`getSiteByHost for ${host}`);
+                const existingSite = await this.getSiteByHost(host, tx);
+                console.timeEnd(`getSiteByHost for ${host}`);
+
+                if (existingSite !== null) {
+                    console.log(`Existing site found for ${host}, returning`);
+                    console.timeEnd(`initialiseSiteForHost ${host}`);
+                    return existingSite;
+                }
+
+                console.time(`createSite for ${host}`);
+                const newSite = await this.createSite(host, tx);
+                console.timeEnd(`createSite for ${host}`);
+                console.log(
+                    `New site created for ${host} with id ${newSite.id}`,
+                );
+
+                console.time(`getSiteSettings for ${host}`);
+                const settings = await this.ghostService.getSiteSettings(
+                    newSite.host,
+                );
+                console.timeEnd(`getSiteSettings for ${host}`);
+
+                const internalAccountData: InternalAccountData = {
+                    username: 'index',
+                    name: settings?.site?.title,
+                    bio: settings?.site?.description,
+                    avatar_url: settings?.site?.icon,
+                };
+
+                console.log(`Creating internal account for site ${host}`);
+                await this.accountService.createInternalAccount(
+                    newSite,
+                    internalAccountData,
+                    tx,
+                );
+
+                console.log(`Transaction completed for host: ${host}`);
+                console.timeEnd(`initialiseSiteForHost ${host}`);
+                return newSite;
+            } catch (error) {
+                console.error(
+                    `Error in initialiseSiteForHost for ${host}:`,
+                    error,
+                );
+                throw error;
             }
-
-            const newSite = await this.createSite(host, tx);
-
-            const settings = await this.ghostService.getSiteSettings(
-                newSite.host,
-            );
-
-            const internalAccountData: InternalAccountData = {
-                username: 'index',
-                name: settings?.site?.title,
-                bio: settings?.site?.description,
-                avatar_url: settings?.site?.icon,
-            };
-
-            await this.accountService.createInternalAccount(
-                newSite,
-                internalAccountData,
-                tx,
-            );
-
-            return newSite;
         });
     }
 
