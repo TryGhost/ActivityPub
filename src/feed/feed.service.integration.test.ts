@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
@@ -42,12 +43,6 @@ describe('FeedService', () => {
         console.log('Creating test database');
         client = await createTestDb();
         console.log('Test database created');
-    });
-
-    afterAll(async () => {
-        console.log('Closing database connection');
-        await client.destroy();
-        console.log('Database connection closed');
     });
 
     const accountSitesMap: Map<number, Site> = new Map();
@@ -149,6 +144,7 @@ describe('FeedService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair,
         );
         siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
@@ -590,7 +586,7 @@ describe('FeedService', () => {
         it('should not affect other reposts when removing a specific derepost', async () => {
             console.time('Total test execution');
             console.log('Test started');
-            
+
             const feedService = new FeedService(client);
 
             console.time('Initialize accounts');
@@ -630,12 +626,12 @@ describe('FeedService', () => {
             console.time('Save initial post');
             await postRepository.save(post);
             console.timeEnd('Save initial post');
-            
+
             console.time('Add reposter1 repost');
             post.addRepost(reposter1);
             await postRepository.save(post);
             console.timeEnd('Add reposter1 repost');
-            
+
             console.time('Add reposter2 repost');
             post.addRepost(reposter2);
             await postRepository.save(post);
@@ -674,7 +670,7 @@ describe('FeedService', () => {
                 author_id: postAuthorAccount.id,
                 reposted_by_id: reposter2.id,
             });
-            
+
             console.timeEnd('Total test execution');
             console.log('Test completed');
         }, 20000); // Increased timeout to help with debugging

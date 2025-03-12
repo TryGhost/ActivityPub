@@ -1,14 +1,8 @@
-import {
-    exportJwk,
-    generateCryptoKeyPair,
-    isActor,
-    lookupObject,
-} from '@fedify/fedify';
+import { exportJwk, isActor, lookupObject } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
 import type EventEmitter from 'node:events';
-import { performance } from 'node:perf_hooks';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
@@ -50,6 +44,7 @@ export class AccountService {
         private readonly events: EventEmitter,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly generateCryptoKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
     ) {}
 
     /**
@@ -106,7 +101,7 @@ export class AccountService {
         console.log(`Starting createInternalAccount for site ${site.host}`);
 
         console.time(`generateCryptoKeyPair for site ${site.host}`);
-        const keyPair = await generateCryptoKeyPair();
+        const keyPair = await this.generateCryptoKeyPair();
         console.timeEnd(`generateCryptoKeyPair for site ${site.host}`);
 
         const username = internalAccountData.username;
@@ -139,7 +134,9 @@ export class AccountService {
         console.log(`Account data prepared for username ${username}`);
 
         async function createAccountAndUser(tx: Knex.Transaction) {
-            console.log(`Inserting account and user into database for ${username}`);
+            console.log(
+                `Inserting account and user into database for ${username}`,
+            );
 
             console.time(`Insert account for ${username}`);
             const [accountId] = await tx(TABLE_ACCOUNTS).insert(accountData);
@@ -152,7 +149,9 @@ export class AccountService {
             });
             console.timeEnd(`Insert user for ${username}`);
 
-            console.log(`Account and user created with account_id ${accountId} for ${username}`);
+            console.log(
+                `Account and user created with account_id ${accountId} for ${username}`,
+            );
             return {
                 id: accountId,
                 ...accountData,
@@ -167,7 +166,9 @@ export class AccountService {
                 return await createAccountAndUser(tx);
             });
 
-            console.timeEnd(`Transaction for createInternalAccount ${username}`);
+            console.timeEnd(
+                `Transaction for createInternalAccount ${username}`,
+            );
             console.timeEnd(`createInternalAccount for site ${site.host}`);
             return result;
         }
@@ -210,9 +211,13 @@ export class AccountService {
         followee: AccountType,
         follower: AccountType,
     ): Promise<void> {
-        console.log(`Recording follow: follower_id=${follower.id}, following_id=${followee.id}`);
-        console.time(`recordAccountFollow for follower=${follower.id}, followee=${followee.id}`);
-        
+        console.log(
+            `Recording follow: follower_id=${follower.id}, following_id=${followee.id}`,
+        );
+        console.time(
+            `recordAccountFollow for follower=${follower.id}, followee=${followee.id}`,
+        );
+
         await this.db(TABLE_FOLLOWS)
             .insert({
                 following_id: followee.id,
@@ -220,9 +225,13 @@ export class AccountService {
             })
             .onConflict(['following_id', 'follower_id'])
             .ignore();
-            
-        console.timeEnd(`recordAccountFollow for follower=${follower.id}, followee=${followee.id}`);
-        console.log(`Follow recorded: follower_id=${follower.id}, following_id=${followee.id}`);
+
+        console.timeEnd(
+            `recordAccountFollow for follower=${follower.id}, followee=${followee.id}`,
+        );
+        console.log(
+            `Follow recorded: follower_id=${follower.id}, following_id=${followee.id}`,
+        );
     }
 
     /**

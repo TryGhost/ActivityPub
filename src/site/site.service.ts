@@ -23,7 +23,7 @@ export class SiteService {
 
     private async createSite(host: string, conn: Knex): Promise<Site> {
         console.time(`createSite internal for ${host}`);
-        
+
         console.time(`check existing site for ${host}`);
         const rows = await conn.select('*').from('sites').where({ host });
         console.timeEnd(`check existing site for ${host}`);
@@ -36,7 +36,7 @@ export class SiteService {
         console.time(`generate webhook_secret for ${host}`);
         const webhook_secret = crypto.randomBytes(32).toString('hex');
         console.timeEnd(`generate webhook_secret for ${host}`);
-        
+
         console.time(`insert site for ${host}`);
         const [id] = await conn
             .insert({
@@ -45,7 +45,7 @@ export class SiteService {
             })
             .into('sites');
         console.timeEnd(`insert site for ${host}`);
-        
+
         console.log(`Site created with id ${id} for ${host}`);
         console.timeEnd(`createSite internal for ${host}`);
 
@@ -84,11 +84,11 @@ export class SiteService {
         return await this.client.transaction(async (tx) => {
             try {
                 console.log(`Transaction started for host: ${host}`);
-                
+
                 console.time(`getSiteByHost for ${host}`);
                 const existingSite = await this.getSiteByHost(host, tx);
                 console.timeEnd(`getSiteByHost for ${host}`);
-                
+
                 if (existingSite !== null) {
                     console.log(`Existing site found for ${host}, returning`);
                     console.timeEnd(`initialiseSiteForHost ${host}`);
@@ -98,7 +98,9 @@ export class SiteService {
                 console.time(`createSite for ${host}`);
                 const newSite = await this.createSite(host, tx);
                 console.timeEnd(`createSite for ${host}`);
-                console.log(`New site created for ${host} with id ${newSite.id}`);
+                console.log(
+                    `New site created for ${host} with id ${newSite.id}`,
+                );
 
                 console.time(`getSiteSettings for ${host}`);
                 const settings = await this.ghostService.getSiteSettings(
@@ -124,7 +126,10 @@ export class SiteService {
                 console.timeEnd(`initialiseSiteForHost ${host}`);
                 return newSite;
             } catch (error) {
-                console.error(`Error in initialiseSiteForHost for ${host}:`, error);
+                console.error(
+                    `Error in initialiseSiteForHost for ${host}:`,
+                    error,
+                );
                 throw error;
             }
         });
