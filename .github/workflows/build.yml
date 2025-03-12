@@ -75,6 +75,8 @@ jobs:
         with:
           context: .
           load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
       - name: "Build Docker Image for Migrations"
@@ -82,6 +84,8 @@ jobs:
         with:
           context: migrate
           load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
       - name: "Run Tests"
