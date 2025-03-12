@@ -181,6 +181,7 @@ export class ProfileService {
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Unified `created_at` field for sorting
                 'posts_with_source.created_at',
+                'posts_with_source.deleted_at',
             )
             .from(
                 this.db
@@ -201,6 +202,7 @@ export class ProfileService {
                         'posts.ap_id',
                         'posts.author_id',
                         'posts.created_at',
+                        'posts.deleted_at',
                         this.db.raw('NULL as reposter_id'),
                         this.db.raw(`'original' as source`),
                     )
@@ -225,6 +227,7 @@ export class ProfileService {
                                 'posts.ap_id',
                                 'posts.author_id',
                                 'reposts.created_at AS created_at',
+                                'posts.deleted_at',
                                 'reposts.account_id as reposter_id',
                                 this.db.raw(`'repost' as source`),
                             )
@@ -267,6 +270,7 @@ export class ProfileService {
                     query.where('posts_with_source.created_at', '<', cursor);
                 }
             })
+            .where('posts_with_source.deleted_at', null)
             .orderBy('posts_with_source.created_at', 'desc')
             .limit(limit + 1);
 
@@ -358,6 +362,7 @@ export class ProfileService {
                     query.where('likes.id', '<', cursor);
                 }
             })
+            .where('posts.deleted_at', null)
             .orderBy('likes.id', 'desc')
             .limit(limit + 1);
 
