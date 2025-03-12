@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import {
     Accept,
     Activity,
@@ -25,7 +24,6 @@ import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { getActivityChildrenCount, getRepostCount } from './db';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
@@ -925,68 +923,7 @@ export async function outboxDispatcher(
                 const thing = await ctx.data.globaldb.get([result]);
                 const activity = await Activity.fromJsonLd(thing);
 
-                // Convert to JSON to add the additional fields
-                const activityJson = (await activity.toJsonLd()) as {
-                    object?: {
-                        id?: string;
-                        replyCount?: number;
-                        repostCount?: number;
-                        liked?: boolean;
-                        reposted?: boolean;
-                        [key: string]: unknown;
-                    };
-                    [key: string]: unknown;
-                };
-
-                // Add reply count and repost count to the object if it exists
-                if (
-                    'object' in activityJson &&
-                    typeof activityJson.object === 'object' &&
-                    activityJson.object !== null
-                ) {
-                    const objectJson = activityJson.object as {
-                        id?: string;
-                        replyCount?: number;
-                        repostCount?: number;
-                        liked?: boolean;
-                        reposted?: boolean;
-                        [key: string]: unknown;
-                    };
-
-                    objectJson.replyCount = Number(
-                        await getActivityChildrenCount(activityJson),
-                    );
-                    objectJson.repostCount = Number(
-                        await getRepostCount(activityJson),
-                    );
-
-                    // Add liked/reposted status
-                    if (objectJson.id) {
-                        const likeId = ctx.getObjectUri(Like, {
-                            id: createHash('sha256')
-                                .update(objectJson.id)
-                                .digest('hex'),
-                        });
-                        const repostId = ctx.getObjectUri(Announce, {
-                            id: createHash('sha256')
-                                .update(objectJson.id)
-                                .digest('hex'),
-                        });
-
-                        const liked =
-                            (await ctx.data.db.get<string[]>(['liked'])) || [];
-                        const reposted =
-                            (await ctx.data.db.get<string[]>(['reposted'])) ||
-                            [];
-
-                        objectJson.liked = liked.includes(likeId.href);
-                        objectJson.reposted = reposted.includes(repostId.href);
-                    }
-                }
-
-                console.log('activityJson is here', activityJson);
-
-                return Activity.fromJsonLd(activityJson);
+                return activity;
             } catch (err) {
                 Sentry.captureException(err);
                 ctx.data.logger.error('Error getting outbox activity', {
@@ -1087,52 +1024,7 @@ export async function likedDispatcher(
                     }
 
                     const activity = await Like.fromJsonLd(thing);
-
-                    // Add reply count and repost count to the object
-                    const activityJson = (await activity.toJsonLd()) as {
-                        object: {
-                            id?: string;
-                            replyCount?: number;
-                            repostCount?: number;
-                            liked?: boolean;
-                            reposted?: boolean;
-                            [key: string]: unknown;
-                        };
-                        [key: string]: unknown;
-                    };
-                    activityJson.object.replyCount = Number(
-                        await getActivityChildrenCount(activityJson),
-                    );
-                    activityJson.object.repostCount = Number(
-                        await getRepostCount(activityJson),
-                    );
-
-                    // Add liked/reposted status
-                    if (activityJson.object.id) {
-                        const likeId = ctx.getObjectUri(Like, {
-                            id: createHash('sha256')
-                                .update(activityJson.object.id)
-                                .digest('hex'),
-                        });
-                        const repostId = ctx.getObjectUri(Announce, {
-                            id: createHash('sha256')
-                                .update(activityJson.object.id)
-                                .digest('hex'),
-                        });
-
-                        const reposted =
-                            (await ctx.data.db.get<string[]>(['reposted'])) ||
-                            [];
-
-                        activityJson.object.liked = results.includes(
-                            likeId.href,
-                        );
-                        activityJson.object.reposted = reposted.includes(
-                            repostId.href,
-                        );
-                    }
-
-                    return Like.fromJsonLd(activityJson);
+                    return activity;
                 } catch (err) {
                     Sentry.captureException(err);
                     ctx.data.logger.error('Error getting liked activity', {
