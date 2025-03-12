@@ -24,6 +24,7 @@ import {
 } from '../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../helpers/html';
 import { isUri } from '../../helpers/uri';
+import type { GetProfileDataResultRow } from '../../profile/profile.service';
 import { lookupObject } from '../../lookup-helpers';
 
 interface Profile {
@@ -33,6 +34,16 @@ interface Profile {
     followingCount: number;
     isFollowing: boolean;
 }
+
+/**
+ * Default number of posts to return in a profile
+ */
+const DEFAULT_PROFILE_POSTS_LIMIT = 20;
+
+/**
+ * Maximum number of posts that can be returned in a profile
+ */
+const MAX_PROFILE_POSTS_LIMIT = 100;
 
 /**
  * Create a handler for a request for a profile
@@ -566,13 +577,91 @@ export function createGetProfileFollowingHandler(
     };
 }
 
-const DEFAULT_FEED_POSTS_LIMIT = 20;
-const MAX_FEED_POSTS_LIMIT = 100;
+/**
+ * Validates and extracts pagination parameters from the request
+ * @param ctx App context
+ * @returns Object containing cursor and limit, or null if invalid
+ */
+function validateRequestParams(ctx: AppContext) {
+    const queryCursor = ctx.req.query('next');
+    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+    const queryLimit = ctx.req.query('limit');
+    const limit = queryLimit ? Number(queryLimit) : DEFAULT_PROFILE_POSTS_LIMIT;
+
+    if (limit > MAX_PROFILE_POSTS_LIMIT) {
+        return null;
+    }
+
+    return { cursor, limit };
+}
+
+/**
+ * Transforms a database result into a PostDTO
+ * @param result Database result row
+ * @param accountId Current account ID
+ * @returns PostDTO object
+ */
+function mapToPostDTO(
+    result: GetProfileDataResultRow,
+    accountId: number,
+): PostDTO {
+    return {
+        id: result.post_ap_id,
+        type: result.post_type,
+        title: result.post_title ?? '',
+        excerpt: result.post_excerpt ?? '',
+        content: result.post_content ?? '',
+        url: result.post_url,
+        featureImageUrl: result.post_image_url ?? null,
+        publishedAt: result.post_published_at,
+        likeCount: result.post_like_count,
+        likedByMe: result.post_liked_by_user === 1,
+        replyCount: result.post_reply_count,
+        readingTimeMinutes: result.post_reading_time_minutes,
+        attachments: result.post_attachments
+            ? result.post_attachments.map((attachment) => ({
+                  type: attachment.type ?? '',
+                  mediaType: attachment.mediaType ?? '',
+                  name: attachment.name ?? '',
+                  url: attachment.url,
+              }))
+            : [],
+        author: {
+            id: result.author_id.toString(),
+            handle: getAccountHandle(
+                result.author_url ? new URL(result.author_url).host : '',
+                result.author_username,
+            ),
+            name: result.author_name ?? '',
+            url: result.author_url ?? '',
+            avatarUrl: result.author_avatar_url ?? '',
+        },
+        authoredByMe: result.author_id === accountId,
+        repostCount: result.post_repost_count,
+        repostedByMe: result.post_reposted_by_user === 1,
+        repostedBy: result.reposter_id
+            ? {
+                  id: result.reposter_id.toString(),
+                  handle: getAccountHandle(
+                      result.reposter_url
+                          ? new URL(result.reposter_url).host
+                          : '',
+                      result.reposter_username,
+                  ),
+                  name: result.reposter_name ?? '',
+                  url: result.reposter_url ?? '',
+                  avatarUrl: result.reposter_avatar_url ?? '',
+              }
+            : null,
+    };
+}
 
 /**
  * Create a handler to handle a request for a list of posts by an account
  *
  * @param accountService Account service instance
+ * @param profileService Profile service instance
  */
 export function createGetPostsHandler(
     accountService: AccountService,
@@ -584,101 +673,36 @@ export function createGetPostsHandler(
      * @param ctx App context
      */
     return async function handleGetPosts(ctx: AppContext) {
-        const logger = ctx.get('logger');
-        const queryCursor = ctx.req.query('next');
-        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
-        const queryLimit = ctx.req.query('limit');
-        const limit = queryLimit
-            ? Number(queryLimit)
-            : DEFAULT_FEED_POSTS_LIMIT;
-
-        if (limit > MAX_FEED_POSTS_LIMIT) {
-            return new Response(null, {
-                status: 400,
-            });
+        const params = validateRequestParams(ctx);
+        if (!params) {
+            return new Response(null, { status: 400 });
         }
 
         const account = await accountService.getDefaultAccountForSite(
             ctx.get('site'),
         );
-
         const { results, nextCursor } = await profileService.getPostsByAccount(
             account.id,
-            limit,
-            cursor,
+            params.limit,
+            params.cursor,
         );
 
-        const posts: PostDTO[] = results.map((result) => {
-            return {
-                id: result.post_ap_id,
-                type: result.post_type,
-                title: result.post_title ?? '',
-                excerpt: result.post_excerpt ?? '',
-                content: result.post_content ?? '',
-                url: result.post_url,
-                featureImageUrl: result.post_image_url ?? null,
-                publishedAt: result.post_published_at,
-                likeCount: result.post_like_count,
-                likedByMe: result.post_liked_by_user === 1,
-                replyCount: result.post_reply_count,
-                readingTimeMinutes: result.post_reading_time_minutes,
-                attachments: result.post_attachments
-                    ? result.post_attachments.map((attachment) => ({
-                          type: attachment.type ?? '',
-                          mediaType: attachment.mediaType ?? '',
-                          name: attachment.name ?? '',
-                          url: attachment.url,
-                      }))
-                    : [],
-                author: {
-                    id: result.author_id.toString(),
-                    handle: getAccountHandle(
-                        result.author_url
-                            ? new URL(result.author_url).host
-                            : '',
-                        result.author_username,
-                    ),
-                    name: result.author_name ?? '',
-                    url: result.author_url ?? '',
-                    avatarUrl: result.author_avatar_url ?? '',
-                },
-                authoredByMe: result.author_id === account.id,
-                repostCount: result.post_repost_count,
-                repostedByMe: result.post_reposted_by_user === 1,
-                repostedBy: result.reposter_id
-                    ? {
-                          id: result.reposter_id.toString(),
-                          handle: getAccountHandle(
-                              result.reposter_url
-                                  ? new URL(result.reposter_url).host
-                                  : '',
-                              result.reposter_username,
-                          ),
-                          name: result.reposter_name ?? '',
-                          url: result.reposter_url ?? '',
-                          avatarUrl: result.reposter_avatar_url ?? '',
-                      }
-                    : null,
-            };
-        });
-
+        const posts = results.map((result) => mapToPostDTO(result, account.id));
         return new Response(
             JSON.stringify({
                 posts,
                 next: nextCursor,
             }),
-            {
-                status: 200,
-            },
+            { status: 200 },
         );
     };
 }
 
-/*
+/**
  * Create a handler to handle a request for a list of posts liked by an account
  *
  * @param accountService Account service instance
+ * @param profileService Profile service instance
  */
 export function createGetLikedPostsHandler(
     accountService: AccountService,
@@ -690,19 +714,9 @@ export function createGetLikedPostsHandler(
      * @param ctx App context
      */
     return async function handleGetLikedPosts(ctx: AppContext) {
-        const logger = ctx.get('logger');
-        const queryCursor = ctx.req.query('next');
-        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
-        const queryLimit = ctx.req.query('limit');
-        const limit = queryLimit
-            ? Number(queryLimit)
-            : DEFAULT_FEED_POSTS_LIMIT;
-
-        if (limit > MAX_FEED_POSTS_LIMIT) {
-            return new Response(null, {
-                status: 400,
-            });
+        const params = validateRequestParams(ctx);
+        if (!params) {
+            return new Response(null, { status: 400 });
         }
 
         const account = await accountService.getDefaultAccountForSite(
@@ -710,70 +724,19 @@ export function createGetLikedPostsHandler(
         );
 
         const { results, nextCursor } =
-            await profileService.getPostsLikedByAccount(account.id, limit, cursor);
+            await profileService.getPostsLikedByAccount(
+                account.id,
+                params.limit,
+                params.cursor,
+            );
 
-        const posts: PostDTO[] = results.map((result) => {
-            return {
-                id: result.post_ap_id,
-                type: result.post_type,
-                title: result.post_title ?? '',
-                excerpt: result.post_excerpt ?? '',
-                content: result.post_content ?? '',
-                url: result.post_url,
-                featureImageUrl: result.post_image_url ?? null,
-                publishedAt: result.post_published_at,
-                likeCount: result.post_like_count,
-                likedByMe: result.post_liked_by_user === 1,
-                replyCount: result.post_reply_count,
-                readingTimeMinutes: result.post_reading_time_minutes,
-                attachments: result.post_attachments
-                    ? result.post_attachments.map((attachment) => ({
-                          type: attachment.type ?? '',
-                          mediaType: attachment.mediaType ?? '',
-                          name: attachment.name ?? '',
-                          url: attachment.url,
-                      }))
-                    : [],
-                author: {
-                    id: result.author_id.toString(),
-                    handle: getAccountHandle(
-                        result.author_url
-                            ? new URL(result.author_url).host
-                            : '',
-                        result.author_username,
-                    ),
-                    name: result.author_name ?? '',
-                    url: result.author_url ?? '',
-                    avatarUrl: result.author_avatar_url ?? '',
-                },
-                authoredByMe: result.author_id === account.id,
-                repostCount: result.post_repost_count,
-                repostedByMe: result.post_reposted_by_user === 1,
-                repostedBy: result.reposter_id
-                    ? {
-                          id: result.reposter_id.toString(),
-                          handle: getAccountHandle(
-                              result.reposter_url
-                                  ? new URL(result.reposter_url).host
-                                  : '',
-                              result.reposter_username,
-                          ),
-                          name: result.reposter_name ?? '',
-                          url: result.reposter_url ?? '',
-                          avatarUrl: result.reposter_avatar_url ?? '',
-                      }
-                    : null,
-            };
-        });
-
+        const posts = results.map((result) => mapToPostDTO(result, account.id));
         return new Response(
             JSON.stringify({
                 posts,
                 next: nextCursor,
             }),
-            {
-                status: 200,
-            },
+            { status: 200 },
         );
     };
 }

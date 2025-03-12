@@ -2,28 +2,7 @@ import type { Knex } from 'knex';
 
 import type { PostType } from 'post/post.entity';
 
-export type FeedType = 'Inbox' | 'Feed';
-
-export interface GetFeedDataOptions {
-    /**
-     * ID of the account associated with the user to get the feed for
-     */
-    accountId: number;
-    /**
-     * Type of feed to get
-     */
-    feedType: FeedType;
-    /**
-     * Maximum number of posts to return
-     */
-    limit: number;
-    /**
-     * Cursor to use for pagination
-     */
-    cursor: string | null;
-}
-
-interface BaseGetFeedDataResultRow {
+interface BaseGetProfileDataResultRow {
     post_id: number;
     post_type: PostType;
     post_title: string | null;
@@ -52,7 +31,7 @@ interface BaseGetFeedDataResultRow {
     author_avatar_url: string | null;
 }
 
-interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
+interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
     reposter_id: number;
     reposter_name: string | null;
     reposter_username: string;
@@ -60,7 +39,7 @@ interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
     reposter_avatar_url: string | null;
 }
 
-interface GetFeedDataResultRowWithoutReposted extends BaseGetFeedDataResultRow {
+interface GetProfileDataResultRowWithoutReposted extends BaseGetProfileDataResultRow {
     reposter_id: null;
     reposter_name: null;
     reposter_username: null;
@@ -68,12 +47,12 @@ interface GetFeedDataResultRowWithoutReposted extends BaseGetFeedDataResultRow {
     reposter_avatar_url: null;
 }
 
-export type GetFeedDataResultRow =
-    | GetFeedDataResultRowReposted
-    | GetFeedDataResultRowWithoutReposted;
+export type GetProfileDataResultRow =
+    | GetProfileDataResultRowReposted
+    | GetProfileDataResultRowWithoutReposted;
 
-export interface GetFeedDataResult {
-    results: GetFeedDataResultRow[];
+export interface GetProfileDataResult {
+    results: GetProfileDataResultRow[];
     nextCursor: string | null;
 }
 
@@ -94,7 +73,7 @@ export class ProfileService {
         accountId: number,
         limit: number,
         cursor: string | null,
-    ): Promise<GetFeedDataResult> {
+    ): Promise<GetProfileDataResult> {
         const query = this.db
             .select(
                 // Post fields
@@ -253,7 +232,7 @@ export class ProfileService {
         accountId: number,
         limit: number,
         cursor: string | null,
-    ): Promise<GetFeedDataResult> {
+    ): Promise<GetProfileDataResult> {
         const query = this.db('likes')
             .select(
                 'likes.id as likes_id',

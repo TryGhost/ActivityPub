@@ -81,7 +81,6 @@ import {
 } from './dispatchers';
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
-import { ProfileService } from './profile/profile.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
@@ -123,6 +122,7 @@ import {
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
+import { ProfileService } from './profile/profile.service';
 import { type Site, SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
