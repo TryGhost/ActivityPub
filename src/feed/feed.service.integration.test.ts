@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
@@ -139,6 +140,7 @@ describe('FeedService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair,
         );
         siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
