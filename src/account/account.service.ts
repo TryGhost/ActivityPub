@@ -49,7 +49,6 @@ export class AccountService {
         private readonly events: EventEmitter,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
-        private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
     ) {}
 
     /**
@@ -102,19 +101,8 @@ export class AccountService {
         internalAccountData: InternalAccountData,
         transaction?: Knex.Transaction,
     ): Promise<AccountType> {
-        console.time(`createInternalAccount for site ${site.host}`);
-        console.log(`Starting createInternalAccount for site ${site.host}`);
-
-        console.time(`generateCryptoKeyPair for site ${site.host}`);
-        const keyPair = await this.generateKeyPair();
-        console.timeEnd(`generateCryptoKeyPair for site ${site.host}`);
-
+        const keyPair = await generateCryptoKeyPair();
         const username = internalAccountData.username;
-
-        console.time(`exportJwk for site ${site.host}`);
-        const publicKeyJwk = await exportJwk(keyPair.publicKey);
-        const privateKeyJwk = await exportJwk(keyPair.privateKey);
-        console.timeEnd(`exportJwk for site ${site.host}`);
 
         const accountData = {
             name: internalAccountData.name || ACTOR_DEFAULT_NAME,
@@ -132,56 +120,26 @@ export class AccountService {
             ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
             ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
             ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
-            ap_public_key: JSON.stringify(publicKeyJwk),
-            ap_private_key: JSON.stringify(privateKeyJwk),
+            ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
+            ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
         };
-
-        console.log(`Account data prepared for username ${username}`);
-
         async function createAccountAndUser(tx: Knex.Transaction) {
-            console.log(
-                `Inserting account and user into database for ${username}`,
-            );
-
-            console.time(`Insert account for ${username}`);
             const [accountId] = await tx(TABLE_ACCOUNTS).insert(accountData);
-            console.timeEnd(`Insert account for ${username}`);
 
-            console.time(`Insert user for ${username}`);
             await tx(TABLE_USERS).insert({
                 account_id: accountId,
                 site_id: site.id,
             });
-            console.timeEnd(`Insert user for ${username}`);
 
-            console.log(
-                `Account and user created with account_id ${accountId} for ${username}`,
-            );
             return {
                 id: accountId,
                 ...accountData,
             };
         }
-
         if (!transaction) {
-            console.log('No transaction provided, starting a new transaction');
-            console.time(`Transaction for createInternalAccount ${username}`);
-
-            const result = await this.db.transaction(async (tx) => {
-                return await createAccountAndUser(tx);
-            });
-
-            console.timeEnd(
-                `Transaction for createInternalAccount ${username}`,
-            );
-            console.timeEnd(`createInternalAccount for site ${site.host}`);
-            return result;
+            return await this.db.transaction(createAccountAndUser);
         }
-
-        console.log('Using provided transaction');
-        const result = await createAccountAndUser(transaction);
-        console.timeEnd(`createInternalAccount for site ${site.host}`);
-        return result;
+        return await createAccountAndUser(transaction);
     }
 
     /**
@@ -216,13 +174,6 @@ export class AccountService {
         followee: AccountType,
         follower: AccountType,
     ): Promise<void> {
-        console.log(
-            `Recording follow: follower_id=${follower.id}, following_id=${followee.id}`,
-        );
-        console.time(
-            `recordAccountFollow for follower=${follower.id}, followee=${followee.id}`,
-        );
-
         await this.db(TABLE_FOLLOWS)
             .insert({
                 following_id: followee.id,
@@ -230,13 +181,6 @@ export class AccountService {
             })
             .onConflict(['following_id', 'follower_id'])
             .ignore();
-
-        console.timeEnd(
-            `recordAccountFollow for follower=${follower.id}, followee=${followee.id}`,
-        );
-        console.log(
-            `Follow recorded: follower_id=${follower.id}, following_id=${followee.id}`,
-        );
     }
 
     /**
