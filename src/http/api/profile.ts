@@ -9,7 +9,6 @@ import {
 } from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
-import type { ProfileService } from '../../profile/profile.service';
 import { type AppContext, fedify } from '../../app';
 import { getActivityChildrenCount, getRepostCount } from '../../db';
 import {
@@ -23,6 +22,7 @@ import {
 import { sanitizeHtml } from '../../helpers/html';
 import { isUri } from '../../helpers/uri';
 import { lookupObject } from '../../lookup-helpers';
+import type { ProfileService } from '../../profile/profile.service';
 
 interface Profile {
     actor: any;

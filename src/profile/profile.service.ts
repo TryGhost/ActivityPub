@@ -1,8 +1,8 @@
 import type { Knex } from 'knex';
 
 import type { PostType } from 'post/post.entity';
-import type { PostDTO } from '../http/api/types';
 import { getAccountHandle } from '../account/utils';
+import type { PostDTO } from '../http/api/types';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;
