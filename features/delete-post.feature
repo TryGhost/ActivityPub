@@ -14,15 +14,15 @@ Feature: Delete a post
     And "OurNote" is in our Outbox
     And an authenticated request is made to "/.ghost/activitypub/feed"
     And the request is accepted
-    And the feed contains "OurNote"
-    And the feed contains "AliceNote"
+    And the "feed" response contains "OurNote"
+    And the "feed" response contains "AliceNote"
 
   Scenario: We can delete our post and it should remove it from the feed
     Given an authenticated "delete" request is made to "/.ghost/activitypub/post/OurNote"
     And the request is accepted with a 204
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed does not contain "OurNote"
+    And the "feed" response does not contain "OurNote"
     And "OurNote" is not in our Outbox
     And a "Delete(OurNote)" activity is sent to "Alice"
 
@@ -31,4 +31,4 @@ Feature: Delete a post
     And the request is rejected with a 403
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "AliceNote"
+    And the "feed" response contains "AliceNote"

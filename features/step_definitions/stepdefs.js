@@ -1797,7 +1797,7 @@ When('we request the feed with the next cursor', async function () {
     );
 });
 
-Then('the feed contains {string}', async function (activityOrObjectName) {
+Then('the {string} response contains {string}', async function (type, activityOrObjectName) {
     const responseJson = await this.response.clone().json();
     const activity = this.activities[activityOrObjectName];
     const object = this.objects[activityOrObjectName];
@@ -1811,12 +1811,12 @@ Then('the feed contains {string}', async function (activityOrObjectName) {
         found = responseJson.posts.find((post) => post.url === object.id);
     }
 
-    assert(found, `Expected to find ${activityOrObjectName} in feed`);
+    assert(found, `Expected to find ${activityOrObjectName} in ${type}`);
 });
 
 Then(
-    'the feed does not contain {string}',
-    async function (activityOrObjectName) {
+    'the {string} response does not contain {string}',
+    async function (type, activityOrObjectName) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];
@@ -1828,19 +1828,19 @@ Then(
             found = responseJson.posts.find((post) => post.url === object.id);
         }
 
-        assert(!found, `Expected not to find ${activityOrObjectName} in feed`);
+        assert(!found, `Expected not to find ${activityOrObjectName} in ${type}`);
     },
 );
 
-Then('the feed has a next cursor', async function () {
+Then('the {string} response has a next cursor', async function (type) {
     const responseJson = await this.response.clone().json();
 
-    assert(responseJson.next, 'Expected feed to have a next cursor');
+    assert(responseJson.next, `Expected ${type} response to have a next cursor`);
 });
 
 Then(
-    'post {string} in the feed is {string}',
-    async function (postNumber, activityOrObjectName) {
+    'post {string} in the {string} response is {string}',
+    async function (postNumber, type, activityOrObjectName) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];

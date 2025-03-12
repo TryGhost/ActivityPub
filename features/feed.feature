@@ -15,8 +15,8 @@ Feature: Feed
     And "Article1" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
-    And the feed does not contain "Article1"
+    And the "feed" response contains "Note1"
+    And the "feed" response does not contain "Article1"
 
   Scenario: Feed is sorted by date descending
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -27,8 +27,8 @@ Feature: Feed
     And "Note2" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And post "1" in the feed is "Note2"
-    And post "2" in the feed is "Note1"
+    And post "1" in the "feed" response is "Note2"
+    And post "2" in the "feed" response is "Note1"
 
   Scenario: Feed is paginated
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -42,13 +42,13 @@ Feature: Feed
     And "Note3" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed?limit=2"
     Then the request is accepted
-    And the feed contains "Note3"
-    And the feed contains "Note2"
-    And the feed does not contain "Note1"
-    And the feed has a next cursor
+    And the "feed" response contains "Note3"
+    And the "feed" response contains "Note2"
+    And the "feed" response does not contain "Note1"
+    And the "feed" response has a next cursor
     When an authenticated request is made to "/.ghost/activitypub/feed?limit=3"
     Then the request is accepted
-    And the feed contains "Note1"
+    And the "feed" response contains "Note1"
 
   Scenario: Requests with limit over 100 are rejected
     When an authenticated request is made to "/.ghost/activitypub/feed?limit=200"
@@ -61,7 +61,7 @@ Feature: Feed
       """
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
+    And the "feed" response contains "Note1"
 
   Scenario: Feed includes posts we reposted
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -71,7 +71,7 @@ Feature: Feed
     And the request is accepted
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
+    And the "feed" response contains "Note1"
 
   Scenario: Feed includes posts from followed accounts
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -79,7 +79,7 @@ Feature: Feed
     And "Note1" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
+    And the "feed" response contains "Note1"
 
   Scenario: Feed includes reposts from followed accounts
     Given an Actor "Person(Bob)"
@@ -89,7 +89,7 @@ Feature: Feed
     And "Repost1" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
+    And the "feed" response contains "Note1"
 
   Scenario: Feed excludes replies
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -102,8 +102,8 @@ Feature: Feed
     And "ReplyCreate" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
-    And the feed contains "Note1"
-    And the feed does not contain "ReplyCreate"
+    And the "feed" response contains "Note1"
+    And the "feed" response does not contain "ReplyCreate"
 
   Scenario: Querying the inbox (feed filtered to only return articles)
     Given a "Create(Article)" Activity "Article1" by "Alice"
@@ -117,6 +117,6 @@ Feature: Feed
     And "Note1" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/inbox"
     Then the request is accepted
-    And post "1" in the feed is "Article2"
-    And post "2" in the feed is "Article1"
-    And the feed does not contain "Note1"
+    And post "1" in the "feed" response is "Article2"
+    And post "2" in the "feed" response is "Article1"
+    And the "feed" response does not contain "Note1"
