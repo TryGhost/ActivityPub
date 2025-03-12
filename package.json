@@ -25,7 +25,7 @@
     "test:unit:dev": "docker compose run --rm activitypub-testing yarn _test:unit:dev",
     "_test:integration": "vitest run --dir src --coverage --reporter=dot '.integration.test.ts'",
     "test:integration": "docker compose run --rm activitypub-testing yarn _test:integration",
-    "_test:code": "vitest run --dir src --coverage --reporter=dot '.test.ts'",
+    "_test:code": "vitest run --no-file-parallelism --dir src --coverage --reporter=dot '.test.ts'",
     "test:code": "docker compose run --rm activitypub-testing yarn _test:code",
     "_test:all": "yarn _test:types && yarn _test:code",
     "test:all": "docker compose run --rm activitypub-testing yarn _test:all",
