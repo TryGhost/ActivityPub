@@ -49,6 +49,7 @@ export class AccountService {
         private readonly events: EventEmitter,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
     ) {}
 
     /**
@@ -101,7 +102,7 @@ export class AccountService {
         internalAccountData: InternalAccountData,
         transaction?: Knex.Transaction,
     ): Promise<AccountType> {
-        const keyPair = await generateCryptoKeyPair();
+        const keyPair = await this.generateKeyPair();
         const username = internalAccountData.username;
 
         const accountData = {
