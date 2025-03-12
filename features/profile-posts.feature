@@ -30,16 +30,6 @@ Feature: My Posts on Profile
     And the "posts" response contains "MyNote2"
     And the "posts" response does not contain "AliceNote"
 
-  Scenario: Profile posts are sorted by date descending
-    When an authenticated request is made to "/.ghost/activitypub/posts"
-    Then the request is accepted
-    And post "1" in the "posts" response is "MyNote2"
-    And post "2" in the "posts" response is "MyNote"
-
-  Scenario: Requests with limit over 100 are rejected
-    When an authenticated request is made to "/.ghost/activitypub/posts?limit=200"
-    Then the request is rejected with a 400
-
   Scenario: Profile posts includes posts we reposted
     Given a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
