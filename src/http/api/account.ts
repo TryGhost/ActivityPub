@@ -1,5 +1,3 @@
-import type { KvStore } from '@fedify/fedify';
-
 import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
@@ -18,28 +16,6 @@ type FollowAccount = Pick<
     AccountDTO,
     'id' | 'name' | 'handle' | 'avatarUrl'
 > & { isFollowing: boolean };
-
-/**
- * Retreive the count of posts created by the account from the database
- *
- * @param db Database instance
- */
-async function getPostCount(db: KvStore) {
-    const posts = await db.get<string[]>(['outbox']);
-
-    return posts?.length || 0;
-}
-
-/**
- * Retreive the count of posts liked by the account from the database
- *
- * @param db Database instance
- */
-async function getLikedCount(db: KvStore) {
-    const liked = await db.get<string[]>(['liked']);
-
-    return liked?.length || 0;
-}
 
 /**
  * Create a handler to handle a request for an account
@@ -92,8 +68,8 @@ export function createGetAccountHandler(accountService: AccountService) {
                  * At the moment we don't support custom fields for Ghost accounts
                  */
                 customFields: {},
-                postCount: await getPostCount(db),
-                likedCount: await getLikedCount(db),
+                postCount: await accountService.getPostCount(account),
+                likedCount: await accountService.getLikedCount(account),
                 followingCount:
                     await accountService.getFollowingAccountsCount(account),
                 followerCount:
