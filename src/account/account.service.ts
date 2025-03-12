@@ -1,4 +1,9 @@
-import { exportJwk, isActor, lookupObject } from '@fedify/fedify';
+import {
+    exportJwk,
+    generateCryptoKeyPair,
+    isActor,
+    lookupObject,
+} from '@fedify/fedify';
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
@@ -44,7 +49,7 @@ export class AccountService {
         private readonly events: EventEmitter,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
-        private readonly generateCryptoKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
+        private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
     ) {}
 
     /**
@@ -101,7 +106,7 @@ export class AccountService {
         console.log(`Starting createInternalAccount for site ${site.host}`);
 
         console.time(`generateCryptoKeyPair for site ${site.host}`);
-        const keyPair = await this.generateCryptoKeyPair();
+        const keyPair = await this.generateKeyPair();
         console.timeEnd(`generateCryptoKeyPair for site ${site.host}`);
 
         const username = internalAccountData.username;
