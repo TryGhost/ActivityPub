@@ -150,41 +150,37 @@ export class ProfileService {
                 'posts_with_source.image_url as post_image_url',
                 'posts_with_source.published_at as post_published_at',
                 'posts_with_source.like_count as post_like_count',
-                this.db.raw(`
-                    CASE 
+                this.db.raw(
+                    `CASE 
                         WHEN likes.post_id IS NOT NULL THEN 1 
                         ELSE 0 
-                    END AS post_liked_by_user
-                `),
+                    END AS post_liked_by_user`,
+                ),
                 'posts_with_source.reply_count as post_reply_count',
                 'posts_with_source.reading_time_minutes as post_reading_time_minutes',
                 'posts_with_source.attachments as post_attachments',
                 'posts_with_source.repost_count as post_repost_count',
-                this.db.raw(`
-                    CASE 
+                this.db.raw(
+                    `CASE 
                         WHEN user_reposts.post_id IS NOT NULL THEN 1 
                         ELSE 0 
-                    END AS post_reposted_by_user
-                `),
+                    END AS post_reposted_by_user`,
+                ),
                 'posts_with_source.ap_id as post_ap_id',
-                // Author fields
+                // Author fields (Who originally created the post)
                 'author_account.id as author_id',
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
                 'author_account.avatar_url as author_avatar_url',
-                // Reposter fields
+                // Reposter fields (If applicable)
                 'reposter_account.id as reposter_id',
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
-                this.db.raw(`
-                    CASE 
-                        WHEN posts_with_source.source = 'original' THEN posts_with_source.published_at 
-                        ELSE posts_with_source.repost_created_at 
-                    END AS sort_timestamp
-                `),
+                // Unified `created_at` field for sorting
+                'posts_with_source.created_at',
             )
             .from(
                 this.db
@@ -204,8 +200,8 @@ export class ProfileService {
                         'posts.repost_count',
                         'posts.ap_id',
                         'posts.author_id',
+                        'posts.created_at',
                         this.db.raw('NULL as reposter_id'),
-                        this.db.raw('NULL as repost_created_at'),
                         this.db.raw(`'original' as source`),
                     )
                     .from('posts')
@@ -228,14 +224,15 @@ export class ProfileService {
                                 'posts.repost_count',
                                 'posts.ap_id',
                                 'posts.author_id',
+                                'reposts.created_at AS created_at',
                                 'reposts.account_id as reposter_id',
-                                'reposts.created_at as repost_created_at',
                                 this.db.raw(`'repost' as source`),
                             )
                             .from('reposts')
                             .innerJoin('posts', 'posts.id', 'reposts.post_id')
                             .where('reposts.account_id', accountId),
                     ])
+                    .orderBy('created_at', 'desc') //Apply sorting at the union level
                     .as('posts_with_source'),
             )
             .innerJoin(
@@ -267,10 +264,10 @@ export class ProfileService {
             })
             .modify((query) => {
                 if (cursor) {
-                    query.where('sort_timestamp', '<', cursor);
+                    query.where('posts_with_source.created_at', '<', cursor);
                 }
             })
-            .orderBy('sort_timestamp', 'desc')
+            .orderBy('posts_with_source.created_at', 'desc')
             .limit(limit + 1);
 
         const results = await query;
@@ -283,7 +280,7 @@ export class ProfileService {
             results: paginatedResults.map((result: GetProfileDataResultRow) =>
                 this.mapToPostDTO(result, accountId),
             ),
-            nextCursor: hasMore ? lastResult.sort_timestamp.toString() : null,
+            nextCursor: hasMore ? lastResult.created_at : null,
         };
     }
 
