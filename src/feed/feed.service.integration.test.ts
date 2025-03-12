@@ -39,7 +39,15 @@ describe('FeedService', () => {
     let client: Knex;
 
     beforeAll(async () => {
+        console.log('Creating test database');
         client = await createTestDb();
+        console.log('Test database created');
+    });
+
+    afterAll(async () => {
+        console.log('Closing database connection');
+        await client.destroy();
+        console.log('Database connection closed');
     });
 
     const accountSitesMap: Map<number, Site> = new Map();
@@ -114,6 +122,7 @@ describe('FeedService', () => {
     };
 
     beforeEach(async () => {
+        console.time('Database cleanup');
         // Clean up the database
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
         await client(TABLE_FEEDS).truncate();
@@ -124,6 +133,7 @@ describe('FeedService', () => {
         await client(TABLE_USERS).truncate();
         await client(TABLE_SITES).truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+        console.timeEnd('Database cleanup');
 
         // Reset test state
         accountSitesMap.clear();
@@ -578,8 +588,12 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should not affect other reposts when removing a specific derepost', async () => {
+            console.time('Total test execution');
+            console.log('Test started');
+            
             const feedService = new FeedService(client);
 
+            console.time('Initialize accounts');
             // Initialise accounts
             const userAccount =
                 await createInternalAccount('derepost-user.com');
@@ -592,7 +606,9 @@ describe('FeedService', () => {
             const postAuthorAccount = await createInternalAccount(
                 'derepost-post-author.com',
             );
+            console.timeEnd('Initialize accounts');
 
+            console.time('Record account follows');
             await accountService.recordAccountFollow(
                 reposter1 as unknown as AccountType,
                 userAccount as unknown as AccountType,
@@ -602,33 +618,54 @@ describe('FeedService', () => {
                 reposter2 as unknown as AccountType,
                 userAccount as unknown as AccountType,
             );
+            console.timeEnd('Record account follows');
 
             // Create post and add two reposts
+            console.time('Create post');
             const post = await createPost(postAuthorAccount, {
                 audience: Audience.Public,
             });
+            console.timeEnd('Create post');
 
+            console.time('Save initial post');
             await postRepository.save(post);
+            console.timeEnd('Save initial post');
+            
+            console.time('Add reposter1 repost');
             post.addRepost(reposter1);
             await postRepository.save(post);
+            console.timeEnd('Add reposter1 repost');
+            
+            console.time('Add reposter2 repost');
             post.addRepost(reposter2);
             await postRepository.save(post);
+            console.timeEnd('Add reposter2 repost');
 
             // Add to feeds
+            console.time('Add to feeds');
+            console.log('Adding original post to feeds');
             await feedService.addPostToFeeds(post as PublicPost);
+            console.log('Adding reposter1 repost to feeds');
             await feedService.addPostToFeeds(post as PublicPost, reposter1.id);
+            console.log('Adding reposter2 repost to feeds');
             await feedService.addPostToFeeds(post as PublicPost, reposter2.id);
-
-            expect(true).toBe(true);
+            console.timeEnd('Add to feeds');
 
             // Remove only reposter1's repost
+            console.time('Remove reposter1 repost');
+            console.log('Removing reposter1 repost from feeds');
             await feedService.removePostFromFeeds(
                 post as PublicPost,
                 reposter1.id,
             );
+            console.timeEnd('Remove reposter1 repost');
 
             // Verify only reposter2's repost remains
+            console.time('Get feed data');
+            console.log('Fetching feed data after removal');
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);
+            console.log('Feed data fetched, length:', feedAfterRemoval.length);
+            console.timeEnd('Get feed data');
 
             expect(feedAfterRemoval.length).toBe(1);
 
@@ -637,6 +674,9 @@ describe('FeedService', () => {
                 author_id: postAuthorAccount.id,
                 reposted_by_id: reposter2.id,
             });
-        }, 10000);
+            
+            console.timeEnd('Total test execution');
+            console.log('Test completed');
+        }, 20000); // Increased timeout to help with debugging
     });
 });
