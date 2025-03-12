@@ -1797,22 +1797,25 @@ When('we request the feed with the next cursor', async function () {
     );
 });
 
-Then('the {string} response contains {string}', async function (type, activityOrObjectName) {
-    const responseJson = await this.response.clone().json();
-    const activity = this.activities[activityOrObjectName];
-    const object = this.objects[activityOrObjectName];
-    let found;
+Then(
+    'the {string} response contains {string}',
+    async function (type, activityOrObjectName) {
+        const responseJson = await this.response.clone().json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        let found;
 
-    if (activity) {
-        found = responseJson.posts.find(
-            (post) => post.url === activity.object.id,
-        );
-    } else if (object) {
-        found = responseJson.posts.find((post) => post.url === object.id);
-    }
+        if (activity) {
+            found = responseJson.posts.find(
+                (post) => post.url === activity.object.id,
+            );
+        } else if (object) {
+            found = responseJson.posts.find((post) => post.url === object.id);
+        }
 
-    assert(found, `Expected to find ${activityOrObjectName} in ${type}`);
-});
+        assert(found, `Expected to find ${activityOrObjectName} in ${type}`);
+    },
+);
 
 Then(
     'the {string} response does not contain {string}',
@@ -1828,14 +1831,20 @@ Then(
             found = responseJson.posts.find((post) => post.url === object.id);
         }
 
-        assert(!found, `Expected not to find ${activityOrObjectName} in ${type}`);
+        assert(
+            !found,
+            `Expected not to find ${activityOrObjectName} in ${type}`,
+        );
     },
 );
 
 Then('the {string} response has a next cursor', async function (type) {
     const responseJson = await this.response.clone().json();
 
-    assert(responseJson.next, `Expected ${type} response to have a next cursor`);
+    assert(
+        responseJson.next,
+        `Expected ${type} response to have a next cursor`,
+    );
 });
 
 Then(
