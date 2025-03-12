@@ -9,7 +9,10 @@ import {
 } from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
+import type { PostDTO } from './types';
+import type { ProfileService } from '../../profile/profile.service';
 import { type AppContext, fedify } from '../../app';
+import { getAccountHandle } from '../../account/utils';
 import { getActivityChildrenCount, getRepostCount } from '../../db';
 import {
     getAttachments,
@@ -560,5 +563,217 @@ export function createGetProfileFollowingHandler(
             },
             status: 200,
         });
+    };
+}
+
+const DEFAULT_FEED_POSTS_LIMIT = 20;
+const MAX_FEED_POSTS_LIMIT = 100;
+
+/**
+ * Create a handler to handle a request for a list of posts by an account
+ *
+ * @param accountService Account service instance
+ */
+export function createGetPostsHandler(
+    accountService: AccountService,
+    profileService: ProfileService,
+) {
+    /**
+     * Handle a request for a list of posts by an account
+     *
+     * @param ctx App context
+     */
+    return async function handleGetPosts(ctx: AppContext) {
+        const logger = ctx.get('logger');
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        const { results, nextCursor } = await profileService.getPostsByAccount(
+            account.id,
+            limit,
+            cursor,
+        );
+
+        const posts: PostDTO[] = results.map((result) => {
+            return {
+                id: result.post_ap_id,
+                type: result.post_type,
+                title: result.post_title ?? '',
+                excerpt: result.post_excerpt ?? '',
+                content: result.post_content ?? '',
+                url: result.post_url,
+                featureImageUrl: result.post_image_url ?? null,
+                publishedAt: result.post_published_at,
+                likeCount: result.post_like_count,
+                likedByMe: result.post_liked_by_user === 1,
+                replyCount: result.post_reply_count,
+                readingTimeMinutes: result.post_reading_time_minutes,
+                attachments: result.post_attachments
+                    ? result.post_attachments.map((attachment) => ({
+                          type: attachment.type ?? '',
+                          mediaType: attachment.mediaType ?? '',
+                          name: attachment.name ?? '',
+                          url: attachment.url,
+                      }))
+                    : [],
+                author: {
+                    id: result.author_id.toString(),
+                    handle: getAccountHandle(
+                        result.author_url
+                            ? new URL(result.author_url).host
+                            : '',
+                        result.author_username,
+                    ),
+                    name: result.author_name ?? '',
+                    url: result.author_url ?? '',
+                    avatarUrl: result.author_avatar_url ?? '',
+                },
+                authoredByMe: result.author_id === account.id,
+                repostCount: result.post_repost_count,
+                repostedByMe: result.post_reposted_by_user === 1,
+                repostedBy: result.reposter_id
+                    ? {
+                          id: result.reposter_id.toString(),
+                          handle: getAccountHandle(
+                              result.reposter_url
+                                  ? new URL(result.reposter_url).host
+                                  : '',
+                              result.reposter_username,
+                          ),
+                          name: result.reposter_name ?? '',
+                          url: result.reposter_url ?? '',
+                          avatarUrl: result.reposter_avatar_url ?? '',
+                      }
+                    : null,
+            };
+        });
+
+        return new Response(
+            JSON.stringify({
+                posts,
+                next: nextCursor,
+            }),
+            {
+                status: 200,
+            },
+        );
+    };
+}
+
+/*
+ * Create a handler to handle a request for a list of posts liked by an account
+ *
+ * @param accountService Account service instance
+ */
+export function createGetLikedPostsHandler(
+    accountService: AccountService,
+    profileService: ProfileService,
+) {
+    /**
+     * Handle a request for a list of posts liked by an account
+     *
+     * @param ctx App context
+     */
+    return async function handleGetLikedPosts(ctx: AppContext) {
+        const logger = ctx.get('logger');
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        const { results, nextCursor } =
+            await profileService.getPostsLikedByAccount(account.id, limit, cursor);
+
+        const posts: PostDTO[] = results.map((result) => {
+            return {
+                id: result.post_ap_id,
+                type: result.post_type,
+                title: result.post_title ?? '',
+                excerpt: result.post_excerpt ?? '',
+                content: result.post_content ?? '',
+                url: result.post_url,
+                featureImageUrl: result.post_image_url ?? null,
+                publishedAt: result.post_published_at,
+                likeCount: result.post_like_count,
+                likedByMe: result.post_liked_by_user === 1,
+                replyCount: result.post_reply_count,
+                readingTimeMinutes: result.post_reading_time_minutes,
+                attachments: result.post_attachments
+                    ? result.post_attachments.map((attachment) => ({
+                          type: attachment.type ?? '',
+                          mediaType: attachment.mediaType ?? '',
+                          name: attachment.name ?? '',
+                          url: attachment.url,
+                      }))
+                    : [],
+                author: {
+                    id: result.author_id.toString(),
+                    handle: getAccountHandle(
+                        result.author_url
+                            ? new URL(result.author_url).host
+                            : '',
+                        result.author_username,
+                    ),
+                    name: result.author_name ?? '',
+                    url: result.author_url ?? '',
+                    avatarUrl: result.author_avatar_url ?? '',
+                },
+                authoredByMe: result.author_id === account.id,
+                repostCount: result.post_repost_count,
+                repostedByMe: result.post_reposted_by_user === 1,
+                repostedBy: result.reposter_id
+                    ? {
+                          id: result.reposter_id.toString(),
+                          handle: getAccountHandle(
+                              result.reposter_url
+                                  ? new URL(result.reposter_url).host
+                                  : '',
+                              result.reposter_username,
+                          ),
+                          name: result.reposter_name ?? '',
+                          url: result.reposter_url ?? '',
+                          avatarUrl: result.reposter_avatar_url ?? '',
+                      }
+                    : null,
+            };
+        });
+
+        return new Response(
+            JSON.stringify({
+                posts,
+                next: nextCursor,
+            }),
+            {
+                status: 200,
+            },
+        );
     };
 }
