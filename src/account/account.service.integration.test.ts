@@ -4,6 +4,7 @@ import EventEmitter from 'node:events';
 
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
+import { generateTestCryptoKeyPair } from 'src/test/crypto-key-pair';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
@@ -113,6 +114,7 @@ describe('AccountService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair
         );
     });
 

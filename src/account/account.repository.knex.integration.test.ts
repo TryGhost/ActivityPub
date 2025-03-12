@@ -4,6 +4,7 @@ import assert from 'node:assert';
 import EventEmitter from 'node:events';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
+import { generateTestCryptoKeyPair } from 'src/test/crypto-key-pair';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
@@ -39,6 +40,7 @@ describe('KnexAccountRepository', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair
         );
         const siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
@@ -70,6 +72,7 @@ describe('KnexAccountRepository', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair
         );
         const siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {
@@ -106,6 +109,7 @@ describe('KnexAccountRepository', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair
         );
         const siteService = new SiteService(client, accountService, {
             async getSiteSettings(host: string) {

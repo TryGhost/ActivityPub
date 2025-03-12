@@ -4,6 +4,7 @@ import EventEmitter from 'node:events';
 
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
+import { generateTestCryptoKeyPair } from 'src/test/crypto-key-pair';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
@@ -52,6 +53,7 @@ describe('SiteService', () => {
             events,
             accountRepository,
             fedifyContextFactory,
+            generateTestCryptoKeyPair
         );
         ghostService = {
             async getSiteSettings(host: string) {
