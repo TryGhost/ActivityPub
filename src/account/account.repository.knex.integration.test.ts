@@ -1,7 +1,7 @@
 import { beforeAll, describe, it } from 'vitest';
 
 import assert from 'node:assert';
-import EventEmitter from 'node:events';
+import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
@@ -32,7 +32,7 @@ describe('KnexAccountRepository', () => {
         assert(account.uuid === null, 'Account should not have a uuid');
     };
     it('Can get by site', async () => {
-        const events = new EventEmitter();
+        const events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(client, events);
         const fedifyContextFactory = new FedifyContextFactory();
         const accountService = new AccountService(
@@ -64,7 +64,7 @@ describe('KnexAccountRepository', () => {
         );
     });
     it('Ensures an account has a uuid when retrieved for a site', async () => {
-        const events = new EventEmitter();
+        const events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(client, events);
         const fedifyContextFactory = new FedifyContextFactory();
         const accountService = new AccountService(
@@ -101,7 +101,7 @@ describe('KnexAccountRepository', () => {
         assert(account.uuid !== null, 'Account should have a uuid');
     });
     it('Can get by apId', async () => {
-        const events = new EventEmitter();
+        const events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(client, events);
         const fedifyContextFactory = new FedifyContextFactory();
         const accountService = new AccountService(
@@ -139,7 +139,7 @@ describe('KnexAccountRepository', () => {
         assert(result);
     });
     it('Ensures an account has a uuid when retrieved by apId', async () => {
-        const events = new EventEmitter();
+        const events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(client, events);
         const fedifyContextFactory = new FedifyContextFactory();
         const accountService = new AccountService(

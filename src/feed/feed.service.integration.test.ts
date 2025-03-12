@@ -1,6 +1,6 @@
-import { EventEmitter } from 'node:events';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
@@ -31,7 +31,7 @@ import { SiteService } from '../site/site.service';
 import { FeedService } from './feed.service';
 
 describe('FeedService', () => {
-    let events: EventEmitter;
+    let events: AsyncEvents;
     let accountRepository: KnexAccountRepository;
     let fedifyContextFactory: FedifyContextFactory;
     let accountService: AccountService;
@@ -132,7 +132,7 @@ describe('FeedService', () => {
         postCount = 0;
 
         // Init deps / support
-        events = new EventEmitter();
+        events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(client, events);
         fedifyContextFactory = new FedifyContextFactory();
         accountService = new AccountService(

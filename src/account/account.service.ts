@@ -7,7 +7,7 @@ import {
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
-import type EventEmitter from 'node:events';
+import type { AsyncEvents } from 'core/events';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
@@ -46,7 +46,7 @@ export class AccountService {
      */
     constructor(
         private readonly db: Knex,
-        private readonly events: EventEmitter,
+        private readonly events: AsyncEvents,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
@@ -406,7 +406,7 @@ export class AccountService {
         const bioChanged = account.bio !== data.bio;
 
         if (avatarChanged || nameChanged || bioChanged) {
-            this.events.emit('account.updated', newAccount);
+            await this.events.emitAsync('account.updated', newAccount);
         }
 
         return newAccount;
