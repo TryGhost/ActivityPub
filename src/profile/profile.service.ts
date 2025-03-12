@@ -1,6 +1,8 @@
 import type { Knex } from 'knex';
 
 import type { PostType } from 'post/post.entity';
+import type { PostDTO } from '../http/api/types';
+import { getAccountHandle } from '../account/utils';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;
@@ -39,7 +41,8 @@ interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
     reposter_avatar_url: string | null;
 }
 
-interface GetProfileDataResultRowWithoutReposted extends BaseGetProfileDataResultRow {
+interface GetProfileDataResultRowWithoutReposted
+    extends BaseGetProfileDataResultRow {
     reposter_id: null;
     reposter_name: null;
     reposter_username: null;
@@ -61,6 +64,67 @@ export class ProfileService {
      * @param db Database client
      */
     constructor(private readonly db: Knex) {}
+
+    /**
+     * Transforms a database result into a PostDTO
+     * @param result Database result row
+     * @param accountId Current account ID
+     * @returns PostDTO object
+     */
+    private mapToPostDTO(
+        result: GetProfileDataResultRow,
+        accountId: number,
+    ): PostDTO {
+        return {
+            id: result.post_ap_id,
+            type: result.post_type,
+            title: result.post_title ?? '',
+            excerpt: result.post_excerpt ?? '',
+            content: result.post_content ?? '',
+            url: result.post_url,
+            featureImageUrl: result.post_image_url ?? null,
+            publishedAt: result.post_published_at,
+            likeCount: result.post_like_count,
+            likedByMe: result.post_liked_by_user === 1,
+            replyCount: result.post_reply_count,
+            readingTimeMinutes: result.post_reading_time_minutes,
+            attachments: result.post_attachments
+                ? result.post_attachments.map((attachment) => ({
+                      type: attachment.type ?? '',
+                      mediaType: attachment.mediaType ?? '',
+                      name: attachment.name ?? '',
+                      url: attachment.url,
+                  }))
+                : [],
+            author: {
+                id: result.author_id.toString(),
+                handle: getAccountHandle(
+                    result.author_url ? new URL(result.author_url).host : '',
+                    result.author_username,
+                ),
+                name: result.author_name ?? '',
+                url: result.author_url ?? '',
+                avatarUrl: result.author_avatar_url ?? '',
+            },
+            authoredByMe: result.author_id === accountId,
+            repostCount: result.post_repost_count,
+            repostedByMe: result.post_reposted_by_user === 1,
+            repostedBy: result.reposter_id
+                ? {
+                      id: result.reposter_id.toString(),
+                      handle: getAccountHandle(
+                          result.reposter_url
+                              ? new URL(result.reposter_url).host
+                              : '',
+                          result.reposter_username,
+                      ),
+                      name: result.reposter_name ?? '',
+                      url: result.reposter_url ?? '',
+                      avatarUrl: result.reposter_avatar_url ?? '',
+                  }
+                : null,
+        };
+    }
 
     /**
      * Get posts by an account
@@ -216,7 +280,9 @@ export class ProfileService {
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
-            results: paginatedResults,
+            results: paginatedResults.map((result: GetProfileDataResultRow) =>
+                this.mapToPostDTO(result, accountId),
+            ),
             nextCursor: hasMore ? lastResult.sort_timestamp.toString() : null,
         };
     }
@@ -305,7 +371,9 @@ export class ProfileService {
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
-            results: paginatedResults,
+            results: paginatedResults.map((result: GetProfileDataResultRow) =>
+                this.mapToPostDTO(result, accountId),
+            ),
             nextCursor: hasMore ? lastResult.likes_id.toString() : null,
         };
     }

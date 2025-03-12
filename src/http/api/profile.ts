@@ -9,10 +9,8 @@ import {
 } from '@fedify/fedify';
 
 import type { AccountService } from '../../account/account.service';
-import type { PostDTO } from './types';
 import type { ProfileService } from '../../profile/profile.service';
 import { type AppContext, fedify } from '../../app';
-import { getAccountHandle } from '../../account/utils';
 import { getActivityChildrenCount, getRepostCount } from '../../db';
 import {
     getAttachments,
@@ -24,7 +22,6 @@ import {
 } from '../../helpers/activitypub/actor';
 import { sanitizeHtml } from '../../helpers/html';
 import { isUri } from '../../helpers/uri';
-import type { GetProfileDataResultRow } from '../../profile/profile.service';
 import { lookupObject } from '../../lookup-helpers';
 
 interface Profile {
@@ -597,67 +594,6 @@ function validateRequestParams(ctx: AppContext) {
 }
 
 /**
- * Transforms a database result into a PostDTO
- * @param result Database result row
- * @param accountId Current account ID
- * @returns PostDTO object
- */
-function mapToPostDTO(
-    result: GetProfileDataResultRow,
-    accountId: number,
-): PostDTO {
-    return {
-        id: result.post_ap_id,
-        type: result.post_type,
-        title: result.post_title ?? '',
-        excerpt: result.post_excerpt ?? '',
-        content: result.post_content ?? '',
-        url: result.post_url,
-        featureImageUrl: result.post_image_url ?? null,
-        publishedAt: result.post_published_at,
-        likeCount: result.post_like_count,
-        likedByMe: result.post_liked_by_user === 1,
-        replyCount: result.post_reply_count,
-        readingTimeMinutes: result.post_reading_time_minutes,
-        attachments: result.post_attachments
-            ? result.post_attachments.map((attachment) => ({
-                  type: attachment.type ?? '',
-                  mediaType: attachment.mediaType ?? '',
-                  name: attachment.name ?? '',
-                  url: attachment.url,
-              }))
-            : [],
-        author: {
-            id: result.author_id.toString(),
-            handle: getAccountHandle(
-                result.author_url ? new URL(result.author_url).host : '',
-                result.author_username,
-            ),
-            name: result.author_name ?? '',
-            url: result.author_url ?? '',
-            avatarUrl: result.author_avatar_url ?? '',
-        },
-        authoredByMe: result.author_id === accountId,
-        repostCount: result.post_repost_count,
-        repostedByMe: result.post_reposted_by_user === 1,
-        repostedBy: result.reposter_id
-            ? {
-                  id: result.reposter_id.toString(),
-                  handle: getAccountHandle(
-                      result.reposter_url
-                          ? new URL(result.reposter_url).host
-                          : '',
-                      result.reposter_username,
-                  ),
-                  name: result.reposter_name ?? '',
-                  url: result.reposter_url ?? '',
-                  avatarUrl: result.reposter_avatar_url ?? '',
-              }
-            : null,
-    };
-}
-
-/**
  * Create a handler to handle a request for a list of posts by an account
  *
  * @param accountService Account service instance
@@ -687,10 +623,9 @@ export function createGetPostsHandler(
             params.cursor,
         );
 
-        const posts = results.map((result) => mapToPostDTO(result, account.id));
         return new Response(
             JSON.stringify({
-                posts,
+                posts: results,
                 next: nextCursor,
             }),
             { status: 200 },
@@ -730,10 +665,9 @@ export function createGetLikedPostsHandler(
                 params.cursor,
             );
 
-        const posts = results.map((result) => mapToPostDTO(result, account.id));
         return new Response(
             JSON.stringify({
-                posts,
+                posts: results,
                 next: nextCursor,
             }),
             { status: 200 },
