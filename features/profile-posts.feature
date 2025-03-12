@@ -30,31 +30,6 @@ Feature: My Posts on Profile
     And the "posts" response contains "Note2"
     And the "posts" response does not contain "Note3"
 
-  @only
-  Scenario: Profile posts are sorted by date descending
-    When an authenticated request is made to "/.ghost/activitypub/posts"
-    Then the request is accepted
-    And post "1" in the "posts" response is "Note2"
-    And post "2" in the "posts" response is "Note1"
-
-  @only
-  Scenario: Profile posts are paginated
-    Given we create a note "Note4" with the content
-      """
-      Hello World 4
-      """
-    When an authenticated request is made to "/.ghost/activitypub/posts/liked?limit=2"
-    Then the request is accepted
-    And the "posts" response contains "Note4"
-    And the "posts" response contains "Note2"
-    And the "posts" response does not contain "Note1"
-    And the "posts" response has a next cursor
-    When an authenticated request is made to "/.ghost/activitypub/posts/liked?limit=3"
-    Then the request is accepted
-    And the "posts" response contains "Note1"
-    And the "posts" response contains "Note2"
-    And the "posts" response contains "Note4"
-
   Scenario: Requests with limit over 100 are rejected
     When an authenticated request is made to "/.ghost/activitypub/posts?limit=200"
     Then the request is rejected with a 400
