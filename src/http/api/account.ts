@@ -13,12 +13,12 @@ const FOLLOWS_LIMIT = 20;
 /**
  * Default number of posts to return in a profile
  */
-const DEFAULT_PROFILE_POSTS_LIMIT = 20;
+const DEFAULT_POSTS_LIMIT = 20;
 
 /**
  * Maximum number of posts that can be returned in a profile
  */
-const MAX_PROFILE_POSTS_LIMIT = 100;
+const MAX_POSTS_LIMIT = 100;
 
 /**
  * Follow account shape - Used when returning a list of follow accounts
@@ -207,6 +207,7 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
 
 /**
  * Validates and extracts pagination parameters from the request
+ *
  * @param ctx App context
  * @returns Object containing cursor and limit, or null if invalid
  */
@@ -215,9 +216,9 @@ function validateRequestParams(ctx: AppContext) {
     const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
     const queryLimit = ctx.req.query('limit');
-    const limit = queryLimit ? Number(queryLimit) : DEFAULT_PROFILE_POSTS_LIMIT;
+    const limit = queryLimit ? Number(queryLimit) : DEFAULT_POSTS_LIMIT;
 
-    if (limit > MAX_PROFILE_POSTS_LIMIT) {
+    if (limit > MAX_POSTS_LIMIT) {
         return null;
     }
 
