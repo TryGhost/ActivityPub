@@ -99,6 +99,8 @@ import {
     createDeletePostHandler,
     createGetAccountFollowsHandler,
     createGetAccountHandler,
+    createGetAccountLikedPostsHandler,
+    createGetAccountPostsHandler,
     createGetFeedHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
@@ -255,6 +257,7 @@ const accountService = new AccountService(
 const postService = new PostService(
     postRepository,
     accountService,
+    client,
     fedifyContextFactory,
 );
 const siteService = new SiteService(client, accountService, {
@@ -962,6 +965,16 @@ app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner),
     spanWrapper(createGetAccountHandler(accountService)),
+);
+app.get(
+    '/.ghost/activitypub/posts',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createGetAccountPostsHandler(accountService, postService)),
+);
+app.get(
+    '/.ghost/activitypub/posts/liked',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',

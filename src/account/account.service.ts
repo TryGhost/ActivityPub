@@ -16,6 +16,9 @@ import {
     AP_BASE_PATH,
     TABLE_ACCOUNTS,
     TABLE_FOLLOWS,
+    TABLE_LIKES,
+    TABLE_POSTS,
+    TABLE_REPOSTS,
     TABLE_USERS,
 } from '../constants';
 import type { Account } from './account.entity';
@@ -288,6 +291,38 @@ export class AccountService {
             .count('*', { as: 'count' });
 
         return Number(result[0].count);
+    }
+
+    /**
+     * Get the number of posts liked by the account
+     *
+     * @param account Account
+     */
+    async getLikedCount(account: AccountType): Promise<number> {
+        const result = await this.db(TABLE_LIKES)
+            .join('posts', 'likes.post_id', 'posts.id')
+            .where('likes.account_id', account.id)
+            .whereNull('posts.in_reply_to')
+            .count('*', { as: 'count' });
+
+        return Number(result[0].count);
+    }
+
+    /**
+     * Get the number of posts created by the account
+     *
+     * @param account Account
+     */
+    async getPostCount(account: AccountType): Promise<number> {
+        const posts = await this.db(TABLE_POSTS)
+            .where('author_id', account.id)
+            .count('*', { as: 'count' });
+
+        const reposts = await this.db(TABLE_REPOSTS)
+            .where('account_id', account.id)
+            .count('*', { as: 'count' });
+
+        return Number(posts[0].count) + Number(reposts[0].count);
     }
 
     /**
