@@ -40,15 +40,13 @@ Feature: My Posts on Profile
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
     And "AliceNote" is in the posts
-
-  @only
+  
   Scenario: Liked posts are sorted by date descending
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
     And post "1" in the "posts" response is "MyNote2"
     And post "2" in the "posts" response is "MyNote"
 
-  @only
   Scenario: Liked posts are paginated
     Given we create a note "MyNote3" with the content
       """
