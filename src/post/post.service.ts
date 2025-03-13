@@ -462,7 +462,6 @@ export class PostService {
                     query.where('likes.id', '<', cursor);
                 }
             })
-            .where('posts.deleted_at', null)
             .orderBy('likes.id', 'desc')
             .limit(limit + 1);
 

@@ -1702,6 +1702,10 @@ When('we attempt to create a note with invalid content', async function () {
     );
 });
 
+When('We waited for {int} milliseconds', async (milliseconds) => {
+    await new Promise((resolve) => setTimeout(resolve, milliseconds));
+});
+
 When(
     'we create a note {string} with the content',
     async function (noteName, noteContent) {
