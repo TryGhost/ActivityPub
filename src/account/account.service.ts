@@ -300,7 +300,9 @@ export class AccountService {
      */
     async getLikedCount(account: AccountType): Promise<number> {
         const result = await this.db(TABLE_LIKES)
-            .where('account_id', account.id)
+            .join('posts', 'likes.post_id', 'posts.id')
+            .where('likes.account_id', account.id)
+            .whereNull('posts.in_reply_to')
             .count('*', { as: 'count' });
 
         return Number(result[0].count);

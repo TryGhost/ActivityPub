@@ -282,6 +282,7 @@ export class PostService {
                 // Unified `created_at` field for sorting
                 'posts_with_source.created_at',
                 'posts_with_source.deleted_at',
+                'posts_with_source.in_reply_to',
             )
             .from(
                 this.db
@@ -303,6 +304,7 @@ export class PostService {
                         'posts.author_id',
                         'posts.created_at',
                         'posts.deleted_at',
+                        'posts.in_reply_to',
                         this.db.raw('NULL as reposter_id'),
                         this.db.raw(`'original' as source`),
                     )
@@ -328,6 +330,7 @@ export class PostService {
                                 'posts.author_id',
                                 'reposts.created_at AS created_at',
                                 'posts.deleted_at',
+                                'posts.in_reply_to',
                                 'reposts.account_id as reposter_id',
                                 this.db.raw(`'repost' as source`),
                             )
@@ -371,6 +374,7 @@ export class PostService {
                 }
             })
             .where('posts_with_source.deleted_at', null)
+            .where('posts_with_source.in_reply_to', null)
             .orderBy('posts_with_source.created_at', 'desc')
             .limit(limit + 1);
 
@@ -462,6 +466,7 @@ export class PostService {
                     query.where('likes.id', '<', cursor);
                 }
             })
+            .where('posts.in_reply_to', null)
             .orderBy('likes.id', 'desc')
             .limit(limit + 1);
 
