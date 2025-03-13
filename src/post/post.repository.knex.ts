@@ -456,6 +456,11 @@ export class KnexPostRepository {
                             .where({ id: post.inReplyTo });
                     }
 
+                    // Delete likes associated with the deleted post
+                    await transaction('likes')
+                        .where({ post_id: post.id })
+                        .del();
+
                     wasDeleted = true;
                 }
             } else {

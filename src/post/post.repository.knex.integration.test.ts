@@ -262,6 +262,50 @@ describe('KnexPostRepository', () => {
             expect(postRowAfterDelete.reply_count).toBe(0);
         });
 
+        it('Deletes likes when a post is deleted', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-delete-likes.com',
+            );
+            const account = await accountRepository.getBySite(site);
+            const likerAccount = await accountRepository.getBySite(
+                await siteService.initialiseSiteForHost('liker-site.com'),
+            );
+
+            // Create a new post
+            const post = Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: randomUUID(),
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                feature_image: null,
+                url: 'https://testing-delete-likes.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+            });
+
+            // Add a like from another account
+            post.addLike(likerAccount);
+
+            // Save the post with the like
+            await postRepository.save(post);
+
+            // Verify that the like exists in the database
+            const likesBeforeDelete = await client(TABLE_LIKES)
+                .where({ post_id: post.id })
+                .select('*');
+            expect(likesBeforeDelete).toHaveLength(1);
+
+            // Delete the post
+            post.delete(account);
+            await postRepository.save(post);
+
+            // Verify that the like has been removed from the database
+            const likesAfterDelete = await client(TABLE_LIKES)
+                .where({ post_id: post.id })
+                .select('*');
+            expect(likesAfterDelete).toHaveLength(0);
+        });
+
         it('Can handle a new deleted post', async () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-new-deleted.com',
