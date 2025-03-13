@@ -214,6 +214,7 @@ if (process.env.USE_MQ === 'true') {
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
     queue,
+    manuallyStartQueue: process.env.MANUALLY_START_QUEUE === 'true',
     skipSignatureVerification:
         process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
@@ -231,6 +232,14 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
 export const db = await KnexKvStore.create(client, 'key_value');
+
+if (process.env.MANUALLY_START_QUEUE === 'true') {
+    fedify.startQueue({
+        db: scopeKvStore(db, ['UNUSED_HOST']),
+        globaldb: db,
+        logger: logging,
+    });
+}
 
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -551,6 +560,15 @@ app.use(async (ctx, next) => {
     });
 });
 
+// This needs to go before the middleware which loads the site
+// because this endpoint does not require the site to exist
+if (queue instanceof GCloudPubSubPushMessageQueue) {
+    app.post(
+        '/.ghost/activitypub/mq',
+        spanWrapper(createPushMessageHandler(queue, logging)),
+    );
+}
+
 app.use(
     cors({
         origin: (_origin, ctx) => {
@@ -706,15 +724,6 @@ app.use(async (ctx, next) => {
 
     await next();
 });
-
-// This needs to go before the middleware which loads the site
-// because this endpoint does not require the site to exist
-if (queue instanceof GCloudPubSubPushMessageQueue) {
-    app.post(
-        '/.ghost/activitypub/mq',
-        spanWrapper(createPushMessageHandler(queue, logging)),
-    );
-}
 
 app.use(async (ctx, next) => {
     const request = ctx.req;
