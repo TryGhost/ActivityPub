@@ -1,12 +1,11 @@
-import type { Knex } from 'knex';
 import { Article, Note, lookupObject } from '@fedify/fedify';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { PostDTO } from 'http/api/types';
-import type { KnexPostRepository } from './post.repository.knex';
+import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
-
+import type { KnexPostRepository } from './post.repository.knex';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;

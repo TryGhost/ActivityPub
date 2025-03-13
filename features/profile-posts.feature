@@ -17,8 +17,8 @@ Feature: My Posts on Profile
   Scenario: Querying profile posts
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
-    And the "posts" response contains "MyNote"
-    And the "posts" response contains "MyNote2"
+    And "MyNote" is in the posts
+    And "MyNote2" is in the posts
 
   Scenario: My posts does not contain posts from followed accounts
     Given a "Create(Note)" Activity "AliceNote" by "Alice"
@@ -26,9 +26,9 @@ Feature: My Posts on Profile
     And "AliceNote" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
-    And the "posts" response contains "MyNote"
-    And the "posts" response contains "MyNote2"
-    And the "posts" response does not contain "AliceNote"
+    And "MyNote" is in the posts
+    And "MyNote2" is in the posts
+    And "AliceNote" is not in the posts
 
   Scenario: Profile posts includes posts we reposted
     Given a "Create(Note)" Activity "AliceNote" by "Alice"
@@ -37,4 +37,4 @@ Feature: My Posts on Profile
     And we repost the object "AliceNote"
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
-    And the "posts" response contains "AliceNote"
+    And "AliceNote" is in the posts

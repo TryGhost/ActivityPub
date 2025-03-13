@@ -1837,8 +1837,8 @@ When('we request the feed with the next cursor', async function () {
 });
 
 Then(
-    'the {string} response contains {string}',
-    async function (type, activityOrObjectName) {
+    /"([^"]*)" is in the (posts|feed|liked posts)/,
+    async function (activityOrObjectName, responseType) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];
@@ -1852,7 +1852,10 @@ Then(
             found = responseJson.posts.find((post) => post.url === object.id);
         }
 
-        assert(found, `Expected to find ${activityOrObjectName} in ${type}`);
+        assert(
+            found,
+            `Expected to find ${activityOrObjectName} in ${responseType}`,
+        );
     },
 );
 
@@ -1877,8 +1880,8 @@ Then(
 );
 
 Then(
-    'the {string} response does not contain {string}',
-    async function (type, activityOrObjectName) {
+    /"([^"]*)" is not in the (posts|feed|liked posts)/,
+    async function (activityOrObjectName, responseType) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];
@@ -1892,19 +1895,22 @@ Then(
 
         assert(
             !found,
-            `Expected not to find ${activityOrObjectName} in ${type}`,
+            `Expected not to find ${activityOrObjectName} in ${responseType}`,
         );
     },
 );
 
-Then('the {string} response has a next cursor', async function (type) {
-    const responseJson = await this.response.clone().json();
+Then(
+    /the (posts|feed|liked posts) response has a next cursor/,
+    async function (type) {
+        const responseJson = await this.response.clone().json();
 
-    assert(
-        responseJson.next,
-        `Expected ${type} response to have a next cursor`,
-    );
-});
+        assert(
+            responseJson.next,
+            `Expected ${type} response to have a next cursor`,
+        );
+    },
+);
 
 Then(
     'post {string} in the {string} response is {string}',

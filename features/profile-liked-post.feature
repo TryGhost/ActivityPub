@@ -17,8 +17,8 @@ Feature: Liked Posts on Profile
     And the request is accepted
     When an authenticated request is made to "/.ghost/activitypub/posts/liked"
     Then the request is accepted
-    And the "liked posts" response contains "Note1"
-    And the "liked posts" response does not contain "Note2"
+    And "Note1" is in the liked posts
+    And "Note2" is not in the liked posts
 
   Scenario: Liked posts are sorted by date descending
     Given a "Create(Note)" Activity "Note1" by "Alice"
@@ -49,13 +49,13 @@ Feature: Liked Posts on Profile
     And we like the object "Note3"
     When an authenticated request is made to "/.ghost/activitypub/posts/liked?limit=2"
     Then the request is accepted
-    And the "liked posts" response contains "Note3"
-    And the "liked posts" response contains "Note2"
-    And the "liked posts" response does not contain "Note1"
-    And the "liked posts" response has a next cursor
+    And "Note3" is in the liked posts
+    And "Note2" is in the liked posts
+    And "Note1" is not in the liked posts
+    And the liked posts response has a next cursor
     When an authenticated request is made to "/.ghost/activitypub/posts/liked?limit=3"
     Then the request is accepted
-    And the "liked posts" response contains "Note1"
+    And "Note1" is in the liked posts
 
   Scenario: Requests with limit over 100 are rejected
     When an authenticated request is made to "/.ghost/activitypub/posts/liked?limit=200"
@@ -69,4 +69,4 @@ Feature: Liked Posts on Profile
     And we like the object "Note1"
     When an authenticated request is made to "/.ghost/activitypub/posts/liked"
     Then the request is accepted
-    And the "liked posts" response contains "Note1"
+    And "Note1" is in the liked posts
