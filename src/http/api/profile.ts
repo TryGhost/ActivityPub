@@ -8,9 +8,9 @@ import {
     isActor,
 } from '@fedify/fedify';
 
-import type { AccountService } from '../../account/account.service';
-import { type AppContext, fedify } from '../../app';
-import { getActivityChildrenCount, getRepostCount } from '../../db';
+import type { AccountService } from 'account/account.service';
+import { type AppContext, fedify } from 'app';
+import { getActivityChildrenCount, getRepostCount } from 'db';
 import {
     getAttachments,
     getFollowerCount,
@@ -18,11 +18,10 @@ import {
     getHandle,
     isFollowedByDefaultSiteAccount,
     isHandle,
-} from '../../helpers/activitypub/actor';
-import { sanitizeHtml } from '../../helpers/html';
-import { isUri } from '../../helpers/uri';
-import { lookupObject } from '../../lookup-helpers';
-import type { ProfileService } from '../../profile/profile.service';
+} from 'helpers/activitypub/actor';
+import { sanitizeHtml } from 'helpers/html';
+import { isUri } from 'helpers/uri';
+import { lookupObject } from 'lookup-helpers';
 
 interface Profile {
     actor: any;
@@ -31,16 +30,6 @@ interface Profile {
     followingCount: number;
     isFollowing: boolean;
 }
-
-/**
- * Default number of posts to return in a profile
- */
-const DEFAULT_PROFILE_POSTS_LIMIT = 20;
-
-/**
- * Maximum number of posts that can be returned in a profile
- */
-const MAX_PROFILE_POSTS_LIMIT = 100;
 
 /**
  * Create a handler for a request for a profile
@@ -571,106 +560,5 @@ export function createGetProfileFollowingHandler(
             },
             status: 200,
         });
-    };
-}
-
-/**
- * Validates and extracts pagination parameters from the request
- * @param ctx App context
- * @returns Object containing cursor and limit, or null if invalid
- */
-function validateRequestParams(ctx: AppContext) {
-    const queryCursor = ctx.req.query('next');
-    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
-    const queryLimit = ctx.req.query('limit');
-    const limit = queryLimit ? Number(queryLimit) : DEFAULT_PROFILE_POSTS_LIMIT;
-
-    if (limit > MAX_PROFILE_POSTS_LIMIT) {
-        return null;
-    }
-
-    return { cursor, limit };
-}
-
-/**
- * Create a handler to handle a request for a list of posts by an account
- *
- * @param accountService Account service instance
- * @param profileService Profile service instance
- */
-export function createGetPostsHandler(
-    accountService: AccountService,
-    profileService: ProfileService,
-) {
-    /**
-     * Handle a request for a list of posts by an account
-     *
-     * @param ctx App context
-     */
-    return async function handleGetPosts(ctx: AppContext) {
-        const params = validateRequestParams(ctx);
-        if (!params) {
-            return new Response(null, { status: 400 });
-        }
-
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
-        const { results, nextCursor } = await profileService.getPostsByAccount(
-            account.id,
-            params.limit,
-            params.cursor,
-        );
-
-        return new Response(
-            JSON.stringify({
-                posts: results,
-                next: nextCursor,
-            }),
-            { status: 200 },
-        );
-    };
-}
-
-/**
- * Create a handler to handle a request for a list of posts liked by an account
- *
- * @param accountService Account service instance
- * @param profileService Profile service instance
- */
-export function createGetLikedPostsHandler(
-    accountService: AccountService,
-    profileService: ProfileService,
-) {
-    /**
-     * Handle a request for a list of posts liked by an account
-     *
-     * @param ctx App context
-     */
-    return async function handleGetLikedPosts(ctx: AppContext) {
-        const params = validateRequestParams(ctx);
-        if (!params) {
-            return new Response(null, { status: 400 });
-        }
-
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
-
-        const { results, nextCursor } =
-            await profileService.getPostsLikedByAccount(
-                account.id,
-                params.limit,
-                params.cursor,
-            );
-
-        return new Response(
-            JSON.stringify({
-                posts: results,
-                next: nextCursor,
-            }),
-            { status: 200 },
-        );
     };
 }

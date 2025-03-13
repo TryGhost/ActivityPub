@@ -99,9 +99,9 @@ import {
     createDeletePostHandler,
     createGetAccountFollowsHandler,
     createGetAccountHandler,
+    createGetAccountLikedPostsHandler,
+    createGetAccountPostsHandler,
     createGetFeedHandler,
-    createGetLikedPostsHandler,
-    createGetPostsHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
@@ -122,7 +122,6 @@ import {
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
-import { ProfileService } from './profile/profile.service';
 import { type Site, SiteService } from './site/site.service';
 
 const logging = getLogger(['activitypub']);
@@ -249,13 +248,13 @@ const accountService = new AccountService(
 const postService = new PostService(
     postRepository,
     accountService,
+    client,
     fedifyContextFactory,
 );
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
 const feedService = new FeedService(client);
-const profileService = new ProfileService(client);
 const feedUpdateService = new FeedUpdateService(events, feedService);
 feedUpdateService.init();
 
@@ -961,12 +960,12 @@ app.get(
 app.get(
     '/.ghost/activitypub/posts',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetPostsHandler(accountService, profileService)),
+    spanWrapper(createGetAccountPostsHandler(accountService, postService)),
 );
 app.get(
     '/.ghost/activitypub/posts/liked',
     requireRole(GhostRole.Owner),
-    spanWrapper(createGetLikedPostsHandler(accountService, profileService)),
+    spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',

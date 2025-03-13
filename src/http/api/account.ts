@@ -1,13 +1,24 @@
-import type { AccountService } from '../../account/account.service';
-import { getAccountHandle } from '../../account/utils';
-import type { AppContext } from '../../app';
-import { sanitizeHtml } from '../../helpers/html';
+import type { AccountService } from 'account/account.service';
+import { getAccountHandle } from 'account/utils';
+import type { AppContext } from 'app';
+import { sanitizeHtml } from 'helpers/html';
+import type { PostService } from 'post/post.service';
 import type { AccountDTO } from './types';
 
 /**
  * Maximum number of follow accounts to return
  */
 const FOLLOWS_LIMIT = 20;
+
+/**
+ * Default number of posts to return in a profile
+ */
+const DEFAULT_PROFILE_POSTS_LIMIT = 20;
+
+/**
+ * Maximum number of posts that can be returned in a profile
+ */
+const MAX_PROFILE_POSTS_LIMIT = 100;
 
 /**
  * Follow account shape - Used when returning a list of follow accounts
@@ -190,6 +201,107 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
                 },
                 status: 200,
             },
+        );
+    };
+}
+
+/**
+ * Validates and extracts pagination parameters from the request
+ * @param ctx App context
+ * @returns Object containing cursor and limit, or null if invalid
+ */
+function validateRequestParams(ctx: AppContext) {
+    const queryCursor = ctx.req.query('next');
+    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+    const queryLimit = ctx.req.query('limit');
+    const limit = queryLimit ? Number(queryLimit) : DEFAULT_PROFILE_POSTS_LIMIT;
+
+    if (limit > MAX_PROFILE_POSTS_LIMIT) {
+        return null;
+    }
+
+    return { cursor, limit };
+}
+
+/**
+ * Create a handler to handle a request for a list of posts by an account
+ *
+ * @param accountService Account service instance
+ * @param profileService Profile service instance
+ */
+export function createGetAccountPostsHandler(
+    accountService: AccountService,
+    postService: PostService,
+) {
+    /**
+     * Handle a request for a list of posts by an account
+     *
+     * @param ctx App context
+     */
+    return async function handleGetPosts(ctx: AppContext) {
+        const params = validateRequestParams(ctx);
+        if (!params) {
+            return new Response(null, { status: 400 });
+        }
+
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+        const { results, nextCursor } = await postService.getPostsByAccount(
+            account.id,
+            params.limit,
+            params.cursor,
+        );
+
+        return new Response(
+            JSON.stringify({
+                posts: results,
+                next: nextCursor,
+            }),
+            { status: 200 },
+        );
+    };
+}
+
+/**
+ * Create a handler to handle a request for a list of posts liked by an account
+ *
+ * @param accountService Account service instance
+ * @param profileService Profile service instance
+ */
+export function createGetAccountLikedPostsHandler(
+    accountService: AccountService,
+    postService: PostService,
+) {
+    /**
+     * Handle a request for a list of posts liked by an account
+     *
+     * @param ctx App context
+     */
+    return async function handleGetLikedPosts(ctx: AppContext) {
+        const params = validateRequestParams(ctx);
+        if (!params) {
+            return new Response(null, { status: 400 });
+        }
+
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        const { results, nextCursor } =
+            await postService.getPostsLikedByAccount(
+                account.id,
+                params.limit,
+                params.cursor,
+            );
+
+        return new Response(
+            JSON.stringify({
+                posts: results,
+                next: nextCursor,
+            }),
+            { status: 200 },
         );
     };
 }
