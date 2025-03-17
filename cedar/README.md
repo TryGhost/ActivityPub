@@ -90,8 +90,8 @@ docker run -it --rm \
   google/cloud-sdk
 ```
 
-You'll need to run `gcloud auth` to setup your credentials the first
-time.
+You'll need to run `gcloud auth login` to setup your credentials the
+first time.
 
 ### Step 2: Set up your GCP resources
 
