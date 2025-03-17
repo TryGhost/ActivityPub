@@ -204,7 +204,6 @@ describe('FeedService', () => {
         it('should sort feed items by published_at', async () => {
             const feedService = new FeedService(client);
 
-            // Initialise accounts
             const userAccount =
                 await createInternalAccount('sort-test-user.com');
             const followedAccount = await createInternalAccount(
@@ -229,11 +228,9 @@ describe('FeedService', () => {
             });
             await postRepository.save(post2);
 
-            // Add posts to feeds
             await feedService.addPostToFeeds(post1 as PublicPost);
             await feedService.addPostToFeeds(post2 as PublicPost);
 
-            // Add a repost with a later date
             post1.addRepost(userAccount);
             await postRepository.save(post1);
 
@@ -260,12 +257,12 @@ describe('FeedService', () => {
             expect(
                 feed.results.map((post) => ({
                     post_id: post.post_id,
-                    reposted_by_id: post.reposter_id
+                    reposted_by_id: post.reposter_id,
                 })),
             ).toEqual([
                 {
                     post_id: post1.id,
-                    reposted_by_id: userAccount.id
+                    reposted_by_id: userAccount.id,
                 },
                 {
                     post_id: post2.id,

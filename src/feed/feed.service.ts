@@ -1,7 +1,7 @@
-import { TABLE_REPOSTS } from '../constants';
 import { chunk } from 'es-toolkit';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
+import { TABLE_REPOSTS } from '../constants';
 
 import {
     type FollowersOnlyPost,
@@ -151,7 +151,7 @@ export class FeedService {
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Feed fields
                 'feeds.id as feed_id',
-                'feeds.published_at as feed_published_at', // Include the field for sorting and cursor
+                'feeds.published_at as feed_published_at',
             )
             .innerJoin('posts', 'posts.id', 'feeds.post_id')
             .innerJoin(
@@ -247,11 +247,6 @@ export class FeedService {
                 .where('post_id', post.id)
                 .select('created_at')
                 .first();
-
-            console.log(
-                'This is the date: ',
-                repost ? repost.created_at : 'No date',
-            );
         } else {
             // Otherwise, we should add the post to:
             // - The feed of the user associated with the author
@@ -287,7 +282,8 @@ export class FeedService {
 
         const feedEntries = userIds.map((userId) => ({
             post_type: post.type,
-            published_at: repostedBy && repost ? repost.created_at : post.publishedAt,
+            published_at:
+                repostedBy && repost ? repost.created_at : post.publishedAt,
             audience: post.audience,
             user_id: userId,
             post_id: post.id,
