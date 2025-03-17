@@ -2,7 +2,7 @@
 
 set -e
 
-export DATA_DIR=./data/generated_$(date +%Y-%m-%d_%H-%M-%S)
+export DATA_DIR=./data
 
 mkdir -p $DATA_DIR
 
