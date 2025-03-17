@@ -4,7 +4,7 @@ source ./args.sh
 
 DATA_DIR=gs://$BUCKET_NAME/csv
 
-gsutil -m cp ./data-generation/data/gz/* $DATA_DIR 
+gsutil -m cp ./data-generation/data/gz/* $DATA_DIR
 
 gcloud sql import csv $INSTANCE_NAME $DATA_DIR/sites.csv.gz --quiet --database=$DB_NAME --table=sites --columns=internal_id,host,webhook_secret
 gcloud sql import csv $INSTANCE_NAME $DATA_DIR/accounts.csv.gz --quiet --database=$DB_NAME --table=accounts --columns=internal_id,name,username,description,icon

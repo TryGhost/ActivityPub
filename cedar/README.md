@@ -95,12 +95,16 @@ first time.
 
 ### Step 2: Set up your GCP resources
 
-Run the setup script to create a database, a storage bucket, upload
-the schema, and apply it to the database:
+Run the setup script (from within the gcloud Docker container) to
+create a database, a storage bucket, upload the schema, and apply it to
+the database:
 
 ```bash
 ./setup.sh
 ```
+
+The parameters used for setting up the resources can be configured in
+the `args.sh` file.
 
 ### Step 3: Generate data
 
