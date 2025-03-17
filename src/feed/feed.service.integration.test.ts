@@ -200,6 +200,83 @@ describe('FeedService', () => {
                 },
             ]);
         });
+
+        it('should sort feed items by published_at', async () => {
+            const feedService = new FeedService(client);
+
+            // Initialise accounts
+            const userAccount =
+                await createInternalAccount('sort-test-user.com');
+            const followedAccount = await createInternalAccount(
+                'sort-test-followed.com',
+            );
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Create posts with specific dates
+            const post1 = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(post1);
+
+            const post2 = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-02T10:00:00Z'),
+            });
+            await postRepository.save(post2);
+
+            // Add posts to feeds
+            await feedService.addPostToFeeds(post1 as PublicPost);
+            await feedService.addPostToFeeds(post2 as PublicPost);
+
+            // Add a repost with a later date
+            post1.addRepost(userAccount);
+            await postRepository.save(post1);
+
+            // Set repost date
+            await client(TABLE_REPOSTS)
+                .where({ post_id: post1.id, account_id: userAccount.id })
+                .update({ created_at: new Date('2024-01-03T10:00:00Z') });
+
+            await feedService.addPostToFeeds(
+                post1 as PublicPost,
+                userAccount.id,
+            );
+
+            // Get feed and verify order
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            // Should be ordered: repost of post1 (Jan 3), post2 (Jan 2), post1 (Jan 1)
+            expect(feed.results).toHaveLength(3);
+            expect(
+                feed.results.map((post) => ({
+                    post_id: post.post_id,
+                    reposted_by_id: post.reposter_id
+                })),
+            ).toEqual([
+                {
+                    post_id: post1.id,
+                    reposted_by_id: userAccount.id
+                },
+                {
+                    post_id: post2.id,
+                    reposted_by_id: null,
+                },
+                {
+                    post_id: post1.id,
+                    reposted_by_id: null,
+                },
+            ]);
+        });
     });
 
     describe('addPostToFeeds', () => {
