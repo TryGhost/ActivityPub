@@ -20,6 +20,12 @@ imported into a database.
 Adjust the `config.js` file to set the parameters used to control the
 size of the data set that will be generated.
 
+### Install dependencies
+
+```bash
+npm install
+```
+
 ### Generate base data
 
 ```bash
@@ -82,6 +88,7 @@ provided Docker container:
 ```
 
 This runs:
+
 ```bash
 docker run -it --rm \
   -v $HOME/.config/gcloud:/root/.config/gcloud \
@@ -95,13 +102,15 @@ first time.
 
 ### Step 2: Set up your GCP resources
 
-Run the setup script (from within the gcloud Docker container) to
-create a database, a storage bucket, upload the schema, and apply it to
-the database:
+Run the setup script to create a database, a storage bucket, upload the schema, 
+and apply it to the database:
 
 ```bash
 ./setup.sh
 ```
+
+Run this from within the gcloud Docker container if you're using the `gcloud.sh`
+script noted above.
 
 The parameters used for setting up the resources can be configured in
 the `args.sh` file.
@@ -113,13 +122,17 @@ section above to create your data files.
 
 ### Step 4: Upload data to GCP
 
-Upload and import the compressed data files to your GCP storage bucket:
+Upload the compressed data files to your GCP storage bucket and import them
+into the database:
 
 ```bash
 ./upload-data.sh
 ```
 
-### Step 6: Run queries
+Run this from within the gcloud Docker container if you're using the `gcloud.sh`
+script noted above.
+
+### Step 5: Run queries
 
 After importing, you can use the query runner as described in the next
 section.
@@ -153,6 +166,17 @@ accurate test is to run this as a Cloud Run Job in GCP.
 **Note:** For local testing, you may need to remove the platform
 specification (`--platform=linux/amd64`) from the first line of the
 Dockerfile.
+
+**Prerequisite:** Ensure you have a local MySQL instance running that you
+can connect to using the `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`,
+and `MYSQL_DATABASE` environment variables defined in commands below. The database
+will need to have the schema stored in `schema` applied to it. The database will
+need to have the data files generated previously imported into it.
+
+Install dependencies:
+```bash
+yarn install
+```
 
 Build the local image:
 ```bash
