@@ -109,18 +109,10 @@ section above to create your data files.
 
 ### Step 4: Upload data to GCP
 
-Upload the compressed data files to your GCP storage bucket:
+Upload and import the compressed data files to your GCP storage bucket:
 
 ```bash
 ./upload-data.sh
-```
-
-### Step 5: Import data to your database
-
-Import the uploaded data into your GCP database:
-
-```bash
-./import-data.sh
 ```
 
 ### Step 6: Run queries
