@@ -150,7 +150,6 @@ export class FeedService {
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Feed fields
-                'feeds.id as feed_id',
                 'feeds.published_at as feed_published_at',
             )
             .innerJoin('posts', 'posts.id', 'feeds.post_id')
