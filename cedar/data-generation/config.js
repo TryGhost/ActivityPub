@@ -1,7 +1,6 @@
 const SCALING_FACTOR = 1;
 
 const DATA_DIR = process.env.DATA_DIR || './data';
-console.log(`Using data dir: ${DATA_DIR}`);
 
 const NUM_SITES = Math.round(60_000 * SCALING_FACTOR);
 const NUM_USERS = Math.round(300_000 * SCALING_FACTOR);
