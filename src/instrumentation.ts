@@ -48,6 +48,35 @@ export function spanWrapper<TArgs extends unknown[], TReturn>(
     fn: (...args: TArgs) => TReturn,
 ) {
     return (...args: TArgs) => {
+        const potentialContext = args[0];
+        if (
+            potentialContext &&
+            typeof potentialContext === 'object' &&
+            'req' in potentialContext
+        ) {
+            if (
+                potentialContext.req &&
+                typeof potentialContext.req === 'object' &&
+                'routePath' in potentialContext.req &&
+                'method' in potentialContext.req
+            ) {
+                if (
+                    typeof potentialContext.req.routePath === 'string' &&
+                    typeof potentialContext.req.method === 'string'
+                ) {
+                    const currentSpan = Sentry.getActiveSpan();
+                    if (currentSpan) {
+                        Sentry.updateSpanName(
+                            currentSpan,
+                            `${potentialContext.req.method} ${potentialContext.req.routePath}`,
+                        );
+                        currentSpan.setAttributes({
+                            'http.route': potentialContext.req.routePath,
+                        });
+                    }
+                }
+            }
+        }
         return Sentry.startSpan(
             {
                 op: 'fn',
