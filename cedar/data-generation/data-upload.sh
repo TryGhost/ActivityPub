@@ -34,3 +34,14 @@ for file in $(gsutil ls $DATA_DIR | grep 'feeds_.*\.csv'); do
         --quiet \
         $file
 done
+
+for file in $(gsutil ls $DATA_DIR | grep 'follows_notifications_.*\.csv'); do
+    echo "Importing $file..."
+
+    gcloud sql import csv $INSTANCE \
+        --database=$DATABASE \
+        --table=notifications \
+        --columns=user_id,account_id,event_type \
+        --quiet \
+        $file
+done

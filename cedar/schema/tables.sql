@@ -66,3 +66,17 @@ CREATE TABLE follows (
     FOREIGN KEY (follower_id) REFERENCES accounts(internal_id) ON DELETE CASCADE,
     FOREIGN KEY (following_id) REFERENCES accounts(internal_id) ON DELETE CASCADE
 );
+
+CREATE TABLE notifications (
+    internal_id INT AUTO_INCREMENT PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    event_type TINYINT UNSIGNED NOT NULL, -- 1=LIKE, 2=REPOST, 3=REPLY, 4=FOLLOW
+    user_id INT NOT NULL, -- The user the notification is for
+    account_id INT NOT NULL, -- The account that "did" the notification
+    post_id INT NULL, -- NULL for FOLLOW events
+    reply_post_id INT NULL, -- NULL for non-reply events
+    FOREIGN KEY (user_id) REFERENCES users(internal_id) ON DELETE CASCADE,
+    FOREIGN KEY (account_id) REFERENCES accounts(internal_id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(internal_id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_post_id) REFERENCES posts(internal_id) ON DELETE CASCADE
+);

@@ -8,9 +8,10 @@ count_lines() {
     fi
 }
 
-echo "Sites    = $(count_lines './data/sites.csv')"
-echo "Accounts = $(count_lines './data/accounts.csv')"
-echo "Users    = $(count_lines './data/users.csv')"
-echo "Posts    = $(count_lines './data/posts.csv')"
-echo "Follows  = $(count_lines './data/follows_*.csv')"
-echo "Feeds    = $(count_lines './data/feeds_*.csv')"
+echo "Sites         = $(count_lines './data/sites.csv')"
+echo "Accounts      = $(count_lines './data/accounts.csv')"
+echo "Users         = $(count_lines './data/users.csv')"
+echo "Posts         = $(count_lines './data/posts.csv')"
+echo "Follows       = $(count_lines './data/follows_*.csv')"
+echo "Feeds         = $(count_lines './data/feeds_*.csv')"
+echo "Notifications = $(count_lines './data/follows_notifications_*.csv')"
