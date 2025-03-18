@@ -1,4 +1,4 @@
-ALTER TABLE feeds ADD COLUMN published_at TIMESTAMP;
+ALTER TABLE feeds ADD COLUMN published_at TIMESTAMP DEFAULT '2020-01-01 00:00:00';
 
 UPDATE feeds
 JOIN posts ON feeds.post_id = posts.id
