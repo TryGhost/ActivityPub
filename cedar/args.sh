@@ -1,0 +1,5 @@
+INSTANCE_NAME="cedar-test-db"
+TIER="db-f1-micro"
+REGION="us-central1"
+DB_NAME="activitypub"
+BUCKET_NAME="cedar-test-data"
