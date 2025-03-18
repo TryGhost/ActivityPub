@@ -252,9 +252,9 @@ export class PostService {
                 'profile_posts.like_count as post_like_count',
                 this.db.raw(
                     `CASE 
-                WHEN likes.post_id IS NOT NULL THEN 1 
-                ELSE 0 
-            END AS post_liked_by_user`,
+                            WHEN likes.post_id IS NOT NULL THEN 1 
+                            ELSE 0 
+                        END AS post_liked_by_user`,
                 ),
                 'profile_posts.reply_count as post_reply_count',
                 'profile_posts.reading_time_minutes as post_reading_time_minutes',
@@ -262,9 +262,9 @@ export class PostService {
                 'profile_posts.repost_count as post_repost_count',
                 this.db.raw(
                     `CASE 
-                WHEN user_reposts.post_id IS NOT NULL THEN 1 
-                ELSE 0 
-            END AS post_reposted_by_user`,
+                            WHEN user_reposts.post_id IS NOT NULL THEN 1 
+                            ELSE 0 
+                        END AS post_reposted_by_user`,
                 ),
                 'profile_posts.ap_id as post_ap_id',
                 // Author fields (Who originally created the post)
@@ -363,10 +363,7 @@ export class PostService {
                 );
             })
             .leftJoin('reposts as user_reposts', function () {
-                this.on(
-                    'user_reposts.post_id',
-                    'profile_posts.id',
-                ).andOnVal(
+                this.on('user_reposts.post_id', 'profile_posts.id').andOnVal(
                     'user_reposts.account_id',
                     '=',
                     accountId.toString(),
@@ -374,11 +371,7 @@ export class PostService {
             })
             .modify((query) => {
                 if (cursor) {
-                    query.where(
-                        'profile_posts.published_date',
-                        '<',
-                        cursor,
-                    );
+                    query.where('profile_posts.published_date', '<', cursor);
                 }
             })
             .where('profile_posts.deleted_at', null)
