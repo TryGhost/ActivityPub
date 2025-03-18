@@ -223,6 +223,8 @@ export class FeedService {
             return [];
         }
 
+        let repost: { created_at: Date } | null = null;
+
         if (repostedBy) {
             // If the post is a repost, we should add the it to:
             // - The feed of the user associated with the account that reposted the post
@@ -237,6 +239,12 @@ export class FeedService {
             }
 
             followersAccountId = repostedBy;
+
+            repost = await this.db('reposts')
+                .where('account_id', repostedBy)
+                .where('post_id', post.id)
+                .select('created_at')
+                .first();
         } else {
             // Otherwise, we should add the post to:
             // - The feed of the user associated with the author
@@ -272,6 +280,8 @@ export class FeedService {
 
         const feedEntries = userIds.map((userId) => ({
             post_type: post.type,
+            published_at:
+                repostedBy && repost ? repost.created_at : post.publishedAt,
             audience: post.audience,
             user_id: userId,
             post_id: post.id,
