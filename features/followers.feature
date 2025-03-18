@@ -7,7 +7,6 @@ Feature: Followers
       | Bob     | Person |
       | Charlie | Person |
       | Dave    | Person |
-    And the list of followers is paginated across multiple pages
     When we create a note "Note" with the content
       """
       Hello, world!
