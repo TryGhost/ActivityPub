@@ -1,5 +1,5 @@
-INSTANCE_NAME="cedar-test-db"
+INSTANCE_NAME="cedar-test-db-mb170325"
 TIER="db-f1-micro"
 REGION="us-central1"
 DB_NAME="activitypub"
-BUCKET_NAME="cedar-test-data"
+BUCKET_NAME="cedar-test-data-mb170325"

@@ -1,4 +1,4 @@
-const SCALING_FACTOR = 1;
+const SCALING_FACTOR = 0.01;
 
 const DATA_DIR = process.env.DATA_DIR || './data';
 
