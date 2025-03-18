@@ -528,6 +528,79 @@ describe('FeedService', () => {
                 await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(0);
         }, 10000);
+
+        it('should use repost timestamp as published_at when post is a reposted', async () => {
+            const feedService = new FeedService(client);
+            const originalPublishDate = new Date('2024-01-01T00:00:00Z');
+            const repostDate = new Date('2024-02-01T00:00:00Z');
+
+            // Create test accounts
+            const authorAccount = await createInternalAccount('author.com');
+            const repostingAccount =
+                await createInternalAccount('reposter.com');
+
+            // Create test post
+            const post = await createPost(authorAccount, {
+                publishedAt: originalPublishDate,
+                type: PostType.Note,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Create repost record
+            await client('reposts').insert({
+                account_id: repostingAccount.id,
+                post_id: post.id,
+                created_at: repostDate,
+            });
+
+            // Add post to feeds through repost
+            await feedService.addPostToFeeds(
+                post as PublicPost,
+                repostingAccount.id,
+            );
+
+            // Verify feed entry
+            const feedEntry = await client('feeds')
+                .where({
+                    post_id: post.id,
+                    reposted_by_id: repostingAccount.id,
+                })
+                .first();
+
+            expect(feedEntry).toBeTruthy();
+            expect(feedEntry.published_at).toEqual(repostDate);
+        }, 10000);
+
+        it('should use original published_at timestamp when post is not reposted', async () => {
+            const feedService = new FeedService(client);
+            const originalPublishDate = new Date('2024-01-01T00:00:00Z');
+
+            // Create test account
+            const authorAccount = await createInternalAccount('author.com');
+
+            // Create test post
+            const post = await createPost(authorAccount, {
+                publishedAt: originalPublishDate,
+                type: PostType.Note,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Add post to feeds normally (not reposted)
+            await feedService.addPostToFeeds(post as PublicPost);
+
+            // Verify feed entry
+            const feedEntry = await client('feeds')
+                .where({
+                    post_id: post.id,
+                    reposted_by_id: null,
+                })
+                .first();
+
+            expect(feedEntry).toBeTruthy();
+            expect(feedEntry.published_at).toEqual(originalPublishDate);
+        }, 10000);
     });
 
     describe('removePostFromFeeds', () => {
