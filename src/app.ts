@@ -908,12 +908,10 @@ app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner),
     spanWrapper(
-        spanWrapper(
-            createRepostActionHandler(
-                accountRepository,
-                postService,
-                postRepository,
-            ),
+        createRepostActionHandler(
+            accountRepository,
+            postService,
+            postRepository,
         ),
     ),
 );
