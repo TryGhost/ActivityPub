@@ -280,7 +280,7 @@ export class PostService {
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Unified `published_at` field for sorting
-                'posts_with_source.published_at',
+                'posts_with_source.published_date',
                 'posts_with_source.deleted_at',
                 'posts_with_source.in_reply_to',
             )
@@ -374,11 +374,16 @@ export class PostService {
             })
             .modify((query) => {
                 if (cursor) {
-                    query.where('profile_posts.published_date', '<', cursor);
+                    query.where(
+                        'posts_with_source.published_date',
+                        '<',
+                        cursor,
+                    );
                 }
             })
             .where('posts_with_source.deleted_at', null)
             .where('posts_with_source.in_reply_to', null)
+            .orderBy('posts_with_source.published_date', 'desc')
             .limit(limit + 1);
 
         const results = await query;
