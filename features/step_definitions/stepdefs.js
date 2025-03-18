@@ -289,7 +289,7 @@ function generateObject(type, content) {
             to: 'as:Public',
             cc: 'http://fake-external-activitypub/followers',
             content: content ?? '<p>This is a test article</p>',
-            published: new Date(Date.now() - 1000),
+            published: new Date(),
             attributedTo: 'http://fake-external-activitypub/user',
         };
     }
@@ -307,7 +307,7 @@ function generateObject(type, content) {
             to: 'as:Public',
             cc: 'http://fake-external-activitypub/followers',
             content: content ?? '<p>This is a test note</p>',
-            published: new Date(Date.now() - 1000),
+            published: new Date(),
             attributedTo: 'http://fake-external-activitypub/user',
         };
     }
