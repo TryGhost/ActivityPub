@@ -149,7 +149,7 @@ export class FeedService {
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Feed fields
-                'feeds.id as feed_id',
+                'feeds.published_at as feed_published_at',
             )
             .innerJoin('posts', 'posts.id', 'feeds.post_id')
             .innerJoin(
@@ -180,10 +180,10 @@ export class FeedService {
             .where('feeds.post_type', postType)
             .modify((query) => {
                 if (options.cursor) {
-                    query.where('feeds.id', '<', options.cursor);
+                    query.where('feeds.published_at', '<', options.cursor);
                 }
             })
-            .orderBy('feeds.id', 'desc')
+            .orderBy('feeds.published_at', 'desc')
             .limit(options.limit + 1);
 
         const results = await query;
@@ -199,7 +199,7 @@ export class FeedService {
                     post_content: sanitizeHtml(item.post_content ?? ''),
                 };
             }),
-            nextCursor: hasMore ? lastResult.feed_id.toString() : null,
+            nextCursor: hasMore ? lastResult.feed_published_at : null,
         };
     }
 
