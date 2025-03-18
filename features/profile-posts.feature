@@ -16,14 +16,12 @@ Feature: My Posts on Profile
     And We waited for 1000 milliseconds
     And we are following "Alice"
 
-  @only
   Scenario: Querying profile posts
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
     And "MyNote" is in the posts
     And "MyNote2" is in the posts
 
-  @only
   Scenario: My posts does not contain posts from followed accounts
     Given a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
@@ -34,7 +32,6 @@ Feature: My Posts on Profile
     And "MyNote2" is in the posts
     And "AliceNote" is not in the posts
 
-  @only
   Scenario: Profile posts includes posts we reposted
     Given a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
@@ -44,14 +41,12 @@ Feature: My Posts on Profile
     Then the request is accepted
     And "AliceNote" is in the posts
 
-  @only
   Scenario: Profile posts are sorted by date descending
     When an authenticated request is made to "/.ghost/activitypub/posts"
     Then the request is accepted
     And post "1" in the "posts" response is "MyNote2"
     And post "2" in the "posts" response is "MyNote"
 
-  @only
   Scenario: Profile posts are paginated
     Given we create a note "MyNote3" with the content
       """
