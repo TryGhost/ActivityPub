@@ -34,6 +34,7 @@ import {
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
+import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
@@ -56,14 +57,12 @@ import {
     createAnnounceHandler,
     createDispatcher,
     createFollowHandler,
-    createFollowersCounter,
     createFollowersDispatcher,
     createFollowingCounter,
     createFollowingDispatcher,
     createLikeHandler,
     createUndoHandler,
     followDispatcher,
-    followersFirstCursor,
     followingFirstCursor,
     inboxErrorHandler,
     keypairDispatcher,
@@ -254,6 +253,8 @@ const accountService = new AccountService(
     fedifyContextFactory,
 );
 
+const followersService = new FollowersService(client);
+
 const postService = new PostService(
     postRepository,
     accountService,
@@ -390,13 +391,16 @@ inboxListener
     )
     .onError(inboxErrorHandler);
 
-fedify
-    .setFollowersDispatcher(
-        '/.ghost/activitypub/followers/{handle}',
-        spanWrapper(createFollowersDispatcher(siteService, accountService)),
-    )
-    .setCounter(createFollowersCounter(siteService, accountService))
-    .setFirstCursor(followersFirstCursor);
+fedify.setFollowersDispatcher(
+    '/.ghost/activitypub/followers/{handle}',
+    spanWrapper(
+        createFollowersDispatcher(
+            siteService,
+            accountRepository,
+            followersService,
+        ),
+    ),
+);
 
 fedify
     .setFollowingDispatcher(

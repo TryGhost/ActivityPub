@@ -807,24 +807,6 @@ Given('we are followed by:', async function (actors) {
     }
 });
 
-Given('the list of followers is paginated across multiple pages', async () => {
-    const followersResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
-    );
-    const followersResponseJson = await followersResponse.json();
-
-    const followersFirstPageReponse = await fetchActivityPub(
-        followersResponseJson.first,
-    );
-    const followersFirstPageReponseJson =
-        await followersFirstPageReponse.json();
-
-    assert(
-        followersFirstPageReponseJson.next,
-        'Expected multiple pages of pagination but only got 1',
-    );
-});
-
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
@@ -962,12 +944,20 @@ async function getObjectInCollection(objectName, collectionType) {
         },
     );
     const initialResponseJson = await initialResponse.json();
-    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
-        headers: {
-            Accept: 'application/ld+json',
-        },
-    });
-    const collection = await firstPageReponse.json();
+
+    let collection = initialResponseJson;
+
+    if (initialResponseJson.first) {
+        const firstPageReponse = await fetchActivityPub(
+            initialResponseJson.first,
+            {
+                headers: {
+                    Accept: 'application/ld+json',
+                },
+            },
+        );
+        collection = await firstPageReponse.json();
+    }
 
     const object = this.objects[objectName] || this.actors[objectName];
 
@@ -1332,34 +1322,13 @@ Then(
 Then(
     'Activity {string} is sent to all followers',
     async function (activityName) {
-        // Retrieve all followers
-        const followers = [];
-
         const followersResponse = await fetchActivityPub(
             'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
         );
         const followersResponseJson = await followersResponse.json();
 
-        const followersFirstPageResponse = await fetchActivityPub(
-            followersResponseJson.first,
-        );
-        const followersFirstPageResponseJson =
-            await followersFirstPageResponse.json();
+        const followers = followersResponseJson.orderedItems;
 
-        followers.push(...followersFirstPageResponseJson.orderedItems);
-
-        let nextPage = followersFirstPageResponseJson.next;
-
-        while (nextPage) {
-            const nextPageResponse = await fetchActivityPub(nextPage);
-            const nextPageResponseJson = await nextPageResponse.json();
-
-            followers.push(...nextPageResponseJson.orderedItems);
-
-            nextPage = nextPageResponseJson.next;
-        }
-
-        // Check that the activity was sent to all followers
         const activity = this.activities[activityName];
 
         for (const followerUrl of followers) {
@@ -1586,16 +1555,7 @@ Then('{string} is in our Followers', async function (actorName) {
             },
         },
     );
-    const initialResponseJson = await initialResponse.json();
-    const firstPageResponse = await fetchActivityPub(
-        initialResponseJson.first,
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const followers = await firstPageResponse.json();
+    const followers = await initialResponse.json();
 
     const actor = this.actors[actorName];
 
@@ -1615,16 +1575,7 @@ Then('{string} is in our Followers once only', async function (actorName) {
             },
         },
     );
-    const initialResponseJson = await initialResponse.json();
-    const firstPageResponse = await fetchActivityPub(
-        initialResponseJson.first,
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const followers = await firstPageResponse.json();
+    const followers = await initialResponse.json();
     const actor = this.actors[actorName];
     const found = (followers.orderedItems || []).filter(
         (item) => item === actor.id,

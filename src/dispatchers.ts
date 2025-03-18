@@ -19,6 +19,8 @@ import {
     verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
+import type { KnexAccountRepository } from 'account/account.repository.knex';
+import type { FollowersService } from 'activitypub/followers.service';
 import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
@@ -703,97 +705,26 @@ export async function inboxErrorHandler(
 
 export function createFollowersDispatcher(
     siteService: SiteService,
-    accountService: AccountService,
+    accountRepository: KnexAccountRepository,
+    followersService: FollowersService,
 ) {
     return async function dispatchFollowers(
         ctx: Context<ContextData>,
         handle: string,
-        cursor: string | null,
     ) {
-        ctx.data.logger.info('Followers Dispatcher');
-
-        if (cursor === null) {
-            ctx.data.logger.info('No cursor provided, returning early');
-
-            return null;
-        }
-
-        const pageSize = Number.parseInt(
-            process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-        );
-
-        if (Number.isNaN(pageSize)) {
-            throw new Error(`Page size: ${pageSize} is not valid`);
-        }
-
-        const offset = Number.parseInt(cursor ?? '0');
-        let nextCursor: string | null = null;
-
         const site = await siteService.getSiteByHost(ctx.host);
         if (!site) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const account = await accountRepository.getBySite(site);
 
-        const results = await accountService.getFollowerAccounts(
-            siteDefaultAccount,
-            {
-                fields: ['ap_id', 'ap_inbox_url', 'ap_shared_inbox_url'],
-                limit: pageSize,
-                offset,
-            },
-        );
-        const totalFollowers =
-            await accountService.getFollowerAccountsCount(siteDefaultAccount);
-
-        nextCursor =
-            totalFollowers > offset + pageSize
-                ? (offset + pageSize).toString()
-                : null;
-
-        ctx.data.logger.info('Followers results', { results });
+        const followers = await followersService.getFollowers(account.id);
 
         return {
-            items: results.map((result) => ({
-                id: new URL(result.ap_id),
-                inboxId: new URL(result.ap_inbox_url),
-                sharedInboxId: result.ap_shared_inbox_url
-                    ? new URL(result.ap_shared_inbox_url)
-                    : null,
-            })),
-            nextCursor,
+            items: followers,
         };
     };
-}
-
-export function createFollowersCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
-    return async function countFollowers(
-        ctx: RequestContext<ContextData>,
-        handle: string,
-    ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
-
-        return await accountService.getFollowerAccountsCount(
-            siteDefaultAccount,
-        );
-    };
-}
-
-export function followersFirstCursor() {
-    return '0';
 }
 
 export function createFollowingDispatcher(
