@@ -547,6 +547,9 @@ app.use(async (ctx, next) => {
                         attributes: {
                             ...extra,
                             'service.name': 'activitypub',
+                            'service.host': ctx.req.header('host'),
+                            'http.req.path': ctx.req.path,
+                            'http.route': ctx.req.path,
                         },
                     },
                     () => {
