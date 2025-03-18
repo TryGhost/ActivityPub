@@ -22,6 +22,7 @@ Feature: Feed
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
+    And We waited for 1000 milliseconds
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
     And "Note2" is in our Inbox
@@ -34,9 +35,11 @@ Feature: Feed
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
+    And We waited for 1000 milliseconds
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
     And "Note2" is in our Inbox
+    And We waited for 1000 milliseconds
     And a "Create(Note)" Activity "Note3" by "Alice"
     And "Alice" sends "Note3" to the Inbox
     And "Note3" is in our Inbox
