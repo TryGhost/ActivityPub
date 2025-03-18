@@ -1002,17 +1002,19 @@ app.delete(
 /** Federation wire up */
 
 app.use(
-    federation(
-        fedify,
-        (
-            ctx: HonoContext<{ Variables: HonoContextVariables }>,
-        ): ContextData => {
-            return {
-                db: ctx.get('db'),
-                globaldb: ctx.get('globaldb'),
-                logger: ctx.get('logger'),
-            };
-        },
+    spanWrapper(
+        federation(
+            fedify,
+            (
+                ctx: HonoContext<{ Variables: HonoContextVariables }>,
+            ): ContextData => {
+                return {
+                    db: ctx.get('db'),
+                    globaldb: ctx.get('globaldb'),
+                    logger: ctx.get('logger'),
+                };
+            },
+        ),
     ),
 );
 
