@@ -59,6 +59,7 @@ export function sanitizeHtml(content: string): string {
             'ruby',
             's',
             'samp',
+            'script',
             'small',
             'span',
             'strong',
@@ -195,7 +196,11 @@ export function sanitizeHtml(content: string): string {
             g: ['transform'],
             defs: [],
             style: ['type'],
+            iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen'],
+            script: ['src', 'async', 'charset'],
         },
+        allowedScriptDomains: ['twitter.com'],
+        allowedScriptHostnames: ['platform.twitter.com'],
     });
 }
 
