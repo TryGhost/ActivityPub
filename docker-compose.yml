@@ -16,8 +16,10 @@ services:
       - USE_MQ=true
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub:8085
-      - MQ_PUBSUB_TOPIC_NAME=activitypub_topic_changeme
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=activitypub_subscription_changeme
+      - MQ_PUBSUB_TOPIC_NAME=fedify-topic
+      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
+      - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
+      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
     command: yarn build:watch
     depends_on:
@@ -85,9 +87,12 @@ services:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
     environment:
       - PROJECT_ID=activitypub
-      - TOPIC_NAME=activitypub_topic_changeme
-      - SUBSCRIPTION_NAME=activitypub_subscription_changeme
-      - PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
+      - FEDIFY_TOPIC_NAME=fedify-topic
+      - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
+      - GHOST_TOPIC_NAME=ghost-topic
+      - GHOST_SUBSCRIPTION_NAME=ghost-subscription
+      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
@@ -115,8 +120,10 @@ services:
       - USE_MQ=true
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub-testing:8085
-      - MQ_PUBSUB_TOPIC_NAME=activitypub_topic_changeme
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=activitypub_subscription_changeme
+      - MQ_PUBSUB_TOPIC_NAME=fedify-topic
+      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
+      - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
+      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
     command: yarn build:watch
     depends_on:
@@ -185,9 +192,12 @@ services:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
     environment:
       - PROJECT_ID=activitypub
-      - TOPIC_NAME=activitypub_topic_changeme
-      - SUBSCRIPTION_NAME=activitypub_subscription_changeme
-      - PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
+      - FEDIFY_TOPIC_NAME=fedify-topic
+      - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
+      - GHOST_TOPIC_NAME=ghost-topic
+      - GHOST_SUBSCRIPTION_NAME=ghost-subscription
+      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
