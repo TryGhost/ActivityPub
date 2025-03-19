@@ -3,7 +3,9 @@ import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import {
+    After,
     AfterAll,
     Before,
     BeforeAll,
@@ -16,6 +18,7 @@ import { merge } from 'es-toolkit';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
 import jose from 'node-jose';
+import sinon from 'sinon';
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
 
@@ -419,6 +422,24 @@ let /* @type Knex */ client;
 let /* @type WireMock */ externalActivityPub;
 let /* @type WireMock */ ghostActivityPub;
 let webhookSecret;
+
+let clock = null;
+
+Before(() => {
+    if (!clock) {
+        clock = sinon.useFakeTimers({
+            now: Date.now(),
+            toFake: ['Date'],
+        });
+    }
+});
+
+After(() => {
+    if (clock) {
+        clock.restore();
+        clock = null;
+    }
+});
 
 BeforeAll(async () => {
     client = Knex({
@@ -1655,6 +1676,10 @@ When('we attempt to create a note with invalid content', async function () {
 
 When('We waited for {int} milliseconds', async (milliseconds) => {
     await new Promise((resolve) => setTimeout(resolve, milliseconds));
+});
+
+When('fake timer advances time by {int} milliseconds', async (milliseconds) => {
+    await clock.tickAsync(milliseconds);
 });
 
 When(
