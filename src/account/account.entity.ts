@@ -73,7 +73,7 @@ export class Account extends BaseEntity {
         }
 
         return new URL(
-            `.ghost/activitypub/users/${this.username}`,
+            `.ghost/activitypub/users/${this.uuid}`,
             `${Account.protocol}://${this.site!.host}`,
         );
     }
@@ -84,7 +84,7 @@ export class Account extends BaseEntity {
         }
 
         return new URL(
-            `.ghost/activitypub/followers/${this.username}`,
+            `.ghost/activitypub/followers/${this.uuid}`,
             `${Account.protocol}://${this.site!.host}`,
         );
     }

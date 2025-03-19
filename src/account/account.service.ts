@@ -108,22 +108,23 @@ export class AccountService {
         const keyPair = await this.generateKeyPair();
         const username = internalAccountData.username;
 
+        const uuid = randomUUID();
         const accountData = {
             name: internalAccountData.name || ACTOR_DEFAULT_NAME,
-            uuid: randomUUID(),
+            uuid: uuid,
             username: username,
             bio: internalAccountData.bio || ACTOR_DEFAULT_SUMMARY,
             avatar_url: internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
             banner_image_url: null,
             url: `https://${site.host}`,
             custom_fields: null,
-            ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
-            ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+            ap_id: `https://${site.host}${AP_BASE_PATH}/users/${uuid}`,
+            ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${uuid}`,
             ap_shared_inbox_url: null,
-            ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
-            ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
-            ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
-            ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+            ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${uuid}`,
+            ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${uuid}`,
+            ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${uuid}`,
+            ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${uuid}`,
             ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
         };
