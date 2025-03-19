@@ -62,7 +62,7 @@ export const actorDispatcher = (
             followers: new URL(account.ap_followers_url),
             liked: new URL(account.ap_liked_url),
             url: new URL(account.url || account.ap_id),
-            publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+            publicKeys: (await ctx.getActorKeyPairs(account.uuid)).map(
                 (key) => key.cryptographicKey,
             ),
         });

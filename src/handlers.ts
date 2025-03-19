@@ -572,7 +572,7 @@ export function createFollowActionHandler(accountService: AccountService) {
 }
 
 export const getSiteDataHandler =
-    (siteService: SiteService) =>
+    (siteService: SiteService, accountService: AccountService) =>
     async (ctx: Context<{ Variables: HonoContextVariables }>) => {
         const request = ctx.req;
         const host = request.header('host');
@@ -593,7 +593,9 @@ export const getSiteDataHandler =
         const site = await siteService.initialiseSiteForHost(host);
 
         // This is to ensure that the actor exists - e.g. for a brand new a site
-        await getUserData(apCtx, handle);
+        const account = await accountService.getDefaultAccountForSite(site);
+        const uuid = account.uuid;
+        await getUserData(apCtx, handle, uuid);
 
         await updateSiteActor(apCtx, getSiteSettings);
 

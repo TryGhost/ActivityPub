@@ -15,6 +15,7 @@ import {
 
 export type PersonData = {
     id: string;
+    uuid: string;
     name: string;
     summary: string;
     preferredUsername: string;
@@ -29,6 +30,7 @@ export type PersonData = {
 
 export type UserData = {
     id: URL;
+    uuid: string;
     name: string;
     summary: string;
     preferredUsername: string;
@@ -45,6 +47,7 @@ export type UserData = {
 export async function getUserData(
     ctx: Context<ContextData>,
     handle: string,
+    uuid: string,
 ): Promise<UserData> {
     const existing = await ctx.data.db.get<PersonData>(['handle', handle]);
 
@@ -73,6 +76,7 @@ export async function getUserData(
         try {
             return {
                 id: new URL(existing.id),
+                uuid: existing.uuid,
                 name: existing.name,
                 summary: existing.summary,
                 preferredUsername: existing.preferredUsername,
@@ -83,8 +87,8 @@ export async function getUserData(
                 followers: new URL(existing.followers),
                 liked: existing.liked
                     ? new URL(existing.liked)
-                    : ctx.getLikedUri(handle),
-                publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+                    : ctx.getLikedUri(existing.uuid),
+                publicKeys: (await ctx.getActorKeyPairs(existing.uuid)).map(
                     (key) => key.cryptographicKey,
                 ),
                 url,
@@ -98,17 +102,18 @@ export async function getUserData(
     }
 
     const data = {
-        id: ctx.getActorUri(handle),
+        id: ctx.getActorUri(uuid),
+        uuid,
         name: ACTOR_DEFAULT_NAME,
         summary: ACTOR_DEFAULT_SUMMARY,
         preferredUsername: handle,
         icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
-        inbox: ctx.getInboxUri(handle),
-        outbox: ctx.getOutboxUri(handle),
-        following: ctx.getFollowingUri(handle),
-        followers: ctx.getFollowersUri(handle),
-        liked: ctx.getLikedUri(handle),
-        publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+        inbox: ctx.getInboxUri(uuid),
+        outbox: ctx.getOutboxUri(uuid),
+        following: ctx.getFollowingUri(uuid),
+        followers: ctx.getFollowersUri(uuid),
+        liked: ctx.getLikedUri(uuid),
+        publicKeys: (await ctx.getActorKeyPairs(uuid)).map(
             (key) => key.cryptographicKey,
         ),
         url: new URL(`https://${ctx.host}`),
@@ -128,6 +133,7 @@ export async function setUserData(
     const iconUrl = data.icon.url?.toString() || '';
     const dataToStore: PersonData = {
         id: data.id.href,
+        uuid: data.uuid,
         name: data.name,
         summary: data.summary,
         preferredUsername: data.preferredUsername,

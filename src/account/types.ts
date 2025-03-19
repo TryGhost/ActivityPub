@@ -19,6 +19,7 @@ export interface InternalAccountData {
  */
 export interface Account {
     id: number;
+    uuid: string;
     username: string;
     name: string | null;
     bio: string | null;

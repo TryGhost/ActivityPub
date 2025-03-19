@@ -123,6 +123,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+import { getUserData } from './helpers/user';
 
 const logging = getLogger(['activitypub']);
 
@@ -748,7 +749,7 @@ app.use(async (ctx, next) => {
 app.get(
     '/.ghost/activitypub/site',
     requireRole(GhostRole.Owner),
-    getSiteDataHandler(siteService),
+    getSiteDataHandler(siteService, accountService),
 );
 
 /**
