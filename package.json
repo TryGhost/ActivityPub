@@ -45,6 +45,7 @@
     "@vitest/coverage-v8": "2.1.7",
     "concurrently": "9.1.0",
     "esbuild": "0.24.2",
+    "sinon": "^19.0.2",
     "typescript": "5.7.2",
     "vite-tsconfig-paths": "5.1.4",
     "vitest": "2.1.7",
