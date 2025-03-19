@@ -1674,10 +1674,6 @@ When('we attempt to create a note with invalid content', async function () {
     );
 });
 
-When('We waited for {int} milliseconds', async (milliseconds) => {
-    await new Promise((resolve) => setTimeout(resolve, milliseconds));
-});
-
 When('fake timer advances time by {int} milliseconds', async (milliseconds) => {
     await clock.tickAsync(milliseconds);
 });
