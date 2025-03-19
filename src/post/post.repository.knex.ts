@@ -23,6 +23,118 @@ export class KnexPostRepository {
         private readonly events: AsyncEvents,
     ) {}
 
+    async getById(id: Post['id']): Promise<Post | null> {
+        const row = await this.db(TABLE_POSTS)
+            .join('accounts', 'accounts.id', 'posts.author_id')
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .leftJoin('sites', 'sites.id', 'users.site_id')
+            .where('posts.id', id)
+            .select(
+                'posts.id',
+                'posts.uuid',
+                'posts.type',
+                'posts.audience',
+                'posts.title',
+                'posts.excerpt',
+                'posts.content',
+                'posts.url',
+                'posts.image_url',
+                'posts.published_at',
+                'posts.like_count',
+                'posts.repost_count',
+                'posts.reply_count',
+                'posts.reading_time_minutes',
+                'posts.attachments',
+                'posts.author_id',
+                'posts.ap_id',
+                'posts.in_reply_to',
+                'posts.thread_root',
+                'posts.deleted_at',
+                'accounts.username',
+                'accounts.uuid as author_uuid',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id as author_ap_id',
+                'accounts.url as author_url',
+                'accounts.ap_followers_url as author_ap_followers_url',
+                'sites.id as site_id',
+                'sites.host as site_host',
+            )
+            .first();
+
+        if (!row) {
+            return null;
+        }
+
+        if (!row.author_uuid) {
+            row.author_uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: row.author_uuid })
+                .where({ id: row.author_id });
+        }
+
+        let site: AccountSite | null = null;
+
+        if (
+            typeof row.site_id === 'number' &&
+            typeof row.site_host === 'string'
+        ) {
+            site = {
+                id: row.site_id,
+                host: row.site_host,
+            };
+        }
+
+        const author = new Account(
+            row.author_id,
+            row.author_uuid,
+            row.username,
+            row.name,
+            row.bio,
+            parseURL(row.avatar_url),
+            parseURL(row.banner_image_url),
+            site,
+            parseURL(row.author_ap_id),
+            parseURL(row.author_url),
+            parseURL(row.author_ap_followers_url),
+        );
+
+        // Parse attachments and convert URL strings back to URL objects
+        const attachments = row.attachments
+            ? row.attachments.map((attachment: any) => ({
+                  ...attachment,
+                  url: new URL(attachment.url),
+              }))
+            : [];
+
+        const post = new Post(
+            row.id,
+            row.uuid,
+            author,
+            row.type,
+            row.audience,
+            row.title,
+            row.excerpt,
+            row.content,
+            new URL(row.url),
+            parseURL(row.image_url),
+            new Date(row.published_at),
+            row.like_count,
+            row.repost_count,
+            row.reply_count,
+            row.in_reply_to,
+            row.thread_root,
+            row.reading_time_minutes,
+            attachments,
+            new URL(row.ap_id),
+            row.deleted_at !== null,
+        );
+
+        return post;
+    }
+
     async getByApId(apId: URL): Promise<Post | null> {
         const row = await this.db(TABLE_POSTS)
             .join('accounts', 'accounts.id', 'posts.author_id')
@@ -537,7 +649,7 @@ export class KnexPostRepository {
             if (isNewPost) {
                 await this.events.emitAsync(
                     PostCreatedEvent.getName(),
-                    new PostCreatedEvent(post),
+                    new PostCreatedEvent(post.id),
                 );
             }
 

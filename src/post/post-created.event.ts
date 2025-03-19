@@ -1,10 +1,10 @@
 import type { Post } from './post.entity';
 
 export class PostCreatedEvent {
-    constructor(private readonly post: Post) {}
+    constructor(private readonly postId: Post['id']) {}
 
-    getPost(): Post {
-        return this.post;
+    getPostId(): Post['id'] {
+        return this.postId;
     }
 
     static getName(): string {

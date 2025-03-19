@@ -71,7 +71,11 @@ describe('KnexPostRepository', () => {
         });
         postRepository = new KnexPostRepository(client, events);
         const feedService = new FeedService(client);
-        const feedUpdateService = new FeedUpdateService(events, feedService);
+        const feedUpdateService = new FeedUpdateService(
+            events,
+            feedService,
+            postRepository,
+        );
         feedUpdateService.init();
     });
 
@@ -386,7 +390,7 @@ describe('KnexPostRepository', () => {
 
         expect(eventsEmitSpy).toHaveBeenCalledWith(
             PostCreatedEvent.getName(),
-            new PostCreatedEvent(post),
+            new PostCreatedEvent(post.id),
         );
     });
 
@@ -433,6 +437,32 @@ describe('KnexPostRepository', () => {
         await postRepository.save(post);
 
         const result = await postRepository.getByApId(post.apId);
+
+        assert(result);
+
+        assert(result.author.uuid === account.uuid);
+        assert(result.uuid === post.uuid);
+    });
+
+    it('Can get by id', async () => {
+        const site = await siteService.initialiseSiteForHost(
+            'testing-by-apid.com',
+        );
+        const account = await accountRepository.getBySite(site);
+        const post = Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            uuid: randomUUID(),
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+            visibility: 'public',
+        });
+
+        await postRepository.save(post);
+
+        const result = await postRepository.getById(post.id);
 
         assert(result);
 

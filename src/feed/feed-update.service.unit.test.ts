@@ -21,6 +21,7 @@ import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostDerepostedEvent } from 'post/post-dereposted.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import { Audience, Post, PostType } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 
 describe('FeedUpdateService', () => {
     let events: EventEmitter;
@@ -60,7 +61,20 @@ describe('FeedUpdateService', () => {
             type: PostType.Article,
         });
 
-        feedUpdateService = new FeedUpdateService(events, feedService);
+        const postRepository = {
+            async getById(id) {
+                if (id !== post.id) {
+                    return null;
+                }
+                return post;
+            },
+        } as KnexPostRepository;
+
+        feedUpdateService = new FeedUpdateService(
+            events,
+            feedService,
+            postRepository,
+        );
         feedUpdateService.init();
     });
 
@@ -77,7 +91,10 @@ describe('FeedUpdateService', () => {
                     return [];
                 });
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post.id),
+            );
 
             await vi.advanceTimersByTimeAsync(1000 * 10);
 
@@ -104,7 +121,10 @@ describe('FeedUpdateService', () => {
                     return [1123, 4456];
                 });
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post.id),
+            );
 
             await vi.advanceTimersByTimeAsync(1000 * 10);
 
@@ -127,7 +147,10 @@ describe('FeedUpdateService', () => {
                     return [1123, 4456];
                 });
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post.id),
+            );
 
             await vi.advanceTimersByTimeAsync(1000 * 10);
 

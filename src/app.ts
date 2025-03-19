@@ -265,7 +265,11 @@ const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
 const feedService = new FeedService(client);
-const feedUpdateService = new FeedUpdateService(events, feedService);
+const feedUpdateService = new FeedUpdateService(
+    events,
+    feedService,
+    postRepository,
+);
 feedUpdateService.init();
 
 const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
