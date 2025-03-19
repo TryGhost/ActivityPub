@@ -308,6 +308,16 @@ fedify
         '/.ghost/activitypub/users/{handle}',
         spanWrapper(actorDispatcher(siteService, accountService)),
     )
+    .mapHandle(async (ctx, username) => {
+        const site = await siteService.initialiseSiteForHost(ctx.host);
+        const account = await accountService.getDefaultAccountForSite(site);
+        const uuid = account.uuid;
+
+        const user = await getUserData(ctx, username, uuid);
+        if (user == null) return null;
+
+        return user.uuid;
+    })
     .setKeyPairsDispatcher(
         ensureCorrectContext(
             spanWrapper(keypairDispatcher(siteService, accountService)),
