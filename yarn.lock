@@ -501,21 +501,21 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/cli@1.3.5":
-  version "1.3.5"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.3.5.tgz#b0404147d89f95078e8c3488570eb08d963bbc43"
-  integrity sha512-kr9Jg2qBXqbF8tlfsJ1zNeYLzYp2ztw4RpBt4epbgoI3ksRvXjSkwOwamtiigJv17ILLxUYdEp20KM0rbjIEVg==
+"@fedify/cli@1.4.6":
+  version "1.4.6"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.4.6.tgz#18cfd2bda36a09b1603dc86d406ddea495aa440a"
+  integrity sha512-6pPRyZ8TRr2RRt1zmsgkqi+BDaCq/BgRyZpV1Xeb66qyu52L5pK68JofveaGmmOxn2L1i9eGjsq+zAJ66asW9Q==
 
-"@fedify/fedify@1.3.5":
-  version "1.3.5"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.3.5.tgz#5d4710f6cf44d9b8eca99c4cae5ea56039506bee"
-  integrity sha512-MIvvk9mBVLcrtnfMDheCmN0AXitkN8fIu+bGLZik6griNME5mA2PlqKBKNbj/YgCLZNApO9ENQjqXPgyw8LDNQ==
+"@fedify/fedify@1.4.6":
+  version "1.4.6"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.4.6.tgz#bbfc2f00e6cfff5dd0a930e68321a89744310487"
+  integrity sha512-Fvfc0R2SNE72SoesQVtyvk/HrNU47VLUOR5Dj2HiHqOGtgbIPDfnEaOwoYEgGVqVwTKJRf+ZHZgNjUwAUUUhog==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"
     "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.4.4"
-    "@logtape/logtape" "^0.8.0"
+    "@logtape/logtape" "^0.8.2"
     "@opentelemetry/api" "^1.9.0"
     "@opentelemetry/semantic-conventions" "^1.27.0"
     "@phensley/language-tag" "^1.9.0"
@@ -694,10 +694,15 @@
     jsbi "^4.3.0"
     tslib "^2.4.1"
 
-"@logtape/logtape@0.8.0", "@logtape/logtape@^0.8.0":
+"@logtape/logtape@0.8.0":
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.8.0.tgz#e0b3423aa3003d582bb8f4cbe865923b4d238f6a"
   integrity sha512-kTGbRE4tbHGlZk3+k9fIJbrLODcDiAvv9X2q+tHXjWyNjWXEH46efDBjsE63zDzR/b6Q4Abiloa4VNwKSDLyzQ==
+
+"@logtape/logtape@^0.8.2":
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.8.2.tgz#edc8ac3436bb7bf5189bc928fe4d3ff9cd9dbe6b"
+  integrity sha512-KikaMHi64p0BHYrYOE2Lom4dOE3R8PGT+21QJ5Ql/SWy0CNOp69dkAlG9RXzENQ6PAMWtiU+4kelJYNvfUvHOQ==
 
 "@multiformats/base-x@^4.0.1":
   version "4.0.1"
