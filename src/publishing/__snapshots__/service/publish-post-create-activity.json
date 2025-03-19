@@ -8,6 +8,10 @@
       "Emoji": "toot:Emoji",
       "Hashtag": "as:Hashtag",
       "_misskey_quote": "misskey:_misskey_quote",
+      "emojiReactions": {
+        "@id": "fedibird:emojiReactions",
+        "@type": "@id",
+      },
       "fedibird": "http://fedibird.com/ns#",
       "misskey": "https://misskey-hub.net/ns#",
       "quoteUri": "fedibird:quoteUri",
