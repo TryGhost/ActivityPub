@@ -14,12 +14,6 @@ import {
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY,
     AP_BASE_PATH,
-    TABLE_ACCOUNTS,
-    TABLE_FOLLOWS,
-    TABLE_LIKES,
-    TABLE_POSTS,
-    TABLE_REPOSTS,
-    TABLE_USERS,
 } from '../constants';
 import type { Account } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
@@ -128,9 +122,9 @@ export class AccountService {
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
         };
         async function createAccountAndUser(tx: Knex.Transaction) {
-            const [accountId] = await tx(TABLE_ACCOUNTS).insert(accountData);
+            const [accountId] = await tx('accounts').insert(accountData);
 
-            await tx(TABLE_USERS).insert({
+            await tx('users').insert({
                 account_id: accountId,
                 site_id: site.id,
             });
@@ -156,7 +150,7 @@ export class AccountService {
     async createExternalAccount(
         accountData: ExternalAccountData,
     ): Promise<AccountType> {
-        const [accountId] = await this.db(TABLE_ACCOUNTS).insert({
+        const [accountId] = await this.db('accounts').insert({
             ...accountData,
             uuid: randomUUID(),
         });
@@ -178,7 +172,7 @@ export class AccountService {
         followee: AccountType,
         follower: AccountType,
     ): Promise<void> {
-        await this.db(TABLE_FOLLOWS)
+        await this.db('follows')
             .insert({
                 following_id: followee.id,
                 follower_id: follower.id,
@@ -197,7 +191,7 @@ export class AccountService {
         following: AccountType,
         follower: AccountType,
     ): Promise<void> {
-        await this.db(TABLE_FOLLOWS)
+        await this.db('follows')
             .where({
                 following_id: following.id,
                 follower_id: follower.id,
@@ -215,7 +209,7 @@ export class AccountService {
             return null;
         }
 
-        return await this.db(TABLE_ACCOUNTS).where('ap_id', apId).first();
+        return await this.db('accounts').where('ap_id', apId).first();
     }
 
     /**
@@ -224,7 +218,7 @@ export class AccountService {
      * @param site Site
      */
     async getDefaultAccountForSite(site: Site): Promise<AccountType> {
-        const users = await this.db(TABLE_USERS).where('site_id', site.id);
+        const users = await this.db('users').where('site_id', site.id);
 
         if (users.length === 0) {
             throw new Error(`No user found for site: ${site.id}`);
@@ -238,7 +232,7 @@ export class AccountService {
 
         // We can safely assume that there is an account for the user due to
         // the foreign key constraint on the users table
-        const account = await this.db(TABLE_ACCOUNTS)
+        const account = await this.db('accounts')
             .where('id', user.account_id)
             .first();
 
@@ -261,14 +255,10 @@ export class AccountService {
         account: AccountType,
         options: GetFollowingAccountsOptions, // @TODO: Make this optional
     ): Promise<AccountType[]> {
-        return await this.db(TABLE_FOLLOWS)
-            .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
-            .where(`${TABLE_FOLLOWS}.follower_id`, account.id)
-            .innerJoin(
-                TABLE_ACCOUNTS,
-                `${TABLE_ACCOUNTS}.id`,
-                `${TABLE_FOLLOWS}.following_id`,
-            )
+        return await this.db('follows')
+            .select(options.fields.map((field) => `accounts.${field}`))
+            .where('follows.follower_id', account.id)
+            .innerJoin('accounts', 'accounts.id', 'follows.following_id')
             .limit(options.limit)
             .offset(options.offset)
             // order by the date created at in descending order and then by the
@@ -276,8 +266,8 @@ export class AccountService {
             // are returned first (i.e in case multiple follows were created at
             // the same time)
             // @TODO: Make this configurable via the options?
-            .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
-            .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
+            .orderBy('follows.created_at', 'desc')
+            .orderBy('accounts.id', 'desc');
     }
 
     /**
@@ -286,7 +276,7 @@ export class AccountService {
      * @param account Account
      */
     async getFollowingAccountsCount(account: AccountType): Promise<number> {
-        const result = await this.db(TABLE_FOLLOWS)
+        const result = await this.db('follows')
             .where('follower_id', account.id)
             .count('*', { as: 'count' });
 
@@ -299,7 +289,7 @@ export class AccountService {
      * @param account Account
      */
     async getLikedCount(account: AccountType): Promise<number> {
-        const result = await this.db(TABLE_LIKES)
+        const result = await this.db('likes')
             .join('posts', 'likes.post_id', 'posts.id')
             .where('likes.account_id', account.id)
             .whereNull('posts.in_reply_to')
@@ -314,11 +304,11 @@ export class AccountService {
      * @param account Account
      */
     async getPostCount(account: AccountType): Promise<number> {
-        const posts = await this.db(TABLE_POSTS)
+        const posts = await this.db('posts')
             .where('author_id', account.id)
             .count('*', { as: 'count' });
 
-        const reposts = await this.db(TABLE_REPOSTS)
+        const reposts = await this.db('reposts')
             .where('account_id', account.id)
             .count('*', { as: 'count' });
 
@@ -337,14 +327,10 @@ export class AccountService {
         account: AccountType,
         options: GetFollowerAccountsOptions, // @TODO: Make this optional
     ): Promise<AccountType[]> {
-        return await this.db(TABLE_FOLLOWS)
-            .select(options.fields.map((field) => `${TABLE_ACCOUNTS}.${field}`))
-            .where(`${TABLE_FOLLOWS}.following_id`, account.id)
-            .innerJoin(
-                TABLE_ACCOUNTS,
-                `${TABLE_ACCOUNTS}.id`,
-                `${TABLE_FOLLOWS}.follower_id`,
-            )
+        return await this.db('follows')
+            .select(options.fields.map((field) => `accounts.${field}`))
+            .where('follows.following_id', account.id)
+            .innerJoin('accounts', 'accounts.id', 'follows.follower_id')
             .limit(options.limit)
             .offset(options.offset)
             // order by the date created at in descending order and then by the
@@ -352,8 +338,8 @@ export class AccountService {
             // are returned first (i.e in case multiple follows were created at
             // the same time)
             // @TODO: Make this configurable via the options?
-            .orderBy(`${TABLE_FOLLOWS}.created_at`, 'desc')
-            .orderBy(`${TABLE_ACCOUNTS}.id`, 'desc');
+            .orderBy('follows.created_at', 'desc')
+            .orderBy('accounts.id', 'desc');
     }
 
     /**
@@ -362,7 +348,7 @@ export class AccountService {
      * @param account Account
      */
     async getFollowerAccountsCount(account: AccountType): Promise<number> {
-        const result = await this.db(TABLE_FOLLOWS)
+        const result = await this.db('follows')
             .where('following_id', account.id)
             .count('*', { as: 'count' });
 
@@ -379,7 +365,7 @@ export class AccountService {
         account: AccountType,
         followee: AccountType,
     ): Promise<boolean> {
-        const result = await this.db(TABLE_FOLLOWS)
+        const result = await this.db('follows')
             .where('follower_id', account.id)
             .where('following_id', followee.id)
             .select(1)
@@ -389,7 +375,7 @@ export class AccountService {
     }
 
     async getByInternalId(id: number): Promise<AccountType | null> {
-        const rows = await this.db(TABLE_ACCOUNTS).select('*').where({ id });
+        const rows = await this.db('accounts').select('*').where({ id });
 
         if (!rows || !rows.length) {
             return null;
@@ -426,7 +412,7 @@ export class AccountService {
         account: AccountType,
         data: Omit<Partial<AccountType>, 'id'>,
     ): Promise<AccountType> {
-        await this.db(TABLE_ACCOUNTS).update(data).where({ id: account.id });
+        await this.db('accounts').update(data).where({ id: account.id });
 
         const newAccount = Object.assign({}, account, data);
 

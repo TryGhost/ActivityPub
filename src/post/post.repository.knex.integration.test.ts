@@ -10,7 +10,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
@@ -42,9 +41,9 @@ describe('KnexPostRepository', () => {
     beforeEach(async () => {
         // Clean up the database
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client(TABLE_REPOSTS).truncate();
-        await client(TABLE_LIKES).truncate();
-        await client(TABLE_POSTS).truncate();
+        await client('reposts').truncate();
+        await client('likes').truncate();
+        await client('posts').truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         // Init dependencies
@@ -175,7 +174,7 @@ describe('KnexPostRepository', () => {
 
             await postRepository.save(post);
 
-            const rowInDb = await client(TABLE_POSTS)
+            const rowInDb = await client('posts')
                 .where({
                     uuid: post.uuid,
                 })
@@ -219,7 +218,7 @@ describe('KnexPostRepository', () => {
 
             await postRepository.save(reply);
 
-            const postRowInDb = await client(TABLE_POSTS)
+            const postRowInDb = await client('posts')
                 .where({
                     uuid: post.uuid,
                 })
@@ -237,7 +236,7 @@ describe('KnexPostRepository', () => {
 
             await postRepository.save(reply);
 
-            const replyRowInDb = await client(TABLE_POSTS)
+            const replyRowInDb = await client('posts')
                 .where({
                     uuid: reply.uuid,
                 })
@@ -252,7 +251,7 @@ describe('KnexPostRepository', () => {
 
             expect(postDeletedEvent.getPost().id).toBe(reply.id);
 
-            const postRowAfterDelete = await client(TABLE_POSTS)
+            const postRowAfterDelete = await client('posts')
                 .where({
                     uuid: post.uuid,
                 })
@@ -290,7 +289,7 @@ describe('KnexPostRepository', () => {
             await postRepository.save(post);
 
             // Verify that the like exists in the database
-            const likesBeforeDelete = await client(TABLE_LIKES)
+            const likesBeforeDelete = await client('likes')
                 .where({ post_id: post.id })
                 .select('*');
             expect(likesBeforeDelete).toHaveLength(1);
@@ -300,7 +299,7 @@ describe('KnexPostRepository', () => {
             await postRepository.save(post);
 
             // Verify that the like has been removed from the database
-            const likesAfterDelete = await client(TABLE_LIKES)
+            const likesAfterDelete = await client('likes')
                 .where({ post_id: post.id })
                 .select('*');
             expect(likesAfterDelete).toHaveLength(0);
@@ -326,7 +325,7 @@ describe('KnexPostRepository', () => {
 
             await postRepository.save(post);
 
-            const rowInDb = await client(TABLE_POSTS)
+            const rowInDb = await client('posts')
                 .where({
                     uuid: post.uuid,
                 })
@@ -354,7 +353,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client(TABLE_POSTS)
+        const rowInDb = await client('posts')
             .where({
                 uuid: post.uuid,
             })
@@ -575,7 +574,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client(TABLE_POSTS)
+        const rowInDb = await client('posts')
             .where({
                 uuid: post.uuid,
             })
@@ -585,7 +584,7 @@ describe('KnexPostRepository', () => {
         assert(rowInDb, 'A row should have been saved in the DB');
         assert.equal(rowInDb.like_count, 3, 'There should be 3 likes');
 
-        const likesInDb = await client(TABLE_LIKES)
+        const likesInDb = await client('likes')
             .where({
                 post_id: post.id,
             })
@@ -629,7 +628,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client(TABLE_POSTS)
+        const rowInDb = await client('posts')
             .where({
                 uuid: post.uuid,
             })
@@ -665,7 +664,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client(TABLE_POSTS)
+        const rowInDb = await client('posts')
             .where({
                 uuid: post.uuid,
             })
@@ -675,7 +674,7 @@ describe('KnexPostRepository', () => {
         assert(rowInDb, 'A row should have been saved in the DB');
         assert.equal(rowInDb.repost_count, 2, 'There should be 2 reposts');
 
-        const repostsInDb = await client(TABLE_REPOSTS)
+        const repostsInDb = await client('reposts')
             .where({
                 post_id: post.id,
             })
@@ -736,7 +735,7 @@ describe('KnexPostRepository', () => {
 
         await postRepository.save(post);
 
-        const rowInDb = await client(TABLE_POSTS)
+        const rowInDb = await client('posts')
             .where({
                 uuid: post.uuid,
             })
@@ -822,7 +821,7 @@ describe('KnexPostRepository', () => {
         await postRepository.save(reply2);
         await postRepository.save(reply3);
 
-        const rowInDb = await client(TABLE_POSTS)
+        const rowInDb = await client('posts')
             .where({
                 uuid: originalPost.uuid,
             })
@@ -831,7 +830,7 @@ describe('KnexPostRepository', () => {
 
         assert.equal(rowInDb.reply_count, 3, 'There should be 3 replies');
 
-        const repliesInDb = await client(TABLE_POSTS)
+        const repliesInDb = await client('posts')
             .where({
                 thread_root: originalPost.id,
             })

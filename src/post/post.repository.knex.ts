@@ -3,7 +3,6 @@ import type { Knex } from 'knex';
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
 import { Account, type AccountSite } from '../account/account.entity';
-import { TABLE_LIKES, TABLE_POSTS, TABLE_REPOSTS } from '../constants';
 import { parseURL } from '../core/url';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
@@ -423,7 +422,7 @@ export class KnexPostRepository {
                 );
 
                 if (post.inReplyTo) {
-                    await transaction(TABLE_POSTS)
+                    await transaction('posts')
                         .update({
                             reply_count: this.db.raw('reply_count + 1'),
                         })
@@ -495,7 +494,7 @@ export class KnexPostRepository {
                             : 0;
 
                     if (insertedLikesCount - removedLikesCount !== 0) {
-                        await transaction(TABLE_POSTS)
+                        await transaction('posts')
                             .update({
                                 like_count: transaction.raw(
                                     `like_count + ${insertedLikesCount - removedLikesCount}`,
@@ -532,7 +531,7 @@ export class KnexPostRepository {
                     );
 
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
-                        await transaction(TABLE_POSTS)
+                        await transaction('posts')
                             .update({
                                 repost_count: transaction.raw(
                                     `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
@@ -594,7 +593,7 @@ export class KnexPostRepository {
         repostCount: number,
         transaction: Knex.Transaction,
     ) {
-        const [id] = await transaction(TABLE_POSTS).insert({
+        const [id] = await transaction('posts').insert({
             uuid: post.uuid,
             type: post.type,
             audience: post.audience,
@@ -638,7 +637,7 @@ export class KnexPostRepository {
             post_id: post.id,
         }));
 
-        await transaction(TABLE_LIKES).insert(likesToInsert);
+        await transaction('likes').insert(likesToInsert);
     }
 
     /**
@@ -653,7 +652,7 @@ export class KnexPostRepository {
         accountIds: number[],
         transaction: Knex.Transaction,
     ): Promise<number> {
-        return await transaction(TABLE_LIKES)
+        return await transaction('likes')
             .where({
                 post_id: post.id,
             })
@@ -680,10 +679,7 @@ export class KnexPostRepository {
             post_id: post.id,
         }));
 
-        await transaction(TABLE_LIKES)
-            .insert(likesToInsert)
-            .onConflict()
-            .ignore();
+        await transaction('likes').insert(likesToInsert).onConflict().ignore();
 
         const [[{ count }]] = await transaction.raw(
             'SELECT ROW_COUNT() as count',
@@ -709,7 +705,7 @@ export class KnexPostRepository {
             post_id: post.id,
         }));
 
-        await transaction(TABLE_REPOSTS).insert(repostsToInsert);
+        await transaction('reposts').insert(repostsToInsert);
     }
 
     /**
@@ -725,7 +721,7 @@ export class KnexPostRepository {
         accountIds: number[],
         transaction: Knex.Transaction,
     ): Promise<number> {
-        return await transaction(TABLE_REPOSTS)
+        return await transaction('reposts')
             .where({
                 post_id: post.id,
             })
@@ -753,7 +749,7 @@ export class KnexPostRepository {
         // inserted so that we do not emit events for reposts that were
         // already in the database
         const currentRepostAccountIds = (
-            await transaction(TABLE_REPOSTS)
+            await transaction('reposts')
                 .where('post_id', post.id)
                 .select('account_id')
         ).map((row) => row.account_id);
@@ -774,7 +770,7 @@ export class KnexPostRepository {
             post_id: post.id,
         }));
 
-        await transaction(TABLE_REPOSTS)
+        await transaction('reposts')
             .insert(repostsToInsert)
             .onConflict()
             .ignore();

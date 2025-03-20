@@ -29,12 +29,6 @@ const __dirname = dirname(__filename);
 const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub';
 const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub';
 
-const TABLE_ACCOUNTS = 'accounts';
-const TABLE_FOLLOWS = 'follows';
-const TABLE_KEY_VALUE = 'key_value';
-const TABLE_SITES = 'sites';
-const TABLE_USERS = 'users';
-
 async function createActivity(type, object, actor) {
     let activity;
 
@@ -454,11 +448,11 @@ BeforeAll(async () => {
     });
 
     await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client(TABLE_KEY_VALUE).truncate();
-    await client(TABLE_FOLLOWS).truncate();
-    await client(TABLE_ACCOUNTS).truncate();
-    await client(TABLE_USERS).truncate();
-    await client(TABLE_SITES).truncate();
+    await client('key_value').truncate();
+    await client('follows').truncate();
+    await client('accounts').truncate();
+    await client('users').truncate();
+    await client('sites').truncate();
     await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
     webhookSecret = fs.readFileSync(
@@ -527,14 +521,14 @@ AfterAll(async () => {
 Before(async function () {
     await externalActivityPub.clearAllRequests();
     await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client(TABLE_KEY_VALUE).truncate();
-    await client(TABLE_FOLLOWS).truncate();
-    await client(TABLE_USERS).truncate();
-    await client(TABLE_ACCOUNTS).truncate();
-    await client(TABLE_SITES).truncate();
+    await client('key_value').truncate();
+    await client('follows').truncate();
+    await client('users').truncate();
+    await client('accounts').truncate();
+    await client('sites').truncate();
     await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
-    const [siteId] = await client(TABLE_SITES).insert({
+    const [siteId] = await client('sites').insert({
         host: new URL(URL_GHOST_ACTIVITY_PUB).host,
         webhook_secret: webhookSecret,
     });
@@ -554,7 +548,7 @@ Before(async function () {
 
         const keypair = await generateCryptoKeyPair();
 
-        const [accountId] = await client(TABLE_ACCOUNTS).insert({
+        const [accountId] = await client('accounts').insert({
             username: actor.preferredUsername,
             name: actor.name,
             bio: actor.summary,
@@ -573,7 +567,7 @@ Before(async function () {
             ap_private_key: JSON.stringify(await exportJwk(keypair.privateKey)),
         });
 
-        await client(TABLE_USERS).insert({
+        await client('users').insert({
             account_id: accountId,
             site_id: this.SITE_ID,
         });
@@ -613,7 +607,7 @@ async function fetchActivityPub(url, options = {}, auth = true) {
 }
 
 Given('there is no entry in the sites table', async function () {
-    await client(TABLE_SITES).del();
+    await client('sites').del();
 
     this.SITE_ID = null;
 });

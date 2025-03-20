@@ -10,15 +10,6 @@ import { AccountService } from '../account/account.service';
 import type { Account as AccountType, Site } from '../account/types';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
-    TABLE_ACCOUNTS,
-    TABLE_FEEDS,
-    TABLE_FOLLOWS,
-    TABLE_POSTS,
-    TABLE_REPOSTS,
-    TABLE_SITES,
-    TABLE_USERS,
-} from '../constants';
-import {
     Audience,
     type FollowersOnlyPost,
     type PostData,
@@ -102,14 +93,10 @@ describe('FeedService', () => {
     };
 
     const getFeedDataForAccount = async (account: Account) => {
-        const feed = await client(TABLE_FEEDS)
-            .join(TABLE_USERS, `${TABLE_USERS}.id`, `${TABLE_FEEDS}.user_id`)
-            .join(
-                TABLE_ACCOUNTS,
-                `${TABLE_ACCOUNTS}.id`,
-                `${TABLE_USERS}.account_id`,
-            )
-            .where(`${TABLE_ACCOUNTS}.id`, account.id);
+        const feed = await client('feeds')
+            .join('users', 'users.id', 'feeds.user_id')
+            .join('accounts', 'accounts.id', 'users.account_id')
+            .where('accounts.id', account.id);
 
         return feed;
     };
@@ -117,13 +104,13 @@ describe('FeedService', () => {
     beforeEach(async () => {
         // Clean up the database
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client(TABLE_FEEDS).truncate();
-        await client(TABLE_REPOSTS).truncate();
-        await client(TABLE_POSTS).truncate();
-        await client(TABLE_FOLLOWS).truncate();
-        await client(TABLE_ACCOUNTS).truncate();
-        await client(TABLE_USERS).truncate();
-        await client(TABLE_SITES).truncate();
+        await client('feeds').truncate();
+        await client('reposts').truncate();
+        await client('posts').truncate();
+        await client('follows').truncate();
+        await client('accounts').truncate();
+        await client('users').truncate();
+        await client('sites').truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         // Reset test state
@@ -235,7 +222,7 @@ describe('FeedService', () => {
             await postRepository.save(post1);
 
             // Set repost date
-            await client(TABLE_REPOSTS)
+            await client('reposts')
                 .where({ post_id: post1.id, account_id: userAccount.id })
                 .update({ created_at: new Date('2024-01-03T10:00:00Z') });
 

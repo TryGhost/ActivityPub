@@ -10,10 +10,6 @@ import {
     ACTOR_DEFAULT_NAME,
     ACTOR_DEFAULT_SUMMARY,
     AP_BASE_PATH,
-    TABLE_ACCOUNTS,
-    TABLE_FOLLOWS,
-    TABLE_SITES,
-    TABLE_USERS,
 } from '../constants';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
@@ -53,10 +49,10 @@ describe('AccountService', () => {
     beforeEach(async () => {
         // Clean up the database
         await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await db(TABLE_FOLLOWS).truncate();
-        await db(TABLE_ACCOUNTS).truncate();
-        await db(TABLE_USERS).truncate();
-        await db(TABLE_SITES).truncate();
+        await db('follows').truncate();
+        await db('accounts').truncate();
+        await db('users').truncate();
+        await db('sites').truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         // Insert a site
@@ -152,7 +148,7 @@ describe('AccountService', () => {
             expect(account.ap_private_key).toContain('key_ops');
 
             // Assert the account was inserted into the database
-            const accounts = await db(TABLE_ACCOUNTS).select('*');
+            const accounts = await db('accounts').select('*');
 
             expect(accounts).toHaveLength(1);
 
@@ -161,7 +157,7 @@ describe('AccountService', () => {
             expect(dbAccount).toMatchObject(expectedAccount);
 
             // Assert the user was inserted into the database
-            const users = await db(TABLE_USERS).select('*');
+            const users = await db('users').select('*');
 
             expect(users).toHaveLength(1);
 
@@ -182,7 +178,7 @@ describe('AccountService', () => {
             expect(account.id).toBeGreaterThan(0);
 
             // Assert the account was inserted into the database
-            const accounts = await db(TABLE_ACCOUNTS).select('*');
+            const accounts = await db('accounts').select('*');
 
             expect(accounts).toHaveLength(1);
 
@@ -206,7 +202,7 @@ describe('AccountService', () => {
             await service.recordAccountFollow(account, follower);
 
             // Assert the follow was inserted into the database
-            const follows = await db(TABLE_FOLLOWS).select('*');
+            const follows = await db('follows').select('*');
 
             expect(follows).toHaveLength(1);
 
@@ -217,7 +213,7 @@ describe('AccountService', () => {
 
             await service.recordAccountUnfollow(account, follower);
 
-            const followsAfter = await db(TABLE_FOLLOWS).select('*');
+            const followsAfter = await db('follows').select('*');
 
             expect(followsAfter).toHaveLength(0);
         });
@@ -237,7 +233,7 @@ describe('AccountService', () => {
             await service.recordAccountFollow(account, follower);
 
             // Assert the follow was inserted into the database
-            const follows = await db(TABLE_FOLLOWS).select('*');
+            const follows = await db('follows').select('*');
 
             expect(follows).toHaveLength(1);
 
@@ -259,14 +255,12 @@ describe('AccountService', () => {
 
             await service.recordAccountFollow(account, follower);
 
-            const firstFollow = await db(TABLE_FOLLOWS)
-                .where({ id: 1 })
-                .first();
+            const firstFollow = await db('follows').where({ id: 1 }).first();
 
             await service.recordAccountFollow(account, follower);
 
             // Assert the follow was inserted into the database only once
-            const follows = await db(TABLE_FOLLOWS).select('*');
+            const follows = await db('follows').select('*');
 
             expect(follows).toHaveLength(1);
 
