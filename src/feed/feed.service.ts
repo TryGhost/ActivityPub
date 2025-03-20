@@ -149,7 +149,7 @@ export class FeedService {
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 // Feed fields
-                'feeds.id as feed_id',
+                'feeds.published_at as feed_published_at',
             )
             .innerJoin('posts', 'posts.id', 'feeds.post_id')
             .innerJoin(
@@ -180,10 +180,10 @@ export class FeedService {
             .where('feeds.post_type', postType)
             .modify((query) => {
                 if (options.cursor) {
-                    query.where('feeds.id', '<', options.cursor);
+                    query.where('feeds.published_at', '<', options.cursor);
                 }
             })
-            .orderBy('feeds.id', 'desc')
+            .orderBy('feeds.published_at', 'desc')
             .limit(options.limit + 1);
 
         const results = await query;
@@ -199,7 +199,7 @@ export class FeedService {
                     post_content: sanitizeHtml(item.post_content ?? ''),
                 };
             }),
-            nextCursor: hasMore ? lastResult.feed_id.toString() : null,
+            nextCursor: hasMore ? lastResult.feed_published_at : null,
         };
     }
 
@@ -223,6 +223,8 @@ export class FeedService {
             return [];
         }
 
+        let repost: { created_at: Date } | null = null;
+
         if (repostedBy) {
             // If the post is a repost, we should add the it to:
             // - The feed of the user associated with the account that reposted the post
@@ -237,6 +239,12 @@ export class FeedService {
             }
 
             followersAccountId = repostedBy;
+
+            repost = await this.db('reposts')
+                .where('account_id', repostedBy)
+                .where('post_id', post.id)
+                .select('created_at')
+                .first();
         } else {
             // Otherwise, we should add the post to:
             // - The feed of the user associated with the author
@@ -272,6 +280,8 @@ export class FeedService {
 
         const feedEntries = userIds.map((userId) => ({
             post_type: post.type,
+            published_at:
+                repostedBy && repost ? repost.created_at : post.publishedAt,
             audience: post.audience,
             user_id: userId,
             post_id: post.id,

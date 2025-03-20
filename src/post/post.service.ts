@@ -252,9 +252,9 @@ export class PostService {
                 'posts_with_source.like_count as post_like_count',
                 this.db.raw(
                     `CASE 
-                            WHEN likes.post_id IS NOT NULL THEN 1 
-                            ELSE 0 
-                        END AS post_liked_by_user`,
+                        WHEN likes.post_id IS NOT NULL THEN 1 
+                        ELSE 0 
+                    END AS post_liked_by_user`,
                 ),
                 'posts_with_source.reply_count as post_reply_count',
                 'posts_with_source.reading_time_minutes as post_reading_time_minutes',
@@ -262,9 +262,9 @@ export class PostService {
                 'posts_with_source.repost_count as post_repost_count',
                 this.db.raw(
                     `CASE 
-                            WHEN user_reposts.post_id IS NOT NULL THEN 1 
-                            ELSE 0 
-                        END AS post_reposted_by_user`,
+                        WHEN user_reposts.post_id IS NOT NULL THEN 1 
+                        ELSE 0 
+                    END AS post_reposted_by_user`,
                 ),
                 'posts_with_source.ap_id as post_ap_id',
                 // Author fields (Who originally created the post)
@@ -279,8 +279,8 @@ export class PostService {
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
-                // Unified `created_at` field for sorting
-                'posts_with_source.created_at',
+                // Unified `published_at` field for sorting
+                'posts_with_source.published_date',
                 'posts_with_source.deleted_at',
                 'posts_with_source.in_reply_to',
             )
@@ -307,6 +307,7 @@ export class PostService {
                         'posts.in_reply_to',
                         this.db.raw('NULL as reposter_id'),
                         this.db.raw(`'original' as source`),
+                        this.db.raw('posts.published_at as published_date'),
                     )
                     .from('posts')
                     .where('posts.author_id', accountId)
@@ -328,17 +329,20 @@ export class PostService {
                                 'posts.repost_count',
                                 'posts.ap_id',
                                 'posts.author_id',
-                                'reposts.created_at AS created_at',
+                                'reposts.created_at',
                                 'posts.deleted_at',
                                 'posts.in_reply_to',
                                 'reposts.account_id as reposter_id',
                                 this.db.raw(`'repost' as source`),
+                                this.db.raw(
+                                    'reposts.created_at as published_date',
+                                ),
                             )
                             .from('reposts')
                             .innerJoin('posts', 'posts.id', 'reposts.post_id')
                             .where('reposts.account_id', accountId),
                     ])
-                    .orderBy('created_at', 'desc') //Apply sorting at the union level
+                    .orderBy('published_date', 'desc') //Apply sorting at the union level
                     .as('posts_with_source'),
             )
             .innerJoin(
@@ -370,12 +374,16 @@ export class PostService {
             })
             .modify((query) => {
                 if (cursor) {
-                    query.where('posts_with_source.created_at', '<', cursor);
+                    query.where(
+                        'posts_with_source.published_date',
+                        '<',
+                        cursor,
+                    );
                 }
             })
             .where('posts_with_source.deleted_at', null)
             .where('posts_with_source.in_reply_to', null)
-            .orderBy('posts_with_source.created_at', 'desc')
+            .orderBy('posts_with_source.published_date', 'desc')
             .limit(limit + 1);
 
         const results = await query;
@@ -388,7 +396,7 @@ export class PostService {
             results: paginatedResults.map((result: GetProfileDataResultRow) =>
                 this.mapToPostDTO(result, accountId),
             ),
-            nextCursor: hasMore ? lastResult.created_at : null,
+            nextCursor: hasMore ? lastResult.published_date : null,
         };
     }
 

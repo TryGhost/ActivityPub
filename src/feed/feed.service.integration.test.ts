@@ -200,6 +200,80 @@ describe('FeedService', () => {
                 },
             ]);
         });
+
+        it('should sort feed items by published_at', async () => {
+            const feedService = new FeedService(client);
+
+            const userAccount =
+                await createInternalAccount('sort-test-user.com');
+            const followedAccount = await createInternalAccount(
+                'sort-test-followed.com',
+            );
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Create posts with specific dates
+            const post1 = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(post1);
+
+            const post2 = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-02T10:00:00Z'),
+            });
+            await postRepository.save(post2);
+
+            await feedService.addPostToFeeds(post1 as PublicPost);
+            await feedService.addPostToFeeds(post2 as PublicPost);
+
+            post1.addRepost(userAccount);
+            await postRepository.save(post1);
+
+            // Set repost date
+            await client(TABLE_REPOSTS)
+                .where({ post_id: post1.id, account_id: userAccount.id })
+                .update({ created_at: new Date('2024-01-03T10:00:00Z') });
+
+            await feedService.addPostToFeeds(
+                post1 as PublicPost,
+                userAccount.id,
+            );
+
+            // Get feed and verify order
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            // Should be ordered: repost of post1 (Jan 3), post2 (Jan 2), post1 (Jan 1)
+            expect(feed.results).toHaveLength(3);
+            expect(
+                feed.results.map((post) => ({
+                    post_id: post.post_id,
+                    reposted_by_id: post.reposter_id,
+                })),
+            ).toEqual([
+                {
+                    post_id: post1.id,
+                    reposted_by_id: userAccount.id,
+                },
+                {
+                    post_id: post2.id,
+                    reposted_by_id: null,
+                },
+                {
+                    post_id: post1.id,
+                    reposted_by_id: null,
+                },
+            ]);
+        });
     });
 
     describe('addPostToFeeds', () => {
@@ -453,6 +527,79 @@ describe('FeedService', () => {
             const followedAccountFeed =
                 await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(0);
+        }, 10000);
+
+        it('should use repost timestamp as published_at when post is a reposted', async () => {
+            const feedService = new FeedService(client);
+            const originalPublishDate = new Date('2024-01-01T00:00:00Z');
+            const repostDate = new Date('2024-02-01T00:00:00Z');
+
+            // Create test accounts
+            const authorAccount = await createInternalAccount('author.com');
+            const repostingAccount =
+                await createInternalAccount('reposter.com');
+
+            // Create test post
+            const post = await createPost(authorAccount, {
+                publishedAt: originalPublishDate,
+                type: PostType.Note,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Create repost record
+            await client('reposts').insert({
+                account_id: repostingAccount.id,
+                post_id: post.id,
+                created_at: repostDate,
+            });
+
+            // Add post to feeds through repost
+            await feedService.addPostToFeeds(
+                post as PublicPost,
+                repostingAccount.id,
+            );
+
+            // Verify feed entry
+            const feedEntry = await client('feeds')
+                .where({
+                    post_id: post.id,
+                    reposted_by_id: repostingAccount.id,
+                })
+                .first();
+
+            expect(feedEntry).toBeTruthy();
+            expect(feedEntry.published_at).toEqual(repostDate);
+        }, 10000);
+
+        it('should use original published_at timestamp when post is not reposted', async () => {
+            const feedService = new FeedService(client);
+            const originalPublishDate = new Date('2024-01-01T00:00:00Z');
+
+            // Create test account
+            const authorAccount = await createInternalAccount('author.com');
+
+            // Create test post
+            const post = await createPost(authorAccount, {
+                publishedAt: originalPublishDate,
+                type: PostType.Note,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Add post to feeds normally (not reposted)
+            await feedService.addPostToFeeds(post as PublicPost);
+
+            // Verify feed entry
+            const feedEntry = await client('feeds')
+                .where({
+                    post_id: post.id,
+                    reposted_by_id: null,
+                })
+                .first();
+
+            expect(feedEntry).toBeTruthy();
+            expect(feedEntry.published_at).toEqual(originalPublishDate);
         }, 10000);
     });
 

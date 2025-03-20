@@ -3,7 +3,10 @@
 if [ -n "$MYSQL_DB" ]; then
     echo "Running migrate -path migrations -database $MYSQL_DB up"
     migrate -path migrations -database "$MYSQL_DB" up
+elif [ -n "$DB_HOST" ]; then
+    echo "Running migrate -path migrations -database mysql://$DB_USER:<REDACTED>@tcp($DB_HOST:$DB_PORT)/$DB_NAME up"
+    migrate -path migrations -database "mysql://$DB_USER:$DB_PASS@tcp($DB_HOST:$DB_PORT)/$DB_NAME" up
 else
-    echo "Running migrate -path migrations -database mysql://$DB_USER:$DB_PASS@unix(/cloudsql/$DB_CONN)/$DB_NAME up"
+    echo "Running migrate -path migrations -database mysql://$DB_USER:<REDACTED>@unix(/cloudsql/$DB_CONN)/$DB_NAME up"
     migrate -path migrations -database "mysql://$DB_USER:$DB_PASS@unix(/cloudsql/$DB_CONN)/$DB_NAME" up
 fi

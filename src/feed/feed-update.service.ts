@@ -1,8 +1,6 @@
 import type { EventEmitter } from 'node:events';
 
 import type { FeedService } from 'feed/feed.service';
-import { FeedsUpdatedEventUpdateOperation } from 'feed/feeds-updated.event';
-import { FeedsUpdatedEvent } from 'feed/feeds-updated.event';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostDerepostedEvent } from 'post/post-dereposted.event';
@@ -37,21 +35,8 @@ export class FeedUpdateService {
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
         const post = event.getPost();
 
-        let updatedFeedUserIds: number[] = [];
-
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            updatedFeedUserIds = await this.feedService.addPostToFeeds(post);
-        }
-
-        if (updatedFeedUserIds.length > 0) {
-            this.events.emit(
-                FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(
-                    updatedFeedUserIds,
-                    FeedsUpdatedEventUpdateOperation.PostAdded,
-                    post,
-                ),
-            );
+            await this.feedService.addPostToFeeds(post);
         }
     }
 
@@ -59,63 +44,21 @@ export class FeedUpdateService {
         const post = event.getPost();
         const repostedBy = event.getAccountId();
 
-        let updatedFeedUserIds: number[] = [];
-
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
-            updatedFeedUserIds = await this.feedService.addPostToFeeds(
-                post,
-                repostedBy,
-            );
-        }
-
-        if (updatedFeedUserIds.length > 0) {
-            this.events.emit(
-                FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(
-                    updatedFeedUserIds,
-                    FeedsUpdatedEventUpdateOperation.PostAdded,
-                    post,
-                ),
-            );
+            await this.feedService.addPostToFeeds(post, repostedBy);
         }
     }
 
     private async handlePostDeletedEvent(event: PostDeletedEvent) {
         const post = event.getPost();
 
-        const updatedFeedUserIds =
-            await this.feedService.removePostFromFeeds(post);
-
-        if (updatedFeedUserIds.length > 0) {
-            this.events.emit(
-                FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(
-                    updatedFeedUserIds,
-                    FeedsUpdatedEventUpdateOperation.PostRemoved,
-                    post,
-                ),
-            );
-        }
+        await this.feedService.removePostFromFeeds(post);
     }
 
     private async handlePostDerepostedEvent(event: PostDerepostedEvent) {
         const post = event.getPost();
         const derepostedBy = event.getAccountId();
 
-        const updatedFeedUserIds = await this.feedService.removePostFromFeeds(
-            post,
-            derepostedBy,
-        );
-
-        if (updatedFeedUserIds.length > 0) {
-            this.events.emit(
-                FeedsUpdatedEvent.getName(),
-                new FeedsUpdatedEvent(
-                    updatedFeedUserIds,
-                    FeedsUpdatedEventUpdateOperation.PostRemoved,
-                    post,
-                ),
-            );
-        }
+        await this.feedService.removePostFromFeeds(post, derepostedBy);
     }
 }

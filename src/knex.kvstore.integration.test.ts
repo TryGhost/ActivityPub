@@ -68,4 +68,23 @@ describe('KnexKvStore', () => {
             expect(actual).toEqual(expected);
         }
     });
+
+    it('Can handle concurrent calls', async () => {
+        const table = 'key_value';
+        const store = await KnexKvStore.create(client, table);
+
+        const calls = [
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+            store.set(['concurrent'], true),
+        ];
+
+        await Promise.all(calls);
+    });
 });

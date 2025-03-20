@@ -50,6 +50,7 @@ jobs:
         with:
           images: |
             europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub
+            europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub
           tags: |
             type=edge,branch=main
             type=semver,pattern={{version}}
@@ -63,6 +64,7 @@ jobs:
         with:
           images: |
             europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations
+            europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations
           tags: |
             type=edge,branch=main
             type=semver,pattern={{version}}
@@ -87,16 +89,21 @@ jobs:
       - name: "Run Tests"
         run: yarn test
 
-      - name: "Login to GAR"
-        if: github.ref == 'refs/heads/main'
+      - name: "Login to GAR europe-west4"
         uses: docker/login-action@v3
         with:
           registry: europe-west4-docker.pkg.dev
           username: _json_key
           password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
 
+      - name: "Login to GAR europe"
+        uses: docker/login-action@v3
+        with:
+          registry: europe-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+
       - name: "Push ActivityPub Docker Image"
-        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -104,7 +111,6 @@ jobs:
           tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
       - name: "Push Migrations Docker Image"
-        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: migrate

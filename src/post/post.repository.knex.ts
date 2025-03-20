@@ -23,12 +23,12 @@ export class KnexPostRepository {
         private readonly events: AsyncEvents,
     ) {}
 
-    async getByApId(apId: URL): Promise<Post | null> {
-        const row = await this.db(TABLE_POSTS)
+    private async getByQuery(query: Knex.QueryCallback): Promise<Post | null> {
+        const row = await this.db('posts')
             .join('accounts', 'accounts.id', 'posts.author_id')
             .leftJoin('users', 'users.account_id', 'accounts.id')
             .leftJoin('sites', 'sites.id', 'users.site_id')
-            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
+            .where(query)
             .select(
                 'posts.id',
                 'posts.uuid',
@@ -133,6 +133,17 @@ export class KnexPostRepository {
         );
 
         return post;
+    }
+    async getById(id: Post['id']): Promise<Post | null> {
+        return await this.getByQuery((qb: Knex.QueryBuilder) => {
+            return qb.where('posts.id', id);
+        });
+    }
+
+    async getByApId(apId: URL): Promise<Post | null> {
+        return await this.getByQuery((qb: Knex.QueryBuilder) => {
+            return qb.whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href]);
+        });
     }
 
     /**
