@@ -45,7 +45,7 @@ Feature: Feed
     And "Note3" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/feed?limit=2"
     Then the request is accepted
-    And "Note3" is in the feed 
+    And "Note3" is in the feed
     And "Note2" is in the feed
     And "Note1" is not in the feed
     And the feed response has a next cursor
@@ -133,4 +133,4 @@ Feature: Feed
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And "Note" is in the feed
-    And the "Note" in the feed has content "Hello, world!"
+    And the "Note" in the feed has content "Hello, world!<script></script>"
