@@ -196,11 +196,18 @@ export function sanitizeHtml(content: string): string {
             g: ['transform'],
             defs: [],
             style: ['type'],
-            iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen'],
+            iframe: [
+                'src',
+                'width',
+                'height',
+                'frameborder',
+                'allowfullscreen',
+            ],
             script: ['src', 'async', 'charset'],
         },
         allowedScriptDomains: ['twitter.com'],
         allowedScriptHostnames: ['platform.twitter.com'],
+        allowVulnerableTags: true,
     });
 }
 
