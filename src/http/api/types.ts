@@ -163,3 +163,14 @@ export interface PostDTO {
      */
     repostedBy: AuthorDTO | null;
 }
+
+/**
+ * Notification returned by the API - Anywhere a notification is returned via the API,
+ * it should be this shape, or a partial version of it
+ */
+export interface NotificationDTO {
+    /**
+     * Internal ID of the notification
+     */
+    id: string;
+}

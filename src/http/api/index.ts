@@ -1,6 +1,7 @@
 export * from './activities';
 export * from './account';
 export * from './feed';
+export * from './notification';
 export * from './note';
 export * from './post';
 export * from './profile';
