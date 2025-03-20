@@ -23,27 +23,51 @@ until curl -f http://${HOST}; do
 done
 
 # Create the topic via REST API
-if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${TOPIC_NAME} | grep -q "200"; then
-    echo "Topic created: ${TOPIC_NAME}"
+if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${FEDIFY_TOPIC_NAME} | grep -q "200"; then
+    echo "Topic created: ${FEDIFY_TOPIC_NAME}"
 else
-    echo "Failed to create topic: ${TOPIC_NAME}"
+    echo "Failed to create topic: ${FEDIFY_TOPIC_NAME}"
     exit 1
 fi
 
 # Create the (push) subscription via REST API
-if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_NAME} \
+if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${FEDIFY_SUBSCRIPTION_NAME} \
     -H "Content-Type: application/json" \
     -d '{
-  "topic": "projects/'${PROJECT_ID}'/topics/'${TOPIC_NAME}'",
+  "topic": "projects/'${PROJECT_ID}'/topics/'${FEDIFY_TOPIC_NAME}'",
   "pushConfig": {
-    "pushEndpoint": "'${PUSH_ENDPOINT}'"
+    "pushEndpoint": "'${FEDIFY_PUSH_ENDPOINT}'"
   }
 }' | grep -q "200"; then
-    echo "Subscription created: ${SUBSCRIPTION_NAME}"
+    echo "Subscription created: ${FEDIFY_SUBSCRIPTION_NAME}"
 else
-    echo "Failed to create subscription: ${SUBSCRIPTION_NAME}"
+    echo "Failed to create subscription: ${FEDIFY_SUBSCRIPTION_NAME}"
     exit 1
 fi
+
+# Create the topic via REST API
+if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${GHOST_TOPIC_NAME} | grep -q "200"; then
+    echo "Topic created: ${GHOST_TOPIC_NAME}"
+else
+    echo "Failed to create topic: ${GHOST_TOPIC_NAME}"
+    exit 1
+fi
+
+# Create the (push) subscription via REST API
+if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${GHOST_SUBSCRIPTION_NAME} \
+    -H "Content-Type: application/json" \
+    -d '{
+  "topic": "projects/'${PROJECT_ID}'/topics/'${GHOST_TOPIC_NAME}'",
+  "pushConfig": {
+    "pushEndpoint": "'${GHOST_PUSH_ENDPOINT}'"
+  }
+}' | grep -q "200"; then
+    echo "Subscription created: ${GHOST_SUBSCRIPTION_NAME}"
+else
+    echo "Failed to create subscription: ${GHOST_SUBSCRIPTION_NAME}"
+    exit 1
+fi
+
 
 # Keep the container running
 tail -f /dev/null
