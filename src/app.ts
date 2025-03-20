@@ -41,6 +41,7 @@ import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
+import { NotificationService } from 'notification/notification.service';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
@@ -101,6 +102,7 @@ import {
     createGetAccountLikedPostsHandler,
     createGetAccountPostsHandler,
     createGetFeedHandler,
+    createGetNotificationsHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
@@ -270,6 +272,8 @@ feedUpdateService.init();
 
 const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
 fediverseBridge.init();
+
+const notificationService = new NotificationService(client);
 
 /** Fedify */
 
@@ -1000,6 +1004,13 @@ app.delete(
     requireRole(GhostRole.Owner),
     spanWrapper(
         createDeletePostHandler(accountRepository, postRepository, postService),
+    ),
+);
+app.get(
+    '/.ghost/activitypub/notifications',
+    requireRole(GhostRole.Owner),
+    spanWrapper(
+        createGetNotificationsHandler(accountService, notificationService),
     ),
 );
 /** Federation wire up */
