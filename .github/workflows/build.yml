@@ -36,10 +36,14 @@ jobs:
       - name: Check yarn.lock
         run: yarn install --frozen-lockfile
 
-  build-test-deploy:
-    name: Build, Test and Deploy
+  build-test-push:
+    name: Build, Test and Push
     environment: build
     runs-on: ubuntu-latest
+    needs: [lint, check-yarn-lock]
+    outputs:
+      migrations_docker_version: ${{ steps.migrations-docker-metadata.outputs.version }}
+      activitypub_docker_version: ${{ steps.activitypub-docker-metadata.outputs.version }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -89,7 +93,7 @@ jobs:
       - name: "Run Tests"
         run: yarn test
 
-      - name: "Login to GAR europe-west4"
+      - name: "Login to GAR europe-west4 (old)"
         uses: docker/login-action@v3
         with:
           registry: europe-west4-docker.pkg.dev
@@ -117,33 +121,74 @@ jobs:
           push: true
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
+  deploy-staging:
+    if: github.ref == 'refs/heads/main'
+    name: (staging) Deploy
+    environment: build
+    runs-on: ubuntu-latest
+    needs: [build-test-push]
+    strategy:
+      matrix:
+        region: [europe-west4, europe-west3]
+    steps:
       - name: "Auth with Google Cloud"
-        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
 
       - name: "Deploy Migrations to Cloud Run"
-        if: github.ref == 'refs/heads/main'
+        if: ${{ matrix.region == 'europe-west4' }}
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ steps.migrations-docker-metadata.outputs.version }}
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ needs.build-test-push.outputs.migrations_docker_version }}
+          region: ${{ matrix.region }}
+          job: stg-${{ matrix.region }}-activitypub-migrations
+          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:${{ matrix.region }}:stg-${{ matrix.region }}-activitypub-primary'
+
+      - name: "Deploy ActivityPub Queue to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region }}-activitypub-queue
+
+      - name: "Deploy ActivityPub API to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region }}-activitypub-api
+
+  deploy-old:
+    if: github.ref == 'refs/heads/main'
+    name: Deploy (old)
+    environment: build
+    runs-on: ubuntu-latest
+    needs: [build-test-push]
+    steps:
+      - name: "Auth with Google Cloud"
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+
+      - name: "Deploy Migrations to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ needs.build-test-push.outputs.migrations_docker_version }}
           region: europe-west4
           job: migrations
           flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db'
 
       - name: "Deploy ActivityPub Queue to Cloud Run"
-        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ steps.activitypub-docker-metadata.outputs.version }}
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: europe-west4
           service: activitypub-sub
 
       - name: "Deploy ActivityPub API to Cloud Run"
-        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ steps.activitypub-docker-metadata.outputs.version }}
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: europe-west4
           service: activitypub
