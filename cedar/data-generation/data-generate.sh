@@ -9,3 +9,4 @@ mkdir -p $DATA_DIR
 node generate-data.js
 node generate-follows.js
 node generate-feeds.js
+node generate-follows-notifications.js

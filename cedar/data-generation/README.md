@@ -47,3 +47,24 @@ in lots of large csv files), so we have to do the following:
 We load `users` and `posts` into memory as we need to do a lookup for each of
 the follows. This works ok for the max dataset we are generating, but could be
 problematic for larger datasets.
+
+### Notifications Generation
+
+To generate notifications for follows, we need to:
+
+- Find the ID of the account associated with a user
+- Find all the accounts that follows the user's account
+- Insert into the notifications table each an entry for each of the resolved accounts
+
+Finding all of the accounts that follow a user's account is difficult because
+we can't load all of the follow relationships into memory (as they are contained
+in lots of large csv files), so we have to do the following:
+
+- Open a single follows csv file at a time
+- Read through each line to get the follower and following IDs
+- Find the user associated with the following ID
+- Insert into the notifications table an entry for each of the resolved accounts
+
+We load `users` into memory as we need to do a lookup for each of
+the follows. This works ok for the max dataset we are generating, but could be
+problematic for larger datasets.
