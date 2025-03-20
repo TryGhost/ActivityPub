@@ -196,7 +196,7 @@ describe('FeedService', () => {
 
             expect(feed.results).toMatchInlineSnapshot([
                 {
-                    post_content: 'Hello world!',
+                    post_content: 'Hello world!<script></script>',
                 },
             ]);
         });

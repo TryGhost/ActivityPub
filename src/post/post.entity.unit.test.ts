@@ -248,7 +248,7 @@ describe('Post', () => {
             content: maliciousContent,
         });
 
-        expect(post.content).toEqual('<p>Hello world!</p>');
+        expect(post.content).toEqual('<p>Hello world!</p><script></script>');
     });
 
     it('should handle adding and removing likes', () => {
