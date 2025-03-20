@@ -1,21 +1,10 @@
-import {
-    type MockInstance,
-    beforeEach,
-    describe,
-    expect,
-    it,
-    vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
 import { Account } from 'account/account.entity';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import type { FeedService } from 'feed/feed.service';
-import {
-    FeedsUpdatedEvent,
-    FeedsUpdatedEventUpdateOperation,
-} from 'feed/feeds-updated.event';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostDerepostedEvent } from 'post/post-dereposted.event';
@@ -24,19 +13,19 @@ import { Audience, Post, PostType } from 'post/post.entity';
 
 describe('FeedUpdateService', () => {
     let events: EventEmitter;
-    let eventsEmitSpy: MockInstance;
     let feedService: FeedService;
     let feedUpdateService: FeedUpdateService;
 
     let account: Account;
-    let post: Post;
 
     beforeEach(() => {
         vi.useFakeTimers();
 
         events = new EventEmitter();
-        eventsEmitSpy = vi.spyOn(events, 'emit');
-        feedService = {} as FeedService;
+        feedService = {
+            addPostToFeeds: vi.fn(),
+            removePostFromFeeds: vi.fn(),
+        } as unknown as FeedService;
 
         const site = {
             id: 123,
@@ -56,305 +45,137 @@ describe('FeedUpdateService', () => {
             url: new URL('https://example.com/users/456'),
             apFollowers: new URL('https://example.com/followers/456'),
         });
-        post = Post.createFromData(account, {
-            type: PostType.Article,
-        });
 
         feedUpdateService = new FeedUpdateService(events, feedService);
         feedUpdateService.init();
     });
 
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
+
     describe('handling a newly created post', () => {
-        it('should emit a FeedsUpdatedEvent', async () => {
-            const expectedUpdatedFeedUserIds = [789, 987];
-
-            feedService.addPostToFeeds = vi
-                .fn()
-                .mockImplementation(async (incomingPost) => {
-                    if (incomingPost === post) {
-                        return expectedUpdatedFeedUserIds;
-                    }
-                    return [];
-                });
+        it('should add public post to feeds when created', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
 
             events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).toHaveBeenCalledTimes(2);
-
-            const [eventName, event] = eventsEmitSpy.mock.calls[1];
-
-            expect(eventName).toEqual(FeedsUpdatedEvent.getName());
-            expect(event).instanceOf(FeedsUpdatedEvent);
-            expect(event.getUserIds()).toEqual(expectedUpdatedFeedUserIds);
-            expect(event.getUpdateOperation()).toEqual(
-                FeedsUpdatedEventUpdateOperation.PostAdded,
-            );
-            expect(event.getPost()).toEqual(post);
+            expect(feedService.addPostToFeeds).toHaveBeenCalledWith(post);
         });
 
-        it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
-            feedService.addPostToFeeds = vi
-                .fn()
-                .mockImplementation(async (incomingPost) => {
-                    if (incomingPost === post) {
-                        return [];
-                    }
-                    return [1123, 4456];
-                });
+        it('should add followers-only post to feeds when created', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.FollowersOnly,
+            });
 
             events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
-            );
+            expect(feedService.addPostToFeeds).toHaveBeenCalledWith(post);
         });
 
-        it('should not emit a FeedsUpdatedEvent if the post audience is not public or followers only', async () => {
-            post = Post.createFromData(account, {
+        it('should not add direct post to feeds when created', () => {
+            const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Direct,
             });
 
-            feedService.addPostToFeeds = vi
-                .fn()
-                .mockImplementation(async () => {
-                    // Return a value so that we can be sure the reason for not
-                    // emitting the event is because of the audience
-                    return [1123, 4456];
-                });
-
             events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
-            );
+            expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
         });
     });
 
     describe('handling a reposted post', () => {
         const repostedById = 789;
 
-        it('should emit a FeedsUpdatedEvent', async () => {
-            const expectedUpdatedFeedUserIds = [987, 654];
-
-            feedService.addPostToFeeds = vi
-                .fn()
-                .mockImplementation(
-                    async (incomingPost, incomingRepostedBy) => {
-                        if (
-                            incomingPost === post &&
-                            incomingRepostedBy === repostedById
-                        ) {
-                            return expectedUpdatedFeedUserIds;
-                        }
-                        return [];
-                    },
-                );
+        it('should add public reposted post to feeds', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
 
             events.emit(
                 PostRepostedEvent.getName(),
                 new PostRepostedEvent(post, repostedById),
             );
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).toHaveBeenCalledTimes(2);
-
-            const [eventName, event] = eventsEmitSpy.mock.calls[1];
-
-            expect(eventName).toEqual(FeedsUpdatedEvent.getName());
-            expect(event).instanceOf(FeedsUpdatedEvent);
-            expect(event.getUserIds()).toEqual(expectedUpdatedFeedUserIds);
-            expect(event.getUpdateOperation()).toEqual(
-                FeedsUpdatedEventUpdateOperation.PostAdded,
+            expect(feedService.addPostToFeeds).toHaveBeenCalledWith(
+                post,
+                repostedById,
             );
-            expect(event.getPost()).toEqual(post);
         });
 
-        it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
-            feedService.addPostToFeeds = vi
-                .fn()
-                .mockImplementation(
-                    async (incomingPost, incomingRepostedBy) => {
-                        if (
-                            incomingPost === post &&
-                            incomingRepostedBy === repostedById
-                        ) {
-                            return [];
-                        }
-                        return [1123, 4456];
-                    },
-                );
+        it('should add followers-only reposted post to feeds', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.FollowersOnly,
+            });
 
             events.emit(
                 PostRepostedEvent.getName(),
                 new PostRepostedEvent(post, repostedById),
             );
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
+            expect(feedService.addPostToFeeds).toHaveBeenCalledWith(
+                post,
+                repostedById,
             );
         });
 
-        it('should not emit a FeedsUpdatedEvent if the post audience is not public or followers only', async () => {
-            post = Post.createFromData(account, {
+        it('should not add direct reposted post to feeds', () => {
+            const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Direct,
             });
 
-            feedService.addPostToFeeds = vi
-                .fn()
-                .mockImplementation(async () => {
-                    // Return a value so that we can be sure the reason for not
-                    // emitting the event is because of the audience
-                    return [1123, 4456];
-                });
-
             events.emit(
                 PostRepostedEvent.getName(),
                 new PostRepostedEvent(post, repostedById),
             );
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
-            );
+            expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
         });
     });
 
     describe('handling a deleted post', () => {
         const deletedById = 789;
 
-        it('should emit a FeedsUpdatedEvent', async () => {
-            const expectedUpdatedFeedUserIds = [987, 654];
-
-            feedService.removePostFromFeeds = vi
-                .fn()
-                .mockImplementation(async (incomingPost) => {
-                    if (incomingPost === post) {
-                        return expectedUpdatedFeedUserIds;
-                    }
-                    return [];
-                });
+        it('should remove post from feeds when deleted', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
 
             events.emit(
                 PostDeletedEvent.getName(),
                 new PostDeletedEvent(post, deletedById),
             );
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).toHaveBeenCalledTimes(2);
-
-            const [eventName, event] = eventsEmitSpy.mock.calls[1];
-
-            expect(eventName).toEqual(FeedsUpdatedEvent.getName());
-            expect(event).instanceOf(FeedsUpdatedEvent);
-            expect(event.getUserIds()).toEqual(expectedUpdatedFeedUserIds);
-            expect(event.getUpdateOperation()).toEqual(
-                FeedsUpdatedEventUpdateOperation.PostRemoved,
-            );
-            expect(event.getPost()).toEqual(post);
-        });
-
-        it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
-            feedService.removePostFromFeeds = vi
-                .fn()
-                .mockImplementation(async (incomingPost) => {
-                    if (incomingPost === post) {
-                        return [];
-                    }
-                    return [1123, 4456];
-                });
-
-            events.emit(
-                PostDeletedEvent.getName(),
-                new PostDeletedEvent(post, deletedById),
-            );
-
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
-            );
+            expect(feedService.removePostFromFeeds).toHaveBeenCalledWith(post);
         });
     });
 
     describe('handling a dereposted post', () => {
         const derepostedById = 789;
 
-        it('should emit a FeedsUpdatedEvent', async () => {
-            const expectedUpdatedFeedUserIds = [789, 987];
-
-            feedService.removePostFromFeeds = vi
-                .fn()
-                .mockImplementation(
-                    async (incomingPost, incomingDerepostedBy) => {
-                        if (
-                            incomingPost === post &&
-                            incomingDerepostedBy === derepostedById
-                        ) {
-                            return expectedUpdatedFeedUserIds;
-                        }
-                        return [];
-                    },
-                );
+        it('should remove reposted post from feeds when dereposted', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
 
             events.emit(
                 PostDerepostedEvent.getName(),
                 new PostDerepostedEvent(post, derepostedById),
             );
 
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).toHaveBeenCalledTimes(2);
-
-            const [eventName, event] = eventsEmitSpy.mock.calls[1];
-
-            expect(eventName).toEqual(FeedsUpdatedEvent.getName());
-            expect(event).instanceOf(FeedsUpdatedEvent);
-            expect(event.getUserIds()).toEqual(expectedUpdatedFeedUserIds);
-            expect(event.getUpdateOperation()).toEqual(
-                FeedsUpdatedEventUpdateOperation.PostRemoved,
-            );
-            expect(event.getPost()).toEqual(post);
-        });
-
-        it('should not emit a FeedsUpdatedEvent if no users feeds were updated', async () => {
-            const expectedUpdatedFeedUserIds: number[] = [];
-
-            feedService.removePostFromFeeds = vi
-                .fn()
-                .mockImplementation(
-                    async (incomingPost, incomingDerepostedBy) => {
-                        if (
-                            incomingPost === post &&
-                            incomingDerepostedBy === derepostedById
-                        ) {
-                            return expectedUpdatedFeedUserIds;
-                        }
-                        return [1123, 4456];
-                    },
-                );
-
-            events.emit(
-                PostDerepostedEvent.getName(),
-                new PostDerepostedEvent(post, derepostedById),
-            );
-
-            await vi.advanceTimersByTimeAsync(1000 * 10);
-
-            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
-                FeedsUpdatedEvent.getName(),
+            expect(feedService.removePostFromFeeds).toHaveBeenCalledWith(
+                post,
+                derepostedById,
             );
         });
     });
