@@ -165,12 +165,65 @@ export interface PostDTO {
 }
 
 /**
- * Notification returned by the API - Anywhere a notification is returned via the API,
- * it should be this shape, or a partial version of it
+ * Notification returned by the API
  */
 export interface NotificationDTO {
     /**
      * Internal ID of the notification
      */
     id: string;
+    /**
+     * Date the notification was created
+     */
+    createdAt: Date;
+    /**
+     * Type of the notification
+     */
+    type: 'like' | 'repost' | 'reply' | 'follow';
+    /**
+     * Actor of the notification
+     */
+    actor: AuthorDTO;
+    /**
+     * Post associated with the notification
+     */
+    post: {
+        /**
+         * Internal ID of the post
+         */
+        id: string;
+        /**
+         * Title of the post
+         */
+        title: string;
+        /**
+         * Content of the post
+         */
+        content: string;
+        /**
+         * URL of the post
+         */
+        url: string;
+    } | null;
+    /**
+     * In reply to post associated with the notification
+     */
+    inReplyTo: {
+        /**
+         * Internal ID of the post
+         */
+        id: string;
+        /**
+         * Title of the post
+         */
+        title: string;
+        /**
+         * Content of the post
+         */
+        content: string;
+        /**
+         * URL of the post
+         */
+        url: string;
+    } | null;
 }
