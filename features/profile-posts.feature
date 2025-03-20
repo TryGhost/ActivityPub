@@ -10,7 +10,6 @@ Feature: My Posts on Profile
       """
     And we are following "Alice"
     And we are following "Bob"
-    And fake timer advances time by 1000 milliseconds
     And a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
     And "AliceNote" is in our Inbox
@@ -47,7 +46,6 @@ Feature: My Posts on Profile
     And post "2" in the "posts" response is "MyNote"
 
   Scenario: Profile posts are paginated
-    Given fake timer advances time by 1000 milliseconds
     And a "Create(Note)" Activity "BobNote" by "Bob"
     And "Bob" sends "BobNote" to the Inbox
     And "BobNote" is in our Inbox
