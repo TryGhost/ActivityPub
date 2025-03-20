@@ -72,6 +72,7 @@ describe('sanitizeHtml', () => {
                 'ruby',
                 's',
                 'samp',
+                'script',
                 'small',
                 'span',
                 'strong',
@@ -223,7 +224,17 @@ describe('sanitizeHtml', () => {
                 g: ['transform'],
                 defs: [],
                 style: ['type'],
+                iframe: [
+                    'src',
+                    'width',
+                    'height',
+                    'frameborder',
+                    'allowfullscreen',
+                ],
+                script: ['src', 'async', 'charset'],
             },
+            allowedScriptDomains: ['twitter.com'],
+            allowedScriptHostnames: ['platform.twitter.com'],
         });
     });
 
