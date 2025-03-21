@@ -8,7 +8,6 @@ import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import type { Account } from '../account/types';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { TABLE_ACCOUNTS, TABLE_SITES, TABLE_USERS } from '../constants';
 import { type IGhostService, type Site, SiteService } from './site.service';
 
 vi.mock('@fedify/fedify', async () => {
@@ -39,9 +38,9 @@ describe('SiteService', () => {
     beforeEach(async () => {
         // Clean up the database
         await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await db(TABLE_SITES).truncate();
-        await db(TABLE_USERS).truncate();
-        await db(TABLE_ACCOUNTS).truncate();
+        await db('sites').truncate();
+        await db('users').truncate();
+        await db('accounts').truncate();
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         const events = new AsyncEvents();
@@ -87,7 +86,7 @@ describe('SiteService', () => {
 
         expect(createInternalAccount.mock.calls).toHaveLength(1);
 
-        const siteRows = await db(TABLE_SITES).select('*');
+        const siteRows = await db('sites').select('*');
 
         expect(siteRows).toHaveLength(1);
 
@@ -101,7 +100,7 @@ describe('SiteService', () => {
 
         expect(siteTwo).toMatchObject(site);
 
-        const siteRowsAfterSecondInit = await db(TABLE_SITES).select('*');
+        const siteRowsAfterSecondInit = await db('sites').select('*');
 
         expect(siteRowsAfterSecondInit).toHaveLength(1);
 
