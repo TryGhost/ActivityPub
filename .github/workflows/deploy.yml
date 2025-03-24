@@ -1,0 +1,119 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  ci-docker-tags:
+    name: CI Docker Tags
+    runs-on: ubuntu-latest
+    outputs:
+      activitypub_docker_tags: ${{ steps.docker-tags.outputs.activitypub_docker_tags }}
+      migrations_docker_tags: ${{ steps.docker-tags.outputs.migrations_docker_tags }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: docker_tags
+      - id: docker-tags
+        run: |
+          activitypub=$(grep '^activitypub:' docker_tags.txt | cut -d ':' -f2- | xargs)
+          migrations=$(grep '^migrations:' docker_tags.txt | cut -d ':' -f2- | xargs)
+          echo "activitypub_docker_tags=$activitypub" >> $GITHUB_OUTPUT
+          echo "migrations_docker_tags=$migrations" >> $GITHUB_OUTPUT
+
+  deploy-ephemeral-staging:
+    name: (ephemeral staging) Deploy
+    environment: build
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: stg
+      REGION: europe-west4
+    steps:
+      - name: "Auth with Google Cloud"
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 514.0.0'
+      - name: "Check if the infrastructure is already provisioned"
+        run: |
+          INFRASTRUCTURE_PROVISIONED=$(gcloud run services list --filter='metadata.name=${ENVIRONMENT}-${REGION}-activitypub-api-${GITHUB_HEAD_REF}' --project ghost-activitypub --format=json)
+          if [ "${INFRASTRUCTURE_PROVISIONED}" != "[]" ]; then
+            echo "The infrastructure is already provisioned"
+            echo "infrastructure_provisioned=true" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/main'
+    name: (staging) Deploy
+    environment: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: [europe-west4, europe-west3]
+    steps:
+      - name: "Auth with Google Cloud"
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+
+      - name: "Deploy Migrations to Cloud Run"
+        if: ${{ matrix.region == 'europe-west4' }}
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ needs.ci-docker-tags.outputs.migrations_docker_tags }}
+          region: ${{ matrix.region }}
+          job: stg-${{ matrix.region }}-activitypub-migrations
+          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:${{ matrix.region }}:stg-${{ matrix.region }}-activitypub-primary'
+
+      - name: "Deploy ActivityPub Queue to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.ci-docker-tags.outputs.activitypub_docker_tags }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region }}-activitypub-queue
+
+      - name: "Deploy ActivityPub API to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.ci-docker-tags.outputs.activitypub_docker_tags }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region }}-activitypub-api
+
+  deploy-old:
+    if: github.ref == 'refs/heads/main'
+    name: Deploy (old)
+    environment: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Auth with Google Cloud"
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
+
+      - name: "Deploy Migrations to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ needs.ci-docker-tags.outputs.migrations_docker_tags }}
+          region: europe-west4
+          job: migrations
+          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db'
+
+      - name: "Deploy ActivityPub Queue to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ needs.ci-docker-tags.outputs.activitypub_docker_tags }}
+          region: europe-west4
+          service: activitypub-sub
+
+      - name: "Deploy ActivityPub API to Cloud Run"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ needs.ci-docker-tags.outputs.activitypub_docker_tags }}
+          region: europe-west4
+          service: activitypub
