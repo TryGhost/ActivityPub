@@ -274,6 +274,22 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                     });
                 }
 
+                if (typeof activity.object.attributedTo === 'string') {
+                    const attributedTo = await lookupObject(
+                        apCtx,
+                        activity.object.attributedTo,
+                    );
+                    if (isActor(attributedTo)) {
+                        activity.object.attributedTo =
+                            await attributedTo.toJsonLd({
+                                format: 'compact',
+                            });
+                    } else if (activity.type === 'Announce') {
+                        // If the attributedTo is not an actor, it is a repost and we don't want to show it
+                        continue;
+                    }
+                }
+
                 result.posts.push(activity);
             }
         } catch (err) {
