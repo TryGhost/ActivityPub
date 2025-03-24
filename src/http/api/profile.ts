@@ -3,6 +3,7 @@ import {
     Activity,
     type Actor,
     Announce,
+    type Collection,
     type CollectionPage,
     Like,
     isActor,
@@ -314,6 +315,7 @@ export function createGetProfileFollowersHandler(
      * @param ctx App context instance
      */
     return async function handleGetProfileFollowers(ctx: AppContext) {
+        console.log('here in handleGetProfileFollowers');
         const db = ctx.get('db');
         const logger = ctx.get('logger');
         const site = ctx.get('site');
@@ -338,7 +340,9 @@ export function createGetProfileFollowersHandler(
         const next = queryNext ? decodeURIComponent(queryNext) : '';
 
         // If the next parameter is not a valid URI, return early
-        if (next !== '' && !isUri(next)) {
+        if (next !== '' && !isUri(next) && !Number(next)) {
+            //make next url
+            //make next url
             return new Response(null, { status: 400 });
         }
 
@@ -358,6 +362,7 @@ export function createGetProfileFollowersHandler(
         };
 
         let page: CollectionPage | null = null;
+        let followers: Collection | null = null;
 
         try {
             if (next !== '') {
@@ -384,7 +389,7 @@ export function createGetProfileFollowersHandler(
                     page = null;
                 }
             } else {
-                const followers = await actor.getFollowers();
+                followers = await actor.getFollowers();
 
                 if (followers) {
                     page = await followers.getFirst();
@@ -392,6 +397,57 @@ export function createGetProfileFollowersHandler(
             }
         } catch (err) {
             logger.error('Error getting followers', { error: err });
+        }
+
+        if (!page) {
+            // Handling non paginated results
+            if (!followers) {
+                followers = await actor.getFollowers();
+            }
+            if (!followers) {
+                return new Response(null, { status: 404 });
+            }
+
+            const pageSize = 15;
+            const pageNumber = next ? Number.parseInt(next, 10) : 1;
+            const startIndex = (pageNumber - 1) * pageSize;
+
+            const pageUrls = followers.itemIds.slice(
+                startIndex,
+                startIndex + pageSize,
+            );
+
+            for await (const item of pageUrls) {
+                const actor = await lookupObject(apCtx, item.href);
+                if (!actor) {
+                    continue;
+                }
+
+                result.followers.push({
+                    actor: await actor.toJsonLd({
+                        format: 'compact',
+                    }),
+                    isFollowing: await isFollowedByDefaultSiteAccount(
+                        actor as Actor,
+                        site,
+                        accountService,
+                    ),
+                });
+            }
+
+            if (
+                followers.totalItems &&
+                pageNumber * pageSize < followers.totalItems
+            ) {
+                result.next = (pageNumber + 1).toString();
+            }
+
+            return new Response(JSON.stringify(result), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            });
         }
 
         if (!page) {
