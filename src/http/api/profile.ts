@@ -283,6 +283,9 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                             await attributedTo.toJsonLd({
                                 format: 'compact',
                             });
+                    } else if (activity.type === 'Announce') {
+                        // If the attributedTo is not an actor, it is a repost and we don't want to show it
+                        continue;
                     }
                 }
 
