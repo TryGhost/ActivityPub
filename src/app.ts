@@ -396,16 +396,18 @@ inboxListener
     )
     .onError(inboxErrorHandler);
 
-fedify.setFollowersDispatcher(
-    '/.ghost/activitypub/followers/{handle}',
-    spanWrapper(
-        createFollowersDispatcher(
-            siteService,
-            accountRepository,
-            followersService,
+fedify
+    .setFollowersDispatcher(
+        '/.ghost/activitypub/followers/{handle}',
+        spanWrapper(
+            createFollowersDispatcher(
+                siteService,
+                accountRepository,
+                followersService,
+            ),
         ),
-    ),
-).setCounter(createFollowersCounter(siteService, accountService));
+    )
+    .setCounter(createFollowersCounter(siteService, accountService));
 
 fedify
     .setFollowingDispatcher(
