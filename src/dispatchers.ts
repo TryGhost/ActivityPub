@@ -785,6 +785,29 @@ export function createFollowingDispatcher(
     };
 }
 
+export function createFollowersCounter(
+    siteService: SiteService,
+    accountService: AccountService,
+) {
+    return async function countFollowers(
+        ctx: RequestContext<ContextData>,
+        handle: string,
+    ) {
+        const site = await siteService.getSiteByHost(ctx.host);
+        if (!site) {
+            throw new Error(`Site not found for host: ${ctx.host}`);
+        }
+
+        // @TODO: Get account by provided handle instead of default account?
+        const siteDefaultAccount =
+            await accountService.getDefaultAccountForSite(site);
+
+        return await accountService.getFollowerAccountsCount(
+            siteDefaultAccount,
+        );
+    };
+}
+
 export function createFollowingCounter(
     siteService: SiteService,
     accountService: AccountService,
