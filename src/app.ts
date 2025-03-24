@@ -856,9 +856,9 @@ app.post(
     spanWrapper(handleWebhookSiteChanged(siteService)),
 );
 
-function requireRole(role: GhostRole) {
+function requireRole(...roles: GhostRole[]) {
     return function roleMiddleware(ctx: HonoContext, next: Next) {
-        if (ctx.get('role') !== role) {
+        if (!roles.includes(ctx.get('role'))) {
             return new Response(null, {
                 status: 403,
             });
@@ -869,41 +869,41 @@ function requireRole(role: GhostRole) {
 
 app.get(
     '/.ghost/activitypub/inbox/:handle',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(inboxHandler),
 );
 app.get(
     '/.ghost/activitypub/activities/:handle',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(handleGetActivities),
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createFollowActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/unfollow/:handle',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createUnfollowActionHandler(accountService)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createLikeAction(accountRepository, postService, postRepository),
     ),
 );
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createUnlikeAction(accountRepository, postService, postRepository),
     ),
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createReplyActionHandler(
             accountRepository,
@@ -914,7 +914,7 @@ app.post(
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         spanWrapper(
             createRepostActionHandler(
@@ -927,7 +927,7 @@ app.post(
 );
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createDerepostActionHandler(
             accountRepository,
@@ -938,34 +938,34 @@ app.post(
 );
 app.post(
     '/.ghost/activitypub/actions/note',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) =>
         handleCreateNote(ctx, accountRepository, postRepository),
     ),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createSearchHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetProfileHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/followers',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetProfileFollowersHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/following',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetProfileFollowingHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetProfilePostsHandler(accountService)),
 );
 app.get(
@@ -974,37 +974,37 @@ app.get(
 );
 app.get(
     '/.ghost/activitypub/account/:handle',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/posts',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountPostsHandler(accountService, postService)),
 );
 app.get(
     '/.ghost/activitypub/posts/liked',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountFollowsHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/feed',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Feed')),
 );
 app.get(
     '/.ghost/activitypub/inbox',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createDeletePostHandler(accountRepository, postRepository, postService),
     ),
