@@ -340,7 +340,9 @@ describe('dispatchers', () => {
                 protocols: ['activitypub'],
                 openRegistrations: false,
                 usage: {
-                    users: {},
+                    users: {
+                        total: 1,
+                    },
                     localPosts: 0,
                     localComments: 0,
                 },
