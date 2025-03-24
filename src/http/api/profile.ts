@@ -315,7 +315,6 @@ export function createGetProfileFollowersHandler(
      * @param ctx App context instance
      */
     return async function handleGetProfileFollowers(ctx: AppContext) {
-        console.log('here in handleGetProfileFollowers');
         const db = ctx.get('db');
         const logger = ctx.get('logger');
         const site = ctx.get('site');
@@ -341,8 +340,6 @@ export function createGetProfileFollowersHandler(
 
         // If the next parameter is not a valid URI, return early
         if (next !== '' && !isUri(next) && !Number(next)) {
-            //make next url
-            //make next url
             return new Response(null, { status: 400 });
         }
 
@@ -399,8 +396,8 @@ export function createGetProfileFollowersHandler(
             logger.error('Error getting followers', { error: err });
         }
 
+        // Handling non paginated results
         if (!page) {
-            // Handling non paginated results
             if (!followers) {
                 followers = await actor.getFollowers();
             }
