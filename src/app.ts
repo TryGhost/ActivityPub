@@ -59,6 +59,7 @@ import {
     createDispatcher,
     createFollowHandler,
     createFollowersDispatcher,
+    createFollowersCounter,
     createFollowingCounter,
     createFollowingDispatcher,
     createLikeHandler,
@@ -404,7 +405,7 @@ fedify.setFollowersDispatcher(
             followersService,
         ),
     ),
-);
+).setCounter(createFollowersCounter(siteService, accountService));
 
 fedify
     .setFollowingDispatcher(
