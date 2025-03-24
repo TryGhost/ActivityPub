@@ -273,6 +273,19 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                     });
                 }
 
+                if (typeof activity.object.attributedTo === 'string') {
+                    const attributedTo = await lookupObject(
+                        apCtx,
+                        activity.object.attributedTo,
+                    );
+                    if (isActor(attributedTo)) {
+                        activity.object.attributedTo =
+                            await attributedTo.toJsonLd({
+                                format: 'compact',
+                            });
+                    }
+                }
+
                 result.posts.push(activity);
             }
         } catch (err) {
