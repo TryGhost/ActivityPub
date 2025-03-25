@@ -82,11 +82,13 @@ export class NotificationService {
                 'actor_account.avatar_url as actor_avatar_url',
                 // Post fields
                 'post.id as post_id',
+                'post.type as post_type',
                 'post.title as post_title',
                 'post.content as post_content',
                 'post.url as post_url',
                 // In reply to post fields
                 'in_reply_to_post.id as in_reply_to_post_id',
+                'in_reply_to_post.type as in_reply_to_post_type',
                 'in_reply_to_post.title as in_reply_to_post_title',
                 'in_reply_to_post.content as in_reply_to_post_content',
                 'in_reply_to_post.url as in_reply_to_post_url',

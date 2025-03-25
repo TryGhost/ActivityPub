@@ -185,45 +185,19 @@ export interface NotificationDTO {
      */
     actor: AuthorDTO;
     /**
-     * Post associated with the notification
+     * Post (partial) associated with the notification
      */
-    post: {
-        /**
-         * Internal ID of the post
-         */
-        id: string;
-        /**
-         * Title of the post
-         */
-        title: string;
-        /**
-         * Content of the post
-         */
-        content: string;
-        /**
-         * URL of the post
-         */
-        url: string;
-    } | null;
+    post:
+        | (Pick<PostDTO, 'id' | 'title' | 'content' | 'url'> & {
+              type: 'article' | 'note';
+          })
+        | null;
     /**
-     * In reply to post associated with the notification
+     * In reply to post (partial) associated with the notification
      */
-    inReplyTo: {
-        /**
-         * Internal ID of the post
-         */
-        id: string;
-        /**
-         * Title of the post
-         */
-        title: string;
-        /**
-         * Content of the post
-         */
-        content: string;
-        /**
-         * URL of the post
-         */
-        url: string;
-    } | null;
+    inReplyTo:
+        | (Pick<PostDTO, 'id' | 'title' | 'content' | 'url'> & {
+              type: 'article' | 'note';
+          })
+        | null;
 }
