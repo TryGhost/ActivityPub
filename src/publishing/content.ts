@@ -42,8 +42,8 @@ export class ContentPreparer {
         return ContentPreparer.instance.prepare(content, options);
     }
 
-    static regenerateExcerpt(html: string, wordLimit = 50) {
-        return ContentPreparer.instance.regenerateExcerpt(html, wordLimit);
+    static regenerateExcerpt(html: string, charLimit = 500) {
+        return ContentPreparer.instance.regenerateExcerpt(html, charLimit);
     }
 
     /**
@@ -86,9 +86,9 @@ export class ContentPreparer {
      * Re-generate excerpt from HTML content, based on a character limit
      *
      * @param html HTML content to generate an excerpt from
-     * @param charLimit Character limit for the excerpt, defaults to 500
+     * @param charLimit Character limit for the excerpt
      */
-    regenerateExcerpt(html: string, charLimit = 500) {
+    regenerateExcerpt(html: string, charLimit: number) {
         const text = htmlToText(html, {
             wordwrap: false,
             preserveNewlines: true,

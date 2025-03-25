@@ -92,7 +92,7 @@ describe('ContentPreparer', () => {
     describe('regenerateExcerpt', () => {
         it('returns the original content as text if shorter than the limit', () => {
             const content = '<p>Hello, world!</p>';
-            const result = preparer.regenerateExcerpt(content);
+            const result = preparer.regenerateExcerpt(content, 500);
 
             expect(result).toEqual('Hello, world!');
         });
