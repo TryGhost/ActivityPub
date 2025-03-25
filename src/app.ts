@@ -1029,7 +1029,7 @@ app.get(
             logger.info(body.orderedItems.join(','));
         } catch (err) {
             if (err instanceof Error) {
-                logger.error(err.message);
+                logger.error('{error}', { error: err.message });
             }
         }
     },
