@@ -88,4 +88,24 @@ describe('ContentPreparer', () => {
             });
         });
     });
+
+    describe('generateExcerpt', () => {
+        it('returns the original content if shorter than the limit', () => {
+            const content = 'Hello, world!';
+            const result = preparer.generateExcerpt(content);
+
+            expect(result).toEqual('Hello, world!');
+        });
+
+        it('truncates the content if longer than the limit', () => {
+            const content =
+                'I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt';
+            const result = preparer.generateExcerpt(content, 48);
+
+            expect(result).toEqual(
+                'I expect content to be truncated exactly here...',
+            );
+            expect(result.length).toEqual(48);
+        });
+    });
 });

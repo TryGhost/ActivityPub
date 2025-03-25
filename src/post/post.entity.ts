@@ -218,10 +218,13 @@ export class Post extends BaseEntity {
         const isPublic = ghostPost.visibility === 'public';
 
         let content = ghostPost.html;
+        let excerpt = ghostPost.excerpt;
         if (isPublic === false && ghostPost.html !== null) {
             content = ContentPreparer.prepare(ghostPost.html, {
                 removeMemberContent: true,
             });
+
+            excerpt = ContentPreparer.generateExcerpt(content);
 
             if (content === ghostPost.html) {
                 content = '';
@@ -239,7 +242,7 @@ export class Post extends BaseEntity {
             PostType.Article,
             Audience.Public,
             ghostPost.title,
-            ghostPost.excerpt,
+            excerpt,
             content,
             new URL(ghostPost.url),
             parseURL(ghostPost.feature_image),

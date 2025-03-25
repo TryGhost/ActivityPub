@@ -42,6 +42,10 @@ export class ContentPreparer {
         return ContentPreparer.instance.prepare(content, options);
     }
 
+    static generateExcerpt(html: string, wordLimit = 50) {
+        return ContentPreparer.instance.generateExcerpt(html, wordLimit);
+    }
+
     /**
      * Prepare the content
      *
@@ -76,6 +80,20 @@ export class ContentPreparer {
         }
 
         return prepared;
+    }
+
+    /**
+     * Generate excerpt from content, based on a character limit
+     *
+     * @param content Content to generate an excerpt from
+     * @param charLimit Character limit for the excerpt, defaults to 500
+     */
+    generateExcerpt(content: string, charLimit = 500) {
+        if (content.length <= charLimit) {
+            return content;
+        }
+
+        return `${content.substring(0, charLimit - 3)}...`;
     }
 
     /**
