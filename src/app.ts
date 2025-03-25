@@ -104,6 +104,7 @@ import {
     createGetAccountPostsHandler,
     createGetFeedHandler,
     createGetNotificationsHandler,
+    createGetPostHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
     createGetProfileHandler,
@@ -1001,6 +1002,11 @@ app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner),
     spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
+);
+app.get(
+    '/.ghost/activitypub/post/:post_ap_id',
+    requireRole(GhostRole.Owner),
+    spanWrapper(createGetPostHandler(postRepository)),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',
