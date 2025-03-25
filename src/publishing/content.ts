@@ -1,5 +1,5 @@
-import { escapeHtml } from '../helpers/html';
 import { htmlToText } from 'html-to-text';
+import { escapeHtml } from '../helpers/html';
 /**
  * Marker to indicate that the proceeding content is member content
  */
