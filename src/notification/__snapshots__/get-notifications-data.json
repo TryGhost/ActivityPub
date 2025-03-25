@@ -8,6 +8,7 @@
     "in_reply_to_post_content": "",
     "in_reply_to_post_id": null,
     "in_reply_to_post_title": null,
+    "in_reply_to_post_type": null,
     "in_reply_to_post_url": null,
     "notification_created_at": 2025-03-20T14:00:00.000Z,
     "notification_event_type": 4,
@@ -15,6 +16,7 @@
     "post_content": "",
     "post_id": null,
     "post_title": null,
+    "post_type": null,
     "post_url": null,
   },
   {
@@ -26,6 +28,7 @@
     "in_reply_to_post_content": "Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.",
     "in_reply_to_post_id": 1,
     "in_reply_to_post_title": null,
+    "in_reply_to_post_type": 1,
     "in_reply_to_post_url": "http://alice.com/post/some-post",
     "notification_created_at": 2025-03-20T11:05:00.000Z,
     "notification_event_type": 3,
@@ -33,6 +36,7 @@
     "post_content": "Nostrud incididunt pariatur non exercitation exercitation exercitation esse nulla enim consectetur qui ea.",
     "post_id": 2,
     "post_title": null,
+    "post_type": 0,
     "post_url": "http://bob.com/post/some-reply",
   },
   {
@@ -44,6 +48,7 @@
     "in_reply_to_post_content": "",
     "in_reply_to_post_id": null,
     "in_reply_to_post_title": null,
+    "in_reply_to_post_type": null,
     "in_reply_to_post_url": null,
     "notification_created_at": 2025-03-18T16:55:00.000Z,
     "notification_event_type": 2,
@@ -51,6 +56,7 @@
     "post_content": "Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.",
     "post_id": 1,
     "post_title": null,
+    "post_type": 1,
     "post_url": "http://alice.com/post/some-post",
   },
   {
@@ -62,6 +68,7 @@
     "in_reply_to_post_content": "",
     "in_reply_to_post_id": null,
     "in_reply_to_post_title": null,
+    "in_reply_to_post_type": null,
     "in_reply_to_post_url": null,
     "notification_created_at": 2025-03-18T09:30:00.000Z,
     "notification_event_type": 1,
@@ -69,6 +76,7 @@
     "post_content": "Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.",
     "post_id": 1,
     "post_title": null,
+    "post_type": 1,
     "post_url": "http://alice.com/post/some-post",
   },
 ]
