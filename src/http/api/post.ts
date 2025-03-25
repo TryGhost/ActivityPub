@@ -5,6 +5,38 @@ import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { getRelatedActivities } from '../../db';
 import { removeFromList } from '../../kv-helpers';
+import { postToDTO } from './helpers/post';
+
+/**
+ * Create a handler for a request to get a post
+ */
+export function createGetPostHandler(postRepository: KnexPostRepository) {
+    /**
+     * Handle a request to get a post
+     */
+    return async function handleGetPost(ctx: AppContext) {
+        const postApId = decodeURIComponent(ctx.req.param('post_ap_id'));
+        const idAsUrl = parseURL(postApId);
+
+        if (!idAsUrl) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const post = await postRepository.getByApId(idAsUrl);
+
+        if (!post) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        return new Response(JSON.stringify(postToDTO(post)), {
+            status: 200,
+        });
+    };
+}
 
 /**
  * Create a handler for a request to delete a post
