@@ -178,13 +178,13 @@ describe('Post', () => {
         ).toThrow();
     });
 
-    it('should create an article with restricted content from a private Ghost Post', () => {
+    it('should create an article with restricted content & excerpt from a private Ghost Post', () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
-            html: '<p>Welcome!</p><!--members-only--><p> This is such a great post </p>',
-            excerpt: 'This is such a great...',
+            html: '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><!--members-only--><p>This is private content</p>',
+            excerpt: 'Welcome!\n\nThis is private content',
             feature_image: 'https://ghost.org/feature-image.jpeg',
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
@@ -194,7 +194,10 @@ describe('Post', () => {
         const post = Post.createArticleFromGhostPost(account, ghostPost);
 
         expect(post.uuid).toEqual(ghostPost.uuid);
-        expect(post.content).toEqual('<p>Welcome!</p>');
+        expect(post.content).toEqual(
+            '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" />',
+        );
+        expect(post.excerpt).toEqual('Welcome!');
     });
 
     it('should handle adding and removing reposts', () => {

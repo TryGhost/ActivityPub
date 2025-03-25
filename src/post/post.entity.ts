@@ -224,7 +224,7 @@ export class Post extends BaseEntity {
                 removeMemberContent: true,
             });
 
-            excerpt = ContentPreparer.generateExcerpt(content);
+            excerpt = ContentPreparer.regenerateExcerpt(content);
 
             if (content === ghostPost.html) {
                 content = '';

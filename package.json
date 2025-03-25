@@ -31,11 +31,14 @@
     "test:all": "docker compose run --rm activitypub-testing yarn _test:all",
     "lint": "biome check"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "10.9.0",
     "@fedify/cli": "1.4.6",
+    "@types/html-to-text": "^9.0.4",
     "@types/jsonwebtoken": "9.0.7",
     "@types/node": "20.17.6",
     "@types/node-jose": "1.1.13",
@@ -67,6 +70,7 @@
     "@sentry/node": "8.49.0",
     "es-toolkit": "1.31.0",
     "hono": "4.6.10",
+    "html-to-text": "9.0.5",
     "jsonwebtoken": "9.0.2",
     "knex": "3.1.0",
     "ky": "1.7.3",

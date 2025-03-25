@@ -89,23 +89,45 @@ describe('ContentPreparer', () => {
         });
     });
 
-    describe('generateExcerpt', () => {
-        it('returns the original content if shorter than the limit', () => {
-            const content = 'Hello, world!';
-            const result = preparer.generateExcerpt(content);
+    describe('regenerateExcerpt', () => {
+        it('returns the original content as text if shorter than the limit', () => {
+            const content = '<p>Hello, world!</p>';
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual('Hello, world!');
         });
 
         it('truncates the content if longer than the limit', () => {
             const content =
-                'I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt';
-            const result = preparer.generateExcerpt(content, 48);
+                '<p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
+            const result = preparer.regenerateExcerpt(content, 48);
 
             expect(result).toEqual(
                 'I expect content to be truncated exactly here...',
             );
             expect(result.length).toEqual(48);
+        });
+
+        it('should ignore <img> tags', () => {
+            const content =
+                '<img src="https://example.com/image.jpg" /><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
+            const result = preparer.regenerateExcerpt(content, 48);
+
+            expect(result).toEqual(
+                'I expect content to be truncated exactly here...',
+            );
+            expect(result.length).toEqual(48);
+        });
+
+        it('should remove <a> href attributes', () => {
+            const content =
+                '<a href="https://example.com/image.jpg" />Link.</a><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
+            const result = preparer.regenerateExcerpt(content, 55);
+
+            expect(result).toEqual(
+                'Link.\n\nI expect content to be truncated exactly here...',
+            );
+            expect(result.length).toEqual(55);
         });
     });
 });

@@ -1,5 +1,5 @@
 import { escapeHtml } from '../helpers/html';
-
+import { htmlToText } from 'html-to-text';
 /**
  * Marker to indicate that the proceeding content is member content
  */
@@ -42,8 +42,8 @@ export class ContentPreparer {
         return ContentPreparer.instance.prepare(content, options);
     }
 
-    static generateExcerpt(html: string, wordLimit = 50) {
-        return ContentPreparer.instance.generateExcerpt(html, wordLimit);
+    static regenerateExcerpt(html: string, wordLimit = 50) {
+        return ContentPreparer.instance.regenerateExcerpt(html, wordLimit);
     }
 
     /**
@@ -83,17 +83,33 @@ export class ContentPreparer {
     }
 
     /**
-     * Generate excerpt from content, based on a character limit
+     * Re-generate excerpt from HTML content, based on a character limit
      *
-     * @param content Content to generate an excerpt from
+     * @param html HTML content to generate an excerpt from
      * @param charLimit Character limit for the excerpt, defaults to 500
      */
-    generateExcerpt(content: string, charLimit = 500) {
-        if (content.length <= charLimit) {
-            return content;
+    regenerateExcerpt(html: string, charLimit = 500) {
+        const text = htmlToText(html, {
+            wordwrap: false,
+            preserveNewlines: true,
+            selectors: [
+                { selector: 'img', format: 'skip' },
+                { selector: 'div', format: 'inline' },
+                { selector: 'a', options: { ignoreHref: true } },
+                { selector: 'figcaption', format: 'skip' },
+                { selector: 'a[rel=footnote]', format: 'skip' },
+                { selector: 'div.footnotes', format: 'skip' },
+                { selector: 'hr', format: 'skip' },
+                { selector: 'blockquote', format: 'block' },
+                { selector: '.kg-signup-card', format: 'skip' },
+            ],
+        }).trim();
+
+        if (text.length <= charLimit) {
+            return text;
         }
 
-        return `${content.substring(0, charLimit - 3)}...`;
+        return `${text.substring(0, charLimit - 3)}...`;
     }
 
     /**
