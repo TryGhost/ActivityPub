@@ -3,7 +3,7 @@ import {
     Activity,
     type Actor,
     Announce,
-    type CollectionPage,
+    CollectionPage,
     Like,
     isActor,
 } from '@fedify/fedify';
@@ -200,9 +200,8 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                     next,
                 )) as CollectionPage | null;
 
-                // Explicitly check that we have a valid page seeming though we
-                // can't be type safe due to lookupObject returning a generic object
-                if (!page?.itemIds) {
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
             } else {
@@ -354,7 +353,7 @@ export function createGetProfileFollowersHandler(
         const next = queryNext ? decodeURIComponent(queryNext) : '';
 
         // If the next parameter is not a valid URI, return early
-        if (next !== '' && !isUri(next)) {
+        if (next !== '' && !isUri(next) && !Number(next)) {
             return new Response(null, { status: 400 });
         }
 
@@ -394,9 +393,8 @@ export function createGetProfileFollowersHandler(
                     next,
                 )) as CollectionPage | null;
 
-                // Explicitly check that we have a valid page seeming though we
-                // can't be type safe due to lookupObject returning a generic object
-                if (!page?.itemIds) {
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
             } else {
@@ -410,8 +408,54 @@ export function createGetProfileFollowersHandler(
             logger.error('Error getting followers', { error: err });
         }
 
+        // Handling non paginated results
         if (!page) {
-            return new Response(null, { status: 404 });
+            const followers = await actor.getFollowers();
+
+            if (!followers) {
+                return new Response(null, { status: 404 });
+            }
+
+            const pageSize = 15;
+            const pageNumber = next ? Number.parseInt(next, 10) : 1;
+            const startIndex = (pageNumber - 1) * pageSize;
+
+            const pageUrls = followers.itemIds.slice(
+                startIndex,
+                startIndex + pageSize,
+            );
+
+            for await (const item of pageUrls) {
+                const actor = await lookupObject(apCtx, item.href);
+                if (!isActor(actor)) {
+                    continue;
+                }
+
+                result.followers.push({
+                    actor: await actor.toJsonLd({
+                        format: 'compact',
+                    }),
+                    isFollowing: await isFollowedByDefaultSiteAccount(
+                        actor as Actor,
+                        site,
+                        accountService,
+                    ),
+                });
+            }
+
+            if (
+                followers.totalItems &&
+                pageNumber * pageSize < followers.totalItems
+            ) {
+                result.next = (pageNumber + 1).toString();
+            }
+
+            return new Response(JSON.stringify(result), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            });
         }
 
         // Return result
@@ -530,9 +574,8 @@ export function createGetProfileFollowingHandler(
                     next,
                 )) as CollectionPage | null;
 
-                // Explicitly check that we have a valid page seeming though we
-                // can't be type safe due to lookupObject returning a generic object
-                if (!page?.itemIds) {
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
             } else {
