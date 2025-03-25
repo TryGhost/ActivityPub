@@ -3,8 +3,7 @@ import {
     Activity,
     type Actor,
     Announce,
-    type Collection,
-    type CollectionPage,
+    CollectionPage,
     Like,
     isActor,
 } from '@fedify/fedify';
@@ -201,9 +200,8 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                     next,
                 )) as CollectionPage | null;
 
-                // Explicitly check that we have a valid page seeming though we
-                // can't be type safe due to lookupObject returning a generic object
-                if (!page?.itemIds) {
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
             } else {
@@ -375,7 +373,6 @@ export function createGetProfileFollowersHandler(
         };
 
         let page: CollectionPage | null = null;
-        let followers: Collection | null = null;
 
         try {
             if (next !== '') {
@@ -396,13 +393,12 @@ export function createGetProfileFollowersHandler(
                     next,
                 )) as CollectionPage | null;
 
-                // Explicitly check that we have a valid page seeming though we
-                // can't be type safe due to lookupObject returning a generic object
-                if (!page?.itemIds) {
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
             } else {
-                followers = await actor.getFollowers();
+                const followers = await actor.getFollowers();
 
                 if (followers) {
                     page = await followers.getFirst();
@@ -414,9 +410,8 @@ export function createGetProfileFollowersHandler(
 
         // Handling non paginated results
         if (!page) {
-            if (!followers) {
-                followers = await actor.getFollowers();
-            }
+            const followers = await actor.getFollowers();
+
             if (!followers) {
                 return new Response(null, { status: 404 });
             }
@@ -432,7 +427,7 @@ export function createGetProfileFollowersHandler(
 
             for await (const item of pageUrls) {
                 const actor = await lookupObject(apCtx, item.href);
-                if (!actor) {
+                if (!isActor(actor)) {
                     continue;
                 }
 
@@ -461,10 +456,6 @@ export function createGetProfileFollowersHandler(
                 },
                 status: 200,
             });
-        }
-
-        if (!page) {
-            return new Response(null, { status: 404 });
         }
 
         // Return result
@@ -583,9 +574,8 @@ export function createGetProfileFollowingHandler(
                     next,
                 )) as CollectionPage | null;
 
-                // Explicitly check that we have a valid page seeming though we
-                // can't be type safe due to lookupObject returning a generic object
-                if (!page?.itemIds) {
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
             } else {
