@@ -293,6 +293,9 @@ describe('isHandle', () => {
         expect(isHandle('@@foo')).toBe(false);
         expect(isHandle('@foo@')).toBe(false);
         expect(isHandle('@foo@@example.com')).toBe(false);
+        expect(isHandle('@some.user.name@example.domain.com')).toBe(true);
+        expect(isHandle('@some.user.name@example.com/bar')).toBe(false);
+        expect(isHandle('@foo@example.com.')).toBe(false);
     });
 });
 
