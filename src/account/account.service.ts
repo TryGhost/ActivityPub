@@ -15,6 +15,7 @@ import {
     ACTOR_DEFAULT_SUMMARY,
     AP_BASE_PATH,
 } from '../constants';
+import { AccountFollowedEvent } from './account-followed.event';
 import type { Account } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
 import type {
@@ -172,13 +173,22 @@ export class AccountService {
         followee: AccountType,
         follower: AccountType,
     ): Promise<void> {
-        await this.db('follows')
+        const [insertCount] = await this.db('follows')
             .insert({
                 following_id: followee.id,
                 follower_id: follower.id,
             })
             .onConflict(['following_id', 'follower_id'])
             .ignore();
+
+        if (insertCount === 0) {
+            return;
+        }
+
+        await this.events.emitAsync(
+            AccountFollowedEvent.getName(),
+            new AccountFollowedEvent(followee, follower),
+        );
     }
 
     /**
