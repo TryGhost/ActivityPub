@@ -2,6 +2,7 @@ import type { Knex } from 'knex';
 
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+import type { Post } from 'post/post.entity';
 
 export enum NotificationType {
     Like = 1,
@@ -161,6 +162,30 @@ export class NotificationService {
             user_id: user.id,
             account_id: followerAccount.id,
             event_type: NotificationType.Follow,
+        });
+    }
+
+    /**
+     * Create a notification for a like event
+     *
+     * @param post The post that is being liked
+     * @param accountId The ID of the account that is liking the post
+     */
+    async createLikeNotification(post: Post, accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: accountId,
+            post_id: post.id,
+            event_type: NotificationType.Like,
         });
     }
 }
