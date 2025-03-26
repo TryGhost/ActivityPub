@@ -14,6 +14,7 @@ import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
+import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
@@ -549,6 +550,8 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles likes of a new post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
         const accounts = await Promise.all(
             [
                 'testing-likes-one.com',
@@ -591,9 +594,28 @@ describe('KnexPostRepository', () => {
             .select('*');
 
         assert.equal(likesInDb.length, 3, 'There should be 3 likes in the DB');
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 posts liked
+        expect(eventsEmitSpy).nthCalledWith(
+            2,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[0].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            3,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[1].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            4,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[2].id)),
+        );
     });
 
     it('Handles likes and unlikes of an existing post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
         const accounts = await Promise.all(
             [
                 'testing-unlikes-one.com',
@@ -636,6 +658,23 @@ describe('KnexPostRepository', () => {
             .first();
 
         assert.equal(rowInDb.like_count, 2, 'There should be 2 likes');
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 posts liked
+        expect(eventsEmitSpy).nthCalledWith(
+            2,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[1].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            3,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[0].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            4,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[2].id)),
+        );
     });
 
     it('Handles reposts of a new post', async () => {
