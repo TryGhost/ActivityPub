@@ -178,7 +178,7 @@ describe('Post', () => {
         ).toThrow();
     });
 
-    it('should create an article with restricted content & excerpt from a private Ghost Post', () => {
+    it('should create an article with restricted content from a private Ghost Post', () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -276,6 +276,75 @@ describe('Post', () => {
         expect(post.getChangedLikes()).toEqual({
             likesToAdd: [liker.id, accidentalUnliker.id],
             likesToRemove: [unliker.id],
+        });
+    });
+
+    describe('post excerpt', () => {
+        describe('when the post is public', () => {
+            it('should not re-generate excerpt', () => {
+                const account = internalAccount();
+                const ghostPost = {
+                    uuid: '550e8400-e29b-41d4-a716-446655440000',
+                    title: 'Title of my post',
+                    html: '<p>Hello world!</p>',
+                    excerpt: 'Hello world!',
+                    feature_image: 'https://ghost.org/feature-image.jpeg',
+                    published_at: '2020-01-01',
+                    url: 'https://ghost.org/post',
+                    visibility: 'public',
+                };
+
+                const post = Post.createArticleFromGhostPost(
+                    account,
+                    ghostPost,
+                );
+
+                expect(post.excerpt).toEqual(ghostPost.excerpt);
+            });
+
+            it('should not re-generate excerpt even if there is a paywall', () => {
+                const account = internalAccount();
+                const ghostPost = {
+                    uuid: '550e8400-e29b-41d4-a716-446655440000',
+                    title: 'Title of my post',
+                    html: '<p>Hello world!</p><!--members-only--><p>This is after the paywall</p>',
+                    excerpt: 'Hello world!\n\nThis is after the paywall',
+                    feature_image: 'https://ghost.org/feature-image.jpeg',
+                    published_at: '2020-01-01',
+                    url: 'https://ghost.org/post',
+                    visibility: 'public', // The visibility is public -> ignore paywall
+                };
+
+                const post = Post.createArticleFromGhostPost(
+                    account,
+                    ghostPost,
+                );
+
+                expect(post.excerpt).toEqual(ghostPost.excerpt);
+            });
+        });
+
+        describe('when the post is gated', () => {
+            it('should re-generate excerpt without the gated content', () => {
+                const account = internalAccount();
+                const ghostPost = {
+                    uuid: '550e8400-e29b-41d4-a716-446655440000',
+                    title: 'Title of my post',
+                    html: '<p>Hello world!</p><!--members-only--><p>This is private content</p>',
+                    excerpt: 'Hello world!\n\nThis is private content',
+                    feature_image: 'https://ghost.org/feature-image.jpeg',
+                    published_at: '2020-01-01',
+                    url: 'https://ghost.org/post',
+                    visibility: 'members',
+                };
+
+                const post = Post.createArticleFromGhostPost(
+                    account,
+                    ghostPost,
+                );
+
+                expect(post.excerpt).toEqual('Hello world!');
+            });
         });
     });
 });

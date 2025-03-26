@@ -129,5 +129,26 @@ describe('ContentPreparer', () => {
             );
             expect(result.length).toEqual(55);
         });
+
+        it('should ignore <figcaption> tags', () => {
+            const content =
+                '<figcaption>This is a caption</figcaption><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
+            const result = preparer.regenerateExcerpt(content, 48);
+
+            expect(result).toEqual(
+                'I expect content to be truncated exactly here...',
+            );
+            expect(result.length).toEqual(48);
+        });
+
+        it('should ignore <hr> tags', () => {
+            const content =
+                '<hr /><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
+            const result = preparer.regenerateExcerpt(content, 48);
+
+            expect(result).toEqual(
+                'I expect content to be truncated exactly here...',
+            );
+        });
     });
 });
