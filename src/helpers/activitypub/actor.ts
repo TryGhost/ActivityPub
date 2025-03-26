@@ -89,7 +89,7 @@ export async function isFollowedByDefaultSiteAccount(
 }
 
 export function isHandle(handle: string): boolean {
-    return /^@([\w-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
+    return /^@([\w.-]+)@([\w-]+\.[\w.-]+)$/.test(handle);
 }
 
 export async function updateSiteActor(
