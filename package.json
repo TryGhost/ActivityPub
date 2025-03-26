@@ -31,9 +31,7 @@
     "test:all": "docker compose run --rm activitypub-testing yarn _test:all",
     "lint": "biome check"
   },
-  "files": [
-    "src"
-  ],
+  "files": ["src"],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "10.9.0",
