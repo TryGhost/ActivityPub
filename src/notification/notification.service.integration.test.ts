@@ -4,7 +4,8 @@ import type { Knex } from 'knex';
 import { Audience, PostType } from 'post/post.entity';
 import { createTestDb } from 'test/db';
 
-import { NotificationService } from './notification.service';
+import type { Account } from 'account/types';
+import { NotificationService, NotificationType } from './notification.service';
 
 describe('NotificationService', () => {
     let client: Knex;
@@ -260,6 +261,73 @@ describe('NotificationService', () => {
                     cursor: null,
                 }),
             ).rejects.toThrow('User not found for account: 123');
+        });
+    });
+
+    describe('createFollowNotification', () => {
+        it('should create a follow notification', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [siteId] = await client('sites').insert({
+                host: 'alice.com',
+                webhook_secret: 'secret',
+            });
+
+            const [accountId] = await client('accounts').insert({
+                username: 'alice',
+                ap_id: 'https://alice.com/user/alice',
+                ap_inbox_url: 'https://alice.com/user/alice/inbox',
+            });
+
+            const [userId] = await client('users').insert({
+                site_id: siteId,
+                account_id: accountId,
+            });
+
+            const [followerAccountId] = await client('accounts').insert({
+                username: 'bob',
+                ap_id: 'https://bob.com/user/bob',
+                ap_inbox_url: 'https://bob.com/user/bob/inbox',
+            });
+
+            const account = {
+                id: accountId,
+            } as Account;
+
+            const followerAccount = {
+                id: followerAccountId,
+            } as Account;
+
+            await notificationService.createFollowNotification(
+                account,
+                followerAccount,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].user_id).toBe(userId);
+            expect(notifications[0].account_id).toBe(followerAccountId);
+            expect(notifications[0].event_type).toBe(NotificationType.Follow);
+        });
+
+        it('should throw an error if user is not found for account', async () => {
+            const notificationService = new NotificationService(client);
+
+            const accountWithoutUser = {
+                id: 999,
+            } as Account;
+
+            const followerAccount = {
+                id: 1,
+            } as Account;
+
+            await expect(
+                notificationService.createFollowNotification(
+                    accountWithoutUser,
+                    followerAccount,
+                ),
+            ).rejects.toThrow('User not found for account: 999');
         });
     });
 });

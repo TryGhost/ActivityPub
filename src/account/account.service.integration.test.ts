@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vitest';
 
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
@@ -11,6 +19,7 @@ import {
     ACTOR_DEFAULT_SUMMARY,
     AP_BASE_PATH,
 } from '../constants';
+import { AccountFollowedEvent } from './account-followed.event';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
 import type {
@@ -46,7 +55,13 @@ describe('AccountService', () => {
         db = await createTestDb();
     });
 
+    afterEach(() => {
+        events.removeAllListeners();
+    });
+
     beforeEach(async () => {
+        vi.useRealTimers();
+
         // Clean up the database
         await db.raw('SET FOREIGN_KEY_CHECKS = 0');
         await db('follows').truncate();
@@ -271,6 +286,59 @@ describe('AccountService', () => {
             expect(follow.follower_id).toBe(firstFollow.follower_id);
             expect(follow.created_at).toStrictEqual(firstFollow.created_at);
             expect(follow.updated_at).toStrictEqual(firstFollow.updated_at);
+        });
+
+        it('should emit an account.followed event', async () => {
+            let accountFollowedEvent: AccountFollowedEvent | undefined;
+
+            events.on(AccountFollowedEvent.getName(), (event) => {
+                accountFollowedEvent = event;
+            });
+
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower',
+            });
+
+            await service.recordAccountFollow(account, follower);
+
+            await vi.waitFor(() => {
+                return accountFollowedEvent !== undefined;
+            });
+
+            expect(accountFollowedEvent).toBeDefined();
+            expect(accountFollowedEvent?.getAccount()).toBe(account);
+            expect(accountFollowedEvent?.getFollower()).toBe(follower);
+        });
+
+        it('should not emit an account.followed event if the follow is not recorded due to being a duplicate', async () => {
+            vi.useFakeTimers();
+
+            let eventCount = 0;
+
+            events.on(AccountFollowedEvent.getName(), () => {
+                eventCount++;
+            });
+
+            const account = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'account',
+            });
+            const follower = await service.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower',
+            });
+
+            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(account, follower);
+
+            await vi.advanceTimersByTime(1000);
+
+            expect(eventCount).toBe(1);
         });
     });
 

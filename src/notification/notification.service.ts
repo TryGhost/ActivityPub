@@ -1,6 +1,14 @@
 import type { Knex } from 'knex';
 
+import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+
+export enum NotificationType {
+    Like = 1,
+    Reply = 2,
+    Repost = 3,
+    Follow = 4,
+}
 
 export interface GetNotificationsDataOptions {
     /**
@@ -131,5 +139,28 @@ export class NotificationService {
             ),
             nextCursor: hasMore ? lastResult.notification_id : null,
         };
+    }
+
+    /**
+     * Create a notification for a follow event
+     *
+     * @param account The account that is being followed
+     * @param followerAccount The account that is following
+     */
+    async createFollowNotification(account: Account, followerAccount: Account) {
+        const user = await this.db('users')
+            .where('account_id', account.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            throw new Error(`User not found for account: ${account.id}`);
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: followerAccount.id,
+            event_type: NotificationType.Follow,
+        });
     }
 }

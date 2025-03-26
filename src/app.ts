@@ -41,6 +41,7 @@ import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
+import { NotificationEventService } from 'notification/notification-event.service';
 import { NotificationService } from 'notification/notification.service';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
@@ -276,6 +277,11 @@ const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
 fediverseBridge.init();
 
 const notificationService = new NotificationService(client);
+const notificationEventService = new NotificationEventService(
+    events,
+    notificationService,
+);
+notificationEventService.init();
 
 /** Fedify */
 
