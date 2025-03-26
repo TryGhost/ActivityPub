@@ -205,17 +205,17 @@ services:
       start_period: 5s
 
   fake-ghost-activitypub:
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.11.0-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.11.0-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.11.0-1
     ports:
       - "8084:8080"
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
