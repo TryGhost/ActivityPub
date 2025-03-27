@@ -175,6 +175,12 @@ export class NotificationService {
      * @param accountId The ID of the account that is liking the post
      */
     async createLikeNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification for a post created by the same account
+            // that is liking it
+            return;
+        }
+
         const user = await this.db('users')
             .where('account_id', post.author.id)
             .select('id')
@@ -202,6 +208,11 @@ export class NotificationService {
      * @param accountId The ID of the account that is reposting the post
      */
     async createRepostNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification for a repost by the author of the post
+            return;
+        }
+
         const user = await this.db('users')
             .where('account_id', post.author.id)
             .select('id')
@@ -240,6 +251,12 @@ export class NotificationService {
 
         if (!inReplyToPost) {
             throw new Error(`In reply to post not found: ${post.inReplyTo}`);
+        }
+
+        if (post.author.id === inReplyToPost.author_id) {
+            // Do not create a notification for a reply by the author of the
+            // original post
+            return;
         }
 
         const user = await this.db('users')

@@ -364,7 +364,7 @@ describe('NotificationService', () => {
                 ap_id: 'https://alice.com/post/some-post',
             });
 
-            const [likerAccountId] = await client('accounts').insert({
+            const [likeAccountId] = await client('accounts').insert({
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
@@ -379,16 +379,35 @@ describe('NotificationService', () => {
 
             await notificationService.createLikeNotification(
                 post,
-                likerAccountId,
+                likeAccountId,
             );
 
             const notifications = await client('notifications').select('*');
 
             expect(notifications).toHaveLength(1);
             expect(notifications[0].user_id).toBe(userId);
-            expect(notifications[0].account_id).toBe(likerAccountId);
+            expect(notifications[0].account_id).toBe(likeAccountId);
             expect(notifications[0].post_id).toBe(userPostId);
             expect(notifications[0].event_type).toBe(NotificationType.Like);
+        });
+
+        it('should do nothing if the account liking the post is the same as the post author', async () => {
+            const notificationService = new NotificationService(client);
+
+            const accountId = 123;
+
+            const post = {
+                id: 456,
+                author: {
+                    id: accountId,
+                },
+            } as Post;
+
+            await notificationService.createLikeNotification(post, accountId);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
         });
 
         it('should do nothing if user is not found for account', async () => {
@@ -466,6 +485,25 @@ describe('NotificationService', () => {
             expect(notifications[0].account_id).toBe(reposterAccountId);
             expect(notifications[0].post_id).toBe(userPostId);
             expect(notifications[0].event_type).toBe(NotificationType.Repost);
+        });
+
+        it('should do nothing if the account reposting the post is the same as the post author', async () => {
+            const notificationService = new NotificationService(client);
+
+            const accountId = 123;
+
+            const post = {
+                id: 456,
+                author: {
+                    id: accountId,
+                },
+            } as Post;
+
+            await notificationService.createRepostNotification(post, accountId);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
         });
 
         it('should do nothing if user is not found for account', async () => {
@@ -568,6 +606,50 @@ describe('NotificationService', () => {
             await expect(
                 notificationService.createReplyNotification(post),
             ).resolves.not.toThrow();
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('should do nothing if the account replying to the post is the same as the post author', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [siteId] = await client('sites').insert({
+                host: 'alice.com',
+                webhook_secret: 'secret',
+            });
+
+            const [accountId] = await client('accounts').insert({
+                username: 'alice',
+                ap_id: 'https://alice.com/user/alice',
+                ap_inbox_url: 'https://alice.com/user/alice/inbox',
+            });
+
+            await client('users').insert({
+                site_id: siteId,
+                account_id: accountId,
+            });
+
+            const [postId] = await client('posts').insert({
+                author_id: accountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content:
+                    'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
+                url: 'http://alice.com/post/some-post',
+                ap_id: 'https://alice.com/post/some-post',
+            });
+
+            const post = {
+                id: 123,
+                author: {
+                    id: accountId,
+                },
+                inReplyTo: postId,
+            } as Post;
+
+            await notificationService.createReplyNotification(post);
 
             const notifications = await client('notifications').select('*');
 
