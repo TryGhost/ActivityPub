@@ -25,6 +25,7 @@ interface GhostPost {
     uuid: string;
     html: string | null;
     excerpt: string | null;
+    custom_excerpt: string | null;
     feature_image: string | null;
     published_at: string;
     url: string;
@@ -224,7 +225,12 @@ export class Post extends BaseEntity {
                 removeMemberContent: true,
             });
 
-            excerpt = ContentPreparer.regenerateExcerpt(content);
+            if (
+                ghostPost.custom_excerpt === null ||
+                ghostPost.custom_excerpt === ''
+            ) {
+                excerpt = ContentPreparer.regenerateExcerpt(content);
+            }
 
             if (content === ghostPost.html) {
                 content = '';
