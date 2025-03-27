@@ -15,6 +15,7 @@ const PostInputSchema = z.object({
     title: z.string(),
     html: z.string().nullable(),
     excerpt: z.string().nullable(),
+    custom_excerpt: z.string().nullable(),
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
