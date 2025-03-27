@@ -1047,6 +1047,10 @@ app.get(
     },
 );
 
+app.get('/.well-known/webfinger', async (ctx: HonoContext, next: Next) => {
+    const resource = ctx.req.query('resource');
+});
+
 app.use(
     federation(
         fedify,
