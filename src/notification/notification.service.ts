@@ -220,6 +220,11 @@ export class NotificationService {
             return;
         }
 
+        if (post.author.id === accountId) {
+            // Do not create a notification for a repost by the author of the post
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: accountId,
