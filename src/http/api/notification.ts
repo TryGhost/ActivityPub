@@ -9,8 +9,8 @@ const MAX_NOTIFICATIONS_LIMIT = 100;
 
 const notificationTypeMap: Record<number, NotificationDTO['type']> = {
     1: 'like',
-    2: 'repost',
-    3: 'reply',
+    2: 'reply',
+    3: 'repost',
     4: 'follow',
 };
 
