@@ -175,6 +175,12 @@ export class NotificationService {
      * @param accountId The ID of the account that is liking the post
      */
     async createLikeNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification for a post created by the same account
+            // that is liking it
+            return;
+        }
+
         const user = await this.db('users')
             .where('account_id', post.author.id)
             .select('id')
@@ -184,12 +190,6 @@ export class NotificationService {
             // If this like was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
-            return;
-        }
-
-        if (post.author.id === accountId) {
-            // Do not create a notification for a post created by the same account
-            // that is liking it
             return;
         }
 
@@ -208,6 +208,11 @@ export class NotificationService {
      * @param accountId The ID of the account that is reposting the post
      */
     async createRepostNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification for a repost by the author of the post
+            return;
+        }
+
         const user = await this.db('users')
             .where('account_id', post.author.id)
             .select('id')
@@ -217,11 +222,6 @@ export class NotificationService {
             // If this repost was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
-            return;
-        }
-
-        if (post.author.id === accountId) {
-            // Do not create a notification for a repost by the author of the post
             return;
         }
 
