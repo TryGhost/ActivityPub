@@ -1049,6 +1049,64 @@ app.get(
 
 app.get('/.well-known/webfinger', async (ctx: HonoContext, next: Next) => {
     const resource = ctx.req.query('resource');
+
+    // Validate that 'resource' is in the form 'acct:<username>@<host>'
+    const resourceRegex = /^acct:([^@]+)@(.+)$/;
+    const match = resource?.match(resourceRegex);
+
+    if (!match) {
+        return ctx.json({ error: 'Invalid resource parameter' }, 404);
+    }
+
+    const username = match[1];
+    const resourceHost = match[2];
+
+    const requestHost = ctx.req.header('host');
+    if (resourceHost !== requestHost) {
+        return ctx.json({ error: 'Host mismatch' }, 404);
+    }
+
+    // Get the Site for the host
+    const site = await siteService.getSiteByHost(requestHost);
+    if (!site) {
+        return ctx.json({ error: 'Site not found' }, 404);
+    }
+
+    try {
+        // Get the Account for the username and site
+        const account = await accountService.getAccountByUsername(username, site.id);
+        if (!account) {
+            return ctx.json({ error: 'Account not found' }, 404);
+        }
+
+        // Construct the response
+        const avatarUrl = account.avatar_url || 'https://ghost.org/favicon.ico';
+
+        const response = {
+            subject: `acct:${account.username}@${requestHost}`,
+            aliases: [account.ap_id],
+            links: [
+                {
+                    rel: 'self',
+                    href: account.ap_id,
+                    type: 'application/activity+json',
+                },
+                {
+                    rel: 'http://webfinger.net/rel/profile-page',
+                    href: account.url,
+                },
+                {
+                    rel: 'http://webfinger.net/rel/avatar',
+                    href: avatarUrl,
+                },
+            ],
+        };
+
+        return ctx.json(response);
+    } catch (error) {
+        ctx.get('logger').error('Webfinger error: {error}', { error });
+        return ctx.json({ error: 'Account not found' }, 404);
+    }
 });
 
 app.use(
