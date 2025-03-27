@@ -328,7 +328,7 @@ export type CreateMessageQueueConfig = {
     /**
      * Name of the Pub/Sub subscription that will push messages will be recieved from
      */
-    subscription: string;
+    subscription?: string;
 };
 
 /**
@@ -373,14 +373,16 @@ export async function createMessageQueue(
     }
 
     // Check that the subscription exists
-    const fullSubscription = getFullSubscription(
-        pubSubClient.projectId,
-        subscription,
-    );
-    const [subscriptions] = await pubSubClient.getSubscriptions();
+    if (subscription !== undefined) {
+        const fullSubscription = getFullSubscription(
+            pubSubClient.projectId,
+            subscription,
+        );
+        const [subscriptions] = await pubSubClient.getSubscriptions();
 
-    if (!subscriptions.some(({ name }) => name === fullSubscription)) {
-        throw new Error(`Subscription [${subscription}] does not exist`);
+        if (!subscriptions.some(({ name }) => name === fullSubscription)) {
+            throw new Error(`Subscription [${subscription}] does not exist`);
+        }
     }
 
     // Return a message queue instance
