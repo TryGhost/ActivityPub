@@ -36,6 +36,7 @@ describe('Post', () => {
                 title: 'Title of my post',
                 html: '<p> This is such a great post </p>',
                 excerpt: 'This is such a great...',
+                custom_excerpt: null,
                 feature_image: 'https://ghost.org/feature-image.jpeg',
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
@@ -57,6 +58,7 @@ describe('Post', () => {
                 title: 'Title of my post',
                 html: '<p> This is such a great post </p>',
                 excerpt: 'This is such a great...',
+                custom_excerpt: null,
                 feature_image: 'https://ghost.org/feature-image.jpeg',
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
@@ -79,6 +81,7 @@ describe('Post', () => {
                 title: 'Title of my post',
                 html: '<p> This is such a great post </p>',
                 excerpt: 'This is such a great...',
+                custom_excerpt: null,
                 feature_image: 'https://ghost.org/feature-image.jpeg',
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
@@ -148,6 +151,7 @@ describe('Post', () => {
             title: 'Title of my post',
             html: '<p> This is such a great post </p>',
             excerpt: 'This is such a great...',
+            custom_excerpt: null,
             feature_image: 'https://ghost.org/feature-image.jpeg',
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
@@ -167,6 +171,7 @@ describe('Post', () => {
             title: 'Title of my post',
             html: '<!--members-only--><p> This is such a great post </p>',
             excerpt: 'This is such a great...',
+            custom_excerpt: null,
             feature_image: 'https://ghost.org/feature-image.jpeg',
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
@@ -183,8 +188,9 @@ describe('Post', () => {
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
-            html: '<p>Welcome!</p><!--members-only--><p> This is such a great post </p>',
-            excerpt: 'This is such a great...',
+            html: '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><!--members-only--><p>This is private content</p>',
+            excerpt: 'Welcome!\n\nThis is private content',
+            custom_excerpt: null,
             feature_image: 'https://ghost.org/feature-image.jpeg',
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
@@ -194,7 +200,9 @@ describe('Post', () => {
         const post = Post.createArticleFromGhostPost(account, ghostPost);
 
         expect(post.uuid).toEqual(ghostPost.uuid);
-        expect(post.content).toEqual('<p>Welcome!</p>');
+        expect(post.content).toEqual(
+            '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" />',
+        );
     });
 
     it('should handle adding and removing reposts', () => {
@@ -273,6 +281,104 @@ describe('Post', () => {
         expect(post.getChangedLikes()).toEqual({
             likesToAdd: [liker.id, accidentalUnliker.id],
             likesToRemove: [unliker.id],
+        });
+    });
+
+    describe('post excerpt', () => {
+        describe('when the post is public', () => {
+            it('should not re-generate excerpt', () => {
+                const account = internalAccount();
+                const ghostPost = {
+                    uuid: '550e8400-e29b-41d4-a716-446655440000',
+                    title: 'Title of my post',
+                    html: '<p>Hello world!</p>',
+                    excerpt: 'Hello world!',
+                    custom_excerpt: null,
+                    feature_image: 'https://ghost.org/feature-image.jpeg',
+                    published_at: '2020-01-01',
+                    url: 'https://ghost.org/post',
+                    visibility: 'public',
+                };
+
+                const post = Post.createArticleFromGhostPost(
+                    account,
+                    ghostPost,
+                );
+
+                expect(post.excerpt).toEqual(ghostPost.excerpt);
+            });
+
+            it('should not re-generate excerpt even if there is a paywall', () => {
+                const account = internalAccount();
+                const ghostPost = {
+                    uuid: '550e8400-e29b-41d4-a716-446655440000',
+                    title: 'Title of my post',
+                    html: '<p>Hello world!</p><!--members-only--><p>This is after the paywall</p>',
+                    excerpt: 'Hello world!\n\nThis is after the paywall',
+                    custom_excerpt: null,
+                    feature_image: 'https://ghost.org/feature-image.jpeg',
+                    published_at: '2020-01-01',
+                    url: 'https://ghost.org/post',
+                    visibility: 'public', // The visibility is public -> ignore paywall
+                };
+
+                const post = Post.createArticleFromGhostPost(
+                    account,
+                    ghostPost,
+                );
+
+                expect(post.excerpt).toEqual(ghostPost.excerpt);
+            });
+        });
+
+        describe('when the post is members-only', () => {
+            describe('and there is no custom excerpt', () => {
+                it('should re-generate excerpt without the gated content', () => {
+                    const account = internalAccount();
+                    const ghostPost = {
+                        uuid: '550e8400-e29b-41d4-a716-446655440000',
+                        title: 'Title of my post',
+                        html: '<p>Hello world!</p><!--members-only--><p>This is private content</p>',
+                        excerpt: 'Hello world!\n\nThis is private content',
+                        custom_excerpt: null,
+                        feature_image: 'https://ghost.org/feature-image.jpeg',
+                        published_at: '2020-01-01',
+                        url: 'https://ghost.org/post',
+                        visibility: 'members',
+                    };
+
+                    const post = Post.createArticleFromGhostPost(
+                        account,
+                        ghostPost,
+                    );
+
+                    expect(post.excerpt).toEqual('Hello world!');
+                });
+            });
+
+            describe('and there is a custom excerpt', () => {
+                it('should not re-generate the excerpt', () => {
+                    const account = internalAccount();
+                    const ghostPost = {
+                        uuid: '550e8400-e29b-41d4-a716-446655440000',
+                        title: 'Title of my post',
+                        html: '<p>Hello world!</p><!--members-only--><p>This is private content</p>',
+                        excerpt: 'Custom excerpt',
+                        custom_excerpt: 'Custom excerpt',
+                        feature_image: 'https://ghost.org/feature-image.jpeg',
+                        published_at: '2020-01-01',
+                        url: 'https://ghost.org/post',
+                        visibility: 'members',
+                    };
+
+                    const post = Post.createArticleFromGhostPost(
+                        account,
+                        ghostPost,
+                    );
+
+                    expect(post.excerpt).toEqual(ghostPost.excerpt);
+                });
+            });
         });
     });
 });

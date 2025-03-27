@@ -2,6 +2,7 @@ import type { Knex } from 'knex';
 
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+import type { Post } from 'post/post.entity';
 
 export enum NotificationType {
     Like = 1,
@@ -154,13 +155,98 @@ export class NotificationService {
             .first();
 
         if (!user) {
-            throw new Error(`User not found for account: ${account.id}`);
+            return;
         }
 
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: followerAccount.id,
             event_type: NotificationType.Follow,
+        });
+    }
+
+    /**
+     * Create a notification for a like event
+     *
+     * @param post The post that is being liked
+     * @param accountId The ID of the account that is liking the post
+     */
+    async createLikeNotification(post: Post, accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: accountId,
+            post_id: post.id,
+            event_type: NotificationType.Like,
+        });
+    }
+
+    /**
+     * Create a notification for a repost event
+     *
+     * @param post The post that is being reposted
+     * @param accountId The ID of the account that is reposting the post
+     */
+    async createRepostNotification(post: Post, accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: accountId,
+            post_id: post.id,
+            event_type: NotificationType.Repost,
+        });
+    }
+
+    /**
+     * Create a notification for a reply event
+     *
+     * @param post The post that is being replied to
+     */
+    async createReplyNotification(post: Post) {
+        if (post.inReplyTo === null) {
+            return;
+        }
+
+        const inReplyToPost = await this.db('posts')
+            .where('id', post.inReplyTo)
+            .select('id', 'author_id')
+            .first();
+
+        if (!inReplyToPost) {
+            throw new Error(`In reply to post not found: ${post.inReplyTo}`);
+        }
+
+        const user = await this.db('users')
+            .where('account_id', inReplyToPost.author_id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: post.author.id,
+            post_id: post.id,
+            in_reply_to_post_id: inReplyToPost.id,
+            event_type: NotificationType.Reply,
         });
     }
 }

@@ -25,6 +25,7 @@ interface GhostPost {
     uuid: string;
     html: string | null;
     excerpt: string | null;
+    custom_excerpt: string | null;
     feature_image: string | null;
     published_at: string;
     url: string;
@@ -218,10 +219,18 @@ export class Post extends BaseEntity {
         const isPublic = ghostPost.visibility === 'public';
 
         let content = ghostPost.html;
+        let excerpt = ghostPost.excerpt;
         if (isPublic === false && ghostPost.html !== null) {
             content = ContentPreparer.prepare(ghostPost.html, {
                 removeMemberContent: true,
             });
+
+            if (
+                ghostPost.custom_excerpt === null ||
+                ghostPost.custom_excerpt === ''
+            ) {
+                excerpt = ContentPreparer.regenerateExcerpt(content);
+            }
 
             if (content === ghostPost.html) {
                 content = '';
@@ -239,7 +248,7 @@ export class Post extends BaseEntity {
             PostType.Article,
             Audience.Public,
             ghostPost.title,
-            ghostPost.excerpt,
+            excerpt,
             content,
             new URL(ghostPost.url),
             parseURL(ghostPost.feature_image),
