@@ -188,7 +188,7 @@ export class NotificationService {
         }
 
         if (post.author.id === accountId) {
-            // Don't create a notification for a post created by the same account
+            // Do not create a notification for a post created by the same account
             // that is liking it
             return;
         }
@@ -246,6 +246,12 @@ export class NotificationService {
 
         if (!inReplyToPost) {
             throw new Error(`In reply to post not found: ${post.inReplyTo}`);
+        }
+
+        if (post.author.id === inReplyToPost.author_id) {
+            // Do not create a notification for a reply by the author of the
+            // original post
+            return;
         }
 
         const user = await this.db('users')

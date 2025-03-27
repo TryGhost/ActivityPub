@@ -668,5 +668,49 @@ describe('NotificationService', () => {
 
             expect(notifications).toHaveLength(0);
         });
+
+        it('should do nothing if the reply is from the same account as the post', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [siteId] = await client('sites').insert({
+                host: 'alice.com',
+                webhook_secret: 'secret',
+            });
+
+            const [accountId] = await client('accounts').insert({
+                username: 'alice',
+                ap_id: 'https://alice.com/user/alice',
+                ap_inbox_url: 'https://alice.com/user/alice/inbox',
+            });
+
+            await client('users').insert({
+                site_id: siteId,
+                account_id: accountId,
+            });
+
+            const [postId] = await client('posts').insert({
+                author_id: accountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content:
+                    'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
+                url: 'http://alice.com/post/some-post',
+                ap_id: 'https://alice.com/post/some-post',
+            });
+
+            const post = {
+                id: 123,
+                author: {
+                    id: accountId,
+                },
+                inReplyTo: postId,
+            } as Post;
+
+            await notificationService.createReplyNotification(post);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
     });
 });
