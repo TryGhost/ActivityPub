@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
-import { Audience, PostType } from 'post/post.entity';
+import { Audience, type Post, PostType } from 'post/post.entity';
 import { createTestDb } from 'test/db';
 
 import type { Account } from 'account/types';
@@ -311,7 +311,7 @@ describe('NotificationService', () => {
             expect(notifications[0].event_type).toBe(NotificationType.Follow);
         });
 
-        it('should throw an error if user is not found for account', async () => {
+        it('should do nothing if user is not found for account', async () => {
             const notificationService = new NotificationService(client);
 
             const accountWithoutUser = {
@@ -322,12 +322,168 @@ describe('NotificationService', () => {
                 id: 1,
             } as Account;
 
-            await expect(
-                notificationService.createFollowNotification(
-                    accountWithoutUser,
-                    followerAccount,
-                ),
-            ).rejects.toThrow('User not found for account: 999');
+            await notificationService.createFollowNotification(
+                accountWithoutUser,
+                followerAccount,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+    });
+
+    describe('createLikeNotification', () => {
+        it('should create a like notification', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [siteId] = await client('sites').insert({
+                host: 'alice.com',
+                webhook_secret: 'secret',
+            });
+
+            const [accountId] = await client('accounts').insert({
+                username: 'alice',
+                ap_id: 'https://alice.com/user/alice',
+                ap_inbox_url: 'https://alice.com/user/alice/inbox',
+            });
+
+            const [userId] = await client('users').insert({
+                site_id: siteId,
+                account_id: accountId,
+            });
+
+            const [userPostId] = await client('posts').insert({
+                author_id: accountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content:
+                    'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
+                url: 'http://alice.com/post/some-post',
+                ap_id: 'https://alice.com/post/some-post',
+            });
+
+            const [likerAccountId] = await client('accounts').insert({
+                username: 'bob',
+                ap_id: 'https://bob.com/user/bob',
+                ap_inbox_url: 'https://bob.com/user/bob/inbox',
+            });
+
+            const post = {
+                id: userPostId,
+                author: {
+                    id: accountId,
+                },
+            } as Post;
+
+            await notificationService.createLikeNotification(
+                post,
+                likerAccountId,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].user_id).toBe(userId);
+            expect(notifications[0].account_id).toBe(likerAccountId);
+            expect(notifications[0].post_id).toBe(userPostId);
+            expect(notifications[0].event_type).toBe(NotificationType.Like);
+        });
+
+        it('should do nothing if user is not found for account', async () => {
+            const notificationService = new NotificationService(client);
+
+            const postWithAccountWithoutUser = {
+                author: {
+                    id: 999,
+                },
+            } as Post;
+
+            await notificationService.createLikeNotification(
+                postWithAccountWithoutUser,
+                123,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+    });
+
+    describe('createRepostNotification', () => {
+        it('should create a repost notification', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [siteId] = await client('sites').insert({
+                host: 'alice.com',
+                webhook_secret: 'secret',
+            });
+
+            const [accountId] = await client('accounts').insert({
+                username: 'alice',
+                ap_id: 'https://alice.com/user/alice',
+                ap_inbox_url: 'https://alice.com/user/alice/inbox',
+            });
+
+            const [userId] = await client('users').insert({
+                site_id: siteId,
+                account_id: accountId,
+            });
+
+            const [userPostId] = await client('posts').insert({
+                author_id: accountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content:
+                    'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
+                url: 'http://alice.com/post/some-post',
+                ap_id: 'https://alice.com/post/some-post',
+            });
+
+            const [reposterAccountId] = await client('accounts').insert({
+                username: 'bob',
+                ap_id: 'https://bob.com/user/bob',
+                ap_inbox_url: 'https://bob.com/user/bob/inbox',
+            });
+
+            const post = {
+                id: userPostId,
+                author: {
+                    id: accountId,
+                },
+            } as Post;
+
+            await notificationService.createRepostNotification(
+                post,
+                reposterAccountId,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].user_id).toBe(userId);
+            expect(notifications[0].account_id).toBe(reposterAccountId);
+            expect(notifications[0].post_id).toBe(userPostId);
+            expect(notifications[0].event_type).toBe(NotificationType.Repost);
+        });
+
+        it('should do nothing if user is not found for account', async () => {
+            const notificationService = new NotificationService(client);
+
+            const postWithAccountWithoutUser = {
+                author: {
+                    id: 999,
+                },
+            } as Post;
+
+            await notificationService.createRepostNotification(
+                postWithAccountWithoutUser,
+                123,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
         });
     });
 });

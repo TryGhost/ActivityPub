@@ -7,6 +7,7 @@ import { parseURL } from '../core/url';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
+import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post } from './post.entity';
 
@@ -410,6 +411,7 @@ export class KnexPostRepository {
         try {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
+            let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
 
@@ -434,6 +436,8 @@ export class KnexPostRepository {
 
                 if (likesToAdd.length > 0) {
                     await this.insertLikes(post, likesToAdd, transaction);
+
+                    likeAccountIds = likesToAdd.map((accountId) => accountId);
                 }
 
                 if (repostsToAdd.length > 0) {
@@ -475,14 +479,17 @@ export class KnexPostRepository {
                 }
             } else {
                 if (likesToAdd.length > 0 || likesToRemove.length > 0) {
-                    const insertedLikesCount =
+                    const { insertedLikesCount, accountIdsInserted } =
                         likesToAdd.length > 0
                             ? await this.insertLikesIgnoringDuplicates(
                                   post,
                                   likesToAdd,
                                   transaction,
                               )
-                            : 0;
+                            : {
+                                  insertedLikesCount: 0,
+                                  accountIdsInserted: [],
+                              };
 
                     const removedLikesCount =
                         likesToRemove.length > 0
@@ -492,6 +499,10 @@ export class KnexPostRepository {
                                   transaction,
                               )
                             : 0;
+
+                    likeAccountIds = accountIdsInserted.filter(
+                        (accountId) => !likesToRemove.includes(accountId),
+                    );
 
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
@@ -555,6 +566,13 @@ export class KnexPostRepository {
                 await this.events.emitAsync(
                     PostDeletedEvent.getName(),
                     new PostDeletedEvent(post, post.author.id),
+                );
+            }
+
+            for (const accountId of likeAccountIds) {
+                await this.events.emitAsync(
+                    PostLikedEvent.getName(),
+                    new PostLikedEvent(post, accountId),
                 );
             }
 
@@ -667,14 +685,36 @@ export class KnexPostRepository {
      * @param post Post to insert likes for
      * @param likeAccountIds Account IDs to insert likes for
      * @param transaction Database transaction to use
-     * @returns Number of likes inserted
+     * @returns Number of likes inserted and the account IDs of the
+     * likes that were inserted
      */
     private async insertLikesIgnoringDuplicates(
         post: Post,
         likeAccountIds: number[],
         transaction: Knex.Transaction,
-    ): Promise<number> {
-        const likesToInsert = likeAccountIds.map((accountId) => ({
+    ): Promise<{ insertedLikesCount: number; accountIdsInserted: number[] }> {
+        // Retrieve the account IDs of the likes that are already in the
+        // database - This is so we can report exactly which likes were
+        // inserted so that we do not emit events for likes that were
+        // already in the database
+        const currentLikeAccountIds = (
+            await transaction('likes')
+                .where('post_id', post.id)
+                .select('account_id')
+        ).map((row) => row.account_id);
+
+        const newLikeAccountIds = likeAccountIds.filter(
+            (accountId) => !currentLikeAccountIds.includes(accountId),
+        );
+
+        if (newLikeAccountIds.length === 0) {
+            return {
+                insertedLikesCount: 0,
+                accountIdsInserted: [],
+            };
+        }
+
+        const likesToInsert = newLikeAccountIds.map((accountId) => ({
             account_id: accountId,
             post_id: post.id,
         }));
@@ -685,7 +725,10 @@ export class KnexPostRepository {
             'SELECT ROW_COUNT() as count',
         );
 
-        return count;
+        return {
+            insertedLikesCount: count,
+            accountIdsInserted: newLikeAccountIds,
+        };
     }
 
     /**

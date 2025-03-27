@@ -1,5 +1,5 @@
+import { htmlToText } from 'html-to-text';
 import { escapeHtml } from '../helpers/html';
-
 /**
  * Marker to indicate that the proceeding content is member content
  */
@@ -42,6 +42,10 @@ export class ContentPreparer {
         return ContentPreparer.instance.prepare(content, options);
     }
 
+    static regenerateExcerpt(html: string, charLimit = 500) {
+        return ContentPreparer.instance.regenerateExcerpt(html, charLimit);
+    }
+
     /**
      * Prepare the content
      *
@@ -76,6 +80,36 @@ export class ContentPreparer {
         }
 
         return prepared;
+    }
+
+    /**
+     * Re-generate excerpt from HTML content, based on a character limit
+     *
+     * @param html HTML content to generate an excerpt from
+     * @param charLimit Character limit for the excerpt
+     */
+    regenerateExcerpt(html: string, charLimit: number) {
+        const text = htmlToText(html, {
+            wordwrap: false,
+            preserveNewlines: true,
+            selectors: [
+                { selector: 'img', format: 'skip' },
+                { selector: 'div', format: 'inline' },
+                { selector: 'a', options: { ignoreHref: true } },
+                { selector: 'figcaption', format: 'skip' },
+                { selector: 'a[rel=footnote]', format: 'skip' },
+                { selector: 'div.footnotes', format: 'skip' },
+                { selector: 'hr', format: 'skip' },
+                { selector: 'blockquote', format: 'block' },
+                { selector: '.kg-signup-card', format: 'skip' },
+            ],
+        }).trim();
+
+        if (text.length <= charLimit) {
+            return text;
+        }
+
+        return `${text.substring(0, charLimit - 3)}...`;
     }
 
     /**

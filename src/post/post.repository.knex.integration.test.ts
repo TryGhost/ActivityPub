@@ -14,6 +14,7 @@ import { SiteService } from '../site/site.service';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
+import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
 import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
@@ -83,6 +84,7 @@ describe('KnexPostRepository', () => {
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
+                custom_excerpt: null,
                 feature_image: null,
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
@@ -109,6 +111,7 @@ describe('KnexPostRepository', () => {
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
+                custom_excerpt: null,
                 feature_image: null,
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
@@ -157,6 +160,7 @@ describe('KnexPostRepository', () => {
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
+                custom_excerpt: null,
                 feature_image: null,
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
@@ -202,6 +206,7 @@ describe('KnexPostRepository', () => {
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
+                custom_excerpt: null,
                 feature_image: null,
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
@@ -276,6 +281,7 @@ describe('KnexPostRepository', () => {
                 uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
+                custom_excerpt: null,
                 feature_image: null,
                 url: 'https://testing-delete-likes.com/hello-world',
                 published_at: '2025-01-01',
@@ -315,6 +321,7 @@ describe('KnexPostRepository', () => {
                 uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
                 excerpt: 'Hello, world!',
+                custom_excerpt: null,
                 feature_image: null,
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
@@ -345,6 +352,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -375,6 +383,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -401,6 +410,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -423,6 +433,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -449,6 +460,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -487,6 +499,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -516,6 +529,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -549,6 +563,8 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles likes of a new post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
         const accounts = await Promise.all(
             [
                 'testing-likes-one.com',
@@ -562,6 +578,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -591,9 +608,28 @@ describe('KnexPostRepository', () => {
             .select('*');
 
         assert.equal(likesInDb.length, 3, 'There should be 3 likes in the DB');
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 posts liked
+        expect(eventsEmitSpy).nthCalledWith(
+            2,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[0].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            3,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[1].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            4,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[2].id)),
+        );
     });
 
     it('Handles likes and unlikes of an existing post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
         const accounts = await Promise.all(
             [
                 'testing-unlikes-one.com',
@@ -607,6 +643,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -636,6 +673,23 @@ describe('KnexPostRepository', () => {
             .first();
 
         assert.equal(rowInDb.like_count, 2, 'There should be 2 likes');
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 posts liked
+        expect(eventsEmitSpy).nthCalledWith(
+            2,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[1].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            3,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[0].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            4,
+            PostLikedEvent.getName(),
+            new PostLikedEvent(post, Number(accounts[2].id)),
+        );
     });
 
     it('Handles reposts of a new post', async () => {
@@ -653,6 +707,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -714,6 +769,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
             excerpt: 'Hello, world!',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
@@ -781,6 +837,7 @@ describe('KnexPostRepository', () => {
             uuid: randomUUID(),
             html: '<p>Original content</p>',
             excerpt: 'Original content',
+            custom_excerpt: null,
             feature_image: null,
             url: 'https://testing.com/original-post',
             published_at: '2025-01-01',

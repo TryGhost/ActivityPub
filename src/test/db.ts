@@ -15,6 +15,7 @@ export async function createTestDb() {
             user: process.env.MYSQL_USER,
             password: process.env.MYSQL_PASSWORD,
             database: 'mysql',
+            timezone: '+00:00',
         },
     });
 
@@ -43,6 +44,7 @@ export async function createTestDb() {
             user: process.env.MYSQL_USER,
             password: process.env.MYSQL_PASSWORD,
             database: dbName,
+            timezone: '+00:00',
         },
     });
 
@@ -56,6 +58,7 @@ export async function createTestDb() {
                 user: process.env.MYSQL_USER,
                 password: process.env.MYSQL_PASSWORD,
                 database: 'mysql',
+                timezone: '+00:00',
             },
         });
         await systemClient.raw(`DROP DATABASE ${dbName}`);
