@@ -22,7 +22,6 @@ Feature: Feed
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
-    And fake timer advances time by 1000 milliseconds
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
     And "Note2" is in our Inbox
@@ -35,11 +34,9 @@ Feature: Feed
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
-    And fake timer advances time by 1000 milliseconds
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
     And "Note2" is in our Inbox
-    And fake timer advances time by 1000 milliseconds
     And a "Create(Note)" Activity "Note3" by "Alice"
     And "Alice" sends "Note3" to the Inbox
     And "Note3" is in our Inbox
@@ -112,11 +109,9 @@ Feature: Feed
     Given a "Create(Article)" Activity "Article1" by "Alice"
     And "Alice" sends "Article1" to the Inbox
     And "Article1" is in our Inbox
-    And fake timer advances time by 1000 milliseconds
     And a "Create(Article)" Activity "Article2" by "Alice"
     And "Alice" sends "Article2" to the Inbox
     And "Article2" is in our Inbox
-    And fake timer advances time by 1000 milliseconds
     And a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
     And "Note1" is in our Inbox
