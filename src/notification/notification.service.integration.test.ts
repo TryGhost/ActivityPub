@@ -398,6 +398,26 @@ describe('NotificationService', () => {
             expect(notifications[0].event_type).toBe(NotificationType.Reply);
         });
 
+        it('should do nothing if the post is not a reply', async () => {
+            const notificationService = new NotificationService(client);
+
+            const post = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+                inReplyTo: null,
+            } as Post;
+
+            await expect(
+                notificationService.createReplyNotification(post),
+            ).resolves.not.toThrow();
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+
         it('should throw an error if the in reply to post is not found', async () => {
             const notificationService = new NotificationService(client);
 

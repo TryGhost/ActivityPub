@@ -171,6 +171,10 @@ export class NotificationService {
      * @param post The post that is being replied to
      */
     async createReplyNotification(post: Post) {
+        if (post.inReplyTo === null) {
+            return;
+        }
+
         const inReplyToPost = await this.db('posts')
             .where('id', post.inReplyTo)
             .select('id', 'author_id')
