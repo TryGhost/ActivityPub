@@ -155,13 +155,61 @@ export class NotificationService {
             .first();
 
         if (!user) {
-            throw new Error(`User not found for account: ${account.id}`);
+            return;
         }
 
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: followerAccount.id,
             event_type: NotificationType.Follow,
+        });
+    }
+
+    /**
+     * Create a notification for a like event
+     *
+     * @param post The post that is being liked
+     * @param accountId The ID of the account that is liking the post
+     */
+    async createLikeNotification(post: Post, accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: accountId,
+            post_id: post.id,
+            event_type: NotificationType.Like,
+        });
+    }
+
+    /**
+     * Create a notification for a repost event
+     *
+     * @param post The post that is being reposted
+     * @param accountId The ID of the account that is reposting the post
+     */
+    async createRepostNotification(post: Post, accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', post.author.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: accountId,
+            post_id: post.id,
+            event_type: NotificationType.Repost,
         });
     }
 
