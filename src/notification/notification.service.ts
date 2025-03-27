@@ -187,6 +187,12 @@ export class NotificationService {
             return;
         }
 
+        if (post.author.id === accountId) {
+            // Don't create a notification for a post created by the same account
+            // that is liking it
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: accountId,
