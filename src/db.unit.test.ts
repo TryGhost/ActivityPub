@@ -1,5 +1,5 @@
+import { describe, expect, it } from 'vitest';
 import { client } from './db';
-import { describe, it, expect } from 'vitest';
 
 describe('Knex Configuration', () => {
     it('should use UTC timezone in connection config', () => {
