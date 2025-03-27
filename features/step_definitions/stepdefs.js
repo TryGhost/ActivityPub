@@ -361,6 +361,7 @@ function createWebhookPost() {
                 title: 'Test Post',
                 html: '<p>This is a test post</p>',
                 excerpt: 'This is a test post',
+                custom_excerpt: null,
                 feature_image: null,
                 published_at: new Date().toISOString(),
                 url: `http://fake-external-activitypub/post/${uuid}`,
@@ -444,6 +445,7 @@ BeforeAll(async () => {
             user: process.env.MYSQL_USER,
             password: process.env.MYSQL_PASSWORD,
             database: process.env.MYSQL_DATABASE,
+            timezone: '+00:00',
         },
     });
 
