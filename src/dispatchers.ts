@@ -1128,7 +1128,9 @@ export async function nodeInfoDispatcher(ctx: RequestContext<ContextData>) {
         protocols: ['activitypub'] as Protocol[],
         openRegistrations: false,
         usage: {
-            users: {},
+            users: {
+                total: 1,
+            },
             localPosts: 0,
             localComments: 0,
         },

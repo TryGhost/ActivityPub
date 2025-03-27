@@ -1,6 +1,14 @@
 import type { Knex } from 'knex';
 
+import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+
+export enum NotificationType {
+    Like = 1,
+    Reply = 2,
+    Repost = 3,
+    Follow = 4,
+}
 
 export interface GetNotificationsDataOptions {
     /**
@@ -26,18 +34,16 @@ interface BaseGetNotificationsDataResultRow {
     actor_username: string;
     actor_url: string;
     actor_avatar_url: string;
-    post_id: number;
+    post_ap_id: string;
     post_type: string;
     post_title: string;
     post_content: string;
     post_url: string;
-    post_ap_id: string;
-    in_reply_to_post_id: number;
+    in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
     in_reply_to_post_content: string;
     in_reply_to_post_url: string;
-    in_reply_to_post_ap_id: string;
 }
 
 export interface GetNotificationsDataResult {
@@ -81,12 +87,14 @@ export class NotificationService {
                 'actor_account.url as actor_url',
                 'actor_account.avatar_url as actor_avatar_url',
                 // Post fields
-                'post.id as post_id',
+                'post.ap_id as post_ap_id',
+                'post.type as post_type',
                 'post.title as post_title',
                 'post.content as post_content',
                 'post.url as post_url',
                 // In reply to post fields
-                'in_reply_to_post.id as in_reply_to_post_id',
+                'in_reply_to_post.ap_id as in_reply_to_post_ap_id',
+                'in_reply_to_post.type as in_reply_to_post_type',
                 'in_reply_to_post.title as in_reply_to_post_title',
                 'in_reply_to_post.content as in_reply_to_post_content',
                 'in_reply_to_post.url as in_reply_to_post_url',
@@ -131,5 +139,28 @@ export class NotificationService {
             ),
             nextCursor: hasMore ? lastResult.notification_id : null,
         };
+    }
+
+    /**
+     * Create a notification for a follow event
+     *
+     * @param account The account that is being followed
+     * @param followerAccount The account that is following
+     */
+    async createFollowNotification(account: Account, followerAccount: Account) {
+        const user = await this.db('users')
+            .where('account_id', account.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            throw new Error(`User not found for account: ${account.id}`);
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: followerAccount.id,
+            event_type: NotificationType.Follow,
+        });
     }
 }

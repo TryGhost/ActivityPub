@@ -501,15 +501,15 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/cli@1.4.6":
-  version "1.4.6"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.4.6.tgz#18cfd2bda36a09b1603dc86d406ddea495aa440a"
-  integrity sha512-6pPRyZ8TRr2RRt1zmsgkqi+BDaCq/BgRyZpV1Xeb66qyu52L5pK68JofveaGmmOxn2L1i9eGjsq+zAJ66asW9Q==
+"@fedify/cli@1.4.9":
+  version "1.4.9"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.4.9.tgz#511280864b6d3cf9dba73b855b9c091b9c1ff4e7"
+  integrity sha512-e2XLpuwoMPtHmDV6bI6B+w2IRFKNt7n1u1lOHlbLbxvqUzunv868pEKRVvI0i88+e1kUfcwle34NZ0vPxcyBSA==
 
-"@fedify/fedify@1.4.6":
-  version "1.4.6"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.4.6.tgz#bbfc2f00e6cfff5dd0a930e68321a89744310487"
-  integrity sha512-Fvfc0R2SNE72SoesQVtyvk/HrNU47VLUOR5Dj2HiHqOGtgbIPDfnEaOwoYEgGVqVwTKJRf+ZHZgNjUwAUUUhog==
+"@fedify/fedify@1.4.9":
+  version "1.4.9"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.4.9.tgz#34738ba198f6f23160c4e2dee2b64616d54193a2"
+  integrity sha512-pNSo7pWFGi6twZNfF9c6iLsGG0QZeBJpNoFSyBdxsCqL9gsNTjX7y6bGzK8k48yPzaYXqYmWNnFVOnXvdDWDEw==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"

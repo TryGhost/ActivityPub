@@ -14,6 +14,11 @@ const notificationTypeMap: Record<number, NotificationDTO['type']> = {
     4: 'follow',
 };
 
+const postTypeMap: Record<number, 'article' | 'note'> = {
+    0: 'note',
+    1: 'article',
+};
+
 /**
  * Create a handler for a request for a user's notifications
  *
@@ -71,17 +76,21 @@ export function createGetNotificationsHandler(
                     ),
                     avatarUrl: result.actor_avatar_url,
                 },
-                post: result.post_id
+                post: result.post_ap_id
                     ? {
-                          id: result.post_id.toString(),
+                          id: result.post_ap_id,
+                          type: postTypeMap[Number(result.post_type)],
                           title: result.post_title,
                           content: result.post_content,
                           url: result.post_url,
                       }
                     : null,
-                inReplyTo: result.in_reply_to_post_id
+                inReplyTo: result.in_reply_to_post_ap_id
                     ? {
-                          id: result.in_reply_to_post_id.toString(),
+                          id: result.in_reply_to_post_ap_id,
+                          type: postTypeMap[
+                              Number(result.in_reply_to_post_type)
+                          ],
                           title: result.in_reply_to_post_title,
                           content: result.in_reply_to_post_content,
                           url: result.in_reply_to_post_url,
@@ -93,7 +102,7 @@ export function createGetNotificationsHandler(
         return new Response(
             JSON.stringify({
                 notifications,
-                next: nextCursor,
+                next: nextCursor ? String(nextCursor) : null,
             }),
             {
                 status: 200,
