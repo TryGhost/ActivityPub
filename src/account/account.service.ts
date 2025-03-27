@@ -442,4 +442,13 @@ export class AccountService {
 
         return newAccount;
     }
+
+    async moveAccount(account: AccountType): Promise<void> {
+        const newApId = `${account.url}${AP_BASE_PATH}/users/${account.uuid}`;
+
+        console.log('emitting account.moved event for account', account);
+        console.log('newApId', newApId);
+
+        await this.events.emitAsync('account.moved', account, newApId);
+    }
 }
