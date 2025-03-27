@@ -2,6 +2,7 @@ import type { EventEmitter } from 'node:events';
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { NotificationService } from 'notification/notification.service';
 import { PostLikedEvent } from 'post/post-liked.event';
+import { PostRepostedEvent } from 'post/post-reposted.event';
 
 export class NotificationEventService {
     constructor(
@@ -18,6 +19,10 @@ export class NotificationEventService {
             PostLikedEvent.getName(),
             this.handlePostLikedEvent.bind(this),
         );
+        this.events.on(
+            PostRepostedEvent.getName(),
+            this.handlePostRepostedEvent.bind(this),
+        );
     }
 
     private async handleAccountFollowedEvent(event: AccountFollowedEvent) {
@@ -29,6 +34,13 @@ export class NotificationEventService {
 
     private async handlePostLikedEvent(event: PostLikedEvent) {
         await this.notificationService.createLikeNotification(
+            event.getPost(),
+            event.getAccountId(),
+        );
+    }
+
+    private async handlePostRepostedEvent(event: PostRepostedEvent) {
+        await this.notificationService.createRepostNotification(
             event.getPost(),
             event.getAccountId(),
         );
