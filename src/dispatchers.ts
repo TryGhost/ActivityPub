@@ -9,6 +9,7 @@ import {
     Group,
     Image,
     Like,
+    Move,
     Note,
     Person,
     type Protocol,
@@ -1067,6 +1068,14 @@ export async function updateDispatcher(
         return null;
     }
     return Update.fromJsonLd(exists);
+}
+
+export async function moveDispatcher(
+    ctx: RequestContext<ContextData>,
+    data: Record<'id', string>,
+) {
+    const id = ctx.getObjectUri(Move, data);
+    const exists = await ctx.data.globaldb.get([id.href]);
 }
 
 export async function noteDispatcher(

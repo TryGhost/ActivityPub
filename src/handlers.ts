@@ -312,7 +312,7 @@ export function createReplyActionHandler(
             }),
         ];
 
-        const account = await accountRepository.getBySite(ctx.get('site'));
+        const account = await ctx.get('db')('accounts').first();
 
         if (!objectToReplyTo.id) {
             return new Response('Invalid Reply - no object to reply id', {
@@ -898,6 +898,30 @@ export function createDerepostActionHandler(
             headers: {
                 'Content-Type': 'application/activity+json',
             },
+            status: 200,
+        });
+    };
+}
+
+export function createMoveAccountHandler(accountService: AccountService) {
+    return async function moveAccount(
+        ctx: Context<{ Variables: HonoContextVariables }>,
+    ) {
+        console.log('createMoveAccountHandler called');
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        console.log('Moving account', account);
+        await accountService.moveAccount(account);
+
+        return new Response(null, {
             status: 200,
         });
     };

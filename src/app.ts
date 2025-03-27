@@ -12,6 +12,7 @@ import {
     Follow,
     type KvStore,
     Like,
+    Move,
     Note,
     type RequestContext,
     Undo,
@@ -80,12 +81,14 @@ import {
     outboxFirstCursor,
     undoDispatcher,
     updateDispatcher,
+    moveDispatcher,
 } from './dispatchers';
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
+    createMoveAccountHandler,
     createLikeAction,
     createReplyActionHandler,
     createRepostActionHandler,
@@ -490,11 +493,15 @@ fedify.setObjectDispatcher(
     '/.ghost/activitypub/delete/{id}',
     spanWrapper(deleteDispatcher.dispatch.bind(deleteDispatcher)),
 );
+fedify.setObjectDispatcher(
+    Move,
+    '/.ghost/activitypub/move/{id}',
+    spanWrapper(moveDispatcher),
+);
 fedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
     spanWrapper(nodeInfoDispatcher),
 );
-
 /** Hono */
 
 enum GhostRole {
@@ -1028,6 +1035,28 @@ app.get(
         createGetNotificationsHandler(accountService, notificationService),
     ),
 );
+app.post(
+    '/.ghost/activitypub/account/move',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper(createMoveAccountHandler(accountService)),
+);
+app.get('/.ghost/activitypub/users/37f1afdb-237d-4e27-8140-d00abdd52c74', (c) =>
+    c.json({
+        '@context': 'https://www.w3.org/ns/activitystreams',
+        id: 'https://sags-macbook-pro.tail5da2a.ts.net/.ghost/activitypub/users/index',
+        type: 'Person',
+        preferredUsername: 'index',
+        alsoKnownAs:
+            'https://sags-macbook-pro.tail5da2a.ts.net/.ghost/activitypub/users/37f1afdb-237d-4e27-8140-d00abdd52c74',
+        movedTo:
+            'https://sags-macbook-pro.tail5da2a.ts.net/.ghost/activitypub/users/37f1afdb-237d-4e27-8140-d00abdd52c74',
+        inbox: 'https://sags-macbook-pro.tail5da2a.ts.net/.ghost/activitypub/users/37f1afdb-237d-4e27-8140-d00abdd52c74/inbox',
+        outbox: 'https://sags-macbook-pro.tail5da2a.ts.net/.ghost/activitypub/users/37f1afdb-237d-4e27-8140-d00abdd52c74/outbox',
+        followers:
+            'https://sags-macbook-pro.tail5da2a.ts.net/.ghost/activitypub/users/37f1afdb-237d-4e27-8140-d00abdd52c74/followers',
+    }),
+);
+
 /** Federation wire up */
 
 app.get(
