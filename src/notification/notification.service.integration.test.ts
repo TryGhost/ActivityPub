@@ -311,7 +311,7 @@ describe('NotificationService', () => {
             expect(notifications[0].event_type).toBe(NotificationType.Follow);
         });
 
-        it('should throw an error if user is not found for account', async () => {
+        it('should do nothing if user is not found for account', async () => {
             const notificationService = new NotificationService(client);
 
             const accountWithoutUser = {
@@ -322,12 +322,14 @@ describe('NotificationService', () => {
                 id: 1,
             } as Account;
 
-            await expect(
-                notificationService.createFollowNotification(
-                    accountWithoutUser,
-                    followerAccount,
-                ),
-            ).rejects.toThrow('User not found for account: 999');
+            await notificationService.createFollowNotification(
+                accountWithoutUser,
+                followerAccount,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
         });
     });
 

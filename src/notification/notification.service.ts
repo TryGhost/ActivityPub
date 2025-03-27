@@ -155,7 +155,7 @@ export class NotificationService {
             .first();
 
         if (!user) {
-            throw new Error(`User not found for account: ${account.id}`);
+            return;
         }
 
         await this.db('notifications').insert({
