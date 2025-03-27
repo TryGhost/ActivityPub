@@ -143,7 +143,7 @@ export class NotificationService {
     }
 
     /**
-     * Create a notification for a follow event
+     * Create a notification for an account being followed
      *
      * @param account The account that is being followed
      * @param followerAccount The account that is following
@@ -155,6 +155,9 @@ export class NotificationService {
             .first();
 
         if (!user) {
+            // If this follow was for an internal account that doesn't exist,
+            // or an external account, we can't create a notification for it as
+            // there is not a corresponding user record in the database
             return;
         }
 
@@ -166,7 +169,7 @@ export class NotificationService {
     }
 
     /**
-     * Create a notification for a like event
+     * Create a notification for a post being liked
      *
      * @param post The post that is being liked
      * @param accountId The ID of the account that is liking the post
@@ -178,6 +181,9 @@ export class NotificationService {
             .first();
 
         if (!user) {
+            // If this like was for a post by an internal account that no longer
+            // exists, or an external account, we can't create a notification for
+            // it as there is not a corresponding user record in the database
             return;
         }
 
@@ -190,7 +196,7 @@ export class NotificationService {
     }
 
     /**
-     * Create a notification for a repost event
+     * Create a notification for a post being reposted
      *
      * @param post The post that is being reposted
      * @param accountId The ID of the account that is reposting the post
@@ -202,6 +208,9 @@ export class NotificationService {
             .first();
 
         if (!user) {
+            // If this repost was for a post by an internal account that no longer
+            // exists, or an external account, we can't create a notification for
+            // it as there is not a corresponding user record in the database
             return;
         }
 
@@ -214,12 +223,13 @@ export class NotificationService {
     }
 
     /**
-     * Create a notification for a reply event
+     * Create a notification for a post being replied to
      *
      * @param post The post that is being replied to
      */
     async createReplyNotification(post: Post) {
         if (post.inReplyTo === null) {
+            // This post is not reply, exit early
             return;
         }
 
@@ -238,6 +248,9 @@ export class NotificationService {
             .first();
 
         if (!user) {
+            // If this reply was for a post by an internal account that no longer
+            // exists, or an external account, we can't create a notification for
+            // it as there is not a corresponding user record in the database
             return;
         }
 
