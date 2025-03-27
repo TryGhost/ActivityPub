@@ -1,7 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
-import { Audience, type Post, PostType } from 'post/post.entity';
+import { Audience, PostType } from 'post/post.entity';
+import type { Post } from 'post/post.entity';
 import { createTestDb } from 'test/db';
 
 import type { Account } from 'account/types';
@@ -480,6 +481,155 @@ describe('NotificationService', () => {
                 postWithAccountWithoutUser,
                 123,
             );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+    });
+
+    describe('createReplyNotification', () => {
+        it('should create a reply notification', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [siteId] = await client('sites').insert({
+                host: 'alice.com',
+                webhook_secret: 'secret',
+            });
+
+            const [accountId] = await client('accounts').insert({
+                username: 'alice',
+                ap_id: 'https://alice.com/user/alice',
+                ap_inbox_url: 'https://alice.com/user/alice/inbox',
+            });
+
+            const [userId] = await client('users').insert({
+                site_id: siteId,
+                account_id: accountId,
+            });
+
+            const [userPostId] = await client('posts').insert({
+                author_id: accountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content:
+                    'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
+                url: 'http://alice.com/post/some-post',
+                ap_id: 'https://alice.com/post/some-post',
+            });
+
+            const [replierAccountId] = await client('accounts').insert({
+                username: 'bob',
+                ap_id: 'https://bob.com/user/bob',
+                ap_inbox_url: 'https://bob.com/user/bob/inbox',
+            });
+
+            const [replierPostId] = await client('posts').insert({
+                author_id: replierAccountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content: 'Id ad adipisicing reprehenderit.',
+                url: 'http://bob.com/post/some-reply',
+                ap_id: 'https://bob.com/post/some-reply',
+                in_reply_to: userPostId,
+            });
+
+            const post = {
+                id: replierPostId,
+                author: {
+                    id: replierAccountId,
+                },
+                inReplyTo: userPostId,
+            } as Post;
+
+            await notificationService.createReplyNotification(post);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].user_id).toBe(userId);
+            expect(notifications[0].account_id).toBe(replierAccountId);
+            expect(notifications[0].post_id).toBe(replierPostId);
+            expect(notifications[0].in_reply_to_post_id).toBe(userPostId);
+            expect(notifications[0].event_type).toBe(NotificationType.Reply);
+        });
+
+        it('should do nothing if the post is not a reply', async () => {
+            const notificationService = new NotificationService(client);
+
+            const post = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+                inReplyTo: null,
+            } as Post;
+
+            await expect(
+                notificationService.createReplyNotification(post),
+            ).resolves.not.toThrow();
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('should throw an error if the in reply to post is not found', async () => {
+            const notificationService = new NotificationService(client);
+
+            const post = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+                inReplyTo: 789,
+            } as Post;
+
+            await expect(
+                notificationService.createReplyNotification(post),
+            ).rejects.toThrow('In reply to post not found: 789');
+        });
+
+        it('should do nothing if user is not found for author of the in reply to post', async () => {
+            const notificationService = new NotificationService(client);
+
+            const [externalAccountId] = await client('accounts').insert({
+                username: 'bob',
+                ap_id: 'https://bob.com/user/bob',
+                ap_inbox_url: 'https://bob.com/user/bob/inbox',
+            });
+
+            const [externalAccountPostId] = await client('posts').insert({
+                author_id: externalAccountId,
+                type: PostType.Article,
+                audience: Audience.Public,
+                content:
+                    'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
+                url: 'http://bob.com/post/some-post',
+                ap_id: 'https://bob.com/post/some-post',
+            });
+
+            const [anotherExternalAccountPostId] = await client('posts').insert(
+                {
+                    author_id: externalAccountId,
+                    type: PostType.Article,
+                    audience: Audience.Public,
+                    content: 'Id ad adipisicing reprehenderit.',
+                    url: 'http://bob.com/post/some-reply',
+                    ap_id: 'https://bob.com/post/some-reply',
+                    in_reply_to: externalAccountPostId,
+                },
+            );
+
+            const post = {
+                id: anotherExternalAccountPostId,
+                author: {
+                    id: externalAccountId,
+                },
+                inReplyTo: externalAccountPostId,
+            } as Post;
+
+            await notificationService.createReplyNotification(post);
 
             const notifications = await client('notifications').select('*');
 

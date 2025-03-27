@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { Account } from 'account/types';
+import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import type { Post } from 'post/post.entity';
@@ -21,6 +22,7 @@ describe('NotificationEventService', () => {
             createFollowNotification: vi.fn(),
             createLikeNotification: vi.fn(),
             createRepostNotification: vi.fn(),
+            createReplyNotification: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -88,6 +90,27 @@ describe('NotificationEventService', () => {
             expect(
                 notificationService.createRepostNotification,
             ).toHaveBeenCalledWith(post, accountId);
+        });
+    });
+
+    describe('handling a post reply', () => {
+        it('should create a reply notification', () => {
+            const post = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+                inReplyTo: 789,
+            } as Post;
+
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post as Post),
+            );
+
+            expect(
+                notificationService.createReplyNotification,
+            ).toHaveBeenCalledWith(post);
         });
     });
 });

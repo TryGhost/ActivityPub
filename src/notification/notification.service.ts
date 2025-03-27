@@ -212,4 +212,41 @@ export class NotificationService {
             event_type: NotificationType.Repost,
         });
     }
+
+    /**
+     * Create a notification for a reply event
+     *
+     * @param post The post that is being replied to
+     */
+    async createReplyNotification(post: Post) {
+        if (post.inReplyTo === null) {
+            return;
+        }
+
+        const inReplyToPost = await this.db('posts')
+            .where('id', post.inReplyTo)
+            .select('id', 'author_id')
+            .first();
+
+        if (!inReplyToPost) {
+            throw new Error(`In reply to post not found: ${post.inReplyTo}`);
+        }
+
+        const user = await this.db('users')
+            .where('account_id', inReplyToPost.author_id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: post.author.id,
+            post_id: post.id,
+            in_reply_to_post_id: inReplyToPost.id,
+            event_type: NotificationType.Reply,
+        });
+    }
 }
