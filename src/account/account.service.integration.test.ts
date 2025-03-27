@@ -661,16 +661,4 @@ describe('AccountService', () => {
         expect(newAccount).toBeDefined();
         expect(newAccount!.name).toBe('A brand new name!');
     });
-
-    describe.only('moveAccount', () => {
-        it('should move an account to a new ActivityPub ID', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                uuid: crypto.randomUUID(),
-                username: 'account',
-            });
-
-            await service.moveAccount(account);
-        });
-    });
 });
