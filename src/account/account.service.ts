@@ -151,15 +151,18 @@ export class AccountService {
     async createExternalAccount(
         accountData: ExternalAccountData,
     ): Promise<AccountType> {
+        const uuid = randomUUID();
+
         const [accountId] = await this.db('accounts').insert({
             ...accountData,
-            uuid: randomUUID(),
+            uuid,
         });
 
         return {
             id: accountId,
             ...accountData,
             ap_private_key: null,
+            uuid,
         };
     }
 
@@ -415,6 +418,7 @@ export class AccountService {
             ap_liked_url: row.ap_liked_url,
             ap_public_key: row.ap_public_key,
             ap_private_key: row.ap_private_key,
+            uuid: row.uuid,
         };
     }
 

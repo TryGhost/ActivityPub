@@ -35,9 +35,13 @@ export interface Account {
     ap_liked_url: string;
     ap_public_key: string;
     ap_private_key: string | null;
+    uuid: string | null;
 }
 
 /**
  * Data used when creating an external account
  */
-export type ExternalAccountData = Omit<Account, 'id' | 'ap_private_key'>;
+export type ExternalAccountData = Omit<
+    Account,
+    'id' | 'ap_private_key' | 'uuid'
+>;

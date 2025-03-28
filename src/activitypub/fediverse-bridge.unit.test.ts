@@ -54,6 +54,7 @@ describe('FediverseBridge', () => {
             ap_liked_url: 'https://account.com/liked',
             ap_public_key: '{}',
             ap_private_key: '{}',
+            uuid: null,
         };
 
         events.emit('account.updated', account);
