@@ -1,11 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import type { Account } from 'account/account.entity';
 import type { Knex } from 'knex';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
 import { createTestDb } from 'test/db';
-
-import type { Account } from 'account/types';
 import { NotificationService, NotificationType } from './notification.service';
 
 describe('NotificationService', () => {

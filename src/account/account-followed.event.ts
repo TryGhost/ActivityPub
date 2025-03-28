@@ -1,4 +1,4 @@
-import type { Account } from 'account/types';
+import type { Account } from './account.entity';
 
 export class AccountFollowedEvent {
     constructor(
