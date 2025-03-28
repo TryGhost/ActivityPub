@@ -1011,7 +1011,7 @@ app.get(
 );
 app.get(
     '/.ghost/activitypub/post/:post_ap_id',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetPostHandler(postRepository)),
 );
 app.delete(
@@ -1023,7 +1023,7 @@ app.delete(
 );
 app.get(
     '/.ghost/activitypub/notifications',
-    requireRole(GhostRole.Owner),
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createGetNotificationsHandler(accountService, notificationService),
     ),
