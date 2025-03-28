@@ -23,7 +23,10 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { FollowersService } from 'activitypub/followers.service';
 import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from './account/account.service';
-import { mapActorToExternalAccountData } from './account/utils';
+import {
+    asAccountEntity,
+    mapActorToExternalAccountData,
+} from './account/utils';
 import { type ContextData, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
@@ -164,8 +167,8 @@ export function createFollowHandler(accountService: AccountService) {
             }
 
             await accountService.recordAccountFollow(
-                followeeAccount,
-                followerAccount,
+                asAccountEntity(followeeAccount),
+                asAccountEntity(followerAccount),
             );
         }
 
@@ -237,8 +240,8 @@ export function createAcceptHandler(accountService: AccountService) {
             }
 
             await accountService.recordAccountFollow(
-                followeeAccount,
-                followerAccount,
+                asAccountEntity(followeeAccount),
+                asAccountEntity(followerAccount),
             );
         }
     };

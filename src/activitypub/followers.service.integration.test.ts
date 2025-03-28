@@ -1,5 +1,6 @@
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
+import { asAccountEntity } from 'account/utils';
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
@@ -53,7 +54,7 @@ describe('FollowersService', () => {
                 username: 'index',
                 name: 'Test Site Title',
                 bio: 'Test Site Description',
-                avatar_url: 'Test Site Icon',
+                avatar_url: 'https://example.com/avatars/internal-account.png',
             };
             const account = await accountService.createInternalAccount(site, {
                 ...internalAccountData,
@@ -72,9 +73,18 @@ describe('FollowersService', () => {
                 username: 'follower3',
             });
 
-            await accountService.recordAccountFollow(account, follower1);
-            await accountService.recordAccountFollow(account, follower2);
-            await accountService.recordAccountFollow(account, follower3);
+            await accountService.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower1),
+            );
+            await accountService.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower2),
+            );
+            await accountService.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower3),
+            );
 
             const followers = await service.getFollowers(account.id);
 

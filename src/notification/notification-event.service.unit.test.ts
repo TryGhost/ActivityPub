@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 
 import { AccountFollowedEvent } from 'account/account-followed.event';
-import type { Account } from 'account/types';
+import type { Account } from 'account/account.entity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';

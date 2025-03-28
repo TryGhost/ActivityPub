@@ -1,6 +1,6 @@
 import type { Knex } from 'knex';
 
-import type { Account } from 'account/types';
+import type { Account } from 'account/account.entity';
 import { sanitizeHtml } from 'helpers/html';
 import type { Post } from 'post/post.entity';
 

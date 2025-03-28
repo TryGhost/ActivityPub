@@ -28,6 +28,7 @@ import type {
     InternalAccountData,
     Site,
 } from './types';
+import { asAccountEntity } from './utils';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair
@@ -87,7 +88,7 @@ describe('AccountService', () => {
             username: 'index',
             name: 'Test Site Title',
             bio: 'Test Site Description',
-            avatar_url: 'Test Site Icon',
+            avatar_url: 'https://example.com/avatars/internal-account.png',
         };
         externalAccountData = {
             username: 'external-account',
@@ -214,7 +215,10 @@ describe('AccountService', () => {
                 username: 'follower',
             });
 
-            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
 
             // Assert the follow was inserted into the database
             const follows = await db('follows').select('*');
@@ -245,7 +249,10 @@ describe('AccountService', () => {
                 username: 'follower',
             });
 
-            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
 
             // Assert the follow was inserted into the database
             const follows = await db('follows').select('*');
@@ -268,11 +275,17 @@ describe('AccountService', () => {
                 username: 'follower',
             });
 
-            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
 
             const firstFollow = await db('follows').where({ id: 1 }).first();
 
-            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
 
             // Assert the follow was inserted into the database only once
             const follows = await db('follows').select('*');
@@ -304,15 +317,18 @@ describe('AccountService', () => {
                 username: 'follower',
             });
 
-            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
 
             await vi.waitFor(() => {
                 return accountFollowedEvent !== undefined;
             });
 
             expect(accountFollowedEvent).toBeDefined();
-            expect(accountFollowedEvent?.getAccount()).toBe(account);
-            expect(accountFollowedEvent?.getFollower()).toBe(follower);
+            expect(accountFollowedEvent?.getAccount().id).toBe(account.id);
+            expect(accountFollowedEvent?.getFollower().id).toBe(follower.id);
         });
 
         it('should not emit an account.followed event if the follow is not recorded due to being a duplicate', async () => {
@@ -333,8 +349,14 @@ describe('AccountService', () => {
                 username: 'follower',
             });
 
-            await service.recordAccountFollow(account, follower);
-            await service.recordAccountFollow(account, follower);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower),
+            );
 
             await vi.advanceTimersByTime(1000);
 
@@ -428,9 +450,18 @@ describe('AccountService', () => {
                 username: 'following3',
             });
 
-            await service.recordAccountFollow(following1, account);
-            await service.recordAccountFollow(following2, account);
-            await service.recordAccountFollow(following3, account);
+            await service.recordAccountFollow(
+                asAccountEntity(following1),
+                asAccountEntity(account),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(following2),
+                asAccountEntity(account),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(following3),
+                asAccountEntity(account),
+            );
 
             // Get a page of following accounts and assert the requested fields are returned
             const followingAccounts = await service.getFollowingAccounts(
@@ -500,8 +531,14 @@ describe('AccountService', () => {
                 username: 'following2',
             });
 
-            await service.recordAccountFollow(following1, account);
-            await service.recordAccountFollow(following2, account);
+            await service.recordAccountFollow(
+                asAccountEntity(following1),
+                asAccountEntity(account),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(following2),
+                asAccountEntity(account),
+            );
 
             const count = await service.getFollowingAccountsCount(account);
 
@@ -528,9 +565,18 @@ describe('AccountService', () => {
                 username: 'follower3',
             });
 
-            await service.recordAccountFollow(account, follower1);
-            await service.recordAccountFollow(account, follower2);
-            await service.recordAccountFollow(account, follower3);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower1),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower2),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower3),
+            );
 
             // Get a page of followers and assert the requested fields are returned
             const followers = await service.getFollowerAccounts(account, {
@@ -596,8 +642,14 @@ describe('AccountService', () => {
                 username: 'follower2',
             });
 
-            await service.recordAccountFollow(account, follower1);
-            await service.recordAccountFollow(account, follower2);
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower1),
+            );
+            await service.recordAccountFollow(
+                asAccountEntity(account),
+                asAccountEntity(follower2),
+            );
 
             const count = await service.getFollowerAccountsCount(account);
 
@@ -620,7 +672,10 @@ describe('AccountService', () => {
                 username: 'non-followee',
             });
 
-            await service.recordAccountFollow(followee, account);
+            await service.recordAccountFollow(
+                asAccountEntity(followee),
+                asAccountEntity(account),
+            );
 
             const isFollowing = await service.checkIfAccountIsFollowing(
                 account,

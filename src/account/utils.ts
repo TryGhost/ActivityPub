@@ -1,5 +1,6 @@
 import { type Actor, PropertyValue } from '@fedify/fedify';
-import type { ExternalAccountData } from './types';
+import { Account } from './account.entity';
+import type { Account as AccountType, ExternalAccountData } from './types';
 
 interface PublicKey {
     id: string;
@@ -76,4 +77,25 @@ export async function mapActorToExternalAccountData(
  */
 export function getAccountHandle(host?: string, username?: string) {
     return `@${username || 'unknown'}@${host || 'unknown'}`;
+}
+
+/**
+ * Convert an account type to an account entity
+ *
+ * @param account Account type
+ */
+export function asAccountEntity(account: AccountType): Account {
+    return new Account(
+        account.id,
+        account.uuid,
+        account.username,
+        account.name,
+        account.bio,
+        account.avatar_url ? new URL(account.avatar_url) : null,
+        account.banner_image_url ? new URL(account.banner_image_url) : null,
+        null, // site
+        new URL(account.ap_id),
+        account.url ? new URL(account.url) : null,
+        new URL(account.ap_followers_url),
+    );
 }

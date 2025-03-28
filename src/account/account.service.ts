@@ -173,8 +173,8 @@ export class AccountService {
      * @param follower Following account
      */
     async recordAccountFollow(
-        followee: AccountType,
-        follower: AccountType,
+        followee: Account,
+        follower: Account,
     ): Promise<void> {
         const [insertCount] = await this.db('follows')
             .insert({

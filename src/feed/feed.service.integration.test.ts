@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { asAccountEntity } from 'account/utils';
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
@@ -7,7 +8,7 @@ import { createTestDb } from 'test/db';
 import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
-import type { Account as AccountType, Site } from '../account/types';
+import type { Site } from '../account/types';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     Audience,
@@ -154,8 +155,8 @@ describe('FeedService', () => {
             const followedAccount = await createInternalAccount('bar.com');
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             const followedAccountPost = await createPost(followedAccount, {
@@ -198,8 +199,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Create posts with specific dates
@@ -277,8 +278,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Initialise an internal account that the user will not follow
@@ -293,8 +294,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                userAccount as unknown as AccountType, // @TODO: Update this when AccountEntity is used everywhere
-                externalAccount,
+                userAccount as unknown as Account,
+                asAccountEntity(externalAccount),
             );
 
             // Initialise posts
@@ -386,9 +387,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                // @TODO: Update this when AccountEntity is used everywhere
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Initialise an internal account that the user will not follow
@@ -473,8 +473,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Initialise a post that the user will reply to
@@ -604,8 +604,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Initialise another internal account that will follow the internal
@@ -614,8 +614,8 @@ describe('FeedService', () => {
                 await createInternalAccount('add-post-other.com');
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                otherAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                otherAccount as unknown as Account,
             );
 
             // Initialise posts
@@ -674,8 +674,8 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                followedAccount as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                followedAccount as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Create post and repost
@@ -730,13 +730,13 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                reposter1 as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                reposter1 as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             await accountService.recordAccountFollow(
-                reposter2 as unknown as AccountType,
-                userAccount as unknown as AccountType,
+                reposter2 as unknown as Account,
+                userAccount as unknown as Account,
             );
 
             // Create post and add two reposts
