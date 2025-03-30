@@ -130,6 +130,11 @@ jobs:
     strategy:
       matrix:
         region: [europe-west4, europe-west3]
+        include:
+          - region: europe-west4
+            region_name: netherlands
+          - region: europe-west3
+            region_name: frankfurt
     steps:
       - name: "Auth with Google Cloud"
         uses: 'google-github-actions/auth@v2'
@@ -142,7 +147,7 @@ jobs:
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ needs.build-test-push.outputs.migrations_docker_version }}
           region: ${{ matrix.region }}
-          job: stg-${{ matrix.region }}-activitypub-migrations
+          job: stg-${{ matrix.region_name }}-activitypub-migrations
           flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:${{ matrix.region }}:stg-${{ matrix.region }}-activitypub-primary'
 
       - name: "Deploy ActivityPub Queue to Cloud Run"
@@ -150,14 +155,14 @@ jobs:
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
-          service: stg-${{ matrix.region }}-activitypub-queue
+          service: stg-${{ matrix.region_name }}-activitypub-queue
 
       - name: "Deploy ActivityPub API to Cloud Run"
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
-          service: stg-${{ matrix.region }}-activitypub-api
+          service: stg-${{ matrix.region_name }}-activitypub-api
 
   deploy-old:
     if: github.ref == 'refs/heads/main'
