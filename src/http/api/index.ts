@@ -1,4 +1,3 @@
-export * from './activities';
 export * from './account';
 export * from './feed';
 export * from './notification';
