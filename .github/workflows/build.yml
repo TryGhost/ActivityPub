@@ -57,6 +57,8 @@ jobs:
             europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub
           tags: |
             ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
+            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.pull_request.number) || '' }}
+            type=raw,value=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha  }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -71,6 +73,8 @@ jobs:
             europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations
           tags: |
             ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
+            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.pull_request.number) || '' }}
+            type=raw,value=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha  }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
