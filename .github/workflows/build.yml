@@ -148,7 +148,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ needs.build-test-push.outputs.migrations_docker_version }}
           region: ${{ matrix.region }}
           job: stg-${{ matrix.region_name }}-activitypub-migrations
-          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:${{ matrix.region }}:stg-${{ matrix.region }}-activitypub-primary'
+          flags: '--wait --execute-now --set-cloudsql-instances=ghost-activitypub:${{ matrix.region }}:stg-${{ matrix.region_name }}-activitypub'
 
       - name: "Deploy ActivityPub Queue to Cloud Run"
         uses: 'google-github-actions/deploy-cloudrun@v2'
