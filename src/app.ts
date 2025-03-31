@@ -197,7 +197,9 @@ if (process.env.USE_MQ === 'true') {
     try {
         queue = await createMessageQueue(logging, {
             pubSubHost: process.env.MQ_PUBSUB_HOST,
-            hostIsEmulator: process.env.NODE_ENV !== 'production',
+            hostIsEmulator: !['staging', 'production'].includes(
+                process.env.NODE_ENV || '',
+            ),
             projectId: process.env.MQ_PUBSUB_PROJECT_ID,
             topic: String(process.env.MQ_PUBSUB_TOPIC_NAME),
             subscription: process.env.MQ_PUBSUB_SUBSCRIPTION_NAME
@@ -698,7 +700,7 @@ app.use(async (ctx, next) => {
     let protocol = 'https';
     // We allow insecure requests when not in production for things like testing
     if (
-        process.env.NODE_ENV !== 'production' &&
+        !['staging', 'production'].includes(process.env.NODE_ENV || '') &&
         !request.raw.url.startsWith('https')
     ) {
         protocol = 'http';
