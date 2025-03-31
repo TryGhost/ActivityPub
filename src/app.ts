@@ -200,7 +200,9 @@ if (process.env.USE_MQ === 'true') {
             hostIsEmulator: process.env.NODE_ENV !== 'production',
             projectId: process.env.MQ_PUBSUB_PROJECT_ID,
             topic: String(process.env.MQ_PUBSUB_TOPIC_NAME),
-            subscription: String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME),
+            subscription: process.env.MQ_PUBSUB_SUBSCRIPTION_NAME
+                ? String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME)
+                : undefined,
         });
 
         queue.registerErrorListener((error) => Sentry.captureException(error));
