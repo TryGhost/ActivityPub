@@ -436,7 +436,7 @@ export class AccountService {
         const nameChanged = account.name !== data.name;
         const bioChanged = account.bio !== data.bio;
 
-        if (avatarChanged || nameChanged || bioChanged) {
+        if (avatarChanged || nameChanged || bioChanged || true) {
             await this.events.emitAsync('account.updated', newAccount);
         }
 

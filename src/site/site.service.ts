@@ -111,6 +111,7 @@ export class SiteService {
             avatar_url: settings.site.icon,
             name: settings.site.title,
             bio: settings.site.description,
+            username: 'modified',
         });
     }
 }

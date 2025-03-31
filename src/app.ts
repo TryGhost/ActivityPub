@@ -1048,6 +1048,7 @@ app.get(
 );
 
 app.get('/.well-known/webfinger', async (ctx: HonoContext, next: Next) => {
+    console.log('CUSTOM');
     const resource = ctx.req.query('resource');
 
     // Validate that 'resource' is in the form 'acct:<username>@<host>'
@@ -1074,21 +1075,24 @@ app.get('/.well-known/webfinger', async (ctx: HonoContext, next: Next) => {
 
     try {
         // Get the Account for the username and site
-        const account = await accountService.getAccountByUsername(username, site.id);
+        const account = await accountRepository.getBySite(site);
         if (!account) {
             return ctx.json({ error: 'Account not found' }, 404);
         }
 
         // Construct the response
-        const avatarUrl = account.avatar_url || 'https://ghost.org/favicon.ico';
+        const avatarUrl =
+            account.avatarUrl?.href || 'https://ghost.org/favicon.ico';
+
+        console.log(account);
 
         const response = {
             subject: `acct:${account.username}@${requestHost}`,
-            aliases: [account.ap_id],
+            aliases: [account.apId.href],
             links: [
                 {
                     rel: 'self',
-                    href: account.ap_id,
+                    href: account.apId.href,
                     type: 'application/activity+json',
                 },
                 {

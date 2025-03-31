@@ -42,7 +42,7 @@ export const actorDispatcher = (
         ctx: RequestContext<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return null;
+        // if (handle !== ACTOR_DEFAULT_HANDLE) return null;
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return null;
 
@@ -69,6 +69,9 @@ export const actorDispatcher = (
             ),
         });
 
+        console.log(`actor dispatcher for ${handle}`);
+        console.log(person);
+
         return person;
     };
 
@@ -80,7 +83,7 @@ export const keypairDispatcher = (
         ctx: Context<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return [];
+        // if (handle !== ACTOR_DEFAULT_HANDLE) return [];
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 
