@@ -114,7 +114,6 @@ import {
     createPostPublishedWebhookHandler,
     createSearchHandler,
     handleCreateNote,
-    handleGetActivities,
     handleWebhookSiteChanged,
 } from './http/api';
 import { spanWrapper } from './instrumentation';
@@ -882,11 +881,6 @@ app.get(
     '/.ghost/activitypub/inbox/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(inboxHandler),
-);
-app.get(
-    '/.ghost/activitypub/activities/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(handleGetActivities),
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
