@@ -971,7 +971,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetProfilePostsHandler(accountService)),
+    spanWrapper(createGetProfilePostsHandler(accountService, postRepository)),
 );
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
