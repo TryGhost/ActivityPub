@@ -144,6 +144,56 @@ describe('Post', () => {
         });
     });
 
+    describe('createNote', () => {
+        it('errors if the account is external', () => {
+            const account = externalAccount();
+            const content = 'My first note';
+
+            expect(() =>
+                Post.createNote(account, content),
+            ).toThrowErrorMatchingInlineSnapshot(
+                '[Error: createNote is for use with internal accounts]',
+            );
+        });
+
+        it('creates a note with html content', () => {
+            const account = internalAccount();
+            const content = 'My first note';
+
+            const note = Post.createNote(account, content);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe('<p>My first note</p>');
+        });
+
+        it('creates a note with line breaks', () => {
+            const account = internalAccount();
+            const content = `My
+                            first
+                            note`;
+
+            const note = Post.createNote(account, content);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe('<p>My<br />first<br />note</p>');
+        });
+
+        it('creates a note with escaped html', () => {
+            const account = internalAccount();
+            const content = '<script>alert("hax")</script> Hello, world!';
+
+            const note = Post.createNote(account, content);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe(
+                '<p>&lt;script&gt;alert("hax")&lt;/script&gt; Hello, world!</p>',
+            );
+        });
+    });
+
     it('should correctly create an article from a Ghost Post', () => {
         const account = internalAccount();
         const ghostPost = {
