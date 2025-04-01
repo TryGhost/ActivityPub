@@ -6,8 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false,
-    "ignore": ["**/__snapshots__/**"]
+    "ignoreUnknown": true,
+    "ignore": ["package.json", "**/__snapshots__/**"]
   },
   "formatter": {
     "enabled": true,
