@@ -106,6 +106,10 @@ export class FedifyPublishingService implements PublishingService {
         if (isPublic === false && post.content !== null) {
             articleContent = this.contentPreparer.prepare(post.content, {
                 removeMemberContent: true,
+                escapeHtml: false,
+                convertLineBreaks: false,
+                wrapInParagraph: false,
+                extractLinks: false,
             });
 
             if (articleContent === post.content) {
