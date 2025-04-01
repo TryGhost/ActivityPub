@@ -10,7 +10,7 @@ import { postToDTO } from './helpers/post';
 /**
  * Create a handler for a request to get a post
  */
-export function createGetPostHandler(postRepository: KnexPostRepository) {
+export function createGetPostHandler(postService: PostService) {
     /**
      * Handle a request to get a post
      */
@@ -24,7 +24,7 @@ export function createGetPostHandler(postRepository: KnexPostRepository) {
             });
         }
 
-        const post = await postRepository.getByApId(idAsUrl);
+        const post = await postService.getByApId(idAsUrl);
 
         if (!post) {
             return new Response(null, {
