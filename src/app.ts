@@ -965,7 +965,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetProfilePostsHandler(accountService)),
+    spanWrapper(createGetProfilePostsHandler(accountService, postRepository)),
 );
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
@@ -1004,7 +1004,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/post/:post_ap_id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetPostHandler(postRepository)),
+    spanWrapper(createGetPostHandler(postService)),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',

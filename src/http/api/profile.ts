@@ -10,7 +10,6 @@ import {
 
 import type { AccountService } from 'account/account.service';
 import { type AppContext, fedify } from 'app';
-import { getActivityChildrenCount, getRepostCount } from 'db';
 import {
     isFollowedByDefaultSiteAccount,
     isHandle,
@@ -18,6 +17,7 @@ import {
 import { sanitizeHtml } from 'helpers/html';
 import { isUri } from 'helpers/uri';
 import { lookupObject } from 'lookup-helpers';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 
 interface PostsResult {
     posts: any[];
@@ -29,7 +29,10 @@ interface PostsResult {
  *
  * @param accountService Account service instance
  */
-export function createGetProfilePostsHandler(accountService: AccountService) {
+export function createGetProfilePostsHandler(
+    accountService: AccountService,
+    postRepository: KnexPostRepository,
+) {
     /**
      * Handle a request for a profile's posts
      *
@@ -144,9 +147,15 @@ export function createGetProfilePostsHandler(accountService: AccountService) {
                     defaultSiteAccount.ap_id === activity.actor.id;
 
                 // Add reply count and repost count to the object
-                activity.object.replyCount =
-                    await getActivityChildrenCount(activity);
-                activity.object.repostCount = await getRepostCount(activity);
+                activity.object.replyCount = 0;
+                activity.object.repostCount = 0;
+
+                if (object?.id) {
+                    const post = await postRepository.getByApId(object.id);
+
+                    activity.object.replyCount = post ? post.replyCount : 0;
+                    activity.object.repostCount = post ? post.repostCount : 0;
+                }
 
                 // Check if the activity is liked or reposted by default site account
                 const objectId = activity.object.id;

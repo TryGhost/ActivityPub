@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Account } from 'account/account.entity';
 import type { AppContext } from 'app';
 import { Audience, Post, PostType } from 'post/post.entity';
-import type { KnexPostRepository } from 'post/post.repository.knex';
+import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
 import { createGetPostHandler } from './post';
 
 describe('Post API', () => {
     let site: Site;
     let account: Account;
-    let postRepository: KnexPostRepository;
+    let postService: PostService;
 
     beforeEach(() => {
         vi.setSystemTime(new Date('2025-03-25T14:00:00Z'));
@@ -33,7 +33,7 @@ describe('Post API', () => {
             url: new URL('https://example.com/users/456'),
             apFollowers: new URL('https://example.com/followers/456'),
         });
-        postRepository = {} as KnexPostRepository;
+        postService = {} as PostService;
     });
 
     it('should return a post', async () => {
@@ -55,7 +55,7 @@ describe('Post API', () => {
             },
         } as unknown as AppContext;
 
-        postRepository.getByApId = vi.fn().mockImplementation((_postApId) => {
+        postService.getByApId = vi.fn().mockImplementation((_postApId) => {
             if (_postApId.href === postApId) {
                 return new Post(
                     123,
@@ -78,7 +78,7 @@ describe('Post API', () => {
             return null;
         });
 
-        const handler = createGetPostHandler(postRepository);
+        const handler = createGetPostHandler(postService);
 
         const response = await handler(ctx);
 
@@ -107,7 +107,7 @@ describe('Post API', () => {
             },
         } as unknown as AppContext;
 
-        const handler = createGetPostHandler(postRepository);
+        const handler = createGetPostHandler(postService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
@@ -132,9 +132,9 @@ describe('Post API', () => {
             },
         } as unknown as AppContext;
 
-        postRepository.getByApId = vi.fn().mockResolvedValue(null);
+        postService.getByApId = vi.fn().mockResolvedValue(null);
 
-        const handler = createGetPostHandler(postRepository);
+        const handler = createGetPostHandler(postService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(404);

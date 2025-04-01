@@ -36,6 +36,7 @@ This section documents quirks and conventions specific to our implementation.
 ### Do's
 
 - Do model business logic in the Entities
+- Do use services in HTTP handlers & Fedify wirings
 
 ### Don'ts
 
