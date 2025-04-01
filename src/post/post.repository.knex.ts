@@ -827,4 +827,22 @@ export class KnexPostRepository {
             accountIdsInserted: newRepostAccountIds,
         };
     }
+
+    /**
+     * Check if a post is liked by an account
+     *
+     * @param postId ID of the post to check
+     * @param accountId ID of the account to check
+     * @returns True if the post is liked by the account, false otherwise
+     */
+    async isLikedByAccount(postId: number, accountId: number) {
+        const result = await this.db('likes')
+            .where({
+                post_id: postId,
+                account_id: accountId,
+            })
+            .first();
+
+        return result !== undefined;
+    }
 }
