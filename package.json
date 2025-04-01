@@ -31,11 +31,13 @@
     "test:all": "docker compose run --rm activitypub-testing yarn _test:all",
     "lint": "biome check"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "10.9.0",
-    "@fedify/cli": "1.4.9",
+    "@fedify/cli": "1.5.0",
     "@types/html-to-text": "9.0.4",
     "@types/jsonwebtoken": "9.0.7",
     "@types/node": "20.17.6",
@@ -52,12 +54,12 @@
     "wiremock-captain": "3.5.0"
   },
   "dependencies": {
-    "@fedify/fedify": "1.4.9",
+    "@fedify/fedify": "1.5.0",
     "@google-cloud/opentelemetry-cloud-trace-exporter": "2.4.1",
     "@google-cloud/opentelemetry-cloud-trace-propagator": "0.20.0",
     "@google-cloud/pubsub": "4.9.0",
     "@hono/node-server": "1.13.5",
-    "@js-temporal/polyfill": "0.4.4",
+    "@js-temporal/polyfill": "0.5.1",
     "@logtape/logtape": "0.8.0",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/core": "1.29.0",
