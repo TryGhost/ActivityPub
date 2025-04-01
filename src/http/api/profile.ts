@@ -1,12 +1,4 @@
-import { createHash } from 'node:crypto';
-import {
-    Activity,
-    type Actor,
-    Announce,
-    CollectionPage,
-    Like,
-    isActor,
-} from '@fedify/fedify';
+import { Activity, type Actor, CollectionPage, isActor } from '@fedify/fedify';
 
 import type { AccountService } from 'account/account.service';
 import { type AppContext, fedify } from 'app';
@@ -146,34 +138,31 @@ export function createGetProfilePostsHandler(
                 activity.object.authored =
                     defaultSiteAccount.ap_id === activity.actor.id;
 
-                // Add reply count and repost count to the object
+                // Add counters & flags to the object
                 activity.object.replyCount = 0;
                 activity.object.repostCount = 0;
+                activity.object.liked = false;
+                activity.object.reposted = false;
 
                 if (object?.id) {
                     const post = await postRepository.getByApId(object.id);
 
                     activity.object.replyCount = post ? post.replyCount : 0;
                     activity.object.repostCount = post ? post.repostCount : 0;
-                }
 
-                // Check if the activity is liked or reposted by default site account
-                const objectId = activity.object.id;
-                if (objectId) {
-                    const likeId = apCtx.getObjectUri(Like, {
-                        id: createHash('sha256').update(objectId).digest('hex'),
-                    });
-                    const repostId = apCtx.getObjectUri(Announce, {
-                        id: createHash('sha256').update(objectId).digest('hex'),
-                    });
+                    activity.object.liked = post
+                        ? await postRepository.isLikedByAccount(
+                              post.id!,
+                              defaultSiteAccount.id,
+                          )
+                        : false;
 
-                    const liked = (await db.get<string[]>(['liked'])) || [];
-
-                    const reposted =
-                        (await db.get<string[]>(['reposted'])) || [];
-
-                    activity.object.liked = liked.includes(likeId.href);
-                    activity.object.reposted = reposted.includes(repostId.href);
+                    activity.object.reposted = post
+                        ? await postRepository.isRepostedByAccount(
+                              post.id!,
+                              defaultSiteAccount.id,
+                          )
+                        : false;
                 }
 
                 if (typeof activity.actor === 'string') {
