@@ -144,6 +144,89 @@ describe('Post', () => {
         });
     });
 
+    describe('createReply', () => {
+        it('errors if the account is external', () => {
+            const account = externalAccount();
+            const inReplyTo = Post.createNote(internalAccount(), 'Parent');
+            const content = 'My first note';
+
+            expect(() =>
+                Post.createReply(account, content, inReplyTo),
+            ).toThrowErrorMatchingInlineSnapshot(
+                '[Error: createReply is for use with internal accounts]',
+            );
+        });
+
+        it('errors if the post does not have an id', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            const content = 'My first note';
+
+            expect(() =>
+                Post.createReply(account, content, inReplyTo),
+            ).toThrowErrorMatchingInlineSnapshot(
+                '[Error: Cannot reply to a Post without an id]',
+            );
+        });
+
+        it('creates a note with html content', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as any).id = 'fake-id';
+            const content = 'My first note';
+
+            const note = Post.createReply(account, content, inReplyTo);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe('<p>My first note</p>');
+        });
+
+        it('creates a note with line breaks', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as any).id = 'fake-id';
+            const content = `My
+                            first
+                            note`;
+
+            const note = Post.createReply(account, content, inReplyTo);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe('<p>My<br />first<br />note</p>');
+        });
+
+        it('creates a note with escaped html', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as any).id = 'fake-id';
+            const content = '<script>alert("hax")</script> Hello, world!';
+
+            const note = Post.createReply(account, content, inReplyTo);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe(
+                '<p>&lt;script&gt;alert("hax")&lt;/script&gt; Hello, world!</p>',
+            );
+        });
+
+        it('creates a note with links', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as any).id = 'fake-id';
+            const content = 'Check out https://ghost.org it is super cool';
+
+            const note = Post.createReply(account, content, inReplyTo);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe(
+                '<p>Check out <a href="https://ghost.org">https://ghost.org</a> it is super cool</p>',
+            );
+        });
+    });
     describe('createNote', () => {
         it('errors if the account is external', () => {
             const account = externalAccount();
@@ -190,6 +273,19 @@ describe('Post', () => {
 
             expect(note.content).toBe(
                 '<p>&lt;script&gt;alert("hax")&lt;/script&gt; Hello, world!</p>',
+            );
+        });
+
+        it('creates a note with links', () => {
+            const account = internalAccount();
+            const content = 'Check out https://ghost.org it is super cool';
+
+            const note = Post.createNote(account, content);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe(
+                '<p>Check out <a href="https://ghost.org">https://ghost.org</a> it is super cool</p>',
             );
         });
     });

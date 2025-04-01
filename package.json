@@ -73,6 +73,8 @@
     "jsonwebtoken": "9.0.2",
     "knex": "3.1.0",
     "ky": "1.7.3",
+    "linkify-html": "4.2.0",
+    "linkifyjs": "4.2.0",
     "mysql2": "3.11.5",
     "node-jose": "2.2.0",
     "sanitize-html": "2.14.0",

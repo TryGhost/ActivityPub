@@ -223,6 +223,10 @@ export class Post extends BaseEntity {
         if (isPublic === false && ghostPost.html !== null) {
             content = ContentPreparer.prepare(ghostPost.html, {
                 removeMemberContent: true,
+                escapeHtml: false,
+                convertLineBreaks: false,
+                wrapInParagraph: false,
+                extractLinks: false,
             });
 
             if (
@@ -302,6 +306,7 @@ export class Post extends BaseEntity {
             escapeHtml: true,
             convertLineBreaks: true,
             wrapInParagraph: true,
+            extractLinks: true,
         });
 
         return new Post(
@@ -348,6 +353,7 @@ export class Post extends BaseEntity {
             escapeHtml: true,
             convertLineBreaks: true,
             wrapInParagraph: true,
+            extractLinks: true,
         });
 
         return new Post(
