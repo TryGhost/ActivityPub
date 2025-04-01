@@ -1917,3 +1917,28 @@ Then(
         );
     },
 );
+
+Then('the response contains our account details', async function () {
+    const responseJson = await this.response.clone().json();
+    const ourActor = this.actors.Us;
+
+    assert.equal(responseJson.name, ourActor.name);
+    assert.equal(responseJson.handle, ourActor.handle);
+    assert.equal(responseJson.bio, ourActor.summary);
+    assert.equal(responseJson.url, ourActor.url);
+    assert.equal(responseJson.avatarUrl, ourActor.icon?.url || '');
+    assert.equal(responseJson.bannerImageUrl, ourActor.image?.url || '');
+    assert.equal(typeof responseJson.postCount, 'number');
+    assert.equal(typeof responseJson.likedCount, 'number');
+    assert.equal(typeof responseJson.followingCount, 'number');
+    assert.equal(typeof responseJson.followerCount, 'number');
+    assert.equal(typeof responseJson.followedByMe, 'boolean');
+    assert.equal(typeof responseJson.followsMe, 'boolean');
+});
+
+Then("the response contains John's account details", async function () {
+    const responseJson = await this.response.clone().json();
+
+    assert.equal(responseJson.name, "John O'Nolan");
+    assert.equal(responseJson.handle, '@johnonolan@mastodon.xyz');
+});
