@@ -18,6 +18,7 @@ import type { AccountDTO } from '../types';
 /**
  * Checks if an account is internal
  * @param account - The account to check
+ *
  * @returns boolean indicating if the account is internal
  */
 export function isInternalAccount(account: AccountType): boolean {
@@ -36,10 +37,6 @@ export async function getAccountDtoFromAccount(
     accountService: AccountService,
 ): Promise<AccountDTO> {
     const accountDto: AccountDTO = {
-        /**
-         * At the moment we don't have an internal ID for Ghost accounts so
-         * we use Fediverse ID
-         */
         id: account.id.toString(),
         name: account.name || '',
         handle: getAccountHandle(new URL(account.ap_id).host, account.username),
@@ -59,11 +56,6 @@ export async function getAccountDtoFromAccount(
         likedCount: await accountService.getLikedCount(account),
         followingCount: await accountService.getFollowingAccountsCount(account),
         followerCount: await accountService.getFollowerAccountsCount(account),
-        /**
-         * At the moment we only expect to be returning the account for
-         * the current user, so we can hardcode these values to false as
-         * the account cannot follow, or be followed by itself
-         */
         followedByMe: await accountService.checkIfAccountIsFollowing(
             defaultAccount,
             account,
