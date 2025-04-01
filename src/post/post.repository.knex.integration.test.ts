@@ -977,4 +977,45 @@ describe('KnexPostRepository', () => {
 
         assert(isLiked, 'Post should be liked by account');
     });
+
+    it('Can check if a post is reposted by an account', async () => {
+        const site = await siteService.initialiseSiteForHost(
+            'testing-is-reposted-by-account.com',
+        );
+        const account = await accountRepository.getBySite(site);
+        const reposterAccount = await accountRepository.getBySite(
+            await siteService.initialiseSiteForHost('reposter-site.com'),
+        );
+        const post = Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            uuid: randomUUID(),
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            custom_excerpt: null,
+            feature_image: null,
+            url: 'https://testing-is-reposted-by-account.com/hello-world',
+            published_at: '2025-04-01',
+            visibility: 'public',
+        });
+
+        post.addRepost(reposterAccount);
+
+        await postRepository.save(post);
+
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'Post should be saved in the DB');
+
+        const isReposted = await postRepository.isRepostedByAccount(
+            rowInDb.id,
+            Number(reposterAccount.id),
+        );
+
+        assert(isReposted, 'Post should be reposted by reposter account');
+    });
 });

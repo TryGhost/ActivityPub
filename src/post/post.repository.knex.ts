@@ -845,4 +845,22 @@ export class KnexPostRepository {
 
         return result !== undefined;
     }
+
+    /**
+     * Check if a post is reposted by an account
+     *
+     * @param postId ID of the post to check
+     * @param accountId ID of the account to check
+     * @returns True if the post is reposted by the account, false otherwise
+     */
+    async isRepostedByAccount(postId: number, accountId: number) {
+        const result = await this.db('reposts')
+            .where({
+                post_id: postId,
+                account_id: accountId,
+            })
+            .first();
+
+        return result !== undefined;
+    }
 }
