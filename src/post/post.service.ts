@@ -1,4 +1,5 @@
 import { Article, Note, lookupObject } from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -251,9 +252,9 @@ export class PostService {
                 'posts_with_source.published_at as post_published_at',
                 'posts_with_source.like_count as post_like_count',
                 this.db.raw(
-                    `CASE 
-                        WHEN likes.post_id IS NOT NULL THEN 1 
-                        ELSE 0 
+                    `CASE
+                        WHEN likes.post_id IS NOT NULL THEN 1
+                        ELSE 0
                     END AS post_liked_by_user`,
                 ),
                 'posts_with_source.reply_count as post_reply_count',
@@ -261,9 +262,9 @@ export class PostService {
                 'posts_with_source.attachments as post_attachments',
                 'posts_with_source.repost_count as post_repost_count',
                 this.db.raw(
-                    `CASE 
-                        WHEN user_reposts.post_id IS NOT NULL THEN 1 
-                        ELSE 0 
+                    `CASE
+                        WHEN user_reposts.post_id IS NOT NULL THEN 1
+                        ELSE 0
                     END AS post_reposted_by_user`,
                 ),
                 'posts_with_source.ap_id as post_ap_id',
@@ -490,5 +491,27 @@ export class PostService {
             ),
             nextCursor: hasMore ? lastResult.likes_id.toString() : null,
         };
+    }
+
+    /**
+     * Check if a post is liked by an account
+     *
+     * @param post Post to check
+     * @param account Account to check
+     * @returns True if the post is liked by the account, false otherwise
+     */
+    async isLikedByAccount(post: Post, account: Account) {
+        return this.postRepository.isLikedByAccount(post.id, account.id);
+    }
+
+    /**
+     * Check if a post is reposted by an account
+     *
+     * @param post Post to check
+     * @param account Account to check
+     * @returns True if the post is reposted by the account, false otherwise
+     */
+    async isRepostedByAccount(post: Post, account: Account) {
+        return this.postRepository.isRepostedByAccount(post.id, account.id);
     }
 }

@@ -28,6 +28,10 @@ interface ActivityJsonLd {
     [key: string]: any;
 }
 
+/**
+ * @deprecated Do not use this function. Instead, resolve the post via the
+ * post repository and use the `replyCount` property
+ */
 export async function getActivityChildrenCount(activity: ActivityJsonLd) {
     const objectId = activity.object.id;
 
@@ -54,6 +58,10 @@ export async function getActivityChildrenCount(activity: ActivityJsonLd) {
     return result[0].count;
 }
 
+/**
+ * @deprecated Do not use this function. Instead, resolve the post via the
+ * post repository and use the `repostCount` property
+ */
 export async function getRepostCount(activity: ActivityJsonLd) {
     const objectId = activity.object.id;
 
