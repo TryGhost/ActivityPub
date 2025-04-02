@@ -283,7 +283,7 @@ export class AccountService {
     /**
      * Get the number of accounts that the provided account is following
      *
-     * @param accountId: id of the account
+     * @param accountId id of the account
      */
     async getFollowingAccountsCount(accountId: number | null): Promise<number> {
         if (!accountId) {
@@ -300,7 +300,7 @@ export class AccountService {
     /**
      * Get the number of posts liked by the account
      *
-     * @param accountId: id of the account
+     * @param accountId id of the account
      */
     async getLikedCount(accountId: number | null): Promise<number> {
         if (!accountId) {
@@ -319,7 +319,7 @@ export class AccountService {
     /**
      * Get the number of posts created by the account
      *
-     * @param accountId: id of the account
+     * @param accountId id of the account
      */
     async getPostCount(accountId: number | null): Promise<number> {
         if (!accountId) {
@@ -367,7 +367,7 @@ export class AccountService {
     /**
      * Get the number of accounts that are following the provided account
      *
-     * @param accountId: id of the account
+     * @param accountId id of the account
      */
     async getFollowerAccountsCount(accountId: number | null): Promise<number> {
         if (!accountId) {
@@ -384,7 +384,7 @@ export class AccountService {
     /**
      * Check if an account is following another account
      *
-     * @param accountId: id of the account to check
+     * @param accountId id of the account to check
      * @param followeeAccountId: id of the followee account
      */
     async checkIfAccountIsFollowing(

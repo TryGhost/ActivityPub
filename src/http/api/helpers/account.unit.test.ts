@@ -12,7 +12,7 @@ import { getAttachments } from 'helpers/activitypub/actor';
 import { lookupObject } from 'lookup-helpers';
 import { describe, expect, it, vi } from 'vitest';
 import { AP_BASE_PATH } from '../../../constants';
-import { getAccountDTOByHandle, getAccountDtoFromAccount } from './account';
+import { getAccountDTOByHandle, getAccountDTOFromAccount } from './account';
 
 vi.mock('../../../lookup-helpers', () => ({
     lookupObject: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock('@fedify/fedify', async () => {
 });
 
 describe('Account Helpers', () => {
-    describe('getAccountDtoFromAccount', () => {
+    describe('getAccountDTOFromAccount', () => {
         it('should convert Account to AccountDTO with all fields', async () => {
             const accountData = {
                 id: 123,
@@ -91,7 +91,7 @@ describe('Account Helpers', () => {
                 checkIfAccountIsFollowing: vi.fn().mockResolvedValue(true),
             };
 
-            const dto = await getAccountDtoFromAccount(
+            const dto = await getAccountDTOFromAccount(
                 account as Account,
                 defaultAccount,
                 accountService as unknown as AccountService,
@@ -169,7 +169,7 @@ describe('Account Helpers', () => {
                 checkIfAccountIsFollowing: vi.fn().mockResolvedValue(false),
             };
 
-            const dto = await getAccountDtoFromAccount(
+            const dto = await getAccountDTOFromAccount(
                 account as Account,
                 defaultAccount,
                 accountService as unknown as AccountService,

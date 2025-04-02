@@ -8,7 +8,7 @@ import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
 import {
     getAccountDTOByHandle,
-    getAccountDtoFromAccount,
+    getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
 
@@ -66,7 +66,8 @@ export function createGetAccountHandler(
         );
 
         const handle = ctx.req.param('handle');
-        if (handle === 'index') {
+        // We are using the keyword 'me', if we want to get the account of teh current user
+        if (handle === 'me') {
             account = defaultAccount;
         } else {
             if (!isHandle(handle)) {
@@ -84,7 +85,7 @@ export function createGetAccountHandler(
         try {
             //If we found the account in our db and it's an internal account, do an internal lookup
             if (account?.isInternal) {
-                accountDto = await getAccountDtoFromAccount(
+                accountDto = await getAccountDTOFromAccount(
                     account,
                     defaultAccount,
                     accountService,
@@ -92,7 +93,7 @@ export function createGetAccountHandler(
             } else {
                 //Otherwise, do a remote lookup to fetch the updated data
                 accountDto = await getAccountDTOByHandle(
-                    handle || '',
+                    handle,
                     apCtx,
                     site,
                     accountService,

@@ -17,11 +17,12 @@ import type { AccountDTO } from '../types';
 
 /**
  * Converts an Account to an AccountDTO
- * @param account - The account to convert
+ *
+ * @param account The account to convert
  *
  * @returns Promise resolving to AccountDTO
  */
-export async function getAccountDtoFromAccount(
+export async function getAccountDTOFromAccount(
     account: Account,
     defaultAccount: Account,
     accountService: AccountService,
