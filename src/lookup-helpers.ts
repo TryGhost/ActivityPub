@@ -3,6 +3,7 @@ import {
     type Actor,
     type Context,
     isActor,
+    lookupWebFinger,
 } from '@fedify/fedify';
 import type { ContextData } from './app';
 
@@ -58,4 +59,46 @@ export async function lookupObject(
         return ctx.lookupObject(identifier);
     }
     return ctx.lookupObject(identifier, { documentLoader });
+}
+
+export async function lookupAPIdByHandle(
+    ctx: Context<ContextData>,
+    handle: string,
+): Promise<string | null> {
+    try {
+        // Remove leading @ if present
+        const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+
+        // Format the resource string as acct:username@domain
+        const resource = `acct:${cleanHandle}`;
+
+        const webfingerData = await lookupWebFinger(resource);
+
+        if (!webfingerData?.links) {
+            ctx.data.logger.info('No links found in WebFinger response');
+            return null;
+        }
+
+        // Find the ActivityPub self link
+        const selfLink = webfingerData.links.find(
+            (link) =>
+                link.rel === 'self' &&
+                link.type === 'application/activity+json',
+        );
+
+        if (!selfLink?.href) {
+            ctx.data.logger.info(
+                'No ActivityPub self link found in WebFinger response',
+            );
+            return null;
+        }
+
+        return selfLink.href;
+    } catch (err) {
+        ctx.data.logger.error(
+            'Error looking up actor by handle ({handle}): {error}',
+            { handle, error: err },
+        );
+        return null;
+    }
 }

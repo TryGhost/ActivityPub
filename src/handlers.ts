@@ -438,8 +438,8 @@ export function createUnfollowActionHandler(accountService: AccountService) {
         }
 
         const isFollowing = await accountService.checkIfAccountIsFollowing(
-            account,
-            accountToUnfollow,
+            account.id,
+            accountToUnfollow.id,
         );
 
         if (!isFollowing) {
@@ -532,8 +532,8 @@ export function createFollowActionHandler(accountService: AccountService) {
 
         if (
             await accountService.checkIfAccountIsFollowing(
-                followerAccount,
-                followeeAccount,
+                followerAccount.id,
+                followeeAccount.id,
             )
         ) {
             return new Response(null, {

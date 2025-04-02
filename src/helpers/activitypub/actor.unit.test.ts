@@ -211,10 +211,10 @@ describe('isFollowedByDefaultSiteAccount', () => {
                 }),
             checkIfAccountIsFollowing: vi
                 .fn()
-                .mockImplementation((a: Account, b: Account) => {
+                .mockImplementation((a: number, b: number) => {
                     if (
-                        a.id === defaultSiteAccount.id &&
-                        b.id === followedActorAccount.id
+                        a === defaultSiteAccount.id &&
+                        b === followedActorAccount.id
                     ) {
                         return Promise.resolve(true);
                     }

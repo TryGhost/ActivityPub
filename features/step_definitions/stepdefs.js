@@ -241,6 +241,44 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
     externalActivityPub.register(
         {
             method: 'GET',
+            endpoint: `/followers/${name}`,
+        },
+        {
+            status: 200,
+            body: {
+                '@context': 'https://www.w3.org/ns/activitystreams',
+                type: 'OrderedCollection',
+                totalItems: 0,
+                orderedItems: [],
+            },
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+        },
+    );
+
+    externalActivityPub.register(
+        {
+            method: 'GET',
+            endpoint: `/following/${name}`,
+        },
+        {
+            status: 200,
+            body: {
+                '@context': 'https://www.w3.org/ns/activitystreams',
+                type: 'OrderedCollection',
+                totalItems: 0,
+                orderedItems: [],
+            },
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+        },
+    );
+
+    externalActivityPub.register(
+        {
+            method: 'GET',
             endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub`)}`,
         },
         {
@@ -1917,3 +1955,21 @@ Then(
         );
     },
 );
+
+Then('the response contains {string} account details', async function (name) {
+    const responseJson = await this.response.clone().json();
+    const actor = name === 'Our' ? this.actors.Us : this.actors[name];
+
+    assert.equal(responseJson.name, actor.name);
+    assert.equal(responseJson.handle, actor.handle);
+    assert.equal(responseJson.bio, actor.summary);
+    assert.equal(responseJson.url, actor.url);
+    assert.equal(responseJson.avatarUrl, actor.icon?.url || '');
+    assert.equal(responseJson.bannerImageUrl, actor.image?.url || '');
+    assert.equal(typeof responseJson.postCount, 'number');
+    assert.equal(typeof responseJson.likedCount, 'number');
+    assert.equal(typeof responseJson.followingCount, 'number');
+    assert.equal(typeof responseJson.followerCount, 'number');
+    assert.equal(typeof responseJson.followedByMe, 'boolean');
+    assert.equal(typeof responseJson.followsMe, 'boolean');
+});

@@ -1,8 +1,15 @@
+import type { Account } from 'account/account.entity';
+import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
-import type { AppContext } from 'app';
-import { sanitizeHtml } from 'helpers/html';
+import { type AppContext, fedify } from 'app';
+import { isHandle } from 'helpers/activitypub/actor';
+import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
+import {
+    getAccountDTOByHandle,
+    getAccountDTOFromAccount,
+} from './helpers/account';
 import type { AccountDTO } from './types';
 
 /**
@@ -33,7 +40,10 @@ type FollowAccount = Pick<
  *
  * @param accountService Account service instance
  */
-export function createGetAccountHandler(accountService: AccountService) {
+export function createGetAccountHandler(
+    accountService: AccountService,
+    accountRepository: KnexAccountRepository,
+) {
     /**
      * Handle a request for an account
      *
@@ -42,57 +52,53 @@ export function createGetAccountHandler(accountService: AccountService) {
     return async function handleGetAccount(ctx: AppContext) {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
+        let account: Account | null = null;
+        const db = ctx.get('db');
 
-        // Validate input
-        const handle = ctx.req.param('handle') || '';
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb: ctx.get('globaldb'),
+            logger,
+        });
 
-        if (handle === '') {
-            return new Response(null, { status: 400 });
+        const defaultAccount = await accountRepository.getBySite(
+            ctx.get('site'),
+        );
+
+        const handle = ctx.req.param('handle');
+        // We are using the keyword 'me', if we want to get the account of teh current user
+        if (handle === 'me') {
+            account = defaultAccount;
+        } else {
+            if (!isHandle(handle)) {
+                return new Response(null, { status: 404 });
+            }
+
+            const apId = await lookupAPIdByHandle(apCtx, handle);
+            if (apId) {
+                account = await accountRepository.getByApId(new URL(apId));
+            }
         }
 
-        const db = ctx.get('db');
         let accountDto: AccountDTO;
 
-        const account = await accountService.getDefaultAccountForSite(site);
-
-        if (!account) {
-            return new Response(null, { status: 404 });
-        }
-
         try {
-            accountDto = {
-                /**
-                 * At the moment we don't have an internal ID for Ghost accounts so
-                 * we use Fediverse ID
-                 */
-                id: account.ap_id,
-                name: account.name || '',
-                handle: getAccountHandle(site.host, account.username),
-                bio: sanitizeHtml(account.bio || ''),
-                url: account.url || '',
-                avatarUrl: account.avatar_url || '',
-                /**
-                 * At the moment we don't support banner images for Ghost accounts
-                 */
-                bannerImageUrl: account.banner_image_url,
-                /**
-                 * At the moment we don't support custom fields for Ghost accounts
-                 */
-                customFields: {},
-                postCount: await accountService.getPostCount(account),
-                likedCount: await accountService.getLikedCount(account),
-                followingCount:
-                    await accountService.getFollowingAccountsCount(account),
-                followerCount:
-                    await accountService.getFollowerAccountsCount(account),
-                /**
-                 * At the moment we only expect to be returning the account for
-                 * the current user, so we can hardcode these values to false as
-                 * the account cannot follow, or be followed by itself
-                 */
-                followsMe: false,
-                followedByMe: false,
-            };
+            //If we found the account in our db and it's an internal account, do an internal lookup
+            if (account?.isInternal) {
+                accountDto = await getAccountDTOFromAccount(
+                    account,
+                    defaultAccount,
+                    accountService,
+                );
+            } else {
+                //Otherwise, do a remote lookup to fetch the updated data
+                accountDto = await getAccountDTOByHandle(
+                    handle,
+                    apCtx,
+                    site,
+                    accountService,
+                );
+            }
         } catch (error) {
             logger.error('Error getting account: {error}', { error });
 
@@ -160,7 +166,7 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
             offset,
             fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
         });
-        const total = await getAccountsCount(siteDefaultAccount);
+        const total = await getAccountsCount(siteDefaultAccount.id);
 
         const next =
             total > offset + FOLLOWS_LIMIT
@@ -182,8 +188,8 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
                     type === 'following'
                         ? true
                         : await accountService.checkIfAccountIsFollowing(
-                              siteDefaultAccount,
-                              result,
+                              siteDefaultAccount.id,
+                              result.id,
                           ),
             });
         }

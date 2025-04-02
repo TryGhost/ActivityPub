@@ -283,11 +283,15 @@ export class AccountService {
     /**
      * Get the number of accounts that the provided account is following
      *
-     * @param account Account
+     * @param accountId id of the account
      */
-    async getFollowingAccountsCount(account: AccountType): Promise<number> {
+    async getFollowingAccountsCount(accountId: number | null): Promise<number> {
+        if (!accountId) {
+            return 0;
+        }
+
         const result = await this.db('follows')
-            .where('follower_id', account.id)
+            .where('follower_id', accountId)
             .count('*', { as: 'count' });
 
         return Number(result[0].count);
@@ -296,12 +300,16 @@ export class AccountService {
     /**
      * Get the number of posts liked by the account
      *
-     * @param account Account
+     * @param accountId id of the account
      */
-    async getLikedCount(account: AccountType): Promise<number> {
+    async getLikedCount(accountId: number | null): Promise<number> {
+        if (!accountId) {
+            return 0;
+        }
+
         const result = await this.db('likes')
             .join('posts', 'likes.post_id', 'posts.id')
-            .where('likes.account_id', account.id)
+            .where('likes.account_id', accountId)
             .whereNull('posts.in_reply_to')
             .count('*', { as: 'count' });
 
@@ -311,15 +319,19 @@ export class AccountService {
     /**
      * Get the number of posts created by the account
      *
-     * @param account Account
+     * @param accountId id of the account
      */
-    async getPostCount(account: AccountType): Promise<number> {
+    async getPostCount(accountId: number | null): Promise<number> {
+        if (!accountId) {
+            return 0;
+        }
+
         const posts = await this.db('posts')
-            .where('author_id', account.id)
+            .where('author_id', accountId)
             .count('*', { as: 'count' });
 
         const reposts = await this.db('reposts')
-            .where('account_id', account.id)
+            .where('account_id', accountId)
             .count('*', { as: 'count' });
 
         return Number(posts[0].count) + Number(reposts[0].count);
@@ -355,11 +367,15 @@ export class AccountService {
     /**
      * Get the number of accounts that are following the provided account
      *
-     * @param account Account
+     * @param accountId id of the account
      */
-    async getFollowerAccountsCount(account: AccountType): Promise<number> {
+    async getFollowerAccountsCount(accountId: number | null): Promise<number> {
+        if (!accountId) {
+            return 0;
+        }
+
         const result = await this.db('follows')
-            .where('following_id', account.id)
+            .where('following_id', accountId)
             .count('*', { as: 'count' });
 
         return Number(result[0].count);
@@ -368,16 +384,20 @@ export class AccountService {
     /**
      * Check if an account is following another account
      *
-     * @param account Account to check
-     * @param followee Followee account
+     * @param accountId id of the account to check
+     * @param followeeAccountId: id of the followee account
      */
     async checkIfAccountIsFollowing(
-        account: AccountType,
-        followee: AccountType,
+        accountId: number | null,
+        followeeAccountId: number | null,
     ): Promise<boolean> {
+        if (!accountId || !followeeAccountId) {
+            return false;
+        }
+
         const result = await this.db('follows')
-            .where('follower_id', account.id)
-            .where('following_id', followee.id)
+            .where('follower_id', accountId)
+            .where('following_id', followeeAccountId)
             .select(1)
             .first();
 
