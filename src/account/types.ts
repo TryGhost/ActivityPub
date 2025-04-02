@@ -10,7 +10,7 @@ export interface Site {
 export interface InternalAccountData {
     username: string;
     name?: string;
-    bio?: string;
+    bio: string | null;
     avatar_url?: string;
 }
 

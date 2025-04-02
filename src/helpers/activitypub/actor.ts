@@ -11,6 +11,7 @@ import type { AccountService } from '../../account/account.service';
 import type { ContextData } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import type { Site } from '../../site/site.service';
+import type { SiteSettings } from '../ghost';
 import { type UserData, getUserData, setUserData } from '../user';
 
 interface Attachment {
@@ -94,9 +95,7 @@ export function isHandle(handle: string): boolean {
 
 export async function updateSiteActor(
     apCtx: RequestContext<ContextData>,
-    getSiteSettings: (host: string) => Promise<{
-        site: { icon: string; title: string; description: string };
-    }>,
+    getSiteSettings: (host: string) => Promise<SiteSettings>,
 ) {
     const settings = await getSiteSettings(apCtx.host);
     const handle = ACTOR_DEFAULT_HANDLE;

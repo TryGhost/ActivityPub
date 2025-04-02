@@ -2,11 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Image } from '@fedify/fedify';
 
-import {
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY,
-} from '../constants';
+import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
 import { getUserData } from './user';
 
 const HANDLE = 'foo';
@@ -79,7 +75,7 @@ describe('getUserData', () => {
         const expectedUserData = {
             id: new URL(`https://${ctx.host}/${HANDLE}`),
             name: ACTOR_DEFAULT_NAME,
-            summary: ACTOR_DEFAULT_SUMMARY,
+            summary: null,
             preferredUsername: HANDLE,
             icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
             inbox: new URL(INBOX_URI),

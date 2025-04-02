@@ -7,16 +7,12 @@ import {
     importJwk,
 } from '@fedify/fedify';
 import type { ContextData } from '../app';
-import {
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY,
-} from '../constants';
+import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
 
 export type PersonData = {
     id: string;
     name: string;
-    summary: string;
+    summary: string | null;
     preferredUsername: string;
     icon: string;
     inbox: string;
@@ -30,7 +26,7 @@ export type PersonData = {
 export type UserData = {
     id: URL;
     name: string;
-    summary: string;
+    summary: string | null;
     preferredUsername: string;
     icon: Image;
     inbox: URL;
@@ -100,7 +96,7 @@ export async function getUserData(
     const data = {
         id: ctx.getActorUri(handle),
         name: ACTOR_DEFAULT_NAME,
-        summary: ACTOR_DEFAULT_SUMMARY,
+        summary: null,
         preferredUsername: handle,
         icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
         inbox: ctx.getInboxUri(handle),

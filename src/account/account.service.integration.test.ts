@@ -16,7 +16,6 @@ import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     ACTOR_DEFAULT_ICON,
     ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY,
     AP_BASE_PATH,
 } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
@@ -135,7 +134,7 @@ describe('AccountService', () => {
             const expectedAccount = {
                 name: internalAccountData.name || ACTOR_DEFAULT_NAME,
                 username: username,
-                bio: internalAccountData.bio || ACTOR_DEFAULT_SUMMARY,
+                bio: internalAccountData.bio || null,
                 avatar_url:
                     internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
                 url: `https://${site.host}`,

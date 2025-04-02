@@ -82,7 +82,7 @@ export class SiteService {
             const internalAccountData: InternalAccountData = {
                 username: 'index',
                 name: settings?.site?.title,
-                bio: settings?.site?.description,
+                bio: settings?.site?.description || null,
                 avatar_url: settings?.site?.icon,
             };
 

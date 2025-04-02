@@ -4,11 +4,7 @@ import ky, { type ResponsePromise } from 'ky';
 
 vi.mock('ky');
 
-import {
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY,
-} from '../constants';
+import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
 import { getSiteSettings } from './ghost';
 
 describe('getSiteSettings', () => {
@@ -36,28 +32,26 @@ describe('getSiteSettings', () => {
         );
     });
 
-    it('should use defaults for missing settings', async () => {
-        let result;
-
-        // Missing description
+    it('sets the description to null if missing', async () => {
         vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
-                site: {
-                    title: 'bar',
-                    icon: 'https://example.com/baz.png',
-                },
+                site: { title: 'bar', icon: 'https://example.com/baz.png' },
             }),
         } as ResponsePromise);
 
-        result = await getSiteSettings(host);
+        const result = await getSiteSettings(host);
 
         expect(result).toEqual({
             site: {
-                description: ACTOR_DEFAULT_SUMMARY,
+                description: null,
                 title: 'bar',
                 icon: 'https://example.com/baz.png',
             },
         });
+    });
+
+    it('should use defaults for missing title & icon settings', async () => {
+        let result;
 
         // Missing title
         vi.mocked(ky.get).mockReturnValue({
@@ -95,21 +89,6 @@ describe('getSiteSettings', () => {
             site: {
                 description: 'foo',
                 title: 'bar',
-                icon: ACTOR_DEFAULT_ICON,
-            },
-        });
-
-        // Missing everything
-        vi.mocked(ky.get).mockReturnValue({
-            json: async () => ({}),
-        } as ResponsePromise);
-
-        result = await getSiteSettings(host);
-
-        expect(result).toEqual({
-            site: {
-                description: ACTOR_DEFAULT_SUMMARY,
-                title: ACTOR_DEFAULT_NAME,
                 icon: ACTOR_DEFAULT_ICON,
             },
         });
