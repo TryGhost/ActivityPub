@@ -19,6 +19,7 @@ if (process.env.SENTRY_DSN) {
         environment: process.env.NODE_ENV || 'unknown',
         release: process.env.K_REVISION,
         tracesSampleRate: 1.0,
+        maxValueLength: 2000,
     });
 
     if (process.env.K_SERVICE) {
