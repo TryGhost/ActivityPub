@@ -165,7 +165,7 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
             offset,
             fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
         });
-        const total = await getAccountsCount(siteDefaultAccount);
+        const total = await getAccountsCount(siteDefaultAccount.id);
 
         const next =
             total > offset + FOLLOWS_LIMIT

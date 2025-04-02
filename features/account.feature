@@ -10,23 +10,23 @@ Feature: Account API
     And we are followed by "Bob"
 
   Scenario: Get default account
-    When an authenticated "get" request is made to "/.ghost/activitypub/account"
+    When an authenticated "get" request is made to "/.ghost/activitypub/account/index"
     Then the request is accepted with a 200
     And the response contains our account details
 
   Scenario: Get account by handle
-    When an authenticated "get" request is made to "/.ghost/activitypub/account?handle=@johnonolan@mastodon.xyz"
+    When an authenticated "get" request is made to "/.ghost/activitypub/account/@johnonolan@mastodon.xyz"
     Then the request is accepted with a 200
     And the response contains John's account details
 
   Scenario: Get non-existent account
-    When an authenticated "get" request is made to "/.ghost/activitypub/account?handle=@nonexistent@fake-external-activitypub"
+    When an authenticated "get" request is made to "/.ghost/activitypub/account/@nonexistent@fake-external-activitypub"
     Then the request is rejected with a 404
 
   Scenario: Get account with invalid handle
-    When an authenticated "get" request is made to "/.ghost/activitypub/account?handle=invalid-handle"
+    When an authenticated "get" request is made to "/.ghost/activitypub/account/invalid-handle"
     Then the request is rejected with a 404
 
   Scenario: Get account without authentication
-    When an unauthenticated request is made to "/.ghost/activitypub/account"
+    When an unauthenticated request is made to "/.ghost/activitypub/account/index"
     Then the request is rejected with a 403 
