@@ -241,6 +241,44 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
     externalActivityPub.register(
         {
             method: 'GET',
+            endpoint: `/followers/${name}`,
+        },
+        {
+            status: 200,
+            body: {
+                '@context': 'https://www.w3.org/ns/activitystreams',
+                type: 'OrderedCollection',
+                totalItems: 0,
+                orderedItems: [],
+            },
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+        },
+    );
+
+    externalActivityPub.register(
+        {
+            method: 'GET',
+            endpoint: `/following/${name}`,
+        },
+        {
+            status: 200,
+            body: {
+                '@context': 'https://www.w3.org/ns/activitystreams',
+                type: 'OrderedCollection',
+                totalItems: 0,
+                orderedItems: [],
+            },
+            headers: {
+                'Content-Type': 'application/activity+json',
+            },
+        },
+    );
+
+    externalActivityPub.register(
+        {
+            method: 'GET',
             endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub`)}`,
         },
         {
@@ -1936,9 +1974,14 @@ Then('the response contains our account details', async function () {
     assert.equal(typeof responseJson.followsMe, 'boolean');
 });
 
-Then("the response contains John's account details", async function () {
+Then("the response contains {string}'s account details", async function (name) {
     const responseJson = await this.response.clone().json();
+    const alice = this.actors[name];
 
-    assert.equal(responseJson.name, "John O'Nolan");
-    assert.equal(responseJson.handle, '@johnonolan@mastodon.xyz');
+    assert.equal(responseJson.name, alice.name);
+    assert.equal(responseJson.handle, alice.handle);
+    assert.equal(responseJson.bio, alice.summary);
+    assert.equal(responseJson.url, alice.url);
+    assert.equal(responseJson.avatarUrl, alice.icon?.url || '');
+    assert.equal(responseJson.bannerImageUrl, alice.image?.url || '');
 });

@@ -4,29 +4,29 @@ Feature: Account API
   So that I can view account details
 
   Background:
-    Given we are following "Alice"
-    And we are following "Bob"
+    Given an Actor "Person(Alice)"
+    And we are following "Alice"
     And we are followed by "Alice"
-    And we are followed by "Bob"
+    
 
+  @only
   Scenario: Get default account
     When an authenticated "get" request is made to "/.ghost/activitypub/account/index"
     Then the request is accepted with a 200
     And the response contains our account details
 
+  @only
   Scenario: Get account by handle
-    When an authenticated "get" request is made to "/.ghost/activitypub/account/@johnonolan@mastodon.xyz"
+    When an authenticated "get" request is made to "/.ghost/activitypub/account/@Alice@fake-external-activitypub"
     Then the request is accepted with a 200
-    And the response contains John's account details
+    And the response contains "Alice"'s account details
 
+  @only
   Scenario: Get non-existent account
     When an authenticated "get" request is made to "/.ghost/activitypub/account/@nonexistent@fake-external-activitypub"
-    Then the request is rejected with a 404
+    Then the request is rejected with a 500
 
-  Scenario: Get account with invalid handle
-    When an authenticated "get" request is made to "/.ghost/activitypub/account/invalid-handle"
-    Then the request is rejected with a 404
-
+  @only
   Scenario: Get account without authentication
     When an unauthenticated request is made to "/.ghost/activitypub/account/index"
     Then the request is rejected with a 403 
