@@ -1,5 +1,6 @@
+import type { Account } from 'account/account.entity';
+import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import type { Account as AccountType } from 'account/types';
 import { getAccountHandle } from 'account/utils';
 import { type AppContext, fedify } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
@@ -8,7 +9,6 @@ import type { PostService } from 'post/post.service';
 import {
     getAccountDTOByHandle,
     getAccountDtoFromAccount,
-    isInternalAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
 
@@ -40,7 +40,10 @@ type FollowAccount = Pick<
  *
  * @param accountService Account service instance
  */
-export function createGetAccountHandler(accountService: AccountService) {
+export function createGetAccountHandler(
+    accountService: AccountService,
+    accountRepository: KnexAccountRepository,
+) {
     /**
      * Handle a request for an account
      *
@@ -49,7 +52,7 @@ export function createGetAccountHandler(accountService: AccountService) {
     return async function handleGetAccount(ctx: AppContext) {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
-        let account: AccountType | null = null;
+        let account: Account | null = null;
         const db = ctx.get('db');
 
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
@@ -58,11 +61,12 @@ export function createGetAccountHandler(accountService: AccountService) {
             logger,
         });
 
-        const defaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const defaultAccount = await accountRepository.getBySite(
+            ctx.get('site'),
+        );
 
-        const handle = ctx.req.query('handle');
-        if (!handle) {
+        const handle = ctx.req.param('handle');
+        if (handle === 'index') {
             account = defaultAccount;
         } else {
             if (!isHandle(handle)) {
@@ -71,20 +75,22 @@ export function createGetAccountHandler(accountService: AccountService) {
 
             const apId = await lookupAPIdByHandle(apCtx, handle);
             if (apId) {
-                account = await accountService.getAccountByApId(apId);
+                account = await accountRepository.getByApId(new URL(apId));
             }
         }
 
         let accountDto: AccountDTO;
 
         try {
-            if (account && isInternalAccount(account)) {
+            //If we found the account in our db and it's an internal account, do an internal lookup
+            if (account?.isInternal) {
                 accountDto = await getAccountDtoFromAccount(
                     account,
                     defaultAccount,
                     accountService,
                 );
             } else {
+                //Otherwise, do a remote lookup to fetch the updated data
                 accountDto = await getAccountDTOByHandle(
                     handle || '',
                     apCtx,
@@ -181,8 +187,8 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
                     type === 'following'
                         ? true
                         : await accountService.checkIfAccountIsFollowing(
-                              siteDefaultAccount,
-                              result,
+                              siteDefaultAccount.id,
+                              result.id,
                           ),
             });
         }

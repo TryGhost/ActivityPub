@@ -768,8 +768,9 @@ export function createFollowingDispatcher(
                 offset,
             },
         );
-        const totalFollowing =
-            await accountService.getFollowingAccountsCount(siteDefaultAccount);
+        const totalFollowing = await accountService.getFollowingAccountsCount(
+            siteDefaultAccount.id,
+        );
 
         nextCursor =
             totalFollowing > offset + pageSize
@@ -803,7 +804,7 @@ export function createFollowersCounter(
             await accountService.getDefaultAccountForSite(site);
 
         return await accountService.getFollowerAccountsCount(
-            siteDefaultAccount,
+            siteDefaultAccount.id,
         );
     };
 }
@@ -826,7 +827,7 @@ export function createFollowingCounter(
             await accountService.getDefaultAccountForSite(site);
 
         return await accountService.getFollowingAccountsCount(
-            siteDefaultAccount,
+            siteDefaultAccount.id,
         );
     };
 }

@@ -503,7 +503,7 @@ describe('AccountService', () => {
             await service.recordAccountFollow(following1, account);
             await service.recordAccountFollow(following2, account);
 
-            const count = await service.getFollowingAccountsCount(account);
+            const count = await service.getFollowingAccountsCount(account.id);
 
             expect(count).toBe(2);
         });
@@ -599,7 +599,7 @@ describe('AccountService', () => {
             await service.recordAccountFollow(account, follower1);
             await service.recordAccountFollow(account, follower2);
 
-            const count = await service.getFollowerAccountsCount(account);
+            const count = await service.getFollowerAccountsCount(account.id);
 
             expect(count).toBe(2);
         });
@@ -623,15 +623,15 @@ describe('AccountService', () => {
             await service.recordAccountFollow(followee, account);
 
             const isFollowing = await service.checkIfAccountIsFollowing(
-                account,
-                followee,
+                account.id,
+                followee.id,
             );
 
             expect(isFollowing).toBe(true);
 
             const isNotFollowing = await service.checkIfAccountIsFollowing(
-                account,
-                nonFollowee,
+                account.id,
+                nonFollowee.id,
             );
 
             expect(isNotFollowing).toBe(false);

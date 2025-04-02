@@ -1,6 +1,7 @@
 import { type Context, isActor } from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
-import type { Account as AccountType, Site } from 'account/types';
+import type { Site } from 'account/types';
 import { getAccountHandle } from 'account/utils';
 import type { ContextData } from 'app';
 import {
@@ -12,18 +13,7 @@ import {
 } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import { lookupObject } from 'lookup-helpers';
-import { AP_BASE_PATH } from '../../../constants';
 import type { AccountDTO } from '../types';
-
-/**
- * Checks if an account is internal
- * @param account - The account to check
- *
- * @returns boolean indicating if the account is internal
- */
-export function isInternalAccount(account: AccountType): boolean {
-    return account.ap_id.toString().includes(AP_BASE_PATH);
-}
 
 /**
  * Converts an Account to an AccountDTO
@@ -32,33 +22,37 @@ export function isInternalAccount(account: AccountType): boolean {
  * @returns Promise resolving to AccountDTO
  */
 export async function getAccountDtoFromAccount(
-    account: AccountType,
-    defaultAccount: AccountType,
+    account: Account,
+    defaultAccount: Account,
     accountService: AccountService,
 ): Promise<AccountDTO> {
     const accountDto: AccountDTO = {
-        id: account.id.toString(),
+        id: account.id?.toString() || '',
         name: account.name || '',
-        handle: getAccountHandle(new URL(account.ap_id).host, account.username),
+        handle: getAccountHandle(new URL(account.apId).host, account.username),
         bio: sanitizeHtml(account.bio || ''),
-        url: account.url || '',
-        avatarUrl: account.avatar_url || '',
+        url: account.url.toString() || '',
+        avatarUrl: account.avatarUrl?.toString() || '',
         /**
          * At the moment we don't support banner images for Ghost accounts
          */
-        bannerImageUrl: account.banner_image_url || '',
+        bannerImageUrl: account.bannerImageUrl?.toString() || '',
         /**
          * At the moment we don't support custom fields for Ghost accounts
          */
         customFields: {},
         attachment: [],
-        postCount: await accountService.getPostCount(account),
-        likedCount: await accountService.getLikedCount(account),
-        followingCount: await accountService.getFollowingAccountsCount(account),
-        followerCount: await accountService.getFollowerAccountsCount(account),
+        postCount: await accountService.getPostCount(account.id),
+        likedCount: await accountService.getLikedCount(account.id),
+        followingCount: await accountService.getFollowingAccountsCount(
+            account.id,
+        ),
+        followerCount: await accountService.getFollowerAccountsCount(
+            account.id,
+        ),
         followedByMe: await accountService.checkIfAccountIsFollowing(
-            defaultAccount,
-            account,
+            defaultAccount.id,
+            account.id,
         ),
         followsMe: false,
     };

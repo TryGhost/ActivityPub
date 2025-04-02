@@ -1,7 +1,7 @@
 import type { Context } from '@fedify/fedify';
 import type { Actor } from '@fedify/fedify';
+import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
-import type { Account } from 'account/types';
 import type { Site } from 'account/types';
 import {
     getFollowerCount,
@@ -12,11 +12,7 @@ import { getAttachments } from 'helpers/activitypub/actor';
 import { lookupObject } from 'lookup-helpers';
 import { describe, expect, it, vi } from 'vitest';
 import { AP_BASE_PATH } from '../../../constants';
-import {
-    getAccountDTOByHandle,
-    getAccountDtoFromAccount,
-    isInternalAccount,
-} from './account';
+import { getAccountDTOByHandle, getAccountDtoFromAccount } from './account';
 
 vi.mock('../../../lookup-helpers', () => ({
     lookupObject: vi.fn(),
@@ -42,47 +38,50 @@ vi.mock('@fedify/fedify', async () => {
 });
 
 describe('Account Helpers', () => {
-    describe('isInternalAccount', () => {
-        it('should return true for internal account', () => {
-            const account = {
-                ap_id: new URL(
-                    `https://example.com/${AP_BASE_PATH}/accounts/123`,
-                ).toString(),
-            } as Account;
-
-            expect(isInternalAccount(account)).toBe(true);
-        });
-
-        it('should return false for external account', () => {
-            const account = {
-                ap_id: new URL('https://other.com/accounts/123').toString(),
-            } as Account;
-
-            expect(isInternalAccount(account)).toBe(false);
-        });
-    });
-
     describe('getAccountDtoFromAccount', () => {
         it('should convert Account to AccountDTO with all fields', async () => {
-            const account = {
+            const accountData = {
                 id: 123,
-                name: 'Test User',
+                uuid: 'test-uuid',
                 username: 'testuser',
-                bio: 'Test bio',
-                avatar_url: 'https://example.com/avatar.jpg',
-                banner_image_url: 'https://example.com/banner.jpg',
-                url: 'https://example.com/profile',
-                ap_id: new URL(
+                name: '',
+                bio: '',
+                avatarUrl: new URL('https://example.com/avatar.jpg'),
+                bannerImageUrl: new URL('https://example.com/banner.jpg'),
+                site: {
+                    id: 1,
+                    host: 'example.com',
+                    webhook_secret: 'test-secret',
+                },
+                apId: new URL(
                     `https://example.com/${AP_BASE_PATH}/accounts/123`,
-                ).toString(),
-            } as Account;
+                ),
+                url: new URL('https://example.com/profile'),
+                apFollowers: new URL('https://example.com/followers'),
+            };
 
-            const defaultAccount = {
+            const defaultAccountData = {
                 id: 456,
-                ap_id: new URL(
+                uuid: 'default-uuid',
+                username: 'default',
+                name: '',
+                bio: '',
+                avatarUrl: new URL('https://example.com/avatar.jpg'),
+                bannerImageUrl: new URL('https://example.com/banner.jpg'),
+                site: {
+                    id: 1,
+                    host: 'example.com',
+                    webhook_secret: 'test-secret',
+                },
+                apId: new URL(
                     `https://example.com/${AP_BASE_PATH}/accounts/456`,
-                ).toString(),
-            } as Account;
+                ),
+                url: new URL('https://example.com/profile'),
+                apFollowers: new URL('https://example.com/followers'),
+            };
+
+            const account = Account.createFromData(accountData);
+            const defaultAccount = Account.createFromData(defaultAccountData);
 
             const accountService = {
                 getPostCount: vi.fn().mockResolvedValue(10),
@@ -93,16 +92,16 @@ describe('Account Helpers', () => {
             };
 
             const dto = await getAccountDtoFromAccount(
-                account,
+                account as Account,
                 defaultAccount,
                 accountService as unknown as AccountService,
             );
 
             expect(dto).toEqual({
                 id: '123',
-                name: 'Test User',
+                name: '',
                 handle: '@testuser@example.com',
-                bio: 'Test bio',
+                bio: '',
                 url: 'https://example.com/profile',
                 avatarUrl: 'https://example.com/avatar.jpg',
                 bannerImageUrl: 'https://example.com/banner.jpg',
@@ -118,20 +117,49 @@ describe('Account Helpers', () => {
         });
 
         it('should handle missing optional fields', async () => {
-            const account = {
+            const accountData = {
                 id: 123,
+                uuid: 'test-uuid',
                 username: 'testuser',
-                ap_id: new URL(
+                name: null,
+                bio: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                site: {
+                    id: 1,
+                    host: 'example.com',
+                    webhook_secret: 'test-secret',
+                },
+                apId: new URL(
                     `https://example.com/${AP_BASE_PATH}/accounts/123`,
-                ).toString(),
-            } as Account;
+                ),
+                url: null,
+                apFollowers: new URL('https://example.com/followers'),
+            };
 
-            const defaultAccount = {
+            const account = Account.createFromData(accountData);
+
+            const defaultAccountData = {
                 id: 456,
-                ap_id: new URL(
+                uuid: 'default-uuid',
+                username: 'default',
+                name: null,
+                bio: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                site: {
+                    id: 1,
+                    host: 'example.com',
+                    webhook_secret: 'test-secret',
+                },
+                apId: new URL(
                     `https://example.com/${AP_BASE_PATH}/accounts/456`,
-                ).toString(),
-            } as Account;
+                ),
+                url: null,
+                apFollowers: new URL('https://example.com/followers'),
+            };
+
+            const defaultAccount = Account.createFromData(defaultAccountData);
 
             const accountService = {
                 getPostCount: vi.fn().mockResolvedValue(0),
@@ -142,7 +170,7 @@ describe('Account Helpers', () => {
             };
 
             const dto = await getAccountDtoFromAccount(
-                account,
+                account as Account,
                 defaultAccount,
                 accountService as unknown as AccountService,
             );
@@ -152,7 +180,7 @@ describe('Account Helpers', () => {
                 name: '',
                 handle: '@testuser@example.com',
                 bio: '',
-                url: '',
+                url: 'https://example.com//.ghost/activitypub/accounts/123',
                 avatarUrl: '',
                 bannerImageUrl: '',
                 customFields: {},

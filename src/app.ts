@@ -972,9 +972,9 @@ app.get(
     spanWrapper(createGetThreadHandler(postRepository, accountService)),
 );
 app.get(
-    '/.ghost/activitypub/account',
+    '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountHandler(accountService)),
+    spanWrapper(createGetAccountHandler(accountService, accountRepository)),
 );
 app.get(
     '/.ghost/activitypub/posts',

@@ -83,8 +83,8 @@ export async function isFollowedByDefaultSiteAccount(
     }
 
     return await accountService.checkIfAccountIsFollowing(
-        siteDefaultAccount,
-        followeeAccount,
+        siteDefaultAccount.id,
+        followeeAccount.id,
     );
 }
 
