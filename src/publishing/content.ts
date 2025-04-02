@@ -1,4 +1,5 @@
 import { htmlToText } from 'html-to-text';
+import linkifyHtml from 'linkify-html';
 import { escapeHtml } from '../helpers/html';
 /**
  * Marker to indicate that the proceeding content is member content
@@ -12,19 +13,23 @@ interface PrepareContentOptions {
     /**
      * Whether to remove member content
      */
-    removeMemberContent?: boolean;
+    removeMemberContent: boolean;
     /**
      * Whether to escape HTML
      */
-    escapeHtml?: boolean;
+    escapeHtml: boolean;
     /**
      * Whether to convert line breaks to HTML
      */
-    convertLineBreaks?: boolean;
+    convertLineBreaks: boolean;
     /**
      * Whether to wrap in a paragraph
      */
-    wrapInParagraph?: boolean;
+    wrapInParagraph: boolean;
+    /**
+     * Convert URL's to anchor tags
+     */
+    extractLinks: boolean;
 }
 
 export class ContentPreparer {
@@ -37,6 +42,7 @@ export class ContentPreparer {
             escapeHtml: false,
             convertLineBreaks: false,
             wrapInParagraph: false,
+            extractLinks: false,
         },
     ) {
         return ContentPreparer.instance.prepare(content, options);
@@ -59,6 +65,7 @@ export class ContentPreparer {
             escapeHtml: false,
             convertLineBreaks: false,
             wrapInParagraph: false,
+            extractLinks: false,
         },
     ) {
         let prepared = content;
@@ -71,6 +78,10 @@ export class ContentPreparer {
             prepared = this.escapeHtml(prepared);
         }
 
+        if (options.extractLinks === true) {
+            prepared = this.extractLinks(prepared);
+        }
+
         if (options.convertLineBreaks === true) {
             prepared = this.convertLineBreaks(prepared);
         }
@@ -80,6 +91,18 @@ export class ContentPreparer {
         }
 
         return prepared;
+    }
+
+    /**
+     * Replace URLs in a string with an anchor tag pointing
+     * to the URL and with the text content of the URL
+     */
+    private extractLinks(html: string): string {
+        const options = {
+            defaultProtocol: 'https',
+            attributes: {},
+        };
+        return linkifyHtml(html, options);
     }
 
     /**

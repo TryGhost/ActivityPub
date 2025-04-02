@@ -265,6 +265,10 @@ describe('FedifyPublishingService', () => {
                 post.content,
                 {
                     removeMemberContent: true,
+                    convertLineBreaks: false,
+                    escapeHtml: false,
+                    extractLinks: false,
+                    wrapInParagraph: false,
                 },
             );
 

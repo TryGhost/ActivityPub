@@ -5,10 +5,19 @@ describe('ContentPreparer', () => {
     const preparer = new ContentPreparer();
 
     describe('prepare', () => {
+        const allOptionsDisabled = {
+            removeMemberContent: false,
+            escapeHtml: false,
+            convertLineBreaks: false,
+            wrapInParagraph: false,
+            extractLinks: false,
+        };
+
         describe('Removing member content', () => {
             it('should remove member content', () => {
                 const content = `Hello, world!${MEMBER_CONTENT_MARKER}Member content`;
                 const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
                     removeMemberContent: true,
                 });
 
@@ -27,6 +36,7 @@ describe('ContentPreparer', () => {
             it('should escape HTML', () => {
                 const content = '<p>Hello, world!</p>';
                 const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
                     escapeHtml: true,
                 });
 
@@ -45,6 +55,7 @@ describe('ContentPreparer', () => {
             it('should convert line breaks to HTML', () => {
                 const content = 'Hello, world!\nThis is a new line';
                 const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
                     convertLineBreaks: true,
                 });
 
@@ -54,6 +65,7 @@ describe('ContentPreparer', () => {
             it('should convert line breaks to HTML with multiple line breaks', () => {
                 const content = 'Hello, world!\n\nThis is a new line';
                 const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
                     convertLineBreaks: true,
                 });
 
@@ -74,6 +86,7 @@ describe('ContentPreparer', () => {
             it('should wrap in paragraph', () => {
                 const content = 'Hello, world!';
                 const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
                     wrapInParagraph: true,
                 });
 
