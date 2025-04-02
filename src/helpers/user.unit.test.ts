@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Image } from '@fedify/fedify';
 
-import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
+import { ACTOR_DEFAULT_NAME } from '../constants';
 import { getUserData } from './user';
 
 const HANDLE = 'foo';
@@ -77,7 +77,7 @@ describe('getUserData', () => {
             name: ACTOR_DEFAULT_NAME,
             summary: null,
             preferredUsername: HANDLE,
-            icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
+            icon: null,
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
             liked: new URL(LIKED_URI),
@@ -93,7 +93,7 @@ describe('getUserData', () => {
             name: expectedUserData.name,
             summary: expectedUserData.summary,
             preferredUsername: expectedUserData.preferredUsername,
-            icon: ACTOR_DEFAULT_ICON,
+            icon: null,
             inbox: expectedUserData.inbox.href,
             outbox: expectedUserData.outbox.href,
             liked: expectedUserData.liked.href,
@@ -145,7 +145,7 @@ describe('getUserData', () => {
         expect(result).toEqual(expectedUserData);
     });
 
-    it('handles retrieving a user with an invalid icon', async () => {
+    it('handles retrieving a user with a missing icon', async () => {
         const ctx = getCtx();
 
         const persistedUser = {
@@ -169,8 +169,8 @@ describe('getUserData', () => {
             id: new URL(`https://${ctx.host}/${HANDLE}`),
             name: 'foo',
             summary: 'bar',
+            icon: null,
             preferredUsername: HANDLE,
-            icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
             inbox: new URL(INBOX_URI),
             outbox: new URL(OUTBOX_URI),
             liked: new URL(LIKED_URI),
@@ -184,7 +184,7 @@ describe('getUserData', () => {
         expect(result).toEqual(expectedUserData);
     });
 
-    it('handles retrieving a user with an invalid URL', async () => {
+    it('handles retrieving a user with a missing URL', async () => {
         const ctx = getCtx();
 
         const persistedUser = {

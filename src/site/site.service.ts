@@ -83,7 +83,7 @@ export class SiteService {
                 username: 'index',
                 name: settings?.site?.title,
                 bio: settings?.site?.description || null,
-                avatar_url: settings?.site?.icon,
+                avatar_url: settings?.site?.icon || null,
             };
 
             await this.accountService.createInternalAccount(

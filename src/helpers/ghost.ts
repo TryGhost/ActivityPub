@@ -1,11 +1,11 @@
 import ky from 'ky';
 
-import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
+import { ACTOR_DEFAULT_NAME } from '../constants';
 
 export type SiteSettings = {
     site: {
         description: string | null;
-        icon: string;
+        icon: string | null;
         title: string;
     };
 };
@@ -19,7 +19,7 @@ export async function getSiteSettings(host: string): Promise<SiteSettings> {
         site: {
             description: settings?.site?.description || null,
             title: settings?.site?.title || ACTOR_DEFAULT_NAME,
-            icon: settings?.site?.icon || ACTOR_DEFAULT_ICON,
+            icon: settings?.site?.icon || null,
         },
     };
 }

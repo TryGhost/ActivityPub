@@ -13,11 +13,7 @@ import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import {
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    AP_BASE_PATH,
-} from '../constants';
+import { ACTOR_DEFAULT_NAME, AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
@@ -135,8 +131,7 @@ describe('AccountService', () => {
                 name: internalAccountData.name || ACTOR_DEFAULT_NAME,
                 username: username,
                 bio: internalAccountData.bio || null,
-                avatar_url:
-                    internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
+                avatar_url: internalAccountData.avatar_url || null,
                 url: `https://${site.host}`,
                 custom_fields: null,
                 ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,

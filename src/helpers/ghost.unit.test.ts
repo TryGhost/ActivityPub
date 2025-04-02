@@ -4,7 +4,7 @@ import ky, { type ResponsePromise } from 'ky';
 
 vi.mock('ky');
 
-import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
+import { ACTOR_DEFAULT_NAME } from '../constants';
 import { getSiteSettings } from './ghost';
 
 describe('getSiteSettings', () => {
@@ -32,7 +32,7 @@ describe('getSiteSettings', () => {
         );
     });
 
-    it('sets the description to null if missing', async () => {
+    it('sets the site description to null if missing', async () => {
         vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
                 site: { title: 'bar', icon: 'https://example.com/baz.png' },
@@ -50,10 +50,25 @@ describe('getSiteSettings', () => {
         });
     });
 
-    it('should use defaults for missing title & icon settings', async () => {
-        let result;
+    it('sets the site icon to null if missing', async () => {
+        vi.mocked(ky.get).mockReturnValue({
+            json: async () => ({
+                site: { description: 'foo', title: 'bar' },
+            }),
+        } as ResponsePromise);
 
-        // Missing title
+        const result = await getSiteSettings(host);
+
+        expect(result).toEqual({
+            site: {
+                description: 'foo',
+                title: 'bar',
+                icon: null,
+            },
+        });
+    });
+
+    it('sets the site icon to a default value if missing', async () => {
         vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
                 site: {
@@ -63,33 +78,13 @@ describe('getSiteSettings', () => {
             }),
         } as ResponsePromise);
 
-        result = await getSiteSettings(host);
+        const result = await getSiteSettings(host);
 
         expect(result).toEqual({
             site: {
                 description: 'foo',
                 title: ACTOR_DEFAULT_NAME,
                 icon: 'https://example.com/baz.png',
-            },
-        });
-
-        // Missing icon
-        vi.mocked(ky.get).mockReturnValue({
-            json: async () => ({
-                site: {
-                    description: 'foo',
-                    title: 'bar',
-                },
-            }),
-        } as ResponsePromise);
-
-        result = await getSiteSettings(host);
-
-        expect(result).toEqual({
-            site: {
-                description: 'foo',
-                title: 'bar',
-                icon: ACTOR_DEFAULT_ICON,
             },
         });
     });

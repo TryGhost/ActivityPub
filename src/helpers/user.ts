@@ -7,14 +7,14 @@ import {
     importJwk,
 } from '@fedify/fedify';
 import type { ContextData } from '../app';
-import { ACTOR_DEFAULT_ICON, ACTOR_DEFAULT_NAME } from '../constants';
+import { ACTOR_DEFAULT_NAME } from '../constants';
 
 export type PersonData = {
     id: string;
     name: string;
     summary: string | null;
     preferredUsername: string;
-    icon: string;
+    icon: string | null;
     inbox: string;
     outbox: string;
     following: string;
@@ -28,7 +28,7 @@ export type UserData = {
     name: string;
     summary: string | null;
     preferredUsername: string;
-    icon: Image;
+    icon: Image | null;
     inbox: URL;
     outbox: URL;
     following: URL;
@@ -46,14 +46,15 @@ export async function getUserData(
 
     if (existing) {
         let icon = null;
-        try {
-            icon = new Image({ url: new URL(existing.icon) });
-        } catch (err) {
-            ctx.data.logger.error(
-                'Could not create Image from Icon value ({icon}): {error}',
-                { icon: existing.icon, error: err },
-            );
-            icon = new Image({ url: new URL(ACTOR_DEFAULT_ICON) });
+        if (existing.icon) {
+            try {
+                icon = new Image({ url: new URL(existing.icon) });
+            } catch (err) {
+                ctx.data.logger.error(
+                    'Could not create Image from Icon value ({icon}): {error}',
+                    { icon: existing.icon, error: err },
+                );
+            }
         }
 
         let url = null;
@@ -98,7 +99,7 @@ export async function getUserData(
         name: ACTOR_DEFAULT_NAME,
         summary: null,
         preferredUsername: handle,
-        icon: new Image({ url: new URL(ACTOR_DEFAULT_ICON) }),
+        icon: null,
         inbox: ctx.getInboxUri(handle),
         outbox: ctx.getOutboxUri(handle),
         following: ctx.getFollowingUri(handle),
@@ -121,7 +122,7 @@ export async function setUserData(
     data: UserData,
     handle: string,
 ) {
-    const iconUrl = data.icon.url?.toString() || '';
+    const iconUrl = data.icon?.url?.toString() || null;
     const dataToStore: PersonData = {
         id: data.id.href,
         name: data.name,

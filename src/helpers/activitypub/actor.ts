@@ -104,7 +104,7 @@ export async function updateSiteActor(
 
     if (
         current &&
-        current.icon.url?.toString() === settings.site.icon &&
+        current.icon?.url?.toString() === settings.site.icon &&
         current.name === settings.site.title &&
         current.summary === settings.site.description
     ) {
@@ -118,13 +118,15 @@ export async function updateSiteActor(
         ...current,
     };
 
-    try {
-        updated.icon = new Image({ url: new URL(settings.site.icon) });
-    } catch (err) {
-        apCtx.data.logger.error(
-            'Could not create Image from Icon value ({icon}): {error}',
-            { icon: settings.site.icon, error: err },
-        );
+    if (settings.site.icon) {
+        try {
+            updated.icon = new Image({ url: new URL(settings.site.icon) });
+        } catch (err) {
+            apCtx.data.logger.error(
+                'Could not create Image from Icon value ({icon}): {error}',
+                { icon: settings.site.icon, error: err },
+            );
+        }
     }
 
     updated.name = settings.site.title;

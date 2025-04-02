@@ -9,11 +9,7 @@ import type { Knex } from 'knex';
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import {
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    AP_BASE_PATH,
-} from '../constants';
+import { ACTOR_DEFAULT_NAME, AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import type { Account } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
@@ -107,7 +103,7 @@ export class AccountService {
             uuid: randomUUID(),
             username: username,
             bio: internalAccountData.bio || null,
-            avatar_url: internalAccountData.avatar_url || ACTOR_DEFAULT_ICON,
+            avatar_url: internalAccountData.avatar_url || null,
             banner_image_url: null,
             url: `https://${site.host}`,
             custom_fields: null,
