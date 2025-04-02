@@ -9,7 +9,7 @@ Feature: Account API
     And we are followed by "Alice"
 
   Scenario: Get default account
-    When an authenticated "get" request is made to "/.ghost/activitypub/account/index"
+    When an authenticated "get" request is made to "/.ghost/activitypub/account/me"
     Then the request is accepted with a 200
     And the response contains "Our" account details
 
@@ -23,5 +23,5 @@ Feature: Account API
     Then the request is rejected with a 500
 
   Scenario: Get account without authentication
-    When an unauthenticated request is made to "/.ghost/activitypub/account/index"
+    When an unauthenticated request is made to "/.ghost/activitypub/account/me"
     Then the request is rejected with a 403 
