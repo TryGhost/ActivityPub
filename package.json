@@ -16,6 +16,7 @@
     "logs": "docker compose logs activitypub -f",
     "wipe-db": "docker compose down -v mysql && docker compose up -d activitypub nginx && echo 'ActivityPub DB wiped. You must restart Ghost'",
     "migration": "docker compose run migrate create",
+    "migrate": "docker compose up migrate",
     "test:cucumber": "./docker/cucumber-tests",
     "test": "docker compose run --rm migrate-testing up && docker compose run --rm activitypub-testing yarn _test:all && yarn test:cucumber",
     "_test:types": "tsc --noEmit",
