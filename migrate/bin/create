@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "Running migrate create -ext sql -dir migrations -seq $1"
+migrate create -ext sql -dir migrations -seq $1 
