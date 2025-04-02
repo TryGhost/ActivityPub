@@ -2,19 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Image } from '@fedify/fedify';
 
-import { ACTOR_DEFAULT_NAME } from '../constants';
 import { getUserData } from './user';
 
 const HANDLE = 'foo';
-const ACTOR_URI = `https://example.com/${HANDLE}`;
-const INBOX_URI = `https://example.com/${HANDLE}/inbox`;
-const OUTBOX_URI = `https://example.com/${HANDLE}/outbox`;
-const LIKED_URI = `https://example.com/${HANDLE}/liked`;
-const FOLLOWING_URI = `https://example.com/${HANDLE}/following`;
+const ACTOR_URI = `https://www.example.com/${HANDLE}`;
+const INBOX_URI = `https://www.example.com/${HANDLE}/inbox`;
+const OUTBOX_URI = `https://www.example.com/${HANDLE}/outbox`;
+const LIKED_URI = `https://www.example.com/${HANDLE}/liked`;
+const FOLLOWING_URI = `https://www.example.com/${HANDLE}/following`;
 const FOLLOWERS_URI = `https://example.com/${HANDLE}/followers`;
 
 function getCtx() {
-    const host = 'example.com';
+    const host = 'www.example.com';
 
     const ctx = {
         data: {
@@ -72,9 +71,10 @@ describe('getUserData', () => {
 
         const result = await getUserData(ctx, HANDLE);
 
+        const normalizedHost = ctx.host.replace(/^www\./, '');
         const expectedUserData = {
             id: new URL(`https://${ctx.host}/${HANDLE}`),
-            name: ACTOR_DEFAULT_NAME,
+            name: normalizedHost,
             summary: null,
             preferredUsername: HANDLE,
             icon: null,

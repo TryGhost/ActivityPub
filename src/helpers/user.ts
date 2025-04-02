@@ -7,7 +7,6 @@ import {
     importJwk,
 } from '@fedify/fedify';
 import type { ContextData } from '../app';
-import { ACTOR_DEFAULT_NAME } from '../constants';
 
 export type PersonData = {
     id: string;
@@ -94,9 +93,10 @@ export async function getUserData(
         }
     }
 
+    const normalizedHost = ctx.host.replace(/^www\./, '');
     const data = {
         id: ctx.getActorUri(handle),
-        name: ACTOR_DEFAULT_NAME,
+        name: normalizedHost,
         summary: null,
         preferredUsername: handle,
         icon: null,

@@ -4,7 +4,6 @@ import ky, { type ResponsePromise } from 'ky';
 
 vi.mock('ky');
 
-import { ACTOR_DEFAULT_NAME } from '../constants';
 import { getSiteSettings } from './ghost';
 
 describe('getSiteSettings', () => {
@@ -68,7 +67,7 @@ describe('getSiteSettings', () => {
         });
     });
 
-    it('sets the site icon to a default value if missing', async () => {
+    it('sets the site title to domain name if missing', async () => {
         vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
                 site: {
@@ -83,7 +82,7 @@ describe('getSiteSettings', () => {
         expect(result).toEqual({
             site: {
                 description: 'foo',
-                title: ACTOR_DEFAULT_NAME,
+                title: 'example.com',
                 icon: 'https://example.com/baz.png',
             },
         });

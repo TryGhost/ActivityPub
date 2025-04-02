@@ -9,7 +9,7 @@ import type { Knex } from 'knex';
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { ACTOR_DEFAULT_NAME, AP_BASE_PATH } from '../constants';
+import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import type { Account } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
@@ -98,8 +98,9 @@ export class AccountService {
         const keyPair = await this.generateKeyPair();
         const username = internalAccountData.username;
 
+        const normalizedHost = site.host.replace(/^www\./, '');
         const accountData = {
-            name: internalAccountData.name || ACTOR_DEFAULT_NAME,
+            name: internalAccountData.name || normalizedHost,
             uuid: randomUUID(),
             username: username,
             bio: internalAccountData.bio || null,

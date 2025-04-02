@@ -1,7 +1,5 @@
 import ky from 'ky';
 
-import { ACTOR_DEFAULT_NAME } from '../constants';
-
 export type SiteSettings = {
     site: {
         description: string | null;
@@ -15,10 +13,11 @@ export async function getSiteSettings(host: string): Promise<SiteSettings> {
         .get(`https://${host}/ghost/api/admin/site/`)
         .json<Partial<SiteSettings>>();
 
+    const normalizedHost = host.replace(/^www\./, '');
     return {
         site: {
             description: settings?.site?.description || null,
-            title: settings?.site?.title || ACTOR_DEFAULT_NAME,
+            title: settings?.site?.title || normalizedHost,
             icon: settings?.site?.icon || null,
         },
     };
