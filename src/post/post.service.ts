@@ -1,7 +1,17 @@
-import { Article, Note, lookupObject } from '@fedify/fedify';
+import {
+    Activity,
+    Article,
+    CollectionPage,
+    lookupObject,
+    Note,
+    isActor,
+} from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { sanitizeHtml } from 'helpers/html';
+import { isUri } from 'helpers/uri';
 import type { PostDTO } from 'http/api/types';
 import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
@@ -58,7 +68,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface GetProfileDataResult {
-    results: GetProfileDataResultRow[];
+    results: PostDTO[];
     nextCursor: string | null;
 }
 
@@ -490,5 +500,190 @@ export class PostService {
             ),
             nextCursor: hasMore ? lastResult.likes_id.toString() : null,
         };
+    }
+
+    /**
+     * Get posts for an account using their handle
+     *
+     * @param handle - The handle to look up (e.g., "@username@domain")
+     *
+     */
+    async getPostsByRemoteLookUp(
+        defaultAccount: Account,
+        handle: string,
+        next: string,
+    ): Promise<GetProfileDataResult | Error> {
+        // If the next parameter is not a valid URI, return early
+        if (!isUri(next)) {
+            throw Error('Invalid next parameter');
+        }
+
+        // Lookup actor by handle
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+        const actor = await lookupObject(handle, { documentLoader });
+
+        if (!isActor(actor)) {
+            throw Error('Actor not found');
+        }
+
+        // Retrieve actor's posts
+        // If a next parameter was provided, use it to retrieve a specific page of
+        // posts. Otherwise, retrieve the first page of posts
+        const result: GetProfileDataResult = {
+            results: [],
+            nextCursor: null,
+        };
+
+        let page: CollectionPage | null = null;
+
+        try {
+            if (next !== '') {
+                // Ensure the next parameter is for the same host as the actor. We
+                // do this to prevent blindly passing URIs to lookupObject (i.e next
+                // param has been tampered with)
+                // @TODO: Does this provide enough security? Can the host of the
+                // actor be different to the host of the actor's followers collection?
+                const { host: actorHost } = actor?.id || new URL('');
+                const { host: nextHost } = new URL(next);
+
+                if (actorHost !== nextHost) {
+                    throw Error('Invalid Actor Host');
+                }
+
+                page = (await lookupObject(next, {
+                    documentLoader,
+                })) as CollectionPage | null;
+
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
+                    page = null;
+                }
+            } else {
+                const outbox = await actor.getOutbox();
+
+                if (outbox) {
+                    page = await outbox.getFirst();
+                }
+            }
+        } catch (err) {
+            throw Error('Error getting outbox');
+        }
+
+        if (!page) {
+            throw Error('Page not found');
+        }
+
+        // Return result
+        try {
+            for await (const item of page.getItems()) {
+                if (!(item instanceof Activity)) {
+                    continue;
+                }
+
+                const object = await item.getObject();
+                //const attributedTo = await object?.getAttribution();
+                if (!object || !object.id) {
+                    continue;
+                }
+
+                const activity = (await item.toJsonLd({
+                    format: 'compact',
+                })) as any;
+
+                if (typeof activity.actor === 'string') {
+                    activity.actor = await actor.toJsonLd({
+                        format: 'compact',
+                    });
+                }
+
+                if (typeof activity.object.attributedTo === 'string') {
+                    const attributedTo = await lookupObject(
+                        activity.object.attributedTo,
+                        { documentLoader },
+                    );
+                    if (isActor(attributedTo)) {
+                        activity.object.attributedTo =
+                            await attributedTo.toJsonLd({
+                                format: 'compact',
+                            });
+                    } else if (activity.type === 'Announce') {
+                        // If the attributedTo is not an actor, it is a repost and we don't want to show it
+                        continue;
+                    }
+                }
+
+                const post = await this.postRepository.getByApId(object.id);
+
+                const postDTO: PostDTO = {
+                    id: object.id.toString(),
+                    type: PostType.Article,
+                    title: object.name?.toString() || '',
+                    excerpt: object.summary?.toString() || '',
+                    content: activity?.object?.content
+                        ? sanitizeHtml(activity?.object?.content)
+                        : '',
+                    url: object.url?.toString() || '',
+                    featureImageUrl: object.imageId?.toString() || '',
+                    publishedAt: new Date(object.published?.toString() || ''),
+                    likeCount: 0,
+                    likedByMe: post
+                        ? await this.postRepository.isLikedByAccount(
+                              post.id!,
+                              defaultAccount.id || 0, //Todo fix this
+                          )
+                        : false,
+                    replyCount: post ? post.replyCount : 0,
+                    readingTimeMinutes: 0,
+                    author: {
+                        id: activity.actor.id,
+                        handle: getAccountHandle(
+                            activity.actor.id.host || '',
+                            activity.actor.id.username || '',
+                        ),
+                        name: activity.actor.name?.toString() || '',
+                        url: activity.actor.id,
+                        avatarUrl: activity.actor.icon.url?.toString() || '',
+                    },
+                    authoredByMe: defaultAccount.apId === activity.actor.id,
+                    repostCount: post ? post.repostCount : 0,
+                    repostedByMe: post
+                        ? await this.postRepository.isRepostedByAccount(
+                              post.id!,
+                              defaultAccount.id || 0, //Todo fix this
+                          )
+                        : false,
+                    repostedBy: null,
+                    attachments: [],
+                };
+
+                if (activity.type === 'Announce') {
+                    postDTO.repostedBy = {
+                        id: activity.attributedTo.id,
+                        handle: getAccountHandle(
+                            activity.attributedTo.id.host || '',
+                            activity.attributedTo.id.username || '',
+                        ),
+                        name: activity.attributedTo.name?.toString() || '',
+                        url: activity.attributedTo.id,
+                        avatarUrl:
+                            activity.attributedTo.icon.url?.toString() || '',
+                    };
+                }
+
+                result.results.push(postDTO);
+            }
+        } catch (err) {
+            throw Error('Error getting posts');
+        }
+
+        result.nextCursor = page.nextId
+            ? encodeURIComponent(page.nextId.toString())
+            : null;
+
+        return result;
     }
 }
