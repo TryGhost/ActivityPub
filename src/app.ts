@@ -980,7 +980,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountPostsHandler(accountService, postService)),
+    spanWrapper(createGetAccountPostsHandler(accountService, postService, accountRepository)),
 );
 app.get(
     '/.ghost/activitypub/posts/liked',

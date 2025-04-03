@@ -5,17 +5,12 @@ import { getAccountHandle } from 'account/utils';
 import { type AppContext, fedify } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
-import type {
-    GetProfileDataResult,
-    GetProfileDataResultRow,
-    PostService,
-} from 'post/post.service';
+import type { GetProfileDataResult, PostService } from 'post/post.service';
 import {
     getAccountDTOByHandle,
     getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
-import { getPostsByRemoteLookUp } from './helpers/post';
 
 /**
  * Maximum number of follow accounts to return
@@ -274,9 +269,13 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
+        const defaultAccount = await accountRepository.getBySite(
+            ctx.get('site'),
+        );
+
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
-            account = await accountRepository.getBySite(ctx.get('site'));
+            account = defaultAccount;
         } else {
             if (!isHandle(handle)) {
                 return new Response(null, { status: 400 });
@@ -305,11 +304,14 @@ export function createGetAccountPostsHandler(
                 result.nextCursor = postResult.nextCursor;
             } else {
                 //Otherwise, do a remote lookup to fetch the posts
-                const postResult = await getPostsByRemoteLookUp(
-                    account.id,
-                    params.limit,
-                    params.cursor,
+                const postResult = await postService.getPostsByRemoteLookUp(
+                    defaultAccount,
+                    handle,
+                    params.cursor || '',
                 );
+                if (postResult instanceof Error) {
+                    throw postResult;
+                }
                 result.results = postResult.results;
                 result.nextCursor = postResult.nextCursor;
             }

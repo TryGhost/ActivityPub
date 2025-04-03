@@ -1,7 +1,17 @@
-import { Article, Note, lookupObject } from '@fedify/fedify';
+import {
+    Activity,
+    Article,
+    CollectionPage,
+    lookupObject,
+    Note,
+    isActor,
+} from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { sanitizeHtml } from 'helpers/html';
+import { isUri } from 'helpers/uri';
 import type { PostDTO } from 'http/api/types';
 import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
@@ -58,7 +68,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface GetProfileDataResult {
-    results: GetProfileDataResultRow[];
+    results: PostDTO[];
     nextCursor: string | null;
 }
 
@@ -499,21 +509,22 @@ export class PostService {
      *
      */
     async getPostsByRemoteLookUp(
-        ctx: AppContext,
-        apCtx: Context<ContextData>,
         defaultAccount: Account,
         handle: string,
         next: string,
     ): Promise<GetProfileDataResult | Error> {
-        const logger = ctx.get('logger');
-
         // If the next parameter is not a valid URI, return early
         if (!isUri(next)) {
             throw Error('Invalid next parameter');
         }
 
         // Lookup actor by handle
-        const actor = await lookupObject(apCtx, handle);
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+        const actor = await lookupObject(handle, { documentLoader });
 
         if (!isActor(actor)) {
             throw Error('Actor not found');
@@ -543,10 +554,9 @@ export class PostService {
                     throw Error('Invalid Actor Host');
                 }
 
-                page = (await lookupObject(
-                    apCtx,
-                    next,
-                )) as CollectionPage | null;
+                page = (await lookupObject(next, {
+                    documentLoader,
+                })) as CollectionPage | null;
 
                 // Check that we have a valid page
                 if (!(page instanceof CollectionPage) || !page?.itemIds) {
@@ -560,7 +570,7 @@ export class PostService {
                 }
             }
         } catch (err) {
-            logger.error('Error getting outbox', { error: err });
+            throw Error('Error getting outbox');
         }
 
         if (!page) {
@@ -575,47 +585,14 @@ export class PostService {
                 }
 
                 const object = await item.getObject();
-                const attributedTo = await object?.getAttribution();
+                //const attributedTo = await object?.getAttribution();
+                if (!object || !object.id) {
+                    continue;
+                }
 
                 const activity = (await item.toJsonLd({
                     format: 'compact',
                 })) as any;
-
-                if (activity?.object?.content) {
-                    activity.object.content = sanitizeHtml(
-                        activity.object.content,
-                    );
-                }
-
-                activity.object.authored =
-                    defaultAccount.apId === activity.actor.id;
-
-                // Add counters & flags to the object
-                activity.object.replyCount = 0;
-                activity.object.repostCount = 0;
-                activity.object.liked = false;
-                activity.object.reposted = false;
-
-                if (object?.id) {
-                    const post = await postRepository.getByApId(object.id);
-
-                    activity.object.replyCount = post ? post.replyCount : 0;
-                    activity.object.repostCount = post ? post.repostCount : 0;
-
-                    activity.object.liked = post
-                        ? await postRepository.isLikedByAccount(
-                              post.id!,
-                              defaultSiteAccount.id,
-                          )
-                        : false;
-
-                    activity.object.reposted = post
-                        ? await postRepository.isRepostedByAccount(
-                              post.id!,
-                              defaultSiteAccount.id,
-                          )
-                        : false;
-                }
 
                 if (typeof activity.actor === 'string') {
                     activity.actor = await actor.toJsonLd({
@@ -625,8 +602,8 @@ export class PostService {
 
                 if (typeof activity.object.attributedTo === 'string') {
                     const attributedTo = await lookupObject(
-                        apCtx,
                         activity.object.attributedTo,
+                        { documentLoader },
                     );
                     if (isActor(attributedTo)) {
                         activity.object.attributedTo =
@@ -639,21 +616,74 @@ export class PostService {
                     }
                 }
 
-                result.posts.push(activity);
+                const post = await this.postRepository.getByApId(object.id);
+
+                const postDTO: PostDTO = {
+                    id: object.id.toString(),
+                    type: PostType.Article,
+                    title: object.name?.toString() || '',
+                    excerpt: object.summary?.toString() || '',
+                    content: activity?.object?.content
+                        ? sanitizeHtml(activity?.object?.content)
+                        : '',
+                    url: object.url?.toString() || '',
+                    featureImageUrl: object.imageId?.toString() || '',
+                    publishedAt: new Date(object.published?.toString() || ''),
+                    likeCount: 0,
+                    likedByMe: post
+                        ? await this.postRepository.isLikedByAccount(
+                              post.id!,
+                              defaultAccount.id || 0, //Todo fix this
+                          )
+                        : false,
+                    replyCount: post ? post.replyCount : 0,
+                    readingTimeMinutes: 0,
+                    author: {
+                        id: activity.actor.id,
+                        handle: getAccountHandle(
+                            activity.actor.id.host || '',
+                            activity.actor.id.username || '',
+                        ),
+                        name: activity.actor.name?.toString() || '',
+                        url: activity.actor.id,
+                        avatarUrl: activity.actor.icon.url?.toString() || '',
+                    },
+                    authoredByMe: defaultAccount.apId === activity.actor.id,
+                    repostCount: post ? post.repostCount : 0,
+                    repostedByMe: post
+                        ? await this.postRepository.isRepostedByAccount(
+                              post.id!,
+                              defaultAccount.id || 0, //Todo fix this
+                          )
+                        : false,
+                    repostedBy: null,
+                    attachments: [],
+                };
+
+                if (activity.type === 'Announce') {
+                    postDTO.repostedBy = {
+                        id: activity.attributedTo.id,
+                        handle: getAccountHandle(
+                            activity.attributedTo.id.host || '',
+                            activity.attributedTo.id.username || '',
+                        ),
+                        name: activity.attributedTo.name?.toString() || '',
+                        url: activity.attributedTo.id,
+                        avatarUrl:
+                            activity.attributedTo.icon.url?.toString() || '',
+                    };
+                }
+
+                result.results.push(postDTO);
             }
         } catch (err) {
-            logger.error('Error getting posts', { error: err });
+            throw Error('Error getting posts');
         }
 
-        result.next = page.nextId
+        result.nextCursor = page.nextId
             ? encodeURIComponent(page.nextId.toString())
             : null;
 
-        return new Response(JSON.stringify(result), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 200,
-        });
+        return result;
     }
 }
