@@ -1,15 +1,9 @@
 import ky from 'ky';
 
-import {
-    ACTOR_DEFAULT_ICON,
-    ACTOR_DEFAULT_NAME,
-    ACTOR_DEFAULT_SUMMARY,
-} from '../constants';
-
-type SiteSettings = {
+export type SiteSettings = {
     site: {
-        description: string;
-        icon: string;
+        description: string | null;
+        icon: string | null;
         title: string;
     };
 };
@@ -19,11 +13,12 @@ export async function getSiteSettings(host: string): Promise<SiteSettings> {
         .get(`https://${host}/ghost/api/admin/site/`)
         .json<Partial<SiteSettings>>();
 
+    const normalizedHost = host.replace(/^www\./, '');
     return {
         site: {
-            description: settings?.site?.description || ACTOR_DEFAULT_SUMMARY,
-            title: settings?.site?.title || ACTOR_DEFAULT_NAME,
-            icon: settings?.site?.icon || ACTOR_DEFAULT_ICON,
+            description: settings?.site?.description || null,
+            title: settings?.site?.title || normalizedHost,
+            icon: settings?.site?.icon || null,
         },
     };
 }

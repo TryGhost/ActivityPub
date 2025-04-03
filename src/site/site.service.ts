@@ -82,8 +82,8 @@ export class SiteService {
             const internalAccountData: InternalAccountData = {
                 username: 'index',
                 name: settings?.site?.title,
-                bio: settings?.site?.description,
-                avatar_url: settings?.site?.icon,
+                bio: settings?.site?.description || null,
+                avatar_url: settings?.site?.icon || null,
             };
 
             await this.accountService.createInternalAccount(
