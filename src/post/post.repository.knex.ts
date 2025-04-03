@@ -143,7 +143,9 @@ export class KnexPostRepository {
 
     async getByApId(apId: URL): Promise<Post | null> {
         return await this.getByQuery((qb: Knex.QueryBuilder) => {
-            return qb.whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href]);
+            return qb.whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [
+                apId.href,
+            ]);
         });
     }
 
