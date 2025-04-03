@@ -53,7 +53,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub
             europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub
           tags: |
             ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
@@ -69,7 +68,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations
             europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations
           tags: |
             ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
@@ -97,14 +95,7 @@ jobs:
       - name: "Run Tests"
         run: yarn test
 
-      - name: "Login to GAR europe-west4 (old)"
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west4-docker.pkg.dev
-          username: _json_key
-          password: ${{ secrets.SERVICE_ACCOUNT_KEY }}
-
-      - name: "Login to GAR europe"
+      - name: "Login to GCP Artifact Registry"
         uses: docker/login-action@v3
         with:
           registry: europe-docker.pkg.dev
@@ -228,37 +219,3 @@ jobs:
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
-
-  deploy-old:
-    if: github.ref == 'refs/heads/main'
-    name: Deploy (old)
-    environment: build
-    runs-on: ubuntu-latest
-    needs: [build-test-push]
-    steps:
-      - name: "Auth with Google Cloud"
-        uses: "google-github-actions/auth@v2"
-        with:
-          credentials_json: ${{ secrets.SERVICE_ACCOUNT_KEY }}
-
-      - name: "Deploy Migrations to Cloud Run"
-        uses: "google-github-actions/deploy-cloudrun@v2"
-        with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/migrations:${{ needs.build-test-push.outputs.migrations_docker_version }}
-          region: europe-west4
-          job: migrations
-          flags: "--wait --execute-now --set-cloudsql-instances=ghost-activitypub:europe-west4:activitypub-db"
-
-      - name: "Deploy ActivityPub Queue to Cloud Run"
-        uses: "google-github-actions/deploy-cloudrun@v2"
-        with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
-          region: europe-west4
-          service: activitypub-sub
-
-      - name: "Deploy ActivityPub API to Cloud Run"
-        uses: "google-github-actions/deploy-cloudrun@v2"
-        with:
-          image: europe-west4-docker.pkg.dev/ghost-activitypub/main/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
-          region: europe-west4
-          service: activitypub
