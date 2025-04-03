@@ -491,4 +491,169 @@ export class PostService {
             nextCursor: hasMore ? lastResult.likes_id.toString() : null,
         };
     }
+
+    /**
+     * Get posts for an account using their handle
+     *
+     * @param handle - The handle to look up (e.g., "@username@domain")
+     *
+     */
+    async getPostsByRemoteLookUp(
+        ctx: AppContext,
+        apCtx: Context<ContextData>,
+        defaultAccount: Account,
+        handle: string,
+        next: string,
+    ): Promise<GetProfileDataResult | Error> {
+        const logger = ctx.get('logger');
+
+        // If the next parameter is not a valid URI, return early
+        if (!isUri(next)) {
+            throw Error('Invalid next parameter');
+        }
+
+        // Lookup actor by handle
+        const actor = await lookupObject(apCtx, handle);
+
+        if (!isActor(actor)) {
+            throw Error('Actor not found');
+        }
+
+        // Retrieve actor's posts
+        // If a next parameter was provided, use it to retrieve a specific page of
+        // posts. Otherwise, retrieve the first page of posts
+        const result: GetProfileDataResult = {
+            results: [],
+            nextCursor: null,
+        };
+
+        let page: CollectionPage | null = null;
+
+        try {
+            if (next !== '') {
+                // Ensure the next parameter is for the same host as the actor. We
+                // do this to prevent blindly passing URIs to lookupObject (i.e next
+                // param has been tampered with)
+                // @TODO: Does this provide enough security? Can the host of the
+                // actor be different to the host of the actor's followers collection?
+                const { host: actorHost } = actor?.id || new URL('');
+                const { host: nextHost } = new URL(next);
+
+                if (actorHost !== nextHost) {
+                    throw Error('Invalid Actor Host');
+                }
+
+                page = (await lookupObject(
+                    apCtx,
+                    next,
+                )) as CollectionPage | null;
+
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
+                    page = null;
+                }
+            } else {
+                const outbox = await actor.getOutbox();
+
+                if (outbox) {
+                    page = await outbox.getFirst();
+                }
+            }
+        } catch (err) {
+            logger.error('Error getting outbox', { error: err });
+        }
+
+        if (!page) {
+            throw Error('Page not found');
+        }
+
+        // Return result
+        try {
+            for await (const item of page.getItems()) {
+                if (!(item instanceof Activity)) {
+                    continue;
+                }
+
+                const object = await item.getObject();
+                const attributedTo = await object?.getAttribution();
+
+                const activity = (await item.toJsonLd({
+                    format: 'compact',
+                })) as any;
+
+                if (activity?.object?.content) {
+                    activity.object.content = sanitizeHtml(
+                        activity.object.content,
+                    );
+                }
+
+                activity.object.authored =
+                    defaultAccount.apId === activity.actor.id;
+
+                // Add counters & flags to the object
+                activity.object.replyCount = 0;
+                activity.object.repostCount = 0;
+                activity.object.liked = false;
+                activity.object.reposted = false;
+
+                if (object?.id) {
+                    const post = await postRepository.getByApId(object.id);
+
+                    activity.object.replyCount = post ? post.replyCount : 0;
+                    activity.object.repostCount = post ? post.repostCount : 0;
+
+                    activity.object.liked = post
+                        ? await postRepository.isLikedByAccount(
+                              post.id!,
+                              defaultSiteAccount.id,
+                          )
+                        : false;
+
+                    activity.object.reposted = post
+                        ? await postRepository.isRepostedByAccount(
+                              post.id!,
+                              defaultSiteAccount.id,
+                          )
+                        : false;
+                }
+
+                if (typeof activity.actor === 'string') {
+                    activity.actor = await actor.toJsonLd({
+                        format: 'compact',
+                    });
+                }
+
+                if (typeof activity.object.attributedTo === 'string') {
+                    const attributedTo = await lookupObject(
+                        apCtx,
+                        activity.object.attributedTo,
+                    );
+                    if (isActor(attributedTo)) {
+                        activity.object.attributedTo =
+                            await attributedTo.toJsonLd({
+                                format: 'compact',
+                            });
+                    } else if (activity.type === 'Announce') {
+                        // If the attributedTo is not an actor, it is a repost and we don't want to show it
+                        continue;
+                    }
+                }
+
+                result.posts.push(activity);
+            }
+        } catch (err) {
+            logger.error('Error getting posts', { error: err });
+        }
+
+        result.next = page.nextId
+            ? encodeURIComponent(page.nextId.toString())
+            : null;
+
+        return new Response(JSON.stringify(result), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
+        });
+    }
 }

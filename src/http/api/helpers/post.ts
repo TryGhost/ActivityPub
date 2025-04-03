@@ -1,8 +1,14 @@
+import { Activity, CollectionPage, type Context, isActor } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { Post } from 'post/post.entity';
 import { getAccountHandle } from '../../../account/utils';
 
 import type { AuthorDTO, PostDTO } from '../types';
+import type { GetProfileDataResult } from 'post/post.service';
+import type { AppContext, ContextData } from 'app';
+import { isUri } from 'helpers/uri';
+import { lookupObject } from 'lookup-helpers';
+import { sanitizeHtml } from 'helpers/html';
 
 function accountToAuthorDTO(account: Account): AuthorDTO {
     return {

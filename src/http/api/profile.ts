@@ -21,6 +21,7 @@ interface PostsResult {
  *
  * @param accountService Account service instance
  */
+//Todo: Remove this Handler
 export function createGetProfilePostsHandler(
     accountService: AccountService,
     postRepository: KnexPostRepository,

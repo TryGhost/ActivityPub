@@ -5,12 +5,17 @@ import { getAccountHandle } from 'account/utils';
 import { type AppContext, fedify } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
-import type { PostService } from 'post/post.service';
+import type {
+    GetProfileDataResult,
+    GetProfileDataResultRow,
+    PostService,
+} from 'post/post.service';
 import {
     getAccountDTOByHandle,
     getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
+import { getPostsByRemoteLookUp } from './helpers/post';
 
 /**
  * Maximum number of follow accounts to return
@@ -240,6 +245,7 @@ function validateRequestParams(ctx: AppContext) {
 export function createGetAccountPostsHandler(
     accountService: AccountService,
     postService: PostService,
+    accountRepository: KnexAccountRepository,
 ) {
     /**
      * Handle a request for a list of posts by an account
@@ -252,19 +258,74 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
-        const { results, nextCursor } = await postService.getPostsByAccount(
-            account.id,
-            params.limit,
-            params.cursor,
-        );
+        const logger = ctx.get('logger');
+        const site = ctx.get('site');
+        let account: Account | null = null;
+        const db = ctx.get('db');
+
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb: ctx.get('globaldb'),
+            logger,
+        });
+
+        const handle = ctx.req.param('handle');
+        if (!handle) {
+            return new Response(null, { status: 400 });
+        }
+
+        // We are using the keyword 'me', if we want to get the posts of the current user
+        if (handle === 'me') {
+            account = await accountRepository.getBySite(ctx.get('site'));
+        } else {
+            if (!isHandle(handle)) {
+                return new Response(null, { status: 400 });
+            }
+
+            const apId = await lookupAPIdByHandle(apCtx, handle);
+            if (apId) {
+                account = await accountRepository.getByApId(new URL(apId));
+            }
+        }
+
+        const result: GetProfileDataResult = {
+            results: [],
+            nextCursor: null,
+        };
+
+        try {
+            //If we found the account in our db and it's an internal account, do an internal lookup
+            if (account?.isInternal && account.id) {
+                const postResult = await postService.getPostsByAccount(
+                    account.id,
+                    params.limit,
+                    params.cursor,
+                );
+                result.results = postResult.results;
+                result.nextCursor = postResult.nextCursor;
+            } else {
+                //Otherwise, do a remote lookup to fetch the posts
+                const postResult = await getPostsByRemoteLookUp(
+                    account.id,
+                    params.limit,
+                    params.cursor,
+                );
+                result.results = postResult.results;
+                result.nextCursor = postResult.nextCursor;
+            }
+        } catch (error) {
+            //handle 400
+            logger.error(`Error getting posts for ${handle}: {error}`, {
+                error,
+            });
+
+            return new Response(null, { status: 500 });
+        }
 
         return new Response(
             JSON.stringify({
-                posts: results,
-                next: nextCursor,
+                posts: result.results,
+                next: result.nextCursor,
             }),
             { status: 200 },
         );

@@ -962,6 +962,7 @@ app.get(
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetProfileFollowingHandler(accountService)),
 );
+//Todo: Remove this Endpoint
 app.get(
     '/.ghost/activitypub/profile/:handle/posts',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
@@ -977,7 +978,7 @@ app.get(
     spanWrapper(createGetAccountHandler(accountService, accountRepository)),
 );
 app.get(
-    '/.ghost/activitypub/posts',
+    '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountPostsHandler(accountService, postService)),
 );
