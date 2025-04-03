@@ -16,7 +16,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Post, PostType } from './post.entity';
+import { Audience, Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 describe('KnexPostRepository', () => {
@@ -369,6 +369,56 @@ describe('KnexPostRepository', () => {
             .first();
 
         assert(rowInDb, 'A row should have been saved in the DB');
+    });
+
+    it('Handles attempting to insert multiple posts with the same apId', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+        const site = await siteService.initialiseSiteForHost(
+            'testing-saving-multiple-posts-same-ap-id.com',
+        );
+        const account = await accountRepository.getBySite(site);
+        const postApId = new URL(`https://${site.host}/hello-world`);
+
+        const getPost = () => {
+            return new Post(
+                null,
+                randomUUID(),
+                account,
+                PostType.Article,
+                Audience.Public,
+                'Some title',
+                'Some excerpt',
+                'Some content',
+                new URL(`https://${site.host}/hello-world`),
+                new URL(`https://${site.host}/banners/hello-world.png`),
+                new Date('2025-04-03 13:56:00'),
+                0,
+                0,
+                0,
+                null,
+                null,
+                null,
+                [],
+                postApId, // Ensure the apId is always the same
+            );
+        };
+
+        await postRepository.save(getPost());
+        await postRepository.save(getPost());
+
+        const rowsInDb = await client('posts')
+            .where({
+                ap_id: postApId.href,
+            })
+            .select('*');
+
+        expect(rowsInDb.length).toBe(1);
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(1);
+        expect(eventsEmitSpy).toHaveBeenCalledWith(
+            PostCreatedEvent.getName(),
+            expect.any(PostCreatedEvent),
+        );
     });
 
     it('Emits a PostCreatedEvent when a Post is saved', async () => {
