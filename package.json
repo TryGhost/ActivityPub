@@ -75,7 +75,7 @@
     "ky": "1.8.0",
     "linkify-html": "4.2.0",
     "linkifyjs": "4.2.0",
-    "mysql2": "3.11.5",
+    "mysql2": "3.14.0",
     "node-jose": "2.2.0",
     "sanitize-html": "2.15.0",
     "uuid": "10.0.0",
