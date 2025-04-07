@@ -7,7 +7,7 @@
     "name": "Foo Bar",
     "url": "https://example.com/users/456",
   },
-  "authoredByMe": false,
+  "authoredByMe": true,
   "content": "Test Post 789 Content",
   "excerpt": "Test Post 789 Excerpt",
   "featureImageUrl": "https://example.com/images/post-789.jpg",

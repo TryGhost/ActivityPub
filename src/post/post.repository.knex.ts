@@ -134,6 +134,7 @@ export class KnexPostRepository {
 
         return post;
     }
+
     async getById(id: Post['id']): Promise<Post | null> {
         return await this.getByQuery((qb: Knex.QueryBuilder) => {
             return qb.where('posts.id', id);
@@ -416,12 +417,21 @@ export class KnexPostRepository {
             let wasDeleted = false;
 
             if (isNewPost) {
-                const postId = await this.insertPost(
+                const { id, isDuplicate } = await this.insertPost(
                     post,
                     likesToAdd.length,
                     repostsToAdd.length,
                     transaction,
                 );
+
+                // Hacks? Mutate the Post so `isNew` returns false.
+                (post as any).id = id;
+
+                if (isDuplicate) {
+                    await transaction.rollback();
+
+                    return;
+                }
 
                 if (post.inReplyTo) {
                     await transaction('posts')
@@ -430,9 +440,6 @@ export class KnexPostRepository {
                         })
                         .where({ id: post.inReplyTo });
                 }
-
-                // Hacks? Mutate the Post so `isNew` returns false.
-                (post as any).id = postId;
 
                 if (likesToAdd.length > 0) {
                     await this.insertLikes(post, likesToAdd, transaction);
@@ -603,7 +610,8 @@ export class KnexPostRepository {
      * @param likeCount Number of likes the post has
      * @param repostCount Number of reposts the post has
      * @param transaction Database transaction to use
-     * @returns ID of the inserted post
+     * @returns ID of the inserted post and a boolean indicating if the post
+     * was a duplicate
      */
     private async insertPost(
         post: Post,
@@ -611,31 +619,62 @@ export class KnexPostRepository {
         repostCount: number,
         transaction: Knex.Transaction,
     ) {
-        const [id] = await transaction('posts').insert({
-            uuid: post.uuid,
-            type: post.type,
-            audience: post.audience,
-            author_id: post.author.id,
-            title: post.title,
-            excerpt: post.excerpt,
-            content: post.content,
-            url: post.url?.href,
-            image_url: post.imageUrl?.href,
-            published_at: post.publishedAt,
-            in_reply_to: post.inReplyTo,
-            thread_root: post.threadRoot,
-            like_count: likeCount,
-            repost_count: repostCount,
-            reply_count: 0,
-            attachments:
-                post.attachments && post.attachments.length > 0
-                    ? JSON.stringify(post.attachments)
-                    : null,
-            reading_time_minutes: post.readingTimeMinutes,
-            ap_id: post.apId.href,
-        });
+        try {
+            const [id] = await transaction('posts').insert({
+                uuid: post.uuid,
+                type: post.type,
+                audience: post.audience,
+                author_id: post.author.id,
+                title: post.title,
+                excerpt: post.excerpt,
+                content: post.content,
+                url: post.url?.href,
+                image_url: post.imageUrl?.href,
+                published_at: post.publishedAt,
+                in_reply_to: post.inReplyTo,
+                thread_root: post.threadRoot,
+                like_count: likeCount,
+                repost_count: repostCount,
+                reply_count: 0,
+                attachments:
+                    post.attachments && post.attachments.length > 0
+                        ? JSON.stringify(post.attachments)
+                        : null,
+                reading_time_minutes: post.readingTimeMinutes,
+                ap_id: post.apId.href,
+            });
 
-        return id;
+            return {
+                id,
+                isDuplicate: false,
+            };
+        } catch (err) {
+            // This can occur when there is concurrency in the system and
+            // multiple requests try to save a post with the same apId at
+            // the same time
+            if (
+                err instanceof Error &&
+                'code' in err &&
+                err.code === 'ER_DUP_ENTRY' &&
+                err.message.includes('ap_id_hash')
+            ) {
+                const row = await transaction('posts')
+                    .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                        post.apId.href,
+                    ])
+                    .select('id')
+                    .first();
+
+                if (row) {
+                    return {
+                        id: row.id,
+                        isDuplicate: true,
+                    };
+                }
+            }
+
+            throw err;
+        }
     }
 
     /**

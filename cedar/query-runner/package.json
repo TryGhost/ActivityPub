@@ -12,13 +12,13 @@
   },
   "files": ["src"],
   "devDependencies": {
-    "concurrently": "9.1.0",
+    "concurrently": "9.1.2",
     "esbuild": "0.24.2",
-    "typescript": "5.7.2"
+    "typescript": "5.8.2"
   },
   "dependencies": {
     "bottleneck": "2.19.5",
-    "mysql2": "3.11.5",
+    "mysql2": "3.14.0",
     "percentile": "1.6.0"
   }
 }

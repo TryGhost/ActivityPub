@@ -263,9 +263,9 @@ export class PostService {
                 'posts_with_source.published_at as post_published_at',
                 'posts_with_source.like_count as post_like_count',
                 this.db.raw(
-                    `CASE 
-                        WHEN likes.post_id IS NOT NULL THEN 1 
-                        ELSE 0 
+                    `CASE
+                        WHEN likes.post_id IS NOT NULL THEN 1
+                        ELSE 0
                     END AS post_liked_by_user`,
                 ),
                 'posts_with_source.reply_count as post_reply_count',
@@ -273,9 +273,9 @@ export class PostService {
                 'posts_with_source.attachments as post_attachments',
                 'posts_with_source.repost_count as post_repost_count',
                 this.db.raw(
-                    `CASE 
-                        WHEN user_reposts.post_id IS NOT NULL THEN 1 
-                        ELSE 0 
+                    `CASE
+                        WHEN user_reposts.post_id IS NOT NULL THEN 1
+                        ELSE 0
                     END AS post_reposted_by_user`,
                 ),
                 'posts_with_source.ap_id as post_ap_id',
@@ -670,5 +670,25 @@ export class PostService {
             : null;
 
         return result;
+    }
+     * Check if a post is liked by an account
+     *
+     * @param postId ID of the post to check
+     * @param accountId ID of the account to check
+     * @returns True if the post is liked by the account, false otherwise
+     */
+    async isLikedByAccount(postId: number, accountId: number) {
+        return this.postRepository.isLikedByAccount(postId, accountId);
+    }
+
+    /**
+     * Check if a post is reposted by an account
+     *
+     * @param postId ID of the post to check
+     * @param accountId ID of the account to check
+     * @returns True if the post is reposted by the account, false otherwise
+     */
+    async isRepostedByAccount(postId: number, accountId: number) {
+        return this.postRepository.isRepostedByAccount(postId, accountId);
     }
 }

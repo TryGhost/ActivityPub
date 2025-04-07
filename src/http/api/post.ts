@@ -1,4 +1,5 @@
 import type { KnexAccountRepository } from 'account/account.repository.knex';
+import type { AccountService } from 'account/account.service';
 import { parseURL } from 'core/url';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
@@ -10,7 +11,10 @@ import { postToDTO } from './helpers/post';
 /**
  * Create a handler for a request to get a post
  */
-export function createGetPostHandler(postService: PostService) {
+export function createGetPostHandler(
+    postService: PostService,
+    accountService: AccountService,
+) {
     /**
      * Handle a request to get a post
      */
@@ -32,9 +36,33 @@ export function createGetPostHandler(postService: PostService) {
             });
         }
 
-        return new Response(JSON.stringify(postToDTO(post)), {
-            status: 200,
-        });
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        return new Response(
+            JSON.stringify(
+                postToDTO(post, {
+                    authoredByMe: post.author.id === account.id,
+                    likedByMe:
+                        post.id && account.id
+                            ? await postService.isLikedByAccount(
+                                  post.id,
+                                  account.id,
+                              )
+                            : false,
+                    repostedByMe:
+                        post.id && account.id
+                            ? await postService.isRepostedByAccount(
+                                  post.id,
+                                  account.id,
+                              )
+                            : false,
+                    repostedBy: null,
+                }),
+            ),
+            { status: 200 },
+        );
     };
 }
 

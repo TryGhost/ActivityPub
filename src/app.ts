@@ -998,7 +998,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/post/:post_ap_id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetPostHandler(postService)),
+    spanWrapper(createGetPostHandler(postService, accountService)),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',
