@@ -2,21 +2,21 @@ import {
     Activity,
     Article,
     CollectionPage,
-    lookupObject,
     Note,
+    lookupObject,
     isActor,
 } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { isHandle } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import { isUri } from 'helpers/uri';
 import type { PostDTO } from 'http/api/types';
 import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
-import { isHandle } from 'helpers/activitypub/actor';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;
