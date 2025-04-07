@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Account } from 'account/account.entity';
+import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { PostService } from 'post/post.service';
@@ -11,6 +12,54 @@ describe('Post API', () => {
     let site: Site;
     let account: Account;
     let postService: PostService;
+    let accountService: AccountService;
+
+    /**
+     * Helper to get a mock AppContext
+     *
+     * @param postApId The ID of the post to return when req.param('post_ap_id') is called
+     */
+    function getMockAppContext(postApId: string) {
+        return {
+            req: {
+                param: (key: string) => {
+                    if (key === 'post_ap_id') {
+                        return postApId;
+                    }
+                    return null;
+                },
+            },
+            get: (key: string) => {
+                if (key === 'site') {
+                    return site;
+                }
+            },
+        } as unknown as AppContext;
+    }
+
+    /**
+     * Helper to create a post
+     *
+     * @param id The ID of the post
+     */
+    function createPost(id: number) {
+        return new Post(
+            id,
+            '259e92cb-5ac2-4d62-910f-ddea29b2cf55',
+            account,
+            PostType.Article,
+            Audience.Public,
+            `Test Post ${id}`,
+            `Test Post ${id} Excerpt`,
+            `Test Post ${id} Content`,
+            new URL(`https://${site.host}/posts/${id}`),
+            new URL(`https://${site.host}/images/post-${id}.jpg`),
+            new Date(),
+            0,
+            0,
+            2,
+        );
+    }
 
     beforeEach(() => {
         vi.setSystemTime(new Date('2025-03-25T14:00:00Z'));
@@ -26,59 +75,40 @@ describe('Post API', () => {
             username: 'foobar',
             name: 'Foo Bar',
             bio: 'Just a foo bar',
-            avatarUrl: new URL('https://example.com/avatars/foobar.png'),
-            bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
+            avatarUrl: new URL(`https://${site.host}/avatars/foobar.png`),
+            bannerImageUrl: new URL(`https://${site.host}/banners/foobar.png`),
             site,
-            apId: new URL('https://example.com/users/456'),
-            url: new URL('https://example.com/users/456'),
-            apFollowers: new URL('https://example.com/followers/456'),
+            apId: new URL(`https://${site.host}/users/456`),
+            url: new URL(`https://${site.host}/users/456`),
+            apFollowers: new URL(`https://${site.host}/followers/456`),
         });
-        postService = {} as PostService;
+        postService = {
+            getByApId: vi.fn().mockResolvedValue(null),
+            isLikedByAccount: vi.fn().mockResolvedValue(false),
+            isRepostedByAccount: vi.fn().mockResolvedValue(false),
+        } as unknown as PostService;
+        accountService = {} as AccountService;
     });
 
     it('should return a post', async () => {
-        const postApId = 'https://example.com/posts/123';
+        const postId = 789;
+        const postApId = `https://${site.host}/posts/${postId}`;
 
-        const ctx = {
-            req: {
-                param: (key: string) => {
-                    if (key === 'post_ap_id') {
-                        return postApId;
-                    }
-                    return null;
-                },
-            },
-            get: (key: string) => {
-                if (key === 'site') {
-                    return site;
-                }
-            },
-        } as unknown as AppContext;
+        const ctx = getMockAppContext(postApId);
 
         postService.getByApId = vi.fn().mockImplementation((_postApId) => {
             if (_postApId.href === postApId) {
-                return new Post(
-                    123,
-                    '259e92cb-5ac2-4d62-910f-ddea29b2cf55',
-                    account,
-                    PostType.Article,
-                    Audience.Public,
-                    'Test Post 123',
-                    'Test Post 123 Excerpt',
-                    'Test Post 123 Content',
-                    new URL('https://example.com/posts/123'),
-                    new URL('https://example.com/images/post-123.jpg'),
-                    new Date(),
-                    0,
-                    0,
-                    2,
-                );
+                return createPost(postId);
             }
 
             return null;
         });
 
-        const handler = createGetPostHandler(postService);
+        accountService.getDefaultAccountForSite = vi
+            .fn()
+            .mockImplementation((_site) => ({ id: 987 }));
+
+        const handler = createGetPostHandler(postService, accountService);
 
         const response = await handler(ctx);
 
@@ -88,53 +118,128 @@ describe('Post API', () => {
         );
     });
 
+    it('should return a post with authoredByMe set to true if the post is authored by the default account for the site', async () => {
+        const postId = 789;
+        const postApId = `https://${site.host}/posts/${postId}`;
+
+        const ctx = getMockAppContext(postApId);
+
+        postService.getByApId = vi.fn().mockImplementation((_postApId) => {
+            if (_postApId.href === postApId) {
+                return createPost(postId);
+            }
+
+            return null;
+        });
+
+        accountService.getDefaultAccountForSite = vi
+            .fn()
+            .mockImplementation((_site) => account);
+
+        const handler = createGetPostHandler(postService, accountService);
+
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchFileSnapshot(
+            './__snapshots__/post-authored-by-me.json',
+        );
+    });
+
+    it('should return a post with likedByMe set to true if the post is liked by the default account for the site', async () => {
+        const postId = 789;
+        const postApId = `https://${site.host}/posts/${postId}`;
+
+        const ctx = getMockAppContext(postApId);
+
+        postService.getByApId = vi.fn().mockImplementation((_postApId) => {
+            if (_postApId.href === postApId) {
+                return createPost(postId);
+            }
+
+            return null;
+        });
+
+        postService.isLikedByAccount = vi
+            .fn()
+            .mockImplementation((_postId, _accountId) => {
+                if (_postId === postId && _accountId === account.id) {
+                    return true;
+                }
+                return false;
+            });
+
+        accountService.getDefaultAccountForSite = vi
+            .fn()
+            .mockImplementation((_site) => account);
+
+        const handler = createGetPostHandler(postService, accountService);
+
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchFileSnapshot(
+            './__snapshots__/post-liked-by-me.json',
+        );
+    });
+
+    it('should return a post with repostedByMe set to true if the post is reposted by the default account for the site', async () => {
+        const postId = 789;
+        const postApId = `https://${site.host}/posts/${postId}`;
+
+        const ctx = getMockAppContext(postApId);
+
+        postService.getByApId = vi.fn().mockImplementation((_postApId) => {
+            if (_postApId.href === postApId) {
+                return createPost(postId);
+            }
+
+            return null;
+        });
+
+        postService.isRepostedByAccount = vi
+            .fn()
+            .mockImplementation((_postId, _accountId) => {
+                if (_postId === postId && _accountId === account.id) {
+                    return true;
+                }
+                return false;
+            });
+
+        accountService.getDefaultAccountForSite = vi
+            .fn()
+            .mockImplementation((_site) => account);
+
+        const handler = createGetPostHandler(postService, accountService);
+
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchFileSnapshot(
+            './__snapshots__/post-reposted-by-me.json',
+        );
+    });
+
     it('should return 400 for invalid post AP ID', async () => {
         const postApId = 'not-a-url';
 
-        const ctx = {
-            req: {
-                param: (key: string) => {
-                    if (key === 'post_ap_id') {
-                        return postApId;
-                    }
-                    return null;
-                },
-            },
-            get: (key: string) => {
-                if (key === 'site') {
-                    return site;
-                }
-            },
-        } as unknown as AppContext;
+        const ctx = getMockAppContext(postApId);
 
-        const handler = createGetPostHandler(postService);
+        const handler = createGetPostHandler(postService, accountService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
     });
 
     it('should return 404 when post is not found', async () => {
-        const postApId = 'https://example.com/posts/non-existent';
+        const postId = 789;
+        const postApId = `https://${site.host}/posts/${postId}`;
 
-        const ctx = {
-            req: {
-                param: (key: string) => {
-                    if (key === 'post_ap_id') {
-                        return postApId;
-                    }
-                    return null;
-                },
-            },
-            get: (key: string) => {
-                if (key === 'site') {
-                    return site;
-                }
-            },
-        } as unknown as AppContext;
+        const ctx = getMockAppContext(postApId);
 
         postService.getByApId = vi.fn().mockResolvedValue(null);
 
-        const handler = createGetPostHandler(postService);
+        const handler = createGetPostHandler(postService, accountService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(404);

@@ -134,6 +134,7 @@ export class KnexPostRepository {
 
         return post;
     }
+
     async getById(id: Post['id']): Promise<Post | null> {
         return await this.getByQuery((qb: Knex.QueryBuilder) => {
             return qb.where('posts.id', id);
