@@ -7,6 +7,12 @@ import linkifyHtml from 'linkify-html';
 export const MEMBER_CONTENT_MARKER = '<!--members-only-->';
 
 /**
+ * Paid content preview message added to non-public posts
+ */
+export const PAID_CONTENT_PREVIEW_HTML = (url: URL) =>
+    `<p class="paid-content-notice">This is a paid preview - <a href="${url.href}">sign up</a> to see more.</p>`;
+
+/**
  * Options for preparing content
  */
 interface PrepareContentOptions {
@@ -30,6 +36,14 @@ interface PrepareContentOptions {
      * Convert URL's to anchor tags
      */
     extractLinks: boolean;
+    /**
+     * Whether to add paid content preview message
+     */
+    addPaidContentMessage:
+        | false
+        | {
+              url: URL;
+          };
 }
 
 export class ContentPreparer {
@@ -43,6 +57,7 @@ export class ContentPreparer {
             convertLineBreaks: false,
             wrapInParagraph: false,
             extractLinks: false,
+            addPaidContentMessage: false,
         },
     ) {
         return ContentPreparer.instance.prepare(content, options);
@@ -66,6 +81,7 @@ export class ContentPreparer {
             convertLineBreaks: false,
             wrapInParagraph: false,
             extractLinks: false,
+            addPaidContentMessage: false,
         },
     ) {
         let prepared = content;
@@ -90,7 +106,23 @@ export class ContentPreparer {
             prepared = this.wrapInParagraph(prepared);
         }
 
+        if (options.addPaidContentMessage !== false) {
+            prepared = this.addPaidContentMessage(
+                prepared,
+                options.addPaidContentMessage.url,
+            );
+        }
+
         return prepared;
+    }
+
+    /**
+     * Add paid content preview message to the content
+     *
+     * @param content Content to add the message to
+     */
+    private addPaidContentMessage(content: string, url: URL) {
+        return content + PAID_CONTENT_PREVIEW_HTML(url);
     }
 
     /**
