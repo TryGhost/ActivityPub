@@ -1,8 +1,9 @@
+import type { Federation } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
-import { type AppContext, fedify } from 'app';
+import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { GetProfileDataResult, PostService } from 'post/post.service';
@@ -43,6 +44,7 @@ type FollowAccount = Pick<
 export function createGetAccountHandler(
     accountService: AccountService,
     accountRepository: KnexAccountRepository,
+    fedify: Federation<ContextData>,
 ) {
     /**
      * Handle a request for an account
@@ -240,6 +242,7 @@ function validateRequestParams(ctx: AppContext) {
 export function createGetAccountPostsHandler(
     postService: PostService,
     accountRepository: KnexAccountRepository,
+    fedify: Federation<ContextData>,
 ) {
     /**
      * Handle a request for a list of posts by an account
@@ -257,7 +260,6 @@ export function createGetAccountPostsHandler(
         const db = ctx.get('db');
 
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            //todo check if this is correct
             db,
             globaldb: ctx.get('globaldb'),
             logger,

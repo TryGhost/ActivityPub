@@ -968,12 +968,16 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountHandler(accountService, accountRepository)),
+    spanWrapper(
+        createGetAccountHandler(accountService, accountRepository, fedify),
+    ),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountPostsHandler(postService, accountRepository)),
+    spanWrapper(
+        createGetAccountPostsHandler(postService, accountRepository, fedify),
+    ),
 );
 app.get(
     '/.ghost/activitypub/posts/liked/:handle',
