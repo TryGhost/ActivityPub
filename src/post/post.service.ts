@@ -580,6 +580,10 @@ export class PostService {
             throw new Error('Invalid handle');
         }
 
+        if (!defaultAccount || !defaultAccount.id) {
+            throw new Error('Default account not found');
+        }
+
         // If the next parameter is not a valid URI, return early
         if (next !== '' && !isUri(next)) {
             throw new Error('Invalid next parameter');
