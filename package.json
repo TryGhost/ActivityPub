@@ -48,7 +48,7 @@
     "@vitest/coverage-v8": "2.1.9",
     "concurrently": "9.1.2",
     "esbuild": "0.24.2",
-    "typescript": "5.8.2",
+    "typescript": "5.8.3",
     "vite-tsconfig-paths": "5.1.4",
     "vitest": "2.1.9",
     "wiremock-captain": "3.5.0"
