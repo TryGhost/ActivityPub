@@ -3,8 +3,8 @@ import {
     Article,
     CollectionPage,
     Note,
-    lookupObject,
     isActor,
+    lookupObject,
 } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
