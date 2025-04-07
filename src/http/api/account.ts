@@ -71,12 +71,12 @@ export function createGetAccountHandler(
             return new Response(null, { status: 404 });
         }
 
-        const defaultAccount = await accountRepository.getBySite(
+        const siteDefaultAccount = await accountRepository.getBySite(
             ctx.get('site'),
         );
 
         if (handle === CURRENT_USER_KEYWORD) {
-            account = defaultAccount;
+            account = siteDefaultAccount;
         } else {
             const apId = await lookupAPIdByHandle(apCtx, handle);
 
@@ -92,7 +92,7 @@ export function createGetAccountHandler(
             if (account?.isInternal) {
                 accountDto = await getAccountDTOFromAccount(
                     account,
-                    defaultAccount,
+                    siteDefaultAccount,
                     accountService,
                 );
             } else {
