@@ -116,4 +116,55 @@ export class KnexAccountRepository {
 
         return account;
     }
+
+    async getFollowingAccountsCount(accountId: number): Promise<number> {
+        return this.getFollowCount(accountId, 'following');
+    }
+
+    async getFollowerAccountsCount(accountId: number): Promise<number> {
+        return this.getFollowCount(accountId, 'followers');
+    }
+
+    private async getFollowCount(
+        accountId: number,
+        type: 'following' | 'followers',
+    ): Promise<number> {
+        const result = await this.db('follows')
+            .where(
+                type === 'following' ? 'follower_id' : 'following_id',
+                accountId,
+            )
+            .count('*', { as: 'count' });
+
+        return Number(result[0].count);
+    }
+
+    async getPostCount(
+        accountId: number,
+        { includeReposts = false }: { includeReposts?: boolean } = {},
+    ): Promise<number> {
+        const posts = await this.db('posts')
+            .where('author_id', accountId)
+            .count('*', { as: 'count' });
+
+        if (includeReposts) {
+            const reposts = await this.db('reposts')
+                .where('account_id', accountId)
+                .count('*', { as: 'count' });
+
+            return Number(posts[0].count) + Number(reposts[0].count);
+        }
+
+        return Number(posts[0].count);
+    }
+
+    async getLikedPostsCount(accountId: number): Promise<number> {
+        const result = await this.db('likes')
+            .join('posts', 'likes.post_id', 'posts.id')
+            .where('likes.account_id', accountId)
+            .whereNull('posts.in_reply_to')
+            .count('*', { as: 'count' });
+
+        return Number(result[0].count);
+    }
 }
