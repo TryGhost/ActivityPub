@@ -69,7 +69,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface GetProfileDataResult {
-    results: GetProfileDataResultRow[];
+    results: PostDTO[];
     nextCursor: string | null;
 }
 
@@ -139,6 +139,60 @@ export class PostService {
                       avatarUrl: result.reposter_avatar_url ?? '',
                   }
                 : null,
+        };
+    }
+
+    /**
+     * Transforms an activity into a PostDTO
+     * @param activity Activity to transform
+     * @param accountId Current account ID
+     * @returns PostDTO object
+     */
+    private mapActivityToPostDTO(activity: any): PostDTO {
+        const object = activity.object;
+        const actor = activity.actor;
+        const attributedTo = object.attributedTo;
+
+        return {
+            id: object.id,
+            type: object.type === 'Article' ? PostType.Article : PostType.Note,
+            title: object.name || '',
+            excerpt: object.preview?.content || '',
+            content: object.content || '',
+            url: object.url || '',
+            featureImageUrl: object.image || null,
+            publishedAt: new Date(object.published || ''),
+            likeCount: 0,
+            likedByMe: object.liked || false,
+            replyCount: object.replyCount || 0,
+            readingTimeMinutes: 0,
+            attachments: object.attachment || [],
+            author: {
+                id: attributedTo.id,
+                handle: getAccountHandle(
+                    new URL(attributedTo.id).host,
+                    attributedTo.preferredUsername,
+                ),
+                name: attributedTo.name || '',
+                url: attributedTo.id,
+                avatarUrl: attributedTo.icon?.url || '',
+            },
+            authoredByMe: object.authored || false,
+            repostCount: object.repostCount || 0,
+            repostedByMe: object.reposted || false,
+            repostedBy:
+                activity.type === 'Announce'
+                    ? {
+                          id: actor.id,
+                          handle: getAccountHandle(
+                              new URL(actor.id).host,
+                              actor.preferredUsername,
+                          ),
+                          name: actor.name || '',
+                          url: actor.id,
+                          avatarUrl: actor.icon?.url || '',
+                      }
+                    : null,
         };
     }
 
@@ -601,6 +655,10 @@ export class PostService {
                     format: 'compact',
                 })) as any;
 
+                if (activity.object.inReplyTo) {
+                    continue;
+                }
+
                 if (activity?.object?.content) {
                     activity.object.content = sanitizeHtml(
                         activity.object.content,
@@ -659,7 +717,7 @@ export class PostService {
                     }
                 }
 
-                result.results.push(activity);
+                result.results.push(this.mapActivityToPostDTO(activity));
             }
         } catch (err) {
             throw Error('Error getting posts');
