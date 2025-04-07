@@ -10,7 +10,6 @@ import {
     Person,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import type { Logger } from '@logtape/logtape';
 
 import type {
     ActivitySender,
@@ -19,7 +18,6 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-import { type ContentPreparer, MEMBER_CONTENT_MARKER } from './content';
 import { FedifyPublishingService, PublishStatus } from './service';
 import { type Note, type Post, PostVisibility } from './types';
 
@@ -52,8 +50,6 @@ describe('FedifyPublishingService', () => {
     let mockActivitySender: ActivitySender<Activity, Actor>;
     let actor: Actor;
     let mockActorResolver: ActorResolver<Actor>;
-    let mockContentPreparer: ContentPreparer;
-    let mockLogger: Logger;
     let mockObjectStore: ObjectStore<FedifyObject>;
     let mockUriBuilder: UriBuilder<FedifyObject>;
     let mockOutbox: Outbox<Activity>;
@@ -70,14 +66,6 @@ describe('FedifyPublishingService', () => {
         mockActorResolver = {
             resolveActorByHandle: vi.fn().mockResolvedValue(actor),
         } as ActorResolver<Actor>;
-
-        mockContentPreparer = {
-            prepare: vi.fn().mockImplementation((content) => content),
-        } as unknown as ContentPreparer;
-
-        mockLogger = {
-            info: vi.fn().mockResolvedValue(void 0),
-        } as unknown as Logger;
 
         mockObjectStore = {
             store: vi.fn().mockResolvedValue(void 0),
@@ -134,8 +122,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -149,8 +135,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -176,8 +160,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -195,8 +177,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -223,8 +203,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -237,90 +215,6 @@ describe('FedifyPublishingService', () => {
             await expect(result).toMatchFileSnapshot(
                 './__snapshots__/service/publish-post-publish-result.json',
             );
-        });
-
-        it('should ensure that member content is not included in the article content', async () => {
-            post.visibility = PostVisibility.Members;
-            post.content = `Public content${MEMBER_CONTENT_MARKER}Member content`;
-
-            vi.mocked(mockContentPreparer.prepare).mockImplementation(
-                (content) => {
-                    return content.replace(MEMBER_CONTENT_MARKER, '');
-                },
-            );
-
-            const service = new FedifyPublishingService(
-                mockActivitySender,
-                mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
-                mockObjectStore,
-                mockUriBuilder,
-            );
-
-            await service.publishPost(post, mockOutbox);
-
-            expect(mockContentPreparer.prepare).toHaveBeenCalledTimes(1);
-            expect(mockContentPreparer.prepare).toHaveBeenCalledWith(
-                post.content,
-                {
-                    removeMemberContent: true,
-                    convertLineBreaks: false,
-                    escapeHtml: false,
-                    extractLinks: false,
-                    wrapInParagraph: false,
-                },
-            );
-
-            expect(
-                mockActivitySender.sendActivityToActorFollowers,
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('should not publish a post if there is no public content', async () => {
-            post.visibility = PostVisibility.Members;
-            post.content = 'Member content';
-
-            const service = new FedifyPublishingService(
-                mockActivitySender,
-                mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
-                mockObjectStore,
-                mockUriBuilder,
-            );
-
-            const result = await service.publishPost(post, mockOutbox);
-
-            expect(result.status).toBe(PublishStatus.NotPublished);
-            expect(result.activityJsonLd).toBeNull();
-
-            expect(
-                mockActivitySender.sendActivityToActorFollowers,
-            ).not.toHaveBeenCalled();
-        });
-
-        it('should not publish a post if there is no public content prior to the member content marker', async () => {
-            post.visibility = PostVisibility.Members;
-            post.content = `${MEMBER_CONTENT_MARKER}Member content`;
-
-            const service = new FedifyPublishingService(
-                mockActivitySender,
-                mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
-                mockObjectStore,
-                mockUriBuilder,
-            );
-
-            const result = await service.publishPost(post, mockOutbox);
-
-            expect(result.status).toBe(PublishStatus.NotPublished);
-            expect(result.activityJsonLd).toBeNull();
-
-            expect(
-                mockActivitySender.sendActivityToActorFollowers,
-            ).not.toHaveBeenCalled();
         });
     });
 
@@ -344,8 +238,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -359,8 +251,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -385,8 +275,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -404,8 +292,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
@@ -432,8 +318,6 @@ describe('FedifyPublishingService', () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
-                mockContentPreparer,
-                mockLogger,
                 mockObjectStore,
                 mockUriBuilder,
             );
