@@ -272,6 +272,10 @@ export function createGetAccountPostsHandler(
             ctx.get('site'),
         );
 
+        if (!defaultAccount || !defaultAccount.id) {
+            return new Response(null, { status: 400 });
+        }
+
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
             account = defaultAccount;
@@ -293,9 +297,7 @@ export function createGetAccountPostsHandler(
 
         try {
             //If we found the account in our db and it's an internal account, do an internal lookup
-            if (
-                (account?.isInternal && account.id)
-            ) {
+            if (account?.isInternal && account.id) {
                 const postResult = await postService.getPostsByAccount(
                     account.id,
                     defaultAccount.id,

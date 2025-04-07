@@ -246,7 +246,7 @@ export class PostService {
      */
     async getPostsByAccount(
         accountId: number,
-        defaultAccountId: number | null,
+        defaultAccountId: number,
         limit: number,
         cursor: string | null,
     ): Promise<GetProfileDataResult> {
@@ -671,6 +671,8 @@ export class PostService {
 
         return result;
     }
+
+    /**
      * Check if a post is liked by an account
      *
      * @param postId ID of the post to check
