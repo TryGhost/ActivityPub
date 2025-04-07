@@ -2,7 +2,8 @@ import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
-import { type AppContext, fedify } from 'app';
+import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { AppContext } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
@@ -39,10 +40,13 @@ type FollowAccount = Pick<
  * Create a handler to handle a request for an account
  *
  * @param accountService Account service instance
+ * @param accountRepository Account repository instance
+ * @param fedifyContextFactory Fedify context factory instance
  */
 export function createGetAccountHandler(
     accountService: AccountService,
     accountRepository: KnexAccountRepository,
+    fedifyContextFactory: FedifyContextFactory,
 ) {
     /**
      * Handle a request for an account
@@ -53,13 +57,8 @@ export function createGetAccountHandler(
         const logger = ctx.get('logger');
         const site = ctx.get('site');
         let account: Account | null = null;
-        const db = ctx.get('db');
 
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db,
-            globaldb: ctx.get('globaldb'),
-            logger,
-        });
+        const apCtx = fedifyContextFactory.getFedifyContext();
 
         const defaultAccount = await accountRepository.getBySite(
             ctx.get('site'),
