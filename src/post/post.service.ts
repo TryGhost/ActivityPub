@@ -513,18 +513,16 @@ export class PostService {
         handle: string,
         next: string,
     ): Promise<GetProfileDataResult | Error> {
-        // If the next parameter is not a valid URI, return early
-        if (!isUri(next)) {
-            throw Error('Invalid next parameter');
-        }
-
         // Lookup actor by handle
         const context = this.fedifyContextFactory.getFedifyContext();
+        console.log('################# LOGS - next: ', next);
 
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
         const actor = await lookupObject(handle, { documentLoader });
+
+        //console.log('################# LOGS - actor: ', actor);
 
         if (!isActor(actor)) {
             throw Error('Actor not found');
@@ -542,6 +540,10 @@ export class PostService {
 
         try {
             if (next !== '') {
+                // If the next parameter is not a valid URI, return early
+                if (!isUri(next)) {
+                    throw Error('Invalid next parameter');
+                }
                 // Ensure the next parameter is for the same host as the actor. We
                 // do this to prevent blindly passing URIs to lookupObject (i.e next
                 // param has been tampered with)
@@ -554,19 +556,29 @@ export class PostService {
                     throw Error('Invalid Actor Host');
                 }
 
+                console.log('################# LOGS - next: ', next);
+                console.log('################# LOGS - getting Page');
+
                 page = (await lookupObject(next, {
                     documentLoader,
                 })) as CollectionPage | null;
+
+                // console.log('################# LOGS - page: ', page);
 
                 // Check that we have a valid page
                 if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
+
+                //console.log('################# LOGS - final page: ', page);
             } else {
+                console.log('################# LOGS - Getting outbox');
                 const outbox = await actor.getOutbox();
+                //console.log('################# LOGS - outbox: ', outbox);
 
                 if (outbox) {
                     page = await outbox.getFirst();
+                    //console.log('################# LOGS - page: ', page);
                 }
             }
         } catch (err) {
@@ -576,29 +588,47 @@ export class PostService {
         if (!page) {
             throw Error('Page not found');
         }
+        let i = 0;
 
         // Return result
         try {
             for await (const item of page.getItems()) {
+                i++;
+                if (i > 1) {
+                    break;
+                }
                 if (!(item instanceof Activity)) {
                     continue;
                 }
 
-                const object = await item.getObject();
+                const object1 = await item.getObject();
+                
                 //const attributedTo = await object?.getAttribution();
-                if (!object || !object.id) {
+                if (!object1 || !object1.id) {
                     continue;
                 }
+
+                const object = (await object1.toJsonLd({
+                    format: 'compact',
+                })) as any;
+
+                console.log('################# LOGS - object: ', object);
+
+                //console.log('################# LOGS - object: ', object);
 
                 const activity = (await item.toJsonLd({
                     format: 'compact',
                 })) as any;
+
+                //console.log('################# LOGS - activity: ', activity);
 
                 if (typeof activity.actor === 'string') {
                     activity.actor = await actor.toJsonLd({
                         format: 'compact',
                     });
                 }
+
+                //console.log('################# LOGS - activity.actor: ', activity.actor);
 
                 if (typeof activity.object.attributedTo === 'string') {
                     const attributedTo = await lookupObject(
@@ -616,15 +646,27 @@ export class PostService {
                     }
                 }
 
+                //console.log('################# LOGS - here before post');
+
                 const post = await this.postRepository.getByApId(object.id);
+                // if (object instanceof Article) {
+                //     console.log('################# LOGS - object: ', object);
+                //     // console.log(
+                //     //     '################# LOGS - activity: ',
+                //     //     activity,
+                //     // );
+                // }
 
                 const postDTO: PostDTO = {
                     id: object.id.toString(),
-                    type: PostType.Article,
+                    type:
+                        object instanceof Article
+                            ? PostType.Article
+                            : PostType.Note,
                     title: object.name?.toString() || '',
                     excerpt: object.summary?.toString() || '',
-                    content: activity?.object?.content
-                        ? sanitizeHtml(activity?.object?.content)
+                    content: object?.preview?.content
+                        ? sanitizeHtml(object?.preview?.content)
                         : '',
                     url: object.url?.toString() || '',
                     featureImageUrl: object.imageId?.toString() || '',
@@ -639,16 +681,16 @@ export class PostService {
                     replyCount: post ? post.replyCount : 0,
                     readingTimeMinutes: 0,
                     author: {
-                        id: activity.actor.id,
+                        id: activity?.actor?.id,
                         handle: getAccountHandle(
-                            activity.actor.id.host || '',
-                            activity.actor.id.username || '',
+                            activity?.actor?.id.host || '',
+                            activity?.actor?.id.username || '',
                         ),
-                        name: activity.actor.name?.toString() || '',
-                        url: activity.actor.id,
-                        avatarUrl: activity.actor.icon.url?.toString() || '',
+                        name: activity?.actor?.name?.toString() || '',
+                        url: activity?.actor?.id,
+                        avatarUrl: activity?.actor?.icon.url?.toString() || '',
                     },
-                    authoredByMe: defaultAccount.apId === activity.actor.id,
+                    authoredByMe: defaultAccount.apId === activity?.actor?.id,
                     repostCount: post ? post.repostCount : 0,
                     repostedByMe: post
                         ? await this.postRepository.isRepostedByAccount(
@@ -660,18 +702,24 @@ export class PostService {
                     attachments: [],
                 };
 
-                if (activity.type === 'Announce') {
-                    postDTO.repostedBy = {
-                        id: activity.attributedTo.id,
-                        handle: getAccountHandle(
-                            activity.attributedTo.id.host || '',
-                            activity.attributedTo.id.username || '',
-                        ),
-                        name: activity.attributedTo.name?.toString() || '',
-                        url: activity.attributedTo.id,
-                        avatarUrl:
-                            activity.attributedTo.icon.url?.toString() || '',
-                    };
+                // if (activity?.type === 'Announce') {
+                //     postDTO.repostedBy = {
+                //         id: activity?.attributedTo.id,
+                //         handle: getAccountHandle(
+                //             activity?.attributedTo.id.host || '',
+                //             activity?.attributedTo.id.username || '',
+                //         ),
+                //         name: activity?.attributedTo.name?.toString() || '',
+                //         url: activity?.attributedTo.id,
+                //         avatarUrl:
+                //             activity?.attributedTo.icon.url?.toString() || '',
+                //     };
+                // }
+
+                //console.log('################# LOGS - here after post', postDTO);
+
+                if (object instanceof Article) {
+                    console.log('################# LOGS - postDTO: ', postDTO);
                 }
 
                 result.results.push(postDTO);
@@ -679,6 +727,11 @@ export class PostService {
         } catch (err) {
             throw Error('Error getting posts');
         }
+
+        
+
+        console.log('################# LOGS - here after try');
+        console.log('################# LOGS - result: ', result.results.length);
 
         result.nextCursor = page.nextId
             ? encodeURIComponent(page.nextId.toString())

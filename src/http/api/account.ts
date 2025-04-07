@@ -273,9 +273,12 @@ export function createGetAccountPostsHandler(
             ctx.get('site'),
         );
 
+        console.log('################# LOGS - handle: ', handle);
+
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
             account = defaultAccount;
+            console.log('################# LOGS - account: ', account);
         } else {
             if (!isHandle(handle)) {
                 return new Response(null, { status: 400 });
@@ -294,7 +297,11 @@ export function createGetAccountPostsHandler(
 
         try {
             //If we found the account in our db and it's an internal account, do an internal lookup
-            if (account?.isInternal && account.id) {
+            if (account?.isInternal && account.id || account?.apId.toString().includes('.ghost')) {
+                console.log('################# LOGS - Internal lookup');
+                console.log('################# LOGS - account.id: ', account.id);
+                console.log('################# LOGS - params.limit: ', params.limit);
+                console.log('################# LOGS - params.cursor: ', params.cursor);
                 const postResult = await postService.getPostsByAccount(
                     account.id,
                     params.limit,
@@ -304,6 +311,10 @@ export function createGetAccountPostsHandler(
                 result.nextCursor = postResult.nextCursor;
             } else {
                 //Otherwise, do a remote lookup to fetch the posts
+                console.log('################# LOGS - Remote lookup');
+                //console.log('################# LOGS - defaultAccount: ', defaultAccount);
+                console.log('################# LOGS - handle: ', handle);
+                console.log('################# LOGS - params.cursor: ', params.cursor);
                 const postResult = await postService.getPostsByRemoteLookUp(
                     defaultAccount,
                     handle,
