@@ -37,6 +37,11 @@ type FollowAccount = Pick<
 > & { isFollowing: boolean };
 
 /**
+ * Keyword for the current user when account data is requested
+ */
+const CURRENT_USER_KEYWORD = 'me';
+
+/**
  * Create a handler to handle a request for an account
  *
  * @param accountService Account service instance
@@ -65,8 +70,8 @@ export function createGetAccountHandler(
         );
 
         const handle = ctx.req.param('handle');
-        // We are using the keyword 'me', if we want to get the account of teh current user
-        if (handle === 'me') {
+
+        if (handle === CURRENT_USER_KEYWORD) {
             account = defaultAccount;
         } else {
             if (!isHandle(handle)) {
