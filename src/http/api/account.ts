@@ -65,20 +65,21 @@ export function createGetAccountHandler(
 
         const apCtx = fedifyContextFactory.getFedifyContext();
 
+        const handle = ctx.req.param('handle');
+
+        if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
+            return new Response(null, { status: 404 });
+        }
+
         const defaultAccount = await accountRepository.getBySite(
             ctx.get('site'),
         );
 
-        const handle = ctx.req.param('handle');
-
         if (handle === CURRENT_USER_KEYWORD) {
             account = defaultAccount;
         } else {
-            if (!isHandle(handle)) {
-                return new Response(null, { status: 404 });
-            }
-
             const apId = await lookupAPIdByHandle(apCtx, handle);
+
             if (apId) {
                 account = await accountRepository.getByApId(new URL(apId));
             }
