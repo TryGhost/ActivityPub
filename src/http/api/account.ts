@@ -294,14 +294,15 @@ export function createGetAccountPostsHandler(
         try {
             //If we found the account in our db and it's an internal account, do an internal lookup
             if (
-                (account?.isInternal && account.id) ||
-                account?.apId.toString().includes('.ghost')
+                (account?.isInternal && account.id)
             ) {
                 const postResult = await postService.getPostsByAccount(
                     account.id,
+                    defaultAccount.id,
                     params.limit,
                     params.cursor,
                 );
+
                 result.results = postResult.results;
                 result.nextCursor = postResult.nextCursor;
             } else {

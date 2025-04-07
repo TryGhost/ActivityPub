@@ -246,6 +246,7 @@ export class PostService {
      */
     async getPostsByAccount(
         accountId: number,
+        defaultAccountId: number | null,
         limit: number,
         cursor: string | null,
     ): Promise<GetProfileDataResult> {
@@ -370,7 +371,7 @@ export class PostService {
                 this.on('likes.post_id', 'posts_with_source.id').andOnVal(
                     'likes.account_id',
                     '=',
-                    accountId.toString(),
+                    defaultAccountId.toString(),
                 );
             })
             .leftJoin('reposts as user_reposts', function () {
@@ -380,7 +381,7 @@ export class PostService {
                 ).andOnVal(
                     'user_reposts.account_id',
                     '=',
-                    accountId.toString(),
+                    defaultAccountId.toString(),
                 );
             })
             .modify((query) => {
