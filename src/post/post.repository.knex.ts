@@ -835,7 +835,10 @@ export class KnexPostRepository {
      * @param accountId ID of the account to check
      * @returns True if the post is liked by the account, false otherwise
      */
-    async isLikedByAccount(postId: number, accountId: number) {
+    async isLikedByAccount(postId: number, accountId: number | null) {
+        if (accountId === null) {
+            return false;
+        }
         const result = await this.db('likes')
             .where({
                 post_id: postId,
@@ -853,7 +856,10 @@ export class KnexPostRepository {
      * @param accountId ID of the account to check
      * @returns True if the post is reposted by the account, false otherwise
      */
-    async isRepostedByAccount(postId: number, accountId: number) {
+    async isRepostedByAccount(postId: number, accountId: number | null) {
+        if (accountId === null) {
+            return false;
+        }
         const result = await this.db('reposts')
             .where({
                 post_id: postId,

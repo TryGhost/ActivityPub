@@ -238,7 +238,6 @@ function validateRequestParams(ctx: AppContext) {
  * @param profileService Profile service instance
  */
 export function createGetAccountPostsHandler(
-    accountService: AccountService,
     postService: PostService,
     accountRepository: KnexAccountRepository,
 ) {
@@ -254,11 +253,11 @@ export function createGetAccountPostsHandler(
         }
 
         const logger = ctx.get('logger');
-        const site = ctx.get('site');
         let account: Account | null = null;
         const db = ctx.get('db');
 
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            //todo check if this is correct
             db,
             globaldb: ctx.get('globaldb'),
             logger,
@@ -273,12 +272,9 @@ export function createGetAccountPostsHandler(
             ctx.get('site'),
         );
 
-        console.log('################# LOGS - handle: ', handle);
-
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
             account = defaultAccount;
-            console.log('################# LOGS - account: ', account);
         } else {
             if (!isHandle(handle)) {
                 return new Response(null, { status: 400 });
@@ -297,11 +293,10 @@ export function createGetAccountPostsHandler(
 
         try {
             //If we found the account in our db and it's an internal account, do an internal lookup
-            if (account?.isInternal && account.id || account?.apId.toString().includes('.ghost')) {
-                console.log('################# LOGS - Internal lookup');
-                console.log('################# LOGS - account.id: ', account.id);
-                console.log('################# LOGS - params.limit: ', params.limit);
-                console.log('################# LOGS - params.cursor: ', params.cursor);
+            if (
+                (account?.isInternal && account.id) ||
+                account?.apId.toString().includes('.ghost')
+            ) {
                 const postResult = await postService.getPostsByAccount(
                     account.id,
                     params.limit,
@@ -311,10 +306,6 @@ export function createGetAccountPostsHandler(
                 result.nextCursor = postResult.nextCursor;
             } else {
                 //Otherwise, do a remote lookup to fetch the posts
-                console.log('################# LOGS - Remote lookup');
-                //console.log('################# LOGS - defaultAccount: ', defaultAccount);
-                console.log('################# LOGS - handle: ', handle);
-                console.log('################# LOGS - params.cursor: ', params.cursor);
                 const postResult = await postService.getPostsByRemoteLookUp(
                     defaultAccount,
                     handle,
@@ -327,7 +318,6 @@ export function createGetAccountPostsHandler(
                 result.nextCursor = postResult.nextCursor;
             }
         } catch (error) {
-            //handle 400
             logger.error(`Error getting posts for ${handle}: {error}`, {
                 error,
             });
@@ -369,6 +359,10 @@ export function createGetAccountLikedPostsHandler(
         const account = await accountService.getDefaultAccountForSite(
             ctx.get('site'),
         );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
 
         const { results, nextCursor } =
             await postService.getPostsLikedByAccount(

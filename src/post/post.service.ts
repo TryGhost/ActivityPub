@@ -16,6 +16,7 @@ import type { PostDTO } from 'http/api/types';
 import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
+import { isHandle } from 'helpers/activitypub/actor';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;
@@ -68,7 +69,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface GetProfileDataResult {
-    results: PostDTO[];
+    results: GetProfileDataResultRow[];
     nextCursor: string | null;
 }
 
@@ -513,19 +514,27 @@ export class PostService {
         handle: string,
         next: string,
     ): Promise<GetProfileDataResult | Error> {
-        // Lookup actor by handle
         const context = this.fedifyContextFactory.getFedifyContext();
-        console.log('################# LOGS - next: ', next);
 
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
+
+        // If the provided handle is invalid, return early
+        if (!isHandle(handle)) {
+            throw new Error('Invalid handle');
+        }
+
+        // If the next parameter is not a valid URI, return early
+        if (next !== '' && !isUri(next)) {
+            throw new Error('Invalid next parameter');
+        }
+
+        // Lookup actor by handle
         const actor = await lookupObject(handle, { documentLoader });
 
-        //console.log('################# LOGS - actor: ', actor);
-
         if (!isActor(actor)) {
-            throw Error('Actor not found');
+            throw new Error('Actor not found');
         }
 
         // Retrieve actor's posts
@@ -540,10 +549,6 @@ export class PostService {
 
         try {
             if (next !== '') {
-                // If the next parameter is not a valid URI, return early
-                if (!isUri(next)) {
-                    throw Error('Invalid next parameter');
-                }
                 // Ensure the next parameter is for the same host as the actor. We
                 // do this to prevent blindly passing URIs to lookupObject (i.e next
                 // param has been tampered with)
@@ -553,11 +558,8 @@ export class PostService {
                 const { host: nextHost } = new URL(next);
 
                 if (actorHost !== nextHost) {
-                    throw Error('Invalid Actor Host');
+                    throw new Error('Invalid next parameter');
                 }
-
-                console.log('################# LOGS - next: ', next);
-                console.log('################# LOGS - getting Page');
 
                 page = (await lookupObject(next, {
                     documentLoader,
@@ -569,16 +571,11 @@ export class PostService {
                 if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
-
-                //console.log('################# LOGS - final page: ', page);
             } else {
-                console.log('################# LOGS - Getting outbox');
                 const outbox = await actor.getOutbox();
-                //console.log('################# LOGS - outbox: ', outbox);
 
                 if (outbox) {
                     page = await outbox.getFirst();
-                    //console.log('################# LOGS - page: ', page);
                 }
             }
         } catch (err) {
@@ -586,49 +583,64 @@ export class PostService {
         }
 
         if (!page) {
-            throw Error('Page not found');
+            throw new Error('No page found');
         }
-        let i = 0;
 
         // Return result
         try {
             for await (const item of page.getItems()) {
-                i++;
-                if (i > 1) {
-                    break;
-                }
                 if (!(item instanceof Activity)) {
                     continue;
                 }
 
-                const object1 = await item.getObject();
-                
-                //const attributedTo = await object?.getAttribution();
-                if (!object1 || !object1.id) {
-                    continue;
-                }
-
-                const object = (await object1.toJsonLd({
-                    format: 'compact',
-                })) as any;
-
-                console.log('################# LOGS - object: ', object);
-
-                //console.log('################# LOGS - object: ', object);
+                const object = await item.getObject();
+                const attributedTo = await object?.getAttribution();
 
                 const activity = (await item.toJsonLd({
                     format: 'compact',
                 })) as any;
 
-                //console.log('################# LOGS - activity: ', activity);
+                if (activity?.object?.content) {
+                    activity.object.content = sanitizeHtml(
+                        activity.object.content,
+                    );
+                }
+
+                activity.object.authored =
+                    defaultAccount.apId === activity.actor.id;
+
+                // Add counters & flags to the object
+                activity.object.replyCount = 0;
+                activity.object.repostCount = 0;
+                activity.object.liked = false;
+                activity.object.reposted = false;
+
+                if (object?.id) {
+                    const post = await this.postRepository.getByApId(object.id);
+
+                    activity.object.replyCount = post ? post.replyCount : 0;
+                    activity.object.repostCount = post ? post.repostCount : 0;
+
+                    activity.object.liked = post
+                        ? await this.postRepository.isLikedByAccount(
+                              post.id!,
+                              defaultAccount.id,
+                          )
+                        : false;
+
+                    activity.object.reposted = post
+                        ? await this.postRepository.isRepostedByAccount(
+                              post.id!,
+                              defaultAccount.id,
+                          )
+                        : false;
+                }
 
                 if (typeof activity.actor === 'string') {
                     activity.actor = await actor.toJsonLd({
                         format: 'compact',
                     });
                 }
-
-                //console.log('################# LOGS - activity.actor: ', activity.actor);
 
                 if (typeof activity.object.attributedTo === 'string') {
                     const attributedTo = await lookupObject(
@@ -646,92 +658,11 @@ export class PostService {
                     }
                 }
 
-                //console.log('################# LOGS - here before post');
-
-                const post = await this.postRepository.getByApId(object.id);
-                // if (object instanceof Article) {
-                //     console.log('################# LOGS - object: ', object);
-                //     // console.log(
-                //     //     '################# LOGS - activity: ',
-                //     //     activity,
-                //     // );
-                // }
-
-                const postDTO: PostDTO = {
-                    id: object.id.toString(),
-                    type:
-                        object instanceof Article
-                            ? PostType.Article
-                            : PostType.Note,
-                    title: object.name?.toString() || '',
-                    excerpt: object.summary?.toString() || '',
-                    content: object?.preview?.content
-                        ? sanitizeHtml(object?.preview?.content)
-                        : '',
-                    url: object.url?.toString() || '',
-                    featureImageUrl: object.imageId?.toString() || '',
-                    publishedAt: new Date(object.published?.toString() || ''),
-                    likeCount: 0,
-                    likedByMe: post
-                        ? await this.postRepository.isLikedByAccount(
-                              post.id!,
-                              defaultAccount.id || 0, //Todo fix this
-                          )
-                        : false,
-                    replyCount: post ? post.replyCount : 0,
-                    readingTimeMinutes: 0,
-                    author: {
-                        id: activity?.actor?.id,
-                        handle: getAccountHandle(
-                            activity?.actor?.id.host || '',
-                            activity?.actor?.id.username || '',
-                        ),
-                        name: activity?.actor?.name?.toString() || '',
-                        url: activity?.actor?.id,
-                        avatarUrl: activity?.actor?.icon.url?.toString() || '',
-                    },
-                    authoredByMe: defaultAccount.apId === activity?.actor?.id,
-                    repostCount: post ? post.repostCount : 0,
-                    repostedByMe: post
-                        ? await this.postRepository.isRepostedByAccount(
-                              post.id!,
-                              defaultAccount.id || 0, //Todo fix this
-                          )
-                        : false,
-                    repostedBy: null,
-                    attachments: [],
-                };
-
-                // if (activity?.type === 'Announce') {
-                //     postDTO.repostedBy = {
-                //         id: activity?.attributedTo.id,
-                //         handle: getAccountHandle(
-                //             activity?.attributedTo.id.host || '',
-                //             activity?.attributedTo.id.username || '',
-                //         ),
-                //         name: activity?.attributedTo.name?.toString() || '',
-                //         url: activity?.attributedTo.id,
-                //         avatarUrl:
-                //             activity?.attributedTo.icon.url?.toString() || '',
-                //     };
-                // }
-
-                //console.log('################# LOGS - here after post', postDTO);
-
-                if (object instanceof Article) {
-                    console.log('################# LOGS - postDTO: ', postDTO);
-                }
-
-                result.results.push(postDTO);
+                result.results.push(activity);
             }
         } catch (err) {
             throw Error('Error getting posts');
         }
-
-        
-
-        console.log('################# LOGS - here after try');
-        console.log('################# LOGS - result: ', result.results.length);
 
         result.nextCursor = page.nextId
             ? encodeURIComponent(page.nextId.toString())

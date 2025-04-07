@@ -108,7 +108,6 @@ import {
     createGetPostHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
-    createGetProfilePostsHandler,
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
@@ -962,12 +961,6 @@ app.get(
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetProfileFollowingHandler(accountService)),
 );
-//Todo: Remove this Endpoint
-app.get(
-    '/.ghost/activitypub/profile/:handle/posts',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetProfilePostsHandler(accountService, postRepository)),
-);
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
     spanWrapper(createGetThreadHandler(postRepository, accountService)),
@@ -980,10 +973,10 @@ app.get(
 app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountPostsHandler(accountService, postService, accountRepository)),
+    spanWrapper(createGetAccountPostsHandler(postService, accountRepository)),
 );
 app.get(
-    '/.ghost/activitypub/posts/liked',
+    '/.ghost/activitypub/posts/liked/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
 );
