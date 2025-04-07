@@ -624,8 +624,6 @@ export class PostService {
                     documentLoader,
                 })) as CollectionPage | null;
 
-                // console.log('################# LOGS - page: ', page);
-
                 // Check that we have a valid page
                 if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
@@ -646,8 +644,8 @@ export class PostService {
         }
 
         // Return result
-        try {
-            for await (const item of page.getItems()) {
+        for await (const item of page.getItems()) {
+            try {
                 if (!(item instanceof Activity)) {
                     continue;
                 }
@@ -722,9 +720,7 @@ export class PostService {
                 }
 
                 result.results.push(this.mapActivityToPostDTO(activity));
-            }
-        } catch (err) {
-            throw Error('Error getting posts');
+            } catch (err) {}
         }
 
         result.nextCursor = page.nextId
