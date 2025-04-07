@@ -82,15 +82,21 @@ export function createGetAccountHandler(
 
         let accountDto: AccountDTO;
 
-        try {
-            //If we found the account in our db and it's an internal account, do an internal lookup
-            if (account?.isInternal) {
+        if (account?.isInternal) {
+            try {
+                //If we found the account in our db and it's an internal account, do an internal lookup
                 accountDto = await getAccountDTOFromAccount(
                     account,
                     defaultAccount,
                     accountService,
                 );
-            } else {
+            } catch (error) {
+                logger.error('Error getting account: {error}', { error });
+
+                return new Response(null, { status: 500 });
+            }
+        } else {
+            try {
                 //Otherwise, do a remote lookup to fetch the updated data
                 accountDto = await getAccountDTOByHandle(
                     handle,
@@ -98,11 +104,11 @@ export function createGetAccountHandler(
                     site,
                     accountService,
                 );
-            }
-        } catch (error) {
-            logger.error('Error getting account: {error}', { error });
+            } catch (error) {
+                logger.error('Error getting account: {error}', { error });
 
-            return new Response(null, { status: 500 });
+                return new Response(null, { status: 404 });
+            }
         }
 
         // Return response
