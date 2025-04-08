@@ -347,7 +347,7 @@ describe('Post', () => {
 
         expect(post.uuid).toEqual(ghostPost.uuid);
         expect(post.content).toEqual(
-            '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><p class="paid-content-notice">This is a paid preview - <a href="https://ghost.org/post">sign up</a> to see more.</p>',
+            '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" />',
         );
     });
 
@@ -479,7 +479,7 @@ describe('Post', () => {
 
         describe('when the post is members-only', () => {
             describe('and there is no custom excerpt', () => {
-                it('should re-generate excerpt without the gated content and without the paid signup message', () => {
+                it('should re-generate excerpt without the gated content', () => {
                     const account = internalAccount();
                     const ghostPost = {
                         uuid: '550e8400-e29b-41d4-a716-446655440000',
