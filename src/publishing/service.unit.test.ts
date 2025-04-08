@@ -18,7 +18,7 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-import { FedifyPublishingService, PublishStatus } from './service';
+import { FedifyPublishingService } from './service';
 import { type Note, type Post, PostVisibility } from './types';
 
 vi.mock('uuid', () => ({
@@ -199,7 +199,7 @@ describe('FedifyPublishingService', () => {
             ).toBe(actor);
         });
 
-        it('should return a publish result', async () => {
+        it('should return the activity JSON-LD', async () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
@@ -209,8 +209,7 @@ describe('FedifyPublishingService', () => {
 
             const result = await service.publishPost(post, mockOutbox);
 
-            expect(result.status).toBe(PublishStatus.Published);
-            expect(result.activityJsonLd).toBeDefined();
+            expect(result).toBeDefined();
 
             await expect(result).toMatchFileSnapshot(
                 './__snapshots__/service/publish-post-publish-result.json',
@@ -314,7 +313,7 @@ describe('FedifyPublishingService', () => {
             ).toBe(actor);
         });
 
-        it('should return a publish result', async () => {
+        it('should return the activity JSON-LD', async () => {
             const service = new FedifyPublishingService(
                 mockActivitySender,
                 mockActorResolver,
@@ -324,8 +323,7 @@ describe('FedifyPublishingService', () => {
 
             const result = await service.publishNote(note, mockOutbox);
 
-            expect(result.status).toBe(PublishStatus.Published);
-            expect(result.activityJsonLd).toBeDefined();
+            expect(result).toBeDefined();
 
             await expect(result).toMatchFileSnapshot(
                 './__snapshots__/service/publish-note-publish-result.json',
