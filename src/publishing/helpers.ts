@@ -6,6 +6,7 @@ import {
     FedifyUriBuilder,
 } from '../activitypub';
 import { type AppContext, fedify } from '../app';
+import { ContentPreparer } from './content';
 import { FedifyPublishingService } from './service';
 import type { Note, Post } from './types';
 
@@ -28,6 +29,8 @@ function getFedifyPublishingService(ctx: AppContext) {
     return new FedifyPublishingService(
         new FedifyActivitySender(fedifyCtx),
         new FedifyActorResolver(fedifyCtx),
+        new ContentPreparer(),
+        logger,
         new FedifyKvStoreObjectStore(globalDb),
         new FedifyUriBuilder(fedifyCtx),
     );

@@ -8,6 +8,7 @@ import {
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 
 import type {
@@ -17,7 +18,8 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-import type { Note, Post } from './types';
+import type { ContentPreparer } from './content';
+import { type Note, type Post, PostVisibility } from './types';
 
 /**
  * Publish status
@@ -75,6 +77,8 @@ export class FedifyPublishingService implements PublishingService {
     constructor(
         private readonly activitySender: ActivitySender<Activity, Actor>,
         private readonly actorResolver: ActorResolver<Actor>,
+        private readonly contentPreparer: ContentPreparer,
+        private readonly logger: Logger,
         private readonly objectStore: ObjectStore<FedifyObject>,
         private readonly uriBuilder: UriBuilder<FedifyObject>,
     ) {}
@@ -94,6 +98,39 @@ export class FedifyPublishingService implements PublishingService {
             );
         }
 
+        // If the post is not public, only publish if there is public content
+        const isPublic = post.visibility === PostVisibility.Public;
+
+        let articleContent = post.content;
+
+        if (isPublic === false && post.content !== null) {
+            articleContent = this.contentPreparer.prepare(post.content, {
+                removeMemberContent: true,
+                escapeHtml: false,
+                convertLineBreaks: false,
+                wrapInParagraph: false,
+                extractLinks: false,
+            });
+
+            if (articleContent === post.content) {
+                articleContent = '';
+            }
+        }
+
+        if (isPublic === false && articleContent === '') {
+            this.logger.info(
+                'Skipping publishing post: No public content in the post: {post}',
+                {
+                    post,
+                },
+            );
+
+            return {
+                status: PublishStatus.NotPublished,
+                activityJsonLd: null,
+            };
+        }
+
         // Build the required objects
         const preview = new FedifyNote({
             id: this.uriBuilder.buildObjectUri(FedifyNote, post.id),
@@ -103,7 +140,7 @@ export class FedifyPublishingService implements PublishingService {
             id: this.uriBuilder.buildObjectUri(Article, post.id),
             attribution: actor,
             name: post.title,
-            content: post.content,
+            content: articleContent,
             image: post.featureImageUrl,
             published: post.publishedAt,
             preview,
