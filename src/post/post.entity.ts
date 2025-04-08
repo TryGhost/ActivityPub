@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { sanitizeHtml } from 'helpers/html';
+import { ContentPreparer } from 'publishing/content';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
-import { ContentPreparer } from './content';
 
 export enum PostType {
     Note = 0,
