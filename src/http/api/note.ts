@@ -6,7 +6,7 @@ import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { Post } from '../../post/post.entity';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
 import { publishNote } from '../../publishing/helpers';
-import type { PublishResult } from '../../publishing/service';
+import type { ActivityJsonLd } from '../../publishing/service';
 
 const NoteSchema = z.object({
     content: z.string(),
@@ -30,7 +30,7 @@ export async function handleCreateNote(
     const post = Post.createNote(account, data.content);
     await postRepository.save(post);
 
-    let result: PublishResult | null = null;
+    let result: ActivityJsonLd | null = null;
 
     try {
         result = await publishNote(ctx, {
@@ -46,7 +46,7 @@ export async function handleCreateNote(
         });
     }
 
-    return new Response(JSON.stringify(result ? result.activityJsonLd : {}), {
+    return new Response(JSON.stringify(result || {}), {
         headers: {
             'Content-Type': 'application/json',
         },

@@ -24,6 +24,16 @@ describe('ContentPreparer', () => {
                 expect(result).toEqual('Hello, world!');
             });
 
+            it('should remove all content if no marker is found', () => {
+                const content = 'This whole thing is member content';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeMemberContent: true,
+                });
+
+                expect(result).toEqual('');
+            });
+
             it('should not remove member by default', () => {
                 const content = `Hello, world!${MEMBER_CONTENT_MARKER}Member content`;
                 const result = preparer.prepare(content);
@@ -34,13 +44,36 @@ describe('ContentPreparer', () => {
 
         describe('Escaping HTML', () => {
             it('should escape HTML', () => {
-                const content = '<p>Hello, world!</p>';
-                const result = preparer.prepare(content, {
-                    ...allOptionsDisabled,
-                    escapeHtml: true,
-                });
+                const testCases = [
+                    {
+                        input: '<p>Hello, world!</p>',
+                        output: '&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;',
+                    },
+                    {
+                        input: 'Lorem ipsum dolor <img src="https://example.com/image.jpg" />',
+                        output: 'Lorem ipsum dolor &lt;img src=&quot;https:&#x2F;&#x2F;example.com&#x2F;image.jpg&quot; &#x2F;&gt;',
+                    },
+                    {
+                        input: '<script>alert("Hello, world!");</script>',
+                        output: '&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;',
+                    },
+                    {
+                        input: 'Lorem ipsum dolor sit amet',
+                        output: 'Lorem ipsum dolor sit amet',
+                    },
+                    {
+                        input: '',
+                        output: '',
+                    },
+                ];
 
-                expect(result).toEqual('&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;');
+                for (const { input, output } of testCases) {
+                    const result = preparer.prepare(input, {
+                        ...allOptionsDisabled,
+                        escapeHtml: true,
+                    });
+                    expect(result).toEqual(output);
+                }
             });
 
             it('should not escape HTML by default', () => {

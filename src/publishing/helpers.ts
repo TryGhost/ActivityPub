@@ -6,7 +6,6 @@ import {
     FedifyUriBuilder,
 } from '../activitypub';
 import { type AppContext, fedify } from '../app';
-import { ContentPreparer } from './content';
 import { FedifyPublishingService } from './service';
 import type { Note, Post } from './types';
 
@@ -29,8 +28,6 @@ function getFedifyPublishingService(ctx: AppContext) {
     return new FedifyPublishingService(
         new FedifyActivitySender(fedifyCtx),
         new FedifyActorResolver(fedifyCtx),
-        new ContentPreparer(),
-        logger,
         new FedifyKvStoreObjectStore(globalDb),
         new FedifyUriBuilder(fedifyCtx),
     );
@@ -41,6 +38,7 @@ function getFedifyPublishingService(ctx: AppContext) {
  *
  * @param ctx App context instance
  * @param post Post to publish
+ * @returns The activity in JSON-LD format
  */
 export async function publishPost(ctx: AppContext, post: Post) {
     const scopedDb = ctx.get('db');
@@ -55,6 +53,7 @@ export async function publishPost(ctx: AppContext, post: Post) {
  *
  * @param ctx App context instance
  * @param note Note to publish
+ * @returns The activity in JSON-LD format
  */
 export async function publishNote(ctx: AppContext, note: Note) {
     const scopedDb = ctx.get('db');

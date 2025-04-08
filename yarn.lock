@@ -501,10 +501,10 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/cli@1.5.0":
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.5.0.tgz#ec1cd76b9c7dd793b5b2b3bb6d87a3a3e886a02c"
-  integrity sha512-/GAbjLUnsHYZLfgCeQYWzXiMmxXkIA+VwdDKwIK5Fl9pW7o3z1j05z9z1XdEBYsXhy7Pl5EEO8mHgHvH3cNCEA==
+"@fedify/cli@1.5.1":
+  version "1.5.1"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.5.1.tgz#c50545601fa61012e38f0e84d8afe1f2bc6b5fca"
+  integrity sha512-QsVZHq68gypdVvvJF9EtjJmk3HJZU10l9YBhxJizSbLquOLpz6+LzUU3mt2G/WMbiHynnsJ5lyXp0LpNFlZ+Aw==
 
 "@fedify/fedify@1.5.0":
   version "1.5.0"
@@ -2318,10 +2318,10 @@ hex2dec@^1.0.1:
   resolved "https://registry.yarnpkg.com/hex2dec/-/hex2dec-1.1.2.tgz#8e1ce4bef36a74f7d5723c3fb3090c2860077338"
   integrity sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==
 
-hono@4.7.5:
-  version "4.7.5"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.7.5.tgz#5e28b48384971c16e011fe6f7b95668655d4b855"
-  integrity sha512-fDOK5W2C1vZACsgLONigdZTRZxuBqFtcKh7bUQ5cVSbwI2RWjloJDcgFOVzbQrlI6pCmhlTsVYZ7zpLj4m4qMQ==
+hono@4.7.6:
+  version "4.7.6"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.7.6.tgz#3b577a825de3bf97b27705d918890a660726835e"
+  integrity sha512-564rVzELU+9BRqqx5k8sT2NFwGD3I3Vifdb6P7CmM6FiarOSY+fDC+6B+k9wcCb86ReoayteZP2ki0cRLN1jbw==
 
 hosted-git-info@^2.1.4:
   version "2.8.9"

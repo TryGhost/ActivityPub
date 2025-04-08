@@ -8,7 +8,6 @@ import {
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 
 import type {
@@ -18,36 +17,12 @@ import type {
     Outbox,
     UriBuilder,
 } from '../activitypub';
-import type { ContentPreparer } from './content';
-import { type Note, type Post, PostVisibility } from './types';
+import type { Note, Post } from './types';
 
 /**
- * Publish status
+ * Type alias for the returned activity JSON-LD
  */
-export enum PublishStatus {
-    /**
-     * The content was published
-     */
-    Published = 'published',
-    /**
-     * The content was not published
-     */
-    NotPublished = 'not-published',
-}
-
-/**
- * Publish result
- */
-export interface PublishResult {
-    /**
-     * Publish status
-     */
-    status: PublishStatus;
-    /**
-     * Published activity
-     */
-    activityJsonLd: unknown;
-}
+export type ActivityJsonLd = unknown;
 
 /**
  * Publishes content to the Fediverse
@@ -58,16 +33,18 @@ export interface PublishingService {
      *
      * @param post Post to publish
      * @param outbox Outbox to record the published post in
+     * @returns The activity in JSON-LD format
      */
-    publishPost(post: Post, outbox: Outbox<unknown>): Promise<PublishResult>;
+    publishPost(post: Post, outbox: Outbox<unknown>): Promise<ActivityJsonLd>;
 
     /**
      * Publish a note to the Fediverse
      *
      * @param note Note to publish
      * @param outbox Outbox to record the published note in
+     * @returns The activity in JSON-LD format
      */
-    publishNote(note: Note, outbox: Outbox<unknown>): Promise<PublishResult>;
+    publishNote(note: Note, outbox: Outbox<unknown>): Promise<ActivityJsonLd>;
 }
 
 /**
@@ -77,8 +54,6 @@ export class FedifyPublishingService implements PublishingService {
     constructor(
         private readonly activitySender: ActivitySender<Activity, Actor>,
         private readonly actorResolver: ActorResolver<Actor>,
-        private readonly contentPreparer: ContentPreparer,
-        private readonly logger: Logger,
         private readonly objectStore: ObjectStore<FedifyObject>,
         private readonly uriBuilder: UriBuilder<FedifyObject>,
     ) {}
@@ -98,39 +73,6 @@ export class FedifyPublishingService implements PublishingService {
             );
         }
 
-        // If the post is not public, only publish if there is public content
-        const isPublic = post.visibility === PostVisibility.Public;
-
-        let articleContent = post.content;
-
-        if (isPublic === false && post.content !== null) {
-            articleContent = this.contentPreparer.prepare(post.content, {
-                removeMemberContent: true,
-                escapeHtml: false,
-                convertLineBreaks: false,
-                wrapInParagraph: false,
-                extractLinks: false,
-            });
-
-            if (articleContent === post.content) {
-                articleContent = '';
-            }
-        }
-
-        if (isPublic === false && articleContent === '') {
-            this.logger.info(
-                'Skipping publishing post: No public content in the post: {post}',
-                {
-                    post,
-                },
-            );
-
-            return {
-                status: PublishStatus.NotPublished,
-                activityJsonLd: null,
-            };
-        }
-
         // Build the required objects
         const preview = new FedifyNote({
             id: this.uriBuilder.buildObjectUri(FedifyNote, post.id),
@@ -140,7 +82,7 @@ export class FedifyPublishingService implements PublishingService {
             id: this.uriBuilder.buildObjectUri(Article, post.id),
             attribution: actor,
             name: post.title,
-            content: articleContent,
+            content: post.content,
             image: post.featureImageUrl,
             published: post.publishedAt,
             preview,
@@ -167,11 +109,8 @@ export class FedifyPublishingService implements PublishingService {
         // Send the create activity to the followers of the actor
         await this.activitySender.sendActivityToActorFollowers(create, actor);
 
-        // Return publish result
-        return {
-            status: PublishStatus.Published,
-            activityJsonLd: await create.toJsonLd(),
-        };
+        // Return activity JSON-LD
+        return await create.toJsonLd();
     }
 
     async publishNote(note: Note, outbox: Outbox<Activity>) {
@@ -224,10 +163,7 @@ export class FedifyPublishingService implements PublishingService {
         // Send the create activity to the followers of the actor
         await this.activitySender.sendActivityToActorFollowers(create, actor);
 
-        // Return publish result
-        return {
-            status: PublishStatus.Published,
-            activityJsonLd: await create.toJsonLd(),
-        };
+        // Return activity JSON-LD
+        return await create.toJsonLd();
     }
 }

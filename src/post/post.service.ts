@@ -28,11 +28,11 @@ interface BaseGetProfileDataResultRow {
     post_image_url: string | null;
     post_published_at: Date;
     post_like_count: number;
-    post_liked_by_user: 0 | 1;
+    post_liked_by_current_user: 0 | 1;
     post_reply_count: number;
     post_reading_time_minutes: number;
     post_repost_count: number;
-    post_reposted_by_user: 0 | 1;
+    post_reposted_by_current_user: 0 | 1;
     post_ap_id: string;
     post_attachments: {
         type: string | null;
@@ -101,7 +101,7 @@ export class PostService {
             featureImageUrl: result.post_image_url ?? null,
             publishedAt: result.post_published_at,
             likeCount: result.post_like_count,
-            likedByMe: result.post_liked_by_user === 1,
+            likedByMe: result.post_liked_by_current_user === 1,
             replyCount: result.post_reply_count,
             readingTimeMinutes: result.post_reading_time_minutes,
             attachments: result.post_attachments
@@ -124,7 +124,7 @@ export class PostService {
             },
             authoredByMe: result.author_id === accountId,
             repostCount: result.post_repost_count,
-            repostedByMe: result.post_reposted_by_user === 1,
+            repostedByMe: result.post_reposted_by_current_user === 1,
             repostedBy: result.reposter_id
                 ? {
                       id: result.reposter_id.toString(),
@@ -318,9 +318,9 @@ export class PostService {
                 'posts_with_source.like_count as post_like_count',
                 this.db.raw(
                     `CASE
-                        WHEN likes.post_id IS NOT NULL THEN 1
+                        WHEN current_user_likes.post_id IS NOT NULL THEN 1
                         ELSE 0
-                    END AS post_liked_by_user`,
+                    END AS post_liked_by_current_user`,
                 ),
                 'posts_with_source.reply_count as post_reply_count',
                 'posts_with_source.reading_time_minutes as post_reading_time_minutes',
@@ -328,9 +328,9 @@ export class PostService {
                 'posts_with_source.repost_count as post_repost_count',
                 this.db.raw(
                     `CASE
-                        WHEN user_reposts.post_id IS NOT NULL THEN 1
+                        WHEN current_user_reposts.post_id IS NOT NULL THEN 1
                         ELSE 0
-                    END AS post_reposted_by_user`,
+                    END AS post_reposted_by_current_user`,
                 ),
                 'posts_with_source.ap_id as post_ap_id',
                 // Author fields (Who originally created the post)
@@ -421,19 +421,22 @@ export class PostService {
                 'reposter_account.id',
                 'posts_with_source.reposter_id',
             )
-            .leftJoin('likes', function () {
-                this.on('likes.post_id', 'posts_with_source.id').andOnVal(
-                    'likes.account_id',
+            .leftJoin('likes as current_user_likes', function () {
+                this.on(
+                    'current_user_likes.post_id',
+                    'posts_with_source.id',
+                ).andOnVal(
+                    'current_user_likes.account_id',
                     '=',
                     defaultAccountId.toString(),
                 );
             })
-            .leftJoin('reposts as user_reposts', function () {
+            .leftJoin('reposts as current_user_reposts', function () {
                 this.on(
-                    'user_reposts.post_id',
+                    'current_user_reposts.post_id',
                     'posts_with_source.id',
                 ).andOnVal(
-                    'user_reposts.account_id',
+                    'current_user_reposts.account_id',
                     '=',
                     defaultAccountId.toString(),
                 );
@@ -491,7 +494,7 @@ export class PostService {
                 'posts.image_url as post_image_url',
                 'posts.published_at as post_published_at',
                 'posts.like_count as post_like_count',
-                this.db.raw('1 AS post_liked_by_user'), // Since we are selecting from `likes`, this is always 1
+                this.db.raw('1 AS post_liked_by_current_user'), // Since we are selecting from `likes`, this is always 1
                 'posts.reply_count as post_reply_count',
                 'posts.reading_time_minutes as post_reading_time_minutes',
                 'posts.attachments as post_attachments',
@@ -500,7 +503,7 @@ export class PostService {
                     `CASE
                             WHEN reposts.post_id IS NOT NULL THEN 1
                             ELSE 0
-                        END AS post_reposted_by_user`,
+                        END AS post_reposted_by_current_user`,
                 ),
                 'posts.ap_id as post_ap_id',
                 // Author fields
