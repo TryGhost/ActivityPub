@@ -210,3 +210,17 @@ export function sanitizeHtml(content: string): string {
         allowVulnerableTags: true,
     });
 }
+
+export function escapeHtml(content: string): string {
+    const escapes: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+    };
+
+    return content.replace(/[&<>"'`/]/g, (char) => escapes[char]);
+}

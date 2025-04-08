@@ -1,16 +1,10 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
-
+import { escapeHtml } from '../helpers/html';
 /**
  * Marker to indicate that the proceeding content is member content
  */
 export const MEMBER_CONTENT_MARKER = '<!--members-only-->';
-
-/**
- * Paid content preview message added to non-public posts
- */
-export const PAID_CONTENT_PREVIEW_HTML = (url: URL) =>
-    `<p class="paid-content-notice">This is a paid preview - <a href="${url.href}">sign up</a> to see more.</p>`;
 
 /**
  * Options for preparing content
@@ -36,14 +30,6 @@ interface PrepareContentOptions {
      * Convert URL's to anchor tags
      */
     extractLinks: boolean;
-    /**
-     * Whether to add paid content preview message
-     */
-    addPaidContentMessage:
-        | false
-        | {
-              url: URL;
-          };
 }
 
 export class ContentPreparer {
@@ -57,7 +43,6 @@ export class ContentPreparer {
             convertLineBreaks: false,
             wrapInParagraph: false,
             extractLinks: false,
-            addPaidContentMessage: false,
         },
     ) {
         return ContentPreparer.instance.prepare(content, options);
@@ -81,7 +66,6 @@ export class ContentPreparer {
             convertLineBreaks: false,
             wrapInParagraph: false,
             extractLinks: false,
-            addPaidContentMessage: false,
         },
     ) {
         let prepared = content;
@@ -106,23 +90,7 @@ export class ContentPreparer {
             prepared = this.wrapInParagraph(prepared);
         }
 
-        if (options.addPaidContentMessage !== false) {
-            prepared = this.addPaidContentMessage(
-                prepared,
-                options.addPaidContentMessage.url,
-            );
-        }
-
         return prepared;
-    }
-
-    /**
-     * Add paid content preview message to the content
-     *
-     * @param content Content to add the message to
-     */
-    private addPaidContentMessage(content: string, url: URL) {
-        return content + PAID_CONTENT_PREVIEW_HTML(url);
     }
 
     /**
@@ -173,24 +141,12 @@ export class ContentPreparer {
      * @param content Content to escape HTML in
      */
     private escapeHtml(content: string) {
-        const escapes: Record<string, string> = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#x27;',
-            '/': '&#x2F;',
-            '`': '&#x60;',
-        };
-
         return (
             content
                 // Split the content into parts before and after the member content
                 // marker so that the marker itself does not get escaped
                 .split(MEMBER_CONTENT_MARKER)
-                .map((part) =>
-                    part.replace(/[&<>"'`/]/g, (char) => escapes[char]),
-                )
+                .map((part) => escapeHtml(part))
                 .join(MEMBER_CONTENT_MARKER)
         );
     }

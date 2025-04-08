@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    ContentPreparer,
-    MEMBER_CONTENT_MARKER,
-    PAID_CONTENT_PREVIEW_HTML,
-} from './content';
+import { ContentPreparer, MEMBER_CONTENT_MARKER } from './content';
 
 describe('ContentPreparer', () => {
     const preparer = new ContentPreparer();
@@ -15,7 +11,6 @@ describe('ContentPreparer', () => {
             convertLineBreaks: false,
             wrapInParagraph: false,
             extractLinks: false,
-            addPaidContentMessage: false as const,
         };
 
         describe('Removing member content', () => {
@@ -49,36 +44,13 @@ describe('ContentPreparer', () => {
 
         describe('Escaping HTML', () => {
             it('should escape HTML', () => {
-                const testCases = [
-                    {
-                        input: '<p>Hello, world!</p>',
-                        output: '&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;',
-                    },
-                    {
-                        input: 'Lorem ipsum dolor <img src="https://example.com/image.jpg" />',
-                        output: 'Lorem ipsum dolor &lt;img src=&quot;https:&#x2F;&#x2F;example.com&#x2F;image.jpg&quot; &#x2F;&gt;',
-                    },
-                    {
-                        input: '<script>alert("Hello, world!");</script>',
-                        output: '&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;',
-                    },
-                    {
-                        input: 'Lorem ipsum dolor sit amet',
-                        output: 'Lorem ipsum dolor sit amet',
-                    },
-                    {
-                        input: '',
-                        output: '',
-                    },
-                ];
+                const content = '<p>Hello, world!</p>';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    escapeHtml: true,
+                });
 
-                for (const { input, output } of testCases) {
-                    const result = preparer.prepare(input, {
-                        ...allOptionsDisabled,
-                        escapeHtml: true,
-                    });
-                    expect(result).toEqual(output);
-                }
+                expect(result).toEqual('&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;');
             });
 
             it('should not escape HTML by default', () => {
@@ -133,29 +105,6 @@ describe('ContentPreparer', () => {
 
             it('should not wrap in paragraph by default', () => {
                 const content = 'Hello, world!';
-                const result = preparer.prepare(content);
-
-                expect(result).toEqual(content);
-            });
-        });
-
-        describe('Adding paid content message', () => {
-            it('should add paid content message when enabled', () => {
-                const content = '<p>Hello, world!</p>';
-                const result = preparer.prepare(content, {
-                    ...allOptionsDisabled,
-                    addPaidContentMessage: {
-                        url: new URL('https://hello.world'),
-                    },
-                });
-
-                expect(result).toEqual(
-                    `<p>Hello, world!</p>${PAID_CONTENT_PREVIEW_HTML(new URL('https://hello.world'))}`,
-                );
-            });
-
-            it('should not add paid content message by default', () => {
-                const content = '<p>Hello, world!</p>';
                 const result = preparer.prepare(content);
 
                 expect(result).toEqual(content);

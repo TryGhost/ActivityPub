@@ -52,9 +52,8 @@ export function createPostPublishedWebhookHandler(
 
         const account = await accountRepository.getBySite(ctx.get('site'));
 
-        let post: Post | null = null;
         try {
-            post = Post.createArticleFromGhostPost(account, data);
+            const post = Post.createArticleFromGhostPost(account, data);
             await postRepository.save(post);
         } catch (err) {
             ctx.get('logger').error('Failed to store post: {error}', {
@@ -62,28 +61,26 @@ export function createPostPublishedWebhookHandler(
             });
         }
 
-        if (post) {
-            try {
-                await publishPost(ctx, {
-                    id: data.uuid,
-                    title: data.title,
-                    content: post.content,
-                    excerpt: data.excerpt,
-                    featureImageUrl: data.feature_image
-                        ? new URL(data.feature_image)
-                        : null,
-                    publishedAt: Temporal.Instant.from(data.published_at),
-                    url: new URL(data.url),
-                    author: {
-                        handle: ACTOR_DEFAULT_HANDLE,
-                    },
-                    visibility: data.visibility,
-                });
-            } catch (err) {
-                ctx.get('logger').error('Failed to publish post: {error}', {
-                    error: err,
-                });
-            }
+        try {
+            await publishPost(ctx, {
+                id: data.uuid,
+                title: data.title,
+                content: data.html,
+                excerpt: data.excerpt,
+                featureImageUrl: data.feature_image
+                    ? new URL(data.feature_image)
+                    : null,
+                publishedAt: Temporal.Instant.from(data.published_at),
+                url: new URL(data.url),
+                author: {
+                    handle: ACTOR_DEFAULT_HANDLE,
+                },
+                visibility: data.visibility,
+            });
+        } catch (err) {
+            ctx.get('logger').error('Failed to publish post: {error}', {
+                error: err,
+            });
         }
 
         return new Response(JSON.stringify({}), {

@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { sanitizeHtml } from 'helpers/html';
+import { ContentPreparer } from 'publishing/content';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
-import { ContentPreparer } from './content';
 
 export enum PostType {
     Note = 0,
@@ -227,7 +227,6 @@ export class Post extends BaseEntity {
                 convertLineBreaks: false,
                 wrapInParagraph: false,
                 extractLinks: false,
-                addPaidContentMessage: false,
             });
 
             if (content === '') {
@@ -240,18 +239,6 @@ export class Post extends BaseEntity {
             ) {
                 excerpt = ContentPreparer.regenerateExcerpt(content);
             }
-
-            // We add the paid content message _after_ so it doesn't appear in excerpt
-            content = ContentPreparer.prepare(content, {
-                removeMemberContent: false,
-                escapeHtml: false,
-                convertLineBreaks: false,
-                wrapInParagraph: false,
-                extractLinks: false,
-                addPaidContentMessage: {
-                    url: new URL(ghostPost.url),
-                },
-            });
         }
 
         return new Post(
@@ -316,7 +303,6 @@ export class Post extends BaseEntity {
             convertLineBreaks: true,
             wrapInParagraph: true,
             extractLinks: true,
-            addPaidContentMessage: false,
         });
 
         return new Post(
@@ -364,7 +350,6 @@ export class Post extends BaseEntity {
             convertLineBreaks: true,
             wrapInParagraph: true,
             extractLinks: true,
-            addPaidContentMessage: false,
         });
 
         return new Post(
