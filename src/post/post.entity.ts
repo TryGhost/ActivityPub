@@ -229,20 +229,16 @@ export class Post extends BaseEntity {
                 extractLinks: false,
             });
 
+            if (content === '') {
+                throw new Error('Cannot create Post from private content');
+            }
+
             if (
                 ghostPost.custom_excerpt === null ||
                 ghostPost.custom_excerpt === ''
             ) {
                 excerpt = ContentPreparer.regenerateExcerpt(content);
             }
-
-            if (content === ghostPost.html) {
-                content = '';
-            }
-        }
-
-        if (isPublic === false && content === '') {
-            throw new Error('Cannot create Post from private content');
         }
 
         return new Post(

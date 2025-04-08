@@ -180,10 +180,6 @@ export class ContentPreparer {
     private removeMemberContent(content: string) {
         const memberContentIdx = content.indexOf(MEMBER_CONTENT_MARKER);
 
-        if (memberContentIdx !== -1) {
-            return content.substring(0, memberContentIdx);
-        }
-
-        return content;
+        return content.substring(0, memberContentIdx);
     }
 }

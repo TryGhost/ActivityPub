@@ -24,6 +24,16 @@ describe('ContentPreparer', () => {
                 expect(result).toEqual('Hello, world!');
             });
 
+            it('should remove all content if no marker is found', () => {
+                const content = 'This whole thing is member content';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeMemberContent: true,
+                });
+
+                expect(result).toEqual('');
+            });
+
             it('should not remove member by default', () => {
                 const content = `Hello, world!${MEMBER_CONTENT_MARKER}Member content`;
                 const result = preparer.prepare(content);
