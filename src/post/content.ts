@@ -1,6 +1,6 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
-
+import { escapeHtml } from '../helpers/html';
 /**
  * Marker to indicate that the proceeding content is member content
  */
@@ -141,24 +141,12 @@ export class ContentPreparer {
      * @param content Content to escape HTML in
      */
     private escapeHtml(content: string) {
-        const escapes: Record<string, string> = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#x27;',
-            '/': '&#x2F;',
-            '`': '&#x60;',
-        };
-
         return (
             content
                 // Split the content into parts before and after the member content
                 // marker so that the marker itself does not get escaped
                 .split(MEMBER_CONTENT_MARKER)
-                .map((part) =>
-                    part.replace(/[&<>"'`/]/g, (char) => escapes[char]),
-                )
+                .map((part) => escapeHtml(part))
                 .join(MEMBER_CONTENT_MARKER)
         );
     }
