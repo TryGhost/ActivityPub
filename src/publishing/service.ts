@@ -20,32 +20,9 @@ import type {
 import type { Note, Post } from './types';
 
 /**
- * Publish status
+ * Type alias for the returned activity JSON-LD
  */
-export enum PublishStatus {
-    /**
-     * The content was published
-     */
-    Published = 'published',
-    /**
-     * The content was not published
-     */
-    NotPublished = 'not-published',
-}
-
-/**
- * Publish result
- */
-export interface PublishResult {
-    /**
-     * Publish status
-     */
-    status: PublishStatus;
-    /**
-     * Published activity
-     */
-    activityJsonLd: unknown;
-}
+export type ActivityJsonLd = unknown;
 
 /**
  * Publishes content to the Fediverse
@@ -56,16 +33,18 @@ export interface PublishingService {
      *
      * @param post Post to publish
      * @param outbox Outbox to record the published post in
+     * @returns The activity in JSON-LD format
      */
-    publishPost(post: Post, outbox: Outbox<unknown>): Promise<PublishResult>;
+    publishPost(post: Post, outbox: Outbox<unknown>): Promise<ActivityJsonLd>;
 
     /**
      * Publish a note to the Fediverse
      *
      * @param note Note to publish
      * @param outbox Outbox to record the published note in
+     * @returns The activity in JSON-LD format
      */
-    publishNote(note: Note, outbox: Outbox<unknown>): Promise<PublishResult>;
+    publishNote(note: Note, outbox: Outbox<unknown>): Promise<ActivityJsonLd>;
 }
 
 /**
@@ -130,11 +109,8 @@ export class FedifyPublishingService implements PublishingService {
         // Send the create activity to the followers of the actor
         await this.activitySender.sendActivityToActorFollowers(create, actor);
 
-        // Return publish result
-        return {
-            status: PublishStatus.Published,
-            activityJsonLd: await create.toJsonLd(),
-        };
+        // Return activity JSON-LD
+        return await create.toJsonLd();
     }
 
     async publishNote(note: Note, outbox: Outbox<Activity>) {
@@ -187,10 +163,7 @@ export class FedifyPublishingService implements PublishingService {
         // Send the create activity to the followers of the actor
         await this.activitySender.sendActivityToActorFollowers(create, actor);
 
-        // Return publish result
-        return {
-            status: PublishStatus.Published,
-            activityJsonLd: await create.toJsonLd(),
-        };
+        // Return activity JSON-LD
+        return await create.toJsonLd();
     }
 }

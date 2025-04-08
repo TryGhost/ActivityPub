@@ -38,6 +38,7 @@ function getFedifyPublishingService(ctx: AppContext) {
  *
  * @param ctx App context instance
  * @param post Post to publish
+ * @returns The activity in JSON-LD format
  */
 export async function publishPost(ctx: AppContext, post: Post) {
     const scopedDb = ctx.get('db');
@@ -52,6 +53,7 @@ export async function publishPost(ctx: AppContext, post: Post) {
  *
  * @param ctx App context instance
  * @param note Note to publish
+ * @returns The activity in JSON-LD format
  */
 export async function publishNote(ctx: AppContext, note: Note) {
     const scopedDb = ctx.get('db');
