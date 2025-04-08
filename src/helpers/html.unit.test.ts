@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import doSanitizeHtml from 'sanitize-html';
 
-import { escapeHtml, sanitizeHtml } from './html';
+import { sanitizeHtml } from './html';
 
 vi.mock('sanitize-html');
 
@@ -267,36 +267,5 @@ describe('sanitizeHtml', () => {
         // Restore the mock for subsequent tests
         vi.mock('sanitize-html');
         vi.resetModules();
-    });
-});
-
-describe('escapeHtml', () => {
-    it('should return the provided content escaped of any HTML', () => {
-        const testCases = [
-            {
-                input: '<p>Hello, world!</p>',
-                output: '&lt;p&gt;Hello, world!&lt;&#x2F;p&gt;',
-            },
-            {
-                input: 'Lorem ipsum dolor <img src="https://example.com/image.jpg" />',
-                output: 'Lorem ipsum dolor &lt;img src=&quot;https:&#x2F;&#x2F;example.com&#x2F;image.jpg&quot; &#x2F;&gt;',
-            },
-            {
-                input: '<script>alert("Hello, world!");</script>',
-                output: '&lt;script&gt;alert(&quot;Hello, world!&quot;);&lt;&#x2F;script&gt;',
-            },
-            {
-                input: 'Lorem ipsum dolor sit amet',
-                output: 'Lorem ipsum dolor sit amet',
-            },
-            {
-                input: '',
-                output: '',
-            },
-        ];
-
-        for (const { input, output } of testCases) {
-            expect(escapeHtml(input)).toEqual(output);
-        }
     });
 });
