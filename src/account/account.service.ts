@@ -13,6 +13,7 @@ import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import type { Account } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
+import type { RemoteAccountRepository } from './account.repository.remote';
 import type {
     Account as AccountType,
     ExternalAccountData,
@@ -41,19 +42,35 @@ export class AccountService {
         private readonly db: Knex,
         private readonly events: AsyncEvents,
         private readonly accountRepository: KnexAccountRepository,
+        private readonly remoteAccountRepository: RemoteAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
     ) {}
 
     /**
      * Get an Account by the ActivityPub ID
-     * If it is not found locally in our database it will be
-     * remotely fetched and stored
+     *
+     * If it is not found locally in our database it will be remotely fetched
+     * and stored unless the `lookupOnly` option is set to `true`
+     *
+     * @param id ActivityPub ID
+     * @param options Options for the lookup
+     * @param options.lookupOnly If true, only lookup the account remotely and
+     * do not store it locally
      */
-    async getByApId(id: URL): Promise<Account | null> {
+    async getByApId(
+        id: URL,
+        options: { lookupOnly?: boolean } = {
+            lookupOnly: false,
+        },
+    ): Promise<Account | null> {
         const account = await this.accountRepository.getByApId(id);
         if (account) {
             return account;
+        }
+
+        if (options.lookupOnly) {
+            return this.remoteAccountRepository.getByApId(id);
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();

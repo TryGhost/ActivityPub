@@ -33,6 +33,7 @@ import {
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import { KnexAccountRepository } from 'account/account.repository.knex';
+import { RemoteAccountRepository } from 'account/account.repository.remote';
 import { CreateHandler } from 'activity-handlers/create.handler';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
@@ -251,12 +252,16 @@ const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
 
 const accountRepository = new KnexAccountRepository(client, events);
+const remoteAccountRepository = new RemoteAccountRepository(
+    fedifyContextFactory,
+);
 const postRepository = new KnexPostRepository(client, events);
 
 const accountService = new AccountService(
     client,
     events,
     accountRepository,
+    remoteAccountRepository,
     fedifyContextFactory,
 );
 

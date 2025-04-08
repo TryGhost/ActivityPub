@@ -5,12 +5,9 @@ import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
+import { sanitizeHtml } from 'helpers/html';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
-import {
-    getAccountDTOByHandle,
-    getAccountDTOFromAccount,
-} from './helpers/account';
 import type { AccountDTO } from './types';
 
 /**
@@ -59,12 +56,6 @@ export function createGetAccountHandler(
      * @param ctx App context
      */
     return async function handleGetAccount(ctx: AppContext) {
-        const logger = ctx.get('logger');
-        const site = ctx.get('site');
-        let account: Account | null = null;
-
-        const apCtx = fedifyContextFactory.getFedifyContext();
-
         const handle = ctx.req.param('handle');
 
         if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
@@ -75,40 +66,65 @@ export function createGetAccountHandler(
             ctx.get('site'),
         );
 
+        let account: Account | null = null;
+
         if (handle === CURRENT_USER_KEYWORD) {
             account = siteDefaultAccount;
         } else {
-            const apId = await lookupAPIdByHandle(apCtx, handle);
+            const apId = await lookupAPIdByHandle(
+                fedifyContextFactory.getFedifyContext(),
+                handle,
+            );
 
             if (apId) {
-                account = await accountRepository.getByApId(new URL(apId));
+                account = await accountService.getByApId(new URL(apId), {
+                    lookupOnly: true,
+                });
             }
         }
 
-        let accountDto: AccountDTO;
-
-        try {
-            //If we found the account in our db and it's an internal account, do an internal lookup
-            if (account?.isInternal) {
-                accountDto = await getAccountDTOFromAccount(
-                    account,
-                    siteDefaultAccount,
-                    accountService,
-                );
-            } else {
-                //Otherwise, do a remote lookup to fetch the updated data
-                accountDto = await getAccountDTOByHandle(
-                    handle,
-                    apCtx,
-                    site,
-                    accountService,
-                );
-            }
-        } catch (error) {
-            logger.error('Error getting account: {error}', { error });
-
-            return new Response(null, { status: 500 });
+        if (!account) {
+            return new Response(null, { status: 404 });
         }
+
+        const accountDto: AccountDTO = {
+            id: account.id?.toString() || '',
+            name: account.name || '',
+            handle: getAccountHandle(
+                new URL(account.apId).host,
+                account.username,
+            ),
+            bio: sanitizeHtml(account.bio || ''),
+            url: account.url.toString() || '',
+            avatarUrl: account.avatarUrl?.toString() || '',
+            bannerImageUrl: account.bannerImageUrl?.toString() || '',
+            customFields: {},
+            attachment: [],
+            postCount: account.totalPostCount,
+            likedCount: account.likedPostCount,
+            followingCount: account.followingCount,
+            followerCount: account.followerCount,
+            /**
+             * We can only check follow status if the retrieved account
+             * is not a remote account
+             */
+            followedByMe: account.id
+                ? await accountService.checkIfAccountIsFollowing(
+                      siteDefaultAccount.id,
+                      account.id,
+                  )
+                : false,
+            /**
+             * We can only check follow status if the retrieved account
+             * is not a remote account
+             */
+            followsMe: account.id
+                ? await accountService.checkIfAccountIsFollowing(
+                      account.id,
+                      siteDefaultAccount.id,
+                  )
+                : false,
+        };
 
         // Return response
         return new Response(JSON.stringify(accountDto), {
