@@ -21,6 +21,11 @@ describe('postToPostDTO', () => {
             new URL('https://foobar.com/user/123'),
             null,
             new URL('https://foobar.com/followers/123'),
+            0,
+            0,
+            0,
+            0,
+            0,
         );
 
         const post = Post.createFromData(author, {
@@ -50,6 +55,11 @@ describe('postToPostDTO', () => {
             new URL('https://foobar.com/user/123'),
             null,
             new URL('https://foobar.com/followers/123'),
+            0,
+            0,
+            0,
+            0,
+            0,
         );
 
         const post = Post.createFromData(author, {

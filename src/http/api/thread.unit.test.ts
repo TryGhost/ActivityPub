@@ -34,6 +34,11 @@ describe('Thread API', () => {
             apId: new URL('https://example.com/users/456'),
             url: new URL('https://example.com/users/456'),
             apFollowers: new URL('https://example.com/followers/456'),
+            postCount: 0,
+            repostCount: 0,
+            likedPostCount: 0,
+            followerCount: 0,
+            followingCount: 0,
         });
         accountService = {
             getDefaultAccountForSite: async (_site: Site) => {

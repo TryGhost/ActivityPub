@@ -99,6 +99,11 @@ export class KnexPostRepository {
             parseURL(row.author_ap_id),
             parseURL(row.author_url),
             parseURL(row.author_ap_followers_url),
+            0,
+            0,
+            0,
+            0,
+            0,
         );
 
         // Parse attachments and convert URL strings back to URL objects
@@ -346,6 +351,11 @@ export class KnexPostRepository {
                 parseURL(row.author_ap_id),
                 parseURL(row.author_url),
                 parseURL(row.author_ap_followers_url),
+                0,
+                0,
+                0,
+                0,
+                0,
             );
 
             const attachments = row.attachments

@@ -58,6 +58,11 @@ describe('Account Helpers', () => {
                 ),
                 url: new URL('https://example.com/profile'),
                 apFollowers: new URL('https://example.com/followers'),
+                postCount: 0,
+                repostCount: 0,
+                likedPostCount: 0,
+                followerCount: 0,
+                followingCount: 0,
             };
 
             const defaultAccountData = {
@@ -78,6 +83,11 @@ describe('Account Helpers', () => {
                 ),
                 url: new URL('https://example.com/profile'),
                 apFollowers: new URL('https://example.com/followers'),
+                postCount: 0,
+                repostCount: 0,
+                likedPostCount: 0,
+                followerCount: 0,
+                followingCount: 0,
             };
 
             const account = Account.createFromData(accountData);
@@ -135,6 +145,11 @@ describe('Account Helpers', () => {
                 ),
                 url: null,
                 apFollowers: new URL('https://example.com/followers'),
+                postCount: 0,
+                repostCount: 0,
+                likedPostCount: 0,
+                followerCount: 0,
+                followingCount: 0,
             };
 
             const account = Account.createFromData(accountData);
@@ -157,6 +172,11 @@ describe('Account Helpers', () => {
                 ),
                 url: null,
                 apFollowers: new URL('https://example.com/followers'),
+                postCount: 0,
+                repostCount: 0,
+                likedPostCount: 0,
+                followerCount: 0,
+                followingCount: 0,
             };
 
             const defaultAccount = Account.createFromData(defaultAccountData);

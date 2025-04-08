@@ -15,6 +15,11 @@ export interface AccountData {
     apId: URL | null;
     url: URL | null;
     apFollowers: URL | null;
+    postCount: number;
+    repostCount: number;
+    likedPostCount: number;
+    followerCount: number;
+    followingCount: number;
 }
 
 export type AccountSite = {
@@ -39,6 +44,11 @@ export class Account extends BaseEntity {
         apId: URL | null,
         url: URL | null,
         apFollowers: URL | null,
+        public readonly postCount: number,
+        public readonly repostCount: number,
+        public readonly likedPostCount: number,
+        public readonly followerCount: number,
+        public readonly followingCount: number,
     ) {
         super(id);
         if (uuid === null) {
@@ -65,6 +75,10 @@ export class Account extends BaseEntity {
 
     get isInternal() {
         return this.site !== null;
+    }
+
+    get totalPostCount() {
+        return this.postCount + this.repostCount;
     }
 
     getApId() {
@@ -130,6 +144,11 @@ export class Account extends BaseEntity {
             data.apId,
             data.url,
             data.apFollowers,
+            data.postCount,
+            data.repostCount,
+            data.likedPostCount,
+            data.followerCount,
+            data.followingCount,
         );
     }
 }
