@@ -257,6 +257,7 @@ export function createGetAccountPostsHandler(
         );
         const { results, nextCursor } = await postService.getPostsByAccount(
             account.id,
+            account.id,
             params.limit,
             params.cursor,
         );
