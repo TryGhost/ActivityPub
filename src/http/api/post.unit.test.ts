@@ -81,6 +81,11 @@ describe('Post API', () => {
             apId: new URL(`https://${site.host}/users/456`),
             url: new URL(`https://${site.host}/users/456`),
             apFollowers: new URL(`https://${site.host}/followers/456`),
+            postCount: 0,
+            repostCount: 0,
+            likedPostCount: 0,
+            followerCount: 0,
+            followingCount: 0,
         });
         postService = {
             getByApId: vi.fn().mockResolvedValue(null),

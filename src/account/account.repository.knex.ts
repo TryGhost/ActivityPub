@@ -26,6 +26,33 @@ export class KnexAccountRepository {
         // We can safely assume that there is an account for the user due to
         // the foreign key constraint on the users table
         const account = await this.db('accounts')
+            .select(
+                'accounts.id',
+                'accounts.uuid',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.url',
+                'accounts.ap_followers_url',
+                this.db.raw(
+                    '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
+                ),
+            )
             .where('id', user.account_id)
             .first();
 
@@ -55,6 +82,11 @@ export class KnexAccountRepository {
             parseURL(account.ap_id),
             parseURL(account.url),
             parseURL(account.ap_followers_url),
+            account.post_count,
+            account.repost_count,
+            account.like_count,
+            account.follower_count,
+            account.following_count,
         );
     }
 
@@ -75,6 +107,21 @@ export class KnexAccountRepository {
                 'accounts.ap_followers_url',
                 'users.site_id',
                 'sites.host',
+                this.db.raw(
+                    '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
+                ),
+                this.db.raw(
+                    '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
+                ),
             )
             .first();
 
@@ -112,6 +159,11 @@ export class KnexAccountRepository {
             parseURL(accountRow.ap_id),
             parseURL(accountRow.url),
             parseURL(accountRow.ap_followers_url),
+            accountRow.post_count,
+            accountRow.repost_count,
+            accountRow.like_count,
+            accountRow.follower_count,
+            accountRow.following_count,
         );
 
         return account;

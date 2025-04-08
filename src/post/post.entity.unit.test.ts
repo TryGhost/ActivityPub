@@ -21,6 +21,11 @@ function mockAccount(id: number | null, internal: boolean) {
         new URL(`https://foobar.com/user/${id}`),
         null,
         new URL(`https://foobar.com/followers/${id}`),
+        0,
+        0,
+        0,
+        0,
+        0,
     );
 }
 
