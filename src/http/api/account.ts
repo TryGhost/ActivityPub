@@ -1,8 +1,11 @@
+import type { Federation } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { AccountService } from 'account/account.service';
-import { getAccountHandle } from 'account/utils';
-import { type AppContext, fedify } from 'app';
+import type {
+    AccountService,
+    GetFollowAccountsResult,
+} from 'account/account.service';
+import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
@@ -11,11 +14,6 @@ import {
     getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
-
-/**
- * Maximum number of follow accounts to return
- */
-const FOLLOWS_LIMIT = 20;
 
 /**
  * Default number of posts to return in a profile
@@ -28,14 +26,6 @@ const DEFAULT_POSTS_LIMIT = 20;
 const MAX_POSTS_LIMIT = 100;
 
 /**
- * Follow account shape - Used when returning a list of follow accounts
- */
-type FollowAccount = Pick<
-    AccountDTO,
-    'id' | 'name' | 'handle' | 'avatarUrl'
-> & { isFollowing: boolean };
-
-/**
  * Create a handler to handle a request for an account
  *
  * @param accountService Account service instance
@@ -43,6 +33,7 @@ type FollowAccount = Pick<
 export function createGetAccountHandler(
     accountService: AccountService,
     accountRepository: KnexAccountRepository,
+    fedify: Federation<ContextData>,
 ) {
     /**
      * Handle a request for an account
@@ -120,86 +111,119 @@ export function createGetAccountHandler(
  *
  * @param accountService Account service instance
  */
-export function createGetAccountFollowsHandler(accountService: AccountService) {
+export function createGetAccountFollowsHandler(
+    accountService: AccountService,
+    accountRepository: KnexAccountRepository,
+    fedify: Federation<ContextData>,
+) {
     /**
      * Handle a request for a list of account follows
      *
      * @param ctx App context
      */
     return async function handleGetAccountFollows(ctx: AppContext) {
-        const logger = ctx.get('logger');
-        const site = ctx.get('site');
-
-        // Validate input
         const handle = ctx.req.param('handle') || '';
-
         if (handle === '') {
             return new Response(null, { status: 400 });
         }
 
         const type = ctx.req.param('type');
-
         if (!['following', 'followers'].includes(type)) {
             return new Response(null, { status: 400 });
         }
 
-        // Retrieve data
-        const getAccounts =
-            type === 'following'
-                ? accountService.getFollowingAccounts.bind(accountService)
-                : accountService.getFollowerAccounts.bind(accountService);
-        const getAccountsCount =
-            type === 'following'
-                ? accountService.getFollowingAccountsCount.bind(accountService)
-                : accountService.getFollowerAccountsCount.bind(accountService);
+        const queryNext = ctx.req.query('next');
+        const next = queryNext ? decodeURIComponent(queryNext) : null;
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const logger = ctx.get('logger');
+        const site = ctx.get('site');
+        const db = ctx.get('db');
 
-        // Get follows accounts and paginate
-        const queryNext = ctx.req.query('next') || '0';
-        const offset = Number.parseInt(queryNext);
+        let account: Account | null = null;
 
-        const results = await getAccounts(siteDefaultAccount, {
-            limit: FOLLOWS_LIMIT,
-            offset,
-            fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb: ctx.get('globaldb'),
+            logger,
         });
-        const total = await getAccountsCount(siteDefaultAccount.id);
 
-        const next =
-            total > offset + FOLLOWS_LIMIT
-                ? (offset + FOLLOWS_LIMIT).toString()
-                : null;
-
-        const accounts: FollowAccount[] = [];
-
-        for (const result of results) {
-            accounts.push({
-                id: String(result.id),
-                name: result.name || '',
-                handle: getAccountHandle(
-                    new URL(result.ap_id).host,
-                    result.username,
-                ),
-                avatarUrl: result.avatar_url || '',
-                isFollowing:
-                    type === 'following'
-                        ? true
-                        : await accountService.checkIfAccountIsFollowing(
-                              siteDefaultAccount.id,
-                              result.id,
-                          ),
-            });
+        const defaultAccount = await accountRepository.getBySite(
+            ctx.get('site'),
+        );
+        if (!defaultAccount || !defaultAccount.id) {
+            return new Response(null, { status: 400 });
         }
+
+        // We are using the keyword 'me', if we want to get the posts of the current user
+        if (handle === 'index') {
+            //Todo: change to 'me'
+            account = defaultAccount;
+        } else {
+            if (!isHandle(handle)) {
+                return new Response(null, { status: 400 });
+            }
+
+            const apId = await lookupAPIdByHandle(apCtx, handle);
+            if (apId) {
+                account = await accountRepository.getByApId(new URL(apId));
+            }
+        }
+
+        console.log('############################# account', account);
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        const result: GetFollowAccountsResult = {
+            accounts: [],
+            next: null,
+        };
+
+        try {
+            //If we found the account in our db and it's an internal account, do an internal lookup
+            if (account?.isInternal) {
+                console.log('############################# Internal account');
+                const accountResult = await accountService.getFollowAccounts(
+                    account,
+                    defaultAccount,
+                    Number.parseInt(next || '0'),
+                    type,
+                );
+
+                result.accounts = accountResult.accounts;
+                result.next = accountResult.next;
+            } else {
+                //Otherwise, do a remote lookup to fetch the posts
+                console.log('############################# External account');
+                const accountResult =
+                    await accountService.getFollowsByRemoteLookUp(
+                        site,
+                        handle,
+                        next || '',
+                        type,
+                    );
+                if (accountResult instanceof Error) {
+                    throw accountResult;
+                }
+                result.accounts = accountResult.accounts;
+                result.next = accountResult.next;
+            }
+        } catch (error) {
+            logger.error(`Error getting posts for ${handle}: {error}`, {
+                error,
+            });
+
+            return new Response(null, { status: 500 });
+        }
+
+        console.log('############################# result', result);
 
         // Return response
         return new Response(
             JSON.stringify({
-                accounts,
-                total,
-                next,
+                accounts: result.accounts,
+                next: result.next,
             }),
             {
                 headers: {

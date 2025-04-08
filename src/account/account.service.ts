@@ -1,4 +1,6 @@
 import {
+    type Actor,
+    CollectionPage,
     exportJwk,
     generateCryptoKeyPair,
     isActor,
@@ -8,6 +10,9 @@ import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
+import { isFollowedByDefaultSiteAccount } from 'helpers/activitypub/actor';
+import { isUri } from 'helpers/uri';
+import type { AccountDTO } from 'http/api/types';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
@@ -19,7 +24,7 @@ import type {
     InternalAccountData,
     Site,
 } from './types';
-import { mapActorToExternalAccountData } from './utils';
+import { getAccountHandle, mapActorToExternalAccountData } from './utils';
 
 interface GetFollowingAccountsOptions {
     limit: number;
@@ -32,6 +37,21 @@ interface GetFollowerAccountsOptions {
     offset: number;
     fields: (keyof AccountType)[];
 }
+
+type FollowAccount = Pick<
+    AccountDTO,
+    'id' | 'name' | 'handle' | 'avatarUrl'
+> & { isFollowing: boolean };
+
+export interface GetFollowAccountsResult {
+    accounts: FollowAccount[];
+    next: string | null;
+}
+
+/**
+ * Maximum number of follow accounts to return
+ */
+const FOLLOWS_LIMIT = 20;
 
 export class AccountService {
     /**
@@ -258,7 +278,7 @@ export class AccountService {
      * @param options Options for the query
      */
     async getFollowingAccounts(
-        account: AccountType,
+        account: Account,
         options: GetFollowingAccountsOptions, // @TODO: Make this optional
     ): Promise<AccountType[]> {
         return await this.db('follows')
@@ -342,7 +362,7 @@ export class AccountService {
      * @param options Options for the query
      */
     async getFollowerAccounts(
-        account: AccountType,
+        account: Account,
         options: GetFollowerAccountsOptions, // @TODO: Make this optional
     ): Promise<AccountType[]> {
         return await this.db('follows')
@@ -457,5 +477,169 @@ export class AccountService {
         }
 
         return newAccount;
+    }
+
+    async getFollowAccounts(
+        account: Account,
+        defaultAccount: Account,
+        offset: number,
+        type: string,
+    ): Promise<GetFollowAccountsResult> {
+        const getAccounts =
+            type === 'following'
+                ? this.getFollowingAccounts.bind(this)
+                : this.getFollowerAccounts.bind(this);
+        const getAccountsCount =
+            type === 'following'
+                ? this.getFollowingAccountsCount.bind(this)
+                : this.getFollowerAccountsCount.bind(this);
+
+        const results = await getAccounts(account, {
+            limit: FOLLOWS_LIMIT,
+            offset,
+            fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
+        });
+
+        //console.log('############################# results', results);
+        const total = await getAccountsCount(account.id);
+
+        const next =
+            total > offset + FOLLOWS_LIMIT
+                ? (offset + FOLLOWS_LIMIT).toString()
+                : null;
+
+        // console.log('############################# next', next);
+
+        const accounts: FollowAccount[] = [];
+
+        for (const result of results) {
+            accounts.push({
+                id: String(result.id),
+                name: result.name || '',
+                handle: getAccountHandle(
+                    new URL(result.ap_id).host,
+                    result.username,
+                ),
+                avatarUrl: result.avatar_url || '',
+                isFollowing:
+                    type === 'following'
+                        ? true
+                        : await this.checkIfAccountIsFollowing(
+                              defaultAccount.id,
+                              result.id,
+                          ),
+            });
+        }
+
+        //console.log('############################# accounts', accounts);
+
+        return {
+            accounts: accounts,
+            next: next,
+        };
+    }
+
+    async getFollowsByRemoteLookUp(
+        site: Site,
+        handle: string,
+        next: string,
+        type: string,
+    ): Promise<GetFollowAccountsResult> {
+        // If the next parameter is not a valid URI, return early
+        if (next !== '' && !isUri(next)) {
+            throw new Error('Invalid next parameter');
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+
+        // Lookup actor by handle
+        const actor = await lookupObject(handle, { documentLoader });
+
+        if (!isActor(actor)) {
+            throw new Error('Invalid actor');
+        }
+
+        const result: GetFollowAccountsResult = {
+            accounts: [],
+            next: null,
+        };
+
+        let page: CollectionPage | null = null;
+
+        try {
+            if (next !== '') {
+                // Ensure the next parameter is for the same host as the actor. We
+                // do this to prevent blindly passing URIs to lookupObject (i.e next
+                // param has been tampered with)
+                // @TODO: Does this provide enough security? Can the host of the
+                // actor be different to the host of the actor's following collection?
+                const { host: actorHost } = actor?.id || new URL('');
+                const { host: nextHost } = new URL(next);
+
+                if (actorHost !== nextHost) {
+                    throw new Error('Invalid next parameter');
+                }
+
+                page = (await lookupObject(next, {
+                    documentLoader,
+                })) as CollectionPage | null;
+
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
+                    page = null;
+                }
+            } else {
+                const follows =
+                    type === 'following'
+                        ? await actor.getFollowing()
+                        : await actor.getFollowers();
+
+                if (follows) {
+                    page = await follows.getFirst();
+                }
+            }
+        } catch (err) {
+            console.log('############################# err', err);
+            throw new Error('Error getting follows');
+        }
+
+        if (!page) {
+            throw new Error('Page not found');
+        }
+
+        // Return result
+        try {
+            for await (const item of page.getItems()) {
+                const actor = (await item.toJsonLd({
+                    format: 'compact',
+                })) as any;
+                result.accounts.push({
+                    id: actor.id || '',
+                    name: actor.name || '',
+                    handle: getAccountHandle(
+                        new URL(actor.id).host,
+                        actor.preferredUsername,
+                    ),
+                    avatarUrl: actor.icon?.url || '',
+                    isFollowing: await isFollowedByDefaultSiteAccount(
+                        item as Actor,
+                        site,
+                        this,
+                    ),
+                });
+            }
+        } catch (err) {
+            //logger.error('Error getting following', { error: err });
+        }
+
+        result.next = page.nextId
+            ? encodeURIComponent(page.nextId.toString())
+            : null;
+
+        return result;
     }
 }
