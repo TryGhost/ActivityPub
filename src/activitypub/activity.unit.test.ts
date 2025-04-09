@@ -9,6 +9,7 @@ import { FedifyActivitySender } from './activity';
 describe('FedifyActivitySender', () => {
     describe('sendActivityToActorFollowers', () => {
         it('should send an Activity to the followers of an Actor', async () => {
+            expect(1).toBe(2);
             const handle = 'foo';
 
             const mockActor = {
