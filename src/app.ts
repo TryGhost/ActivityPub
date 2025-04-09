@@ -114,6 +114,7 @@ import {
     handleCreateNote,
     handleWebhookSiteChanged,
 } from './http/api';
+import { AccountFollowsViewer } from './http/api/views/account.follows.viewer';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
@@ -264,6 +265,11 @@ const followersService = new FollowersService(client);
 const postService = new PostService(
     postRepository,
     accountService,
+    client,
+    fedifyContextFactory,
+);
+
+const accountFollowsViewer = new AccountFollowsViewer(
     client,
     fedifyContextFactory,
 );
@@ -987,7 +993,9 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountFollowsHandler(accountService)),
+    spanWrapper(
+        createGetAccountFollowsHandler(accountRepository, accountFollowsViewer),
+    ),
 );
 app.get(
     '/.ghost/activitypub/feed',
