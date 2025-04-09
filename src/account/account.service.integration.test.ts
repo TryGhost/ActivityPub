@@ -176,6 +176,66 @@ describe('AccountService', () => {
             expect(dbUser.account_id).toBe(account.id);
             expect(dbUser.site_id).toBe(site.id);
         });
+
+        it('transparently handle duplicates', async () => {
+            const username = internalAccountData.username;
+
+            const normalizedHost = site.host.replace(/^www\./, '');
+            const expectedAccount = {
+                name: internalAccountData.name || normalizedHost,
+                username: username,
+                bio: internalAccountData.bio || null,
+                avatar_url: internalAccountData.avatar_url || null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_shared_inbox_url: null,
+            };
+
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            // Assert the created account was returned
+            expect(account).toMatchObject(expectedAccount);
+            expect(account.id).toBeGreaterThan(0);
+            expect(account.ap_public_key).toBeDefined();
+            expect(account.ap_public_key).toContain('key_ops');
+            expect(account.ap_private_key).toBeDefined();
+            expect(account.ap_private_key).toContain('key_ops');
+
+            // Assert the account was inserted into the database
+            const accounts = await db('accounts').select('*');
+
+            expect(accounts).toHaveLength(1);
+
+            const dbAccount = accounts[0];
+
+            expect(dbAccount).toMatchObject(expectedAccount);
+
+            // Assert the user was inserted into the database
+            const users = await db('users').select('*');
+
+            expect(users).toHaveLength(1);
+
+            const dbUser = users[0];
+
+            expect(dbUser.account_id).toBe(account.id);
+            expect(dbUser.site_id).toBe(site.id);
+
+            const secondAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            expect(secondAccount).toMatchObject(account);
+        });
     });
 
     describe('createExternalAccount', () => {
@@ -195,6 +255,29 @@ describe('AccountService', () => {
             const dbAccount = accounts[0];
 
             expect(dbAccount).toMatchObject(externalAccountData);
+        });
+
+        it('should transparently handle duplicates', async () => {
+            const account =
+                await service.createExternalAccount(externalAccountData);
+
+            // Assert the created account was returned
+            expect(account).toMatchObject(externalAccountData);
+            expect(account.id).toBeGreaterThan(0);
+
+            // Assert the account was inserted into the database
+            const accounts = await db('accounts').select('*');
+
+            expect(accounts).toHaveLength(1);
+
+            const dbAccount = accounts[0];
+
+            expect(dbAccount).toMatchObject(externalAccountData);
+
+            const secondAccount =
+                await service.createExternalAccount(externalAccountData);
+
+            expect(secondAccount).toMatchObject(account);
         });
     });
 

@@ -33,6 +33,16 @@ interface GetFollowerAccountsOptions {
     fields: (keyof AccountType)[];
 }
 
+function isDuplicateEntryError(error: unknown): boolean {
+    // Check for the specific MySQL error number for duplicate entries
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'errno' in error &&
+        error.errno === 1062
+    );
+}
+
 export class AccountService {
     /**
      * @param db Database client
@@ -99,6 +109,8 @@ export class AccountService {
         const username = internalAccountData.username;
 
         const normalizedHost = site.host.replace(/^www\./, '');
+        const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+
         const accountData = {
             name: internalAccountData.name || normalizedHost,
             uuid: randomUUID(),
@@ -108,7 +120,7 @@ export class AccountService {
             banner_image_url: null,
             url: `https://${site.host}`,
             custom_fields: null,
-            ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
+            ap_id: apId,
             ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
             ap_shared_inbox_url: null,
             ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
@@ -118,23 +130,43 @@ export class AccountService {
             ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
         };
-        async function createAccountAndUser(tx: Knex.Transaction) {
-            const [accountId] = await tx('accounts').insert(accountData);
 
-            await tx('users').insert({
-                account_id: accountId,
-                site_id: site.id,
-            });
+        const createOrFetchAccountAndUser = async (
+            tx: Knex.Transaction | Knex,
+        ): Promise<AccountType> => {
+            try {
+                const [accountId] = await tx('accounts').insert(accountData);
 
-            return {
-                id: accountId,
-                ...accountData,
-            };
-        }
+                await tx('users').insert({
+                    account_id: accountId,
+                    site_id: site.id,
+                });
+
+                return {
+                    id: accountId,
+                    ...accountData,
+                };
+            } catch (error) {
+                if (isDuplicateEntryError(error)) {
+                    const existingAccount = await tx('accounts')
+                        .where({ ap_id: apId })
+                        .first<AccountType>();
+
+                    if (!existingAccount) {
+                        throw error;
+                    }
+                    return existingAccount;
+                }
+                throw error;
+            }
+        };
+
         if (!transaction) {
-            return await this.db.transaction(createAccountAndUser);
+            return await this.db.transaction(async (tx) => {
+                return await createOrFetchAccountAndUser(tx);
+            });
         }
-        return await createAccountAndUser(transaction);
+        return await createOrFetchAccountAndUser(transaction);
     }
 
     /**
@@ -147,16 +179,31 @@ export class AccountService {
     async createExternalAccount(
         accountData: ExternalAccountData,
     ): Promise<AccountType> {
-        const [accountId] = await this.db('accounts').insert({
+        const dataToInsert = {
             ...accountData,
             uuid: randomUUID(),
-        });
-
-        return {
-            id: accountId,
-            ...accountData,
             ap_private_key: null,
         };
+
+        try {
+            const [accountId] = await this.db('accounts').insert(dataToInsert);
+            return {
+                id: accountId,
+                ...dataToInsert,
+            };
+        } catch (error) {
+            if (isDuplicateEntryError(error)) {
+                const existingAccount = await this.db('accounts')
+                    .where({ ap_id: accountData.ap_id })
+                    .first<AccountType>();
+
+                if (!existingAccount) {
+                    throw error;
+                }
+                return existingAccount;
+            }
+            throw error;
+        }
     }
 
     /**
