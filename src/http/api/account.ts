@@ -1,11 +1,12 @@
+import type { Federation } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
-import { type AppContext, fedify } from 'app';
+import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
-import type { PostService } from 'post/post.service';
+import type { GetProfileDataResult, PostService } from 'post/post.service';
 import {
     getAccountDTOByHandle,
     getAccountDTOFromAccount,
@@ -43,6 +44,7 @@ type FollowAccount = Pick<
 export function createGetAccountHandler(
     accountService: AccountService,
     accountRepository: KnexAccountRepository,
+    fedify: Federation<ContextData>,
 ) {
     /**
      * Handle a request for an account
@@ -238,8 +240,9 @@ function validateRequestParams(ctx: AppContext) {
  * @param profileService Profile service instance
  */
 export function createGetAccountPostsHandler(
-    accountService: AccountService,
     postService: PostService,
+    accountRepository: KnexAccountRepository,
+    fedify: Federation<ContextData>,
 ) {
     /**
      * Handle a request for a list of posts by an account
@@ -252,20 +255,85 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const account = await accountService.getDefaultAccountForSite(
+        const logger = ctx.get('logger');
+        let account: Account | null = null;
+        const db = ctx.get('db');
+
+        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+            db,
+            globaldb: ctx.get('globaldb'),
+            logger,
+        });
+
+        const handle = ctx.req.param('handle');
+        if (!handle) {
+            return new Response(null, { status: 400 });
+        }
+
+        const defaultAccount = await accountRepository.getBySite(
             ctx.get('site'),
         );
-        const { results, nextCursor } = await postService.getPostsByAccount(
-            account.id,
-            account.id,
-            params.limit,
-            params.cursor,
-        );
+
+        if (!defaultAccount || !defaultAccount.id) {
+            return new Response(null, { status: 400 });
+        }
+
+        // We are using the keyword 'me', if we want to get the posts of the current user
+        if (handle === 'me') {
+            account = defaultAccount;
+        } else {
+            if (!isHandle(handle)) {
+                return new Response(null, { status: 400 });
+            }
+
+            const apId = await lookupAPIdByHandle(apCtx, handle);
+            if (apId) {
+                account = await accountRepository.getByApId(new URL(apId));
+            }
+        }
+
+        const result: GetProfileDataResult = {
+            results: [],
+            nextCursor: null,
+        };
+
+        try {
+            //If we found the account in our db and it's an internal account, do an internal lookup
+            if (account?.isInternal && account.id) {
+                const postResult = await postService.getPostsByAccount(
+                    account.id,
+                    defaultAccount.id,
+                    params.limit,
+                    params.cursor,
+                );
+
+                result.results = postResult.results;
+                result.nextCursor = postResult.nextCursor;
+            } else {
+                //Otherwise, do a remote lookup to fetch the posts
+                const postResult = await postService.getPostsByRemoteLookUp(
+                    defaultAccount,
+                    handle,
+                    params.cursor || '',
+                );
+                if (postResult instanceof Error) {
+                    throw postResult;
+                }
+                result.results = postResult.results;
+                result.nextCursor = postResult.nextCursor;
+            }
+        } catch (error) {
+            logger.error(`Error getting posts for ${handle}: {error}`, {
+                error,
+            });
+
+            return new Response(null, { status: 500 });
+        }
 
         return new Response(
             JSON.stringify({
-                posts: results,
-                next: nextCursor,
+                posts: result.results,
+                next: result.nextCursor,
             }),
             { status: 200 },
         );
@@ -296,6 +364,10 @@ export function createGetAccountLikedPostsHandler(
         const account = await accountService.getDefaultAccountForSite(
             ctx.get('site'),
         );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
 
         const { results, nextCursor } =
             await postService.getPostsLikedByAccount(

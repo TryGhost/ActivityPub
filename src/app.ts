@@ -108,7 +108,6 @@ import {
     createGetPostHandler,
     createGetProfileFollowersHandler,
     createGetProfileFollowingHandler,
-    createGetProfilePostsHandler,
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
@@ -963,26 +962,25 @@ app.get(
     spanWrapper(createGetProfileFollowingHandler(accountService)),
 );
 app.get(
-    '/.ghost/activitypub/profile/:handle/posts',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetProfilePostsHandler(accountService, postRepository)),
-);
-app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
     spanWrapper(createGetThreadHandler(postRepository, accountService)),
 );
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountHandler(accountService, accountRepository)),
+    spanWrapper(
+        createGetAccountHandler(accountService, accountRepository, fedify),
+    ),
 );
 app.get(
-    '/.ghost/activitypub/posts',
+    '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountPostsHandler(accountService, postService)),
+    spanWrapper(
+        createGetAccountPostsHandler(postService, accountRepository, fedify),
+    ),
 );
 app.get(
-    '/.ghost/activitypub/posts/liked',
+    '/.ghost/activitypub/posts/:handle/liked',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
 );

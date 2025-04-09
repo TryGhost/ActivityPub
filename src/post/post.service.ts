@@ -1,7 +1,18 @@
-import { Article, Note, lookupObject } from '@fedify/fedify';
+import {
+    Activity,
+    Article,
+    CollectionPage,
+    Note,
+    isActor,
+    lookupObject,
+} from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { isHandle } from 'helpers/activitypub/actor';
+import { sanitizeHtml } from 'helpers/html';
+import { isUri } from 'helpers/uri';
 import type { PostDTO } from 'http/api/types';
 import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
@@ -58,7 +69,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface GetProfileDataResult {
-    results: GetProfileDataResultRow[];
+    results: PostDTO[];
     nextCursor: string | null;
 }
 
@@ -128,6 +139,60 @@ export class PostService {
                       avatarUrl: result.reposter_avatar_url ?? '',
                   }
                 : null,
+        };
+    }
+
+    /**
+     * Transforms an activity into a PostDTO
+     * @param activity Activity to transform
+     * @param accountId Current account ID
+     * @returns PostDTO object
+     */
+    private mapActivityToPostDTO(activity: any): PostDTO {
+        const object = activity.object;
+        const actor = activity.actor;
+        const attributedTo = object.attributedTo;
+
+        return {
+            id: object.id,
+            type: object.type === 'Article' ? PostType.Article : PostType.Note,
+            title: object.name || '',
+            excerpt: object.preview?.content || '',
+            content: object.content || '',
+            url: object.url || '',
+            featureImageUrl: object.image || null,
+            publishedAt: new Date(object.published || ''),
+            likeCount: 0,
+            likedByMe: object.liked || false,
+            replyCount: object.replyCount || 0,
+            readingTimeMinutes: 0,
+            attachments: object.attachment || [],
+            author: {
+                id: attributedTo.id,
+                handle: getAccountHandle(
+                    new URL(attributedTo.id).host,
+                    attributedTo.preferredUsername,
+                ),
+                name: attributedTo.name || '',
+                url: attributedTo.id,
+                avatarUrl: attributedTo.icon?.url || '',
+            },
+            authoredByMe: object.authored || false,
+            repostCount: object.repostCount || 0,
+            repostedByMe: object.reposted || false,
+            repostedBy:
+                activity.type === 'Announce'
+                    ? {
+                          id: actor.id,
+                          handle: getAccountHandle(
+                              new URL(actor.id).host,
+                              actor.preferredUsername,
+                          ),
+                          name: actor.name || '',
+                          url: actor.id,
+                          avatarUrl: actor.icon?.url || '',
+                      }
+                    : null,
         };
     }
 
@@ -494,6 +559,178 @@ export class PostService {
             ),
             nextCursor: hasMore ? lastResult.likes_id.toString() : null,
         };
+    }
+
+    /**
+     * Get posts for an account using their handle
+     *
+     * @param handle - The handle to look up (e.g., "@username@domain")
+     *
+     */
+    async getPostsByRemoteLookUp(
+        defaultAccount: Account,
+        handle: string,
+        next: string,
+    ): Promise<GetProfileDataResult | Error> {
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+
+        // If the provided handle is invalid, return early
+        if (!isHandle(handle)) {
+            throw new Error('Invalid handle');
+        }
+
+        if (!defaultAccount || !defaultAccount.id) {
+            throw new Error('Default account not found');
+        }
+
+        // If the next parameter is not a valid URI, return early
+        if (next !== '' && !isUri(next)) {
+            throw new Error('Invalid next parameter');
+        }
+
+        // Lookup actor by handle
+        const actor = await lookupObject(handle, { documentLoader });
+
+        if (!isActor(actor)) {
+            throw new Error('Actor not found');
+        }
+
+        // Retrieve actor's posts
+        // If a next parameter was provided, use it to retrieve a specific page of
+        // posts. Otherwise, retrieve the first page of posts
+        const result: GetProfileDataResult = {
+            results: [],
+            nextCursor: null,
+        };
+
+        let page: CollectionPage | null = null;
+
+        try {
+            if (next !== '') {
+                // Ensure the next parameter is for the same host as the actor. We
+                // do this to prevent blindly passing URIs to lookupObject (i.e next
+                // param has been tampered with)
+                // @TODO: Does this provide enough security? Can the host of the
+                // actor be different to the host of the actor's followers collection?
+                const { host: actorHost } = actor?.id || new URL('');
+                const { host: nextHost } = new URL(next);
+
+                if (actorHost !== nextHost) {
+                    throw new Error('Invalid next parameter');
+                }
+
+                page = (await lookupObject(next, {
+                    documentLoader,
+                })) as CollectionPage | null;
+
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
+                    page = null;
+                }
+            } else {
+                const outbox = await actor.getOutbox();
+
+                if (outbox) {
+                    page = await outbox.getFirst();
+                }
+            }
+        } catch (err) {
+            throw Error('Error getting outbox');
+        }
+
+        if (!page) {
+            throw new Error('No page found');
+        }
+
+        // Return result
+        for await (const item of page.getItems()) {
+            try {
+                if (!(item instanceof Activity)) {
+                    continue;
+                }
+
+                const object = await item.getObject();
+                const attributedTo = await object?.getAttribution();
+
+                const activity = (await item.toJsonLd({
+                    format: 'compact',
+                })) as any;
+
+                if (activity.object.inReplyTo) {
+                    continue;
+                }
+
+                if (activity?.object?.content) {
+                    activity.object.content = sanitizeHtml(
+                        activity.object.content,
+                    );
+                }
+
+                activity.object.authored =
+                    defaultAccount.apId === activity.actor.id;
+
+                // Add counters & flags to the object
+                activity.object.replyCount = 0;
+                activity.object.repostCount = 0;
+                activity.object.liked = false;
+                activity.object.reposted = false;
+
+                if (object?.id) {
+                    const post = await this.postRepository.getByApId(object.id);
+
+                    activity.object.replyCount = post ? post.replyCount : 0;
+                    activity.object.repostCount = post ? post.repostCount : 0;
+
+                    activity.object.liked = post
+                        ? await this.postRepository.isLikedByAccount(
+                              post.id!,
+                              defaultAccount.id,
+                          )
+                        : false;
+
+                    activity.object.reposted = post
+                        ? await this.postRepository.isRepostedByAccount(
+                              post.id!,
+                              defaultAccount.id,
+                          )
+                        : false;
+                }
+
+                if (typeof activity.actor === 'string') {
+                    activity.actor = await actor.toJsonLd({
+                        format: 'compact',
+                    });
+                }
+
+                if (typeof activity.object.attributedTo === 'string') {
+                    const attributedTo = await lookupObject(
+                        activity.object.attributedTo,
+                        { documentLoader },
+                    );
+                    if (isActor(attributedTo)) {
+                        activity.object.attributedTo =
+                            await attributedTo.toJsonLd({
+                                format: 'compact',
+                            });
+                    } else if (activity.type === 'Announce') {
+                        // If the attributedTo is not an actor, it is a repost and we don't want to show it
+                        continue;
+                    }
+                }
+
+                result.results.push(this.mapActivityToPostDTO(activity));
+            } catch (err) {}
+        }
+
+        result.nextCursor = page.nextId
+            ? encodeURIComponent(page.nextId.toString())
+            : null;
+
+        return result;
     }
 
     /**
