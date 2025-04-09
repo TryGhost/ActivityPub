@@ -226,6 +226,35 @@ describe('Post', () => {
                 '<p>Check out <a href="https://ghost.org">https://ghost.org</a> it is super cool</p>',
             );
         });
+
+        it('does not convert handles to mailto', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as any).id = 'fake-id';
+            const content =
+                'I wish I could mention someone like @index@activitypub.ghost.org';
+
+            const note = Post.createReply(account, content, inReplyTo);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe(
+                '<p>I wish I could mention someone like @index@activitypub.ghost.org</p>',
+            );
+        });
+
+        it('does not convert emails to mailto', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as any).id = 'fake-id';
+            const content = 'Email me at support@ghost.org';
+
+            const note = Post.createReply(account, content, inReplyTo);
+
+            expect(note.type).toBe(PostType.Note);
+
+            expect(note.content).toBe('<p>Email me at support@ghost.org</p>');
+        });
     });
     describe('createNote', () => {
         it('errors if the account is external', () => {
