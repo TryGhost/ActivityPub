@@ -101,6 +101,9 @@ export class ContentPreparer {
         const options = {
             defaultProtocol: 'https',
             attributes: {},
+            validate(_url: unknown, type: string) {
+                return type === 'url';
+            },
         };
         return linkifyHtml(html, options);
     }
