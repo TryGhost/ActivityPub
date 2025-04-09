@@ -116,6 +116,13 @@ jobs:
           push: true
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   deploy-staging:
     if: github.ref == 'refs/heads/main'
     name: (staging) Deploy
@@ -219,3 +226,10 @@ jobs:
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
+
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
