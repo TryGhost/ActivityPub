@@ -89,6 +89,7 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
 
             await postRepository.save(post);
@@ -116,6 +117,7 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
 
             await postRepository.save(post);
@@ -165,6 +167,7 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
 
             await postRepository.save(post);
@@ -211,6 +214,7 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
 
             await postRepository.save(post);
@@ -286,6 +290,7 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing-delete-likes.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
 
             // Add a like from another account
@@ -326,6 +331,7 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
 
             post.delete(account);
@@ -357,6 +363,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -392,6 +399,9 @@ describe('KnexPostRepository', () => {
                 new URL(`https://${site.host}/hello-world`),
                 new URL(`https://${site.host}/banners/hello-world.png`),
                 new Date('2025-04-03 13:56:00'),
+                {
+                    ghostAuthors: [],
+                },
                 0,
                 0,
                 0,
@@ -438,6 +448,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -465,6 +476,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -488,6 +500,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -515,6 +528,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -554,6 +568,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -584,6 +599,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(post);
@@ -633,6 +649,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         post.addLike(accounts[0]);
@@ -698,6 +715,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         post.addLike(accounts[1]);
@@ -762,6 +780,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         post.addRepost(accounts[1]);
@@ -824,6 +843,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         post.addRepost(accounts[1]);
@@ -892,6 +912,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/original-post',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
 
         await postRepository.save(originalPost);
@@ -1005,6 +1026,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing-is-liked-by-account.com/hello-world',
             published_at: '2025-04-01',
             visibility: 'public',
+            authors: [],
         });
 
         post.addLike(account);
@@ -1046,6 +1068,7 @@ describe('KnexPostRepository', () => {
             url: 'https://testing-is-reposted-by-account.com/hello-world',
             published_at: '2025-04-01',
             visibility: 'public',
+            authors: [],
         });
 
         post.addRepost(reposterAccount);
@@ -1067,5 +1090,53 @@ describe('KnexPostRepository', () => {
         );
 
         assert(isReposted, 'Post should be reposted by reposter account');
+    });
+
+    it('Can save and retrieve a Post with metadata', async () => {
+        const site = await siteService.initialiseSiteForHost(
+            'testing-metadata.com',
+        );
+        const account = await accountRepository.getBySite(site);
+
+        const post = Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            uuid: randomUUID(),
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            custom_excerpt: null,
+            feature_image: null,
+            url: 'https://testing-is-reposted-by-account.com/hello-world',
+            published_at: '2025-04-01',
+            visibility: 'public',
+            authors: [
+                {
+                    name: 'Author 1',
+                    profile_image: null,
+                },
+            ],
+        });
+
+        await postRepository.save(post);
+
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'Post should be saved in the DB');
+        assert.deepStrictEqual(
+            rowInDb.metadata,
+            {
+                ghostAuthors: [
+                    {
+                        name: 'Author 1',
+                        profile_image: null,
+                    },
+                ],
+            },
+            'Metadata should match',
+        );
     });
 });

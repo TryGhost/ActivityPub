@@ -41,6 +41,7 @@ describe('Post', () => {
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
                 visibility: 'public',
+                authors: [],
             };
 
             const post = Post.createArticleFromGhostPost(author, ghostPost);
@@ -63,6 +64,7 @@ describe('Post', () => {
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
                 visibility: 'public',
+                authors: [],
             };
 
             const post = Post.createArticleFromGhostPost(author, ghostPost);
@@ -86,6 +88,7 @@ describe('Post', () => {
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
                 visibility: 'public',
+                authors: [],
             };
 
             const post = Post.createArticleFromGhostPost(author, ghostPost);
@@ -116,6 +119,9 @@ describe('Post', () => {
                 new URL('https://ghost.org/ap/note/123'),
                 new URL('https://ghost.org/feature-image.jpeg'),
                 new Date('2020-01-01'),
+                {
+                    ghostAuthors: [],
+                },
                 5,
                 10,
                 15,
@@ -331,6 +337,7 @@ describe('Post', () => {
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
             visibility: 'public',
+            authors: [],
         };
 
         const post = Post.createArticleFromGhostPost(account, ghostPost);
@@ -351,6 +358,7 @@ describe('Post', () => {
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
             visibility: 'members',
+            authors: [],
         };
 
         expect(() =>
@@ -370,6 +378,7 @@ describe('Post', () => {
             published_at: '2020-01-01',
             url: 'https://ghost.org/post',
             visibility: 'members',
+            authors: [],
         };
 
         const post = Post.createArticleFromGhostPost(account, ghostPost);
@@ -459,6 +468,46 @@ describe('Post', () => {
         });
     });
 
+    it('should save ghost authors in posts metadata', () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><!--members-only--><p>This is private content</p>',
+            excerpt: 'Welcome!\n\nThis is private content',
+            custom_excerpt: null,
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'members',
+            authors: [
+                {
+                    name: 'Author 1',
+                    profile_image: 'https://image.com/author1.jpg',
+                },
+                {
+                    name: 'Author 2',
+                    profile_image: null,
+                },
+            ],
+        };
+
+        const post = Post.createArticleFromGhostPost(account, ghostPost);
+
+        expect(post.metadata).toEqual({
+            ghostAuthors: [
+                {
+                    name: 'Author 1',
+                    profile_image: 'https://image.com/author1.jpg',
+                },
+                {
+                    name: 'Author 2',
+                    profile_image: null,
+                },
+            ],
+        });
+    });
+
     describe('post excerpt', () => {
         describe('when the post is public', () => {
             it('should not re-generate excerpt', () => {
@@ -473,6 +522,7 @@ describe('Post', () => {
                     published_at: '2020-01-01',
                     url: 'https://ghost.org/post',
                     visibility: 'public',
+                    authors: [],
                 };
 
                 const post = Post.createArticleFromGhostPost(
@@ -495,6 +545,7 @@ describe('Post', () => {
                     published_at: '2020-01-01',
                     url: 'https://ghost.org/post',
                     visibility: 'public', // The visibility is public -> ignore paywall
+                    authors: [],
                 };
 
                 const post = Post.createArticleFromGhostPost(
@@ -520,6 +571,7 @@ describe('Post', () => {
                         published_at: '2020-01-01',
                         url: 'https://ghost.org/post',
                         visibility: 'members',
+                        authors: [],
                     };
 
                     const post = Post.createArticleFromGhostPost(
@@ -544,6 +596,7 @@ describe('Post', () => {
                         published_at: '2020-01-01',
                         url: 'https://ghost.org/post',
                         visibility: 'members',
+                        authors: [],
                     };
 
                     const post = Post.createArticleFromGhostPost(

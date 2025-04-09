@@ -22,6 +22,15 @@ export enum PostVisibility {
     Tiers = 'tiers',
 }
 
+type GhostAuthor = {
+    name: string;
+    profile_image: string | null;
+};
+
+type Metadata = {
+    ghostAuthors: GhostAuthor[];
+} & Record<string, unknown>;
+
 /**
  * Post to be published to the Fediverse
  */
@@ -67,6 +76,10 @@ export interface Post {
          */
         handle: string;
     };
+    /**
+     * Additional metadata used when rendering the post
+     */
+    metadata: Metadata | null;
 }
 
 /**

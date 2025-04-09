@@ -20,6 +20,12 @@ const PostInputSchema = z.object({
     published_at: z.string().datetime(),
     url: z.string().url(),
     visibility: z.nativeEnum(PostVisibility),
+    authors: z.array(
+        z.object({
+            name: z.string(),
+            profile_image: z.string().url().nullable(),
+        }),
+    ),
 });
 
 type PostInput = z.infer<typeof PostInputSchema>;
@@ -78,6 +84,9 @@ export function createPostPublishedWebhookHandler(
                         handle: ACTOR_DEFAULT_HANDLE,
                     },
                     visibility: data.visibility,
+                    metadata: {
+                        ghostAuthors: data.authors,
+                    },
                 });
             } catch (err) {
                 ctx.get('logger').error('Failed to publish post: {error}', {
