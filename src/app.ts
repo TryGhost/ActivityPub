@@ -971,9 +971,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createGetAccountHandler(accountService, accountRepository, fedify),
-    ),
+    spanWrapper(createGetAccountHandler(client, fedifyContextFactory)),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',
