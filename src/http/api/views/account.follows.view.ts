@@ -36,13 +36,18 @@ export class AccountFollowsView {
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
-    async getFollows(
+    async getFollowsByAccount(
         type: string,
+        account: Account,
         siteDefaultAccount: Account,
         offset: number,
     ): Promise<AccountFollows> {
-        if (!siteDefaultAccount.id) {
+        if (!siteDefaultAccount.id || !account.id) {
             throw new Error('Site default account not found');
+        }
+
+        if (!account.id) {
+            throw new Error('Account not found');
         }
 
         const getAccounts =
@@ -54,12 +59,8 @@ export class AccountFollowsView {
                 ? this.getFollowingAccountsCount.bind(this)
                 : this.getFollowerAccountsCount.bind(this);
 
-        const results = await getAccounts(
-            siteDefaultAccount.id,
-            FOLLOWS_LIMIT,
-            offset,
-        );
-        const total = await getAccountsCount(siteDefaultAccount.id);
+        const results = await getAccounts(account.id, FOLLOWS_LIMIT, offset);
+        const total = await getAccountsCount(account.id);
 
         const next =
             total > offset + FOLLOWS_LIMIT

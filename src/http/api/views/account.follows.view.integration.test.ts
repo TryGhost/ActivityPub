@@ -111,8 +111,9 @@ describe('AccountFollowsView', () => {
                 defaultAccount,
             );
 
-            const result = await viewer.getFollows(
+            const result = await viewer.getFollowsByAccount(
                 'following',
+                siteDefaultAccount,
                 siteDefaultAccount,
                 0,
             );
@@ -153,8 +154,9 @@ describe('AccountFollowsView', () => {
             await accountService.recordAccountFollow(follower2, defaultAccount);
 
             // Get follows
-            const result = await viewer.getFollows(
+            const result = await viewer.getFollowsByAccount(
                 'followers',
+                siteDefaultAccount,
                 siteDefaultAccount,
                 0,
             );
@@ -189,8 +191,9 @@ describe('AccountFollowsView', () => {
                 throw new Error('Site default account not found');
             }
 
-            const result = await viewer.getFollows(
+            const result = await viewer.getFollowsByAccount(
                 'following',
+                siteDefaultAccount,
                 siteDefaultAccount,
                 0,
             );

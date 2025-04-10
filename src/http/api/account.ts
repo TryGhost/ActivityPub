@@ -121,29 +121,26 @@ export function createGetAccountFollowsHandler(
     return async function handleGetAccountFollows(ctx: AppContext) {
         const site = ctx.get('site');
 
-        // Validate input
         const handle = ctx.req.param('handle') || '';
-
         if (handle === '') {
             return new Response(null, { status: 400 });
         }
 
         const type = ctx.req.param('type');
-
         if (!['following', 'followers'].includes(type)) {
             return new Response(null, { status: 400 });
         }
 
         const siteDefaultAccount = await accountRepository.getBySite(site);
 
-        // Get follows accounts and paginate
-        const queryNext = ctx.req.query('next') || '0';
-        const offset = Number.parseInt(queryNext);
+        const queryNext = ctx.req.query('next');
+        const next = queryNext ? decodeURIComponent(queryNext) : null;
 
-        const accountFollows = await accountFollowsView.getFollows(
+        const accountFollows = await accountFollowsView.getFollowsByAccount(
             type,
             siteDefaultAccount,
-            offset,
+            siteDefaultAccount,
+            Number.parseInt(next || '0'),
         );
 
         // Return response
