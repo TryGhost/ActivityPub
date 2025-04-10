@@ -13,5 +13,7 @@ COPY generate-follows.js .
 COPY generate-follows-worker.js .
 COPY generate-feeds.js .
 COPY generate-feeds-worker.js .
+COPY generate-follows-notifications.js .
+COPY generate-follows-notifications-worker.js .
 
 CMD ["/bin/bash", "data-generate.sh"]
