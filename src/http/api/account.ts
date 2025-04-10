@@ -2,15 +2,13 @@ import type { Federation } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
-import type { Knex } from 'knex';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { GetProfileDataResult, PostService } from 'post/post.service';
 import type { AccountDTO } from './types';
 import type { AccountFollowsView } from './views/account.follows.view';
-import AccountView from './views/account.view';
+import type { AccountView } from './views/account.view';
 
 /**
  * Default number of posts to return in a profile
@@ -29,14 +27,8 @@ const CURRENT_USER_KEYWORD = 'me';
 
 /**
  * Create a handler to handle a request for an account
- *
- * @param db Database client
- * @param fedifyContextFactory Fedify context factory instance
  */
-export function createGetAccountHandler(
-    db: Knex,
-    fedifyContextFactory: FedifyContextFactory,
-) {
+export function createGetAccountHandler(accountView: AccountView) {
     /**
      * Handle a request for an account
      *
@@ -50,8 +42,6 @@ export function createGetAccountHandler(
         }
 
         let accountDto: AccountDTO | null = null;
-
-        const accountView = new AccountView(db, fedifyContextFactory);
 
         if (handle === CURRENT_USER_KEYWORD) {
             accountDto = await accountView.viewBySite(ctx.get('site'));

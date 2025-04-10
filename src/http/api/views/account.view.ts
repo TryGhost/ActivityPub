@@ -20,7 +20,7 @@ interface ViewContext {
     site?: Site;
 }
 
-export default class AccountView {
+export class AccountView {
     constructor(
         private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
