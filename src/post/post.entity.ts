@@ -39,7 +39,7 @@ interface GhostPost {
     published_at: string;
     url: string;
     visibility: string;
-    authors: GhostAuthor[] | null;
+    authors?: GhostAuthor[] | null;
 }
 
 export interface PostAttachment {

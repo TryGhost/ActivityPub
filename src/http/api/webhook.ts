@@ -20,12 +20,15 @@ const PostInputSchema = z.object({
     published_at: z.string().datetime(),
     url: z.string().url(),
     visibility: z.nativeEnum(PostVisibility),
-    authors: z.array(
-        z.object({
-            name: z.string(),
-            profile_image: z.string().url().nullable(),
-        }),
-    ),
+    authors: z
+        .array(
+            z.object({
+                name: z.string(),
+                profile_image: z.string().url().nullable(),
+            }),
+        )
+        .nullable()
+        .optional(),
 });
 
 type PostInput = z.infer<typeof PostInputSchema>;
@@ -85,7 +88,7 @@ export function createPostPublishedWebhookHandler(
                     },
                     visibility: data.visibility,
                     metadata: {
-                        ghostAuthors: data.authors,
+                        ghostAuthors: data.authors ?? [],
                     },
                 });
             } catch (err) {
