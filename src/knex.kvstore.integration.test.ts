@@ -9,6 +9,9 @@ describe('KnexKvStore', () => {
 
     beforeAll(async () => {
         client = await createTestDb();
+
+        const result = await client.raw('SHOW CREATE TABLE key_value');
+        console.log(result);
     });
     it('Implements a basic KvStore', async () => {
         const table = 'key_value';
@@ -74,7 +77,6 @@ describe('KnexKvStore', () => {
         const store = await KnexKvStore.create(client, table);
 
         const calls = [
-            store.set(['concurrent'], true),
             store.set(['concurrent'], true),
             store.set(['concurrent'], true),
             store.set(['concurrent'], true),

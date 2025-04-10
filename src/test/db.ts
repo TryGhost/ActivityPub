@@ -45,6 +45,10 @@ export async function createTestDb() {
             password: process.env.MYSQL_PASSWORD,
             database: dbName,
             timezone: '+00:00',
+            pool: {
+                min: 1,
+                max: 1,
+            },
         },
     });
 

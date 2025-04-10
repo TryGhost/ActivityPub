@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+cat /migrations/000001_create-key-value-table.up.sql
+
+cat migrations/000001_create-key-value-table.up.sql
+
 if [ -n "$MYSQL_DB" ]; then
     echo "Running migrate -path migrations -database $MYSQL_DB up"
     migrate -path migrations -database "$MYSQL_DB" up
