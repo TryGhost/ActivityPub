@@ -8,7 +8,7 @@ describe('KnexKvStore', () => {
     let client: Knex;
 
     beforeAll(async () => {
-        client = await createTestDb({ limitToOneConnection: true });
+        client = await createTestDb();
     });
     it('Implements a basic KvStore', async () => {
         const table = 'key_value';
