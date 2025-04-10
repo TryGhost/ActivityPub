@@ -51,6 +51,10 @@ export function createGetAccountHandler(accountView: AccountView) {
             });
         }
 
+        if (accountDto === null) {
+            return new Response(null, { status: 404 });
+        }
+
         return new Response(JSON.stringify(accountDto), {
             headers: {
                 'Content-Type': 'application/json',
