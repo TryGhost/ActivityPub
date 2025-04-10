@@ -12,10 +12,10 @@ import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AccountFollowsViewer } from './account.follows.viewer';
+import { AccountFollowsView } from './account.follows.view';
 
-describe('AccountFollowsViewer', () => {
-    let viewer: AccountFollowsViewer;
+describe('AccountFollowsView', () => {
+    let viewer: AccountFollowsView;
     let accountService: AccountService;
     let accountRepository: KnexAccountRepository;
     let events: AsyncEvents;
@@ -68,7 +68,7 @@ describe('AccountFollowsViewer', () => {
             generateTestCryptoKeyPair,
         );
 
-        viewer = new AccountFollowsViewer(db, fedifyContextFactory);
+        viewer = new AccountFollowsView(db, fedifyContextFactory);
 
         defaultAccount = await accountService.createInternalAccount(site, {
             ...internalAccountData,

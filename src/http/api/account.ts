@@ -11,7 +11,7 @@ import {
     getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
-import type { AccountFollowsViewer } from './views/account.follows.viewer';
+import type { AccountFollowsView } from './views/account.follows.view';
 
 /**
  * Default number of posts to return in a profile
@@ -111,7 +111,7 @@ export function createGetAccountHandler(
  */
 export function createGetAccountFollowsHandler(
     accountRepository: KnexAccountRepository,
-    accountFollowsViewer: AccountFollowsViewer,
+    accountFollowsView: AccountFollowsView,
 ) {
     /**
      * Handle a request for a list of account follows
@@ -140,7 +140,7 @@ export function createGetAccountFollowsHandler(
         const queryNext = ctx.req.query('next') || '0';
         const offset = Number.parseInt(queryNext);
 
-        const accountFollowsView = await accountFollowsViewer.getFollows(
+        const accountFollows = await accountFollowsView.getFollows(
             type,
             siteDefaultAccount,
             offset,
@@ -149,9 +149,9 @@ export function createGetAccountFollowsHandler(
         // Return response
         return new Response(
             JSON.stringify({
-                accounts: accountFollowsView.accounts,
-                total: accountFollowsView.total,
-                next: accountFollowsView.next,
+                accounts: accountFollows.accounts,
+                total: accountFollows.total,
+                next: accountFollows.next,
             }),
             {
                 headers: {

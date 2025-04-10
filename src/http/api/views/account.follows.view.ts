@@ -16,7 +16,7 @@ interface AccountInfo {
     isFollowing: boolean;
 }
 
-interface AccountFollowsView {
+interface AccountFollows {
     accounts: AccountInfo[];
     total: number;
     next: string | null;
@@ -30,7 +30,7 @@ interface AccountRow {
     avatar_url: string;
 }
 
-export class AccountFollowsViewer {
+export class AccountFollowsView {
     constructor(
         private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
@@ -40,7 +40,7 @@ export class AccountFollowsViewer {
         type: string,
         siteDefaultAccount: Account,
         offset: number,
-    ): Promise<AccountFollowsView> {
+    ): Promise<AccountFollows> {
         if (!siteDefaultAccount.id) {
             throw new Error('Site default account not found');
         }
@@ -87,12 +87,12 @@ export class AccountFollowsViewer {
             });
         }
 
-        const accountFollowsView: AccountFollowsView = {
+        const accountFollows: AccountFollows = {
             accounts: accounts,
             total: total,
             next: next,
         };
-        return accountFollowsView;
+        return accountFollows;
     }
 
     private async getFollowingAccountsCount(
