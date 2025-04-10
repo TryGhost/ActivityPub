@@ -2,7 +2,7 @@ import { type Actor, type Collection, isActor } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { getHandle } from 'helpers/activitypub/actor';
+import { getAttachments, getHandle } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { lookupAPIdByHandle, lookupObject } from 'lookup-helpers';
@@ -64,14 +64,16 @@ export class AccountView {
             url: accountData.url,
             avatarUrl: accountData.avatar_url || '',
             bannerImageUrl: accountData.banner_image_url || '',
-            customFields: {},
+            customFields: accountData.custom_fields
+                ? JSON.parse(accountData.custom_fields)
+                : {},
             postCount: accountData.post_count,
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
-            attachment: [],
+            attachment: [], // TODO: I don't think we need this
         };
     }
 
@@ -141,14 +143,16 @@ export class AccountView {
             url: accountData.url,
             avatarUrl: accountData.avatar_url || '',
             bannerImageUrl: accountData.banner_image_url || '',
-            customFields: {},
+            customFields: accountData.custom_fields
+                ? JSON.parse(accountData.custom_fields)
+                : {},
             postCount: accountData.post_count,
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
-            attachment: [],
+            attachment: [], // TODO: I don't think we need this
         };
     }
 
@@ -209,14 +213,25 @@ export class AccountView {
             url: actor.url?.toString() || '',
             avatarUrl: icon?.url?.toString() || '',
             bannerImageUrl: image?.url?.toString() || '',
-            customFields: {},
+            customFields: await (async () => {
+                const attachments = await getAttachments(actor, {
+                    sanitizeValue: (value: string) => sanitizeHtml(value),
+                });
+                return attachments.reduce(
+                    (acc: { [key: string]: string }, attachment) => {
+                        acc[attachment.name] = attachment.value;
+                        return acc;
+                    },
+                    {},
+                );
+            })(),
             postCount: postCount,
             likedCount: likedPostCount,
             followingCount: followingCount,
             followerCount: followerCount,
             followedByMe,
             followsMe,
-            attachment: [],
+            attachment: [], // TODO: I don't think we need this
         };
     }
 
