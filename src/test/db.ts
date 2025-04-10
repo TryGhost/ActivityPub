@@ -2,11 +2,15 @@ import { randomBytes } from 'node:crypto';
 import knex from 'knex';
 import { afterAll } from 'vitest';
 
+interface TestDBOptions {
+    limitToOneConnection?: boolean;
+}
+
 /**
  * Creates an empty DB with the activitypub schema.
  * Handles cleanup of connection and DB using afterAll hook.
  */
-export async function createTestDb() {
+export async function createTestDb(options?: TestDBOptions) {
     const systemClient = knex({
         client: 'mysql2',
         connection: {
@@ -45,6 +49,10 @@ export async function createTestDb() {
             password: process.env.MYSQL_PASSWORD,
             database: dbName,
             timezone: '+00:00',
+        },
+        pool: {
+            min: !options?.limitToOneConnection ? 2 : 1,
+            max: !options?.limitToOneConnection ? 10 : 1,
         },
     });
 
