@@ -106,8 +106,6 @@ import {
     createGetFeedHandler,
     createGetNotificationsHandler,
     createGetPostHandler,
-    createGetProfileFollowersHandler,
-    createGetProfileFollowingHandler,
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
@@ -953,16 +951,6 @@ app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createSearchHandler(accountService)),
-);
-app.get(
-    '/.ghost/activitypub/profile/:handle/followers',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetProfileFollowersHandler(accountService)),
-);
-app.get(
-    '/.ghost/activitypub/profile/:handle/following',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetProfileFollowingHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
