@@ -240,6 +240,7 @@ export class Post extends BaseEntity {
                 convertLineBreaks: false,
                 wrapInParagraph: false,
                 extractLinks: false,
+                addPaidContentMessage: false,
             });
 
             if (content === '') {
@@ -252,6 +253,18 @@ export class Post extends BaseEntity {
             ) {
                 excerpt = ContentPreparer.regenerateExcerpt(content);
             }
+
+            // We add the paid content message _after_ so it doesn't appear in excerpt
+            content = ContentPreparer.prepare(content, {
+                removeMemberContent: false,
+                escapeHtml: false,
+                convertLineBreaks: false,
+                wrapInParagraph: false,
+                extractLinks: false,
+                addPaidContentMessage: {
+                    url: new URL(ghostPost.url),
+                },
+            });
         }
 
         return new Post(
@@ -320,6 +333,7 @@ export class Post extends BaseEntity {
             convertLineBreaks: true,
             wrapInParagraph: true,
             extractLinks: true,
+            addPaidContentMessage: false,
         });
 
         return new Post(
@@ -368,6 +382,7 @@ export class Post extends BaseEntity {
             convertLineBreaks: true,
             wrapInParagraph: true,
             extractLinks: true,
+            addPaidContentMessage: false,
         });
 
         return new Post(
