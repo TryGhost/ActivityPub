@@ -376,7 +376,7 @@ describe('Post', () => {
 
         expect(post.uuid).toEqual(ghostPost.uuid);
         expect(post.content).toEqual(
-            '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><div class="gh-paid-content-notice"><h3>Upgrade to continue reading</h3><p>Become a paid member to get access to all premium content</p><a class="gh-paid-content-cta" href="${url.href}#/portal/signup">Upgrade</a></div>',
+            '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><div class="gh-paid-content-notice"><h3>Upgrade to continue reading</h3><p>Become a paid member to get access to all premium content</p><a class="gh-paid-content-cta" href="https://ghost.org/post#/portal/signup">Upgrade</a></div>',
         );
     });
 
