@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ContentPreparer, MEMBER_CONTENT_MARKER } from './content';
+import {
+    ContentPreparer,
+    MEMBER_CONTENT_MARKER,
+    PAID_CONTENT_PREVIEW_HTML,
+} from './content';
 
 describe('ContentPreparer', () => {
     const preparer = new ContentPreparer();
@@ -11,6 +15,7 @@ describe('ContentPreparer', () => {
             convertLineBreaks: false,
             wrapInParagraph: false,
             extractLinks: false,
+            addPaidContentMessage: false as const,
         };
 
         describe('Removing member content', () => {
@@ -128,6 +133,29 @@ describe('ContentPreparer', () => {
 
             it('should not wrap in paragraph by default', () => {
                 const content = 'Hello, world!';
+                const result = preparer.prepare(content);
+
+                expect(result).toEqual(content);
+            });
+        });
+
+        describe('Adding paid content message', () => {
+            it('should add paid content message when enabled', () => {
+                const content = '<p>Hello, world!</p>';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addPaidContentMessage: {
+                        url: new URL('https://hello.world'),
+                    },
+                });
+
+                expect(result).toEqual(
+                    `<p>Hello, world!</p>${PAID_CONTENT_PREVIEW_HTML(new URL('https://hello.world'))}`,
+                );
+            });
+
+            it('should not add paid content message by default', () => {
+                const content = '<p>Hello, world!</p>';
                 const result = preparer.prepare(content);
 
                 expect(result).toEqual(content);

@@ -111,6 +111,9 @@ describe('FedifyPublishingService', () => {
                 author: {
                     handle: HANDLE,
                 },
+                metadata: {
+                    ghostAuthors: [],
+                },
             };
         });
 

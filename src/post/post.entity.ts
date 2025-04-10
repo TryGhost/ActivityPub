@@ -19,6 +19,15 @@ export enum Audience {
     Direct = 2,
 }
 
+type GhostAuthor = {
+    name: string;
+    profile_image: string | null;
+};
+
+export type Metadata = {
+    ghostAuthors: GhostAuthor[];
+} & Record<string, unknown>;
+
 // TODO Deduplicate this with the webhook handler
 interface GhostPost {
     title: string;
@@ -30,6 +39,7 @@ interface GhostPost {
     published_at: string;
     url: string;
     visibility: string;
+    authors?: GhostAuthor[] | null;
 }
 
 export interface PostAttachment {
@@ -51,6 +61,7 @@ export interface PostData {
     inReplyTo?: Post | null;
     apId?: URL | null;
     attachments?: PostAttachment[] | null;
+    metadata?: Metadata | null;
 }
 
 export type PublicPost = Post & {
@@ -92,6 +103,7 @@ export class Post extends BaseEntity {
         url: URL | null,
         public readonly imageUrl: URL | null,
         public readonly publishedAt: Date,
+        public readonly metadata: Metadata | null = null,
         public readonly likeCount = 0,
         public readonly repostCount = 0,
         public readonly replyCount = 0,
@@ -147,6 +159,7 @@ export class Post extends BaseEntity {
         self.excerpt = null;
         self.imageUrl = null;
         self.attachments = [];
+        self.metadata = null;
     }
 
     static isDeleted(post: Post) {
@@ -227,6 +240,7 @@ export class Post extends BaseEntity {
                 convertLineBreaks: false,
                 wrapInParagraph: false,
                 extractLinks: false,
+                addPaidContentMessage: false,
             });
 
             if (content === '') {
@@ -239,6 +253,18 @@ export class Post extends BaseEntity {
             ) {
                 excerpt = ContentPreparer.regenerateExcerpt(content);
             }
+
+            // We add the paid content message _after_ so it doesn't appear in excerpt
+            content = ContentPreparer.prepare(content, {
+                removeMemberContent: false,
+                escapeHtml: false,
+                convertLineBreaks: false,
+                wrapInParagraph: false,
+                extractLinks: false,
+                addPaidContentMessage: {
+                    url: new URL(ghostPost.url),
+                },
+            });
         }
 
         return new Post(
@@ -253,6 +279,9 @@ export class Post extends BaseEntity {
             new URL(ghostPost.url),
             parseURL(ghostPost.feature_image),
             new Date(ghostPost.published_at),
+            {
+                ghostAuthors: ghostPost.authors ?? [],
+            },
         );
     }
 
@@ -281,6 +310,7 @@ export class Post extends BaseEntity {
             data.url ?? null,
             data.imageUrl ?? null,
             data.publishedAt ?? new Date(),
+            data.metadata ?? null,
             0,
             0,
             0,
@@ -303,6 +333,7 @@ export class Post extends BaseEntity {
             convertLineBreaks: true,
             wrapInParagraph: true,
             extractLinks: true,
+            addPaidContentMessage: false,
         });
 
         return new Post(
@@ -317,6 +348,7 @@ export class Post extends BaseEntity {
             null,
             null,
             new Date(),
+            null,
             0,
             0,
             0,
@@ -350,6 +382,7 @@ export class Post extends BaseEntity {
             convertLineBreaks: true,
             wrapInParagraph: true,
             extractLinks: true,
+            addPaidContentMessage: false,
         });
 
         return new Post(
@@ -364,6 +397,7 @@ export class Post extends BaseEntity {
             null,
             null,
             new Date(),
+            null,
             0,
             0,
             0,

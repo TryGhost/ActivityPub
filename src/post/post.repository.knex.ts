@@ -50,6 +50,7 @@ export class KnexPostRepository {
                 'posts.in_reply_to',
                 'posts.thread_root',
                 'posts.deleted_at',
+                'posts.metadata',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
                 'accounts.name',
@@ -121,6 +122,7 @@ export class KnexPostRepository {
             new URL(row.url),
             parseURL(row.image_url),
             new Date(row.published_at),
+            row.metadata,
             row.like_count,
             row.repost_count,
             row.reply_count,
@@ -369,6 +371,7 @@ export class KnexPostRepository {
                 new URL(row.url),
                 parseURL(row.image_url),
                 new Date(row.published_at),
+                row.metadata,
                 row.like_count,
                 row.repost_count,
                 row.reply_count,
@@ -644,6 +647,7 @@ export class KnexPostRepository {
                         : null,
                 reading_time_minutes: post.readingTimeMinutes,
                 ap_id: post.apId.href,
+                metadata: post.metadata,
             });
 
             return {

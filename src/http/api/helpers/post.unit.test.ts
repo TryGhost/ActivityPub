@@ -62,4 +62,32 @@ describe('postToPostDTO', () => {
         expect(dto.excerpt).toEqual('');
         expect(dto.content).toEqual('');
     });
+
+    it('should default to a metadata object with an empty ghostAuthors array', () => {
+        const author = new Account(
+            123,
+            null,
+            'foobar',
+            'Foo Bar',
+            'Just a foobar',
+            new URL('https://foobar.com/avatar/foobar.png'),
+            new URL('https://foobar.com/banner/foobar.png'),
+            {
+                id: 123,
+                host: 'foobar.com',
+            },
+            new URL('https://foobar.com/user/123'),
+            null,
+            new URL('https://foobar.com/followers/123'),
+        );
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto.metadata).toEqual({ ghostAuthors: [] });
+    });
 });
