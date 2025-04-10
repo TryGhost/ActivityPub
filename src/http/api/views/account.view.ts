@@ -12,6 +12,9 @@ import type { AccountDTO } from '../types';
  * Additional context that can be passed to the view
  */
 interface ViewContext {
+    /**
+     * The account associated with the user making the request
+     */
     requestUserAccount?: Account;
 }
 
@@ -24,9 +27,7 @@ export class AccountView {
     /**
      * View an account by ID
      *
-     * This will only return internal accounts, not external accounts
-     *
-     * @param id Account ID
+     * This will only return an internal account
      */
     async viewById(id: number): Promise<AccountDTO | null> {
         const accountData = await this.db('accounts')
@@ -84,9 +85,6 @@ export class AccountView {
      * This will attempt to resolve an internal account, and if the internal
      * account is not found, it will attempt to resolve the account via the
      * Fediverse
-     *
-     * @param handle Handle
-     * @param context View context
      */
     async viewByHandle(
         handle: string,
@@ -109,9 +107,6 @@ export class AccountView {
      * This will attempt to resolve an internal account, and if the internal
      * account is not found, it will attempt to resolve the account via the
      * Fediverse
-     *
-     * @param apId AP ID
-     * @param context View context
      */
     async viewByApId(
         apId: string,
@@ -194,9 +189,6 @@ export class AccountView {
      * View an account by its AP ID
      *
      * This will attempt to resolve the account via the Fediverse
-     *
-     * @param apId AP ID
-     * @param context View context
      */
     private async viewByApIdRemote(
         apId: string,
@@ -207,7 +199,7 @@ export class AccountView {
         const actor = await lookupObject(fedifyContext, apId);
 
         if (actor === null) {
-            throw new Error(`Could not find Actor ${apId}`);
+            return null;
         }
 
         if (!isActor(actor)) {
@@ -274,19 +266,13 @@ export class AccountView {
         };
     }
 
-    /**
-     * Get the count of a collection for an actor
-     *
-     * @param actor Actor instance
-     * @param collection Collection name
-     */
     private async getActorCollectionCount(
         actor: Actor,
-        collection: 'outbox' | 'liked' | 'followers' | 'following',
+        collectionName: 'outbox' | 'liked' | 'followers' | 'following',
     ): Promise<number> {
         let getCollection: () => Promise<Collection | null>;
 
-        switch (collection) {
+        switch (collectionName) {
             case 'outbox':
                 getCollection = actor.getOutbox;
                 break;
