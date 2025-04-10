@@ -2,7 +2,6 @@ import type { Federation } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import { getAccountHandle } from 'account/utils';
 import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
@@ -12,11 +11,7 @@ import {
     getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
-
-/**
- * Maximum number of follow accounts to return
- */
-const FOLLOWS_LIMIT = 20;
+import type { AccountFollowsView } from './views/account.follows.view';
 
 /**
  * Default number of posts to return in a profile
@@ -27,14 +22,6 @@ const DEFAULT_POSTS_LIMIT = 20;
  * Maximum number of posts that can be returned in a profile
  */
 const MAX_POSTS_LIMIT = 100;
-
-/**
- * Follow account shape - Used when returning a list of follow accounts
- */
-type FollowAccount = Pick<
-    AccountDTO,
-    'id' | 'name' | 'handle' | 'avatarUrl'
-> & { isFollowing: boolean };
 
 /**
  * Create a handler to handle a request for an account
@@ -122,14 +109,16 @@ export function createGetAccountHandler(
  *
  * @param accountService Account service instance
  */
-export function createGetAccountFollowsHandler(accountService: AccountService) {
+export function createGetAccountFollowsHandler(
+    accountRepository: KnexAccountRepository,
+    accountFollowsView: AccountFollowsView,
+) {
     /**
      * Handle a request for a list of account follows
      *
      * @param ctx App context
      */
     return async function handleGetAccountFollows(ctx: AppContext) {
-        const logger = ctx.get('logger');
         const site = ctx.get('site');
 
         // Validate input
@@ -145,63 +134,24 @@ export function createGetAccountFollowsHandler(accountService: AccountService) {
             return new Response(null, { status: 400 });
         }
 
-        // Retrieve data
-        const getAccounts =
-            type === 'following'
-                ? accountService.getFollowingAccounts.bind(accountService)
-                : accountService.getFollowerAccounts.bind(accountService);
-        const getAccountsCount =
-            type === 'following'
-                ? accountService.getFollowingAccountsCount.bind(accountService)
-                : accountService.getFollowerAccountsCount.bind(accountService);
-
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const siteDefaultAccount = await accountRepository.getBySite(site);
 
         // Get follows accounts and paginate
         const queryNext = ctx.req.query('next') || '0';
         const offset = Number.parseInt(queryNext);
 
-        const results = await getAccounts(siteDefaultAccount, {
-            limit: FOLLOWS_LIMIT,
+        const accountFollows = await accountFollowsView.getFollows(
+            type,
+            siteDefaultAccount,
             offset,
-            fields: ['id', 'ap_id', 'name', 'username', 'avatar_url'],
-        });
-        const total = await getAccountsCount(siteDefaultAccount.id);
-
-        const next =
-            total > offset + FOLLOWS_LIMIT
-                ? (offset + FOLLOWS_LIMIT).toString()
-                : null;
-
-        const accounts: FollowAccount[] = [];
-
-        for (const result of results) {
-            accounts.push({
-                id: String(result.id),
-                name: result.name || '',
-                handle: getAccountHandle(
-                    new URL(result.ap_id).host,
-                    result.username,
-                ),
-                avatarUrl: result.avatar_url || '',
-                isFollowing:
-                    type === 'following'
-                        ? true
-                        : await accountService.checkIfAccountIsFollowing(
-                              siteDefaultAccount.id,
-                              result.id,
-                          ),
-            });
-        }
+        );
 
         // Return response
         return new Response(
             JSON.stringify({
-                accounts,
-                total,
-                next,
+                accounts: accountFollows.accounts,
+                total: accountFollows.total,
+                next: accountFollows.next,
             }),
             {
                 headers: {
