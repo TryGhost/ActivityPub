@@ -56,5 +56,8 @@ export function postToDTO(
         repostedBy: meta.repostedBy
             ? accountToAuthorDTO(meta.repostedBy)
             : null,
+        metadata: post.metadata ?? {
+            ghostAuthors: [],
+        },
     };
 }

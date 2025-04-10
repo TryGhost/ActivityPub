@@ -50,6 +50,7 @@ export class KnexPostRepository {
                 'posts.in_reply_to',
                 'posts.thread_root',
                 'posts.deleted_at',
+                'posts.metadata',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
                 'accounts.name',
