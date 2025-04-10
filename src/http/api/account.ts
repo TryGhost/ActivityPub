@@ -28,7 +28,10 @@ const CURRENT_USER_KEYWORD = 'me';
 /**
  * Create a handler to handle a request for an account
  */
-export function createGetAccountHandler(accountView: AccountView) {
+export function createGetAccountHandler(
+    accountView: AccountView,
+    accountRepository: KnexAccountRepository,
+) {
     /**
      * Handle a request for an account
      *
@@ -41,13 +44,17 @@ export function createGetAccountHandler(accountView: AccountView) {
             return new Response(null, { status: 404 });
         }
 
+        const siteDefaultAccount = await accountRepository.getBySite(
+            ctx.get('site'),
+        );
+
         let accountDto: AccountDTO | null = null;
 
         if (handle === CURRENT_USER_KEYWORD) {
-            accountDto = await accountView.viewBySite(ctx.get('site'));
+            accountDto = await accountView.viewById(siteDefaultAccount.id!);
         } else {
             accountDto = await accountView.viewByHandle(handle, {
-                site: ctx.get('site'),
+                requestUserAccount: siteDefaultAccount,
             });
         }
 

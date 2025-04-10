@@ -973,7 +973,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountHandler(accountView)),
+    spanWrapper(createGetAccountHandler(accountView, accountRepository)),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',

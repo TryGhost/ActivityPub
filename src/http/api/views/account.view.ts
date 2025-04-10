@@ -1,23 +1,18 @@
 import { type Actor, type Collection, isActor } from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { getHandle } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { lookupAPIdByHandle, lookupObject } from 'lookup-helpers';
-import type { Site } from 'site/site.service';
 import type { AccountDTO } from '../types';
 
 /**
  * Additional context that can be passed to the view
  */
 interface ViewContext {
-    /**
-     * Site instance - This will be used to resolve the default site account
-     * and determine if that account is following / followed by the account
-     * being viewed
-     */
-    site?: Site;
+    requestUserAccount?: Account;
 }
 
 export class AccountView {
@@ -27,17 +22,16 @@ export class AccountView {
     ) {}
 
     /**
-     * View an account by site
+     * View an account by ID
      *
      * This will only return internal accounts, not external accounts
      *
-     * @param site Site instance
+     * @param id Account ID
      */
-    async viewBySite(site: Site): Promise<AccountDTO | null> {
-        const accountData = await this.db('sites')
-            .innerJoin('users', 'sites.id', 'users.site_id')
-            .innerJoin('accounts', 'users.account_id', 'accounts.id')
-            .where('sites.id', site.id)
+    async viewById(id: number): Promise<AccountDTO | null> {
+        const accountData = await this.db('accounts')
+            .innerJoin('users', 'users.account_id', 'accounts.id')
+            .where('accounts.id', id)
             .select(
                 'accounts.*',
                 this.db.raw(
@@ -156,31 +150,22 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
 
-        if (context.site) {
-            const defaultSiteAccount = await this.db('accounts')
-                .innerJoin('users', 'users.account_id', 'accounts.id')
-                .innerJoin('sites', 'sites.id', 'users.site_id')
-                .where('sites.id', context.site.id)
-                .select('accounts.id')
-                .first();
+        if (context.requestUserAccount?.id) {
+            followedByMe =
+                (
+                    await this.db('follows')
+                        .where('follower_id', context.requestUserAccount.id)
+                        .where('following_id', accountData.id)
+                        .first()
+                )?.id !== undefined;
 
-            if (defaultSiteAccount) {
-                followedByMe =
-                    (
-                        await this.db('follows')
-                            .where('follower_id', defaultSiteAccount.id)
-                            .where('following_id', accountData.id)
-                            .first()
-                    )?.id !== undefined;
-
-                followsMe =
-                    (
-                        await this.db('follows')
-                            .where('follower_id', accountData.id)
-                            .where('following_id', defaultSiteAccount.id)
-                            .first()
-                    )?.id !== undefined;
-            }
+            followsMe =
+                (
+                    await this.db('follows')
+                        .where('follower_id', accountData.id)
+                        .where('following_id', context.requestUserAccount.id)
+                        .first()
+                )?.id !== undefined;
         }
 
         return {
@@ -232,23 +217,16 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
 
-        if (context.site) {
-            const defaultSiteAccount = await this.db('accounts')
-                .innerJoin('users', 'users.account_id', 'accounts.id')
-                .innerJoin('sites', 'sites.id', 'users.site_id')
-                .where('sites.id', context.site.id)
-                .select('accounts.id')
-                .first();
-
+        if (context.requestUserAccount?.id) {
             const externalAccount = await this.db('accounts')
                 .where('ap_id', apId)
                 .first();
 
-            if (defaultSiteAccount && externalAccount) {
+            if (externalAccount) {
                 followedByMe =
                     (
                         await this.db('follows')
-                            .where('follower_id', defaultSiteAccount.id)
+                            .where('follower_id', context.requestUserAccount.id)
                             .where('following_id', externalAccount.id)
                             .first()
                     )?.id !== undefined;
@@ -257,7 +235,10 @@ export class AccountView {
                     (
                         await this.db('follows')
                             .where('follower_id', externalAccount.id)
-                            .where('following_id', defaultSiteAccount.id)
+                            .where(
+                                'following_id',
+                                context.requestUserAccount.id,
+                            )
                             .first()
                     )?.id !== undefined;
             }
