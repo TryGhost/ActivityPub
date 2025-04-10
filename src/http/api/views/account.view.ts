@@ -25,36 +25,32 @@ export class AccountView {
     ) {}
 
     /**
-     * View an account by ID
-     *
-     * This will only return an internal account
+     * View an internal account by its ID
      */
-    async viewById(id: number): Promise<AccountDTO | null> {
-        const accountData = await this.db('accounts')
-            .innerJoin('users', 'users.account_id', 'accounts.id')
-            .where('accounts.id', id)
-            .select(
-                'accounts.*',
-                this.db.raw(
-                    '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
-                ),
-            )
-            .first();
+    async viewById(
+        id: number,
+        context: ViewContext,
+    ): Promise<AccountDTO | null> {
+        const accountData = await this.getAccountByQuery(
+            (qb: Knex.QueryBuilder) => qb.where('accounts.id', id),
+        );
 
         if (!accountData) {
             return null;
+        }
+
+        let followedByMe = false;
+        let followsMe = false;
+
+        if (
+            context.requestUserAccount?.id &&
+            // Don't check if the request user is following / followed by themselves
+            accountData.id !== context.requestUserAccount.id
+        ) {
+            ({ followedByMe, followsMe } = await this.getRequestUserContextData(
+                context.requestUserAccount.id,
+                accountData.id,
+            ));
         }
 
         return {
@@ -73,8 +69,8 @@ export class AccountView {
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,
             followerCount: accountData.follower_count,
-            followedByMe: false,
-            followsMe: false,
+            followedByMe,
+            followsMe,
             attachment: [],
         };
     }
@@ -112,31 +108,9 @@ export class AccountView {
         apId: string,
         context: ViewContext,
     ): Promise<AccountDTO | null> {
-        const accountData = await this.db('accounts')
-            // Inner join onto the users table to ensure we only look up internal
-            // accounts in the database. For external accounts, we will look up
-            // the account via the Fediverse
-            .innerJoin('users', 'users.account_id', 'accounts.id')
-            .where('accounts.ap_id', apId)
-            .select(
-                'accounts.*',
-                this.db.raw(
-                    '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
-                ),
-                this.db.raw(
-                    '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
-                ),
-            )
-            .first();
+        const accountData = await this.getAccountByQuery(
+            (qb: Knex.QueryBuilder) => qb.where('accounts.ap_id', apId),
+        );
 
         if (!accountData) {
             return this.viewByApIdRemote(apId, context);
@@ -145,22 +119,15 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
 
-        if (context.requestUserAccount?.id) {
-            followedByMe =
-                (
-                    await this.db('follows')
-                        .where('follower_id', context.requestUserAccount.id)
-                        .where('following_id', accountData.id)
-                        .first()
-                )?.id !== undefined;
-
-            followsMe =
-                (
-                    await this.db('follows')
-                        .where('follower_id', accountData.id)
-                        .where('following_id', context.requestUserAccount.id)
-                        .first()
-                )?.id !== undefined;
+        if (
+            context.requestUserAccount?.id &&
+            // Don't check if the request user is following / followed by themselves
+            accountData.id !== context.requestUserAccount.id
+        ) {
+            ({ followedByMe, followsMe } = await this.getRequestUserContextData(
+                context.requestUserAccount.id,
+                accountData.id,
+            ));
         }
 
         return {
@@ -186,9 +153,8 @@ export class AccountView {
     }
 
     /**
-     * View an account by its AP ID
-     *
-     * This will attempt to resolve the account via the Fediverse
+     * View an account by its AP ID by attempting to resolve the account
+     * via the Fediverse
      */
     private async viewByApIdRemote(
         apId: string,
@@ -212,27 +178,15 @@ export class AccountView {
         if (context.requestUserAccount?.id) {
             const externalAccount = await this.db('accounts')
                 .where('ap_id', apId)
+                .select('id')
                 .first();
 
             if (externalAccount) {
-                followedByMe =
-                    (
-                        await this.db('follows')
-                            .where('follower_id', context.requestUserAccount.id)
-                            .where('following_id', externalAccount.id)
-                            .first()
-                    )?.id !== undefined;
-
-                followsMe =
-                    (
-                        await this.db('follows')
-                            .where('follower_id', externalAccount.id)
-                            .where(
-                                'following_id',
-                                context.requestUserAccount.id,
-                            )
-                            .first()
-                    )?.id !== undefined;
+                ({ followedByMe, followsMe } =
+                    await this.getRequestUserContextData(
+                        context.requestUserAccount.id,
+                        externalAccount.id,
+                    ));
             }
         }
 
@@ -263,6 +217,71 @@ export class AccountView {
             followedByMe,
             followsMe,
             attachment: [],
+        };
+    }
+
+    private async getAccountByQuery(query: Knex.QueryCallback) {
+        return (
+            this.db('accounts')
+                // Join the users table to ensure we are getting an internal account
+                .innerJoin('users', 'users.account_id', 'accounts.id')
+                .select(
+                    'accounts.id',
+                    'accounts.username',
+                    'accounts.name',
+                    'accounts.bio',
+                    'accounts.avatar_url',
+                    'accounts.banner_image_url',
+                    'accounts.url',
+                    'accounts.custom_fields',
+                    'accounts.ap_id',
+                    this.db.raw(
+                        '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
+                    ),
+                    this.db.raw(
+                        '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
+                    ),
+                    this.db.raw(
+                        '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
+                    ),
+                    this.db.raw(
+                        '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
+                    ),
+                    this.db.raw(
+                        '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
+                    ),
+                )
+                .where(query)
+                .first()
+        );
+    }
+
+    private async getRequestUserContextData(
+        requestUserAccountId: number,
+        retrievedAccountId: number,
+    ) {
+        let followedByMe = false;
+        let followsMe = false;
+
+        followedByMe =
+            (
+                await this.db('follows')
+                    .where('follower_id', requestUserAccountId)
+                    .where('following_id', retrievedAccountId)
+                    .first()
+            )?.id !== undefined;
+
+        followsMe =
+            (
+                await this.db('follows')
+                    .where('following_id', requestUserAccountId)
+                    .where('follower_id', retrievedAccountId)
+                    .first()
+            )?.id !== undefined;
+
+        return {
+            followedByMe,
+            followsMe,
         };
     }
 

@@ -50,12 +50,17 @@ export function createGetAccountHandler(
 
         let accountDto: AccountDTO | null = null;
 
+        const viewContext = {
+            requestUserAccount: siteDefaultAccount,
+        };
+
         if (handle === CURRENT_USER_KEYWORD) {
-            accountDto = await accountView.viewById(siteDefaultAccount.id!);
+            accountDto = await accountView.viewById(
+                siteDefaultAccount.id!,
+                viewContext,
+            );
         } else {
-            accountDto = await accountView.viewByHandle(handle, {
-                requestUserAccount: siteDefaultAccount,
-            });
+            accountDto = await accountView.viewByHandle(handle, viewContext);
         }
 
         if (accountDto === null) {
