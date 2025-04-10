@@ -72,14 +72,11 @@ describe('AccountFollowsView', () => {
 
         viewer = new AccountFollowsView(db, fedifyContextFactory);
 
-        account = await accountService.createInternalAccount(
-            site,
-            {
-                ...internalAccountData,
-                username: 'accountToCheck',
-                name: 'Account To Check',
-            },
-        );
+        account = await accountService.createInternalAccount(site, {
+            ...internalAccountData,
+            username: 'accountToCheck',
+            name: 'Account To Check',
+        });
 
         accountEntity = await accountRepository.getByApId(
             new URL(account.ap_id),
@@ -120,14 +117,8 @@ describe('AccountFollowsView', () => {
             }
 
             // Set up follows
-            await accountService.recordAccountFollow(
-                following1,
-                account,
-            );
-            await accountService.recordAccountFollow(
-                following2,
-                account,
-            );
+            await accountService.recordAccountFollow(following1, account);
+            await accountService.recordAccountFollow(following2, account);
 
             const result = await viewer.getFollowsByAccount(
                 accountEntity,
