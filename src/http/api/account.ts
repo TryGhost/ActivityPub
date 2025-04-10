@@ -2,7 +2,6 @@ import type { Federation } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
@@ -12,10 +11,7 @@ import {
     getAccountDTOFromAccount,
 } from './helpers/account';
 import type { AccountDTO } from './types';
-import type {
-    AccountFollows,
-    AccountFollowsView,
-} from './views/account.follows.view';
+import type { AccountFollowsView } from './views/account.follows.view';
 
 /**
  * Default number of posts to return in a profile
@@ -116,7 +112,6 @@ export function createGetAccountHandler(
 export function createGetAccountFollowsHandler(
     accountRepository: KnexAccountRepository,
     accountFollowsView: AccountFollowsView,
-    fedifyContextFactory: FedifyContextFactory,
 ) {
     /**
      * Handle a request for a list of account follows
@@ -126,51 +121,30 @@ export function createGetAccountFollowsHandler(
     return async function handleGetAccountFollows(ctx: AppContext) {
         const site = ctx.get('site');
 
+        // Validate input
         const handle = ctx.req.param('handle') || '';
+
         if (handle === '') {
             return new Response(null, { status: 400 });
         }
 
         const type = ctx.req.param('type');
+
         if (!['following', 'followers'].includes(type)) {
             return new Response(null, { status: 400 });
         }
 
         const siteDefaultAccount = await accountRepository.getBySite(site);
 
-        const queryNext = ctx.req.query('next');
-        const next = queryNext ? decodeURIComponent(queryNext) : null;
+        // Get follows accounts and paginate
+        const queryNext = ctx.req.query('next') || '0';
+        const offset = Number.parseInt(queryNext);
 
-        let accountFollows: AccountFollows;
-
-        if (handle === 'me') {
-            accountFollows = await accountFollowsView.getFollowsByAccount(
-                siteDefaultAccount,
-                type,
-                Number.parseInt(next || '0'),
-                siteDefaultAccount,
-            );
-        } else {
-            const ctx = fedifyContextFactory.getFedifyContext();
-            const apId = await lookupAPIdByHandle(ctx, handle);
-
-            if (!apId) {
-                return new Response(null, { status: 400 });
-            }
-
-            const account = await accountRepository.getByApId(new URL(apId));
-            if (!account) {
-                return new Response(null, { status: 400 });
-            }
-
-            accountFollows = await accountFollowsView.getFollowsByHandle(
-                handle,
-                account,
-                type,
-                next,
-                siteDefaultAccount,
-            );
-        }
+        const accountFollows = await accountFollowsView.getFollows(
+            type,
+            siteDefaultAccount,
+            offset,
+        );
 
         // Return response
         return new Response(
