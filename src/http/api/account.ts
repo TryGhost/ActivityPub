@@ -144,7 +144,6 @@ export function createGetAccountFollowsHandler(
         let accountFollows: AccountFollows;
 
         if (handle === 'me') {
-            console.log('############################# Its me');
             accountFollows = await accountFollowsView.getFollowsByAccount(
                 siteDefaultAccount,
                 type,

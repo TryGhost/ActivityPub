@@ -1,6 +1,5 @@
 import { CollectionPage, isActor, lookupObject } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
-import type { Site } from 'account/types';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { isUri } from 'helpers/uri';
@@ -45,11 +44,9 @@ export class AccountFollowsView {
         type: string,
         offset: string | null,
         siteDefaultAccount: Account,
-        site: Site,
     ): Promise<AccountFollows> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
-            console.log('############################# Internal account');
             return await this.getFollowsByAccount(
                 account,
                 type,
@@ -59,7 +56,6 @@ export class AccountFollowsView {
         }
 
         //Otherwise, do a remote lookup to fetch the posts
-        console.log('############################# External account');
         return this.getFollowsByRemoteLookUp(
             handle,
             offset || '',
@@ -187,7 +183,6 @@ export class AccountFollowsView {
                 }
             }
         } catch (err) {
-            console.log('############################# err', err);
             throw new Error('Error getting follows');
         }
 
@@ -223,7 +218,7 @@ export class AccountFollowsView {
                 });
             }
         } catch (err) {
-            console.log('############################# err', err);
+            throw new Error('Error getting follows');
         }
 
         const nextCursor = page.nextId

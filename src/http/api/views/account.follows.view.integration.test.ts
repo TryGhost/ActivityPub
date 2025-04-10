@@ -24,6 +24,8 @@ describe('AccountFollowsView', () => {
     let db: Knex;
     let defaultAccount: AccountType;
     let siteDefaultAccount: Account | null;
+    let account: AccountType;
+    let accountEntity: Account | null;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -70,6 +72,19 @@ describe('AccountFollowsView', () => {
 
         viewer = new AccountFollowsView(db, fedifyContextFactory);
 
+        account = await accountService.createInternalAccount(
+            site,
+            {
+                ...internalAccountData,
+                username: 'accountToCheck',
+                name: 'Account To Check',
+            },
+        );
+
+        accountEntity = await accountRepository.getByApId(
+            new URL(account.ap_id),
+        );
+
         defaultAccount = await accountService.createInternalAccount(site, {
             ...internalAccountData,
             username: 'default',
@@ -100,19 +115,22 @@ describe('AccountFollowsView', () => {
             if (!siteDefaultAccount) {
                 throw new Error('Site default account not found');
             }
+            if (!accountEntity) {
+                throw new Error('Account not found');
+            }
 
             // Set up follows
             await accountService.recordAccountFollow(
                 following1,
-                defaultAccount,
+                account,
             );
             await accountService.recordAccountFollow(
                 following2,
-                defaultAccount,
+                account,
             );
 
             const result = await viewer.getFollowsByAccount(
-                siteDefaultAccount,
+                accountEntity,
                 'following',
                 0,
                 siteDefaultAccount,
@@ -128,7 +146,7 @@ describe('AccountFollowsView', () => {
                 name: 'Following Two',
                 handle: `@following2@${new URL(following2.ap_id).host}`,
                 avatarUrl: following2.avatar_url,
-                isFollowing: true,
+                isFollowing: false,
             });
         });
 
@@ -146,16 +164,19 @@ describe('AccountFollowsView', () => {
             if (!siteDefaultAccount) {
                 throw new Error('Site default account not found');
             }
+            if (!accountEntity) {
+                throw new Error('Account not found');
+            }
 
             // Set up follows
-            await accountService.recordAccountFollow(defaultAccount, follower1);
-            await accountService.recordAccountFollow(defaultAccount, follower2);
+            await accountService.recordAccountFollow(account, follower1);
+            await accountService.recordAccountFollow(account, follower2);
             // Make follower2 follow defaultAccount back to test isFollowing
             await accountService.recordAccountFollow(follower2, defaultAccount);
 
             // Get follows
             const result = await viewer.getFollowsByAccount(
-                siteDefaultAccount,
+                accountEntity,
                 'followers',
                 0,
                 siteDefaultAccount,
@@ -190,9 +211,12 @@ describe('AccountFollowsView', () => {
             if (!siteDefaultAccount) {
                 throw new Error('Site default account not found');
             }
+            if (!accountEntity) {
+                throw new Error('Account not found');
+            }
 
             const result = await viewer.getFollowsByAccount(
-                siteDefaultAccount,
+                accountEntity,
                 'following',
                 0,
                 siteDefaultAccount,
