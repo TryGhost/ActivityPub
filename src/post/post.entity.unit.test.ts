@@ -88,7 +88,12 @@ describe('Post', () => {
                 published_at: '2020-01-01',
                 url: 'https://ghost.org/post',
                 visibility: 'public',
-                authors: [],
+                authors: [
+                    {
+                        name: 'Author 1',
+                        profile_image: 'https://image.com/author1.jpg',
+                    },
+                ],
             };
 
             const post = Post.createArticleFromGhostPost(author, ghostPost);
@@ -102,6 +107,7 @@ describe('Post', () => {
             expect(post.excerpt).toBeNull();
             expect(post.imageUrl).toBeNull();
             expect(post.attachments).toEqual([]);
+            expect(post.metadata).toBeNull();
         });
 
         it('Should set all content to null for already deleted posts', () => {
@@ -120,7 +126,12 @@ describe('Post', () => {
                 new URL('https://ghost.org/feature-image.jpeg'),
                 new Date('2020-01-01'),
                 {
-                    ghostAuthors: [],
+                    ghostAuthors: [
+                        {
+                            name: 'Author 1',
+                            profile_image: 'https://image.com/author1.jpg',
+                        },
+                    ],
                 },
                 5,
                 10,
@@ -147,6 +158,7 @@ describe('Post', () => {
             expect(post.excerpt).toBeNull();
             expect(post.imageUrl).toBeNull();
             expect(post.attachments).toEqual([]);
+            expect(post.metadata).toBeNull();
         });
     });
 
@@ -505,6 +517,28 @@ describe('Post', () => {
                     profile_image: null,
                 },
             ],
+        });
+    });
+
+    it('should handle an empty array of ghost authors', () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><!--members-only--><p>This is private content</p>',
+            excerpt: 'Welcome!\n\nThis is private content',
+            custom_excerpt: null,
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'members',
+            authors: [],
+        };
+
+        const post = Post.createArticleFromGhostPost(account, ghostPost);
+
+        expect(post.metadata).toEqual({
+            ghostAuthors: [],
         });
     });
 

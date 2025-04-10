@@ -159,6 +159,7 @@ export class Post extends BaseEntity {
         self.excerpt = null;
         self.imageUrl = null;
         self.attachments = [];
+        self.metadata = null;
     }
 
     static isDeleted(post: Post) {
