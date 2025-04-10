@@ -979,7 +979,11 @@ app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
-        createGetAccountFollowsHandler(accountRepository, accountFollowsView),
+        createGetAccountFollowsHandler(
+            accountRepository,
+            accountFollowsView,
+            fedifyContextFactory,
+        ),
     ),
 );
 app.get(

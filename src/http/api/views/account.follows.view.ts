@@ -1,6 +1,9 @@
+import { CollectionPage, isActor, lookupObject } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
+import type { Site } from 'account/types';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { isUri } from 'helpers/uri';
 import type { Knex } from 'knex';
 
 /**
@@ -16,7 +19,7 @@ interface AccountInfo {
     isFollowing: boolean;
 }
 
-interface AccountFollows {
+export interface AccountFollows {
     accounts: AccountInfo[];
     total: number;
     next: string | null;
@@ -36,13 +39,42 @@ export class AccountFollowsView {
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
-    async getFollowsByAccount(
-        type: string,
+    async getFollowsByHandle(
+        handle: string,
         account: Account,
+        type: string,
+        offset: string | null,
         siteDefaultAccount: Account,
-        offset: number,
+        site: Site,
     ): Promise<AccountFollows> {
-        if (!siteDefaultAccount.id || !account.id) {
+        //If we found the account in our db and it's an internal account, do an internal lookup
+        if (account?.isInternal) {
+            console.log('############################# Internal account');
+            return await this.getFollowsByAccount(
+                account,
+                type,
+                Number.parseInt(offset || '0'),
+                siteDefaultAccount,
+            );
+        }
+
+        //Otherwise, do a remote lookup to fetch the posts
+        console.log('############################# External account');
+        return this.getFollowsByRemoteLookUp(
+            handle,
+            offset || '',
+            type,
+            siteDefaultAccount,
+        );
+    }
+
+    async getFollowsByAccount(
+        account: Account,
+        type: string,
+        offset: number,
+        siteDefaultAccount: Account,
+    ): Promise<AccountFollows> {
+        if (!siteDefaultAccount.id) {
             throw new Error('Site default account not found');
         }
 
@@ -78,22 +110,131 @@ export class AccountFollowsView {
                     result.username,
                 ),
                 avatarUrl: result.avatar_url || '',
-                isFollowing:
-                    type === 'following'
-                        ? true
-                        : await this.checkIfAccountIsFollowing(
-                              siteDefaultAccount.id,
-                              result.id,
-                          ),
+                isFollowing: await this.checkIfAccountIsFollowing(
+                    siteDefaultAccount.id,
+                    result.id,
+                ),
             });
         }
 
-        const accountFollows: AccountFollows = {
+        return {
             accounts: accounts,
             total: total,
             next: next,
         };
-        return accountFollows;
+    }
+
+    async getFollowsByRemoteLookUp(
+        handle: string,
+        next: string,
+        type: string,
+        siteDefaultAccount: Account,
+    ): Promise<AccountFollows> {
+        // If the next parameter is not a valid URI, return early
+        if (next !== '' && !isUri(next)) {
+            throw new Error('Invalid next parameter');
+        }
+
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await ctx.getDocumentLoader({
+            handle: 'index',
+        });
+
+        // Lookup actor by handle
+        const actor = await lookupObject(handle, { documentLoader });
+
+        if (!isActor(actor)) {
+            throw new Error('Invalid actor');
+        }
+
+        if (!siteDefaultAccount.id) {
+            throw new Error('Site default account not found');
+        }
+
+        let page: CollectionPage | null = null;
+
+        try {
+            if (next !== '') {
+                // Ensure the next parameter is for the same host as the actor. We
+                // do this to prevent blindly passing URIs to lookupObject (i.e next
+                // param has been tampered with)
+                // @TODO: Does this provide enough security? Can the host of the
+                // actor be different to the host of the actor's following collection?
+                const { host: actorHost } = actor?.id || new URL('');
+                const { host: nextHost } = new URL(next);
+
+                if (actorHost !== nextHost) {
+                    throw new Error('Invalid next parameter');
+                }
+
+                page = (await lookupObject(next, {
+                    documentLoader,
+                })) as CollectionPage | null;
+
+                // Check that we have a valid page
+                if (!(page instanceof CollectionPage) || !page?.itemIds) {
+                    page = null;
+                }
+            } else {
+                const follows =
+                    type === 'following'
+                        ? await actor.getFollowing()
+                        : await actor.getFollowers();
+
+                if (follows) {
+                    page = await follows.getFirst();
+                }
+            }
+        } catch (err) {
+            console.log('############################# err', err);
+            throw new Error('Error getting follows');
+        }
+
+        if (!page) {
+            throw new Error('Page not found');
+        }
+
+        const accounts: AccountInfo[] = [];
+        try {
+            for await (const item of page.getItems()) {
+                const actor = (await item.toJsonLd({
+                    format: 'compact',
+                })) as any;
+
+                const followeeAccount = await this.db('accounts')
+                    .where('ap_id', actor.id?.toString() || '')
+                    .first();
+
+                accounts.push({
+                    id: actor.id || '',
+                    name: actor.name || '',
+                    handle: getAccountHandle(
+                        new URL(actor.id).host,
+                        actor.preferredUsername,
+                    ),
+                    avatarUrl: actor.icon?.url || '',
+                    isFollowing: followeeAccount
+                        ? await this.checkIfAccountIsFollowing(
+                              siteDefaultAccount.id,
+                              followeeAccount.id,
+                          )
+                        : false,
+                });
+            }
+        } catch (err) {
+            console.log('############################# err', err);
+        }
+
+        const nextCursor = page.nextId
+            ? encodeURIComponent(page.nextId.toString())
+            : null;
+
+        return {
+            accounts: accounts,
+            total: 0,
+            next: nextCursor,
+        };
     }
 
     private async getFollowingAccountsCount(

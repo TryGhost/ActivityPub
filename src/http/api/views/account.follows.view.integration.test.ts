@@ -112,10 +112,10 @@ describe('AccountFollowsView', () => {
             );
 
             const result = await viewer.getFollowsByAccount(
+                siteDefaultAccount,
                 'following',
-                siteDefaultAccount,
-                siteDefaultAccount,
                 0,
+                siteDefaultAccount,
             );
 
             expect(result).toHaveProperty('accounts');
@@ -155,10 +155,10 @@ describe('AccountFollowsView', () => {
 
             // Get follows
             const result = await viewer.getFollowsByAccount(
+                siteDefaultAccount,
                 'followers',
-                siteDefaultAccount,
-                siteDefaultAccount,
                 0,
+                siteDefaultAccount,
             );
 
             expect(result).toHaveProperty('accounts');
@@ -192,10 +192,10 @@ describe('AccountFollowsView', () => {
             }
 
             const result = await viewer.getFollowsByAccount(
+                siteDefaultAccount,
                 'following',
-                siteDefaultAccount,
-                siteDefaultAccount,
                 0,
+                siteDefaultAccount,
             );
 
             expect(result).toMatchObject({
