@@ -1,4 +1,4 @@
-import type { PostType } from '../../post/post.entity';
+import type { Metadata, PostType } from '../../post/post.entity';
 
 /**
  * Account returned by the API - Anywhere an account is returned via the API,
@@ -175,6 +175,10 @@ export interface PostDTO {
      * Account that reposted the post
      */
     repostedBy: AuthorDTO | null;
+    /**
+     * Metadata of the post, containing e.g. information about ghost authors
+     */
+    metadata?: Metadata | null;
 }
 
 /**

@@ -55,6 +55,9 @@ describe('Post API', () => {
             new URL(`https://${site.host}/posts/${id}`),
             new URL(`https://${site.host}/images/post-${id}.jpg`),
             new Date(),
+            {
+                ghostAuthors: [],
+            },
             0,
             0,
             2,

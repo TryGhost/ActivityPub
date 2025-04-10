@@ -14,6 +14,9 @@
   "id": "http://example.com/.ghost/activitypub/article/259e92cb-5ac2-4d62-910f-ddea29b2cf55",
   "likeCount": 0,
   "likedByMe": false,
+  "metadata": {
+    "ghostAuthors": [],
+  },
   "publishedAt": "2025-03-25T14:00:00.000Z",
   "readingTimeMinutes": 1,
   "replyCount": 2,

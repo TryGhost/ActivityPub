@@ -86,6 +86,9 @@ describe('Thread API', () => {
                                     'https://example.com/images/post-123.jpg',
                                 ),
                                 new Date(),
+                                {
+                                    ghostAuthors: [],
+                                },
                                 0,
                                 0,
                                 2,
@@ -108,6 +111,9 @@ describe('Thread API', () => {
                                     'https://example.com/images/post-456.jpg',
                                 ),
                                 new Date(),
+                                {
+                                    ghostAuthors: [],
+                                },
                                 0,
                                 0,
                                 0,
@@ -132,6 +138,9 @@ describe('Thread API', () => {
                                     'https://example.com/images/post-789.jpg',
                                 ),
                                 new Date(),
+                                {
+                                    ghostAuthors: [],
+                                },
                                 0,
                                 0,
                                 0,

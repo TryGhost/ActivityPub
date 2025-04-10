@@ -402,6 +402,7 @@ function createWebhookPost() {
                 published_at: new Date().toISOString(),
                 url: `http://fake-external-activitypub/post/${uuid}`,
                 visibility: 'public',
+                authors: [],
             },
         },
     };
