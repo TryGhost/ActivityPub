@@ -3,7 +3,6 @@ export * from './feed';
 export * from './notification';
 export * from './note';
 export * from './post';
-export * from './profile';
 export * from './search';
 export * from './thread';
 export * from './webhook';
