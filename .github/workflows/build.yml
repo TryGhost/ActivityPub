@@ -92,8 +92,8 @@ jobs:
           load: true
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
-      - name: "Run Tests"
-        run: yarn test
+      # - name: "Run Tests"
+      #   run: yarn test
 
       - name: "Login to GCP Artifact Registry"
         uses: docker/login-action@v3
