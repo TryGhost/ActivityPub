@@ -17,4 +17,4 @@ RUN yarn build
 
 EXPOSE 8080
 
-CMD ["node", "src/boot.js"]
+CMD ["node", "dist/app.js"]
