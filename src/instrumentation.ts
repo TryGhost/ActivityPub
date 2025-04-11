@@ -1,3 +1,4 @@
+console.time('startup');
 console.time('instrumentation');
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
 import {
