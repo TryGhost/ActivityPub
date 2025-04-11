@@ -20,8 +20,8 @@ Feature: Account API
 
   Scenario: Get non-existent account
     When an authenticated "get" request is made to "/.ghost/activitypub/account/@nonexistent@fake-external-activitypub"
-    Then the request is rejected with a 500
+    Then the request is rejected with a 404
 
   Scenario: Get account without authentication
     When an unauthenticated request is made to "/.ghost/activitypub/account/me"
-    Then the request is rejected with a 403 
+    Then the request is rejected with a 403
