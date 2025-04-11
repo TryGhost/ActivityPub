@@ -1,3 +1,4 @@
+console.log(`process uptime: ${Math.round(process.uptime() * 1000)}ms`)
 console.time('startup');
 console.time('instrumentation');
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
