@@ -17,4 +17,6 @@ RUN yarn build
 
 EXPOSE 8080
 
+RUN echo "console.time('startup');" | cat - dist/app.js > dist/app.tmp.js && mv dist/app.tmp.js dist/app.js
+
 CMD ["node", "dist/app.js"]

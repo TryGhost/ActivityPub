@@ -1,3 +1,4 @@
+console.time('imports');
 import './instrumentation';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -123,6 +124,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+console.timeEnd('imports');
 
 const logging = getLogger(['activitypub']);
 
@@ -136,6 +138,7 @@ function toLogLevel(level: unknown): LogLevel | null {
     return null;
 }
 
+console.time('configure');
 await configure({
     contextLocalStorage: new AsyncLocalStorage(),
     sinks: {
@@ -176,6 +179,7 @@ await configure({
         },
     ],
 });
+console.timeEnd('configure');
 
 export type ContextData = {
     db: KvStore;
@@ -183,10 +187,13 @@ export type ContextData = {
     logger: Logger;
 };
 
+console.time('fedifyKv');
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
+console.timeEnd('fedifyKv');
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
+console.time('messageQueue');
 if (process.env.USE_MQ === 'true') {
     logging.info('Message queue is enabled');
 
@@ -214,6 +221,7 @@ if (process.env.USE_MQ === 'true') {
 } else {
     logging.info('Message queue is disabled');
 }
+console.timeEnd('messageQueue');
 
 export const fedify = createFederation<ContextData>({
     kv: fedifyKv,
@@ -235,8 +243,11 @@ export const fedify = createFederation<ContextData>({
 export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
+console.time('db');
 export const db = await KnexKvStore.create(client, 'key_value');
+console.timeEnd('db');
 
+console.time('fedifyStartQueue');
 if (process.env.MANUALLY_START_QUEUE === 'true') {
     fedify.startQueue({
         db: scopeKvStore(db, ['UNUSED_HOST']),
@@ -244,6 +255,7 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
         logger: logging,
     });
 }
+console.timeEnd('fedifyStartQueue');
 
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -1064,7 +1076,6 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
         return fn(request);
     };
 }
-
 serve(
     {
         fetch: forceAcceptHeader(behindProxy(app.fetch)),
@@ -1077,6 +1088,7 @@ serve(
                 bootTime: Math.round(process.uptime() * 1000),
             },
         );
+        console.timeEnd('startup');
     },
 );
 
