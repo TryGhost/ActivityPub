@@ -115,6 +115,7 @@ import {
     handleWebhookSiteChanged,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
+import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
@@ -901,6 +902,11 @@ function requireRole(...roles: GhostRole[]) {
         return next();
     };
 }
+
+app.get(
+    '/.well-known/webfinger',
+    spanWrapper(createWebFingerHandler(accountRepository, siteService)),
+);
 
 app.get(
     '/.ghost/activitypub/inbox/:handle',
