@@ -16,6 +16,7 @@ import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import type { KnexAccountRepository } from './account/account.repository.knex';
 import type { AccountService } from './account/account.service';
@@ -82,11 +83,35 @@ export function createUnlikeAction(
 
         const account = await accountRepository.getBySite(ctx.get('site'));
         if (account !== null) {
-            const post = await postService.getByApId(idAsUrl);
+            const postResult = await postService.getByApId(idAsUrl);
 
-            if (post !== null) {
+            if (isError(postResult)) {
+                const error = getError(postResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.get('logger').info(
+                            'Upstream error fetching post for unliking',
+                            { postId: idAsUrl.href },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.get('logger').info(
+                            'Resource for unliking is not a post',
+                            { postId: idAsUrl.href },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.get('logger').info(
+                            'Post for unliking has missing author',
+                            { postId: idAsUrl.href },
+                        );
+                        break;
+                    default:
+                        return exhaustiveCheck(error);
+                }
+            } else {
+                const post = getValue(postResult);
                 post.removeLike(account);
-
                 await postRepository.save(post);
             }
         }
@@ -175,11 +200,35 @@ export function createLikeAction(
 
         const account = await accountRepository.getBySite(ctx.get('site'));
         if (account !== null) {
-            const post = await postService.getByApId(idAsUrl);
+            const postResult = await postService.getByApId(idAsUrl);
 
-            if (post !== null) {
+            if (isError(postResult)) {
+                const error = getError(postResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.get('logger').info(
+                            'Upstream error fetching post for liking',
+                            { postId: idAsUrl.href },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.get('logger').info(
+                            'Resource for liking is not a post',
+                            { postId: idAsUrl.href },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.get('logger').info(
+                            'Post for liking has missing author',
+                            { postId: idAsUrl.href },
+                        );
+                        break;
+                    default:
+                        return exhaustiveCheck(error);
+                }
+            } else {
+                const post = getValue(postResult);
                 post.addLike(account);
-
                 await postRepository.save(post);
             }
         }
@@ -320,13 +369,58 @@ export function createReplyActionHandler(
             });
         }
 
-        const parentPost = await postService.getByApId(objectToReplyTo.id);
+        const parentPostResult = await postService.getByApId(
+            objectToReplyTo.id,
+        );
 
-        if (!parentPost) {
-            return new Response('Invalid Reply - could not find object', {
-                status: 404,
-            });
+        if (isError(parentPostResult)) {
+            const error = getError(parentPostResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.get('logger').info(
+                        'Upstream error fetching parent post for reply',
+                        {
+                            postId: objectToReplyTo.id.href,
+                        },
+                    );
+                    return new Response(
+                        'Invalid Reply - upstream error fetching parent post',
+                        {
+                            status: 502,
+                        },
+                    );
+                case 'not-a-post':
+                    ctx.get('logger').info(
+                        'Parent resource for reply is not a post',
+                        {
+                            postId: objectToReplyTo.id.href,
+                        },
+                    );
+                    return new Response(
+                        'Invalid Reply - parent is not a post',
+                        {
+                            status: 404,
+                        },
+                    );
+                case 'missing-author':
+                    ctx.get('logger').info(
+                        'Parent post for reply has missing author',
+                        {
+                            postId: objectToReplyTo.id.href,
+                        },
+                    );
+                    return new Response(
+                        'Invalid Reply - parent post has no author',
+                        {
+                            status: 404,
+                        },
+                    );
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
+
+        const parentPost = getValue(parentPostResult);
 
         const newReply = Post.createReply(account, data.content, parentPost);
 
@@ -726,8 +820,9 @@ export function createRepostActionHandler(
 
         const account = await accountRepository.getBySite(ctx.get('site'));
         if (account !== null) {
-            const originalPost = await postService.getByApId(post.id);
-            if (originalPost !== null) {
+            const originalPostResult = await postService.getByApId(post.id);
+            if (!isError(originalPostResult)) {
+                const originalPost = getValue(originalPostResult);
                 originalPost.addRepost(account);
                 await postRepository.save(originalPost);
             }
@@ -840,9 +935,34 @@ export function createDerepostActionHandler(
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
-        const originalPost = await postService.getByApId(idAsUrl);
+        const originalPostResult = await postService.getByApId(idAsUrl);
 
-        if (originalPost) {
+        if (isError(originalPostResult)) {
+            const error = getError(originalPostResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.get('logger').info(
+                        'Upstream error fetching post for dereposting',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                case 'not-a-post':
+                    ctx.get('logger').info(
+                        'Resource for dereposting is not a post',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                case 'missing-author':
+                    ctx.get('logger').info(
+                        'Post for dereposting has missing author',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                default:
+                    return exhaustiveCheck(error);
+            }
+        } else {
+            const originalPost = getValue(originalPostResult);
             originalPost.removeRepost(account);
             await postRepository.save(originalPost);
         }

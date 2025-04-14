@@ -10,6 +10,15 @@ import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import {
+    type Result,
+    error,
+    exhaustiveCheck,
+    getError,
+    getValue,
+    isError,
+    ok,
+} from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import { isUri } from 'helpers/uri';
@@ -72,6 +81,8 @@ export interface GetProfileDataResult {
     results: PostDTO[];
     nextCursor: string | null;
 }
+
+export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
 export class PostService {
     constructor(
@@ -227,10 +238,10 @@ export class PostService {
         return postAttachments;
     }
 
-    async getByApId(id: URL): Promise<Post | null> {
+    async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);
         if (post) {
-            return post;
+            return ok(post);
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
@@ -243,7 +254,7 @@ export class PostService {
         // If foundObject is null - we could not find anything for this URL
         // Error because could be upstream server issues and we want a retry
         if (foundObject === null) {
-            throw new Error(`Could not find Object ${id}`);
+            return error('upstream-error');
         }
 
         // If we do find an Object, and it's not a Note or Article
@@ -252,7 +263,7 @@ export class PostService {
             !(foundObject instanceof Note) &&
             !(foundObject instanceof Article)
         ) {
-            return null;
+            return error('not-a-post');
         }
 
         const type =
@@ -260,7 +271,7 @@ export class PostService {
 
         // We're also unable to handle objects without an author
         if (!foundObject.attributionId) {
-            return null;
+            return error('missing-author');
         }
 
         const author = await this.accountService.getByApId(
@@ -268,12 +279,28 @@ export class PostService {
         );
 
         if (author === null) {
-            return null;
+            return error('missing-author');
         }
 
         let inReplyTo = null;
         if (foundObject.replyTargetId) {
-            inReplyTo = await this.getByApId(foundObject.replyTargetId);
+            const found = await this.getByApId(foundObject.replyTargetId);
+            if (isError(found)) {
+                const error = getError(found);
+                switch (error) {
+                    case 'upstream-error':
+                        break;
+                    case 'not-a-post':
+                        break;
+                    case 'missing-author':
+                        break;
+                    default: {
+                        exhaustiveCheck(error);
+                    }
+                }
+            } else {
+                inReplyTo = getValue(found);
+            }
         }
 
         const newlyCreatedPost = Post.createFromData(author, {
@@ -290,7 +317,7 @@ export class PostService {
 
         await this.postRepository.save(newlyCreatedPost);
 
-        return newlyCreatedPost;
+        return ok(newlyCreatedPost);
     }
 
     /**

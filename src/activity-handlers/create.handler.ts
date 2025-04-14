@@ -1,6 +1,7 @@
 import type { Context, Create } from '@fedify/fedify';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
+import { exhaustiveCheck, getError, isError } from 'core/result';
 import { isFollowedByDefaultSiteAccount } from 'helpers/activitypub/actor';
 import { getUserData } from 'helpers/user';
 import { addToList } from 'kv-helpers';
@@ -35,7 +36,39 @@ export class CreateHandler {
         }
 
         // This handles storing the posts in the posts table
-        const post = await this.postService.getByApId(create.objectId);
+        const postResult = await this.postService.getByApId(create.objectId);
+
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.data.logger.info(
+                        'Upstream error fetching post for create handling',
+                        {
+                            postId: create.objectId.href,
+                        },
+                    );
+                    break;
+                case 'not-a-post':
+                    ctx.data.logger.info(
+                        'Resource is not a post in create handling',
+                        {
+                            postId: create.objectId.href,
+                        },
+                    );
+                    break;
+                case 'missing-author':
+                    ctx.data.logger.info(
+                        'Post has missing author in create handling',
+                        {
+                            postId: create.objectId.href,
+                        },
+                    );
+                    break;
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
 
         const createJson = await create.toJsonLd();
         ctx.data.globaldb.set([create.id.href], createJson);
