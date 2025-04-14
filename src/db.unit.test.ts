@@ -11,7 +11,7 @@ describe('Knex Configuration', () => {
     it('should have correct pool settings', () => {
         expect(client.client.pool).toMatchObject({
             min: 1,
-            max: 50,
+            max: 200,
         });
     });
 });
