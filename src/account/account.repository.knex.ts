@@ -3,6 +3,7 @@ import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
+import { AccountUpdatedEvent } from './account-updated.event';
 import { Account, type AccountSite } from './account.entity';
 
 export class KnexAccountRepository {
@@ -10,6 +11,28 @@ export class KnexAccountRepository {
         private readonly db: Knex,
         private readonly events: AsyncEvents,
     ) {}
+
+    async save(account: Account): Promise<void> {
+        if (account.isNew) {
+            throw new Error(
+                'Saving of new Accounts has not been implemented yet.',
+            );
+        }
+
+        await this.db('accounts')
+            .update({
+                name: account.name,
+                bio: account.bio,
+                avatar_url: account.avatarUrl?.href,
+                banner_image_url: account.bannerImageUrl?.href,
+            })
+            .where({ id: account.id });
+
+        await this.events.emitAsync(
+            AccountUpdatedEvent.getName(),
+            new AccountUpdatedEvent(account),
+        );
+    }
 
     async getBySite(site: Site): Promise<Account> {
         const users = await this.db('users').where('site_id', site.id);
