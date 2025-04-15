@@ -2,7 +2,7 @@ import type { Context as HonoContext, Next } from 'hono';
 
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { Site, SiteService } from 'site/site.service';
+import type { SiteService } from 'site/site.service';
 
 const ACCOUNT_RESOURCE_PREFIX = 'acct:';
 const HOST_REGEX = /^([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]+)$/;
@@ -36,13 +36,9 @@ export function createWebFingerHandler(
             });
         }
 
-        let site: Site | null = null;
-
-        site = await siteService.getSiteByHost(resourceHost);
-
-        if (!site) {
-            site = await siteService.getSiteByHost(`www.${resourceHost}`);
-        }
+        const site =
+            (await siteService.getSiteByHost(resourceHost)) ||
+            (await siteService.getSiteByHost(`www.${resourceHost}`));
 
         if (!site) {
             return new Response(null, {
