@@ -234,6 +234,8 @@ describe('Account Helpers', () => {
                 getAttachments as unknown as ReturnType<typeof vi.fn>
             ).mockResolvedValue([]);
 
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const apCtx = {} as Context<any>;
             const site = {} as Site;
             const accountService = {
@@ -267,8 +269,12 @@ describe('Account Helpers', () => {
         });
 
         it('should throw error for empty handle', async () => {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const apCtx = {} as Context<any>;
             const site = {} as Site;
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const accountService = {} as any;
 
             await expect(
@@ -281,8 +287,12 @@ describe('Account Helpers', () => {
                 lookupObject as unknown as ReturnType<typeof vi.fn>
             ).mockResolvedValue(null);
 
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const apCtx = {} as Context<any>;
             const site = {} as Site;
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const accountService = {} as any;
 
             await expect(

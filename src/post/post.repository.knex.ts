@@ -104,10 +104,16 @@ export class KnexPostRepository {
 
         // Parse attachments and convert URL strings back to URL objects
         const attachments = row.attachments
-            ? row.attachments.map((attachment: any) => ({
-                  ...attachment,
-                  url: new URL(attachment.url),
-              }))
+            ? row.attachments.map(
+                  (
+                      // TODO: Clean up the any type
+                      // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+                      attachment: any,
+                  ) => ({
+                      ...attachment,
+                      url: new URL(attachment.url),
+                  }),
+              )
             : [];
 
         const post = new Post(
@@ -353,10 +359,16 @@ export class KnexPostRepository {
             );
 
             const attachments = row.attachments
-                ? row.attachments.map((attachment: any) => ({
-                      ...attachment,
-                      url: new URL(attachment.url),
-                  }))
+                ? row.attachments.map(
+                      (
+                          // TODO: Clean up the any type
+                          // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+                          attachment: any,
+                      ) => ({
+                          ...attachment,
+                          url: new URL(attachment.url),
+                      }),
+                  )
                 : [];
 
             const post = new Post(
@@ -430,6 +442,8 @@ export class KnexPostRepository {
                 );
 
                 // Hacks? Mutate the Post so `isNew` returns false.
+                // TODO: Clean up the any type
+                // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
                 (post as any).id = id;
 
                 if (isDuplicate) {

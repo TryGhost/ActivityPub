@@ -60,6 +60,8 @@ function getCtx() {
         return handle === HANDLE ? new URL(FOLLOWERS_URI) : undefined;
     });
 
+    // TODO: Clean up the any type
+    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
     return ctx as any;
 }
 

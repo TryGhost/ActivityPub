@@ -144,6 +144,8 @@ export async function getUserKeypair(
     ctx: Context<ContextData>,
     handle: string,
 ) {
+    // TODO: Clean up the any types
+    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
     const existing = await ctx.data.db.get<{ publicKey: any; privateKey: any }>(
         ['keypair', handle],
     );

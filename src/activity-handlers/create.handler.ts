@@ -44,6 +44,8 @@ export class CreateHandler {
         const replyTarget = await object?.getReplyTarget();
 
         if (replyTarget?.id?.href) {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const data = await ctx.data.globaldb.get<any>([
                 replyTarget.id.href,
             ]);

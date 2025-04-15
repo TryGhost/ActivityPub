@@ -28,9 +28,7 @@
         "noNonNullAssertion": "off"
       },
       "suspicious": {
-        "noConsoleLog": "off",
-        "noExplicitAny": "warn",
-        "noImplicitAnyLet": "warn"
+        "noConsoleLog": "off"
       }
     }
   },

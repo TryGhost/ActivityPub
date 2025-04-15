@@ -28,6 +28,8 @@ vi.mock('./app', () => ({
 describe('dispatchers', () => {
     describe('actorDispatcher', () => {
         it(`returns null if the handle is not "${ACTOR_DEFAULT_HANDLE}"`, async () => {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const ctx = {} as RequestContext<any>;
             const handle = 'anything';
 
@@ -42,6 +44,8 @@ describe('dispatchers', () => {
     });
 
     describe('likedDispatcher', () => {
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         const likeActivities: Record<string, any> = {
             'https://example.com/like/123': {
                 '@context': [
@@ -81,6 +85,8 @@ describe('dispatchers', () => {
                     info: vi.fn(),
                 },
             },
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         } as RequestContext<any>;
 
         beforeEach(() => {
@@ -147,6 +153,8 @@ describe('dispatchers', () => {
         it('hydrates the object of a like', async () => {
             const actorId = 'https://example.com/actor/123';
 
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const likeActivities: Record<string, any> = {
                 'https://example.com/like/123': {
                     '@context': [
@@ -262,6 +270,8 @@ describe('dispatchers', () => {
                     error: vi.fn(),
                 },
             },
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         } as RequestContext<any>;
 
         beforeEach(() => {
@@ -328,6 +338,8 @@ describe('dispatchers', () => {
 
     describe('nodeInfoDispatcher', () => {
         it('returns the node info', async () => {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const result = await nodeInfoDispatcher({} as RequestContext<any>);
 
             expect(result).toEqual({

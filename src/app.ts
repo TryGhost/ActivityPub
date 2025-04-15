@@ -297,6 +297,8 @@ function ensureCorrectContext<B, R>(
     return async (ctx: Context<ContextData>, b: B) => {
         const host = ctx.host;
         if (!ctx.data) {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (ctx as any).data = {};
         }
         if (!ctx.data.globaldb) {

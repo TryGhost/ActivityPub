@@ -36,6 +36,8 @@ describe('lookupAPIdByHandle', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupAPIdByHandle(
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             mockCtx as any,
             '@user@example.com',
         );
@@ -54,6 +56,8 @@ describe('lookupAPIdByHandle', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupAPIdByHandle(
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             mockCtx as any,
             'user@example.com',
         );
@@ -77,6 +81,8 @@ describe('lookupAPIdByHandle', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupAPIdByHandle(
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             mockCtx as any,
             'user@example.com',
         );
@@ -90,6 +96,8 @@ describe('lookupAPIdByHandle', () => {
         ).mockRejectedValue(new Error('WebFinger lookup failed'));
 
         const result = await lookupAPIdByHandle(
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             mockCtx as any,
             'user@example.com',
         );
@@ -118,6 +126,8 @@ describe('lookupAPIdByHandle', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupAPIdByHandle(
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             mockCtx as any,
             'user@example.com',
         );

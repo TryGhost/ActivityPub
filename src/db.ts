@@ -25,6 +25,8 @@ export const client = Knex({
 });
 
 interface ActivityJsonLd {
+    // TODO: Clean up the any type
+    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
     [key: string]: any;
 }
 

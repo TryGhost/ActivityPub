@@ -97,6 +97,8 @@ describe('PostService', () => {
                 },
             };
 
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const result = (postService as any).mapActivityToPostDTO(activity);
 
             expect(result).toEqual({
@@ -159,6 +161,8 @@ describe('PostService', () => {
                 },
             };
 
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const result = (postService as any).mapActivityToPostDTO(activity);
 
             expect(result).toEqual({
