@@ -11,49 +11,51 @@ describe('FlagService', () => {
     it('should be able to enable a flag', () => {
         const flagService = new FlagService(['foo', 'bar']);
 
-        flagService.initializeContext();
+        flagService.runInContext(async () => {
+            flagService.enable('foo');
 
-        flagService.enable('foo');
-
-        expect(flagService.isEnabled('foo')).toBe(true);
-        expect(flagService.isEnabled('bar')).toBe(false);
+            expect(flagService.isEnabled('foo')).toBe(true);
+            expect(flagService.isEnabled('bar')).toBe(false);
+        });
     });
 
     it('should be able to enable multiple flags', () => {
         const flagService = new FlagService(['foo', 'bar']);
 
-        flagService.initializeContext();
+        flagService.runInContext(async () => {
+            flagService.enable('foo');
+            flagService.enable('bar');
 
-        flagService.enable('foo');
-        flagService.enable('bar');
-
-        expect(flagService.isEnabled('foo')).toBe(true);
-        expect(flagService.isEnabled('bar')).toBe(true);
+            expect(flagService.isEnabled('foo')).toBe(true);
+            expect(flagService.isEnabled('bar')).toBe(true);
+        });
     });
 
     it('should ignore unregistered flags', () => {
         const flagService = new FlagService(['foo']);
 
-        flagService.initializeContext();
+        flagService.runInContext(async () => {
+            flagService.enable('bar');
 
-        flagService.enable('bar');
-
-        expect(flagService.isEnabled('bar')).toBe(false);
+            expect(flagService.isEnabled('bar')).toBe(false);
+        });
     });
 
     it('should isolate flags between different contexts', async () => {
         const flagService = new FlagService(['foo', 'bar']);
 
-        flagService.initializeContext();
-        flagService.enable('foo');
+        flagService.runInContext(async () => {
+            flagService.enable('foo');
 
-        expect(flagService.isEnabled('foo')).toBe(true);
-        expect(flagService.isEnabled('bar')).toBe(false);
+            expect(flagService.isEnabled('foo')).toBe(true);
+            expect(flagService.isEnabled('bar')).toBe(false);
+        });
 
-        flagService.initializeContext();
-        flagService.enable('bar');
+        flagService.runInContext(async () => {
+            flagService.enable('bar');
 
-        expect(flagService.isEnabled('foo')).toBe(false);
-        expect(flagService.isEnabled('bar')).toBe(true);
+            expect(flagService.isEnabled('foo')).toBe(false);
+            expect(flagService.isEnabled('bar')).toBe(true);
+        });
     });
 });

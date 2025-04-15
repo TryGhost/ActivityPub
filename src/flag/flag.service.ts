@@ -9,8 +9,8 @@ export class FlagService {
         this.store = new AsyncLocalStorage<Set<string>>();
     }
 
-    public initializeContext() {
-        this.store.enterWith(new Set<string>());
+    public async runInContext<T>(fn: () => Promise<T>) {
+        return this.store.run(new Set<string>(), fn);
     }
 
     public enable(flag: string) {

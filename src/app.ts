@@ -246,7 +246,7 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
     });
 }
 
-const flagService = new FlagService(['foo']);
+const flagService = new FlagService([]);
 
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -649,23 +649,23 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (ctx, next) => {
-    const enabledFlags = [];
+    return flagService.runInContext(async () => {
+        const enabledFlags: string[] = [];
 
-    flagService.initializeContext();
+        for (const flag of flagService.getRegistered()) {
+            if (ctx.req.query(flag)) {
+                flagService.enable(flag);
 
-    for (const flag of flagService.getRegistered()) {
-        if (ctx.req.query(flag)) {
-            flagService.enable(flag);
-
-            enabledFlags.push(flag);
+                enabledFlags.push(flag);
+            }
         }
-    }
 
-    if (enabledFlags.length > 0) {
-        ctx.res.headers.set('x-enabled-flags', enabledFlags.join(','));
-    }
+        if (enabledFlags.length > 0) {
+            ctx.res.headers.set('x-enabled-flags', enabledFlags.join(','));
+        }
 
-    return next();
+        return next();
+    });
 });
 
 function sleep(n: number) {
