@@ -202,8 +202,8 @@ describe('KnexAccountRepository', () => {
             account.id,
             account.uuid || 'test-uuid',
             account.username,
-            'Updated Name', // Change the name
-            'Updated Bio', // Change the bio
+            account.name,
+            account.bio,
             account.avatar_url ? new URL(account.avatar_url) : null,
             account.banner_image_url ? new URL(account.banner_image_url) : null,
             null, // site
@@ -211,6 +211,11 @@ describe('KnexAccountRepository', () => {
             account.url ? new URL(account.url) : null,
             account.ap_followers_url ? new URL(account.ap_followers_url) : null,
         );
+
+        accountEntity.updateProfile({
+            name: 'Updated Name',
+            bio: 'Updated Bio',
+        });
 
         // Act
         await accountRepository.save(accountEntity);
