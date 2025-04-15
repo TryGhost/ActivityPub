@@ -7,6 +7,7 @@ import type { AppContext, ContextData } from 'app';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { GetProfileDataResult, PostService } from 'post/post.service';
+import { z } from 'zod';
 import {
     getAccountDTOByHandle,
     getAccountDTOFromAccount,
@@ -16,6 +17,14 @@ import type {
     AccountFollows,
     AccountFollowsView,
 } from './views/account.follows.view';
+
+const UpdateAccountSchema = z.object({
+    name: z.string(),
+    bio: z.string(),
+    username: z.string(),
+    avatarUrl: z.string(),
+    bannerImageUrl: z.string(),
+});
 
 /**
  * Default number of posts to return in a profile
@@ -359,5 +368,32 @@ export function createGetAccountLikedPostsHandler(
             }),
             { status: 200 },
         );
+    };
+}
+
+/**
+ * Create a handler to handle a request for an account update
+ */
+export function createUpdateAccountHandler(
+    accountRepository: KnexAccountRepository,
+) {
+    return async function handleUpdateAccount(ctx: AppContext) {
+        const account = await accountRepository.getBySite(ctx.get('site'));
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof UpdateAccountSchema>;
+
+        try {
+            data = UpdateAccountSchema.parse((await ctx.req.json()) as unknown);
+        } catch (err) {
+            return new Response(JSON.stringify({}), { status: 400 });
+        }
+
+        //Todo: Update the account with the new data
+
+        return new Response(JSON.stringify({}), { status: 200 });
     };
 }
