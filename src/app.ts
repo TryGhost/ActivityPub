@@ -651,6 +651,8 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
     const enabledFlags = [];
 
+    flagService.initializeContext();
+
     for (const flag of flagService.getRegistered()) {
         if (ctx.req.query(flag)) {
             flagService.enable(flag);

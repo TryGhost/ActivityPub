@@ -1,21 +1,47 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 export class FlagService {
-    private flags: Map<string, boolean> = new Map();
+    private flags: Set<string>;
+    private store: AsyncLocalStorage<Set<string>>;
 
     constructor(flags: string[]) {
-        for (const flag of flags) {
-            this.flags.set(flag, false);
+        this.flags = new Set(flags);
+        this.store = new AsyncLocalStorage<Set<string>>();
+    }
+
+    public initializeContext() {
+        this.store.enterWith(new Set<string>());
+    }
+
+    public enable(flag: string) {
+        if (!this.flags.has(flag)) {
+            return;
         }
+
+        const store = this.store.getStore();
+
+        if (!store) {
+            return;
+        }
+
+        store.add(flag);
     }
 
-    public enable(flag: string): void {
-        this.flags.set(flag, true);
+    public isEnabled(flag: string) {
+        if (!this.flags.has(flag)) {
+            return false;
+        }
+
+        const store = this.store.getStore();
+
+        if (!store) {
+            return false;
+        }
+
+        return store.has(flag);
     }
 
-    public isEnabled(flag: string): boolean {
-        return this.flags.get(flag) ?? false;
-    }
-
-    public getRegistered(): string[] {
-        return Array.from(this.flags.keys());
+    public getRegistered() {
+        return Array.from(this.flags);
     }
 }
