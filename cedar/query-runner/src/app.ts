@@ -43,6 +43,8 @@ const warmupPool = async () => {
     console.timeEnd('Warmup');
 };
 
+// TODO: Clean up the any type
+// biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
 const timeQuery = async (query: string, args: any[]) => {
     //: { [key: string]: string }) => {
     const start = performance.now();
@@ -51,6 +53,8 @@ const timeQuery = async (query: string, args: any[]) => {
     return end - start;
 };
 
+// TODO: Clean up the any type
+// biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
 const runQuery = async (query: string, args: any[]) => {
     // { [key: string]: string }) => {
     const runTimes: number[] = Array(SERIES_RUNS).fill(

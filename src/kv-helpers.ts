@@ -10,6 +10,8 @@ export function scopeKvStore(db: KvStore, scope: KvKey): KvStore {
         get(key: KvKey) {
             return db.get(scopeKvKey(scope, key));
         },
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         set(key: KvKey, value: any) {
             return db.set(scopeKvKey(scope, key), value);
         },

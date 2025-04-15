@@ -148,6 +148,8 @@ export class PostService {
      * @param accountId Current account ID
      * @returns PostDTO object
      */
+    // TODO: Clean up the any type
+    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
     private mapActivityToPostDTO(activity: any): PostDTO {
         const object = activity.object;
         const actor = activity.actor;
@@ -658,6 +660,8 @@ export class PostService {
 
                 const activity = (await item.toJsonLd({
                     format: 'compact',
+                    // TODO: Clean up the any type
+                    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
                 })) as any;
 
                 if (activity.object.inReplyTo) {

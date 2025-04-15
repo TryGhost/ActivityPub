@@ -152,6 +152,8 @@ export class Post extends BaseEntity {
     }
 
     private handleDeleted() {
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         const self = this as any;
         self.type = PostType.Tombstone;
         self.title = null;
