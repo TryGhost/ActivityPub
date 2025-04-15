@@ -4,6 +4,7 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext, ContextData } from 'app';
+import { getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { GetProfileDataResult, PostService } from 'post/post.service';
@@ -296,8 +297,34 @@ export function createGetAccountPostsHandler(
                 if (postResult instanceof Error) {
                     throw postResult;
                 }
-                result.results = postResult.results;
-                result.nextCursor = postResult.nextCursor;
+                if (isError(postResult)) {
+                    const error = getError(postResult);
+                    switch (error) {
+                        case 'invalid-handle':
+                            logger.error(`Invalid handle ${handle}`);
+                            return new Response(null, { status: 400 });
+                        case 'missing-default-account':
+                            logger.error('Missing default account');
+                            return new Response(null, { status: 400 });
+                        case 'invalid-next-parameter':
+                            logger.error('Invalid next parameter');
+                            return new Response(null, { status: 400 });
+                        case 'actor-not-found':
+                            logger.error(`Actor not found for ${handle}`);
+                            return new Response(null, { status: 400 });
+                        case 'error-getting-outbox':
+                            logger.error(`Error getting outbox for ${handle}`);
+                            return new Response(null, { status: 500 });
+                        case 'no-page-found':
+                            logger.error(
+                                `No page found in outbox for ${handle}`,
+                            );
+                            return new Response(null, { status: 500 });
+                    }
+                }
+                const posts = getValue(postResult);
+                result.results = posts.results;
+                result.nextCursor = posts.nextCursor;
             }
         } catch (error) {
             logger.error(`Error getting posts for ${handle}: {error}`, {

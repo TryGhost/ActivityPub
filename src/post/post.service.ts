@@ -84,6 +84,14 @@ export interface GetProfileDataResult {
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
+export type GetPostsError =
+    | 'invalid-handle'
+    | 'missing-default-account'
+    | 'invalid-next-parameter'
+    | 'actor-not-found'
+    | 'error-getting-outbox'
+    | 'no-page-found';
+
 export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
@@ -600,7 +608,7 @@ export class PostService {
         defaultAccount: Account,
         handle: string,
         next: string,
-    ): Promise<GetProfileDataResult | Error> {
+    ): Promise<Result<GetProfileDataResult, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await context.getDocumentLoader({
@@ -609,23 +617,23 @@ export class PostService {
 
         // If the provided handle is invalid, return early
         if (!isHandle(handle)) {
-            throw new Error('Invalid handle');
+            return error('invalid-handle');
         }
 
         if (!defaultAccount || !defaultAccount.id) {
-            throw new Error('Default account not found');
+            return error('missing-default-account');
         }
 
         // If the next parameter is not a valid URI, return early
         if (next !== '' && !isUri(next)) {
-            throw new Error('Invalid next parameter');
+            return error('invalid-next-parameter');
         }
 
         // Lookup actor by handle
         const actor = await lookupObject(handle, { documentLoader });
 
         if (!isActor(actor)) {
-            throw new Error('Actor not found');
+            return error('actor-not-found');
         }
 
         // Retrieve actor's posts
@@ -649,7 +657,7 @@ export class PostService {
                 const { host: nextHost } = new URL(next);
 
                 if (actorHost !== nextHost) {
-                    throw new Error('Invalid next parameter');
+                    return error('invalid-next-parameter');
                 }
 
                 page = (await lookupObject(next, {
@@ -668,11 +676,11 @@ export class PostService {
                 }
             }
         } catch (err) {
-            throw Error('Error getting outbox');
+            return error('error-getting-outbox');
         }
 
         if (!page) {
-            throw new Error('No page found');
+            return error('no-page-found');
         }
 
         // Return result
@@ -754,14 +762,17 @@ export class PostService {
                 }
 
                 result.results.push(this.mapActivityToPostDTO(activity));
-            } catch (err) {}
+            } catch (err) {
+                // If we can't map a post to an activity, skip it
+                // This ensures that a single invalid or unreachable post doesn't block the API from returning valid posts
+            }
         }
 
         result.nextCursor = page.nextId
             ? encodeURIComponent(page.nextId.toString())
             : null;
 
-        return result;
+        return ok(result);
     }
 
     /**
