@@ -645,7 +645,7 @@ When('we request the outbox', async function () {
 });
 
 When(
-    /^an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"$/,
+    /an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"$/,
     async function (method, path) {
         const requestMethod = method || 'get';
         let requestPath = path;
