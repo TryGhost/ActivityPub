@@ -484,29 +484,4 @@ export class AccountService {
             ap_private_key: row.ap_private_key,
         };
     }
-
-    async updateAccount(
-        account: AccountType,
-        data: Omit<Partial<AccountType>, 'id'>,
-    ): Promise<AccountType> {
-        await this.db('accounts').update(data).where({ id: account.id });
-
-        const newAccount = Object.assign({}, account, data);
-
-        const internalAccount = account.ap_private_key !== null;
-
-        if (!internalAccount) {
-            return newAccount;
-        }
-
-        const avatarChanged = account.avatar_url !== data.avatar_url;
-        const nameChanged = account.name !== data.name;
-        const bioChanged = account.bio !== data.bio;
-
-        if (avatarChanged || nameChanged || bioChanged) {
-            await this.events.emitAsync('account.updated', newAccount);
-        }
-
-        return newAccount;
-    }
 }
