@@ -32,7 +32,7 @@ export function createWebFingerHandler(
             .split('@');
         if (!resourceHost || !HOST_REGEX.test(resourceHost)) {
             return new Response(null, {
-                status: 404,
+                status: 400,
             });
         }
 

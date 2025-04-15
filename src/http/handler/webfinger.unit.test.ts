@@ -68,7 +68,7 @@ describe('handleWebFinger', () => {
 
         const response = await handleWebFinger(ctx, next);
 
-        expect(response?.status).toBe(404);
+        expect(response?.status).toBe(400);
         expect(siteService.getSiteByHost).not.toHaveBeenCalled();
     });
 
@@ -81,11 +81,9 @@ describe('handleWebFinger', () => {
         const ctx = getCtx({ resource: 'acct:alice@example' }); // missing .com
         const next = vi.fn();
 
-        await handleWebFinger(ctx, next);
-
         const response = await handleWebFinger(ctx, next);
 
-        expect(response?.status).toBe(404);
+        expect(response?.status).toBe(400);
         expect(siteService.getSiteByHost).not.toHaveBeenCalled();
     });
 
