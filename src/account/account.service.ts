@@ -297,6 +297,15 @@ export class AccountService {
     }
 
     /**
+     * Get the account for a site
+     *
+     * @returns Account Entity
+     */
+    async getAccountForSite(site: Site): Promise<Account> {
+        return this.accountRepository.getBySite(site);
+    }
+
+    /**
      * Get the accounts that the provided account is following
      *
      * The results are ordered in reverse chronological order
