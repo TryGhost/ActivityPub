@@ -296,11 +296,6 @@ export class AccountService {
         return account;
     }
 
-    /**
-     * Get the account for a site
-     *
-     * @returns Account Entity
-     */
     async getAccountForSite(site: Site): Promise<Account> {
         return this.accountRepository.getBySite(site);
     }
