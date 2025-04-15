@@ -1,8 +1,6 @@
-Feature: Account API
-  As an authenticated user
-  I want to update my account information
+Feature: Update account information
 
-  Scenario: Get default account
+  Scenario: Update account information
     When an authenticated "put" request is made to "/.ghost/activitypub/account" with data:
       """
       {
