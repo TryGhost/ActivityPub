@@ -66,9 +66,9 @@ describe('handleWebFinger', () => {
         const ctx = getCtx({ resource: 'acct:alice' }); // missing @
         const next = vi.fn();
 
-        await handleWebFinger(ctx, next);
+        const response = await handleWebFinger(ctx, next);
 
-        expect(next).toHaveBeenCalled();
+        expect(response?.status).toBe(404);
         expect(siteService.getSiteByHost).not.toHaveBeenCalled();
     });
 
@@ -83,30 +83,13 @@ describe('handleWebFinger', () => {
 
         await handleWebFinger(ctx, next);
 
-        expect(next).toHaveBeenCalled();
+        const response = await handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(404);
         expect(siteService.getSiteByHost).not.toHaveBeenCalled();
     });
 
-    it('should fallback to the default webfinger implementation if a site is found for the resource', async () => {
-        const handleWebFinger = createWebFingerHandler(
-            accountRepository,
-            siteService,
-        );
-
-        const ctx = getCtx({ resource: 'acct:alice@example.com' });
-        const next = vi.fn();
-
-        vi.mocked(siteService.getSiteByHost).mockResolvedValue({
-            host: 'example.com',
-        } as Site);
-
-        await handleWebFinger(ctx, next);
-
-        expect(next).toHaveBeenCalled();
-        expect(siteService.getSiteByHost).toHaveBeenCalledWith('example.com');
-    });
-
-    it('should return a 404 if no site is found for the www version of the resource', async () => {
+    it('should return a 404 if no site is found for the resource', async () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
@@ -156,7 +139,7 @@ describe('handleWebFinger', () => {
         );
     });
 
-    it('should return a custom webfinger response if an account is found for the site associated with the resource', async () => {
+    it('should return a custom webfinger response', async () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
@@ -232,5 +215,53 @@ describe('handleWebFinger', () => {
         const response = await handleWebFinger(ctx, next);
 
         expect(response?.status).toBe(200);
+    });
+
+    it('should ensure the www is not included in the subject', async () => {
+        const handleWebFinger = createWebFingerHandler(
+            accountRepository,
+            siteService,
+        );
+
+        const ctx = getCtx({ resource: 'acct:alice@www.example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'www.example.com') {
+                return Promise.resolve({
+                    host: 'www.example.com',
+                } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockResolvedValue({
+            username: 'alice',
+            url: 'https://www.example.com',
+            apId: new URL('https://www.example.com/users/alice'),
+        } as unknown as Account);
+
+        const response = await handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toEqual({
+            subject: 'acct:alice@example.com',
+            aliases: ['https://www.example.com/users/alice'],
+            links: [
+                {
+                    rel: 'self',
+                    href: 'https://www.example.com/users/alice',
+                    type: 'application/activity+json',
+                },
+                {
+                    rel: 'http://webfinger.net/rel/profile-page',
+                    href: 'https://www.example.com',
+                },
+            ],
+        });
+        expect(response?.headers.get('Content-Type')).toBe(
+            'application/jrd+json',
+        );
     });
 });

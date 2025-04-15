@@ -31,20 +31,19 @@ export function createWebFingerHandler(
             .slice(ACCOUNT_RESOURCE_PREFIX.length)
             .split('@');
         if (!resourceHost || !HOST_REGEX.test(resourceHost)) {
-            return next();
+            return new Response(null, {
+                status: 404,
+            });
         }
 
         let site: Site | null = null;
 
         site = await siteService.getSiteByHost(resourceHost);
-        if (site) {
-            // If a site is found for the resource host, we don't need to
-            // do any custom handling, we can just defer to the default
-            // webfinger implementation
-            return next();
+
+        if (!site) {
+            site = await siteService.getSiteByHost(`www.${resourceHost}`);
         }
 
-        site = await siteService.getSiteByHost(`www.${resourceHost}`);
         if (!site) {
             return new Response(null, {
                 status: 404,
@@ -62,7 +61,7 @@ export function createWebFingerHandler(
         }
 
         const webfingerData = {
-            subject: `acct:${account.username}@${resourceHost}`,
+            subject: `acct:${account.username}@${site.host.replace('www.', '')}`,
             aliases: [account.apId.toString()],
             links: [
                 {
