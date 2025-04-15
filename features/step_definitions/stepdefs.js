@@ -645,8 +645,8 @@ When('we request the outbox', async function () {
 });
 
 When(
-    /an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"(?: with data:)?/,
-    async function (method, path, data) {
+    /^an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"$/,
+    async function (method, path) {
         const requestMethod = method || 'get';
         let requestPath = path;
 
@@ -670,21 +670,31 @@ When(
             }
         }
 
-        const options = {
-            method: requestMethod,
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        };
-
-        if (data) {
-            options.headers['Content-Type'] = 'application/json';
-            options.body = JSON.stringify(JSON.parse(data));
-        }
-
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub${requestPath}`,
-            options,
+            {
+                method: requestMethod,
+                headers: {
+                    Accept: 'application/ld+json',
+                },
+            },
+        );
+    },
+);
+
+When(
+    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with data:$/,
+    async function (method, path, data) {
+        this.response = await fetchActivityPub(
+            `http://fake-ghost-activitypub${path}`,
+            {
+                method: method,
+                headers: {
+                    Accept: 'application/ld+json',
+                    'Content-Type': 'application/json',
+                },
+                body: data,
+            },
         );
     },
 );
