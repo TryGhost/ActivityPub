@@ -109,6 +109,7 @@ import {
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
+    createUpdateAccountHandler,
     handleCreateNote,
     handleWebhookSiteChanged,
 } from './http/api';
@@ -964,6 +965,11 @@ app.get(
     spanWrapper(
         createGetAccountHandler(accountService, accountRepository, fedify),
     ),
+);
+app.put(
+    '/.ghost/activitypub/account',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper(createUpdateAccountHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',
