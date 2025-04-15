@@ -115,6 +115,7 @@ import {
     handleWebhookSiteChanged,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
+import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
@@ -247,7 +248,7 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
     });
 }
 
-const flagService = new FlagService([]);
+const flagService = new FlagService(['custom-webfinger']);
 
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -901,6 +902,13 @@ function requireRole(...roles: GhostRole[]) {
         return next();
     };
 }
+
+app.get(
+    '/.well-known/webfinger',
+    spanWrapper(
+        createWebFingerHandler(accountRepository, siteService, flagService),
+    ),
+);
 
 app.get(
     '/.ghost/activitypub/inbox/:handle',

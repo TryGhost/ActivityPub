@@ -41,6 +41,10 @@ export class FlagService {
         return store.has(flag);
     }
 
+    public isDisabled(flag: string) {
+        return !this.isEnabled(flag);
+    }
+
     public getRegistered() {
         return Array.from(this.flags);
     }

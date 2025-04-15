@@ -58,4 +58,17 @@ describe('FlagService', () => {
             expect(flagService.isEnabled('bar')).toBe(true);
         });
     });
+
+    it('should be able to check if a flag is disabled', () => {
+        const flagService = new FlagService(['foo', 'bar']);
+
+        flagService.runInContext(async () => {
+            expect(flagService.isDisabled('foo')).toBe(true); // registered but not enabled
+
+            expect(flagService.isDisabled('baz')).toBe(true); // not registered
+
+            flagService.enable('bar');
+            expect(flagService.isDisabled('bar')).toBe(false);
+        });
+    });
 });
