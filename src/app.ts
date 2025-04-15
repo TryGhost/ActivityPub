@@ -967,7 +967,7 @@ app.get(
 app.put(
     '/.ghost/activitypub/account',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createUpdateAccountHandler(accountRepository)),
+    spanWrapper(createUpdateAccountHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',

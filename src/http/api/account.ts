@@ -374,11 +374,9 @@ export function createGetAccountLikedPostsHandler(
 /**
  * Create a handler to handle a request for an account update
  */
-export function createUpdateAccountHandler(
-    accountRepository: KnexAccountRepository,
-) {
+export function createUpdateAccountHandler(accountService: AccountService) {
     return async function handleUpdateAccount(ctx: AppContext) {
-        const account = await accountRepository.getBySite(ctx.get('site'));
+        const account = await accountService.getAccountForSite(ctx.get('site'));
 
         if (!account) {
             return new Response(null, { status: 404 });
