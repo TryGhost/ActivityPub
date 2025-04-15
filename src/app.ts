@@ -83,6 +83,7 @@ import {
 } from './dispatchers';
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
+import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
@@ -245,6 +246,8 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
         logger: logging,
     });
 }
+
+const flagService = new FlagService([]);
 
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -645,6 +648,26 @@ app.use(async (ctx, next) => {
         url: ctx.req.url,
         status: ctx.res.status,
         duration: end - start,
+    });
+});
+
+app.use(async (ctx, next) => {
+    return flagService.runInContext(async () => {
+        const enabledFlags: string[] = [];
+
+        for (const flag of flagService.getRegistered()) {
+            if (ctx.req.query(flag)) {
+                flagService.enable(flag);
+
+                enabledFlags.push(flag);
+            }
+        }
+
+        if (enabledFlags.length > 0) {
+            ctx.res.headers.set('x-enabled-flags', enabledFlags.join(','));
+        }
+
+        return next();
     });
 });
 
