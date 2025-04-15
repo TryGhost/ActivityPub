@@ -2,7 +2,6 @@ import type { Context as HonoContext, Next } from 'hono';
 
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { FlagService } from 'flag/flag.service';
 import type { SiteService } from 'site/site.service';
 
 const ACCOUNT_RESOURCE_PREFIX = 'acct:';
@@ -11,7 +10,6 @@ const HOST_REGEX = /^([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]+)$/;
 export function createWebFingerHandler(
     accountRepository: KnexAccountRepository,
     siteService: SiteService,
-    flagService: FlagService,
 ) {
     /**
      * Custom webfinger implementation to allow resources hosted on the www
@@ -20,10 +18,6 @@ export function createWebFingerHandler(
      * @see https://github.com/fedify-dev/fedify/blob/main/src/webfinger/handler.ts
      */
     return async function handleWebFinger(ctx: HonoContext, next: Next) {
-        if (flagService.isDisabled('custom-webfinger')) {
-            return next();
-        }
-
         const resource = ctx.req.query('resource');
 
         // We only support custom handling of `acct:` resources - If the

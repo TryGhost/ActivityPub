@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { FlagService } from 'flag/flag.service';
 import type { Context } from 'hono';
 import type { Site, SiteService } from 'site/site.service';
 import { createWebFingerHandler } from './webfinger';
@@ -10,7 +9,6 @@ import { createWebFingerHandler } from './webfinger';
 describe('handleWebFinger', () => {
     let siteService: SiteService;
     let accountRepository: KnexAccountRepository;
-    let flagService: FlagService;
 
     function getCtx(queries: Record<string, string>) {
         return {
@@ -29,16 +27,12 @@ describe('handleWebFinger', () => {
         accountRepository = {
             getBySite: vi.fn(),
         } as unknown as KnexAccountRepository;
-        flagService = {
-            isDisabled: vi.fn().mockReturnValue(false),
-        } as unknown as FlagService;
     });
 
     it('should fallback to the default webfinger implementation if the resource is falsy', async () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({});
@@ -53,7 +47,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'https://example.com' });
@@ -68,7 +61,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice' }); // missing @
@@ -84,7 +76,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice@example' }); // missing .com
@@ -100,7 +91,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice@example.com' });
@@ -120,7 +110,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice@example.com' });
@@ -152,7 +141,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice@example.com' });
@@ -201,7 +189,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice@sub.example.com' });
@@ -232,7 +219,6 @@ describe('handleWebFinger', () => {
         const handleWebFinger = createWebFingerHandler(
             accountRepository,
             siteService,
-            flagService,
         );
 
         const ctx = getCtx({ resource: 'acct:alice@www.example.com' });
