@@ -30,7 +30,7 @@ export async function getAccountDTOFromAccount(
     const accountDto: AccountDTO = {
         id: account.id?.toString() || '',
         name: account.name || '',
-        handle: getAccountHandle(new URL(account.apId).host, account.username),
+        handle: account.handle,
         bio: sanitizeHtml(account.bio || ''),
         url: account.url.toString() || '',
         avatarUrl: account.avatarUrl?.toString() || '',
@@ -100,7 +100,7 @@ export async function getAccountDTOByHandle(
     const accountDto: AccountDTO = {
         id: actor.id,
         name: actor.name || '',
-        handle: getHandle(actorObj),
+        handle: handle,
         bio: sanitizeHtml(actor.summary),
         url: actor.url || '',
         avatarUrl: actor.icon?.url || '',

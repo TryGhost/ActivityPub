@@ -82,6 +82,13 @@ export class Account extends BaseEntity {
         }
     }
 
+    get handle(): string {
+        const host = this.isInternal
+            ? this.apId.host.replace(/^www\./, '')
+            : this.apId.host;
+        return `@${this.username}@${host}`;
+    }
+
     get name(): string | null {
         return this._name;
     }

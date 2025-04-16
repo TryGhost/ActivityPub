@@ -30,6 +30,7 @@ interface AccountRow {
     name: string;
     username: string;
     avatar_url: string;
+    user_id?: number;
 }
 
 export class AccountFollowsView {
@@ -98,13 +99,15 @@ export class AccountFollowsView {
         const accounts: AccountInfo[] = [];
 
         for (const result of results) {
+            const apIdHost = new URL(result.ap_id).host;
+            const host = result.user_id
+                ? apIdHost.replace(/^www\./, '')
+                : apIdHost;
+
             accounts.push({
                 id: String(result.id),
                 name: result.name || '',
-                handle: getAccountHandle(
-                    new URL(result.ap_id).host,
-                    result.username,
-                ),
+                handle: getAccountHandle(host, result.username),
                 avatarUrl: result.avatar_url || '',
                 isFollowing: await this.checkIfAccountIsFollowing(
                     siteDefaultAccount.id,
@@ -200,16 +203,20 @@ export class AccountFollowsView {
                 })) as any;
 
                 const followeeAccount = await this.db('accounts')
+                    .select('accounts.id', 'users.id as user_id')
                     .where('ap_id', actor.id?.toString() || '')
+                    .leftJoin('users', 'users.account_id', 'accounts.id')
                     .first();
+
+                const apIdHost = new URL(actor.id).host;
+                const host = followeeAccount.user_id
+                    ? apIdHost.replace(/^www\./, '')
+                    : apIdHost;
 
                 accounts.push({
                     id: actor.id || '',
                     name: actor.name || '',
-                    handle: getAccountHandle(
-                        new URL(actor.id).host,
-                        actor.preferredUsername,
-                    ),
+                    handle: getAccountHandle(host, actor.preferredUsername),
                     avatarUrl: actor.icon?.url || '',
                     isFollowing: followeeAccount
                         ? await this.checkIfAccountIsFollowing(
@@ -264,9 +271,11 @@ export class AccountFollowsView {
                 'accounts.name',
                 'accounts.username',
                 'accounts.avatar_url',
+                'users.id as user_id',
             ])
             .where('follows.following_id', accountId)
             .innerJoin('accounts', 'accounts.id', 'follows.follower_id')
+            .leftJoin('users', 'users.account_id', 'accounts.id')
             .limit(limit)
             .offset(offset)
             // order by the date created at in descending order and then by the
@@ -289,9 +298,11 @@ export class AccountFollowsView {
                 'accounts.name',
                 'accounts.username',
                 'accounts.avatar_url',
+                'users.id as user_id',
             ])
             .where('follows.follower_id', accountId)
             .innerJoin('accounts', 'accounts.id', 'follows.following_id')
+            .leftJoin('users', 'users.account_id', 'accounts.id')
             .limit(limit)
             .offset(offset)
             // order by the date created at in descending order and then by the
