@@ -84,7 +84,7 @@ export function createStorageHandler(accountService: AccountService) {
         });
 
         const fileUrl = emulatorHost
-            ? `${emulatorHost}/${bucketName}/${storagePath}`
+            ? `${emulatorHost.replace('fake-gcs', 'localhost')}/download/storage/v1/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`
             : `https://storage.googleapis.com/${bucketName}/${storagePath}`;
 
         return new Response(JSON.stringify({ fileUrl }), {
