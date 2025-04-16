@@ -79,7 +79,7 @@
     "linkifyjs": "4.2.0",
     "mysql2": "3.14.0",
     "node-jose": "2.2.0",
-    "sanitize-html": "2.15.0",
+    "sanitize-html": "2.16.0",
     "uuid": "10.0.0",
     "x-forwarded-fetch": "0.2.0",
     "zod": "3.24.2"
