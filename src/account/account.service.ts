@@ -524,8 +524,10 @@ export class AccountService {
             name: data.name,
             bio: data.bio,
             username: data.username,
-            avatarUrl: new URL(data.avatarUrl),
-            bannerImageUrl: new URL(data.bannerImageUrl),
+            avatarUrl: data.avatarUrl ? new URL(data.avatarUrl) : null,
+            bannerImageUrl: data.bannerImageUrl
+                ? new URL(data.bannerImageUrl)
+                : null,
         };
 
         if (
@@ -533,9 +535,9 @@ export class AccountService {
             account.bio === profileData.bio &&
             account.username === profileData.username &&
             account.avatarUrl?.toString() ===
-                profileData.avatarUrl.toString() &&
+                profileData.avatarUrl?.toString() &&
             account.bannerImageUrl?.toString() ===
-                profileData.bannerImageUrl.toString()
+                profileData.bannerImageUrl?.toString()
         ) {
             return;
         }

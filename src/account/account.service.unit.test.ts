@@ -87,5 +87,27 @@ describe('AccountService', () => {
 
             expect(knexAccountRepository.save).not.toHaveBeenCalled();
         });
+
+        it('should handle empty values for avatarUrl and bannerImageUrl', async () => {
+            const account = {
+                updateProfile: vi.fn(),
+            } as unknown as Account;
+
+            await accountService.updateAccountProfile(account, {
+                name: 'Alice',
+                bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
+                username: 'alice',
+                avatarUrl: '',
+                bannerImageUrl: '',
+            });
+
+            expect(account.updateProfile).toHaveBeenCalledWith({
+                name: 'Alice',
+                bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
+                username: 'alice',
+                avatarUrl: null,
+                bannerImageUrl: null,
+            });
+        });
     });
 });
