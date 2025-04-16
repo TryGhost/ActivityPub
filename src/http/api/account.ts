@@ -4,7 +4,7 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext, ContextData } from 'app';
-import { getError, getValue, isError } from 'core/result';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { GetProfileDataResult, PostService } from 'post/post.service';
@@ -290,7 +290,8 @@ export function createGetAccountPostsHandler(
             } else {
                 //Otherwise, do a remote lookup to fetch the posts
                 const postResult = await postService.getPostsByRemoteLookUp(
-                    defaultAccount,
+                    defaultAccount.id,
+                    defaultAccount.apId,
                     handle,
                     params.cursor || '',
                 );
@@ -300,26 +301,34 @@ export function createGetAccountPostsHandler(
                 if (isError(postResult)) {
                     const error = getError(postResult);
                     switch (error) {
-                        case 'invalid-handle':
-                            logger.error(`Invalid handle ${handle}`);
-                            return new Response(null, { status: 400 });
-                        case 'missing-default-account':
-                            logger.error('Missing default account');
-                            return new Response(null, { status: 400 });
                         case 'invalid-next-parameter':
                             logger.error('Invalid next parameter');
                             return new Response(null, { status: 400 });
-                        case 'actor-not-found':
+                        case 'not-an-actor':
                             logger.error(`Actor not found for ${handle}`);
-                            return new Response(null, { status: 400 });
+                            return new Response(null, { status: 404 });
                         case 'error-getting-outbox':
                             logger.error(`Error getting outbox for ${handle}`);
-                            return new Response(null, { status: 500 });
+                            return new Response(
+                                JSON.stringify({
+                                    posts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
                         case 'no-page-found':
                             logger.error(
                                 `No page found in outbox for ${handle}`,
                             );
-                            return new Response(null, { status: 500 });
+                            return new Response(
+                                JSON.stringify({
+                                    posts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
+                        default:
+                            return exhaustiveCheck(error);
                     }
                 }
                 const posts = getValue(postResult);
