@@ -20,6 +20,7 @@ services:
       - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
+      - GCP_BUCKET_NAME=stg-activitypub
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
     command: yarn build:watch
     depends_on:
@@ -126,6 +127,7 @@ services:
       - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
+      - GCP_BUCKET_NAME=stg-activitypub
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
     command: yarn build:watch
     depends_on:
@@ -165,6 +167,7 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
+      - GCP_BUCKET_NAME=stg-activitypub
       - TAGS
     command: /opt/activitypub/node_modules/.bin/cucumber-js
     depends_on:

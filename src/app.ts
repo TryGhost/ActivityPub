@@ -126,6 +126,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+import { createStorageHandler } from './storage/gcloud-storage/storage';
 
 const logging = getLogger(['activitypub']);
 
@@ -1051,6 +1052,11 @@ app.get(
     spanWrapper(
         createGetNotificationsHandler(accountService, notificationService),
     ),
+);
+app.post(
+    '/.ghost/activitypub/upload',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper(createStorageHandler(accountService)),
 );
 /** Federation wire up */
 

@@ -60,6 +60,7 @@
     "@google-cloud/opentelemetry-cloud-trace-exporter": "2.4.1",
     "@google-cloud/opentelemetry-cloud-trace-propagator": "0.20.0",
     "@google-cloud/pubsub": "4.11.0",
+    "@google-cloud/storage": "7.16.0",
     "@hono/node-server": "1.14.1",
     "@js-temporal/polyfill": "0.5.1",
     "@logtape/logtape": "0.8.0",
