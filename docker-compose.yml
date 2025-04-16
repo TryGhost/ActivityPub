@@ -102,6 +102,8 @@ services:
   # Testing
 
   activitypub-testing:
+    networks:
+      - test_network
     build: .
     volumes:
       - ./src:/opt/activitypub/src
@@ -138,6 +140,8 @@ services:
       start_period: 5s
 
   migrate-testing:
+    networks:
+      - test_network
     build: migrate
     volumes:
       - ./migrate/migrations:/migrations
@@ -148,6 +152,8 @@ services:
         condition: service_healthy
 
   cucumber-tests:
+    networks:
+      - test_network
     build: .
     volumes:
       - ./features:/opt/activitypub/features
@@ -170,6 +176,8 @@ services:
         condition: service_healthy
 
   mysql-testing:
+    networks:
+      - test_network
     image: mysql:8.0.31
     environment:
       - MYSQL_ROOT_PASSWORD=root
@@ -184,6 +192,8 @@ services:
       retries: 120
 
   pubsub-testing:
+    networks:
+      - test_network
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
     ports:
       - "8086:8085"
@@ -205,17 +215,33 @@ services:
       start_period: 5s
 
   fake-ghost-activitypub:
+    networks:
+      test_network:
+        aliases:
+          - fake-ghost-activitypub.test
     image: wiremock/wiremock:3.10.0-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
+    networks:
+      test_network:
+        aliases:
+          - fake-external-activitypub.test
     image: wiremock/wiremock:3.10.0-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
+    networks:
+      test_network:
+        aliases:
+          - fake-mastodon.test
     image: wiremock/wiremock:3.10.0-1
     ports:
       - "8084:8080"
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
+
+networks:
+  test_network:
+    driver: bridge
