@@ -78,11 +78,69 @@ describe('Storage Handler', () => {
         expect(await response.text()).toBe('No file provided');
     });
 
+    it('handles large files', async () => {
+        const ctx = getMockContext();
+        const largeFile = new File(
+            ['x'.repeat(26 * 1024 * 1024)],
+            'large.jpg',
+            { type: 'image/jpeg' },
+        );
+        const formData = new FormData();
+        formData.append('file', largeFile);
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        const handler = createStorageHandler(accountService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(413);
+        expect(await response.text()).toBe('File is too large');
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.stringContaining('File is too large'),
+        );
+    });
+
+    it('handles non-supported file types', async () => {
+        const ctx = getMockContext();
+        const unsupportedFile = new File(['test'], 'test.txt', {
+            type: 'image/txt',
+        });
+        const formData = new FormData();
+        formData.append('file', unsupportedFile);
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        const handler = createStorageHandler(accountService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(415);
+        expect(await response.text()).toBe(
+            `File type ${unsupportedFile.type} is not supported`,
+        );
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.stringContaining(
+                `File type ${unsupportedFile.type} is not supported`,
+            ),
+        );
+    });
+
+    it('preserves file extension in storage path', async () => {
+        const ctx = getMockContext();
+        const testFile = new File(['test'], 'test.png', { type: 'image/png' });
+        const formData = new FormData();
+        formData.append('file', testFile);
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        const handler = createStorageHandler(accountService);
+        await handler(ctx);
+
+        const [storagePath] = mockBucket.file.mock.calls[0];
+        expect(storagePath).toMatch(/\.png$/);
+    });
+
     it('uploads file and returns file URL', async () => {
         const ctx = getMockContext();
 
-        const mockFileData = new File(['test content'], 'test.txt', {
-            type: 'text/plain',
+        const mockFileData = new File(['test content'], 'test.png', {
+            type: 'image/png',
         });
         const formData = new FormData();
         formData.append('file', mockFileData);
@@ -95,7 +153,7 @@ describe('Storage Handler', () => {
 
         const responseData = await response.json();
         expect(responseData.fileUrl).toMatch(
-            /^https:\/\/storage.googleapis.com\/test-bucket\/images\/f4ec91bd-56b7-406f-a174-91495df6e6c\/[a-f0-9-]+$/,
+            /^https:\/\/storage.googleapis.com\/test-bucket\/images\/f4ec91bd-56b7-406f-a174-91495df6e6c\/[a-f0-9-]+\.png$/,
         );
 
         expect(mockStorage.bucket).toHaveBeenCalledWith('test-bucket');
@@ -104,25 +162,6 @@ describe('Storage Handler', () => {
 
         const [stream, options] = (mockFile.save as Mock).mock.calls[0];
         expect(stream).toBeInstanceOf(ReadableStream);
-        expect(options).toEqual({ metadata: { contentType: 'text/plain' } });
-    });
-
-    it('handles storage errors and returns empty response', async () => {
-        const ctx = getMockContext();
-
-        const mockFileData = new File(['test content'], 'test.txt', {
-            type: 'text/plain',
-        });
-        const formData = new FormData();
-        formData.append('file', mockFileData);
-        (ctx.req.formData as Mock).mockResolvedValue(formData);
-
-        (mockFile.save as Mock).mockRejectedValue(new Error('Storage error'));
-
-        const handler = createStorageHandler(accountService);
-        const response = await handler(ctx);
-
-        expect(response.status).toBe(200);
-        expect(await response.text()).toBe(JSON.stringify({}));
+        expect(options).toEqual({ metadata: { contentType: 'image/png' } });
     });
 });

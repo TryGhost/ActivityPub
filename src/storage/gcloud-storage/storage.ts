@@ -38,9 +38,12 @@ export function createStorageHandler(accountService: AccountService) {
                     return new Response('File is too large', { status: 413 });
                 case 'file-type-not-supported':
                     logger.error(`File type ${file.type} is not supported`);
-                    return new Response('File type is not supported', {
-                        status: 415,
-                    });
+                    return new Response(
+                        `File type ${file.type} is not supported`,
+                        {
+                            status: 415,
+                        },
+                    );
             }
         }
 
