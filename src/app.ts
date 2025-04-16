@@ -216,6 +216,33 @@ if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
     logging.warn('GCP bucket name is not configured');
 }
 
+if (process.env.GCP_STORAGE_EMULATOR_HOST) {
+    const storage = new Storage({
+        apiEndpoint: process.env.GCP_STORAGE_EMULATOR_HOST,
+        projectId: 'dev-project',
+        useAuthWithCustomEndpoint: false,
+        credentials: {
+            client_email: 'fake@example.com',
+            private_key: 'not-a-real-key',
+        },
+    });
+
+    const bucketName = process.env.GCP_BUCKET_NAME;
+
+    if (!bucketName) {
+        logging.error('GCP bucket name is not configured');
+        process.exit(1);
+    }
+
+    const bucket = storage.bucket(bucketName);
+
+    const [exists] = await bucket.exists();
+    if (!exists) {
+        logging.info('Creating GCP bucket in fake-gcs');
+        await bucket.create(); //Create a bucket in fake-gcs
+    }
+}
+
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
 if (process.env.USE_MQ === 'true') {

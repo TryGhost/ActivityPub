@@ -21,6 +21,7 @@ services:
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GCP_BUCKET_NAME=stg-activitypub
+      - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
     command: yarn build:watch
     depends_on:
@@ -30,6 +31,8 @@ services:
         condition: service_healthy
       pubsub:
         condition: service_healthy
+      fake-gcs:
+        condition: service_started
 
   jaeger:
     image: jaegertracing/all-in-one:1.62.0
@@ -100,8 +103,6 @@ services:
       retries: 120
       start_period: 5s
 
-  # Testing
-
   activitypub-testing:
     networks:
       - test_network
@@ -128,6 +129,7 @@ services:
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GCP_BUCKET_NAME=stg-activitypub
+      - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
     command: yarn build:watch
     depends_on:
@@ -135,6 +137,8 @@ services:
         condition: service_healthy
       pubsub-testing:
         condition: service_healthy
+      fake-gcs:
+        condition: service_started
     healthcheck:
       test: "if [ ! -f /tmp/health.txt ]; then (wget --spider http://0.0.0.0:8083/ping || exit 1) && touch /tmp/health.txt ; else echo \"healthcheck already executed\"; fi"
       interval: 1s
@@ -168,6 +172,7 @@ services:
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
       - GCP_BUCKET_NAME=stg-activitypub
+      - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - TAGS
     command: /opt/activitypub/node_modules/.bin/cucumber-js
     depends_on:
@@ -177,6 +182,8 @@ services:
         condition: service_started
       activitypub-testing:
         condition: service_healthy
+      fake-gcs:
+        condition: service_started
 
   mysql-testing:
     networks:
@@ -244,6 +251,18 @@ services:
     ports:
       - "8084:8080"
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
+
+  fake-gcs:
+    image: fsouza/fake-gcs-server
+    container_name: fake-gcs
+    ports:
+      - "4443:4443"
+    command: -scheme http -port 4443 -external-url http://fake-gcs:4443
+    volumes:
+      - fake-gcs-data:/data
+
+volumes:
+  fake-gcs-data:
 
 networks:
   test_network:

@@ -47,14 +47,29 @@ export function createStorageHandler(accountService: AccountService) {
             }
         }
 
-        const storage = new Storage();
         const bucketName = process.env.GCP_BUCKET_NAME;
+        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST;
 
         if (!bucketName) {
+            logger.error('Bucket name is not configured');
             return new Response(JSON.stringify({}), {
                 status: 500,
             });
         }
+
+        console.log('emulatorHost: ', emulatorHost);
+
+        const storage = emulatorHost
+            ? new Storage({
+                  apiEndpoint: emulatorHost,
+                  projectId: 'dev-project',
+                  useAuthWithCustomEndpoint: false,
+                  credentials: {
+                      client_email: 'fake@example.com',
+                      private_key: 'not-a-real-key',
+                  },
+              })
+            : new Storage();
 
         const account = await accountService.getAccountForSite(ctx.get('site'));
         const storagePath = getStoragePath(account, file.name);
@@ -65,9 +80,12 @@ export function createStorageHandler(accountService: AccountService) {
             metadata: {
                 contentType: file.type,
             },
+            resumable: !emulatorHost,
         });
 
-        const fileUrl = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
+        const fileUrl = emulatorHost
+            ? `${emulatorHost}/${bucketName}/${storagePath}`
+            : `https://storage.googleapis.com/${bucketName}/${storagePath}`;
 
         return new Response(JSON.stringify({ fileUrl }), {
             status: 200,
