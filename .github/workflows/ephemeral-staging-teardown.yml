@@ -1,0 +1,127 @@
+name: Ephemeral Staging Tear Down
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */4 * * *'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: read
+
+jobs:
+  destroy-pr:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Authenticate with GCP"
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Check Closed PRs Deployed"
+        id: check-closed-prs
+        env:
+          GCP_PROJECT: ghost-activitypub
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export destroy_prs=""
+          for PR_NUMBER in $(gcloud run services list --project ${GCP_PROJECT} --format=json \
+            | jq -r '.[] | select(.metadata.name | test("stg-pr-\\d+-api")) | .metadata.name | capture("stg-pr-(?<num>\\d+)-api") | .num'); do
+            PR_STATE=$(gh pr view $PR_NUMBER --json state | jq -r '.state')
+            echo "PR $PR_NUMBER state is $PR_STATE."
+            if [ "$PR_STATE" == "MERGED" ]; then
+              echo "Deleting PR $PR_NUMBER environment."
+              export destroy_prs="$destroy_prs $PR_NUMBER"
+            fi
+          done
+          echo "destroy_prs=$destroy_prs" >> "$GITHUB_OUTPUT"
+
+      - name: "Checkout activitypub-infra repo"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: TryGhost/activitypub-infra
+          ssh-key: ${{ secrets.ACTIVITYPUB_INFRA_DEPLOY_KEY }}
+          path: activitypub-infra
+
+      - name: "Checkout terraform repo"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: TryGhost/terraform
+          ssh-key: ${{ secrets.TERRAFORM_DEPLOY_KEY }}
+          path: terraform
+
+      - name: "Get terraform version"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        id: terraform-version
+        run: |
+          echo "terraform_version=$(cat activitypub-infra/infrastructure/activitypub-staging-environments/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - name: "Setup terraform"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.terraform_version }}
+
+      - name: "Change github.com url in modules to local directories and add backend prefix"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          sed -i 's/github\.com\/TryGhost/\.\.\/\.\.\/\.\./gI' main.tf
+          sed -i 's/\?ref=main//g' main.tf
+
+      - name: "Authenticate with GCP"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Remove route from GCP Load Balancer"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        env:
+          DESTROY_PRS: ${{ steps.check-closed-prs.outputs.destroy_prs }}
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          set -euo pipefail
+          for PR_NUMBER in ${DESTROY_PRS}; do
+            # Get current config
+            gcloud compute url-maps export stg-activitypub --global --project ${GCP_PROJECT} > config.yml
+            # Delete unnecessary fields
+            yq 'del(.fingerprint)' config.yml -i
+            yq 'del(.creationTimestamp)' config.yml -i
+            export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${PR_NUMBER}-api"
+            # Remove existing route rules for the PR service
+            yq '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml > config.yml.tmp
+            mv config.yml.tmp config.yml
+            echo "Updating url map with:"
+            cat config.yml
+            gcloud compute url-maps import stg-activitypub --source=config.yml --global --project ${GCP_PROJECT} --quiet
+          done
+
+      - name: "Terraform destroy"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        env:
+          DESTROY_PRS: ${{ steps.check-closed-prs.outputs.destroy_prs }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          for PR_NUMBER in ${DESTROY_PRS}; do
+            echo "Destroying PR $PR_NUMBER staging environment."
+            sed -i 's/REPLACE_ME/'${PR_NUMBER}'/g' terraform.tf
+            terraform init
+            export TF_VAR_github_pr_number=$PR_NUMBER
+            export TF_VAR_primary_region_name=netherlands
+            export TF_VAR_migrations_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:edge
+            export TF_VAR_api_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:edge
+            export TF_VAR_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:edge
+            terraform destroy -auto-approve
+          done

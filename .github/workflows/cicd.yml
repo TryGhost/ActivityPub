@@ -240,7 +240,7 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: "Update Load Balancer"
+      - name: "Add route to GCP Load Balancer"
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
         env:
           LABELS: ${{ toJson(github.event.pull_request.labels) }}
