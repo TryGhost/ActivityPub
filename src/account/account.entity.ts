@@ -25,6 +25,7 @@ export type AccountSite = {
 export interface ProfileUpdateParams {
     name?: string | null;
     bio?: string | null;
+    username?: string;
     avatarUrl?: URL | null;
     bannerImageUrl?: URL | null;
 }
@@ -37,13 +38,14 @@ export class Account extends BaseEntity {
 
     private _name: string | null;
     private _bio: string | null;
+    private _username: string;
     private _avatarUrl: URL | null;
     private _bannerImageUrl: URL | null;
 
     constructor(
         public readonly id: number | null,
         uuid: string | null,
-        public readonly username: string,
+        username: string,
         name: string | null,
         bio: string | null,
         avatarUrl: URL | null,
@@ -57,6 +59,7 @@ export class Account extends BaseEntity {
 
         this._name = name;
         this._bio = bio;
+        this._username = username;
         this._avatarUrl = avatarUrl;
         this._bannerImageUrl = bannerImageUrl;
 
@@ -90,6 +93,10 @@ export class Account extends BaseEntity {
         return this._bio;
     }
 
+    get username(): string {
+        return this._username;
+    }
+
     get avatarUrl(): URL | null {
         return this._avatarUrl;
     }
@@ -105,6 +112,10 @@ export class Account extends BaseEntity {
 
         if (params.bio !== undefined) {
             this._bio = params.bio;
+        }
+
+        if (params.username !== undefined) {
+            this._username = params.username;
         }
 
         if (params.avatarUrl !== undefined) {

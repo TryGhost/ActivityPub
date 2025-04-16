@@ -18,14 +18,6 @@ import type {
     AccountFollowsView,
 } from './views/account.follows.view';
 
-const UpdateAccountSchema = z.object({
-    name: z.string(),
-    bio: z.string(),
-    username: z.string(),
-    avatarUrl: z.string(),
-    bannerImageUrl: z.string(),
-});
-
 /**
  * Default number of posts to return in a profile
  */
@@ -376,21 +368,36 @@ export function createGetAccountLikedPostsHandler(
  */
 export function createUpdateAccountHandler(accountService: AccountService) {
     return async function handleUpdateAccount(ctx: AppContext) {
+        const schema = z.object({
+            name: z.string(),
+            bio: z.string(),
+            username: z.string(),
+            avatarUrl: z.string(),
+            bannerImageUrl: z.string(),
+        });
+
         const account = await accountService.getAccountForSite(ctx.get('site'));
 
         if (!account) {
             return new Response(null, { status: 404 });
         }
 
-        let data: z.infer<typeof UpdateAccountSchema>;
+        let data: z.infer<typeof schema>;
 
         try {
-            data = UpdateAccountSchema.parse((await ctx.req.json()) as unknown);
+            data = schema.parse((await ctx.req.json()) as unknown);
         } catch (err) {
+            console.error(err);
             return new Response(JSON.stringify({}), { status: 400 });
         }
 
-        //Todo: Update the account with the new data
+        await accountService.updateAccountProfile(account, {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl,
+            bannerImageUrl: data.bannerImageUrl,
+        });
 
         return new Response(JSON.stringify({}), { status: 200 });
     };

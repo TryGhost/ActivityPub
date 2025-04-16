@@ -23,6 +23,7 @@ export class KnexAccountRepository {
             .update({
                 name: account.name,
                 bio: account.bio,
+                username: account.username,
                 avatar_url: account.avatarUrl?.href,
                 banner_image_url: account.bannerImageUrl?.href,
             })
