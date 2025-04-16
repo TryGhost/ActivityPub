@@ -41,3 +41,7 @@ export function ok<T>(value: T): Ok<T> {
 export function error<E>(error: E): Error<E> {
     return [error, null];
 }
+
+export function exhaustiveCheck(error: never): never {
+    throw new Error(`Unhandled error case: ${error}`);
+}
