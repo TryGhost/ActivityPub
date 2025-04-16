@@ -19,6 +19,7 @@ import {
     createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
+import { Storage } from '@google-cloud/storage';
 import { serve } from '@hono/node-server';
 import {
     type LogLevel,
@@ -188,6 +189,32 @@ export type ContextData = {
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
+
+if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
+    logging.info('Checking GCP bucket exists');
+    const bucketName = process.env.GCP_BUCKET_NAME;
+
+    if (!bucketName) {
+        logging.error('GCP bucket name is not configured');
+        process.exit(1);
+    }
+
+    try {
+        const storage = new Storage();
+        const [exists] = await storage.bucket(bucketName).exists();
+        if (!exists) {
+            throw new Error(`Bucket [${bucketName}] does not exist`);
+        }
+        logging.info('GCP bucket exists');
+    } catch (err) {
+        logging.error('Failed to verify GCP bucket {error}', {
+            error: err,
+        });
+        process.exit(1);
+    }
+} else {
+    logging.warn('GCP bucket name is not configured');
+}
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
@@ -1054,7 +1081,7 @@ app.get(
     ),
 );
 app.post(
-    '/.ghost/activitypub/upload',
+    '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createStorageHandler(accountService)),
 );
