@@ -79,7 +79,7 @@ export function createStorageHandler(accountService: AccountService) {
         await bucket.file(storagePath).save(file.stream(), {
             metadata: {
                 contentType: file.type,
-            }
+            },
         });
 
         const fileUrl = emulatorHost
