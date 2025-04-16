@@ -106,7 +106,7 @@ jobs:
         run: yarn test
 
       - name: "Authenticate with GCP"
-        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled')
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         id: gcp-auth
         uses: google-github-actions/auth@v2
         with:
@@ -115,7 +115,7 @@ jobs:
           service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Login to GCP Artifact Registry"
-        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled')
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         uses: docker/login-action@v3
         with:
           registry: europe-docker.pkg.dev
@@ -123,7 +123,7 @@ jobs:
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
       - name: "Push ActivityPub Docker Image"
-        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled')
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -131,7 +131,7 @@ jobs:
           tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
       - name: "Push Migrations Docker Image"
-        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled')
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         uses: docker/build-push-action@v6
         with:
           context: migrate
