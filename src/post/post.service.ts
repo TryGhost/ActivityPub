@@ -6,7 +6,6 @@ import {
     isActor,
     lookupObject,
 } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -19,7 +18,6 @@ import {
     isError,
     ok,
 } from 'core/result';
-import { isHandle } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import { isUri } from 'helpers/uri';
 import type { PostDTO } from 'http/api/types';
@@ -83,6 +81,12 @@ export interface GetProfileDataResult {
 }
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
+
+export type GetPostsError =
+    | 'invalid-next-parameter'
+    | 'error-getting-outbox'
+    | 'no-page-found'
+    | 'not-an-actor';
 
 export class PostService {
     constructor(
@@ -597,35 +601,27 @@ export class PostService {
      *
      */
     async getPostsByRemoteLookUp(
-        defaultAccount: Account,
+        defaultAccountId: number,
+        defaultAccountApId: URL,
         handle: string,
         next: string,
-    ): Promise<GetProfileDataResult | Error> {
+    ): Promise<Result<GetProfileDataResult, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
 
-        // If the provided handle is invalid, return early
-        if (!isHandle(handle)) {
-            throw new Error('Invalid handle');
-        }
-
-        if (!defaultAccount || !defaultAccount.id) {
-            throw new Error('Default account not found');
-        }
-
         // If the next parameter is not a valid URI, return early
         if (next !== '' && !isUri(next)) {
-            throw new Error('Invalid next parameter');
+            return error('invalid-next-parameter');
         }
 
         // Lookup actor by handle
         const actor = await lookupObject(handle, { documentLoader });
 
         if (!isActor(actor)) {
-            throw new Error('Actor not found');
+            return error('not-an-actor');
         }
 
         // Retrieve actor's posts
@@ -649,7 +645,7 @@ export class PostService {
                 const { host: nextHost } = new URL(next);
 
                 if (actorHost !== nextHost) {
-                    throw new Error('Invalid next parameter');
+                    return error('invalid-next-parameter');
                 }
 
                 page = (await lookupObject(next, {
@@ -668,11 +664,11 @@ export class PostService {
                 }
             }
         } catch (err) {
-            throw Error('Error getting outbox');
+            return error('error-getting-outbox');
         }
 
         if (!page) {
-            throw new Error('No page found');
+            return error('no-page-found');
         }
 
         // Return result
@@ -702,7 +698,7 @@ export class PostService {
                 }
 
                 activity.object.authored =
-                    defaultAccount.apId === activity.actor.id;
+                    defaultAccountApId === activity.actor.id;
 
                 // Add counters & flags to the object
                 activity.object.replyCount = 0;
@@ -719,14 +715,14 @@ export class PostService {
                     activity.object.liked = post
                         ? await this.postRepository.isLikedByAccount(
                               post.id!,
-                              defaultAccount.id,
+                              defaultAccountId,
                           )
                         : false;
 
                     activity.object.reposted = post
                         ? await this.postRepository.isRepostedByAccount(
                               post.id!,
-                              defaultAccount.id,
+                              defaultAccountId,
                           )
                         : false;
                 }
@@ -754,14 +750,17 @@ export class PostService {
                 }
 
                 result.results.push(this.mapActivityToPostDTO(activity));
-            } catch (err) {}
+            } catch (err) {
+                // If we can't map a post to an activity, skip it
+                // This ensures that a single invalid or unreachable post doesn't block the API from returning valid posts
+            }
         }
 
         result.nextCursor = page.nextId
             ? encodeURIComponent(page.nextId.toString())
             : null;
 
-        return result;
+        return ok(result);
     }
 
     /**
