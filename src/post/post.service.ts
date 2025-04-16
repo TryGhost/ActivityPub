@@ -182,10 +182,7 @@ export class PostService {
             attachments: object.attachment || [],
             author: {
                 id: attributedTo.id,
-                handle: getAccountHandle(
-                    new URL(attributedTo.id).host,
-                    attributedTo.preferredUsername,
-                ),
+                handle: `@${attributedTo.preferredUsername}@${new URL(attributedTo.id).host}`,
                 name: attributedTo.name || '',
                 url: attributedTo.id,
                 avatarUrl: attributedTo.icon?.url || '',
@@ -197,10 +194,7 @@ export class PostService {
                 activity.type === 'Announce'
                     ? {
                           id: actor.id,
-                          handle: getAccountHandle(
-                              new URL(actor.id).host,
-                              actor.preferredUsername,
-                          ),
+                          handle: `@${actor.preferredUsername}@${new URL(actor.id).host}`,
                           name: actor.name || '',
                           url: actor.id,
                           avatarUrl: actor.icon?.url || '',
