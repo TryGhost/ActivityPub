@@ -212,8 +212,6 @@ if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
         });
         process.exit(1);
     }
-} else {
-    logging.warn('GCP bucket name is not configured');
 }
 
 if (process.env.GCP_STORAGE_EMULATOR_HOST) {

@@ -260,6 +260,13 @@ services:
     command: -scheme http -port 4443 -external-url http://fake-gcs:4443
     volumes:
       - fake-gcs-data:/data
+    networks:
+      default:
+        aliases:
+          - fake-gcs
+      test_network:
+        aliases:
+          - fake-gcs
 
 volumes:
   fake-gcs-data:
