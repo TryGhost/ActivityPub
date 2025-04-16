@@ -509,4 +509,39 @@ export class AccountService {
 
         return newAccount;
     }
+
+    async updateAccountProfile(
+        account: Account,
+        data: {
+            name: string;
+            bio: string;
+            username: string;
+            avatarUrl: string;
+            bannerImageUrl: string;
+        },
+    ) {
+        const profileData = {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: new URL(data.avatarUrl),
+            bannerImageUrl: new URL(data.bannerImageUrl),
+        };
+
+        if (
+            account.name === profileData.name &&
+            account.bio === profileData.bio &&
+            account.username === profileData.username &&
+            account.avatarUrl?.toString() ===
+                profileData.avatarUrl.toString() &&
+            account.bannerImageUrl?.toString() ===
+                profileData.bannerImageUrl.toString()
+        ) {
+            return;
+        }
+
+        account.updateProfile(profileData);
+
+        await this.accountRepository.save(account);
+    }
 }

@@ -390,7 +390,13 @@ export function createUpdateAccountHandler(accountService: AccountService) {
             return new Response(JSON.stringify({}), { status: 400 });
         }
 
-        //Todo: Update the account with the new data
+        await accountService.updateAccountProfile(account, {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl,
+            bannerImageUrl: data.bannerImageUrl,
+        });
 
         return new Response(JSON.stringify({}), { status: 200 });
     };

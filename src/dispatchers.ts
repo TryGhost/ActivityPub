@@ -81,7 +81,6 @@ export const keypairDispatcher = (
         ctx: Context<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return [];
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 
