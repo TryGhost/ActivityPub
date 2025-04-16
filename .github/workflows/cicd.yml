@@ -1,8 +1,14 @@
-name: CI
+name: CICD
 
 on:
   workflow_dispatch:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
   push:
     branches:
       - main
@@ -42,7 +48,7 @@ jobs:
 
   build-test-push:
     name: Build, Test and Push
-    environment: staging
+    environment: build
     runs-on: ubuntu-latest
     needs: [lint, check-yarn-lock]
     outputs:
@@ -100,6 +106,7 @@ jobs:
         run: yarn test
 
       - name: "Authenticate with GCP"
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         id: gcp-auth
         uses: google-github-actions/auth@v2
         with:
@@ -108,6 +115,7 @@ jobs:
           service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Login to GCP Artifact Registry"
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         uses: docker/login-action@v3
         with:
           registry: europe-docker.pkg.dev
@@ -115,6 +123,7 @@ jobs:
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
       - name: "Push ActivityPub Docker Image"
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -122,6 +131,7 @@ jobs:
           tags: ${{ steps.activitypub-docker-metadata.outputs.tags }}
 
       - name: "Push Migrations Docker Image"
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
         uses: docker/build-push-action@v6
         with:
           context: migrate
@@ -135,10 +145,136 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
+  deploy-pr:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled')
+    name: (ephemeral staging) Deploy
+    runs-on: ubuntu-latest
+    needs: [build-test-push]
+    environment: staging
+    steps:
+      - name: "Check if any label matches *.ghost.is"
+        id: check-labels
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          export LABEL_NAMES=$(echo "$LABELS" | jq -r '[.[] | select(.name | test("\\.ghost\\.is$")) | .name] | join(",")')
+          echo "Label names: $LABEL_NAMES"
+          if [ "$LABEL_NAMES" != "" ]; then
+            echo "Label matching *.ghost.is found."
+            echo "is_ephemeral_staging=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No label matching .*.ghost.is found."
+            echo "is_ephemeral_staging=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Checkout activitypub-infra repo"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: TryGhost/activitypub-infra
+          ssh-key: ${{ secrets.ACTIVITYPUB_INFRA_DEPLOY_KEY }}
+          path: activitypub-infra
+
+      - name: "Checkout terraform repo"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: TryGhost/terraform
+          ssh-key: ${{ secrets.TERRAFORM_DEPLOY_KEY }}
+          path: terraform
+
+      - name: "Get terraform version"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        id: terraform-version
+        run: |
+          echo "terraform_version=$(cat activitypub-infra/infrastructure/activitypub-staging-environments/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - name: "Setup terraform"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.terraform_version }}
+
+      - name: "Change github.com url in modules to local directories and add backend prefix"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          sed -i 's/github\.com\/TryGhost/\.\.\/\.\.\/\.\./gI' main.tf
+          sed -i 's/\?ref=main//g' main.tf
+          sed -i 's/REPLACE_ME/${{ github.event.pull_request.number }}/g' terraform.tf
+
+      - name: "Authenticate with GCP"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Terraform init"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          terraform init
+
+      - name: "Terraform apply"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          export TF_VAR_github_pr_number=${{ github.event.pull_request.number }}
+          export TF_VAR_primary_region_name=netherlands
+          export TF_VAR_migrations_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_api_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          terraform apply -auto-approve
+
+      - name: "Deploy Migrations to Cloud Run"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:pr-${{ github.event.pull_request.number }}
+          region: europe-west4
+          job: stg-pr-${{ github.event.pull_request.number }}-migrations
+          flags: --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Add route to GCP Load Balancer"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          set -euo pipefail
+          # Get current config
+          gcloud compute url-maps export stg-activitypub --global --project ${GCP_PROJECT} > config.yml
+          # Delete unnecessary fields
+          yq 'del(.fingerprint)' config.yml -i
+          yq 'del(.creationTimestamp)' config.yml -i
+          export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-netherlands-activitypub-api"
+          export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
+          # Add host rules and path matchers if they don't exist
+          yq '.hostRules = (.hostRules // [{"hosts": ["activitypub.infra.ghost.is"], "pathMatcher": "staging-environments"}])' config.yml > config.yml.tmp
+          mv config.yml.tmp config.yml
+          yq '.pathMatchers = (.pathMatchers // [{"name": "staging-environments", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml > config.yml.tmp
+          mv config.yml.tmp config.yml
+          # Remove existing route rules for the PR service
+          yq '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml > config.yml.tmp
+          mv config.yml.tmp config.yml
+          # Add new route rules for the PR service
+          export MAX_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "staging-environments") | .routeRules[]?.priority] | max // 0' config.yml)
+          export NEXT_PRIORITY=$((MAX_PRIORITY + 1))
+          export HEADER_MATCHES=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | { "headerName": "X-Forwarded-Host", "exactMatch": "\(.name)" }'])
+          yq '.pathMatchers[0].routeRules += [{"priority": '"$NEXT_PRIORITY"', "matchRules": [{"prefixMatch": "/", "headerMatches": '$HEADER_MATCHES'}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] } }]' config.yml > config.yml.tmp
+          mv config.yml.tmp config.yml
+          echo "Updating url map with:"
+          cat config.yml
+          gcloud compute url-maps import stg-activitypub --source=config.yml --global --project ${GCP_PROJECT} --quiet
+
   deploy-staging:
     if: github.ref == 'refs/heads/main'
     name: (staging) Deploy
-    environment: staging
     runs-on: ubuntu-latest
     needs: [build-test-push]
     strategy:
@@ -193,7 +329,6 @@ jobs:
   deploy-production:
     if: github.ref == 'refs/heads/main'
     name: (production) Deploy
-    environment: production
     runs-on: ubuntu-latest
     needs: [build-test-push, deploy-staging]
     strategy:
