@@ -1,5 +1,6 @@
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
@@ -28,13 +29,32 @@ export function createGetPostHandler(
             });
         }
 
-        const post = await postService.getByApId(idAsUrl);
+        const postResult = await postService.getByApId(idAsUrl);
 
-        if (!post) {
-            return new Response(null, {
-                status: 404,
-            });
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.get('logger')?.info('Upstream error fetching post', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 404 });
+                case 'not-a-post':
+                    ctx.get('logger')?.info('Resource is not a post', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 404 });
+                case 'missing-author':
+                    ctx.get('logger')?.info('Post author missing', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 404 });
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
+
+        const post = getValue(postResult);
 
         const account = await accountService.getDefaultAccountForSite(
             ctx.get('site'),
@@ -91,13 +111,34 @@ export function createDeletePostHandler(
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
-        const post = await postService.getByApId(idAsUrl);
+        const postResult = await postService.getByApId(idAsUrl);
 
-        if (!post) {
-            return new Response(null, {
-                status: 404,
-            });
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    logger.info('Upstream error fetching post for deletion', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 400 });
+                case 'not-a-post':
+                    logger.info(
+                        'Resource requested for deletion is not a post',
+                        { postId: idAsUrl.href },
+                    );
+                    return new Response(null, { status: 400 });
+                case 'missing-author':
+                    logger.info(
+                        'Post requested for deletion has missing author',
+                        { postId: idAsUrl.href },
+                    );
+                    return new Response(null, { status: 400 });
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
+
+        const post = getValue(postResult);
 
         if (post.author.uuid !== account.uuid) {
             return new Response(null, {

@@ -88,6 +88,7 @@ describe('Account', () => {
 
             expect(account.name).toBe('Updated Name');
             expect(account.bio).toBe('Original Bio');
+            expect(account.username).toBe('testuser');
             expect(account.avatarUrl?.href).toBe(
                 'https://example.com/original-avatar.png',
             );
@@ -115,6 +116,35 @@ describe('Account', () => {
 
             expect(account.name).toBe('Original Name');
             expect(account.bio).toBe('Updated Bio');
+            expect(account.username).toBe('testuser');
+            expect(account.avatarUrl?.href).toBe(
+                'https://example.com/original-avatar.png',
+            );
+            expect(account.bannerImageUrl?.href).toBe(
+                'https://example.com/original-banner.png',
+            );
+        });
+
+        it('can update username', () => {
+            const account = new Account(
+                1,
+                'test-uuid',
+                'testuser',
+                'Original Name',
+                'Original Bio',
+                new URL('https://example.com/original-avatar.png'),
+                new URL('https://example.com/original-banner.png'),
+                null,
+                new URL('https://example.com/ap_id'),
+                new URL('https://example.com/url'),
+                new URL('https://example.com/followers'),
+            );
+
+            account.updateProfile({ username: 'updatedtestuser' });
+
+            expect(account.name).toBe('Original Name');
+            expect(account.bio).toBe('Original Bio');
+            expect(account.username).toBe('updatedtestuser');
             expect(account.avatarUrl?.href).toBe(
                 'https://example.com/original-avatar.png',
             );
@@ -144,6 +174,7 @@ describe('Account', () => {
 
             expect(account.name).toBe('Original Name');
             expect(account.bio).toBe('Original Bio');
+            expect(account.username).toBe('testuser');
             expect(account.avatarUrl?.href).toBe(
                 'https://example.com/updated-avatar.png',
             );
@@ -175,6 +206,7 @@ describe('Account', () => {
 
             expect(account.name).toBe('Original Name');
             expect(account.bio).toBe('Original Bio');
+            expect(account.username).toBe('testuser');
             expect(account.avatarUrl?.href).toBe(
                 'https://example.com/original-avatar.png',
             );
@@ -201,6 +233,7 @@ describe('Account', () => {
             account.updateProfile({
                 name: 'Updated Name',
                 bio: 'Updated Bio',
+                username: 'updatedtestuser',
                 avatarUrl: new URL('https://example.com/updated-avatar.png'),
                 bannerImageUrl: new URL(
                     'https://example.com/updated-banner.png',
@@ -209,6 +242,7 @@ describe('Account', () => {
 
             expect(account.name).toBe('Updated Name');
             expect(account.bio).toBe('Updated Bio');
+            expect(account.username).toBe('updatedtestuser');
             expect(account.avatarUrl?.href).toBe(
                 'https://example.com/updated-avatar.png',
             );
@@ -239,6 +273,7 @@ describe('Account', () => {
 
             expect(account.name).toBe('Original Name');
             expect(account.bio).toBeNull();
+            expect(account.username).toBe('testuser');
             expect(account.avatarUrl).toBeNull();
             expect(account.bannerImageUrl?.href).toBe(
                 'https://example.com/original-banner.png',

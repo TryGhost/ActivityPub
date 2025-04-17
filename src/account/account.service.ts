@@ -484,4 +484,66 @@ export class AccountService {
             ap_private_key: row.ap_private_key,
         };
     }
+
+    async updateAccount(
+        account: AccountType,
+        data: Omit<Partial<AccountType>, 'id'>,
+    ): Promise<AccountType> {
+        await this.db('accounts').update(data).where({ id: account.id });
+
+        const newAccount = Object.assign({}, account, data);
+
+        const internalAccount = account.ap_private_key !== null;
+
+        if (!internalAccount) {
+            return newAccount;
+        }
+
+        const avatarChanged = account.avatar_url !== data.avatar_url;
+        const nameChanged = account.name !== data.name;
+        const bioChanged = account.bio !== data.bio;
+
+        if (avatarChanged || nameChanged || bioChanged) {
+            await this.events.emitAsync('account.updated', newAccount);
+        }
+
+        return newAccount;
+    }
+
+    async updateAccountProfile(
+        account: Account,
+        data: {
+            name: string;
+            bio: string;
+            username: string;
+            avatarUrl: string;
+            bannerImageUrl: string;
+        },
+    ) {
+        const profileData = {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl ? new URL(data.avatarUrl) : null,
+            bannerImageUrl: data.bannerImageUrl
+                ? new URL(data.bannerImageUrl)
+                : null,
+        };
+
+        if (
+            account.name === profileData.name &&
+            account.bio === profileData.bio &&
+            account.username === profileData.username &&
+            account.avatarUrl?.toString() ===
+                profileData.avatarUrl?.toString() &&
+            account.bannerImageUrl?.toString() ===
+                profileData.bannerImageUrl?.toString()
+        ) {
+            return;
+        }
+
+        account.updateProfile(profileData);
+
+        await this.accountRepository.save(account);
+    }
 }

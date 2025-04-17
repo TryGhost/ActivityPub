@@ -83,6 +83,7 @@ import {
 } from './dispatchers';
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
+import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
@@ -113,6 +114,7 @@ import {
     handleCreateNote,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
+import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
@@ -244,6 +246,8 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
         logger: logging,
     });
 }
+
+const flagService = new FlagService([]);
 
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
@@ -647,6 +651,26 @@ app.use(async (ctx, next) => {
     });
 });
 
+app.use(async (ctx, next) => {
+    return flagService.runInContext(async () => {
+        const enabledFlags: string[] = [];
+
+        for (const flag of flagService.getRegistered()) {
+            if (ctx.req.query(flag)) {
+                flagService.enable(flag);
+
+                enabledFlags.push(flag);
+            }
+        }
+
+        if (enabledFlags.length > 0) {
+            ctx.res.headers.set('x-enabled-flags', enabledFlags.join(','));
+        }
+
+        return next();
+    });
+});
+
 function sleep(n: number) {
     return new Promise((resolve) => setTimeout(resolve, n));
 }
@@ -872,6 +896,11 @@ function requireRole(...roles: GhostRole[]) {
         return next();
     };
 }
+
+app.get(
+    '/.well-known/webfinger',
+    spanWrapper(createWebFingerHandler(accountRepository, siteService)),
+);
 
 app.get(
     '/.ghost/activitypub/inbox/:handle',

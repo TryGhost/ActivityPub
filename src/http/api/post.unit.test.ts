@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
+import { error, ok } from 'core/result';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
@@ -86,7 +87,7 @@ describe('Post API', () => {
             apFollowers: new URL(`https://${site.host}/followers/456`),
         });
         postService = {
-            getByApId: vi.fn().mockResolvedValue(null),
+            getByApId: vi.fn().mockResolvedValue(error('not-a-post')),
             isLikedByAccount: vi.fn().mockResolvedValue(false),
             isRepostedByAccount: vi.fn().mockResolvedValue(false),
         } as unknown as PostService;
@@ -101,10 +102,10 @@ describe('Post API', () => {
 
         postService.getByApId = vi.fn().mockImplementation((_postApId) => {
             if (_postApId.href === postApId) {
-                return createPost(postId);
+                return ok(createPost(postId));
             }
 
-            return null;
+            return error('not-a-post');
         });
 
         accountService.getDefaultAccountForSite = vi
@@ -129,10 +130,10 @@ describe('Post API', () => {
 
         postService.getByApId = vi.fn().mockImplementation((_postApId) => {
             if (_postApId.href === postApId) {
-                return createPost(postId);
+                return ok(createPost(postId));
             }
 
-            return null;
+            return error('not-a-post');
         });
 
         accountService.getDefaultAccountForSite = vi
@@ -157,10 +158,10 @@ describe('Post API', () => {
 
         postService.getByApId = vi.fn().mockImplementation((_postApId) => {
             if (_postApId.href === postApId) {
-                return createPost(postId);
+                return ok(createPost(postId));
             }
 
-            return null;
+            return error('not-a-post');
         });
 
         postService.isLikedByAccount = vi
@@ -194,10 +195,10 @@ describe('Post API', () => {
 
         postService.getByApId = vi.fn().mockImplementation((_postApId) => {
             if (_postApId.href === postApId) {
-                return createPost(postId);
+                return ok(createPost(postId));
             }
 
-            return null;
+            return error('not-a-post');
         });
 
         postService.isRepostedByAccount = vi
@@ -240,7 +241,7 @@ describe('Post API', () => {
 
         const ctx = getMockAppContext(postApId);
 
-        postService.getByApId = vi.fn().mockResolvedValue(null);
+        postService.getByApId = vi.fn().mockResolvedValue(error('not-a-post'));
 
         const handler = createGetPostHandler(postService, accountService);
         const response = await handler(ctx);

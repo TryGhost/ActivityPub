@@ -8,16 +8,13 @@ import {
     type RequestContext,
 } from '@fedify/fedify';
 import {
-    actorDispatcher,
     likedDispatcher,
     nodeInfoDispatcher,
     outboxDispatcher,
 } from './dispatchers';
 
-import type { AccountService } from './account/account.service';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import * as lookupHelpers from './lookup-helpers';
-import type { SiteService } from './site/site.service';
 
 vi.mock('./app', () => ({
     fedify: {
@@ -26,23 +23,6 @@ vi.mock('./app', () => ({
 }));
 
 describe('dispatchers', () => {
-    describe('actorDispatcher', () => {
-        it(`returns null if the handle is not "${ACTOR_DEFAULT_HANDLE}"`, async () => {
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            const ctx = {} as RequestContext<any>;
-            const handle = 'anything';
-
-            const actual = await actorDispatcher(
-                {} as unknown as SiteService,
-                {} as unknown as AccountService,
-            )(ctx, handle);
-            const expected = null;
-
-            expect(actual).toEqual(expected);
-        });
-    });
-
     describe('likedDispatcher', () => {
         // TODO: Clean up the any type
         // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing

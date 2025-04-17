@@ -90,14 +90,6 @@ export async function isFollowedByDefaultSiteAccount(
 }
 
 export function isHandle(handle: string): boolean {
-    // In test environments, we have handles that don't match the regex. Ex: @Alice@fake-external-activitypub
-    if (
-        process.env.NODE_ENV === 'testing' &&
-        handle.endsWith('@fake-external-activitypub')
-    ) {
-        return true;
-    }
-
     return /^@([\w.-]+)@([\w-]+\.[\w.-]+[^.])$/.test(handle);
 }
 
