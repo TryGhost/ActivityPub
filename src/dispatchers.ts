@@ -26,7 +26,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
@@ -43,7 +42,6 @@ export const actorDispatcher = (
         ctx: RequestContext<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return null;
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return null;
 
@@ -81,7 +79,6 @@ export const keypairDispatcher = (
         ctx: Context<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return [];
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 

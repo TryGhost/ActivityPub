@@ -683,7 +683,7 @@ When(
 );
 
 When(
-    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with data:$/,
+    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with the data:$/,
     async function (method, path, data) {
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub.test${path}`,
@@ -693,7 +693,7 @@ When(
                     Accept: 'application/ld+json',
                     'Content-Type': 'application/json',
                 },
-                body: data,
+                body: JSON.stringify(data.rowsHash()),
             },
         );
     },
@@ -1511,7 +1511,6 @@ Then('the request is accepted', async function () {
 });
 
 Then('the request is accepted with a {int}', function (statusCode) {
-    assert(this.response.ok);
     assert.equal(
         this.response.status,
         statusCode,
@@ -1650,7 +1649,8 @@ Then(
         }
         const actor = this.actors[actorName];
 
-        const object = this.objects[objectNameOrType];
+        const object =
+            this.objects[objectNameOrType] || this.actors[objectNameOrType];
 
         const inboxUrl = new URL(actor.inbox);
 
@@ -2023,4 +2023,15 @@ Then('the response contains a file URL', async function () {
         responseJson.fileUrl.startsWith('http'),
         'fileUrl should be a valid URL',
     );
+
+Then('the response contains the account details:', async function (data) {
+    const responseJson = await this.response.clone().json();
+
+    for (const [key, value] of Object.entries(data.rowsHash())) {
+        assert.equal(
+            responseJson[key],
+            value,
+            `Expected ${key} to be "${value}" but got "${responseJson[key]}"`,
+        );
+    }
 });
