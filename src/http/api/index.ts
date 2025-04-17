@@ -4,5 +4,6 @@ export * from './notification';
 export * from './note';
 export * from './post';
 export * from './search';
+export * from './storage';
 export * from './thread';
 export * from './webhook';
