@@ -4,7 +4,6 @@ import type { Knex } from 'knex';
 
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
 

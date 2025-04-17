@@ -7,12 +7,13 @@ import {
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { type Result, error, ok } from 'core/result';
+import { sanitizeHtml } from 'helpers/html';
 import { isUri } from 'helpers/uri';
 import type { Knex } from 'knex';
-import type { PostDTO } from '../types';
 import { PostType } from 'post/post.entity';
-import { error, ok, type Result } from 'core/result';
-import { sanitizeHtml } from 'helpers/html';
+import type { PostDTO } from '../types';
+
 export type GetPostsError =
     | 'invalid-next-parameter'
     | 'error-getting-outbox'
@@ -535,10 +536,7 @@ export class AccountPostsView {
         };
     }
 
-    mapToPostDTO(
-        result: GetProfileDataResultRow,
-        accountId: number,
-    ): PostDTO {
+    mapToPostDTO(result: GetProfileDataResultRow, accountId: number): PostDTO {
         return {
             id: result.post_ap_id,
             type: result.post_type,

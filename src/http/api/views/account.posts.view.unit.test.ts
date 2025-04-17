@@ -1,7 +1,8 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { PostType } from 'post/post.entity';
-import type { Knex } from 'knex';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { Knex } from 'knex';
+import { PostType } from 'post/post.entity';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { AccountPostsView } from './account.posts.view';
 
 describe('Account Posts View', () => {

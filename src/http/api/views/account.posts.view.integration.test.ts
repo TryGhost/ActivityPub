@@ -10,12 +10,12 @@ import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
 import { getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
+import { Audience, Post, PostType } from 'post/post.entity';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AccountPostsView } from './account.posts.view';
 import type { AccountPosts } from './account.posts.view';
-import { Post, PostType, Audience } from 'post/post.entity';
 
 describe('AccountPostsView', () => {
     let viewer: AccountPostsView;
