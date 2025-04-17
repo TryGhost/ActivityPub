@@ -14,13 +14,27 @@ export class GCPStorageService {
             logging.error('GCP bucket name is not configured');
             process.exit(1);
         }
+        try {
+        logging.info('Creating storage instance');
         this.storage = new Storage();
-        this.bucket = this.storage.bucket(this.bucketName);
+            logging.info('Creating bucket instance');
+            this.bucket = this.storage.bucket(this.bucketName);
+            logging.info('Bucket instance created');
+        } catch (err) {
+            logging.error('Failed to create storage instance {error}', {
+                error: err,
+            });
+            process.exit(1);
+        }
     }
 
     async init(): Promise<void> {
+        logging.info('Checking if bucket exists');
         if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
             try {
+                logging.info('Checking if bucket exists in {env}', {
+                    env: process.env.NODE_ENV,
+                });
                 const [exists] = await this.bucket.exists();
                 if (!exists) {
                     throw new Error(
@@ -37,6 +51,7 @@ export class GCPStorageService {
         }
 
         if (process.env.GCP_STORAGE_EMULATOR_HOST) {
+            logging.info('Creating storage instance with emulator');
             this.storage = new Storage({
                 apiEndpoint: process.env.GCP_STORAGE_EMULATOR_HOST,
                 projectId: 'dev-project',
