@@ -1,7 +1,4 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
-import { getLogger } from '@logtape/logtape';
-
-const logging = getLogger(['storage']);
 
 export class GCPStorageService {
     private storage: Storage;
@@ -10,51 +7,32 @@ export class GCPStorageService {
 
     constructor() {
         this.bucketName = process.env.GCP_BUCKET_NAME || '';
-        logging.info('GCP bucket name: {bucketName}', {
-            bucketName: this.bucketName,
-        });
         if (!this.bucketName) {
-            logging.error('GCP bucket name is not configured');
-            process.exit(1);
+            throw new Error('GCP bucket name is not configured');
         }
         try {
-            logging.info('Creating storage instance');
             this.storage = new Storage();
-            logging.info('Creating bucket instance');
             this.bucket = this.storage.bucket(this.bucketName);
-            logging.info('Bucket instance created');
         } catch (err) {
-            logging.error('Failed to create storage instance {error}', {
-                error: err,
-            });
-            process.exit(1);
+            throw new Error(`Failed to create storage instance ${err}`);
         }
     }
 
     async init(): Promise<void> {
-        logging.info('Checking if bucket exists');
         if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
             try {
-                logging.info('Checking if bucket exists in {env}', {
-                    env: process.env.NODE_ENV,
-                });
                 const [exists] = await this.bucket.exists();
                 if (!exists) {
                     throw new Error(
                         `Bucket [${this.bucketName}] does not exist`,
                     );
                 }
-                logging.info('GCP bucket exists');
             } catch (err) {
-                logging.error('Failed to verify GCP bucket {error}', {
-                    error: err,
-                });
-                process.exit(1);
+                throw new Error(`Failed to verify GCP bucket ${err}`);
             }
         }
 
         if (process.env.GCP_STORAGE_EMULATOR_HOST) {
-            logging.info('Creating storage instance with emulator');
             this.storage = new Storage({
                 apiEndpoint: process.env.GCP_STORAGE_EMULATOR_HOST,
                 projectId: 'dev-project',
@@ -69,7 +47,6 @@ export class GCPStorageService {
 
             const [exists] = await this.bucket.exists();
             if (!exists) {
-                logging.info('Creating GCP bucket in fake-gcs');
                 await this.bucket.create(); //Create a bucket in fake-gcs
             }
         }
