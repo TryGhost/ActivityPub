@@ -238,8 +238,8 @@ export function createGetAccountPostsHandler(
         const logger = ctx.get('logger');
         const site = ctx.get('site');
 
-        const handle = ctx.req.param('handle') || '';
-        if (handle === '') {
+        const handle = ctx.req.param('handle');
+        if (!handle) {
             return new Response(null, { status: 400 });
         }
 
