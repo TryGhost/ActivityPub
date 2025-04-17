@@ -58,7 +58,7 @@ export async function getFollowingCount(actor: Actor): Promise<number> {
 }
 
 export function getHandle(actor: Actor): string {
-    const host = actor.id?.host || 'unknown';
+    const host = actor.id?.host?.replace(/^www./, '') || 'unknown';
 
     return `@${actor?.preferredUsername || 'unknown'}@${host}`;
 }
