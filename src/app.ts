@@ -196,10 +196,11 @@ if (!bucketName) {
     logging.error('GCP bucket name is not configured');
     process.exit(1);
 }
+let bucket = storage.bucket(bucketName);
 
 if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
     try {
-        const [exists] = await storage.bucket(bucketName).exists();
+        const [exists] = await bucket.exists();
         if (!exists) {
             throw new Error(`Bucket [${bucketName}] does not exist`);
         }
@@ -223,7 +224,7 @@ if (process.env.GCP_STORAGE_EMULATOR_HOST) {
         },
     });
 
-    const bucket = storage.bucket(bucketName);
+    bucket = storage.bucket(bucketName);
 
     const [exists] = await bucket.exists();
     if (!exists) {
@@ -1099,7 +1100,7 @@ app.get(
 app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createStorageHandler(accountService, storage)),
+    spanWrapper(createStorageHandler(accountService, bucket)),
 );
 /** Federation wire up */
 

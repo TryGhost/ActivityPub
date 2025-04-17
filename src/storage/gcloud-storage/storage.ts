@@ -1,4 +1,4 @@
-import type { Storage } from '@google-cloud/storage';
+import type { Bucket } from '@google-cloud/storage';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { type Result, error, getError, isError, ok } from 'core/result';
@@ -16,7 +16,7 @@ export type FileValidationError = 'file-too-large' | 'file-type-not-supported';
 
 export function createStorageHandler(
     accountService: AccountService,
-    storage: Storage,
+    bucket: Bucket,
 ) {
     /**
      * Handle an upload to GCloud Storage bucket
@@ -49,21 +49,10 @@ export function createStorageHandler(
                     );
             }
         }
-
-        const bucketName = process.env.GCP_BUCKET_NAME;
         const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST; // This is for dev and testing environments
-
-        if (!bucketName) {
-            logger.error('Bucket name is not configured');
-            return new Response(JSON.stringify({}), {
-                status: 500,
-            });
-        }
 
         const account = await accountService.getAccountForSite(ctx.get('site'));
         const storagePath = getStoragePath(account, file.name);
-
-        const bucket = storage.bucket(bucketName);
 
         await bucket.file(storagePath).save(file.stream(), {
             metadata: {
@@ -75,8 +64,8 @@ export function createStorageHandler(
         // We replace it with 'localhost' so the generated URL points to a reachable endpoint on the host machine.
         // In production, we use the actual Google Cloud Storage URL.
         const fileUrl = emulatorHost
-            ? `${emulatorHost.replace('fake-gcs', 'localhost')}/download/storage/v1/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`
-            : `https://storage.googleapis.com/${bucketName}/${storagePath}`;
+            ? `${emulatorHost.replace('fake-gcs', 'localhost')}/download/storage/v1/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media`
+            : `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
 
         return new Response(JSON.stringify({ fileUrl }), {
             headers: {

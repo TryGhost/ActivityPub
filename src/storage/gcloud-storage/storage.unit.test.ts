@@ -1,22 +1,16 @@
-import { Storage } from '@google-cloud/storage';
+import type { Bucket } from '@google-cloud/storage';
 import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { Context } from 'hono';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStorageHandler } from './storage';
 
-vi.mock('@google-cloud/storage', () => ({
-    Storage: vi.fn(),
-}));
-
 describe('Storage Handler', () => {
     let account: Account;
     let accountService: AccountService;
-    let mockStorage: { bucket: Mock };
-    let mockBucket: { file: Mock };
+    let mockBucket: Bucket;
     let mockFile: { save: Mock };
     let mockLogger: { error: Mock };
-
     const getMockContext = (): Context =>
         ({
             get: (key: string) => {
@@ -41,10 +35,11 @@ describe('Storage Handler', () => {
 
         mockLogger = { error: vi.fn() };
         mockFile = { save: vi.fn() };
-        mockBucket = { file: vi.fn().mockReturnValue(mockFile) };
-        mockStorage = { bucket: vi.fn().mockReturnValue(mockBucket) };
-
-        (Storage as unknown as Mock).mockImplementation(() => mockStorage);
+        const mockFileFn = vi.fn().mockReturnValue(mockFile);
+        mockBucket = {
+            file: mockFileFn as unknown as Bucket['file'],
+            name: 'test-bucket',
+        } as unknown as Bucket;
 
         account = Account.createFromData({
             id: 456,
@@ -71,10 +66,7 @@ describe('Storage Handler', () => {
 
     it('returns 400 if no file is provided', async () => {
         const ctx = getMockContext();
-        const handler = createStorageHandler(
-            accountService,
-            mockStorage as unknown as Storage,
-        );
+        const handler = createStorageHandler(accountService, mockBucket);
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
@@ -83,7 +75,7 @@ describe('Storage Handler', () => {
 
     it('handles large files', async () => {
         const ctx = getMockContext();
-        const largeFile = new File(
+        const largeFile = new globalThis.File(
             ['x'.repeat(26 * 1024 * 1024)],
             'large.jpg',
             { type: 'image/jpeg' },
@@ -92,10 +84,7 @@ describe('Storage Handler', () => {
         formData.append('file', largeFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorage as unknown as Storage,
-        );
+        const handler = createStorageHandler(accountService, mockBucket);
         const response = await handler(ctx);
 
         expect(response.status).toBe(413);
@@ -107,17 +96,14 @@ describe('Storage Handler', () => {
 
     it('handles non-supported file types', async () => {
         const ctx = getMockContext();
-        const unsupportedFile = new File(['test'], 'test.txt', {
+        const unsupportedFile = new globalThis.File(['test'], 'test.txt', {
             type: 'image/txt',
         });
         const formData = new FormData();
         formData.append('file', unsupportedFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorage as unknown as Storage,
-        );
+        const handler = createStorageHandler(accountService, mockBucket);
         const response = await handler(ctx);
 
         expect(response.status).toBe(415);
@@ -133,35 +119,31 @@ describe('Storage Handler', () => {
 
     it('preserves file extension in storage path', async () => {
         const ctx = getMockContext();
-        const testFile = new File(['test'], 'test.png', { type: 'image/png' });
+        const testFile = new globalThis.File(['test'], 'test.png', {
+            type: 'image/png',
+        });
         const formData = new FormData();
         formData.append('file', testFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorage as unknown as Storage,
-        );
+        const handler = createStorageHandler(accountService, mockBucket);
         await handler(ctx);
 
-        const [storagePath] = mockBucket.file.mock.calls[0];
+        const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
         expect(storagePath).toMatch(/\.png$/);
     });
 
     it('uploads file and returns file URL', async () => {
         const ctx = getMockContext();
 
-        const mockFileData = new File(['test content'], 'test.png', {
+        const mockFileData = new globalThis.File(['test content'], 'test.png', {
             type: 'image/png',
         });
         const formData = new FormData();
         formData.append('file', mockFileData);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorage as unknown as Storage,
-        );
+        const handler = createStorageHandler(accountService, mockBucket);
         const response = await handler(ctx);
 
         expect(response.status).toBe(200);
@@ -169,7 +151,6 @@ describe('Storage Handler', () => {
         const responseData = await response.json();
         expect(responseData.fileUrl).toMatch(/^https?:\/\/.+\/.+$/);
 
-        expect(mockStorage.bucket).toHaveBeenCalledWith('test-bucket');
         expect(mockBucket.file).toHaveBeenCalled();
         expect(mockFile.save).toHaveBeenCalled();
 
