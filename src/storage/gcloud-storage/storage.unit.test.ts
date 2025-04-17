@@ -156,6 +156,6 @@ describe('Storage Handler', () => {
 
         const [stream, options] = (mockFile.save as Mock).mock.calls[0];
         expect(stream).toBeInstanceOf(ReadableStream);
-        expect(options).toEqual({ metadata: { contentType: 'image/png' } });
+        expect(options.metadata).toEqual({ contentType: 'image/png' });
     });
 });

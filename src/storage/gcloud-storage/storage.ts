@@ -54,10 +54,16 @@ export function createStorageHandler(
         const account = await accountService.getAccountForSite(ctx.get('site'));
         const storagePath = getStoragePath(account, file.name);
 
+        console.log('file.type: ', file.type);
+
         await bucket.file(storagePath).save(file.stream(), {
             metadata: {
                 contentType: file.type,
             },
+            // resumable uploads (default: true) use a session and chunked uploads.
+            // Disabled it in dev/testing because resumable mode can be unreliable with GCS emulators.
+            // This is fine for small files like images in dev/testing.
+            resumable: !emulatorHost,
         });
 
         // When using fake-gcs-server in dev/testing, the emulator host is set to 'fake-gcs' for container access.
