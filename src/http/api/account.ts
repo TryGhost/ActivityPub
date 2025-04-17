@@ -4,9 +4,11 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext, ContextData } from 'app';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import type { GetProfileDataResult, PostService } from 'post/post.service';
+import { z } from 'zod';
 import type { AccountDTO } from './types';
 import type {
     AccountFollows,
@@ -260,15 +262,50 @@ export function createGetAccountPostsHandler(
             } else {
                 //Otherwise, do a remote lookup to fetch the posts
                 const postResult = await postService.getPostsByRemoteLookUp(
-                    defaultAccount,
+                    defaultAccount.id,
+                    defaultAccount.apId,
                     handle,
                     params.cursor || '',
                 );
                 if (postResult instanceof Error) {
                     throw postResult;
                 }
-                result.results = postResult.results;
-                result.nextCursor = postResult.nextCursor;
+                if (isError(postResult)) {
+                    const error = getError(postResult);
+                    switch (error) {
+                        case 'invalid-next-parameter':
+                            logger.error('Invalid next parameter');
+                            return new Response(null, { status: 400 });
+                        case 'not-an-actor':
+                            logger.error(`Actor not found for ${handle}`);
+                            return new Response(null, { status: 404 });
+                        case 'error-getting-outbox':
+                            logger.error(`Error getting outbox for ${handle}`);
+                            return new Response(
+                                JSON.stringify({
+                                    posts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
+                        case 'no-page-found':
+                            logger.error(
+                                `No page found in outbox for ${handle}`,
+                            );
+                            return new Response(
+                                JSON.stringify({
+                                    posts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
+                        default:
+                            return exhaustiveCheck(error);
+                    }
+                }
+                const posts = getValue(postResult);
+                result.results = posts.results;
+                result.nextCursor = posts.nextCursor;
             }
         } catch (error) {
             logger.error(`Error getting posts for ${handle}: {error}`, {
@@ -331,5 +368,45 @@ export function createGetAccountLikedPostsHandler(
             }),
             { status: 200 },
         );
+    };
+}
+
+/**
+ * Create a handler to handle a request for an account update
+ */
+export function createUpdateAccountHandler(accountService: AccountService) {
+    return async function handleUpdateAccount(ctx: AppContext) {
+        const schema = z.object({
+            name: z.string(),
+            bio: z.string(),
+            username: z.string(),
+            avatarUrl: z.string(),
+            bannerImageUrl: z.string(),
+        });
+
+        const account = await accountService.getAccountForSite(ctx.get('site'));
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof schema>;
+
+        try {
+            data = schema.parse((await ctx.req.json()) as unknown);
+        } catch (err) {
+            console.error(err);
+            return new Response(JSON.stringify({}), { status: 400 });
+        }
+
+        await accountService.updateAccountProfile(account, {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl,
+            bannerImageUrl: data.bannerImageUrl,
+        });
+
+        return new Response(JSON.stringify({}), { status: 200 });
     };
 }

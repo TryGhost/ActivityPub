@@ -135,7 +135,7 @@ describe('AccountFollowsView', () => {
             expect(result.accounts[0]).toMatchObject({
                 id: String(following2.id),
                 name: 'Following Two',
-                handle: `@following2@${new URL(following2.ap_id).host}`,
+                handle: '@following2@example.com',
                 avatarUrl: following2.avatar_url,
                 isFollowing: false,
             });
@@ -183,7 +183,7 @@ describe('AccountFollowsView', () => {
             );
             expect(follower2Result).toMatchObject({
                 name: 'Follower Two',
-                handle: `@follower2@${new URL(follower2.ap_id).host}`,
+                handle: '@follower2@example.com',
                 avatarUrl: follower2.avatar_url,
                 isFollowing: true,
             });
@@ -192,7 +192,7 @@ describe('AccountFollowsView', () => {
             );
             expect(follower1Result).toMatchObject({
                 name: 'Follower One',
-                handle: `@follower1@${new URL(follower1.ap_id).host}`,
+                handle: '@follower1@example.com',
                 avatarUrl: follower1.avatar_url,
                 isFollowing: false,
             });

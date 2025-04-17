@@ -83,6 +83,8 @@ export async function getAccountDTOByHandle(
         throw new Error('Actor not found');
     }
 
+    // TODO: Clean up the any type
+    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
     const actor: any = await actorObj.toJsonLd();
 
     const [followerCount, followingCount, isFollowingResult, attachments] =

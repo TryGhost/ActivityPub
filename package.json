@@ -69,8 +69,8 @@
     "@opentelemetry/resources": "1.29.0",
     "@opentelemetry/sdk-trace-base": "1.29.0",
     "@sentry/node": "8.49.0",
-    "es-toolkit": "1.34.1",
-    "hono": "4.7.6",
+    "es-toolkit": "1.35.0",
+    "hono": "4.7.7",
     "html-to-text": "9.0.5",
     "jsonwebtoken": "9.0.2",
     "knex": "3.1.0",
@@ -79,9 +79,9 @@
     "linkifyjs": "4.2.0",
     "mysql2": "3.14.0",
     "node-jose": "2.2.0",
-    "sanitize-html": "2.15.0",
+    "sanitize-html": "2.16.0",
     "uuid": "10.0.0",
     "x-forwarded-fetch": "0.2.0",
-    "zod": "3.24.2"
+    "zod": "3.24.3"
   }
 }

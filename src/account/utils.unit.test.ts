@@ -70,13 +70,13 @@ describe('mapActorToExternalAccountData', () => {
 
 describe('getAccountHandle', () => {
     it('should return a handle for an account with a username', () => {
-        const handle = getAccountHandle('example.com', 'example');
+        const handle = getAccountHandle('www.example.com', 'example');
 
         expect(handle).toBe('@example@example.com');
     });
 
     it('should return a handle for an account with no username', () => {
-        const handle = getAccountHandle('example.com', '');
+        const handle = getAccountHandle('www.example.com', '');
 
         expect(handle).toBe('@unknown@example.com');
     });

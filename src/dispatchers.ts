@@ -21,11 +21,11 @@ import {
 import * as Sentry from '@sentry/node';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { FollowersService } from 'activitypub/followers.service';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
@@ -42,7 +42,6 @@ export const actorDispatcher = (
         ctx: RequestContext<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return null;
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return null;
 
@@ -80,7 +79,6 @@ export const keypairDispatcher = (
         ctx: Context<ContextData>,
         handle: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return [];
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 
@@ -371,12 +369,46 @@ export async function handleAnnoucedCreate(
         return;
     }
     // This handles storing the posts in the posts table
-    const post = await postService.getByApId(create.objectId);
+    const postResult = await postService.getByApId(create.objectId);
+
+    if (isError(postResult)) {
+        const error = getError(postResult);
+        switch (error) {
+            case 'upstream-error':
+                ctx.data.logger.info(
+                    'Upstream error fetching post for create handling',
+                    {
+                        postId: create.objectId.href,
+                    },
+                );
+                break;
+            case 'not-a-post':
+                ctx.data.logger.info(
+                    'Resource is not a post in create handling',
+                    {
+                        postId: create.objectId.href,
+                    },
+                );
+                break;
+            case 'missing-author':
+                ctx.data.logger.info(
+                    'Post has missing author in create handling',
+                    {
+                        postId: create.objectId.href,
+                    },
+                );
+                break;
+            default:
+                exhaustiveCheck(error);
+        }
+    }
 
     const object = await create.getObject();
     const replyTarget = await object?.getReplyTarget();
 
     if (replyTarget?.id?.href) {
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
         const replyTargetAuthor = data?.attributedTo?.id;
         const inboxActor = await getUserData(ctx, 'index');
@@ -450,14 +482,45 @@ export const createUndoHandler = (
             }
 
             if (senderAccount !== null) {
-                const originalPost = await postService.getByApId(
+                const originalPostResult = await postService.getByApId(
                     object.objectId,
                 );
 
-                if (originalPost !== null) {
-                    originalPost.removeRepost(senderAccount);
-                    await postRepository.save(originalPost);
+                if (isError(originalPostResult)) {
+                    const error = getError(originalPostResult);
+                    switch (error) {
+                        case 'upstream-error':
+                            ctx.data.logger.info(
+                                'Upstream error fetching post for undoing announce',
+                                {
+                                    postId: object.objectId.href,
+                                },
+                            );
+                            break;
+                        case 'not-a-post':
+                            ctx.data.logger.info(
+                                'Resource is not a post in undoing announce',
+                                {
+                                    postId: object.objectId.href,
+                                },
+                            );
+                            break;
+                        case 'missing-author':
+                            ctx.data.logger.info(
+                                'Post has missing author in undoing announce',
+                                {
+                                    postId: object.objectId.href,
+                                },
+                            );
+                            break;
+                        default:
+                            return exhaustiveCheck(error);
+                    }
+                    return;
                 }
+                const originalPost = getValue(originalPostResult);
+                originalPost.removeRepost(senderAccount);
+                await postRepository.save(originalPost);
             }
         }
 
@@ -588,9 +651,40 @@ export function createAnnounceHandler(
 
         if (senderAccount !== null) {
             // This will save the post if it doesn't already exist
-            const post = await postService.getByApId(announce.objectId);
+            const postResult = await postService.getByApId(announce.objectId);
 
-            if (post !== null) {
+            if (isError(postResult)) {
+                const error = getError(postResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.data.logger.info(
+                            'Upstream error fetching post for reposting',
+                            {
+                                postId: announce.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.data.logger.info(
+                            'Resource for reposting is not a post',
+                            {
+                                postId: announce.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.data.logger.info(
+                            'Post for reposting has missing author',
+                            {
+                                postId: announce.objectId.href,
+                            },
+                        );
+                        break;
+                    default:
+                        return exhaustiveCheck(error);
+                }
+            } else {
+                const post = getValue(postResult);
                 post.addRepost(senderAccount);
                 await postRepository.save(post);
             }
@@ -635,11 +729,42 @@ export function createLikeHandler(
 
         const account = await accountService.getByApId(like.actorId);
         if (account !== null) {
-            const post = await postService.getByApId(like.objectId);
+            const postResult = await postService.getByApId(like.objectId);
 
-            if (post !== null) {
+            if (isError(postResult)) {
+                const error = getError(postResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.data.logger.info(
+                            'Upstream error fetching post for liking',
+                            {
+                                postId: like.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.data.logger.info(
+                            'Resource for liking is not a post',
+                            {
+                                postId: like.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.data.logger.info(
+                            'Post for liking has missing author',
+                            {
+                                postId: like.objectId.href,
+                            },
+                        );
+                        break;
+                    default: {
+                        return exhaustiveCheck(error);
+                    }
+                }
+            } else {
+                const post = getValue(postResult);
                 post.addLike(account);
-
                 await postRepository.save(post);
             }
         }
@@ -954,8 +1079,12 @@ export async function likedDispatcher(
                         object:
                             | string
                             | {
+                                  // TODO: Clean up the any type
+                                  // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
                                   [key: string]: any;
                               };
+                        // TODO: Clean up the any type
+                        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
                         [key: string]: any;
                     }>([result]);
 

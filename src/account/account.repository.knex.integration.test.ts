@@ -1,4 +1,4 @@
-import { beforeAll, describe, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import assert from 'node:assert';
 import { AsyncEvents } from 'core/events';
@@ -9,6 +9,7 @@ import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { SiteService } from '../site/site.service';
+import { AccountUpdatedEvent } from './account-updated.event';
 import { Account } from './account.entity';
 
 describe('KnexAccountRepository', () => {
@@ -181,5 +182,60 @@ describe('KnexAccountRepository', () => {
 
         assert(result, 'Account should have been found');
         assert(result.uuid !== null, 'Account should have a uuid');
+    });
+
+    it('emits AccountUpdatedEvent when an account is saved', async () => {
+        // Setup
+        const events = new AsyncEvents();
+        const accountRepository = new KnexAccountRepository(client, events);
+        const emitSpy = vi.spyOn(events, 'emitAsync');
+
+        // Get an account from the DB to update
+        const account = await client('accounts').select('*').first();
+
+        if (!account) {
+            throw new Error('No account found for test');
+        }
+
+        // Create an Account entity
+        const accountEntity = new Account(
+            account.id,
+            account.uuid || 'test-uuid',
+            account.username,
+            account.name,
+            account.bio,
+            account.avatar_url ? new URL(account.avatar_url) : null,
+            account.banner_image_url ? new URL(account.banner_image_url) : null,
+            null, // site
+            account.ap_id ? new URL(account.ap_id) : null,
+            account.url ? new URL(account.url) : null,
+            account.ap_followers_url ? new URL(account.ap_followers_url) : null,
+        );
+
+        accountEntity.updateProfile({
+            name: 'Updated Name',
+            bio: 'Updated Bio',
+        });
+
+        // Act
+        await accountRepository.save(accountEntity);
+
+        // Assert
+        expect(emitSpy).toHaveBeenCalledWith(
+            AccountUpdatedEvent.getName(),
+            expect.any(AccountUpdatedEvent),
+        );
+
+        // Verify that the event contains the account
+        const event = emitSpy.mock.calls[0][1] as AccountUpdatedEvent;
+        expect(event.getAccount()).toBe(accountEntity);
+
+        // Verify the database was updated
+        const updatedAccount = await client('accounts')
+            .where({ id: account.id })
+            .first();
+
+        expect(updatedAccount.name).toBe('Updated Name');
+        expect(updatedAccount.bio).toBe('Updated Bio');
     });
 });

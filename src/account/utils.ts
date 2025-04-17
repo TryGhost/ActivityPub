@@ -75,5 +75,5 @@ export async function mapActorToExternalAccountData(
  * @param username Username of the account
  */
 export function getAccountHandle(host?: string, username?: string) {
-    return `@${username || 'unknown'}@${host || 'unknown'}`;
+    return `@${username || 'unknown'}@${host?.replace(/^www\./, '') || 'unknown'}`;
 }

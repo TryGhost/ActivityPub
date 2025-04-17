@@ -83,6 +83,7 @@ import {
 } from './dispatchers';
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
+import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
     createFollowActionHandler,
@@ -109,11 +110,13 @@ import {
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
+    createUpdateAccountHandler,
     handleCreateNote,
     handleWebhookSiteChanged,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
 import { AccountView } from './http/api/views/account.view';
+import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
@@ -246,6 +249,8 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
     });
 }
 
+const flagService = new FlagService([]);
+
 const events = new AsyncEvents();
 const fedifyContextFactory = new FedifyContextFactory();
 
@@ -299,6 +304,8 @@ function ensureCorrectContext<B, R>(
     return async (ctx: Context<ContextData>, b: B) => {
         const host = ctx.host;
         if (!ctx.data) {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (ctx as any).data = {};
         }
         if (!ctx.data.globaldb) {
@@ -647,6 +654,26 @@ app.use(async (ctx, next) => {
     });
 });
 
+app.use(async (ctx, next) => {
+    return flagService.runInContext(async () => {
+        const enabledFlags: string[] = [];
+
+        for (const flag of flagService.getRegistered()) {
+            if (ctx.req.query(flag)) {
+                flagService.enable(flag);
+
+                enabledFlags.push(flag);
+            }
+        }
+
+        if (enabledFlags.length > 0) {
+            ctx.res.headers.set('x-enabled-flags', enabledFlags.join(','));
+        }
+
+        return next();
+    });
+});
+
 function sleep(n: number) {
     return new Promise((resolve) => setTimeout(resolve, n));
 }
@@ -879,6 +906,11 @@ function requireRole(...roles: GhostRole[]) {
 }
 
 app.get(
+    '/.well-known/webfinger',
+    spanWrapper(createWebFingerHandler(accountRepository, siteService)),
+);
+
+app.get(
     '/.ghost/activitypub/inbox/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(inboxHandler),
@@ -962,6 +994,11 @@ app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createGetAccountHandler(accountView, accountRepository)),
+);
+app.put(
+    '/.ghost/activitypub/account',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper(createUpdateAccountHandler(accountService)),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',

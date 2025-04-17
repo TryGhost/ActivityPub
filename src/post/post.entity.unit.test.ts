@@ -190,6 +190,8 @@ describe('Post', () => {
         it('creates a note with html content', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (inReplyTo as any).id = 'fake-id';
             const content = 'My first note';
 
@@ -203,6 +205,8 @@ describe('Post', () => {
         it('creates a note with line breaks', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (inReplyTo as any).id = 'fake-id';
             const content = `My
                             first
@@ -218,6 +222,8 @@ describe('Post', () => {
         it('creates a note with escaped html', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (inReplyTo as any).id = 'fake-id';
             const content = '<script>alert("hax")</script> Hello, world!';
 
@@ -233,6 +239,8 @@ describe('Post', () => {
         it('creates a note with links', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (inReplyTo as any).id = 'fake-id';
             const content = 'Check out https://ghost.org it is super cool';
 
@@ -248,6 +256,8 @@ describe('Post', () => {
         it('does not convert handles to mailto', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (inReplyTo as any).id = 'fake-id';
             const content =
                 'I wish I could mention someone like @index@activitypub.ghost.org';
@@ -264,6 +274,8 @@ describe('Post', () => {
         it('does not convert emails to mailto', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             (inReplyTo as any).id = 'fake-id';
             const content = 'Email me at support@ghost.org';
 

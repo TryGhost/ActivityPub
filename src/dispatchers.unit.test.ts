@@ -8,16 +8,13 @@ import {
     type RequestContext,
 } from '@fedify/fedify';
 import {
-    actorDispatcher,
     likedDispatcher,
     nodeInfoDispatcher,
     outboxDispatcher,
 } from './dispatchers';
 
-import type { AccountService } from './account/account.service';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import * as lookupHelpers from './lookup-helpers';
-import type { SiteService } from './site/site.service';
 
 vi.mock('./app', () => ({
     fedify: {
@@ -26,22 +23,9 @@ vi.mock('./app', () => ({
 }));
 
 describe('dispatchers', () => {
-    describe('actorDispatcher', () => {
-        it(`returns null if the handle is not "${ACTOR_DEFAULT_HANDLE}"`, async () => {
-            const ctx = {} as RequestContext<any>;
-            const handle = 'anything';
-
-            const actual = await actorDispatcher(
-                {} as unknown as SiteService,
-                {} as unknown as AccountService,
-            )(ctx, handle);
-            const expected = null;
-
-            expect(actual).toEqual(expected);
-        });
-    });
-
     describe('likedDispatcher', () => {
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         const likeActivities: Record<string, any> = {
             'https://example.com/like/123': {
                 '@context': [
@@ -81,6 +65,8 @@ describe('dispatchers', () => {
                     info: vi.fn(),
                 },
             },
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         } as RequestContext<any>;
 
         beforeEach(() => {
@@ -147,6 +133,8 @@ describe('dispatchers', () => {
         it('hydrates the object of a like', async () => {
             const actorId = 'https://example.com/actor/123';
 
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const likeActivities: Record<string, any> = {
                 'https://example.com/like/123': {
                     '@context': [
@@ -262,6 +250,8 @@ describe('dispatchers', () => {
                     error: vi.fn(),
                 },
             },
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         } as RequestContext<any>;
 
         beforeEach(() => {
@@ -328,6 +318,8 @@ describe('dispatchers', () => {
 
     describe('nodeInfoDispatcher', () => {
         it('returns the node info', async () => {
+            // TODO: Clean up the any type
+            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
             const result = await nodeInfoDispatcher({} as RequestContext<any>);
 
             expect(result).toEqual({

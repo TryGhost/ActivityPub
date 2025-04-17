@@ -22,25 +22,47 @@ export type AccountSite = {
     host: string;
 };
 
+export interface ProfileUpdateParams {
+    name?: string | null;
+    bio?: string | null;
+    username?: string;
+    avatarUrl?: URL | null;
+    bannerImageUrl?: URL | null;
+}
+
 export class Account extends BaseEntity {
     public readonly uuid: string;
     public readonly url: URL;
     public readonly apId: URL;
     public readonly apFollowers: URL;
+
+    private _name: string | null;
+    private _bio: string | null;
+    private _username: string;
+    private _avatarUrl: URL | null;
+    private _bannerImageUrl: URL | null;
+
     constructor(
         public readonly id: number | null,
         uuid: string | null,
-        public readonly username: string,
-        public readonly name: string | null,
-        public readonly bio: string | null,
-        public readonly avatarUrl: URL | null,
-        public readonly bannerImageUrl: URL | null,
+        username: string,
+        name: string | null,
+        bio: string | null,
+        avatarUrl: URL | null,
+        bannerImageUrl: URL | null,
         private readonly site: AccountSite | null,
         apId: URL | null,
         url: URL | null,
         apFollowers: URL | null,
     ) {
         super(id);
+
+        this._name = name;
+        this._bio = bio;
+        this._username = username;
+        this._avatarUrl = avatarUrl;
+        this._bannerImageUrl = bannerImageUrl;
+
         if (uuid === null) {
             this.uuid = randomUUID();
         } else {
@@ -60,6 +82,48 @@ export class Account extends BaseEntity {
             this.url = this.apId;
         } else {
             this.url = url;
+        }
+    }
+
+    get name(): string | null {
+        return this._name;
+    }
+
+    get bio(): string | null {
+        return this._bio;
+    }
+
+    get username(): string {
+        return this._username;
+    }
+
+    get avatarUrl(): URL | null {
+        return this._avatarUrl;
+    }
+
+    get bannerImageUrl(): URL | null {
+        return this._bannerImageUrl;
+    }
+
+    updateProfile(params: ProfileUpdateParams): void {
+        if (params.name !== undefined) {
+            this._name = params.name;
+        }
+
+        if (params.bio !== undefined) {
+            this._bio = params.bio;
+        }
+
+        if (params.username !== undefined) {
+            this._username = params.username;
+        }
+
+        if (params.avatarUrl !== undefined) {
+            this._avatarUrl = params.avatarUrl;
+        }
+
+        if (params.bannerImageUrl !== undefined) {
+            this._bannerImageUrl = params.bannerImageUrl;
         }
     }
 

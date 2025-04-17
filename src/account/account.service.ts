@@ -296,6 +296,10 @@ export class AccountService {
         return account;
     }
 
+    async getAccountForSite(site: Site): Promise<Account> {
+        return this.accountRepository.getBySite(site);
+    }
+
     /**
      * Get the accounts that the provided account is following
      *
@@ -504,5 +508,42 @@ export class AccountService {
         }
 
         return newAccount;
+    }
+
+    async updateAccountProfile(
+        account: Account,
+        data: {
+            name: string;
+            bio: string;
+            username: string;
+            avatarUrl: string;
+            bannerImageUrl: string;
+        },
+    ) {
+        const profileData = {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl ? new URL(data.avatarUrl) : null,
+            bannerImageUrl: data.bannerImageUrl
+                ? new URL(data.bannerImageUrl)
+                : null,
+        };
+
+        if (
+            account.name === profileData.name &&
+            account.bio === profileData.bio &&
+            account.username === profileData.username &&
+            account.avatarUrl?.toString() ===
+                profileData.avatarUrl?.toString() &&
+            account.bannerImageUrl?.toString() ===
+                profileData.bannerImageUrl?.toString()
+        ) {
+            return;
+        }
+
+        account.updateProfile(profileData);
+
+        await this.accountRepository.save(account);
     }
 }

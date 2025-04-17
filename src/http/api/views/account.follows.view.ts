@@ -195,6 +195,8 @@ export class AccountFollowsView {
             for await (const item of page.getItems()) {
                 const actor = (await item.toJsonLd({
                     format: 'compact',
+                    // TODO: Clean up the any type
+                    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
                 })) as any;
 
                 const followeeAccount = await this.db('accounts')

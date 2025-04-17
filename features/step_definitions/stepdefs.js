@@ -24,8 +24,8 @@ import { WireMock } from 'wiremock-captain';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub';
-const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub';
+const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub.test';
+const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub.test';
 
 async function createActivity(type, object, actor) {
     let activity;
@@ -152,29 +152,29 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
-            id: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
-            url: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
+            id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
+            url: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
             type,
 
-            handle: '@index@fake-ghost-activitypub',
+            handle: '@index@fake-ghost-activitypub.test',
 
             preferredUsername: 'index',
             name,
             summary: 'A test actor for testing',
 
-            inbox: 'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
-            outbox: 'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+            inbox: 'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+            outbox: 'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
             followers:
-                'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+                'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
             following:
-                'http://fake-ghost-activitypub/.ghost/activitypub/following/index',
-            liked: 'http://fake-ghost-activitypub/.ghost/activitypub/liked/index',
+                'http://fake-ghost-activitypub.test/.ghost/activitypub/following/index',
+            liked: 'http://fake-ghost-activitypub.test/.ghost/activitypub/liked/index',
 
             'https://w3id.org/security#publicKey': {
-                id: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index#main-key',
+                id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index#main-key',
                 type: 'https://w3id.org/security#Key',
                 'https://w3id.org/security#owner': {
-                    id: 'http://fake-ghost-activitypub/.ghost/activitypub/users/index',
+                    id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
                 },
                 'https://w3id.org/security#publicKeyPem':
                     '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
@@ -187,27 +187,27 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
             'https://www.w3.org/ns/activitystreams',
             'https://w3id.org/security/data-integrity/v1',
         ],
-        id: `http://fake-external-activitypub/user/${name}`,
-        url: `http://fake-external-activitypub/user/${name}`,
+        id: `http://fake-external-activitypub.test/user/${name}`,
+        url: `http://fake-external-activitypub.test/user/${name}`,
         type,
 
-        handle: `@${name}@fake-external-activitypub`,
+        handle: `@${name}@fake-external-activitypub.test`,
 
         preferredUsername: name,
         name,
         summary: 'A test actor for testing',
 
-        inbox: `http://fake-external-activitypub/inbox/${name}`,
-        outbox: `http://fake-external-activitypub/inbox/${name}`,
-        followers: `http://fake-external-activitypub/followers/${name}`,
-        following: `http://fake-external-activitypub/following/${name}`,
-        liked: `http://fake-external-activitypub/liked/${name}`,
+        inbox: `http://fake-external-activitypub.test/inbox/${name}`,
+        outbox: `http://fake-external-activitypub.test/inbox/${name}`,
+        followers: `http://fake-external-activitypub.test/followers/${name}`,
+        following: `http://fake-external-activitypub.test/following/${name}`,
+        liked: `http://fake-external-activitypub.test/liked/${name}`,
 
         'https://w3id.org/security#publicKey': {
-            id: 'http://fake-external-activitypub/user#main-key',
+            id: 'http://fake-external-activitypub.test/user#main-key',
             type: 'https://w3id.org/security#Key',
             'https://w3id.org/security#owner': {
-                id: 'http://fake-external-activitypub/user',
+                id: 'http://fake-external-activitypub.test/user',
             },
             'https://w3id.org/security#publicKeyPem':
                 '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
@@ -279,17 +279,17 @@ async function createActor(name, { remote = true, type = 'Person' } = {}) {
     externalActivityPub.register(
         {
             method: 'GET',
-            endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub`)}`,
+            endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub.test`)}`,
         },
         {
             status: 200,
             body: {
-                subject: `acct:${name}@fake-external-activitypub`,
-                aliases: [`http://fake-external-activitypub/user/${name}`],
+                subject: `acct:${name}@fake-external-activitypub.test`,
+                aliases: [`http://fake-external-activitypub.test/user/${name}`],
                 links: [
                     {
                         rel: 'self',
-                        href: `http://fake-external-activitypub/user/${name}`,
+                        href: `http://fake-external-activitypub.test/user/${name}`,
                         type: 'application/activity+json',
                     },
                     {
@@ -317,13 +317,13 @@ function generateObject(type, content) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Article',
-            id: `http://fake-external-activitypub/article/${uuid}`,
-            url: `http://fake-external-activitypub/article/${uuid}`,
+            id: `http://fake-external-activitypub.test/article/${uuid}`,
+            url: `http://fake-external-activitypub.test/article/${uuid}`,
             to: 'as:Public',
-            cc: 'http://fake-external-activitypub/followers',
+            cc: 'http://fake-external-activitypub.test/followers',
             content: content ?? '<p>This is a test article</p>',
             published: new Date(),
-            attributedTo: 'http://fake-external-activitypub/user',
+            attributedTo: 'http://fake-external-activitypub.test/user',
         };
     }
 
@@ -335,13 +335,13 @@ function generateObject(type, content) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Note',
-            id: `http://fake-external-activitypub/note/${uuid}`,
-            url: `http://fake-external-activitypub/note/${uuid}`,
+            id: `http://fake-external-activitypub.test/note/${uuid}`,
+            url: `http://fake-external-activitypub.test/note/${uuid}`,
             to: 'as:Public',
-            cc: 'http://fake-external-activitypub/followers',
+            cc: 'http://fake-external-activitypub.test/followers',
             content: content ?? '<p>This is a test note</p>',
             published: new Date(),
-            attributedTo: 'http://fake-external-activitypub/user',
+            attributedTo: 'http://fake-external-activitypub.test/user',
         };
     }
 
@@ -353,8 +353,8 @@ function generateObject(type, content) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Accept',
-            id: `http://fake-external-activitypub/accept/${uuid}`,
-            url: `http://fake-external-activitypub/accept/${uuid}`,
+            id: `http://fake-external-activitypub.test/accept/${uuid}`,
+            url: `http://fake-external-activitypub.test/accept/${uuid}`,
         };
     }
 }
@@ -400,7 +400,7 @@ function createWebhookPost() {
                 custom_excerpt: null,
                 feature_image: null,
                 published_at: new Date().toISOString(),
-                url: `http://fake-external-activitypub/post/${uuid}`,
+                url: `http://fake-external-activitypub.test/post/${uuid}`,
                 visibility: 'public',
                 authors: [],
             },
@@ -635,7 +635,7 @@ Given('there is no entry in the sites table', async function () {
 
 When('we request the outbox', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -645,7 +645,7 @@ When('we request the outbox', async function () {
 });
 
 When(
-    /an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"/,
+    /an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"$/,
     async function (method, path) {
         const requestMethod = method || 'get';
         let requestPath = path;
@@ -671,7 +671,7 @@ When(
         }
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub${requestPath}`,
+            `http://fake-ghost-activitypub.test${requestPath}`,
             {
                 method: requestMethod,
                 headers: {
@@ -682,9 +682,26 @@ When(
     },
 );
 
+When(
+    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with the data:$/,
+    async function (method, path, data) {
+        this.response = await fetchActivityPub(
+            `http://fake-ghost-activitypub.test${path}`,
+            {
+                method: method,
+                headers: {
+                    Accept: 'application/ld+json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data.rowsHash()),
+            },
+        );
+    },
+);
+
 When('an unauthenticated request is made to {string}', async function (path) {
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub${path}`,
+        `http://fake-ghost-activitypub.test${path}`,
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -696,7 +713,7 @@ When('an unauthenticated request is made to {string}', async function (path) {
 
 When('we request the site endpoint', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/site',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/site',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -745,7 +762,7 @@ Given('we are following {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
 
     const followResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/follow/${actor.handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/follow/${actor.handle}`,
         {
             method: 'POST',
         },
@@ -760,7 +777,7 @@ Given('we are following {string}', async function (input) {
     const accept = await createActivity('Accept', follow, actor);
 
     const acceptResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             headers: {
@@ -780,7 +797,7 @@ Given('we are following {string}', async function (input) {
 Given('we follow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/follow/${handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/follow/${handle}`,
         {
             method: 'POST',
         },
@@ -797,7 +814,7 @@ Given('we follow {string}', async function (name) {
 Given('we unfollow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/unfollow/${handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unfollow/${handle}`,
         {
             method: 'POST',
         },
@@ -815,7 +832,7 @@ async function weAreFollowedBy(actor) {
 
     // Send the follow activity to the inbox
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             body: JSON.stringify(activity),
@@ -846,7 +863,7 @@ Given('we are followed by:', async function (actors) {
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -856,7 +873,7 @@ When('we like the object {string}', async function (name) {
 When('we unlike the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -865,7 +882,7 @@ When('we unlike the object {string}', async function (name) {
 
 Then('the object {string} should be liked', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -882,7 +899,7 @@ Then('the object {string} should be liked', async function (name) {
 
 Then('the object {string} should not be liked', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -900,7 +917,7 @@ Then('the object {string} should not be liked', async function (name) {
 When('we repost the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/repost/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/repost/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -909,7 +926,7 @@ When('we repost the object {string}', async function (name) {
 
 Then('the object {string} should be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -928,7 +945,7 @@ Then(
     'the object {string} should have a repost count of {int}',
     async function (name, repostCount) {
         const response = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
             {
                 headers: {
                     Accept: 'application/ld+json',
@@ -947,7 +964,7 @@ Then(
 When('we undo the repost of the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/derepost/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/derepost/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -956,7 +973,7 @@ When('we undo the repost of the object {string}', async function (name) {
 
 Then('the object {string} should not be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -972,7 +989,7 @@ Then('the object {string} should not be reposted', async function (name) {
 
 async function getObjectInCollection(objectName, collectionType) {
     const initialResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/${collectionType}/index`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/${collectionType}/index`,
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1134,7 +1151,7 @@ When(
         const activity = this.activities[activityName];
 
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
             {
                 method: 'POST',
                 headers: {
@@ -1183,7 +1200,7 @@ async function waitForInboxActivity(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1224,7 +1241,7 @@ async function waitForInboxActivity(
 
 async function findInOutbox(activity) {
     const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1297,7 +1314,7 @@ async function waitForOutboxActivityType(
     const MAX_RETRIES = 5;
 
     const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/outbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1359,7 +1376,7 @@ Then(
     'Activity {string} is sent to all followers',
     async function (activityName) {
         const followersResponse = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
         );
         const followersResponseJson = await followersResponse.json();
 
@@ -1394,7 +1411,7 @@ Then(
 
 const endpoints = {
     'post.published':
-        'http://fake-ghost-activitypub/.ghost/activitypub/webhooks/post/published',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/webhooks/post/published',
 };
 
 Given('a {string} webhook', function (string) {
@@ -1498,7 +1515,6 @@ Then('the request is accepted', async function () {
 });
 
 Then('the request is accepted with a {int}', function (statusCode) {
-    assert(this.response.ok);
     assert.equal(
         this.response.status,
         statusCode,
@@ -1571,7 +1587,7 @@ Then(
 
 Then('{string} is not in our Inbox', async function (activityName) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1588,7 +1604,7 @@ Then('{string} is not in our Inbox', async function (activityName) {
 
 Then('{string} is in our Followers', async function (actorName) {
     const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1608,7 +1624,7 @@ Then('{string} is in our Followers', async function (actorName) {
 
 Then('{string} is in our Followers once only', async function (actorName) {
     const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/followers/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -1637,7 +1653,8 @@ Then(
         }
         const actor = this.actors[actorName];
 
-        const object = this.objects[objectNameOrType];
+        const object =
+            this.objects[objectNameOrType] || this.actors[objectNameOrType];
 
         const inboxUrl = new URL(actor.inbox);
 
@@ -1667,7 +1684,7 @@ Then(
 
 When('we attempt to create a note with no content', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
         {
             method: 'POST',
             headers: {
@@ -1680,7 +1697,7 @@ When('we attempt to create a note with no content', async function () {
 
 When('we attempt to create a note with invalid content', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
         {
             method: 'POST',
             headers: {
@@ -1697,7 +1714,7 @@ When(
     'we create a note {string} with the content',
     async function (noteName, noteContent) {
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub/.ghost/activitypub/actions/note',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
             {
                 method: 'POST',
                 headers: {
@@ -1724,7 +1741,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -1742,7 +1759,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -1757,10 +1774,10 @@ When(
 );
 
 When('we attempt to reply to an unknown object', async function () {
-    const id = 'http://fake-external-activitypub/note/123';
+    const id = 'http://fake-external-activitypub.test/note/123';
 
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/actions/reply/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(id)}`,
         {
             method: 'POST',
             headers: {
@@ -1779,7 +1796,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -1818,7 +1835,7 @@ When('we request the feed with the next cursor', async function () {
     const nextCursor = responseJson.next;
 
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub/.ghost/activitypub/feed/index?next=${encodeURIComponent(nextCursor)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/feed/index?next=${encodeURIComponent(nextCursor)}`,
         {
             headers: {
                 Accept: 'application/json',
@@ -1977,4 +1994,16 @@ Then('the response contains {string} account details', async function (name) {
     assert.equal(typeof responseJson.followerCount, 'number');
     assert.equal(typeof responseJson.followedByMe, 'boolean');
     assert.equal(typeof responseJson.followsMe, 'boolean');
+});
+
+Then('the response contains the account details:', async function (data) {
+    const responseJson = await this.response.clone().json();
+
+    for (const [key, value] of Object.entries(data.rowsHash())) {
+        assert.equal(
+            responseJson[key],
+            value,
+            `Expected ${key} to be "${value}" but got "${responseJson[key]}"`,
+        );
+    }
 });
