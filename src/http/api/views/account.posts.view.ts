@@ -93,9 +93,7 @@ export class AccountPostsView {
         }
 
         //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account?.isInternal || account.apId.toString().includes('ghost')) {
-            //if (account?.isInternal) {
-            console.log('######################### Local lookup');
+        if (account?.isInternal) {
             return ok(
                 await this.getPostsByAccount(
                     account.id,
@@ -105,8 +103,6 @@ export class AccountPostsView {
                 ),
             );
         }
-
-        console.log('######################### Remote lookup');
 
         //Otherwise, do a remote lookup to fetch the posts
         return this.getPostsByRemoteLookUp(
