@@ -71,7 +71,10 @@ describe('Storage Handler', () => {
 
     it('returns 400 if no file is provided', async () => {
         const ctx = getMockContext();
-        const handler = createStorageHandler(accountService);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorage as unknown as Storage,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
@@ -89,7 +92,10 @@ describe('Storage Handler', () => {
         formData.append('file', largeFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorage as unknown as Storage,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(413);
@@ -108,7 +114,10 @@ describe('Storage Handler', () => {
         formData.append('file', unsupportedFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorage as unknown as Storage,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(415);
@@ -129,7 +138,10 @@ describe('Storage Handler', () => {
         formData.append('file', testFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorage as unknown as Storage,
+        );
         await handler(ctx);
 
         const [storagePath] = mockBucket.file.mock.calls[0];
@@ -146,7 +158,10 @@ describe('Storage Handler', () => {
         formData.append('file', mockFileData);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorage as unknown as Storage,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(200);

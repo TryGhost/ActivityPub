@@ -190,17 +190,15 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
+let storage = new Storage();
+const bucketName = process.env.GCP_BUCKET_NAME;
+if (!bucketName) {
+    logging.error('GCP bucket name is not configured');
+    process.exit(1);
+}
+
 if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
-    logging.info('Checking GCP bucket exists');
-    const bucketName = process.env.GCP_BUCKET_NAME;
-
-    if (!bucketName) {
-        logging.error('GCP bucket name is not configured');
-        process.exit(1);
-    }
-
     try {
-        const storage = new Storage();
         const [exists] = await storage.bucket(bucketName).exists();
         if (!exists) {
             throw new Error(`Bucket [${bucketName}] does not exist`);
@@ -215,7 +213,7 @@ if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
 }
 
 if (process.env.GCP_STORAGE_EMULATOR_HOST) {
-    const storage = new Storage({
+    storage = new Storage({
         apiEndpoint: process.env.GCP_STORAGE_EMULATOR_HOST,
         projectId: 'dev-project',
         useAuthWithCustomEndpoint: false,
@@ -224,13 +222,6 @@ if (process.env.GCP_STORAGE_EMULATOR_HOST) {
             private_key: 'not-a-real-key',
         },
     });
-
-    const bucketName = process.env.GCP_BUCKET_NAME;
-
-    if (!bucketName) {
-        logging.error('GCP bucket name is not configured');
-        process.exit(1);
-    }
 
     const bucket = storage.bucket(bucketName);
 
@@ -1108,7 +1099,7 @@ app.get(
 app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createStorageHandler(accountService)),
+    spanWrapper(createStorageHandler(accountService, storage)),
 );
 /** Federation wire up */
 

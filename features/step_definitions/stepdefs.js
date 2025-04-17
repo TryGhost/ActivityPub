@@ -699,6 +699,26 @@ When(
     },
 );
 
+When(
+    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with a file$/,
+    async function (method, path) {
+        // Create a test file
+        const file = new File(['test image content'], 'test.jpg', {
+            type: 'image/jpeg',
+        });
+        const formData = new FormData();
+        formData.append('file', file);
+
+        this.response = await fetchActivityPub(
+            `http://fake-ghost-activitypub.test${path}`,
+            {
+                method: method || 'post',
+                body: formData,
+            },
+        );
+    },
+);
+
 When('an unauthenticated request is made to {string}', async function (path) {
     this.response = await fetchActivityPub(
         `http://fake-ghost-activitypub.test${path}`,
@@ -1991,26 +2011,6 @@ Then('the response contains {string} account details', async function (name) {
     assert.equal(typeof responseJson.followedByMe, 'boolean');
     assert.equal(typeof responseJson.followsMe, 'boolean');
 });
-
-When(
-    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with a file$/,
-    async function (method, path) {
-        // Create a test file
-        const file = new File(['test image content'], 'test.jpg', {
-            type: 'image/jpeg',
-        });
-        const formData = new FormData();
-        formData.append('file', file);
-
-        this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test${path}`,
-            {
-                method: method || 'post',
-                body: formData,
-            },
-        );
-    },
-);
 
 Then('the response contains a file URL', async function () {
     const responseJson = await this.response.clone().json();

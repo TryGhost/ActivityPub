@@ -1,4 +1,4 @@
-import { Storage } from '@google-cloud/storage';
+import type { Storage } from '@google-cloud/storage';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { type Result, error, getError, isError, ok } from 'core/result';
@@ -10,11 +10,14 @@ const ALLOWED_IMAGE_TYPES = [
     'image/jpeg',
     'image/png',
     'image/webp',
-]; // TODO: Do we need to allow image/gif, image/svg?
+];
 
 export type FileValidationError = 'file-too-large' | 'file-type-not-supported';
 
-export function createStorageHandler(accountService: AccountService) {
+export function createStorageHandler(
+    accountService: AccountService,
+    storage: Storage,
+) {
     /**
      * Handle an upload to GCloud Storage bucket
      */
@@ -48,7 +51,7 @@ export function createStorageHandler(accountService: AccountService) {
         }
 
         const bucketName = process.env.GCP_BUCKET_NAME;
-        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST;
+        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST; // This is for dev and testing environments
 
         if (!bucketName) {
             logger.error('Bucket name is not configured');
@@ -56,20 +59,6 @@ export function createStorageHandler(accountService: AccountService) {
                 status: 500,
             });
         }
-
-        console.log('emulatorHost: ', emulatorHost);
-
-        const storage = emulatorHost
-            ? new Storage({
-                  apiEndpoint: emulatorHost,
-                  projectId: 'dev-project',
-                  useAuthWithCustomEndpoint: false,
-                  credentials: {
-                      client_email: 'fake@example.com',
-                      private_key: 'not-a-real-key',
-                  },
-              })
-            : new Storage();
 
         const account = await accountService.getAccountForSite(ctx.get('site'));
         const storagePath = getStoragePath(account, file.name);
@@ -82,17 +71,25 @@ export function createStorageHandler(accountService: AccountService) {
             },
         });
 
+        // When using fake-gcs-server in dev/testing, the emulator host is set to 'fake-gcs' for container access.
+        // We replace it with 'localhost' so the generated URL points to a reachable endpoint on the host machine.
+        // In production, we use the actual Google Cloud Storage URL.
         const fileUrl = emulatorHost
             ? `${emulatorHost.replace('fake-gcs', 'localhost')}/download/storage/v1/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`
             : `https://storage.googleapis.com/${bucketName}/${storagePath}`;
 
         return new Response(JSON.stringify({ fileUrl }), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
             status: 200,
         });
     };
 
     function getStoragePath(account: Account, fileName: string) {
-        const extension = fileName.split('.').pop();
+        const extension = fileName.includes('.')
+            ? fileName.split('.').pop()?.toLowerCase()
+            : '';
         let path = `images/${account.uuid}/${uuidv4()}`;
         if (extension) {
             path = `${path}.${extension}`;
