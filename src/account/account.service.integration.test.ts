@@ -17,12 +17,7 @@ import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
-import type {
-    Account,
-    ExternalAccountData,
-    InternalAccountData,
-    Site,
-} from './types';
+import type { ExternalAccountData, InternalAccountData, Site } from './types';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair
@@ -714,29 +709,5 @@ describe('AccountService', () => {
 
             expect(isNotFollowing).toBe(false);
         });
-    });
-
-    it('should update accounts and emit an account.updated event if they have changed', async () => {
-        const account = await service.createInternalAccount(site, {
-            ...internalAccountData,
-            username: 'account',
-        });
-
-        let accountFromEvent: Account | undefined;
-
-        events.once('account.updated', (account) => {
-            accountFromEvent = account;
-        });
-
-        await service.updateAccount(account, {
-            name: 'A brand new name!',
-        });
-
-        expect(accountFromEvent).toBeDefined();
-
-        const newAccount = await service.getByInternalId(account.id);
-
-        expect(newAccount).toBeDefined();
-        expect(newAccount!.name).toBe('A brand new name!');
     });
 });

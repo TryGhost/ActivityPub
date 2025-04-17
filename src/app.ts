@@ -112,7 +112,6 @@ import {
     createSearchHandler,
     createUpdateAccountHandler,
     handleCreateNote,
-    handleWebhookSiteChanged,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
 import { createWebFingerHandler } from './http/handler/webfinger';
@@ -885,11 +884,6 @@ app.post(
     spanWrapper(
         createPostPublishedWebhookHandler(accountRepository, postRepository),
     ),
-);
-app.post(
-    '/.ghost/activitypub/webhooks/site/changed',
-    validateWebhook(),
-    spanWrapper(handleWebhookSiteChanged(siteService)),
 );
 
 function requireRole(...roles: GhostRole[]) {

@@ -95,22 +95,4 @@ export class SiteService {
             return newSite;
         });
     }
-
-    public async refreshSiteDataForHost(host: string): Promise<void> {
-        const site = await this.getSiteByHost(host);
-        if (!site) {
-            throw new Error(`Could not find site for ${host}`);
-        }
-
-        const account =
-            await this.accountService.getDefaultAccountForSite(site);
-
-        const settings = await this.ghostService.getSiteSettings(site.host);
-
-        await this.accountService.updateAccount(account, {
-            avatar_url: settings.site.icon,
-            name: settings.site.title,
-            bio: settings.site.description,
-        });
-    }
 }

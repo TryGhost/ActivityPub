@@ -8,7 +8,6 @@ import { Post } from '../../post/post.entity';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
 import { publishPost } from '../../publishing/helpers';
 import { PostVisibility } from '../../publishing/types';
-import type { SiteService } from '../../site/site.service';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -106,26 +105,3 @@ export function createPostPublishedWebhookHandler(
         });
     };
 }
-
-/**
- * Handle a site.changed webhook
- *
- * @param ctx App context instance
- */
-export const handleWebhookSiteChanged = (siteService: SiteService) =>
-    async function handleWebhookSiteChanged(ctx: AppContext) {
-        try {
-            await siteService.refreshSiteDataForHost(ctx.get('site').host);
-        } catch (err) {
-            ctx.get('logger').error('Site changed webhook failed: {error}', {
-                error: err,
-            });
-        }
-
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 200,
-        });
-    };
