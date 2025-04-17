@@ -10,6 +10,9 @@ export class GCPStorageService {
 
     constructor() {
         this.bucketName = process.env.GCP_BUCKET_NAME || '';
+        logging.info('GCP bucket name: {bucketName}', {
+            bucketName: this.bucketName,
+        });
         if (!this.bucketName) {
             logging.error('GCP bucket name is not configured');
             process.exit(1);

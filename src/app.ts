@@ -190,9 +190,23 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
-const gcpStorageService = new GCPStorageService();
-await gcpStorageService.init();
-const bucket = gcpStorageService.getBucket();
+try {
+    logging.info('Initialising GCP storage service');
+    const gcpStorageService = new GCPStorageService();
+    logging.info('Initialising GCP storage service');
+    await gcpStorageService.init();
+    logging.info('GCP storage service initialised');
+    const bucket = gcpStorageService.getBucket();
+
+    logging.info('Bucket: {bucket}', {
+        bucket: bucket,
+    });
+} catch (err) {
+    logging.error('Failed to initialise GCP storage service {error}', {
+        error: err,
+    });
+    process.exit(1);
+}
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
