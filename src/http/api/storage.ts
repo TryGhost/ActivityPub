@@ -1,9 +1,9 @@
-import type { Bucket } from '@google-cloud/storage';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { type Result, error, getError, isError, ok } from 'core/result';
 import type { Context } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 
 const ALLOWED_IMAGE_TYPES = [
     'image/jpg',
@@ -12,17 +12,18 @@ const ALLOWED_IMAGE_TYPES = [
     'image/webp',
 ];
 
-export type FileValidationError = 'file-too-large' | 'file-type-not-supported';
+type FileValidationError = 'file-too-large' | 'file-type-not-supported';
 
 export function createStorageHandler(
     accountService: AccountService,
-    bucket: Bucket,
+    storageService: GCPStorageService,
 ) {
     /**
      * Handle an upload to GCloud Storage bucket
      */
     return async function handleUpload(ctx: Context) {
         const logger = ctx.get('logger');
+        const bucket = storageService.getBucket();
 
         const formData = await ctx.req.formData();
         const file = formData.get('file') as File;
@@ -49,12 +50,10 @@ export function createStorageHandler(
                     );
             }
         }
-        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST; // This is for dev and testing environments
 
+        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST; // This is for dev and testing environments
         const account = await accountService.getAccountForSite(ctx.get('site'));
         const storagePath = getStoragePath(account, file.name);
-
-        console.log('file.type: ', file.type);
 
         await bucket.file(storagePath).save(file.stream(), {
             metadata: {

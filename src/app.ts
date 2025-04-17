@@ -110,6 +110,7 @@ import {
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
+    createStorageHandler,
     createUpdateAccountHandler,
     handleCreateNote,
     handleWebhookSiteChanged,
@@ -127,7 +128,6 @@ import {
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
-import { createStorageHandler } from './storage/gcloud-storage/storage';
 
 const logging = getLogger(['activitypub']);
 
@@ -1061,7 +1061,7 @@ app.get(
 app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createStorageHandler(accountService, bucket)),
+    spanWrapper(createStorageHandler(accountService, gcpStorageService)),
 );
 /** Federation wire up */
 

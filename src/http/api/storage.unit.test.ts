@@ -1,14 +1,15 @@
-import type { Bucket } from '@google-cloud/storage';
 import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { Context } from 'hono';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStorageHandler } from './storage';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 
-describe('Storage Handler', () => {
+describe('Storage API', () => {
     let account: Account;
     let accountService: AccountService;
-    let mockBucket: Bucket;
+    let mockStorageService: GCPStorageService;
+    let mockBucket: { file: Mock; name: string };
     let mockFile: { save: Mock };
     let mockLogger: { error: Mock };
     const getMockContext = (): Context =>
@@ -37,9 +38,13 @@ describe('Storage Handler', () => {
         mockFile = { save: vi.fn() };
         const mockFileFn = vi.fn().mockReturnValue(mockFile);
         mockBucket = {
-            file: mockFileFn as unknown as Bucket['file'],
+            file: mockFileFn,
             name: 'test-bucket',
-        } as unknown as Bucket;
+        };
+
+        mockStorageService = {
+            getBucket: vi.fn().mockReturnValue(mockBucket),
+        } as unknown as GCPStorageService;
 
         account = Account.createFromData({
             id: 456,
@@ -66,7 +71,10 @@ describe('Storage Handler', () => {
 
     it('returns 400 if no file is provided', async () => {
         const ctx = getMockContext();
-        const handler = createStorageHandler(accountService, mockBucket);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
@@ -84,7 +92,10 @@ describe('Storage Handler', () => {
         formData.append('file', largeFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService, mockBucket);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(413);
@@ -103,7 +114,10 @@ describe('Storage Handler', () => {
         formData.append('file', unsupportedFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService, mockBucket);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(415);
@@ -126,7 +140,10 @@ describe('Storage Handler', () => {
         formData.append('file', testFile);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService, mockBucket);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorageService,
+        );
         await handler(ctx);
 
         const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
@@ -143,7 +160,10 @@ describe('Storage Handler', () => {
         formData.append('file', mockFileData);
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService, mockBucket);
+        const handler = createStorageHandler(
+            accountService,
+            mockStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(200);
