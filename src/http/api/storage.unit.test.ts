@@ -1,9 +1,9 @@
 import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { Context } from 'hono';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStorageHandler } from './storage';
-import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 
 describe('Storage API', () => {
     let account: Account;

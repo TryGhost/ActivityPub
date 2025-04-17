@@ -2,8 +2,8 @@ import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { type Result, error, getError, isError, ok } from 'core/result';
 import type { Context } from 'hono';
-import { v4 as uuidv4 } from 'uuid';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
+import { v4 as uuidv4 } from 'uuid';
 
 const ALLOWED_IMAGE_TYPES = [
     'image/jpg',
