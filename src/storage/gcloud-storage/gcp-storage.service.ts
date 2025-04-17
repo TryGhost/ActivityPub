@@ -15,8 +15,8 @@ export class GCPStorageService {
             process.exit(1);
         }
         try {
-        logging.info('Creating storage instance');
-        this.storage = new Storage();
+            logging.info('Creating storage instance');
+            this.storage = new Storage();
             logging.info('Creating bucket instance');
             this.bucket = this.storage.bucket(this.bucketName);
             logging.info('Bucket instance created');
