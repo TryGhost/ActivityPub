@@ -1,9 +1,8 @@
-Feature: File Upload API
+  Feature: Image Upload API
   As an authenticated user
-  I want to upload files
-  So that I can use them in my posts
+  I want to upload images
 
-  Scenario: Upload a file successfully
+  Scenario: Upload an image
     When an authenticated "post" request is made to "/.ghost/activitypub/upload/image" with a file
     Then the request is accepted with a 200
     And the response contains a file URL
