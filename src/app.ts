@@ -19,7 +19,6 @@ import {
     createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
-import { Storage } from '@google-cloud/storage';
 import { serve } from '@hono/node-server';
 import {
     type LogLevel,
@@ -127,6 +126,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
 import { createStorageHandler } from './storage/gcloud-storage/storage';
 
 const logging = getLogger(['activitypub']);
@@ -190,48 +190,9 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
-let storage = new Storage();
-const bucketName = process.env.GCP_BUCKET_NAME;
-if (!bucketName) {
-    logging.error('GCP bucket name is not configured');
-    process.exit(1);
-}
-let bucket = storage.bucket(bucketName);
-
-if (['staging', 'production'].includes(process.env.NODE_ENV || '')) {
-    try {
-        const [exists] = await bucket.exists();
-        if (!exists) {
-            throw new Error(`Bucket [${bucketName}] does not exist`);
-        }
-        logging.info('GCP bucket exists');
-    } catch (err) {
-        logging.error('Failed to verify GCP bucket {error}', {
-            error: err,
-        });
-        process.exit(1);
-    }
-}
-
-if (process.env.GCP_STORAGE_EMULATOR_HOST) {
-    storage = new Storage({
-        apiEndpoint: process.env.GCP_STORAGE_EMULATOR_HOST,
-        projectId: 'dev-project',
-        useAuthWithCustomEndpoint: false,
-        credentials: {
-            client_email: 'fake@example.com',
-            private_key: 'not-a-real-key',
-        },
-    });
-
-    bucket = storage.bucket(bucketName);
-
-    const [exists] = await bucket.exists();
-    if (!exists) {
-        logging.info('Creating GCP bucket in fake-gcs');
-        await bucket.create(); //Create a bucket in fake-gcs
-    }
-}
+const gcpStorageService = new GCPStorageService();
+await gcpStorageService.init();
+const bucket = gcpStorageService.getBucket();
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
