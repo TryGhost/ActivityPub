@@ -2023,6 +2023,7 @@ Then('the response contains a file URL', async function () {
         responseJson.fileUrl.startsWith('http'),
         'fileUrl should be a valid URL',
     );
+});
 
 Then('the response contains the account details:', async function (data) {
     const responseJson = await this.response.clone().json();
