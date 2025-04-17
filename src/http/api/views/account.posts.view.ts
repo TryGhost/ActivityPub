@@ -13,7 +13,6 @@ import type { PostDTO } from '../types';
 import { PostType } from 'post/post.entity';
 import { error, ok, type Result } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
-
 export type GetPostsError =
     | 'invalid-next-parameter'
     | 'error-getting-outbox'
@@ -94,13 +93,15 @@ export class AccountPostsView {
 
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal || account.apId.toString().includes('ghost')) {
-        //if (account?.isInternal) {
+            //if (account?.isInternal) {
             console.log('######################### Local lookup');
-            return await this.getPostsByAccount(
-                account.id,
-                defaultAccount.id,
-                limit,
-                cursor,
+            return ok(
+                await this.getPostsByAccount(
+                    account.id,
+                    defaultAccount.id,
+                    limit,
+                    cursor,
+                ),
             );
         }
 
@@ -120,7 +121,7 @@ export class AccountPostsView {
         defaultAccountId: number,
         limit: number,
         cursor: string | null,
-    ): Promise<Result<AccountPosts, GetPostsError>> {
+    ): Promise<AccountPosts> {
         const query = this.db
             .select(
                 // Post fields
@@ -278,12 +279,12 @@ export class AccountPostsView {
         const paginatedResults = results.slice(0, limit);
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
-        return ok({
+        return {
             results: paginatedResults.map((result: GetProfileDataResultRow) =>
                 this.mapToPostDTO(result, accountId),
             ),
             nextCursor: hasMore ? lastResult.published_date : null,
-        });
+        };
     }
 
     async getPostsByRemoteLookUp(
@@ -534,7 +535,7 @@ export class AccountPostsView {
         };
     }
 
-    private mapToPostDTO(
+    mapToPostDTO(
         result: GetProfileDataResultRow,
         accountId: number,
     ): PostDTO {
@@ -591,7 +592,7 @@ export class AccountPostsView {
 
     // TODO: Clean up the any type
     // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-    private mapActivityToPostDTO(activity: any): PostDTO {
+    mapActivityToPostDTO(activity: any): PostDTO {
         const object = activity.object;
         const actor = activity.actor;
         const attributedTo = object.attributedTo;

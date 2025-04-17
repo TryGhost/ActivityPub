@@ -21,7 +21,6 @@ import type {
     AccountPosts,
     AccountPostsView,
 } from './views/account.posts.view';
-
 /**
  * Default number of posts to return in a profile
  */
@@ -254,27 +253,27 @@ export function createGetAccountPostsHandler(
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
-            const result = await accountPostsView.getPostsByAccount(
+            accountPosts = await accountPostsView.getPostsByAccount(
                 defaultAccount.id,
                 defaultAccount.id,
                 params.limit,
                 params.cursor,
             );
-            if (isError(result)) {
-                return new Response(null, { status: 400 });
-            }
-            accountPosts = getValue(result);
         } else {
             const ctx = fedifyContextFactory.getFedifyContext();
             const apId = await lookupAPIdByHandle(ctx, handle);
 
             if (!apId) {
-                return new Response(null, { status: 400 });
+                return new Response(`AP ID not found for handle: ${handle}`, {
+                    status: 400,
+                });
             }
 
             const account = await accountRepository.getByApId(new URL(apId));
             if (!account) {
-                return new Response(null, { status: 400 });
+                return new Response(`Account not found for handle: ${handle}`, {
+                    status: 400,
+                });
             }
 
             const result = await accountPostsView.getPostsByHandle(
@@ -285,7 +284,35 @@ export function createGetAccountPostsHandler(
                 params.cursor,
             );
             if (isError(result)) {
-                return new Response(null, { status: 400 });
+                const error = getError(result);
+                switch (error) {
+                    case 'invalid-next-parameter':
+                        logger.error('Invalid next parameter');
+                        return new Response(null, { status: 400 });
+                    case 'not-an-actor':
+                        logger.error(`Actor not found for ${handle}`);
+                        return new Response(null, { status: 404 });
+                    case 'error-getting-outbox':
+                        logger.error(`Error getting outbox for ${handle}`);
+                        return new Response(
+                            JSON.stringify({
+                                posts: [],
+                                next: null,
+                            }),
+                            { status: 200 },
+                        );
+                    case 'no-page-found':
+                        logger.error(`No page found in outbox for ${handle}`);
+                        return new Response(
+                            JSON.stringify({
+                                posts: [],
+                                next: null,
+                            }),
+                            { status: 200 },
+                        );
+                    default:
+                        return exhaustiveCheck(error);
+                }
             }
             accountPosts = getValue(result);
         }
