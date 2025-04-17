@@ -44,7 +44,7 @@ describe('AccountPostsView', () => {
         await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         const siteData = {
-            host: 'www.example.com',
+            host: 'example.com',
             webhook_secret: 'secret',
         };
         const [id] = await db('sites').insert(siteData);
