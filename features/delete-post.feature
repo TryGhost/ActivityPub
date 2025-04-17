@@ -5,7 +5,6 @@ Feature: Delete a post
     And we are followed by "Alice"
     And a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
-    And "AliceNote" is in our Inbox
     And we create a note "OurNote" with the content
       """
       Hello

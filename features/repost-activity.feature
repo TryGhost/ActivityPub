@@ -7,7 +7,6 @@ Feature: Reposting a post/note
     Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     When we repost the object "Note"
     Then the request is accepted
     And the object "Note" should be reposted
@@ -20,7 +19,6 @@ Feature: Reposting a post/note
     Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     And we repost the object "Note"
     And the request is accepted
     When we repost the object "Note"
@@ -30,7 +28,6 @@ Feature: Reposting a post/note
     Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     And we repost the object "Note"
     And the request is accepted
     When we undo the repost of the object "Note"
@@ -42,6 +39,5 @@ Feature: Reposting a post/note
     Given we are following "Alice"
     And a "Create(Note)" Activity "Note" by "Alice"
     And "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     When we undo the repost of the object "Note"
     Then the request is rejected with a 409

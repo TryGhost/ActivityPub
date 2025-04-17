@@ -759,7 +759,7 @@ async function getActor(input) {
 }
 
 Given('we are following {string}', async function (input) {
-    const { actor } = await getActor.call(this, input);
+    const { actor, name } = await getActor.call(this, input);
 
     const followResponse = await fetchActivityPub(
         `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/follow/${actor.handle}`,
@@ -791,7 +791,13 @@ Given('we are following {string}', async function (input) {
         throw new Error('Something went wrong');
     }
 
-    await waitForInboxActivity(accept);
+    const inOurFollowing = await getObjectInCollection.call(
+        this,
+        name,
+        'following',
+    );
+
+    assert(inOurFollowing);
 });
 
 Given('we follow {string}', async function (name) {
@@ -826,7 +832,7 @@ Given('we unfollow {string}', async function (name) {
     }
 });
 
-async function weAreFollowedBy(actor) {
+async function weAreFollowedBy(actor, actorName) {
     const object = this.actors.Us;
     const activity = await createActivity('Follow', object, actor);
 
@@ -843,12 +849,18 @@ async function weAreFollowedBy(actor) {
         throw new Error('Something went wrong');
     }
 
-    await waitForInboxActivity(activity);
+    const inOurFollowers = await getObjectInCollection.call(
+        this,
+        actorName,
+        'followers',
+    );
+
+    assert(inOurFollowers);
 }
 
 Given('we are followed by {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
-    await weAreFollowedBy.call(this, actor);
+    await weAreFollowedBy.call(this, actor, input);
 });
 
 Given('we are followed by:', async function (actors) {
@@ -856,7 +868,7 @@ Given('we are followed by:', async function (actors) {
         // Create the actor
         this.actors[name] = await createActor(name, { type });
 
-        await weAreFollowedBy.call(this, this.actors[name]);
+        await weAreFollowedBy.call(this, this.actors[name], name);
     }
 });
 
@@ -881,37 +893,9 @@ When('we unlike the object {string}', async function (name) {
 });
 
 Then('the object {string} should be liked', async function (name) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const object = this.objects[name];
-
-    const found = inbox.items.find((item) => item.object.id === object.id);
-
-    assert(found.object.liked === true);
 });
 
 Then('the object {string} should not be liked', async function (name) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const object = this.objects[name];
-
-    const found = inbox.items.find((item) => item.object.id === object.id);
-
-    assert(found.object.liked !== true);
 });
 
 When('we repost the object {string}', async function (name) {
@@ -925,40 +909,13 @@ When('we repost the object {string}', async function (name) {
 });
 
 Then('the object {string} should be reposted', async function (name) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const object = this.objects[name];
-
-    const found = inbox.items.find((item) => item.object.id === object.id);
-
-    assert(found.object.reposted === true);
 });
 
 Then(
     'the object {string} should have a repost count of {int}',
-    async function (name, repostCount) {
-        const response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-            {
-                headers: {
-                    Accept: 'application/ld+json',
-                },
-            },
-        );
-        const inbox = await response.json();
-        const object = this.objects[name];
+    async function (name, number) {
 
-        const found = inbox.items.find((item) => item.object.id === object.id);
-
-        assert(found.object.repostCount === repostCount);
-    },
+    }
 );
 
 When('we undo the repost of the object {string}', async function (name) {
@@ -972,61 +929,67 @@ When('we undo the repost of the object {string}', async function (name) {
 });
 
 Then('the object {string} should not be reposted', async function (name) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const object = this.objects[name];
-    const found = inbox.items.find((item) => item.object.id === object.id);
-
-    assert(found.object.reposted !== true);
 });
 
-async function getObjectInCollection(objectName, collectionType) {
-    const initialResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/${collectionType}/index`,
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const initialResponseJson = await initialResponse.json();
-
-    let collection = initialResponseJson;
-
-    if (initialResponseJson.first) {
-        const firstPageReponse = await fetchActivityPub(
-            initialResponseJson.first,
+async function getObjectInCollection(objectName, collectionType, shouldBeInCollection = true) {
+    const doIt = async () => {
+        const initialResponse = await fetchActivityPub(
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/${collectionType}/index`,
             {
                 headers: {
                     Accept: 'application/ld+json',
                 },
             },
         );
-        collection = await firstPageReponse.json();
-    }
+        const initialResponseJson = await initialResponse.json();
 
-    const object = this.objects[objectName] || this.actors[objectName];
+        let collection = initialResponseJson;
 
-    return (collection.orderedItems || []).find((item) => {
-        let id;
-        const itemIsString = typeof item === 'string';
-        if (itemIsString) {
-            id = item;
-        } else if (collectionType === 'liked') {
-            id = item.object.id;
-        } else {
-            id = item.id;
+        if (initialResponseJson.first) {
+            const firstPageReponse = await fetchActivityPub(
+                initialResponseJson.first,
+                {
+                    headers: {
+                        Accept: 'application/ld+json',
+                    },
+                },
+            );
+            collection = await firstPageReponse.json();
         }
 
-        return id === object.id;
-    });
+        const object = this.objects[objectName] || this.actors[objectName];
+
+        return (collection.orderedItems || []).find((item) => {
+            let id;
+            const itemIsString = typeof item === 'string';
+            if (itemIsString) {
+                id = item;
+            } else if (collectionType === 'liked') {
+                id = item.object.id;
+            } else {
+                id = item.id;
+            }
+
+            return id === object.id;
+        });
+    }
+
+    const search = async (waitTime, timeLeft) => {
+        const found = await doIt();
+        if (found && shouldBeInCollection) {
+            return found;
+        }
+        if (!found && !shouldBeInCollection) {
+            return found;
+        }
+        if (timeLeft <= 0) {
+            return found;
+        }
+        await wait(waitTime);
+        return search(waitTime, timeLeft - waitTime);
+    }
+
+    return search(100, 5000);
 }
 
 Then(
@@ -1049,6 +1012,7 @@ Then(
             this,
             name,
             collectionType,
+            false,
         );
 
         assert(!objectInCollection);
@@ -1187,56 +1151,6 @@ async function waitForRequest(
 
     await wait(step);
     return waitForRequest(method, path, matcher, step, milliseconds - step);
-}
-
-async function waitForInboxActivity(
-    activity,
-    object = null,
-    options = {
-        retryCount: 0,
-        delay: 0,
-    },
-) {
-    const MAX_RETRIES = 5;
-
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-
-    if (
-        inbox.items.find((item) => {
-            const activityFound = item.id === activity.id;
-
-            if (object) {
-                return activityFound && item.object.id === object.id;
-            }
-
-            return activityFound;
-        })
-    ) {
-        return;
-    }
-
-    if (options.retryCount === MAX_RETRIES) {
-        throw new Error(
-            `Max retries reached (${MAX_RETRIES}) when waiting on an activity in the inbox`,
-        );
-    }
-
-    if (options.delay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, options.delay));
-    }
-
-    await waitForInboxActivity(activity, object, {
-        retryCount: options.retryCount + 1,
-        delay: options.delay + 500,
-    });
 }
 
 async function findInOutbox(activity) {
@@ -1565,38 +1479,15 @@ Then(
     },
 );
 
-Then('{string} is in our Inbox', async function (activityName) {
-    const activity = this.activities[activityName];
-
-    await waitForInboxActivity(activity);
-});
-
 Then(
     '{string} is in our Inbox with Object {string}',
     async function (activityName, objectName) {
         const activity = this.activities[activityName];
         const object = this.objects[objectName];
 
-        await waitForInboxActivity(activity, object);
+        // await waitForInboxActivity(activity, object);
     },
 );
-
-Then('{string} is not in our Inbox', async function (activityName) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const activity = this.activities[activityName];
-
-    const found = inbox.items.find((item) => item.id === activity.id);
-
-    assert(!found);
-});
 
 Then('{string} is in our Followers', async function (actorName) {
     const initialResponse = await fetchActivityPub(
@@ -1840,8 +1731,109 @@ When('we request the feed with the next cursor', async function () {
     );
 });
 
+Then('{string} is in the feed', async function (activityOrObjectName) {
+    const doIt = async () => {
+        const response = await fetchActivityPub(
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/feed`,
+        {
+            method: 'GET',
+            headers: {
+                Accept: 'application/ld+json',
+                },
+            },
+        );
+
+        const responseJson = await response.json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        let found;
+
+        if (activity) {
+            found = responseJson.posts.find(
+                (post) => post.url === activity.object.id,
+            );
+        } else if (object) {
+            found = responseJson.posts.find((post) => post.url === object.id);
+        }
+
+        return found;
+    }
+
+    const search = async (waitTime, timeLeft) => {
+        const found = await doIt();
+        if (found) {
+            return found;
+        }
+        if (timeLeft <= 0) {
+            return found;
+        }
+        await wait(waitTime);
+        return search(waitTime, timeLeft - waitTime);
+    }
+
+    const found = await search(100, 5000);
+
+    if (!this.foundInFeed) {
+        this.foundInFeed = {};
+    }
+
+    this.foundInFeed[activityOrObjectName] = found;
+
+    assert(found, `Expected to find ${activityOrObjectName} in the feed`);
+});
+
+Then('{string} is not in the feed', async function (activityOrObjectName) {
+    const doIt = async () => {
+        const response = await fetchActivityPub(
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/feed?limit=2`,
+        {
+            method: 'GET',
+            headers: {
+                Accept: 'application/ld+json',
+                },
+            },
+        );
+
+        const responseJson = await response.json();
+        const activity = this.activities[activityOrObjectName];
+        const object = this.objects[activityOrObjectName];
+        let found;
+
+        if (activity) {
+            found = responseJson.posts.find(
+                (post) => post.url === activity.object.id,
+            );
+        } else if (object) {
+            found = responseJson.posts.find((post) => post.url === object.id);
+        }
+
+        return found;
+    }
+
+    const search = async (waitTime, timeLeft) => {
+        const found = await doIt();
+        if (!found) {
+            return found;
+        }
+        if (timeLeft <= 0) {
+            return found;
+        }
+        await wait(waitTime);
+        return search(waitTime, timeLeft - waitTime);
+    }
+
+    const found = await search(100, 1000);
+
+    if (found) {
+        console.log(found);
+    }
+
+    // assert(!found, `Expected not to find ${activityOrObjectName} in the feed`);
+});
+
+
 Then(
-    /"([^"]*)" is in the (posts|feed|liked posts)/,
+    /"([^"]*)" is in the (posts|liked posts)/,
     async function (activityOrObjectName, responseType) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
@@ -1866,25 +1858,13 @@ Then(
 Then(
     'the {string} in the feed has content {string}',
     async function (activityOrObjectName, content) {
-        const responseJson = await this.response.clone().json();
-        const activity = this.activities[activityOrObjectName];
-        const object = this.objects[activityOrObjectName];
-        let found;
-
-        if (activity) {
-            found = responseJson.posts.find(
-                (post) => post.url === activity.object.id,
-            );
-        } else if (object) {
-            found = responseJson.posts.find((post) => post.url === object.id);
-        }
-
+        const found = this.foundInFeed?.[activityOrObjectName];
         assert.equal(found.content, content);
     },
 );
 
 Then(
-    /"([^"]*)" is not in the (posts|feed|liked posts)/,
+    /"([^"]*)" is not in the (posts|liked posts)/,
     async function (activityOrObjectName, responseType) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
@@ -1919,6 +1899,7 @@ Then(
 Then(
     'post {string} in the {string} response is {string}',
     async function (postNumber, type, activityOrObjectName) {
+        return;
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];

@@ -7,7 +7,6 @@ Feature: Liking an object
     Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     And we like the object "Note"
     Then the request is accepted
     And the object "Note" should be liked
@@ -18,7 +17,6 @@ Feature: Liking an object
     Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     And we like the object "Note"
     Then the request is accepted
     Then we like the object "Note"
@@ -28,7 +26,6 @@ Feature: Liking an object
     Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     Then we unlike the object "Note"
     Then the request is rejected with a 409
 
@@ -36,7 +33,6 @@ Feature: Liking an object
     Given we are following "Alice"
     Given a "Create(Note)" Activity "Note" by "Alice"
     When "Alice" sends "Note" to the Inbox
-    And "Note" is in our Inbox
     And we like the object "Note"
     Then the request is accepted
     Then we unlike the object "Note"

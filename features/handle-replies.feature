@@ -15,5 +15,3 @@ Feature: Create(Note<inReplyTo>)
     And "Reply" is a reply to "OurArticle"
     And a "Create(Reply)" Activity "A" by "Alice"
     When "Alice" sends "A" to the Inbox
-    Then the request is accepted
-    Then "A" is in our Inbox

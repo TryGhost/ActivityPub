@@ -160,7 +160,6 @@ export function createDeletePostHandler(
 
                 await ctx.get('globaldb').delete([activityId]);
 
-                await removeFromList(ctx.get('db'), ['inbox'], activityId);
                 await removeFromList(ctx.get('db'), ['outbox'], activityId);
                 await removeFromList(ctx.get('db'), ['liked'], activityId);
                 await removeFromList(ctx.get('db'), ['reposted'], activityId);
