@@ -72,42 +72,5 @@ export class CreateHandler {
 
         const createJson = await create.toJsonLd();
         ctx.data.globaldb.set([create.id.href], createJson);
-
-        const object = await create.getObject();
-        const replyTarget = await object?.getReplyTarget();
-
-        if (replyTarget?.id?.href) {
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            const data = await ctx.data.globaldb.get<any>([
-                replyTarget.id.href,
-            ]);
-            const replyTargetAuthor = data?.attributedTo?.id;
-            const inboxActor = await getUserData(ctx, 'index');
-
-            if (replyTargetAuthor === inboxActor.id.href) {
-                await addToList(ctx.data.db, ['inbox'], create.id.href);
-                return;
-            }
-        }
-
-        let shouldAddToInbox = false;
-
-        const site = await this.siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            this.accountService,
-        );
-
-        if (shouldAddToInbox) {
-            await addToList(ctx.data.db, ['inbox'], create.id.href);
-            return;
-        }
     }
 }

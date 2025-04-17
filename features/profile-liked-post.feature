@@ -9,10 +9,8 @@ Feature: Liked Posts on Profile
   Scenario: Querying the liked posts
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
-    And "Note2" is in our Inbox
     And we like the object "Note1"
     And the request is accepted
     When an authenticated request is made to "/.ghost/activitypub/posts/me/liked"
@@ -23,10 +21,8 @@ Feature: Liked Posts on Profile
   Scenario: Liked posts are sorted by date descending
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
-    And "Note2" is in our Inbox
     And we like the object "Note1"
     And we like the object "Note2"
     When an authenticated request is made to "/.ghost/activitypub/posts/me/liked"
@@ -37,13 +33,10 @@ Feature: Liked Posts on Profile
   Scenario: Liked posts are paginated
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
     And a "Create(Note)" Activity "Note2" by "Alice"
     And "Alice" sends "Note2" to the Inbox
-    And "Note2" is in our Inbox
     And a "Create(Note)" Activity "Note3" by "Alice"
     And "Alice" sends "Note3" to the Inbox
-    And "Note3" is in our Inbox
     And we like the object "Note1"
     And we like the object "Note2"
     And we like the object "Note3"

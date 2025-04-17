@@ -23,7 +23,6 @@ import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { buildActivity } from './helpers/activitypub/activity';
 import { updateSiteActor } from './helpers/activitypub/actor';
 import { getSiteSettings } from './helpers/ghost';
 import { getUserData } from './helpers/user';
@@ -698,84 +697,6 @@ export const getSiteDataHandler =
             },
         });
     };
-
-export async function inboxHandler(
-    ctx: Context<{ Variables: HonoContextVariables }>,
-) {
-    const db = ctx.get('db');
-    const globaldb = ctx.get('globaldb');
-    const logger = ctx.get('logger');
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db,
-        globaldb,
-        logger,
-    });
-
-    // Fetch the liked items from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "liked" property to the item if the user has liked it
-    const liked = (await db.get<string[]>(['liked'])) || [];
-
-    // Fetch the reposted items from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "reposted" property to the item if the user has reposted it
-    const reposted = (await db.get<string[]>(['reposted'])) || [];
-
-    // Fetch the outbox from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "authored" property to the item if the user has authored it
-    const outbox = (await db.get<string[]>(['outbox'])) || [];
-
-    // Fetch the inbox from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    const inbox = (await db.get<string[]>(['inbox'])) || [];
-
-    // Prepare the items for the response
-    const items = await Promise.all(
-        inbox.map(async (item) => {
-            try {
-                return await buildActivity(
-                    item,
-                    globaldb,
-                    apCtx,
-                    liked,
-                    reposted,
-                    outbox,
-                    {
-                        expandInReplyTo: false,
-                        showReplyCount: true,
-                        showRepostCount: true,
-                    },
-                );
-            } catch (err) {
-                ctx.get('logger').error('Inbox handler failed: {error}', {
-                    error: err,
-                });
-                return null;
-            }
-        }),
-    ).then((results) => results.filter(Boolean));
-
-    // Return the prepared inbox items
-    return new Response(
-        JSON.stringify({
-            '@context': 'https://www.w3.org/ns/activitystreams',
-            type: 'OrderedCollection',
-            totalItems: inbox.length,
-            items,
-        }),
-        {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-            status: 200,
-        },
-    );
-}
 
 export function createRepostActionHandler(
     accountRepository: KnexAccountRepository,

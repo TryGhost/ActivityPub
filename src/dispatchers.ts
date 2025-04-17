@@ -134,7 +134,6 @@ export function createFollowHandler(accountService: AccountService) {
         const followJson = await follow.toJsonLd();
 
         ctx.data.globaldb.set([follow.id.href], followJson);
-        await addToList(ctx.data.db, ['inbox'], follow.id.href);
 
         // Record follower in followers list
         const senderJson = await sender.toJsonLd();
@@ -212,7 +211,6 @@ export function createAcceptHandler(accountService: AccountService) {
         const acceptJson = await accept.toJsonLd();
         ctx.data.globaldb.set([accept.id.href], acceptJson);
         ctx.data.globaldb.set([sender.id.href], senderJson);
-        await addToList(ctx.data.db, ['inbox'], accept.id.href);
 
         // Record the account of the sender as well as the follow
         const recipient = await (object as Activity).getActor();
@@ -402,24 +400,6 @@ export async function handleAnnoucedCreate(
                 exhaustiveCheck(error);
         }
     }
-
-    const object = await create.getObject();
-    const replyTarget = await object?.getReplyTarget();
-
-    if (replyTarget?.id?.href) {
-        // TODO: Clean up the any type
-        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
-        const replyTargetAuthor = data?.attributedTo?.id;
-        const inboxActor = await getUserData(ctx, 'index');
-
-        if (replyTargetAuthor === inboxActor.id.href) {
-            await addToList(ctx.data.db, ['inbox'], create.id.href);
-            return;
-        }
-    }
-
-    await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
 export const createUndoHandler = (
@@ -462,8 +442,6 @@ export const createUndoHandler = (
             await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
 
             await accountService.recordAccountUnfollow(unfollowing, unfollower);
-
-            await addToList(ctx.data.db, ['inbox'], undo.id.href);
         } else if (object instanceof Announce) {
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
@@ -638,8 +616,6 @@ export function createAnnounceHandler(
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
-        let shouldAddToInbox = false;
-
         const site = await siteService.getSiteByHost(ctx.host);
 
         if (!site) {
@@ -688,17 +664,6 @@ export function createAnnounceHandler(
                 post.addRepost(senderAccount);
                 await postRepository.save(post);
             }
-        }
-
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            accountService,
-        );
-
-        if (shouldAddToInbox) {
-            await addToList(ctx.data.db, ['inbox'], announce.id.href);
-            return;
         }
     };
 }
@@ -813,8 +778,6 @@ export function createLikeHandler(
 
             ctx.data.globaldb.set([object.id.href], objectJson);
         }
-
-        await addToList(ctx.data.db, ['inbox'], like.id.href);
     };
 }
 

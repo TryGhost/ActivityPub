@@ -7,4 +7,3 @@ Feature: Like(Article)
     And a "Create(Article)" Activity "Create(A)" by "Alice"
     And a "Like(A)" Activity "L" by "Bob"
     When "Bob" sends "L" to the Inbox
-    Then "L" is in our Inbox

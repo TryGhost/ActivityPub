@@ -6,7 +6,6 @@ Feature: Creating a reply
     And a "Note" Object "Article" by "Alice"
     And a "Create(Article)" Activity "Create" by "Alice"
     And "Alice" sends "Create" to the Inbox
-    And "Create" is in our Inbox
 
   Scenario: Reply content is validated against being empty
     When we attempt to reply to "Article" with no content

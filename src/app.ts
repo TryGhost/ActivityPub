@@ -93,7 +93,6 @@ import {
     createUnfollowActionHandler,
     createUnlikeAction,
     getSiteDataHandler,
-    inboxHandler,
 } from './handlers';
 import { getTraceContext } from './helpers/context-header';
 import { getSiteSettings } from './helpers/ghost';
@@ -908,11 +907,6 @@ app.get(
     spanWrapper(createWebFingerHandler(accountRepository, siteService)),
 );
 
-app.get(
-    '/.ghost/activitypub/inbox/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(inboxHandler),
-);
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),

@@ -4,7 +4,6 @@ Feature: We automatically accept Follow requests
     Given an Actor "Person(Alice)"
     Given a "Follow(Us)" Activity "F" by "Alice"
     When "Alice" sends "F" to the Inbox
-    And "F" is in our Inbox
     Then an "Accept(F)" Activity "A" is created by "Us"
     And Activity "A" is sent to "Alice"
     And "Alice" is in our Followers
@@ -15,9 +14,7 @@ Feature: We automatically accept Follow requests
       And a "Follow(Us)" Activity "F1" by "Alice"
       And a "Follow(Us)" Activity "F2" by "Alice"
       When "Alice" sends "F1" to the Inbox
-      And "F1" is in our Inbox
       And "Alice" sends "F2" to the Inbox
-      And "F2" is in our Inbox
       Then an "Accept(F1)" Activity "A1" is created by "Us"
       And an "Accept(F2)" Activity "A2" is created by "Us"
       And Activity "A1" is sent to "Alice"
@@ -28,11 +25,9 @@ Feature: We automatically accept Follow requests
     Given an Actor "Person(Alice)"
     And a "Follow(Us)" Activity "F" by "Alice"
     And "Alice" sends "F" to the Inbox
-    And "F" is in our Inbox
     And an "Accept(F)" Activity "A" is created by "Us"
     And Activity "A" is sent to "Alice"
     And "Alice" is in our Followers
     And a "Undo(F)" Activity "U" by "Alice"
     And "Alice" sends "U" to the Inbox
-    And "U" is in our Inbox
     Then the object "Alice" should not be in the "followers" collection

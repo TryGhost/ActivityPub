@@ -9,7 +9,6 @@ Feature: Thread
     And a "Note" Object "Article" by "Alice"
     And a "Create(Article)" Activity "Create" by "Alice"
     And "Alice" sends "Create" to the Inbox
-    And "Create" is in our Inbox
 
   Scenario: Retrieving the thread for a top level post
     Given we reply "Reply1" to "Article" with the content
