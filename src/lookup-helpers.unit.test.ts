@@ -42,7 +42,9 @@ describe('lookupAPIdByHandle', () => {
             '@user@example.com',
         );
 
-        expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com');
+        expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com', {
+            allowPrivateAddress: true,
+        });
         expect(result).toBe('https://example.com/actor');
     });
 
