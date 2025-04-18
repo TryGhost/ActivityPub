@@ -29,7 +29,7 @@ export class AccountView {
      */
     async viewById(
         id: number,
-        context: ViewContext,
+        context: ViewContext = {},
     ): Promise<AccountDTO | null> {
         const accountData = await this.getAccountByQuery(
             (qb: Knex.QueryBuilder) => qb.where('accounts.id', id),
@@ -67,7 +67,7 @@ export class AccountView {
             customFields: accountData.custom_fields
                 ? JSON.parse(accountData.custom_fields)
                 : {},
-            postCount: accountData.post_count,
+            postCount: accountData.post_count + accountData.repost_count,
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,
             followerCount: accountData.follower_count,
@@ -86,7 +86,7 @@ export class AccountView {
      */
     async viewByHandle(
         handle: string,
-        context: ViewContext,
+        context: ViewContext = {},
     ): Promise<AccountDTO | null> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
@@ -108,7 +108,7 @@ export class AccountView {
      */
     async viewByApId(
         apId: string,
-        context: ViewContext,
+        context: ViewContext = {},
     ): Promise<AccountDTO | null> {
         const accountData = await this.getAccountByQuery(
             (qb: Knex.QueryBuilder) => qb.where('accounts.ap_id', apId),
@@ -146,7 +146,7 @@ export class AccountView {
             customFields: accountData.custom_fields
                 ? JSON.parse(accountData.custom_fields)
                 : {},
-            postCount: accountData.post_count,
+            postCount: accountData.post_count + accountData.repost_count,
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,
             followerCount: accountData.follower_count,
@@ -162,7 +162,7 @@ export class AccountView {
      */
     private async viewByApIdRemote(
         apId: string,
-        context: ViewContext,
+        context: ViewContext = {},
     ): Promise<AccountDTO | null> {
         const fedifyContext = this.fedifyContextFactory.getFedifyContext();
 
