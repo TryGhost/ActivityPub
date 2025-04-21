@@ -9,7 +9,6 @@ import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
-import { isUri } from 'helpers/uri';
 import type { Knex } from 'knex';
 import { PostType } from 'post/post.entity';
 import type { PostDTO } from '../types';
@@ -83,21 +82,26 @@ export class AccountPostsView {
 
     async getPostsByHandle(
         handle: string,
-        account: Account,
-        defaultAccount: Account,
+        account: Account | null,
+        currentContextAccount: Account,
         limit: number,
         cursor: string | null,
     ): Promise<Result<AccountPosts, GetPostsError>> {
-        if (!account.id || !defaultAccount.id) {
-            throw new Error('Account or default account not found');
+        if (!currentContextAccount.id) {
+            throw new Error('Current context account id not found');
         }
 
         //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account?.isInternal) {
+        if (account) {
+            if (!account.id) {
+                throw new Error(
+                    `Account id not found for internal account : ${handle}`,
+                );
+            }
             return ok(
                 await this.getPostsByAccount(
                     account.id,
-                    defaultAccount.id,
+                    currentContextAccount.id,
                     limit,
                     cursor,
                 ),
@@ -106,10 +110,10 @@ export class AccountPostsView {
 
         //Otherwise, do a remote lookup to fetch the posts
         return this.getPostsByRemoteLookUp(
-            defaultAccount.id,
-            defaultAccount.apId,
+            currentContextAccount.id,
+            currentContextAccount.apId,
             handle,
-            cursor || '',
+            cursor ? new URL(cursor) : new URL('about:blank'),
         );
     }
 
@@ -133,9 +137,9 @@ export class AccountPostsView {
                 'posts_with_source.like_count as post_like_count',
                 this.db.raw(
                     `CASE
-                            WHEN current_user_likes.post_id IS NOT NULL THEN 1
-                            ELSE 0
-                        END AS post_liked_by_current_user`,
+                        WHEN current_user_likes.post_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_current_user`,
                 ),
                 'posts_with_source.reply_count as post_reply_count',
                 'posts_with_source.reading_time_minutes as post_reading_time_minutes',
@@ -143,9 +147,9 @@ export class AccountPostsView {
                 'posts_with_source.repost_count as post_repost_count',
                 this.db.raw(
                     `CASE
-                            WHEN current_user_reposts.post_id IS NOT NULL THEN 1
-                            ELSE 0
-                        END AS post_reposted_by_current_user`,
+                        WHEN current_user_reposts.post_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_current_user`,
                 ),
                 'posts_with_source.ap_id as post_ap_id',
                 // Author fields (Who originally created the post)
@@ -285,21 +289,16 @@ export class AccountPostsView {
     }
 
     async getPostsByRemoteLookUp(
-        defaultAccountId: number,
-        defaultAccountApId: URL,
+        currentContextAccountId: number,
+        currentContextAccountApId: URL,
         handle: string,
-        next: string,
+        next: URL,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
-
-        // If the next parameter is not a valid URI, return early
-        if (next !== '' && !isUri(next)) {
-            return error('invalid-next-parameter');
-        }
 
         // Lookup actor by handle
         const actor = await lookupObject(handle, { documentLoader });
@@ -319,14 +318,14 @@ export class AccountPostsView {
         let page: CollectionPage | null = null;
 
         try {
-            if (next !== '') {
+            if (next.href !== 'about:blank') {
                 // Ensure the next parameter is for the same host as the actor. We
                 // do this to prevent blindly passing URIs to lookupObject (i.e next
                 // param has been tampered with)
                 // @TODO: Does this provide enough security? Can the host of the
                 // actor be different to the host of the actor's followers collection?
                 const { host: actorHost } = actor?.id || new URL('');
-                const { host: nextHost } = new URL(next);
+                const { host: nextHost } = next;
 
                 if (actorHost !== nextHost) {
                     return error('invalid-next-parameter');
@@ -382,7 +381,7 @@ export class AccountPostsView {
                 }
 
                 activity.object.authored =
-                    defaultAccountApId === activity.actor.id;
+                    currentContextAccountApId === activity.actor.id;
 
                 // Add counters & flags to the object
                 activity.object.replyCount = 0;
@@ -399,14 +398,14 @@ export class AccountPostsView {
                     activity.object.liked = post
                         ? await this.isLikedByAccount(
                               post.id!,
-                              defaultAccountId,
+                              currentContextAccountId,
                           )
                         : false;
 
                     activity.object.reposted = post
                         ? await this.isRepostedByAccount(
                               post.id!,
-                              defaultAccountId,
+                              currentContextAccountId,
                           )
                         : false;
                 }
@@ -472,9 +471,9 @@ export class AccountPostsView {
                 'posts.repost_count as post_repost_count',
                 this.db.raw(
                     `CASE
-                                WHEN reposts.post_id IS NOT NULL THEN 1
-                                ELSE 0
-                            END AS post_reposted_by_current_user`,
+                        WHEN reposts.post_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_current_user`,
                 ),
                 'posts.ap_id as post_ap_id',
                 // Author fields

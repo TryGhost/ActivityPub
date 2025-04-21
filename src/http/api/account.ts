@@ -243,19 +243,19 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const defaultAccount = await accountRepository.getBySite(site);
+        const currentContextAccount = await accountRepository.getBySite(site);
 
         let accountPosts: AccountPosts;
 
-        if (!defaultAccount || !defaultAccount.id) {
+        if (!currentContextAccount || !currentContextAccount.id) {
             return new Response(null, { status: 404 });
         }
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
             accountPosts = await accountPostsView.getPostsByAccount(
-                defaultAccount.id,
-                defaultAccount.id,
+                currentContextAccount.id,
+                currentContextAccount.id,
                 params.limit,
                 params.cursor,
             );
@@ -270,16 +270,11 @@ export function createGetAccountPostsHandler(
             }
 
             const account = await accountRepository.getByApId(new URL(apId));
-            if (!account) {
-                return new Response(`Account not found for handle: ${handle}`, {
-                    status: 400,
-                });
-            }
 
             const result = await accountPostsView.getPostsByHandle(
                 handle,
                 account,
-                defaultAccount,
+                currentContextAccount,
                 params.limit,
                 params.cursor,
             );
