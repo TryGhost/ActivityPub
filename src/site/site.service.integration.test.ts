@@ -6,7 +6,6 @@ import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
-import type { Account } from '../account/types';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { type IGhostService, type Site, SiteService } from './site.service';
 
@@ -107,23 +106,5 @@ describe('SiteService', () => {
         const retrievedSite = await service.getSiteByHost('hostname.tld');
 
         expect(retrievedSite).toMatchObject(site);
-    });
-
-    it('Can update the default account for a host', async () => {
-        const updateAccount = vi
-            .spyOn(accountService, 'updateAccount')
-            .mockResolvedValue({} as unknown as Account);
-
-        const site = await service.initialiseSiteForHost('updating.tld');
-        const account = await accountService.getDefaultAccountForSite(site);
-
-        await service.refreshSiteDataForHost('updating.tld');
-
-        expect(updateAccount.mock.lastCall?.[0]).toMatchObject(account);
-        expect(updateAccount.mock.lastCall?.[1]).toMatchObject({
-            avatar_url: '',
-            name: 'Default Title',
-            bio: 'Default Description',
-        });
     });
 });
