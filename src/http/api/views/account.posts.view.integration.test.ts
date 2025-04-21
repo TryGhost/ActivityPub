@@ -121,7 +121,7 @@ describe('AccountPostsView', () => {
                 audience: post.audience,
             });
 
-            const result = await viewer.getPostsByHandle(
+            const result = await viewer.getPostsByApId(
                 accountEntity.username,
                 accountEntity,
                 siteDefaultAccount,
@@ -153,7 +153,7 @@ describe('AccountPostsView', () => {
                 throw new Error('Required accounts not found');
             }
 
-            const result = await viewer.getPostsByHandle(
+            const result = await viewer.getPostsByApId(
                 accountEntity.username,
                 accountEntity,
                 siteDefaultAccount,
@@ -218,7 +218,7 @@ describe('AccountPostsView', () => {
             ]);
 
             // Get first page
-            const result1 = await viewer.getPostsByHandle(
+            const result1 = await viewer.getPostsByApId(
                 accountEntity.username,
                 accountEntity,
                 siteDefaultAccount,
@@ -233,7 +233,7 @@ describe('AccountPostsView', () => {
             expect(value1.nextCursor).toBeTruthy();
 
             // Get second page
-            const result2 = await viewer.getPostsByHandle(
+            const result2 = await viewer.getPostsByApId(
                 accountEntity.username,
                 accountEntity,
                 siteDefaultAccount,

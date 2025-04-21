@@ -271,8 +271,8 @@ export function createGetAccountPostsHandler(
 
             const account = await accountRepository.getByApId(new URL(apId));
 
-            const result = await accountPostsView.getPostsByHandle(
-                handle,
+            const result = await accountPostsView.getPostsByApId(
+                new URL(apId),
                 account,
                 currentContextAccount,
                 params.limit,

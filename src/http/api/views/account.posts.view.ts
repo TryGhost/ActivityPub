@@ -80,8 +80,8 @@ export class AccountPostsView {
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
-    async getPostsByHandle(
-        handle: string,
+    async getPostsByApId(
+        apId: URL,
         account: Account | null,
         currentContextAccount: Account,
         limit: number,
@@ -92,10 +92,10 @@ export class AccountPostsView {
         }
 
         //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account) {
+        if (account?.isInternal) {
             if (!account.id) {
                 throw new Error(
-                    `Account id not found for internal account : ${handle}`,
+                    `Account id not found for internal account : ${apId}`,
                 );
             }
             return ok(
@@ -112,7 +112,7 @@ export class AccountPostsView {
         return this.getPostsByRemoteLookUp(
             currentContextAccount.id,
             currentContextAccount.apId,
-            handle,
+            apId,
             cursor ? new URL(cursor) : new URL('about:blank'),
         );
     }
@@ -291,7 +291,7 @@ export class AccountPostsView {
     async getPostsByRemoteLookUp(
         currentContextAccountId: number,
         currentContextAccountApId: URL,
-        handle: string,
+        apId: URL,
         next: URL,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
@@ -301,7 +301,7 @@ export class AccountPostsView {
         });
 
         // Lookup actor by handle
-        const actor = await lookupObject(handle, { documentLoader });
+        const actor = await lookupObject(apId, { documentLoader });
 
         if (!isActor(actor)) {
             return error('not-an-actor');
