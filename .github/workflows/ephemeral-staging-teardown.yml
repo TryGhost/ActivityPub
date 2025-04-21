@@ -36,7 +36,7 @@ jobs:
             | jq -r '.[] | select(.metadata.name | test("stg-pr-\\d+-api")) | .metadata.name | capture("stg-pr-(?<num>\\d+)-api") | .num'); do
             PR_STATE=$(gh pr view $PR_NUMBER --json state | jq -r '.state')
             echo "PR $PR_NUMBER state is $PR_STATE."
-            if [ "$PR_STATE" == "MERGED" ]; then
+            if [ "$PR_STATE" == "MERGED" ] || [ "$PR_STATE" == "CLOSED" ]; then
               echo "Deleting PR $PR_NUMBER environment."
               export destroy_prs="$destroy_prs $PR_NUMBER"
             fi
