@@ -40,7 +40,7 @@ describe('Account', () => {
         );
 
         expect(account.apId.href).toBe(
-            'http://foobar.com/.ghost/activitypub/users/foobar',
+            'http://foobar.com/.ghost/activitypub/users/index',
         );
         expect(account.url).toEqual(account.apId);
     });
@@ -64,7 +64,7 @@ describe('Account', () => {
         );
 
         expect(account.apFollowers.href).toBe(
-            'http://foobar.com/.ghost/activitypub/followers/foobar',
+            'http://foobar.com/.ghost/activitypub/followers/index',
         );
     });
 
