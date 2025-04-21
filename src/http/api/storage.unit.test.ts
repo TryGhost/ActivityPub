@@ -1,16 +1,13 @@
-import { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
+import { error, ok } from 'core/result';
 import type { Context } from 'hono';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStorageHandler } from './storage';
 
 describe('Storage API', () => {
-    let account: Account;
     let accountService: AccountService;
-    let mockStorageService: GCPStorageService;
-    let mockBucket: { file: Mock; name: string };
-    let mockFile: { save: Mock };
+    let storageService: GCPStorageService;
     let mockLogger: { error: Mock };
     const getMockContext = (): Context =>
         ({
@@ -32,70 +29,56 @@ describe('Storage API', () => {
         }) as unknown as Context;
 
     beforeEach(() => {
-        process.env.GCP_BUCKET_NAME = 'test-bucket';
-
         mockLogger = { error: vi.fn() };
-        mockFile = { save: vi.fn() };
-        const mockFileFn = vi.fn().mockReturnValue(mockFile);
-        mockBucket = {
-            file: mockFileFn,
-            name: 'test-bucket',
-        };
-
-        mockStorageService = {
-            getBucket: vi.fn().mockReturnValue(mockBucket),
-        } as unknown as GCPStorageService;
-
-        account = Account.createFromData({
-            id: 456,
-            uuid: 'f4ec91bd-56b7-406f-a174-91495df6e6c',
-            username: 'foobar',
-            name: 'Foo Bar',
-            bio: 'Just a foo bar',
-            avatarUrl: new URL('https://example.com/avatars/foobar.png'),
-            bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
-            site: {
-                id: 123,
-                host: 'example.com',
-                webhook_secret: 'secret',
-            },
-            apId: new URL('https://example.com/users/456'),
-            url: new URL('https://example.com/users/456'),
-            apFollowers: new URL('https://example.com/followers/456'),
-        });
-
         accountService = {
-            getAccountForSite: vi.fn().mockResolvedValue(account),
+            getAccountForSite: vi.fn().mockResolvedValue({
+                uuid: 'test-uuid',
+            }),
         } as unknown as AccountService;
+
+        storageService = {
+            saveFile: vi
+                .fn()
+                .mockResolvedValue(ok('https://example.com/test.png')),
+        } as unknown as GCPStorageService;
     });
 
     it('returns 400 if no file is provided', async () => {
         const ctx = getMockContext();
-        const handler = createStorageHandler(
-            accountService,
-            mockStorageService,
-        );
+        const handler = createStorageHandler(accountService, storageService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
-        expect(await response.text()).toBe('No file provided');
+        expect(await response.text()).toBe('No valid file provided');
     });
 
-    it('handles large files', async () => {
+    it('returns 400 if file is not a File instance', async () => {
         const ctx = getMockContext();
-        const largeFile = new globalThis.File(
-            ['x'.repeat(26 * 1024 * 1024)],
-            'large.jpg',
-            { type: 'image/jpeg' },
-        );
         const formData = new FormData();
-        formData.append('file', largeFile);
+        formData.append('file', 'not-a-file');
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorageService,
+        const handler = createStorageHandler(accountService, storageService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(400);
+        expect(await response.text()).toBe('No valid file provided');
+    });
+
+    it('returns 413 when the file is too large', async () => {
+        const ctx = getMockContext();
+        const formData = new FormData();
+        formData.append(
+            'file',
+            new globalThis.File(['test'], 'test.png', { type: 'image/png' }),
         );
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        (storageService.saveFile as Mock).mockResolvedValue(
+            error('file-too-large'),
+        );
+
+        const handler = createStorageHandler(accountService, storageService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(413);
@@ -105,77 +88,48 @@ describe('Storage API', () => {
         );
     });
 
-    it('handles non-supported file types', async () => {
+    it('returns 415 file type is not supported', async () => {
         const ctx = getMockContext();
-        const unsupportedFile = new globalThis.File(['test'], 'test.txt', {
-            type: 'image/txt',
-        });
         const formData = new FormData();
-        formData.append('file', unsupportedFile);
+        formData.append(
+            'file',
+            new globalThis.File(['test'], 'test.txt', { type: 'text/plain' }),
+        );
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorageService,
+        (storageService.saveFile as Mock).mockResolvedValue(
+            error('file-type-not-supported'),
         );
+
+        const handler = createStorageHandler(accountService, storageService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(415);
         expect(await response.text()).toBe(
-            `File type ${unsupportedFile.type} is not supported`,
+            'File type text/plain is not supported',
         );
         expect(mockLogger.error).toHaveBeenCalledWith(
-            expect.stringContaining(
-                `File type ${unsupportedFile.type} is not supported`,
-            ),
+            expect.stringContaining('File type text/plain is not supported'),
         );
     });
 
-    it('preserves file extension in storage path', async () => {
+    it('returns 200 with file URL on successful upload', async () => {
         const ctx = getMockContext();
-        const testFile = new globalThis.File(['test'], 'test.png', {
-            type: 'image/png',
-        });
         const formData = new FormData();
-        formData.append('file', testFile);
+        formData.append(
+            'file',
+            new globalThis.File(['test'], 'test.png', { type: 'image/png' }),
+        );
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(
-            accountService,
-            mockStorageService,
-        );
-        await handler(ctx);
+        const expectedUrl = 'https://example.com/test.png';
+        (storageService.saveFile as Mock).mockResolvedValue(ok(expectedUrl));
 
-        const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
-        expect(storagePath).toMatch(/\.png$/);
-    });
-
-    it('uploads file and returns file URL', async () => {
-        const ctx = getMockContext();
-
-        const mockFileData = new globalThis.File(['test content'], 'test.png', {
-            type: 'image/png',
-        });
-        const formData = new FormData();
-        formData.append('file', mockFileData);
-        (ctx.req.formData as Mock).mockResolvedValue(formData);
-
-        const handler = createStorageHandler(
-            accountService,
-            mockStorageService,
-        );
+        const handler = createStorageHandler(accountService, storageService);
         const response = await handler(ctx);
 
         expect(response.status).toBe(200);
-
         const responseData = await response.json();
-        expect(responseData.fileUrl).toMatch(/^https?:\/\/.+\/.+$/);
-
-        expect(mockBucket.file).toHaveBeenCalled();
-        expect(mockFile.save).toHaveBeenCalled();
-
-        const [stream, options] = (mockFile.save as Mock).mock.calls[0];
-        expect(stream).toBeInstanceOf(ReadableStream);
-        expect(options.metadata).toEqual({ contentType: 'image/png' });
+        expect(responseData.fileUrl).toBe(expectedUrl);
     });
 });

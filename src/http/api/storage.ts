@@ -1,18 +1,7 @@
-import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
-import { type Result, error, getError, isError, ok } from 'core/result';
+import { getError, getValue, isError } from 'core/result';
 import type { Context } from 'hono';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
-import { v4 as uuidv4 } from 'uuid';
-
-const ALLOWED_IMAGE_TYPES = [
-    'image/jpg',
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-];
-
-type FileValidationError = 'file-too-large' | 'file-type-not-supported';
 
 export function createStorageHandler(
     accountService: AccountService,
@@ -23,19 +12,18 @@ export function createStorageHandler(
      */
     return async function handleUpload(ctx: Context) {
         const logger = ctx.get('logger');
-        const bucket = storageService.getBucket();
-
         const formData = await ctx.req.formData();
-        const file = formData.get('file') as File;
+        const file = formData.get('file');
 
-        if (!file) {
-            return new Response('No file provided', { status: 400 });
+        if (!file || !(file instanceof File)) {
+            return new Response('No valid file provided', { status: 400 });
         }
 
-        const validationResult = validateFile(file);
+        const account = await accountService.getAccountForSite(ctx.get('site'));
+        const result = await storageService.saveFile(file, account.uuid);
 
-        if (isError(validationResult)) {
-            const error = getError(validationResult);
+        if (isError(result)) {
+            const error = getError(result);
             switch (error) {
                 case 'file-too-large':
                     logger.error(`File is too large: ${file.size} bytes`);
@@ -44,34 +32,12 @@ export function createStorageHandler(
                     logger.error(`File type ${file.type} is not supported`);
                     return new Response(
                         `File type ${file.type} is not supported`,
-                        {
-                            status: 415,
-                        },
+                        { status: 415 },
                     );
             }
         }
 
-        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST; // This is for dev and testing environments
-        const account = await accountService.getAccountForSite(ctx.get('site'));
-        const storagePath = getStoragePath(account, file.name);
-
-        await bucket.file(storagePath).save(file.stream(), {
-            metadata: {
-                contentType: file.type,
-            },
-            // resumable uploads (default: true) use a session and chunked uploads.
-            // Disabled it in dev/testing because resumable mode can be unreliable with GCS emulators.
-            // This is fine for small files like images in dev/testing.
-            resumable: !emulatorHost,
-        });
-
-        // When using fake-gcs-server in dev/testing, the emulator host is set to 'fake-gcs' for container access.
-        // We replace it with 'localhost' so the generated URL points to a reachable endpoint on the host machine.
-        // In production, we use the actual Google Cloud Storage URL.
-        const fileUrl = emulatorHost
-            ? `${emulatorHost.replace('fake-gcs', 'localhost')}/download/storage/v1/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media`
-            : `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-
+        const fileUrl = getValue(result);
         return new Response(JSON.stringify({ fileUrl }), {
             headers: {
                 'Content-Type': 'application/json',
@@ -79,27 +45,4 @@ export function createStorageHandler(
             status: 200,
         });
     };
-
-    function getStoragePath(account: Account, fileName: string) {
-        const extension = fileName.includes('.')
-            ? fileName.split('.').pop()?.toLowerCase()
-            : '';
-        let path = `images/${account.uuid}/${uuidv4()}`;
-        if (extension) {
-            path = `${path}.${extension}`;
-        }
-        return path;
-    }
-
-    function validateFile(file: File): Result<boolean, FileValidationError> {
-        if (file.size > 25 * 1024 * 1024) {
-            return error('file-too-large');
-        }
-
-        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-            return error('file-type-not-supported');
-        }
-
-        return ok(true);
-    }
 }

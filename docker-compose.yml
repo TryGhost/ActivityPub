@@ -32,7 +32,7 @@ services:
       pubsub:
         condition: service_healthy
       fake-gcs:
-        condition: service_started
+        condition: service_healthy
 
   jaeger:
     image: jaegertracing/all-in-one:1.62.0
@@ -138,7 +138,7 @@ services:
       pubsub-testing:
         condition: service_healthy
       fake-gcs:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: "if [ ! -f /tmp/health.txt ]; then (wget --spider http://0.0.0.0:8083/ping || exit 1) && touch /tmp/health.txt ; else echo \"healthcheck already executed\"; fi"
       interval: 1s
@@ -183,7 +183,7 @@ services:
       activitypub-testing:
         condition: service_healthy
       fake-gcs:
-        condition: service_started
+        condition: service_healthy
 
   mysql-testing:
     networks:
@@ -253,13 +253,15 @@ services:
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:
-    image: fsouza/fake-gcs-server
+    build: fake-gcs
     container_name: fake-gcs
     ports:
       - "4443:4443"
-    command: -scheme http -port 4443 -external-url http://fake-gcs:4443
+    environment:
+      - GCP_BUCKET_NAME=activitypub
+      - GCP_PROJECT_ID=activitypub
     volumes:
-      - fake-gcs-data:/data
+      - ./fake-gcs/storage:/storage
     networks:
       default:
         aliases:
@@ -267,9 +269,11 @@ services:
       test_network:
         aliases:
           - fake-gcs
-
-volumes:
-  fake-gcs-data:
+    healthcheck:
+      test: "curl -f http://localhost:4443/storage/v1/b/${GCP_BUCKET_NAME}"
+      interval: 1s
+      retries: 12
+      start_period: 5s
 
 networks:
   test_network:

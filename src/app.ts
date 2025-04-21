@@ -196,11 +196,6 @@ try {
     logging.info('Initialising GCP storage service');
     await gcpStorageService.init();
     logging.info('GCP storage service initialised');
-    const bucket = gcpStorageService.getBucket();
-
-    logging.info('Bucket: {bucket}', {
-        bucket: bucket,
-    });
 } catch (err) {
     logging.error('Failed to initialise GCP storage service {error}', {
         error: err,
