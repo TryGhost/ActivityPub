@@ -24,9 +24,6 @@ import { mapActorToExternalAccountData } from './account/utils';
 import { type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { buildActivity } from './helpers/activitypub/activity';
-import { updateSiteActor } from './helpers/activitypub/actor';
-import { getSiteSettings } from './helpers/ghost';
-import { getUserData } from './helpers/user';
 import { addToList, removeFromList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import { Post } from './post/post.entity';
@@ -677,19 +674,7 @@ export const getSiteDataHandler =
             });
         }
 
-        const handle = ACTOR_DEFAULT_HANDLE;
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
-            globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
-        });
-
         const site = await siteService.initialiseSiteForHost(host);
-
-        // This is to ensure that the actor exists - e.g. for a brand new a site
-        await getUserData(apCtx, handle);
-
-        await updateSiteActor(apCtx, getSiteSettings);
 
         return new Response(JSON.stringify(site), {
             status: 200,
