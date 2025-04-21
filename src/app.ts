@@ -196,6 +196,7 @@ try {
     logging.info('Initialising GCP storage service');
     await gcpStorageService.init();
     logging.info('GCP storage service initialised');
+    logging.info('Is this deploying the new code???');
 } catch (err) {
     logging.error('Failed to initialise GCP storage service {error}', {
         error: err,
