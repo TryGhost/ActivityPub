@@ -272,7 +272,7 @@ services:
     healthcheck:
       test: "curl -f http://localhost:4443/storage/v1/b/${GCP_BUCKET_NAME}"
       interval: 1s
-      retries: 12
+      retries: 120
       start_period: 5s
 
 networks:

@@ -1,5 +1,5 @@
 import type { AccountService } from 'account/account.service';
-import { getError, getValue, isError } from 'core/result';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { Context } from 'hono';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 
@@ -34,6 +34,8 @@ export function createStorageHandler(
                         `File type ${file.type} is not supported`,
                         { status: 415 },
                     );
+                default:
+                    exhaustiveCheck(error);
             }
         }
 
