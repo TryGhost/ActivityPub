@@ -27,7 +27,6 @@ import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
 import { type ContextData, fedify } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
-import { getUserData } from './helpers/user';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { KnexPostRepository } from './post/post.repository.knex';
