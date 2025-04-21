@@ -403,22 +403,6 @@ export async function handleAnnoucedCreate(
         }
     }
 
-    const object = await create.getObject();
-    const replyTarget = await object?.getReplyTarget();
-
-    if (replyTarget?.id?.href) {
-        // TODO: Clean up the any type
-        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
-        const replyTargetAuthor = data?.attributedTo?.id;
-        const inboxActor = await getUserData(ctx, 'index');
-
-        if (replyTargetAuthor === inboxActor.id.href) {
-            await addToList(ctx.data.db, ['inbox'], create.id.href);
-            return;
-        }
-    }
-
     await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
