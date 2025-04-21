@@ -122,7 +122,7 @@ describe('AccountPostsView', () => {
             });
 
             const result = await viewer.getPostsByApId(
-                accountEntity.username,
+                accountEntity.apId,
                 accountEntity,
                 siteDefaultAccount,
                 10,
@@ -154,7 +154,7 @@ describe('AccountPostsView', () => {
             }
 
             const result = await viewer.getPostsByApId(
-                accountEntity.username,
+                accountEntity.apId,
                 accountEntity,
                 siteDefaultAccount,
                 10,
@@ -219,7 +219,7 @@ describe('AccountPostsView', () => {
 
             // Get first page
             const result1 = await viewer.getPostsByApId(
-                accountEntity.username,
+                accountEntity.apId,
                 accountEntity,
                 siteDefaultAccount,
                 1,
@@ -234,7 +234,7 @@ describe('AccountPostsView', () => {
 
             // Get second page
             const result2 = await viewer.getPostsByApId(
-                accountEntity.username,
+                accountEntity.apId,
                 accountEntity,
                 siteDefaultAccount,
                 1,
