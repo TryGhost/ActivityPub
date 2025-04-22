@@ -114,6 +114,7 @@ import {
     handleCreateNote,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
+import { AccountPostsView } from './http/api/views/account.posts.view';
 import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
@@ -272,6 +273,7 @@ const postService = new PostService(
 );
 
 const accountFollowsView = new AccountFollowsView(client, fedifyContextFactory);
+const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
@@ -998,13 +1000,19 @@ app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
-        createGetAccountPostsHandler(postService, accountRepository, fedify),
+        createGetAccountPostsHandler(
+            accountRepository,
+            accountPostsView,
+            fedifyContextFactory,
+        ),
     ),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle/liked',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
+    spanWrapper(
+        createGetAccountLikedPostsHandler(accountService, accountPostsView),
+    ),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',

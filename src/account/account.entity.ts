@@ -3,6 +3,8 @@ import { BaseEntity } from '../core/base.entity';
 import { type CreatePostType, PostType } from '../post/post.entity';
 import type { Site } from '../site/site.service';
 
+export type PersistedAccount = Account & { id: number };
+
 export interface AccountData {
     id: number;
     uuid: string | null;
