@@ -7,8 +7,8 @@ CREATE TABLE blocks (
 
     UNIQUE KEY unique_blocker_blocked (blocker_id, blocked_id),
 
-    FOREIGN KEY (blocker_id) REFERENCES accounts(id),
-    FOREIGN KEY (blocked_id) REFERENCES accounts(id),
+    FOREIGN KEY (blocker_id) REFERENCES accounts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (blocked_id) REFERENCES accounts(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
     KEY idx_blocks_blocked_id_blocker_id (blocked_id, blocker_id)
 );
