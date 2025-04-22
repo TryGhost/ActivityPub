@@ -10,6 +10,5 @@ CREATE TABLE blocks (
     FOREIGN KEY (blocker_id) REFERENCES accounts(id),
     FOREIGN KEY (blocked_id) REFERENCES accounts(id),
 
-    KEY idx_blocks_blocker_id_blocked_id (blocker_id, blocked_id),
     KEY idx_blocks_blocked_id_blocker_id (blocked_id, blocker_id)
 );
