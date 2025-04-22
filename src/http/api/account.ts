@@ -1,5 +1,5 @@
 import type { Federation } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
+import type { Account, PersistedAccount } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -20,7 +20,6 @@ import type {
 import type {
     AccountPosts,
     AccountPostsView,
-    PersistedAccount,
 } from './views/account.posts.view';
 /**
  * Default number of posts to return in a profile
@@ -244,7 +243,9 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const currentContextAccount = await accountRepository.getBySite(site) as PersistedAccount;
+        const currentContextAccount = (await accountRepository.getBySite(
+            site,
+        )) as PersistedAccount;
 
         let accountPosts: AccountPosts;
 
@@ -266,7 +267,9 @@ export function createGetAccountPostsHandler(
                 });
             }
 
-            const account = await accountRepository.getByApId(new URL(apId)) as PersistedAccount;
+            const account = (await accountRepository.getByApId(
+                new URL(apId),
+            )) as PersistedAccount;
 
             const result = await accountPostsView.getPostsByApId(
                 new URL(apId),

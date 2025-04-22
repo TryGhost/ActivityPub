@@ -4,7 +4,7 @@ import {
     isActor,
     lookupObject,
 } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
+import type { PersistedAccount } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, ok } from 'core/result';
@@ -12,8 +12,6 @@ import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { PostType } from 'post/post.entity';
 import type { PostDTO } from '../types';
-
-export type PersistedAccount = Account & { id: number };
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -90,7 +88,7 @@ export class AccountPostsView {
         cursor: string | null,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account.isInternal) {
+        if (account?.isInternal) {
             return ok(
                 await this.getPostsByAccount(
                     account.id,
@@ -106,7 +104,7 @@ export class AccountPostsView {
             currentContextAccount.id,
             currentContextAccount.apId,
             apId,
-            cursor ? new URL(cursor) : new URL('about:blank'),
+            cursor,
         );
     }
 
@@ -285,7 +283,7 @@ export class AccountPostsView {
         currentContextAccountId: number,
         currentContextAccountApId: URL,
         apId: URL,
-        next: URL,
+        cursor: string | null,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
@@ -311,20 +309,19 @@ export class AccountPostsView {
         let page: CollectionPage | null = null;
 
         try {
-            if (next.href !== 'about:blank') {
+            if (cursor) {
                 // Ensure the next parameter is for the same host as the actor. We
                 // do this to prevent blindly passing URIs to lookupObject (i.e next
                 // param has been tampered with)
-                // @TODO: Does this provide enough security? Can the host of the
-                // actor be different to the host of the actor's followers collection?
+                const nextUrl = new URL(cursor);
                 const { host: actorHost } = actor?.id || new URL('');
-                const { host: nextHost } = next;
+                const { host: nextHost } = nextUrl;
 
                 if (actorHost !== nextHost) {
                     return error('invalid-next-parameter');
                 }
 
-                page = (await lookupObject(next, {
+                page = (await lookupObject(nextUrl, {
                     documentLoader,
                 })) as CollectionPage | null;
 
