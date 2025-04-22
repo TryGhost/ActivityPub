@@ -81,17 +81,17 @@ describe('AccountPostsView', () => {
             name: 'Account To Check',
         });
 
-        accountEntity = await accountRepository.getByApId(
+        accountEntity = (await accountRepository.getByApId(
             new URL(account.ap_id),
-        ) as PersistedAccount;
+        )) as PersistedAccount;
 
         defaultAccount = await accountService.createInternalAccount(site, {
             ...internalAccountData,
             username: 'default',
         });
-        siteDefaultAccount = await accountRepository.getByApId(
+        siteDefaultAccount = (await accountRepository.getByApId(
             new URL(defaultAccount.ap_id),
-        ) as PersistedAccount;
+        )) as PersistedAccount;
     });
 
     describe('getPostsByHandle', () => {
