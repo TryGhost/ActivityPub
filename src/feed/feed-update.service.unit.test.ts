@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
+import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { Account } from 'account/account.entity';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import type { FeedService } from 'feed/feed.service';
@@ -25,6 +26,7 @@ describe('FeedUpdateService', () => {
         feedService = {
             addPostToFeeds: vi.fn(),
             removePostFromFeeds: vi.fn(),
+            removeBlockedAccountPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
         const site = {
@@ -177,6 +179,39 @@ describe('FeedUpdateService', () => {
                 post,
                 derepostedById,
             );
+        });
+    });
+
+    describe('handling a blocked account', () => {
+        it('should remove blocked account posts from feeds', () => {
+            const blockedAccount = Account.createFromData({
+                id: 789,
+                uuid: '0b3bf092-fff9-4621-9fad-47856e2f045e',
+                username: 'bazqux',
+                name: 'Baz Qux',
+                bio: 'Just a baz qux',
+                avatarUrl: new URL('https://blocked.com/avatars/bazqux.png'),
+                bannerImageUrl: new URL(
+                    'https://blocked.com/banners/bazqux.png',
+                ),
+                site: {
+                    id: 987,
+                    host: 'blocked.com',
+                    webhook_secret: 'secret',
+                },
+                apId: new URL('https://blocked.com/users/123'),
+                url: new URL('https://blocked.com/users/123'),
+                apFollowers: new URL('https://blocked.com/followers/123'),
+            });
+
+            events.emit(
+                AccountBlockedEvent.getName(),
+                new AccountBlockedEvent(account, blockedAccount),
+            );
+
+            expect(
+                feedService.removeBlockedAccountPostsFromFeed,
+            ).toHaveBeenCalledWith(account, blockedAccount);
         });
     });
 });

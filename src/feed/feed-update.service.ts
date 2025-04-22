@@ -1,5 +1,6 @@
 import type { EventEmitter } from 'node:events';
 
+import { AccountBlockedEvent } from 'account/account-blocked.event';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
@@ -29,6 +30,10 @@ export class FeedUpdateService {
         this.events.on(
             PostDerepostedEvent.getName(),
             this.handlePostDerepostedEvent.bind(this),
+        );
+        this.events.on(
+            AccountBlockedEvent.getName(),
+            this.handleAccountBlockedEvent.bind(this),
         );
     }
 
@@ -60,5 +65,15 @@ export class FeedUpdateService {
         const derepostedBy = event.getAccountId();
 
         await this.feedService.removePostFromFeeds(post, derepostedBy);
+    }
+
+    private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
+        const feedAccount = event.getActor();
+        const blockedAccount = event.getBlocked();
+
+        await this.feedService.removeBlockedAccountPostsFromFeed(
+            feedAccount,
+            blockedAccount,
+        );
     }
 }

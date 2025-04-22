@@ -2,6 +2,7 @@ import { chunk } from 'es-toolkit';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 
+import type { Account } from 'account/account.entity';
 import {
     type FollowersOnlyPost,
     type Post,
@@ -342,5 +343,20 @@ export class FeedService {
             .delete();
 
         return updatedFeedUserIds;
+    }
+
+    async removeBlockedAccountPostsFromFeed(
+        feedAccount: Account,
+        blockedAccount: Account,
+    ) {
+        await this.db('feeds')
+            .where((qb) => {
+                qb.where('author_id', blockedAccount.id).orWhere(
+                    'reposted_by_id',
+                    blockedAccount.id,
+                );
+            })
+            .andWhere('user_id', feedAccount.id)
+            .delete();
     }
 }
