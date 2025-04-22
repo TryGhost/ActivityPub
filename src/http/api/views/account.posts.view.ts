@@ -13,6 +13,8 @@ import type { Knex } from 'knex';
 import { PostType } from 'post/post.entity';
 import type { PostDTO } from '../types';
 
+export type PersistedAccount = Account & { id: number };
+
 export type GetPostsError =
     | 'invalid-next-parameter'
     | 'error-getting-outbox'
@@ -82,22 +84,13 @@ export class AccountPostsView {
 
     async getPostsByApId(
         apId: URL,
-        account: Account | null,
-        currentContextAccount: Account,
+        account: PersistedAccount,
+        currentContextAccount: PersistedAccount,
         limit: number,
         cursor: string | null,
     ): Promise<Result<AccountPosts, GetPostsError>> {
-        if (!currentContextAccount.id) {
-            throw new Error('Current context account id not found');
-        }
-
         //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account?.isInternal) {
-            if (!account.id) {
-                throw new Error(
-                    `Account id not found for internal account : ${apId}`,
-                );
-            }
+        if (account.isInternal) {
             return ok(
                 await this.getPostsByAccount(
                     account.id,
@@ -362,13 +355,55 @@ export class AccountPostsView {
                 }
 
                 const object = await item.getObject();
-                const attributedTo = await object?.getAttribution();
 
-                const activity = (await item.toJsonLd({
+                const activityObject = (await item.toJsonLd({
                     format: 'compact',
-                    // TODO: Clean up the any type
-                    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                })) as any;
+                })) as unknown;
+
+                if (
+                    typeof activityObject !== 'object' ||
+                    activityObject === null
+                ) {
+                    continue;
+                }
+
+                const activity = activityObject as {
+                    type: string;
+                    object: {
+                        id: string;
+                        type: string;
+                        name?: string;
+                        preview?: { content?: string };
+                        content?: string;
+                        url?: string;
+                        image?: string | null;
+                        published?: string;
+                        liked?: boolean;
+                        replyCount?: number;
+                        attachment?: Array<{
+                            type?: string;
+                            mediaType?: string;
+                            name?: string;
+                            url: string;
+                        }>;
+                        attributedTo: {
+                            id: string;
+                            preferredUsername: string;
+                            name?: string;
+                            icon?: { url?: string };
+                        };
+                        authored?: boolean;
+                        repostCount?: number;
+                        reposted?: boolean;
+                        inReplyTo?: unknown;
+                    };
+                    actor: {
+                        id: string;
+                        preferredUsername: string;
+                        name?: string;
+                        icon?: { url?: string };
+                    };
+                };
 
                 if (activity.object.inReplyTo) {
                     continue;
@@ -381,7 +416,7 @@ export class AccountPostsView {
                 }
 
                 activity.object.authored =
-                    currentContextAccountApId === activity.actor.id;
+                    currentContextAccountApId.toString() === activity.actor.id;
 
                 // Add counters & flags to the object
                 activity.object.replyCount = 0;
@@ -411,9 +446,12 @@ export class AccountPostsView {
                 }
 
                 if (typeof activity.actor === 'string') {
-                    activity.actor = await actor.toJsonLd({
+                    const actorJson = await actor.toJsonLd({
                         format: 'compact',
                     });
+                    if (typeof actorJson === 'object' && actorJson !== null) {
+                        activity.actor = actorJson as typeof activity.actor;
+                    }
                 }
 
                 if (typeof activity.object.attributedTo === 'string') {
@@ -422,10 +460,16 @@ export class AccountPostsView {
                         { documentLoader },
                     );
                     if (isActor(attributedTo)) {
-                        activity.object.attributedTo =
-                            await attributedTo.toJsonLd({
-                                format: 'compact',
-                            });
+                        const attributedToJson = await attributedTo.toJsonLd({
+                            format: 'compact',
+                        });
+                        if (
+                            typeof attributedToJson === 'object' &&
+                            attributedToJson !== null
+                        ) {
+                            activity.object.attributedTo =
+                                attributedToJson as typeof activity.object.attributedTo;
+                        }
                     } else if (activity.type === 'Announce') {
                         // If the attributedTo is not an actor, it is a repost and we don't want to show it
                         continue;

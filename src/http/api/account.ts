@@ -20,6 +20,7 @@ import type {
 import type {
     AccountPosts,
     AccountPostsView,
+    PersistedAccount,
 } from './views/account.posts.view';
 /**
  * Default number of posts to return in a profile
@@ -243,13 +244,9 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const currentContextAccount = await accountRepository.getBySite(site);
+        const currentContextAccount = await accountRepository.getBySite(site) as PersistedAccount;
 
         let accountPosts: AccountPosts;
-
-        if (!currentContextAccount || !currentContextAccount.id) {
-            return new Response(null, { status: 404 });
-        }
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
@@ -269,7 +266,7 @@ export function createGetAccountPostsHandler(
                 });
             }
 
-            const account = await accountRepository.getByApId(new URL(apId));
+            const account = await accountRepository.getByApId(new URL(apId)) as PersistedAccount;
 
             const result = await accountPostsView.getPostsByApId(
                 new URL(apId),
