@@ -1,0 +1,1 @@
+DROP INDEX idx_feeds_user_id_post_type;

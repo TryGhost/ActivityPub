@@ -159,10 +159,11 @@ export function createGetAccountFollowsHandler(
                         logger.error(`Actor not found for ${handle}`);
                         return new Response(null, { status: 404 });
                     case 'error-getting-follows':
-                        logger.error(`Error getting outbox for ${handle}`);
+                        logger.error(`Error getting follows for ${handle}`);
                         return new Response(
                             JSON.stringify({
-                                posts: [],
+                                accounts: [],
+                                total: 0,
                                 next: null,
                             }),
                             { status: 200 },
@@ -171,7 +172,8 @@ export function createGetAccountFollowsHandler(
                         logger.error(`No page found in outbox for ${handle}`);
                         return new Response(
                             JSON.stringify({
-                                posts: [],
+                                accounts: [],
+                                total: 0,
                                 next: null,
                             }),
                             { status: 200 },
