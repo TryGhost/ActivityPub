@@ -138,9 +138,6 @@ export function createGetAccountFollowsHandler(
             }
 
             const account = await accountRepository.getByApId(new URL(apId));
-            if (!account) {
-                return new Response(null, { status: 400 });
-            }
 
             const result = await accountFollowsView.getFollowsByApId(
                 new URL(apId),
@@ -188,9 +185,9 @@ export function createGetAccountFollowsHandler(
         // Return response
         return new Response(
             JSON.stringify({
-                accounts: accountFollows.accounts,
-                total: accountFollows.total,
-                next: accountFollows.next,
+                accounts: accountFollows?.accounts,
+                total: accountFollows?.total,
+                next: accountFollows?.next,
             }),
             {
                 headers: {
