@@ -1,18 +1,22 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
+
+import type { Account as AccountEntity } from 'account/account.entity';
+import type { Account } from 'account/types';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
 import { createTestDb } from 'test/db';
-
-import type { Account } from 'account/types';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { NotificationService, NotificationType } from './notification.service';
 
 describe('NotificationService', () => {
     let client: Knex;
+    let fixtureManager: FixtureManager;
 
     beforeAll(async () => {
         client = await createTestDb();
+        fixtureManager = createFixtureManager(client);
     });
 
     beforeEach(async () => {
@@ -715,6 +719,68 @@ describe('NotificationService', () => {
 
             const notifications = await client('notifications').select('*');
 
+            expect(notifications).toHaveLength(0);
+        });
+    });
+
+    describe('removeBlockedAccountNotifications', () => {
+        it('should remove all notifications from a blocked account', async () => {
+            const notificationService = new NotificationService(client);
+
+            // Create internal blocker account
+            const [account, site, userId] =
+                await fixtureManager.createInternalAccount(null, 'alice.com');
+
+            // Create an external account that will be blocked
+            const blockedAccount = await fixtureManager.createExternalAccount();
+
+            // Create some notifications from the blocked account
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            // Create a notification from another account to ensure it's not deleted
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await fixtureManager.createNotification(
+                account,
+                otherAccount,
+                NotificationType.Follow,
+            );
+
+            // Remove notifications from the blocked account
+            await notificationService.removeBlockedAccountNotifications(
+                account,
+                blockedAccount,
+            );
+
+            // Verify only the blocked account's notifications were removed
+            const remainingNotifications = await client('notifications')
+                .where('user_id', userId)
+                .select('*');
+
+            expect(remainingNotifications).toHaveLength(1);
+            expect(remainingNotifications[0].account_id).toBe(otherAccount.id);
+        });
+
+        it('should do nothing if user is not found for blocker account', async () => {
+            const notificationService = new NotificationService(client);
+
+            await notificationService.removeBlockedAccountNotifications(
+                { id: 999 } as AccountEntity,
+                { id: 123 } as AccountEntity,
+            );
+
+            const notifications = await client('notifications').select('*');
             expect(notifications).toHaveLength(0);
         });
     });
