@@ -40,7 +40,7 @@ export class AccountFollowsView {
 
     async getFollowsByHandle(
         handle: string,
-        account: Account,
+        account: Account | null,
         type: string,
         offset: string | null,
         siteDefaultAccount: Account,
