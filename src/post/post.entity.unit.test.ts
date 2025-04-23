@@ -309,6 +309,18 @@ describe('Post', () => {
             expect(note.content).toBe('<p>My first note</p>');
         });
 
+        it('creates a note with an image URL', () => {
+            const account = internalAccount();
+            const content = 'My first note';
+            const imageUrl = 'https://example.com/image.jpg';
+
+            const note = Post.createNote(account, content, imageUrl);
+
+            expect(note.type).toBe(PostType.Note);
+            expect(note.content).toBe('<p>My first note</p>');
+            expect(note.imageUrl?.toString()).toBe(imageUrl);
+        });
+
         it('creates a note with line breaks', () => {
             const account = internalAccount();
             const content = `My

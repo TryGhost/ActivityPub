@@ -4,6 +4,7 @@ import {
     Announce,
     Create,
     Follow,
+    Image,
     Like,
     Mention,
     Note,
@@ -293,6 +294,7 @@ export function createLikeAction(
 
 const ReplyActionSchema = z.object({
     content: z.string(),
+    imageUrl: z.string().url().optional(),
 });
 
 export function createReplyActionHandler(
@@ -419,7 +421,12 @@ export function createReplyActionHandler(
 
         const parentPost = getValue(parentPostResult);
 
-        const newReply = Post.createReply(account, data.content, parentPost);
+        const newReply = Post.createReply(
+            account,
+            data.content,
+            parentPost,
+            data.imageUrl,
+        );
 
         await postRepository.save(newReply);
 
@@ -428,6 +435,14 @@ export function createReplyActionHandler(
             attribution: actor,
             replyTarget: objectToReplyTo,
             content: newReply.content,
+            image: newReply.imageUrl,
+            attachments: newReply.imageUrl
+                ? [
+                      new Image({
+                          url: newReply.imageUrl
+                      }),
+                  ]
+                : undefined,
             summary: null,
             published: Temporal.Now.instant(),
             contexts: [conversation],

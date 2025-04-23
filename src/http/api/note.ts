@@ -10,6 +10,7 @@ import type { ActivityJsonLd } from '../../publishing/service';
 
 const NoteSchema = z.object({
     content: z.string(),
+    imageUrl: z.string().url().optional(),
 });
 
 export async function handleCreateNote(
@@ -27,7 +28,7 @@ export async function handleCreateNote(
 
     // Save to posts table when a note is created
     const account = await accountRepository.getBySite(ctx.get('site'));
-    const post = Post.createNote(account, data.content);
+    const post = Post.createNote(account, data.content, data.imageUrl);
     await postRepository.save(post);
 
     let result: ActivityJsonLd | null = null;
@@ -39,6 +40,8 @@ export async function handleCreateNote(
                 handle: ACTOR_DEFAULT_HANDLE,
             },
             apId: post.apId,
+            imageUrl: post.imageUrl
+
         });
     } catch (err) {
         ctx.get('logger').error('Failed to publish note: {error}', {

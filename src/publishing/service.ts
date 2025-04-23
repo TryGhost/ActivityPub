@@ -3,6 +3,7 @@ import {
     type Actor,
     Article,
     Create,
+    Image,
     Note as FedifyNote,
     type Object as FedifyObject,
     PUBLIC_COLLECTION,
@@ -142,6 +143,14 @@ export class FedifyPublishingService implements PublishingService {
             content: note.content,
             summary: null,
             published: Temporal.Now.instant(),
+            image: note.imageUrl,
+            attachments: note.imageUrl
+                ? [
+                      new Image({
+                          url: note.imageUrl
+                      }),
+                  ]
+                : undefined,
             to: to,
             ccs: cc,
         });
