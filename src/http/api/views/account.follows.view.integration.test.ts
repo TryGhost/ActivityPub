@@ -329,6 +329,25 @@ describe('AccountFollowsView', () => {
             );
         });
 
+        it('remote lookup should handle no-page-found error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['no-page-found', null]);
+                },
+            );
+        });
+
         it('remote lookup should return follows collection when available', async () => {
             const mockCollection = {
                 id: new URL('https://example.com/accounts/123/following'),
