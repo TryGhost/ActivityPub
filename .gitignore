@@ -75,3 +75,6 @@ typings/
 dist/
 
 cedar/data-generation/output/*
+
+# Fake GCS data
+fake-gcs/storage*

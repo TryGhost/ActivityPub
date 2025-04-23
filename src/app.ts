@@ -110,6 +110,7 @@ import {
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
+    createStorageHandler,
     createUpdateAccountHandler,
     handleCreateNote,
 } from './http/api';
@@ -126,6 +127,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
 
 const logging = getLogger(['activitypub']);
 
@@ -187,6 +189,19 @@ export type ContextData = {
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
+
+const gcpStorageService = new GCPStorageService();
+
+try {
+    logging.info('Initialising GCP storage service');
+    await gcpStorageService.init();
+    logging.info('GCP storage service initialised');
+} catch (err) {
+    logging.error('Failed to initialise GCP storage service {error}', {
+        error: err,
+    });
+    process.exit(1);
+}
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
@@ -1053,6 +1068,11 @@ app.get(
     spanWrapper(
         createGetNotificationsHandler(accountService, notificationService),
     ),
+);
+app.post(
+    '/.ghost/activitypub/upload/image',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper(createStorageHandler(accountService, gcpStorageService)),
 );
 /** Federation wire up */
 
