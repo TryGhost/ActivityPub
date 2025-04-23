@@ -15,9 +15,11 @@ export class GCPStorageService {
     private storage: Storage;
     private bucket: Bucket;
     private bucketName: string;
+    private emulatorHost: string | undefined;
 
     constructor() {
         this.bucketName = process.env.GCP_BUCKET_NAME || '';
+        this.emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST;
         if (!this.bucketName) {
             throw new Error('GCP bucket name is not configured');
         }
@@ -30,9 +32,9 @@ export class GCPStorageService {
     }
 
     async init(): Promise<void> {
-        if (process.env.GCP_STORAGE_EMULATOR_HOST) {
+        if (this.emulatorHost) {
             this.storage = new Storage({
-                apiEndpoint: process.env.GCP_STORAGE_EMULATOR_HOST,
+                apiEndpoint: this.emulatorHost,
                 projectId: 'activitypub',
                 useAuthWithCustomEndpoint: false,
                 credentials: {
@@ -64,7 +66,6 @@ export class GCPStorageService {
         }
 
         const storagePath = this.getStoragePath(file.name, accountUuid);
-        const emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST;
 
         await this.bucket.file(storagePath).save(file.stream(), {
             metadata: {
@@ -73,14 +74,14 @@ export class GCPStorageService {
             // resumable uploads (default: true) use a session and chunked uploads.
             // Disabled it in dev/testing because resumable mode can be unreliable with GCS emulators.
             // This is fine for small files like images in dev/testing.
-            resumable: !emulatorHost,
+            resumable: !this.emulatorHost,
         });
 
         // When using the GCS emulator, we need to construct a custom URL since the emulator runs on localhost
         // and doesn't support the standard publicUrl() method. In production, we use the bucket's publicUrl() method
         // which generates a proper Google Cloud Storage URL.
-        const fileUrl = emulatorHost
-            ? `${emulatorHost.replace('fake-gcs', 'localhost')}/storage/v1/b/${this.bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`
+        const fileUrl = this.emulatorHost
+            ? `${this.emulatorHost.replace('fake-gcs', 'localhost')}/storage/v1/b/${this.bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`
             : this.bucket.file(storagePath).publicUrl();
 
         return ok(fileUrl);

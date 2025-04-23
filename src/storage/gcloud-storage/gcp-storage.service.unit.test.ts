@@ -14,7 +14,7 @@ describe('GCPStorageService', () => {
 
     beforeEach(() => {
         process.env.GCP_BUCKET_NAME = 'test-bucket';
-        process.env.GCP_STORAGE_EMULATOR_HOST = undefined;
+        process.env.GCP_STORAGE_EMULATOR_HOST = 'http://fake-gcs:4443';
 
         mockBucket = {
             exists: vi.fn().mockResolvedValue([true]),
@@ -89,7 +89,6 @@ describe('GCPStorageService', () => {
         });
 
         it('saves valid file and returns URL', async () => {
-            process.env.GCP_STORAGE_EMULATOR_HOST = 'http://fake-gcs:4443';
             const validFile = new globalThis.File(['test'], 'test.png', {
                 type: 'image/png',
             });

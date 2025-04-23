@@ -189,14 +189,12 @@ export type ContextData = {
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
 
-logging.info('Initialising GCP storage service');
 const gcpStorageService = new GCPStorageService();
 
 try {
     logging.info('Initialising GCP storage service');
     await gcpStorageService.init();
     logging.info('GCP storage service initialised');
-    logging.info('Adding latest code for GCP storage service');
 } catch (err) {
     logging.error('Failed to initialise GCP storage service {error}', {
         error: err,
