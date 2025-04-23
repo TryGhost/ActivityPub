@@ -136,6 +136,7 @@ export class AccountFollowsView {
         siteDefaultAccount: PersistedAccount,
     ): Promise<Result<AccountFollows, GetFollowsError>> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
+        const accounts: AccountInfo[] = [];
 
         const documentLoader = await ctx.getDocumentLoader({
             handle: 'index',
@@ -148,10 +149,15 @@ export class AccountFollowsView {
             return error('not-an-actor');
         }
 
+        const followeeAccount = await this.db('accounts')
+            .where('ap_id', actor.id?.toString() || '')
+            .first();
+
         let page: CollectionPage | null = null;
 
         try {
-            if (next !== '') {
+            //next would be a number only in case of non-paginated follow lists
+            if (next !== '' && !Number(next)) {
                 // Ensure the next parameter is for the same host as the actor. We
                 // do this to prevent blindly passing URIs to lookupObject (i.e next
                 // param has been tampered with)
@@ -172,7 +178,7 @@ export class AccountFollowsView {
                 if (!(page instanceof CollectionPage) || !page?.itemIds) {
                     page = null;
                 }
-            } else {
+            } else if (next === '') {
                 const follows =
                     type === 'following'
                         ? await actor.getFollowing()
@@ -186,11 +192,115 @@ export class AccountFollowsView {
             return error('error-getting-follows');
         }
 
-        if (!page) {
-            return error('no-page-found');
+        // Handling non-paginated follow lists
+        if (!page || Number(next)) {
+            const follows =
+                type === 'following'
+                    ? await actor.getFollowing()
+                    : await actor.getFollowers();
+
+            if (!follows) {
+                return error('error-getting-follows');
+            }
+
+            console.log('Follows: ', follows);
+
+            const pageSize = 15;
+            const pageNumber = next ? Number.parseInt(next, 10) : 1;
+            const startIndex = (pageNumber - 1) * pageSize;
+
+            const pageUrls = follows.itemIds.slice(
+                startIndex,
+                startIndex + pageSize,
+            );
+
+            for await (const item of pageUrls) {
+                try {
+                    const followsActorObj = await lookupObject(item.href, {
+                        documentLoader,
+                    });
+
+                    if (!isActor(followsActorObj)) {
+                        continue;
+                    }
+
+                    const followsActor = (await followsActorObj.toJsonLd({
+                        format: 'compact',
+                    })) as unknown;
+
+                    if (!followsActor || typeof followsActor !== 'object') {
+                        continue;
+                    }
+
+                    if (
+                        !('id' in followsActor) ||
+                        typeof followsActor.id !== 'string'
+                    ) {
+                        continue;
+                    }
+
+                    if (
+                        !('name' in followsActor) ||
+                        typeof followsActor.name !== 'string'
+                    ) {
+                        continue;
+                    }
+
+                    if (
+                        !('preferredUsername' in followsActor) ||
+                        typeof followsActor.preferredUsername !== 'string'
+                    ) {
+                        continue;
+                    }
+
+                    if (
+                        !('icon' in followsActor) ||
+                        !followsActor.icon ||
+                        typeof followsActor.icon !== 'object' ||
+                        !('url' in followsActor.icon) ||
+                        typeof followsActor.icon.url !== 'string'
+                    ) {
+                        continue;
+                    }
+
+                    accounts.push({
+                        id: followsActor.id,
+                        name: followsActor.name,
+                        handle: getAccountHandle(
+                            new URL(followsActor.id).host,
+                            followsActor.preferredUsername,
+                        ),
+                        avatarUrl: followsActor.icon.url,
+                        isFollowing: followeeAccount
+                            ? await this.checkIfAccountIsFollowing(
+                                  siteDefaultAccount.id,
+                                  followeeAccount.id,
+                              )
+                            : false,
+                    });
+                } catch (err) {
+                    // Skip this item if processing fails
+                    // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows
+                    // If fetching any one follow fails, we can still return the other valid follows in the collection
+                }
+            }
+
+            let nextCursor = null;
+
+            if (
+                follows.totalItems &&
+                pageNumber * pageSize < follows.totalItems
+            ) {
+                nextCursor = (pageNumber + 1).toString();
+            }
+
+            return ok({
+                accounts: accounts,
+                total: 0,
+                next: nextCursor,
+            });
         }
 
-        const accounts: AccountInfo[] = [];
         const iterator = page.getItems()[Symbol.asyncIterator]();
 
         while (true) {
@@ -203,10 +313,6 @@ export class AccountFollowsView {
                     // TODO: Clean up the any type
                     // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
                 })) as any;
-
-                const followeeAccount = await this.db('accounts')
-                    .where('ap_id', actor.id?.toString() || '')
-                    .first();
 
                 accounts.push({
                     id: actor.id || '',
