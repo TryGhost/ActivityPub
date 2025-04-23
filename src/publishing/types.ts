@@ -106,5 +106,5 @@ export interface Note {
     /**
      * The image URL if an image is attached with the note
      */
-    imageUrl: URL | null;
+    imageUrl?: URL | null;
 }
