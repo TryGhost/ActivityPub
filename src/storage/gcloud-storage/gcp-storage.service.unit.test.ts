@@ -121,4 +121,95 @@ describe('GCPStorageService', () => {
             expect(storagePath).toMatch(/^images\/test-uuid\/[a-f0-9-]+$/);
         });
     });
+
+    describe('verifyImageUrl', () => {
+        describe('in emulator mode', () => {
+            beforeEach(() => {
+                process.env.GCP_STORAGE_EMULATOR_HOST = 'http://fake-gcs:4443';
+                service = new GCPStorageService();
+            });
+
+            it('returns true for valid emulator URL', async () => {
+                const validUrl =
+                    'http://localhost:4443/storage/v1/b/test-bucket/o/images/test-uuid/test.png?alt=media';
+                const result = await service.verifyImageUrl(validUrl);
+                expect(result).toBe(true);
+            });
+
+            it('returns false for invalid emulator URL with wrong bucket', async () => {
+                const invalidUrl =
+                    'http://localhost:4443/storage/v1/b/wrong-bucket/o/images/test-uuid/test.png?alt=media';
+                const result = await service.verifyImageUrl(invalidUrl);
+                expect(result).toBe(false);
+            });
+
+            it('returns false for malformed emulator URL', async () => {
+                const invalidUrl = 'http://localhost:4443/invalid-path';
+                const result = await service.verifyImageUrl(invalidUrl);
+                expect(result).toBe(false);
+            });
+        });
+
+        describe('in production mode', () => {
+            let mockFile: { exists: Mock };
+
+            beforeEach(() => {
+                // Ensure emulator host is undefined for production mode
+                process.env.GCP_STORAGE_EMULATOR_HOST = '';
+                process.env.GCP_BUCKET_NAME = 'test-bucket';
+
+                // Setup mock file with exists method
+                mockFile = {
+                    exists: vi.fn().mockResolvedValue([true]),
+                };
+
+                (mockBucket.file as Mock).mockReturnValue(mockFile);
+                service = new GCPStorageService();
+            });
+
+            it('returns true for valid GCS URL when file exists', async () => {
+                const validUrl =
+                    'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
+                const result = await service.verifyImageUrl(validUrl);
+
+                expect(mockBucket.file).toHaveBeenCalledWith(
+                    'images/test-uuid/test.png',
+                );
+                expect(mockFile.exists).toHaveBeenCalled();
+                expect(result).toBe(true);
+            });
+
+            it('returns false for valid GCS URL when file does not exist', async () => {
+                mockFile.exists = vi.fn().mockResolvedValue([false]);
+                const validUrl =
+                    'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
+                const result = await service.verifyImageUrl(validUrl);
+                expect(result).toBe(false);
+            });
+
+            it('returns false for GCS URL with wrong bucket', async () => {
+                const invalidUrl =
+                    'https://storage.googleapis.com/wrong-bucket/images/test-uuid/test.png';
+                const result = await service.verifyImageUrl(invalidUrl);
+                expect(result).toBe(false);
+            });
+
+            it('returns false for malformed GCS URL', async () => {
+                const invalidUrl =
+                    'https://storage.googleapis.com/invalid-path';
+                const result = await service.verifyImageUrl(invalidUrl);
+                expect(result).toBe(false);
+            });
+
+            it('returns false when GCS check throws an error', async () => {
+                mockFile.exists = vi
+                    .fn()
+                    .mockRejectedValue(new Error('GCS error'));
+                const validUrl =
+                    'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
+                const result = await service.verifyImageUrl(validUrl);
+                expect(result).toBe(false);
+            });
+        });
+    });
 });

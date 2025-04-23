@@ -3,9 +3,9 @@ import {
     type Actor,
     Article,
     Create,
-    Image,
     Note as FedifyNote,
     type Object as FedifyObject,
+    Image,
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
@@ -146,7 +146,7 @@ export class FedifyPublishingService implements PublishingService {
             attachments: note.imageUrl
                 ? [
                       new Image({
-                          url: note.imageUrl
+                          url: note.imageUrl,
                       }),
                   ]
                 : undefined,

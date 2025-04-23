@@ -1,12 +1,13 @@
 import { z } from 'zod';
 
-import type { KnexAccountRepository } from '../../account/account.repository.knex';
-import type { AppContext } from '../../app';
+import type { KnexAccountRepository } from 'account/account.repository.knex';
+import type { AppContext } from 'app';
+import { Post } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
+import { publishNote } from 'publishing/helpers';
+import type { ActivityJsonLd } from 'publishing/service';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { Post } from '../../post/post.entity';
-import type { KnexPostRepository } from '../../post/post.repository.knex';
-import { publishNote } from '../../publishing/helpers';
-import type { ActivityJsonLd } from '../../publishing/service';
 
 const NoteSchema = z.object({
     content: z.string(),
@@ -17,6 +18,7 @@ export async function handleCreateNote(
     ctx: AppContext,
     accountRepository: KnexAccountRepository,
     postRepository: KnexPostRepository,
+    storageService: GCPStorageService,
 ) {
     let data: z.infer<typeof NoteSchema>;
 
@@ -24,6 +26,17 @@ export async function handleCreateNote(
         data = NoteSchema.parse((await ctx.req.json()) as unknown);
     } catch (err) {
         return new Response(JSON.stringify({}), { status: 400 });
+    }
+
+    // Verify image URL if provided
+    if (data.imageUrl) {
+        const isValid = await storageService.verifyImageUrl(data.imageUrl);
+        if (!isValid) {
+            return new Response(
+                JSON.stringify({ error: 'Invalid image URL' }),
+                { status: 400 },
+            );
+        }
     }
 
     // Save to posts table when a note is created
@@ -40,8 +53,7 @@ export async function handleCreateNote(
                 handle: ACTOR_DEFAULT_HANDLE,
             },
             apId: post.apId,
-            imageUrl: post.imageUrl
-
+            imageUrl: post.imageUrl,
         });
     } catch (err) {
         ctx.get('logger').error('Failed to publish note: {error}', {

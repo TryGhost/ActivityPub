@@ -19,6 +19,7 @@ import z from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import type { KnexAccountRepository } from './account/account.repository.knex';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
@@ -301,6 +302,7 @@ export function createReplyActionHandler(
     accountRepository: KnexAccountRepository,
     postService: PostService,
     postRepository: KnexPostRepository,
+    storageService: GCPStorageService,
 ) {
     return async function replyAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
@@ -314,6 +316,17 @@ export function createReplyActionHandler(
             data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
         } catch (err) {
             return new Response(JSON.stringify(err), { status: 400 });
+        }
+
+        // Verify image URL if provided
+        if (data.imageUrl) {
+            const isValid = await storageService.verifyImageUrl(data.imageUrl);
+            if (!isValid) {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid image URL' }),
+                    { status: 400 },
+                );
+            }
         }
 
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
@@ -438,7 +451,7 @@ export function createReplyActionHandler(
             attachments: newReply.imageUrl
                 ? [
                       new Image({
-                          url: newReply.imageUrl
+                          url: newReply.imageUrl,
                       }),
                   ]
                 : undefined,
