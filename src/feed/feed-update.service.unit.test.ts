@@ -206,7 +206,7 @@ describe('FeedUpdateService', () => {
 
             events.emit(
                 AccountBlockedEvent.getName(),
-                new AccountBlockedEvent(account, blockedAccount),
+                new AccountBlockedEvent(blockedAccount, account),
             );
 
             expect(

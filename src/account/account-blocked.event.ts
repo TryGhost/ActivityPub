@@ -2,16 +2,16 @@ import type { Account } from 'account/account.entity';
 
 export class AccountBlockedEvent {
     constructor(
-        private readonly actor: Account,
-        private readonly blocked: Account,
+        private readonly account: Account,
+        private readonly blocker: Account,
     ) {}
 
-    getActor(): Account {
-        return this.actor;
+    getAccount(): Account {
+        return this.account;
     }
 
-    getBlocked(): Account {
-        return this.blocked;
+    getBlocker(): Account {
+        return this.blocker;
     }
 
     static getName(): string {
