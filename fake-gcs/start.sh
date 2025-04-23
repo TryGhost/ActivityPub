@@ -22,4 +22,4 @@ if ! curl -s "http://localhost:4443/storage/v1/b/${GCP_BUCKET_NAME}" | grep -q "
 fi
 
 # Keep the container running
-tail -f /dev/null 
+tail -f /dev/null
