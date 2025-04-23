@@ -6,6 +6,7 @@ import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
+import type { NotificationType } from 'notification/notification.service';
 import { type CreatePostType, Post, PostType } from 'post/post.entity';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { type Site, SiteService } from 'site/site.service';
@@ -23,7 +24,7 @@ export class FixtureManager {
     async createInternalAccount(
         site?: Site | null,
         host = faker.internet.domainName(),
-    ): Promise<[Account, Site]> {
+    ): Promise<[Account, Site, number]> {
         let _site: Site;
         let _account: Account;
 
@@ -35,10 +36,10 @@ export class FixtureManager {
 
             const { ap_id: accountApId } =
                 await this.accountService.createInternalAccount(_site, {
-                    username: faker.internet.username(),
+                    username: faker.internet.username().replace('.', '_'),
                     name: faker.person.fullName(),
-                    bio: faker.lorem.sentence(),
-                    avatar_url: faker.image.url(),
+                    bio: null,
+                    avatar_url: null,
                 });
 
             const accountByApId = await this.accountRepository.getByApId(
@@ -54,7 +55,51 @@ export class FixtureManager {
             _account = accountByApId;
         }
 
-        return [_account, _site];
+        const user = await this.db('users')
+            .select('id')
+            .where('account_id', _account.id)
+            .first();
+
+        if (!user) {
+            throw new Error(`User not found for account ${_account.id}`);
+        }
+
+        return [_account, _site, user.id];
+    }
+
+    async createExternalAccount() {
+        const username = faker.internet.username().replace('.', '_');
+        const url = faker.internet.url({ appendSlash: true });
+
+        const createdAccount = await this.accountService.createExternalAccount({
+            username,
+            name: null,
+            bio: null,
+            avatar_url: null,
+            banner_image_url: null,
+            url: null,
+            custom_fields: null,
+            ap_id: `${url}${username}`,
+            ap_inbox_url: `${url}${username}/inbox`,
+            ap_shared_inbox_url: `${url}inbox`,
+            ap_outbox_url: `${url}${username}/outbox`,
+            ap_following_url: `${url}${username}/following`,
+            ap_followers_url: `${url}${username}/followers`,
+            ap_liked_url: `${url}${username}/liked`,
+            ap_public_key: 'abc123',
+        });
+
+        const account = await this.accountRepository.getByApId(
+            new URL(createdAccount.ap_id),
+        );
+
+        if (!account) {
+            throw new Error(
+                `Account not found with ap_id ${createdAccount.ap_id}`,
+            );
+        }
+
+        return account;
     }
 
     async createPost(
@@ -86,8 +131,30 @@ export class FixtureManager {
         });
     }
 
+    async createNotification(
+        userAccount: Account,
+        fromAccount: Account,
+        type: NotificationType,
+    ) {
+        const user = await this.db('users')
+            .select('id')
+            .where('account_id', userAccount.id)
+            .first();
+
+        if (!user) {
+            throw new Error(`User not found for account ${userAccount.id}`);
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: fromAccount.id,
+            event_type: type,
+        });
+    }
+
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
+        await this.db('notifications').truncate();
         await this.db('blocks').truncate();
         await this.db('posts').truncate();
         await this.db('accounts').truncate();
@@ -111,11 +178,11 @@ export function createFixtureManager(
         generateTestCryptoKeyPair,
     );
     const siteService = new SiteService(db, accountService, {
-        getSiteSettings: async () => ({
+        getSiteSettings: async (host) => ({
             site: {
                 description: faker.lorem.sentence(),
                 title: faker.lorem.sentence(),
-                icon: faker.image.url(),
+                icon: `https://${host}/avatar/${faker.string.uuid()}.jpg`,
             },
         }),
     });

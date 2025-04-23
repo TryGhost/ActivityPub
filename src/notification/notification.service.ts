@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+import type { Account as AccountEntity } from 'account/account.entity';
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
 import type { Post } from 'post/post.entity';
@@ -278,5 +279,27 @@ export class NotificationService {
             in_reply_to_post_id: inReplyToPost.id,
             event_type: NotificationType.Reply,
         });
+    }
+
+    async removeBlockedAccountNotifications(
+        blockerAccount: AccountEntity,
+        blockedAccount: AccountEntity,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', blockerAccount.id)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If this block was for an internal account that doesn't exist,
+            // or an external account, we can't remove notifications for it as
+            // there is not a corresponding user record in the database
+            return;
+        }
+
+        await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('account_id', blockedAccount.id)
+            .delete();
     }
 }

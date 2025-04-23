@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
+import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
+import type { Account as AccountEntity } from 'account/account.entity';
 import type { Account } from 'account/types';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
@@ -23,6 +25,7 @@ describe('NotificationEventService', () => {
             createLikeNotification: vi.fn(),
             createRepostNotification: vi.fn(),
             createReplyNotification: vi.fn(),
+            removeBlockedAccountNotifications: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -111,6 +114,22 @@ describe('NotificationEventService', () => {
             expect(
                 notificationService.createReplyNotification,
             ).toHaveBeenCalledWith(post);
+        });
+    });
+
+    describe('handling an account blocked event', () => {
+        it('should remove notifications from the blocked account', () => {
+            const blockedAccount = { id: 123 } as AccountEntity;
+            const blockerAccount = { id: 456 } as AccountEntity;
+
+            events.emit(
+                AccountBlockedEvent.getName(),
+                new AccountBlockedEvent(blockedAccount, blockerAccount),
+            );
+
+            expect(
+                notificationService.removeBlockedAccountNotifications,
+            ).toHaveBeenCalledWith(blockerAccount, blockedAccount);
         });
     });
 });
