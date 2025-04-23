@@ -50,16 +50,16 @@ export class AccountFollowsView {
         account: Account,
         type: string,
         offset: string | null,
-        siteDefaultAccount: PersistedAccount,
+        currentContextAccount: PersistedAccount,
     ): Promise<Result<AccountFollows, GetFollowsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
             return ok(
                 await this.getFollowsByAccount(
-                    account,
+                    account as PersistedAccount,
                     type,
                     Number.parseInt(offset || '0'),
-                    siteDefaultAccount,
+                    currentContextAccount,
                 ),
             );
         }
@@ -69,24 +69,16 @@ export class AccountFollowsView {
             apId,
             offset || '',
             type,
-            siteDefaultAccount,
+            currentContextAccount,
         );
     }
 
     async getFollowsByAccount(
-        account: Account,
+        account: PersistedAccount,
         type: string,
         offset: number,
-        siteDefaultAccount: PersistedAccount,
+        currentContextAccount: PersistedAccount,
     ): Promise<AccountFollows> {
-        if (!siteDefaultAccount.id) {
-            throw new Error('Site default account not found');
-        }
-
-        if (!account.id) {
-            throw new Error('Account not found');
-        }
-
         const getAccounts =
             type === 'following'
                 ? this.getFollowingAccounts.bind(this)
@@ -116,7 +108,7 @@ export class AccountFollowsView {
                 ),
                 avatarUrl: result.avatar_url || '',
                 isFollowing: await this.checkIfAccountIsFollowing(
-                    siteDefaultAccount.id,
+                    currentContextAccount.id,
                     result.id,
                 ),
             });
@@ -133,7 +125,7 @@ export class AccountFollowsView {
         apId: URL,
         next: string,
         type: string,
-        siteDefaultAccount: PersistedAccount,
+        currentContextAccount: PersistedAccount,
     ): Promise<Result<AccountFollows, GetFollowsError>> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const accounts: AccountInfo[] = [];
@@ -273,7 +265,7 @@ export class AccountFollowsView {
                         avatarUrl: followsActor.icon.url,
                         isFollowing: followeeAccount
                             ? await this.checkIfAccountIsFollowing(
-                                  siteDefaultAccount.id,
+                                  currentContextAccount.id,
                                   followeeAccount.id,
                               )
                             : false,
@@ -324,7 +316,7 @@ export class AccountFollowsView {
                     avatarUrl: actor.icon?.url || '',
                     isFollowing: followeeAccount
                         ? await this.checkIfAccountIsFollowing(
-                              siteDefaultAccount.id,
+                              currentContextAccount.id,
                               followeeAccount.id,
                           )
                         : false,

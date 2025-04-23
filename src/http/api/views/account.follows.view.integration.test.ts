@@ -121,7 +121,7 @@ describe('AccountFollowsView', () => {
             await accountService.recordAccountFollow(following2, account);
 
             const result = await viewer.getFollowsByAccount(
-                accountEntity,
+                accountEntity as PersistedAccount,
                 'following',
                 0,
                 siteDefaultAccount,
@@ -167,7 +167,7 @@ describe('AccountFollowsView', () => {
 
             // Get follows
             const result = await viewer.getFollowsByAccount(
-                accountEntity,
+                accountEntity as PersistedAccount,
                 'followers',
                 0,
                 siteDefaultAccount,
@@ -207,7 +207,7 @@ describe('AccountFollowsView', () => {
             }
 
             const result = await viewer.getFollowsByAccount(
-                accountEntity,
+                accountEntity as PersistedAccount,
                 'following',
                 0,
                 siteDefaultAccount,

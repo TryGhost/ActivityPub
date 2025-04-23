@@ -113,7 +113,7 @@ export function createGetAccountFollowsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const siteDefaultAccount = (await accountRepository.getBySite(
+        const currentContextAccount = (await accountRepository.getBySite(
             site,
         )) as PersistedAccount;
 
@@ -124,10 +124,10 @@ export function createGetAccountFollowsHandler(
 
         if (handle === 'me') {
             accountFollows = await accountFollowsView.getFollowsByAccount(
-                siteDefaultAccount,
+                currentContextAccount,
                 type,
                 Number.parseInt(next || '0'),
-                siteDefaultAccount,
+                currentContextAccount,
             );
         } else {
             const ctx = fedifyContextFactory.getFedifyContext();
@@ -147,7 +147,7 @@ export function createGetAccountFollowsHandler(
                 account,
                 type,
                 next,
-                siteDefaultAccount,
+                currentContextAccount,
             );
             if (isError(result)) {
                 const error = getError(result);
