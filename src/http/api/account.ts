@@ -148,9 +148,9 @@ export function createGetAccountFollowsHandler(
         // Return response
         return new Response(
             JSON.stringify({
-                accounts: accountFollows.accounts,
-                total: accountFollows.total,
-                next: accountFollows.next,
+                accounts: accountFollows?.accounts,
+                total: accountFollows?.total,
+                next: accountFollows?.next,
             }),
             {
                 headers: {
