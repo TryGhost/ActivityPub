@@ -110,11 +110,12 @@ import {
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
+    createStorageHandler,
     createUpdateAccountHandler,
     handleCreateNote,
-    handleWebhookSiteChanged,
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
+import { AccountPostsView } from './http/api/views/account.posts.view';
 import { AccountView } from './http/api/views/account.view';
 import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
@@ -127,6 +128,7 @@ import {
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
+import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
 
 const logging = getLogger(['activitypub']);
 
@@ -188,6 +190,19 @@ export type ContextData = {
 };
 
 const fedifyKv = await KnexKvStore.create(client, 'key_value');
+
+const gcpStorageService = new GCPStorageService();
+
+try {
+    logging.info('Initialising GCP storage service');
+    await gcpStorageService.init();
+    logging.info('GCP storage service initialised');
+} catch (err) {
+    logging.error('Failed to initialise GCP storage service {error}', {
+        error: err,
+    });
+    process.exit(1);
+}
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
@@ -275,6 +290,7 @@ const postService = new PostService(
 
 const accountView = new AccountView(client, fedifyContextFactory);
 const accountFollowsView = new AccountFollowsView(client, fedifyContextFactory);
+const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
@@ -888,11 +904,6 @@ app.post(
         createPostPublishedWebhookHandler(accountRepository, postRepository),
     ),
 );
-app.post(
-    '/.ghost/activitypub/webhooks/site/changed',
-    validateWebhook(),
-    spanWrapper(handleWebhookSiteChanged(siteService)),
-);
 
 function requireRole(...roles: GhostRole[]) {
     return function roleMiddleware(ctx: HonoContext, next: Next) {
@@ -1004,13 +1015,19 @@ app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
-        createGetAccountPostsHandler(postService, accountRepository, fedify),
+        createGetAccountPostsHandler(
+            accountRepository,
+            accountPostsView,
+            fedifyContextFactory,
+        ),
     ),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle/liked',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountLikedPostsHandler(accountService, postService)),
+    spanWrapper(
+        createGetAccountLikedPostsHandler(accountService, accountPostsView),
+    ),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
@@ -1051,6 +1068,11 @@ app.get(
     spanWrapper(
         createGetNotificationsHandler(accountService, notificationService),
     ),
+);
+app.post(
+    '/.ghost/activitypub/upload/image',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper(createStorageHandler(accountService, gcpStorageService)),
 );
 /** Federation wire up */
 

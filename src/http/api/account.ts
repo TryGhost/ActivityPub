@@ -1,19 +1,21 @@
-import type { Federation } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
+import type { PersistedAccount } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { AppContext, ContextData } from 'app';
+import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
-import type { GetProfileDataResult, PostService } from 'post/post.service';
 import { z } from 'zod';
 import type { AccountDTO } from './types';
 import type {
     AccountFollows,
     AccountFollowsView,
 } from './views/account.follows.view';
+import type {
+    AccountPosts,
+    AccountPostsView,
+} from './views/account.posts.view';
 import type { AccountView } from './views/account.view';
 
 /**
@@ -190,9 +192,9 @@ function validateRequestParams(ctx: AppContext) {
  * @param profileService Profile service instance
  */
 export function createGetAccountPostsHandler(
-    postService: PostService,
     accountRepository: KnexAccountRepository,
-    fedify: Federation<ContextData>,
+    accountPostsView: AccountPostsView,
+    fedifyContextFactory: FedifyContextFactory,
 ) {
     /**
      * Handle a request for a list of posts by an account
@@ -206,119 +208,86 @@ export function createGetAccountPostsHandler(
         }
 
         const logger = ctx.get('logger');
-        let account: Account | null = null;
-        const db = ctx.get('db');
-
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db,
-            globaldb: ctx.get('globaldb'),
-            logger,
-        });
+        const site = ctx.get('site');
 
         const handle = ctx.req.param('handle');
         if (!handle) {
             return new Response(null, { status: 400 });
         }
 
-        const defaultAccount = await accountRepository.getBySite(
-            ctx.get('site'),
-        );
+        const currentContextAccount = (await accountRepository.getBySite(
+            site,
+        )) as PersistedAccount;
 
-        if (!defaultAccount || !defaultAccount.id) {
-            return new Response(null, { status: 400 });
-        }
+        let accountPosts: AccountPosts;
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
-            account = defaultAccount;
+            accountPosts = await accountPostsView.getPostsByAccount(
+                currentContextAccount.id,
+                currentContextAccount.id,
+                params.limit,
+                params.cursor,
+            );
         } else {
-            if (!isHandle(handle)) {
-                return new Response(null, { status: 400 });
+            const ctx = fedifyContextFactory.getFedifyContext();
+            const apId = await lookupAPIdByHandle(ctx, handle);
+
+            if (!apId) {
+                return new Response(`AP ID not found for handle: ${handle}`, {
+                    status: 400,
+                });
             }
 
-            const apId = await lookupAPIdByHandle(apCtx, handle);
-            if (apId) {
-                account = await accountRepository.getByApId(new URL(apId));
-            }
-        }
+            const account = (await accountRepository.getByApId(
+                new URL(apId),
+            )) as PersistedAccount;
 
-        const result: GetProfileDataResult = {
-            results: [],
-            nextCursor: null,
-        };
-
-        try {
-            //If we found the account in our db and it's an internal account, do an internal lookup
-            if (account?.isInternal && account.id) {
-                const postResult = await postService.getPostsByAccount(
-                    account.id,
-                    defaultAccount.id,
-                    params.limit,
-                    params.cursor,
-                );
-
-                result.results = postResult.results;
-                result.nextCursor = postResult.nextCursor;
-            } else {
-                //Otherwise, do a remote lookup to fetch the posts
-                const postResult = await postService.getPostsByRemoteLookUp(
-                    defaultAccount.id,
-                    defaultAccount.apId,
-                    handle,
-                    params.cursor || '',
-                );
-                if (postResult instanceof Error) {
-                    throw postResult;
+            const result = await accountPostsView.getPostsByApId(
+                new URL(apId),
+                account,
+                currentContextAccount,
+                params.limit,
+                params.cursor,
+            );
+            if (isError(result)) {
+                const error = getError(result);
+                switch (error) {
+                    case 'invalid-next-parameter':
+                        logger.error('Invalid next parameter');
+                        return new Response(null, { status: 400 });
+                    case 'not-an-actor':
+                        logger.error(`Actor not found for ${handle}`);
+                        return new Response(null, { status: 404 });
+                    case 'error-getting-outbox':
+                        logger.error(`Error getting outbox for ${handle}`);
+                        return new Response(
+                            JSON.stringify({
+                                posts: [],
+                                next: null,
+                            }),
+                            { status: 200 },
+                        );
+                    case 'no-page-found':
+                        logger.error(`No page found in outbox for ${handle}`);
+                        return new Response(
+                            JSON.stringify({
+                                posts: [],
+                                next: null,
+                            }),
+                            { status: 200 },
+                        );
+                    default:
+                        return exhaustiveCheck(error);
                 }
-                if (isError(postResult)) {
-                    const error = getError(postResult);
-                    switch (error) {
-                        case 'invalid-next-parameter':
-                            logger.error('Invalid next parameter');
-                            return new Response(null, { status: 400 });
-                        case 'not-an-actor':
-                            logger.error(`Actor not found for ${handle}`);
-                            return new Response(null, { status: 404 });
-                        case 'error-getting-outbox':
-                            logger.error(`Error getting outbox for ${handle}`);
-                            return new Response(
-                                JSON.stringify({
-                                    posts: [],
-                                    next: null,
-                                }),
-                                { status: 200 },
-                            );
-                        case 'no-page-found':
-                            logger.error(
-                                `No page found in outbox for ${handle}`,
-                            );
-                            return new Response(
-                                JSON.stringify({
-                                    posts: [],
-                                    next: null,
-                                }),
-                                { status: 200 },
-                            );
-                        default:
-                            return exhaustiveCheck(error);
-                    }
-                }
-                const posts = getValue(postResult);
-                result.results = posts.results;
-                result.nextCursor = posts.nextCursor;
             }
-        } catch (error) {
-            logger.error(`Error getting posts for ${handle}: {error}`, {
-                error,
-            });
-
-            return new Response(null, { status: 500 });
+            accountPosts = getValue(result);
         }
 
         return new Response(
             JSON.stringify({
-                posts: result.results,
-                next: result.nextCursor,
+                posts: accountPosts.results,
+                next: accountPosts.nextCursor,
             }),
             { status: 200 },
         );
@@ -333,7 +302,7 @@ export function createGetAccountPostsHandler(
  */
 export function createGetAccountLikedPostsHandler(
     accountService: AccountService,
-    postService: PostService,
+    accountPostsView: AccountPostsView,
 ) {
     /**
      * Handle a request for a list of posts liked by an account
@@ -355,7 +324,7 @@ export function createGetAccountLikedPostsHandler(
         }
 
         const { results, nextCursor } =
-            await postService.getPostsLikedByAccount(
+            await accountPostsView.getPostsLikedByAccount(
                 account.id,
                 params.limit,
                 params.cursor,

@@ -1,0 +1,135 @@
+import type { AccountService } from 'account/account.service';
+import { error, ok } from 'core/result';
+import type { Context } from 'hono';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createStorageHandler } from './storage';
+
+describe('Storage API', () => {
+    let accountService: AccountService;
+    let storageService: GCPStorageService;
+    let mockLogger: { error: Mock };
+    const getMockContext = (): Context =>
+        ({
+            get: (key: string) => {
+                if (key === 'site') {
+                    return {
+                        id: 123,
+                        host: 'example.com',
+                        webhook_secret: 'secret',
+                    };
+                }
+                if (key === 'logger') {
+                    return mockLogger;
+                }
+            },
+            req: {
+                formData: vi.fn().mockResolvedValue(new FormData()),
+            },
+        }) as unknown as Context;
+
+    beforeEach(() => {
+        mockLogger = { error: vi.fn() };
+        accountService = {
+            getAccountForSite: vi.fn().mockResolvedValue({
+                uuid: 'test-uuid',
+            }),
+        } as unknown as AccountService;
+
+        storageService = {
+            saveFile: vi
+                .fn()
+                .mockResolvedValue(ok('https://example.com/test.png')),
+        } as unknown as GCPStorageService;
+    });
+
+    it('returns 400 if no file is provided', async () => {
+        const ctx = getMockContext();
+        const handler = createStorageHandler(accountService, storageService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(400);
+        expect(await response.text()).toBe('No valid file provided');
+    });
+
+    it('returns 400 if file is not a File instance', async () => {
+        const ctx = getMockContext();
+        const formData = new FormData();
+        formData.append('file', 'not-a-file');
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        const handler = createStorageHandler(accountService, storageService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(400);
+        expect(await response.text()).toBe('No valid file provided');
+    });
+
+    it('returns 413 when the file is too large', async () => {
+        const ctx = getMockContext();
+        const formData = new FormData();
+        formData.append(
+            'file',
+            new globalThis.File(['test'], 'test.png', { type: 'image/png' }),
+        );
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        (storageService.saveFile as Mock).mockResolvedValue(
+            error('file-too-large'),
+        );
+
+        const handler = createStorageHandler(accountService, storageService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(413);
+        expect(await response.text()).toBe('File is too large');
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.stringContaining('File is too large'),
+        );
+    });
+
+    it('returns 415 file type is not supported', async () => {
+        const ctx = getMockContext();
+        const formData = new FormData();
+        formData.append(
+            'file',
+            new globalThis.File(['test'], 'test.txt', { type: 'text/plain' }),
+        );
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        (storageService.saveFile as Mock).mockResolvedValue(
+            error('file-type-not-supported'),
+        );
+
+        const handler = createStorageHandler(accountService, storageService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(415);
+        expect(await response.text()).toBe(
+            'File type text/plain is not supported',
+        );
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            expect.stringContaining('File type text/plain is not supported'),
+        );
+    });
+
+    it('returns 200 with file URL on successful upload', async () => {
+        const ctx = getMockContext();
+        const formData = new FormData();
+        formData.append(
+            'file',
+            new globalThis.File(['test'], 'test.png', { type: 'image/png' }),
+        );
+        (ctx.req.formData as Mock).mockResolvedValue(formData);
+
+        const expectedUrl = 'https://example.com/test.png';
+        (storageService.saveFile as Mock).mockResolvedValue(ok(expectedUrl));
+
+        const handler = createStorageHandler(accountService, storageService);
+        const response = await handler(ctx);
+
+        expect(response.status).toBe(200);
+        const responseData = await response.json();
+        expect(responseData.fileUrl).toBe(expectedUrl);
+    });
+});

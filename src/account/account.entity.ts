@@ -3,6 +3,8 @@ import { BaseEntity } from '../core/base.entity';
 import { type CreatePostType, PostType } from '../post/post.entity';
 import type { Site } from '../site/site.service';
 
+export type PersistedAccount = Account & { id: number };
+
 export interface AccountData {
     id: number;
     uuid: string | null;
@@ -137,7 +139,7 @@ export class Account extends BaseEntity {
         }
 
         return new URL(
-            `.ghost/activitypub/users/${this.username}`,
+            '.ghost/activitypub/users/index',
             `${Account.protocol}://${this.site!.host}`,
         );
     }
@@ -148,7 +150,7 @@ export class Account extends BaseEntity {
         }
 
         return new URL(
-            `.ghost/activitypub/followers/${this.username}`,
+            '.ghost/activitypub/followers/index',
             `${Account.protocol}://${this.site!.host}`,
         );
     }
