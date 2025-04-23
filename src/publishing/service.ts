@@ -143,7 +143,6 @@ export class FedifyPublishingService implements PublishingService {
             content: note.content,
             summary: null,
             published: Temporal.Now.instant(),
-            image: note.imageUrl,
             attachments: note.imageUrl
                 ? [
                       new Image({

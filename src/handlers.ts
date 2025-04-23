@@ -435,7 +435,6 @@ export function createReplyActionHandler(
             attribution: actor,
             replyTarget: objectToReplyTo,
             content: newReply.content,
-            image: newReply.imageUrl,
             attachments: newReply.imageUrl
                 ? [
                       new Image({
