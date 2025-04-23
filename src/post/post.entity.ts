@@ -11,6 +11,28 @@ export enum PostType {
     Tombstone = 2,
 }
 
+/**
+ * Visibility of a post
+ */
+export enum PostVisibility {
+    /**
+     * Public post
+     */
+    Public = 'public',
+    /**
+     * Members-only post
+     */
+    Members = 'members',
+    /**
+     * Paid post
+     */
+    Paid = 'paid',
+    /**
+     * Tiers post
+     */
+    Tiers = 'tiers',
+}
+
 export type CreatePostType = Exclude<PostType, PostType.Tombstone>;
 
 export enum Audience {

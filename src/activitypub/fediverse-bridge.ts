@@ -1,18 +1,23 @@
 import type EventEmitter from 'node:events';
-import { v4 as uuidv4 } from 'uuid';
-
 import {
+    Article,
+    Create,
     Delete,
+    Note as FedifyNote,
     Follow,
     PUBLIC_COLLECTION,
     Reject,
     Update,
 } from '@fedify/fedify';
-import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { Temporal } from '@js-temporal/polyfill';
+import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
-import { AccountUpdatedEvent } from '../account/account-updated.event';
-import type { AccountService } from '../account/account.service';
+import { PostType } from 'post/post.entity';
+import { v4 as uuidv4 } from 'uuid';
 import type { FedifyContextFactory } from './fedify-context.factory';
+import type { AccountService } from 'account/account.service';
+import { AccountUpdatedEvent } from 'account/account-updated.event';
+import { AccountBlockedEvent } from 'account/account-blocked.event';
 
 export class FediverseBridge {
     constructor(
@@ -27,12 +32,80 @@ export class FediverseBridge {
             this.handleAccountUpdatedEvent.bind(this),
         );
         this.events.on(
+            PostCreatedEvent.getName(),
+            this.handlePostCreated.bind(this),
+        );
+        this.events.on(
             PostDeletedEvent.getName(),
             this.handlePostDeleted.bind(this),
         );
         this.events.on(
             AccountBlockedEvent.getName(),
             this.handleAccountBlockedEvent.bind(this),
+        );
+    }
+
+    private async handlePostCreated(event: PostCreatedEvent) {
+        const post = event.getPost();
+        if (!post.author.isInternal) {
+            return;
+        }
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        let fedifyObject = null;
+
+        if (post.type === PostType.Note) {
+            fedifyObject = new FedifyNote({
+                id: post.apId || ctx.getObjectUri(FedifyNote, { id: uuidv4() }),
+                attribution: post.author.apId,
+                content: post.content,
+                summary: null,
+                published: Temporal.Now.instant(),
+                to: PUBLIC_COLLECTION,
+                cc: post.author.apFollowers,
+            });
+        } else if (post.type === PostType.Article) {
+            const preview = new FedifyNote({
+                id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
+                content: post.excerpt,
+            });
+            fedifyObject = new Article({
+                id: ctx.getObjectUri(Article, { id: String(post.id) }),
+                attribution: post.author.apId,
+                name: post.title,
+                content: post.content,
+                image: post.imageUrl,
+                published: Temporal.Instant.from(
+                    post.publishedAt.toISOString(),
+                ),
+                preview,
+                url: post.url,
+                to: PUBLIC_COLLECTION,
+                cc: post.author.apFollowers,
+            });
+        }
+
+        const createActivity = new Create({
+            id: ctx.getObjectUri(Create, { id: uuidv4() }),
+            actor: post.author.apId,
+            object: fedifyObject,
+            to: PUBLIC_COLLECTION,
+            cc: post.author.apFollowers,
+        });
+
+        await ctx.data.globaldb.set(
+            [createActivity.id!.href],
+            await createActivity.toJsonLd(),
+        );
+
+        await ctx.sendActivity(
+            {
+                handle: post.author.username,
+            },
+            'followers',
+            createActivity,
+            {
+                preferSharedInbox: true,
+            },
         );
     }
 

@@ -6,6 +6,9 @@ import type { PostService } from 'post/post.service';
 import { publishNote } from 'publishing/helpers';
 import type { ActivityJsonLd } from 'publishing/service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import type { KnexAccountRepository } from '../../account/account.repository.knex';
+import { Post } from '../../post/post.entity';
+import type { KnexPostRepository } from '../../post/post.repository.knex';
 
 const NoteSchema = z.object({
     content: z.string(),
@@ -62,24 +65,7 @@ export async function handleCreateNote(
 
     const post = getValue(postResult);
 
-    let result: ActivityJsonLd | null = null;
-
-    try {
-        result = await publishNote(ctx, {
-            content: post.content ?? '',
-            author: {
-                handle: ACTOR_DEFAULT_HANDLE,
-            },
-            apId: post.apId,
-            imageUrl: post.imageUrl,
-        });
-    } catch (err) {
-        ctx.get('logger').error('Failed to publish note: {error}', {
-            error: err,
-        });
-    }
-
-    return new Response(JSON.stringify(result || {}), {
+    return new Response(JSON.stringify({post}), {
         headers: {
             'Content-Type': 'application/json',
         },
