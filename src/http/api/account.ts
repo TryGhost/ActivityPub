@@ -160,7 +160,6 @@ export function createGetAccountFollowsHandler(
                         return new Response(
                             JSON.stringify({
                                 accounts: [],
-                                total: 0,
                                 next: null,
                             }),
                             { status: 200 },
@@ -170,7 +169,6 @@ export function createGetAccountFollowsHandler(
                         return new Response(
                             JSON.stringify({
                                 accounts: [],
-                                total: 0,
                                 next: null,
                             }),
                             { status: 200 },
@@ -186,7 +184,6 @@ export function createGetAccountFollowsHandler(
         return new Response(
             JSON.stringify({
                 accounts: accountFollows?.accounts,
-                total: accountFollows?.total,
                 next: accountFollows?.next,
             }),
             {

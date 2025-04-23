@@ -1,5 +1,4 @@
 import { CollectionPage, isActor, lookupObject } from '@fedify/fedify';
-import type { Object as FedifyObject, Link } from '@fedify/fedify';
 import type { Account, PersistedAccount } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -27,7 +26,6 @@ interface AccountInfo {
 
 export interface AccountFollows {
     accounts: AccountInfo[];
-    total: number;
     next: string | null;
 }
 
@@ -47,7 +45,7 @@ export class AccountFollowsView {
 
     async getFollowsByApId(
         apId: URL,
-        account: Account,
+        account: Account | null,
         type: string,
         offset: string | null,
         siteDefaultAccount: PersistedAccount,
@@ -79,10 +77,6 @@ export class AccountFollowsView {
         offset: number,
         siteDefaultAccount: PersistedAccount,
     ): Promise<AccountFollows> {
-        if (!siteDefaultAccount.id) {
-            throw new Error('Site default account not found');
-        }
-
         if (!account.id) {
             throw new Error('Account not found');
         }
@@ -124,7 +118,6 @@ export class AccountFollowsView {
 
         return {
             accounts: accounts,
-            total: total,
             next: next,
         };
     }
@@ -191,31 +184,68 @@ export class AccountFollowsView {
         }
 
         const accounts: AccountInfo[] = [];
-        const iterator = page.getItems()[Symbol.asyncIterator]();
 
-        while (true) {
-            let result: IteratorResult<FedifyObject | Link>;
+        for await (const item of page.itemIds) {
             try {
-                result = await iterator.next();
-                if (result.done) break;
-                const actor = (await result.value.toJsonLd({
-                    format: 'compact',
-                    // TODO: Clean up the any type
-                    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                })) as any;
+                const followsActorObj = await lookupObject(item.href, {
+                    documentLoader,
+                });
+
+                if (!isActor(followsActorObj)) {
+                    continue;
+                }
 
                 const followeeAccount = await this.db('accounts')
                     .where('ap_id', actor.id?.toString() || '')
                     .first();
 
+                const followsActor = (await followsActorObj.toJsonLd({
+                    format: 'compact',
+                })) as unknown;
+
+                if (!followsActor || typeof followsActor !== 'object') {
+                    continue;
+                }
+
+                if (
+                    !('id' in followsActor) ||
+                    typeof followsActor.id !== 'string'
+                ) {
+                    continue;
+                }
+
+                if (
+                    !('name' in followsActor) ||
+                    typeof followsActor.name !== 'string'
+                ) {
+                    continue;
+                }
+
+                if (
+                    !('preferredUsername' in followsActor) ||
+                    typeof followsActor.preferredUsername !== 'string'
+                ) {
+                    continue;
+                }
+
+                if (
+                    !('icon' in followsActor) ||
+                    !followsActor.icon ||
+                    typeof followsActor.icon !== 'object' ||
+                    !('url' in followsActor.icon) ||
+                    typeof followsActor.icon.url !== 'string'
+                ) {
+                    continue;
+                }
+
                 accounts.push({
-                    id: actor.id || '',
-                    name: actor.name || '',
+                    id: followsActor.id,
+                    name: followsActor.name,
                     handle: getAccountHandle(
-                        new URL(actor.id).host,
-                        actor.preferredUsername,
+                        new URL(followsActor.id).host,
+                        followsActor.preferredUsername,
                     ),
-                    avatarUrl: actor.icon?.url || '',
+                    avatarUrl: followsActor.icon.url,
                     isFollowing: followeeAccount
                         ? await this.checkIfAccountIsFollowing(
                               siteDefaultAccount.id,
@@ -224,6 +254,9 @@ export class AccountFollowsView {
                         : false,
                 });
             } catch {
+                ctx.data.logger.error(
+                    `Error while iterating over follow list for ${actor.name}`,
+                );
                 // Skip this item if processing fails
                 // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows
                 // If fetching any one follow fails, we can still return the other valid follows in the collection
@@ -236,7 +269,6 @@ export class AccountFollowsView {
 
         return ok({
             accounts: accounts,
-            total: 0,
             next: nextCursor,
         });
     }
