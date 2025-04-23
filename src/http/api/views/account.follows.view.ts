@@ -155,6 +155,10 @@ export class AccountFollowsView {
             return error('not-an-actor');
         }
 
+        const followeeAccount = await this.db('accounts')
+            .where('ap_id', actor.id?.toString() || '')
+            .first();
+
         let page: CollectionPage | null = null;
 
         try {
@@ -278,6 +282,7 @@ export class AccountFollowsView {
                 next: nextCursor,
             });
         }
+
         for await (const item of page.itemIds) {
             try {
                 const followsActorObj = await lookupObject(item.href, {
