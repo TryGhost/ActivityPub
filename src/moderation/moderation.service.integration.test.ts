@@ -23,7 +23,7 @@ describe('ModerationService', () => {
     it('should filter posts from blocked accounts', async () => {
         const moderationService = new ModerationService(client);
 
-        const [{ account }, { account: blockedAccount }] = await Promise.all([
+        const [[account], [blockedAccount]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),
             fixtureManager.createInternalAccount(null, 'blocked.com'),
         ]);
@@ -49,15 +49,12 @@ describe('ModerationService', () => {
     it('should filter posts from multiple blocked accounts', async () => {
         const moderationService = new ModerationService(client);
 
-        const [
-            { account },
-            { account: blockedAccount1 },
-            { account: blockedAccount2 },
-        ] = await Promise.all([
-            fixtureManager.createInternalAccount(null, 'example.com'),
-            fixtureManager.createInternalAccount(null, 'blocked1.com'),
-            fixtureManager.createInternalAccount(null, 'blocked2.com'),
-        ]);
+        const [[account], [blockedAccount1], [blockedAccount2]] =
+            await Promise.all([
+                fixtureManager.createInternalAccount(null, 'example.com'),
+                fixtureManager.createInternalAccount(null, 'blocked1.com'),
+                fixtureManager.createInternalAccount(null, 'blocked2.com'),
+            ]);
 
         const [post1, post2, post3] = await Promise.all([
             fixtureManager.createPost(account),
@@ -80,15 +77,12 @@ describe('ModerationService', () => {
     it('should filter reposts from blocked accounts', async () => {
         const moderationService = new ModerationService(client);
 
-        const [
-            { account },
-            { account: unblockedAccount },
-            { account: blockedAccount },
-        ] = await Promise.all([
-            fixtureManager.createInternalAccount(null, 'example.com'),
-            fixtureManager.createInternalAccount(null, 'unblocked.com'),
-            fixtureManager.createInternalAccount(null, 'blocked.com'),
-        ]);
+        const [[account], [unblockedAccount], [blockedAccount]] =
+            await Promise.all([
+                fixtureManager.createInternalAccount(null, 'example.com'),
+                fixtureManager.createInternalAccount(null, 'unblocked.com'),
+                fixtureManager.createInternalAccount(null, 'blocked.com'),
+            ]);
 
         const [post1, post2, post3] = await Promise.all([
             fixtureManager.createPost(account),
@@ -120,7 +114,7 @@ describe('ModerationService', () => {
     it('should do nothing if there are no posts', async () => {
         const moderationService = new ModerationService(client);
 
-        const { account } = await fixtureManager.createInternalAccount(
+        const [account] = await fixtureManager.createInternalAccount(
             null,
             'example.com',
         );

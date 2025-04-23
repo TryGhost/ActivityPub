@@ -23,7 +23,7 @@ export class FixtureManager {
     async createInternalAccount(
         site?: Site | null,
         host = faker.internet.domainName(),
-    ) {
+    ): Promise<[Account, Site]> {
         let _site: Site;
         let _account: Account;
 
@@ -54,10 +54,7 @@ export class FixtureManager {
             _account = accountByApId;
         }
 
-        return {
-            site: _site,
-            account: _account,
-        };
+        return [_account, _site];
     }
 
     async createPost(
