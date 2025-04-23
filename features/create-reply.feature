@@ -52,3 +52,19 @@ Feature: Creating a reply
       """
     Then Activity "Reply" is sent to "Alice"
     And Activity "Reply" is sent to "Bob"
+
+  Scenario: Creating a reply with an image URL
+    When we reply "Reply" to "Article" with imageUrl "http://localhost:4443/image.jpg" and content
+      """
+      This is a great article!
+      """
+    Then "Reply" is in our Outbox
+    And "Reply" has the content "<p>This is a great article!</p>"
+    And note "Reply" has the image URL "http://localhost:4443/image.jpg"
+
+  Scenario: Creating a reply with an invalid image URL
+    When we reply "Reply" to "Article" with imageUrl "not-a-url" and content
+      """
+      This is a great article!
+      """
+    Then the request is rejected with a 400

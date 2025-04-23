@@ -46,3 +46,19 @@ Feature: Creating a note
       Hello, world!
       """
     Then Activity "Note" is sent to all followers
+
+  Scenario: Creating a note with an image URL
+    When we create a note "Note" with imageUrl "http://localhost:4443/image.jpg" and content
+      """
+      Hello, world!
+      """
+    Then "Note" is in our Outbox
+    And "Note" has the content "<p>Hello, world!</p>"
+    And note "Note" has the image URL "http://localhost:4443/image.jpg"
+
+  Scenario: Creating a note with an invalid image URL
+    When we create a note "Note" with imageUrl "not-a-url" and content
+      """
+      Hello, world!
+      """
+    Then the request is rejected with a 400

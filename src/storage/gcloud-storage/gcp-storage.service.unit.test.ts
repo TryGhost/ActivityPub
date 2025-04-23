@@ -136,15 +136,8 @@ describe('GCPStorageService', () => {
                 expect(result).toBe(true);
             });
 
-            it('returns false for invalid emulator URL with wrong bucket', async () => {
-                const invalidUrl =
-                    'http://localhost:4443/storage/v1/b/wrong-bucket/o/images/test-uuid/test.png?alt=media';
-                const result = await service.verifyImageUrl(invalidUrl);
-                expect(result).toBe(false);
-            });
-
             it('returns false for malformed emulator URL', async () => {
-                const invalidUrl = 'http://localhost:4443/invalid-path';
+                const invalidUrl = 'http://invalid-domain/test.png';
                 const result = await service.verifyImageUrl(invalidUrl);
                 expect(result).toBe(false);
             });

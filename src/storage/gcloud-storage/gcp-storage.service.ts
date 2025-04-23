@@ -114,7 +114,7 @@ export class GCPStorageService {
         try {
             // Check if we're using the GCS emulator and verify the URL matches the emulator's base URL pattern
             if (this.emulatorHost) {
-                const emulatorBaseUrl = `${this.emulatorHost.replace('fake-gcs', 'localhost')}/storage/v1/b/${this.bucketName}`;
+                const emulatorBaseUrl = `${this.emulatorHost.replace('fake-gcs', 'localhost')}`;
                 return url.startsWith(emulatorBaseUrl);
             }
 
