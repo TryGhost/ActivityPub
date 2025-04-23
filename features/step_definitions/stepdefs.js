@@ -1519,6 +1519,10 @@ Then('the request is rejected', function () {
 });
 
 Then('the request is rejected with a {int}', function (statusCode) {
+    assert(
+        statusCode < 500,
+        `Expected to check for a client error, got a server error ${statusCode}`,
+    );
     assert(!this.response.ok);
     assert.equal(this.response.status, statusCode);
 });

@@ -116,6 +116,7 @@ import {
 } from './http/api';
 import { AccountFollowsView } from './http/api/views/account.follows.view';
 import { AccountPostsView } from './http/api/views/account.posts.view';
+import { AccountView } from './http/api/views/account.view';
 import { createWebFingerHandler } from './http/handler/webfinger';
 import { spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
@@ -287,6 +288,7 @@ const postService = new PostService(
     fedifyContextFactory,
 );
 
+const accountView = new AccountView(client, fedifyContextFactory);
 const accountFollowsView = new AccountFollowsView(client, fedifyContextFactory);
 const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
@@ -1002,9 +1004,7 @@ app.get(
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createGetAccountHandler(accountService, accountRepository, fedify),
-    ),
+    spanWrapper(createGetAccountHandler(accountView, accountRepository)),
 );
 app.put(
     '/.ghost/activitypub/account',

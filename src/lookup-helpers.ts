@@ -72,7 +72,11 @@ export async function lookupAPIdByHandle(
         // Format the resource string as acct:username@domain
         const resource = `acct:${cleanHandle}`;
 
-        const webfingerData = await lookupWebFinger(resource);
+        const webfingerData = await lookupWebFinger(resource, {
+            allowPrivateAddress:
+                process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+                ['development', 'testing'].includes(process.env.NODE_ENV || ''),
+        });
 
         if (!webfingerData?.links) {
             ctx.data.logger.info('No links found in WebFinger response');

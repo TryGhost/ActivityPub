@@ -1,17 +1,12 @@
-import type { Federation } from '@fedify/fedify';
-import type { Account, PersistedAccount } from 'account/account.entity';
+import type { PersistedAccount } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { AppContext, ContextData } from 'app';
+import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupAPIdByHandle } from 'lookup-helpers';
 import { z } from 'zod';
-import {
-    getAccountDTOByHandle,
-    getAccountDTOFromAccount,
-} from './helpers/account';
 import type { AccountDTO } from './types';
 import type {
     AccountFollows,
@@ -21,6 +16,8 @@ import type {
     AccountPosts,
     AccountPostsView,
 } from './views/account.posts.view';
+import type { AccountView } from './views/account.view';
+
 /**
  * Default number of posts to return in a profile
  */
@@ -32,14 +29,16 @@ const DEFAULT_POSTS_LIMIT = 20;
 const MAX_POSTS_LIMIT = 100;
 
 /**
+ * Keyword to indicate a request is for the current user
+ */
+const CURRENT_USER_KEYWORD = 'me';
+
+/**
  * Create a handler to handle a request for an account
- *
- * @param accountService Account service instance
  */
 export function createGetAccountHandler(
-    accountService: AccountService,
+    accountView: AccountView,
     accountRepository: KnexAccountRepository,
-    fedify: Federation<ContextData>,
 ) {
     /**
      * Handle a request for an account
@@ -47,62 +46,35 @@ export function createGetAccountHandler(
      * @param ctx App context
      */
     return async function handleGetAccount(ctx: AppContext) {
-        const logger = ctx.get('logger');
-        const site = ctx.get('site');
-        let account: Account | null = null;
-        const db = ctx.get('db');
+        const handle = ctx.req.param('handle');
 
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db,
-            globaldb: ctx.get('globaldb'),
-            logger,
-        });
+        if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
+            return new Response(null, { status: 404 });
+        }
 
-        const defaultAccount = await accountRepository.getBySite(
+        const siteDefaultAccount = await accountRepository.getBySite(
             ctx.get('site'),
         );
 
-        const handle = ctx.req.param('handle');
-        // We are using the keyword 'me', if we want to get the account of teh current user
-        if (handle === 'me') {
-            account = defaultAccount;
+        let accountDto: AccountDTO | null = null;
+
+        const viewContext = {
+            requestUserAccount: siteDefaultAccount,
+        };
+
+        if (handle === CURRENT_USER_KEYWORD) {
+            accountDto = await accountView.viewById(
+                siteDefaultAccount.id!,
+                viewContext,
+            );
         } else {
-            if (!isHandle(handle)) {
-                return new Response(null, { status: 404 });
-            }
-
-            const apId = await lookupAPIdByHandle(apCtx, handle);
-            if (apId) {
-                account = await accountRepository.getByApId(new URL(apId));
-            }
+            accountDto = await accountView.viewByHandle(handle, viewContext);
         }
 
-        let accountDto: AccountDTO;
-
-        try {
-            //If we found the account in our db and it's an internal account, do an internal lookup
-            if (account?.isInternal) {
-                accountDto = await getAccountDTOFromAccount(
-                    account,
-                    defaultAccount,
-                    accountService,
-                );
-            } else {
-                //Otherwise, do a remote lookup to fetch the updated data
-                accountDto = await getAccountDTOByHandle(
-                    handle,
-                    apCtx,
-                    site,
-                    accountService,
-                );
-            }
-        } catch (error) {
-            logger.error('Error getting account: {error}', { error });
-
-            return new Response(null, { status: 500 });
+        if (accountDto === null) {
+            return new Response(null, { status: 404 });
         }
 
-        // Return response
         return new Response(JSON.stringify(accountDto), {
             headers: {
                 'Content-Type': 'application/json',
