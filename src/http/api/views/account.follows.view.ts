@@ -196,7 +196,7 @@ export class AccountFollowsView {
                 }
 
                 const followeeAccount = await this.db('accounts')
-                    .where('ap_id', actor.id?.toString() || '')
+                    .where('ap_id', followsActorObj.id?.toString() || '')
                     .first();
 
                 const followsActor = (await followsActorObj.toJsonLd({
