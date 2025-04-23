@@ -134,10 +134,7 @@ export function createGetAccountFollowsHandler(
                 return new Response(null, { status: 400 });
             }
 
-            const account = await accountRepository.getByApId(new URL(apId));
-            if (!account) {
-                return new Response(null, { status: 400 });
-            }
+            const account = await accountRepository.getByApId(new URL(apId)) as PersistedAccount;
 
             accountFollows = await accountFollowsView.getFollowsByHandle(
                 handle,
