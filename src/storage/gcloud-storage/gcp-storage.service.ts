@@ -122,6 +122,7 @@ export class GCPStorageService {
         url: URL,
     ): Promise<Result<boolean, ImageVerificationError>> {
         try {
+            this.logger.info(`Testing GCP: ${url.href}`);
             // Check if we're using the GCS emulator and verify the URL matches the emulator's base URL pattern
             if (this.emulatorHost) {
                 const emulatorUrl = new URL(
@@ -133,25 +134,36 @@ export class GCPStorageService {
                 return ok(true);
             }
 
+            this.logger.info(`Testing GCP: url host : ${url.host}`);
+
             // Verify if the URL matches the standard Google Cloud Storage public URL pattern for our bucket
             if (url.host !== 'storage.googleapis.com') {
+                this.logger.error(`Testing GCP: invalid-url : ${url.host}`);
                 return error('invalid-url');
             }
 
             // Extract the file path from the URL by removing the bucket prefix
             let filePath = url.pathname.split(`/${this.bucketName}/`)[1];
             if (!filePath) {
+                this.logger.error(`Testing GCP: invalid-file-path : ${url.host}`);
                 return error('invalid-file-path');
             }
+
+            this.logger.info(`Testing GCP: got file path: ${filePath}`);
 
             // URL-decode the filePath to handle any special characters
             filePath = decodeURIComponent(filePath);
 
+            this.logger.info(`Testing GCP: got file path 2: ${filePath}`);
+
             // Verify that the file actually exists in our bucket
             const [exists] = await this.bucket.file(filePath).exists();
             if (!exists) {
+                this.logger.error(`Testing GCP: file-not-found : ${exists}`);
                 return error('file-not-found');
             }
+
+            this.logger.info('Testing GCP: All good');
 
             return ok(true);
         } catch (err) {

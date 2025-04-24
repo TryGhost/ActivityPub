@@ -195,6 +195,7 @@ const gcpStorageService = new GCPStorageService(logging);
 
 try {
     logging.info('Initialising GCP storage service');
+    logging.info('New Deployment');
     await gcpStorageService.init();
     logging.info('GCP storage service initialised');
 } catch (err) {
