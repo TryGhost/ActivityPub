@@ -5,6 +5,7 @@ import {
     Create,
     Note as FedifyNote,
     type Object as FedifyObject,
+    Image,
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
@@ -142,6 +143,13 @@ export class FedifyPublishingService implements PublishingService {
             content: note.content,
             summary: null,
             published: Temporal.Now.instant(),
+            attachments: note.imageUrl
+                ? [
+                      new Image({
+                          url: note.imageUrl,
+                      }),
+                  ]
+                : undefined,
             to: to,
             ccs: cc,
         });

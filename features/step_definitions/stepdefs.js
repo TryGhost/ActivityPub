@@ -1756,6 +1756,32 @@ When(
 );
 
 When(
+    'we create a note {string} with imageUrl {string} and content',
+    async function (noteName, imageUrl, noteContent) {
+        this.response = await fetchActivityPub(
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: noteContent,
+                    imageUrl: imageUrl,
+                }),
+            },
+        );
+
+        if (this.response.ok) {
+            const activity = await this.response.clone().json();
+
+            this.activities[noteName] = activity;
+            this.objects[noteName] = activity.object;
+        }
+    },
+);
+
+When(
     'we attempt to reply to {string} with no content',
     async function (objectName) {
         const object = this.objects[objectName];
@@ -1837,11 +1863,48 @@ When(
     },
 );
 
+When(
+    'we reply {string} to {string} with imageUrl {string} and content',
+    async function (replyName, objectName, imageUrl, replyContent) {
+        const object = this.objects[objectName];
+
+        this.response = await fetchActivityPub(
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: replyContent,
+                    imageUrl: imageUrl,
+                }),
+            },
+        );
+
+        if (this.response.ok) {
+            const activity = await this.response.clone().json();
+
+            this.activities[replyName] = activity;
+            this.objects[replyName] = activity.object;
+        }
+    },
+);
+
 Then('{string} has the content {string}', function (activityName, content) {
     const activity = this.activities[activityName];
 
     assert.equal(activity.object.content, content);
 });
+
+Then(
+    'note {string} has the image URL {string}',
+    function (activityName, expectedImageUrl) {
+        const activity = this.activities[activityName];
+        assert.equal(activity.object.attachment.url, expectedImageUrl);
+        assert.equal(activity.object.attachment.type, 'Image');
+    },
+);
 
 Given('{string} has Object {string}', function (activityName, objectName) {
     const activity = this.activities[activityName];

@@ -103,4 +103,8 @@ export interface Note {
      * The AP ID of the post
      */
     apId?: URL;
+    /**
+     * The image URL if an image is attached with the note
+     */
+    imageUrl?: URL | null;
 }

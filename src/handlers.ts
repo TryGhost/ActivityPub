@@ -4,6 +4,7 @@ import {
     Announce,
     Create,
     Follow,
+    Image,
     Like,
     Mention,
     Note,
@@ -18,6 +19,7 @@ import z from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
+import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import type { KnexAccountRepository } from './account/account.repository.knex';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
@@ -293,12 +295,14 @@ export function createLikeAction(
 
 const ReplyActionSchema = z.object({
     content: z.string(),
+    imageUrl: z.string().url().optional(),
 });
 
 export function createReplyActionHandler(
     accountRepository: KnexAccountRepository,
     postService: PostService,
     postRepository: KnexPostRepository,
+    storageService: GCPStorageService,
 ) {
     return async function replyAction(
         ctx: Context<{ Variables: HonoContextVariables }>,
@@ -312,6 +316,17 @@ export function createReplyActionHandler(
             data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
         } catch (err) {
             return new Response(JSON.stringify(err), { status: 400 });
+        }
+
+        // Verify image URL if provided
+        if (data.imageUrl) {
+            const isValid = await storageService.verifyImageUrl(data.imageUrl);
+            if (!isValid) {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid image URL' }),
+                    { status: 400 },
+                );
+            }
         }
 
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
@@ -419,7 +434,12 @@ export function createReplyActionHandler(
 
         const parentPost = getValue(parentPostResult);
 
-        const newReply = Post.createReply(account, data.content, parentPost);
+        const newReply = Post.createReply(
+            account,
+            data.content,
+            parentPost,
+            data.imageUrl ? new URL(data.imageUrl) : undefined,
+        );
 
         await postRepository.save(newReply);
 
@@ -428,6 +448,13 @@ export function createReplyActionHandler(
             attribution: actor,
             replyTarget: objectToReplyTo,
             content: newReply.content,
+            attachments: newReply.imageUrl
+                ? [
+                      new Image({
+                          url: newReply.imageUrl,
+                      }),
+                  ]
+                : undefined,
             summary: null,
             published: Temporal.Now.instant(),
             contexts: [conversation],
