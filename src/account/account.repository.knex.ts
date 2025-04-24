@@ -24,8 +24,12 @@ export class KnexAccountRepository {
                 name: account.name,
                 bio: account.bio,
                 username: account.username,
-                avatar_url: account.avatarUrl?.href,
-                banner_image_url: account.bannerImageUrl?.href,
+                avatar_url:
+                    account.avatarUrl == null ? null : account.avatarUrl?.href,
+                banner_image_url:
+                    account.bannerImageUrl == null
+                        ? null
+                        : account.bannerImageUrl?.href,
             })
             .where({ id: account.id });
 
