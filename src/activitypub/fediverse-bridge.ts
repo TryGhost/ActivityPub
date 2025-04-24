@@ -18,6 +18,7 @@ import type { FedifyContextFactory } from './fedify-context.factory';
 import type { AccountService } from 'account/account.service';
 import { AccountUpdatedEvent } from 'account/account-updated.event';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { addToList } from 'kv-helpers';
 
 export class FediverseBridge {
     constructor(
@@ -96,6 +97,15 @@ export class FediverseBridge {
             [createActivity.id!.href],
             await createActivity.toJsonLd(),
         );
+
+        await ctx.data.globaldb.set(
+            [fedifyObject?.id!.href || ''],
+            await fedifyObject?.toJsonLd(),
+        );
+
+        await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
+
+        console.log('################## Sending activity: ', createActivity);
 
         await ctx.sendActivity(
             {
