@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import assert from 'node:assert';
 import { AsyncEvents } from 'core/events';
@@ -14,9 +14,46 @@ import { Account } from './account.entity';
 
 describe('KnexAccountRepository', () => {
     let client: Knex;
+    let events: AsyncEvents;
+    let accountRepository: KnexAccountRepository;
+    let fedifyContextFactory: FedifyContextFactory;
+    let accountService: AccountService;
+    let siteService: SiteService;
+
     beforeAll(async () => {
         client = await createTestDb();
     });
+
+    beforeEach(async () => {
+        await client.raw('SET FOREIGN_KEY_CHECKS = 0');
+        await client('accounts').truncate();
+        await client('users').truncate();
+        await client('sites').truncate();
+        await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+
+        events = new AsyncEvents();
+        accountRepository = new KnexAccountRepository(client, events);
+        fedifyContextFactory = new FedifyContextFactory();
+        accountService = new AccountService(
+            client,
+            events,
+            accountRepository,
+            fedifyContextFactory,
+            generateTestCryptoKeyPair,
+        );
+        siteService = new SiteService(client, accountService, {
+            async getSiteSettings(host: string) {
+                return {
+                    site: {
+                        title: 'Test Site',
+                        description: 'A fake site used for testing',
+                        icon: 'https://testing.com/favicon.ico',
+                    },
+                };
+            },
+        });
+    });
+
     const getSiteDefaultAccount = async (siteId: number) => {
         return await client('accounts')
             .innerJoin('users', 'accounts.id', 'users.account_id')
@@ -32,29 +69,8 @@ describe('KnexAccountRepository', () => {
 
         assert(account.uuid === null, 'Account should not have a uuid');
     };
-    it('Can get by site', async () => {
-        const events = new AsyncEvents();
-        const accountRepository = new KnexAccountRepository(client, events);
-        const fedifyContextFactory = new FedifyContextFactory();
-        const accountService = new AccountService(
-            client,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-            generateTestCryptoKeyPair,
-        );
-        const siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
-                return {
-                    site: {
-                        title: 'Test Site',
-                        description: 'A fake site used for testing',
-                        icon: 'https://testing.com/favicon.ico',
-                    },
-                };
-            },
-        });
 
+    it('Can get by site', async () => {
         const site = await siteService.initialiseSiteForHost('testing.com');
 
         const account = await accountRepository.getBySite(site);
@@ -64,29 +80,8 @@ describe('KnexAccountRepository', () => {
             'An Account should have been fetched',
         );
     });
-    it('Ensures an account has a uuid when retrieved for a site', async () => {
-        const events = new AsyncEvents();
-        const accountRepository = new KnexAccountRepository(client, events);
-        const fedifyContextFactory = new FedifyContextFactory();
-        const accountService = new AccountService(
-            client,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-            generateTestCryptoKeyPair,
-        );
-        const siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
-                return {
-                    site: {
-                        title: 'Test Site',
-                        description: 'A fake site used for testing',
-                        icon: 'https://testing.com/favicon.ico',
-                    },
-                };
-            },
-        });
 
+    it('Ensures an account has a uuid when retrieved for a site', async () => {
         const site = await siteService.initialiseSiteForHost('testing.com');
 
         const siteDefaultAccount = await getSiteDefaultAccount(site.id);
@@ -101,29 +96,8 @@ describe('KnexAccountRepository', () => {
 
         assert(account.uuid !== null, 'Account should have a uuid');
     });
-    it('Can get by apId', async () => {
-        const events = new AsyncEvents();
-        const accountRepository = new KnexAccountRepository(client, events);
-        const fedifyContextFactory = new FedifyContextFactory();
-        const accountService = new AccountService(
-            client,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-            generateTestCryptoKeyPair,
-        );
-        const siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
-                return {
-                    site: {
-                        title: 'Test Site',
-                        description: 'A fake site used for testing',
-                        icon: 'https://testing.com/favicon.ico',
-                    },
-                };
-            },
-        });
 
+    it('Can get by apId', async () => {
         const site = await siteService.initialiseSiteForHost('testing.com');
 
         const account = await accountRepository.getBySite(site);
@@ -139,28 +113,8 @@ describe('KnexAccountRepository', () => {
 
         assert(result);
     });
-    it('Ensures an account has a uuid when retrieved by apId', async () => {
-        const events = new AsyncEvents();
-        const accountRepository = new KnexAccountRepository(client, events);
-        const fedifyContextFactory = new FedifyContextFactory();
-        const accountService = new AccountService(
-            client,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-        );
-        const siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
-                return {
-                    site: {
-                        title: 'Test Site',
-                        description: 'A fake site used for testing',
-                        icon: 'https://testing.com/favicon.ico',
-                    },
-                };
-            },
-        });
 
+    it('Ensures an account has a uuid when retrieved by apId', async () => {
         const site = await siteService.initialiseSiteForHost('testing.com');
 
         const siteDefaultAccount = await getSiteDefaultAccount(site.id);
@@ -186,9 +140,9 @@ describe('KnexAccountRepository', () => {
 
     it('emits AccountUpdatedEvent when an account is saved', async () => {
         // Setup
-        const events = new AsyncEvents();
-        const accountRepository = new KnexAccountRepository(client, events);
         const emitSpy = vi.spyOn(events, 'emitAsync');
+
+        await siteService.initialiseSiteForHost('testing.com');
 
         // Get an account from the DB to update
         const account = await client('accounts').select('*').first();
@@ -237,5 +191,59 @@ describe('KnexAccountRepository', () => {
 
         expect(updatedAccount.name).toBe('Updated Name');
         expect(updatedAccount.bio).toBe('Updated Bio');
+    });
+
+    it('handles saving a new account when avatarUrl or bannerImageUrl with null values', async () => {
+        // Setup
+        await siteService.initialiseSiteForHost('testing.com');
+
+        // Get an account from the DB to update
+        const account = await client('accounts').select('*').first();
+
+        if (!account) {
+            throw new Error('No account found for test');
+        }
+
+        // Create an Account entity
+        const accountEntity = new Account(
+            account.id,
+            account.uuid || 'test-uuid',
+            account.username,
+            account.name,
+            account.bio,
+            account.avatar_url ? new URL(account.avatar_url) : null,
+            account.banner_image_url ? new URL(account.banner_image_url) : null,
+            null, // site
+            account.ap_id ? new URL(account.ap_id) : null,
+            account.url ? new URL(account.url) : null,
+            account.ap_followers_url ? new URL(account.ap_followers_url) : null,
+        );
+
+        // Ensure it has an avatarUrl and bannerImageUrl set
+        accountEntity.updateProfile({
+            avatarUrl: new URL('https://example.com/avatar.png'),
+            bannerImageUrl: new URL('https://example.com/banner.png'),
+        });
+
+        await accountRepository.save(accountEntity);
+
+        // Act
+
+        accountEntity.updateProfile({
+            avatarUrl: null,
+            bannerImageUrl: null,
+        });
+
+        await accountRepository.save(accountEntity);
+
+        // Assert
+
+        // Verify the database was updated
+        const updatedAccount = await client('accounts')
+            .where({ id: account.id })
+            .first();
+
+        expect(updatedAccount.avatar_url).toBe(null);
+        expect(updatedAccount.banner_image_url).toBe(null);
     });
 });
