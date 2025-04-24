@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AppContext } from 'app';
+import { exhaustiveCheck, getError, isError } from 'core/result';
 import { Post } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import { publishNote } from 'publishing/helpers';
@@ -30,12 +31,34 @@ export async function handleCreateNote(
 
     // Verify image URL if provided
     if (data.imageUrl) {
-        const isValid = await storageService.verifyImageUrl(data.imageUrl);
-        if (!isValid) {
-            return new Response(
-                JSON.stringify({ error: 'Invalid image URL' }),
-                { status: 400 },
-            );
+        const result = await storageService.verifyImageUrl(
+            new URL(data.imageUrl),
+        );
+        if (isError(result)) {
+            const error = getError(result);
+            let errorMessage = 'Error verifying image URL';
+            switch (error) {
+                case 'invalid-url':
+                    errorMessage = 'Invalid image URL format';
+                    break;
+                case 'invalid-file-path':
+                    errorMessage = 'Invalid image file path';
+                    break;
+                case 'file-not-found':
+                    errorMessage = 'Image not found in storage';
+                    break;
+                case 'gcs-error':
+                    ctx.get('logger').error('GCS error verifying image URL', {
+                        url: data.imageUrl,
+                    });
+                    break;
+                default:
+                    return exhaustiveCheck(error);
+            }
+
+            return new Response(JSON.stringify({ error: errorMessage }), {
+                status: 400,
+            });
         }
     }
 
