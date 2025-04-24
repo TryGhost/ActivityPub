@@ -1,5 +1,5 @@
 import { CollectionPage, isActor, lookupObject } from '@fedify/fedify';
-import type { Account, PersistedAccount } from 'account/account.entity';
+import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, ok } from 'core/result';
@@ -47,12 +47,8 @@ export class AccountFollowsView {
         account: Account,
         type: string,
         next: number,
-        siteDefaultAccount: PersistedAccount,
+        siteDefaultAccount: Account,
     ): Promise<AccountFollows> {
-        if (!account.id) {
-            throw new Error('Account not found');
-        }
-
         const getAccounts =
             type === 'following'
                 ? this.getFollowingAccounts.bind(this)
@@ -98,7 +94,7 @@ export class AccountFollowsView {
         apId: URL,
         next: string,
         type: string,
-        siteDefaultAccount: PersistedAccount,
+        siteDefaultAccount: Account,
     ): Promise<Result<AccountFollows, GetFollowsError>> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 

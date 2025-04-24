@@ -1,5 +1,5 @@
 import { type Actor, isActor, lookupObject } from '@fedify/fedify';
-import type { Account, PersistedAccount } from 'account/account.entity';
+import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import type {
@@ -42,7 +42,7 @@ describe('AccountFollowsView', () => {
     let internalAccountData: InternalAccountData;
     let db: Knex;
     let defaultAccount: AccountType;
-    let siteDefaultAccount: PersistedAccount | null;
+    let siteDefaultAccount: Account | null;
     let account: AccountType;
     let accountEntity: Account | null;
     let fedifyContextFactory: FedifyContextFactory;
@@ -134,9 +134,9 @@ describe('AccountFollowsView', () => {
             ...internalAccountData,
             username: 'default',
         });
-        siteDefaultAccount = (await accountRepository.getByApId(
+        siteDefaultAccount = await accountRepository.getByApId(
             new URL(defaultAccount.ap_id),
-        )) as PersistedAccount;
+        );
     });
 
     describe('getFollowsByAccount', () => {

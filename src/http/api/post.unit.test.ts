@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Account } from 'account/account.entity';
+import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import { error, ok } from 'core/result';
@@ -11,7 +11,7 @@ import { createGetPostHandler } from './post';
 
 describe('Post API', () => {
     let site: Site;
-    let account: Account;
+    let account: AccountEntity;
     let postService: PostService;
     let accountService: AccountService;
 
@@ -73,18 +73,19 @@ describe('Post API', () => {
             host: 'example.com',
             webhook_secret: 'secret',
         };
-        account = Account.createFromData({
-            id: 456,
-            uuid: 'f4ec91bd-56b7-406f-a174-91495df6e6c',
+        const draft = AccountEntity.draft({
+            isInternal: true,
+            host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
-            bio: 'Just a foo bar',
-            avatarUrl: new URL(`https://${site.host}/avatars/foobar.png`),
-            bannerImageUrl: new URL(`https://${site.host}/banners/foobar.png`),
-            site,
-            apId: new URL(`https://${site.host}/users/456`),
-            url: new URL(`https://${site.host}/users/456`),
-            apFollowers: new URL(`https://${site.host}/followers/456`),
+            bio: 'Just a foobar',
+            url: null,
+            avatarUrl: new URL('http://example.com/avatar/foobar.png'),
+            bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
+        });
+        account = AccountEntity.create({
+            id: 456,
+            ...draft,
         });
         postService = {
             getByApId: vi.fn().mockResolvedValue(error('not-a-post')),

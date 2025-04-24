@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
-import { Account } from 'account/account.entity';
+import { AccountEntity } from 'account/account.entity';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
@@ -17,7 +17,7 @@ describe('FeedUpdateService', () => {
     let feedService: FeedService;
     let feedUpdateService: FeedUpdateService;
 
-    let account: Account;
+    let account: AccountEntity;
 
     beforeEach(() => {
         vi.useFakeTimers();
@@ -29,23 +29,20 @@ describe('FeedUpdateService', () => {
             removeBlockedAccountPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
-        const site = {
-            id: 123,
-            host: 'example.com',
-            webhook_secret: 'secret',
-        };
-        account = Account.createFromData({
-            id: 456,
-            uuid: '9ea8fcd3-ec80-4b97-b95c-e3d227ccbd01',
+        const draft = AccountEntity.draft({
+            isInternal: true,
+            host: new URL('https://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
             bio: 'Just a foo bar',
             avatarUrl: new URL('https://example.com/avatars/foobar.png'),
             bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
-            site,
-            apId: new URL('https://example.com/users/456'),
             url: new URL('https://example.com/users/456'),
-            apFollowers: new URL('https://example.com/followers/456'),
+        });
+
+        account = AccountEntity.create({
+            id: 456,
+            ...draft,
         });
 
         feedUpdateService = new FeedUpdateService(events, feedService);
@@ -184,9 +181,9 @@ describe('FeedUpdateService', () => {
 
     describe('handling a blocked account', () => {
         it('should remove blocked account posts from feeds', () => {
-            const blockedAccount = Account.createFromData({
-                id: 789,
-                uuid: '0b3bf092-fff9-4621-9fad-47856e2f045e',
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('https://example.com'),
                 username: 'bazqux',
                 name: 'Baz Qux',
                 bio: 'Just a baz qux',
@@ -194,14 +191,12 @@ describe('FeedUpdateService', () => {
                 bannerImageUrl: new URL(
                     'https://blocked.com/banners/bazqux.png',
                 ),
-                site: {
-                    id: 987,
-                    host: 'blocked.com',
-                    webhook_secret: 'secret',
-                },
-                apId: new URL('https://blocked.com/users/123'),
-                url: new URL('https://blocked.com/users/123'),
-                apFollowers: new URL('https://blocked.com/followers/123'),
+                url: new URL('https://blocked.com/users/789'),
+            });
+
+            const blockedAccount = AccountEntity.create({
+                id: 789,
+                ...draft,
             });
 
             events.emit(

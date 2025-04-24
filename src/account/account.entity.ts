@@ -1,161 +1,91 @@
 import { randomUUID } from 'node:crypto';
-import { BaseEntity } from '../core/base.entity';
 import { type CreatePostType, PostType } from '../post/post.entity';
-import type { Site } from '../site/site.service';
 
-export type PersistedAccount = Account & { id: number };
+export interface Account {
+    readonly id: number;
+    readonly uuid: string;
+    readonly username: string;
+    readonly name: string | null;
+    readonly bio: string | null;
+    readonly url: URL;
+    readonly avatarUrl: URL | null;
+    readonly bannerImageUrl: URL | null;
+    readonly apId: URL;
+    readonly apFollowers: URL | null;
+    readonly isInternal: boolean;
+    /**
+     * Returns a new Account instance which needs to be saved.
+     */
+    updateProfile(params: ProfileUpdateParams): Account;
+    /**
+     * @deprecated
+     */
+    getApIdForPost(post: { type: CreatePostType; uuid: string }): URL;
+}
 
-export interface AccountData {
-    id: number;
-    uuid: string | null;
+export interface AccountDraft {
+    uuid: string;
     username: string;
     name: string | null;
     bio: string | null;
+    url: URL;
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
-    site: Site | null;
-    apId: URL | null;
-    url: URL | null;
+    apId: URL;
     apFollowers: URL | null;
+    isInternal: boolean;
 }
 
-export type AccountSite = {
-    id: number;
-    host: string;
-};
-
-export interface ProfileUpdateParams {
-    name?: string | null;
-    bio?: string | null;
-    username?: string;
-    avatarUrl?: URL | null;
-    bannerImageUrl?: URL | null;
-}
-
-export class Account extends BaseEntity {
-    public readonly uuid: string;
-    public readonly url: URL;
-    public readonly apId: URL;
-    public readonly apFollowers: URL;
-
-    private _name: string | null;
-    private _bio: string | null;
-    private _username: string;
-    private _avatarUrl: URL | null;
-    private _bannerImageUrl: URL | null;
-
+export class AccountEntity implements Account {
     constructor(
-        public readonly id: number | null,
-        uuid: string | null,
-        username: string,
-        name: string | null,
-        bio: string | null,
-        avatarUrl: URL | null,
-        bannerImageUrl: URL | null,
-        private readonly site: AccountSite | null,
-        apId: URL | null,
-        url: URL | null,
-        apFollowers: URL | null,
-    ) {
-        super(id);
+        public readonly id: number,
+        public readonly uuid: string,
+        public readonly username: string,
+        public readonly name: string | null,
+        public readonly bio: string | null,
+        public readonly url: URL,
+        public readonly avatarUrl: URL | null,
+        public readonly bannerImageUrl: URL | null,
+        public readonly apId: URL,
+        public readonly apFollowers: URL | null,
+        public readonly isInternal: boolean,
+    ) {}
 
-        this._name = name;
-        this._bio = bio;
-        this._username = username;
-        this._avatarUrl = avatarUrl;
-        this._bannerImageUrl = bannerImageUrl;
-
-        if (uuid === null) {
-            this.uuid = randomUUID();
-        } else {
-            this.uuid = uuid;
-        }
-        if (apId === null) {
-            this.apId = this.getApId();
-        } else {
-            this.apId = apId;
-        }
-        if (apFollowers === null) {
-            this.apFollowers = this.getApFollowers();
-        } else {
-            this.apFollowers = apFollowers;
-        }
-        if (url === null) {
-            this.url = this.apId;
-        } else {
-            this.url = url;
-        }
-    }
-
-    get name(): string | null {
-        return this._name;
-    }
-
-    get bio(): string | null {
-        return this._bio;
-    }
-
-    get username(): string {
-        return this._username;
-    }
-
-    get avatarUrl(): URL | null {
-        return this._avatarUrl;
-    }
-
-    get bannerImageUrl(): URL | null {
-        return this._bannerImageUrl;
-    }
-
-    updateProfile(params: ProfileUpdateParams): void {
-        if (params.name !== undefined) {
-            this._name = params.name;
-        }
-
-        if (params.bio !== undefined) {
-            this._bio = params.bio;
-        }
-
-        if (params.username !== undefined) {
-            this._username = params.username;
-        }
-
-        if (params.avatarUrl !== undefined) {
-            this._avatarUrl = params.avatarUrl;
-        }
-
-        if (params.bannerImageUrl !== undefined) {
-            this._bannerImageUrl = params.bannerImageUrl;
-        }
-    }
-
-    get isInternal() {
-        return this.site !== null;
-    }
-
-    getApId() {
-        if (!this.isInternal) {
-            throw new Error('Cannot get AP ID for External Accounts');
-        }
-
-        return new URL(
-            '.ghost/activitypub/users/index',
-            `${Account.protocol}://${this.site!.host}`,
+    static create(data: Data<Account>) {
+        return new AccountEntity(
+            data.id,
+            data.uuid,
+            data.username,
+            data.name,
+            data.bio,
+            data.url,
+            data.avatarUrl,
+            data.bannerImageUrl,
+            data.apId,
+            data.apFollowers,
+            data.isInternal,
         );
     }
 
-    getApFollowers() {
-        if (!this.isInternal) {
-            throw new Error('Cannot get AP Followers for External Accounts');
-        }
-
-        return new URL(
-            '.ghost/activitypub/followers/index',
-            `${Account.protocol}://${this.site!.host}`,
-        );
+    static draft(from: AccountDraftData): AccountDraft {
+        const uuid = randomUUID();
+        const apId = !from.isInternal
+            ? from.apId
+            : new URL('/.ghost/activitypub/users/index', from.host);
+        const apFollowers = !from.isInternal
+            ? from.apFollowers
+            : new URL('/.ghost/activitypub/followers/index', from.host);
+        const url = from.url || apId;
+        return {
+            ...from,
+            uuid,
+            url,
+            apId,
+            apFollowers,
+        };
     }
 
-    getApIdForPost(post: { type: CreatePostType; uuid: string }) {
+    getApIdForPost(post: { type: CreatePostType; uuid: string }): URL {
         if (!this.isInternal) {
             throw new Error('Cannot get AP ID for External Accounts');
         }
@@ -174,28 +104,65 @@ export class Account extends BaseEntity {
             }
         }
 
-        return new URL(
-            `.ghost/activitypub/${type}/${post.uuid}`,
-            `${Account.protocol}://${this.site!.host}`,
-        );
+        return new URL(`/.ghost/activitypub/${type}/${post.uuid}`, this.apId);
     }
 
-    private static protocol: 'http' | 'https' =
-        process.env.NODE_ENV === 'testing' ? 'http' : 'https';
+    updateProfile(params: ProfileUpdateParams) {
+        type P = ProfileUpdateParams;
+        const get = <K extends keyof P>(prop: K): P[K] =>
+            params[prop] === undefined ? this[prop] : params[prop];
 
-    static createFromData(data: AccountData) {
-        return new Account(
-            data.id,
-            data.uuid,
-            data.username,
-            data.name,
-            data.bio,
-            data.avatarUrl,
-            data.bannerImageUrl,
-            data.site,
-            data.apId,
-            data.url,
-            data.apFollowers,
-        );
+        return AccountEntity.create({
+            ...this,
+            username: get('username'),
+            name: get('name'),
+            bio: get('bio'),
+            avatarUrl: get('avatarUrl'),
+            bannerImageUrl: get('bannerImageUrl'),
+        });
     }
 }
+
+type ProfileUpdateParams = {
+    name?: string | null;
+    bio?: string | null;
+    username?: string;
+    avatarUrl?: URL | null;
+    bannerImageUrl?: URL | null;
+};
+
+/**
+ * Internal accounts require a `host` so we can calculate the ActivityPub URLs
+ */
+type InternalAccountDraftData = {
+    isInternal: true;
+    host: URL;
+    username: string;
+    name: string;
+    bio: string | null;
+    url: URL | null;
+    avatarUrl: URL | null;
+    bannerImageUrl: URL | null;
+};
+
+/**
+ * External accounts require the ActivityPub URLs to be passed in
+ */
+type ExternalAccountDraftData = {
+    isInternal: false;
+    username: string;
+    name: string;
+    bio: string | null;
+    url: URL | null;
+    avatarUrl: URL | null;
+    bannerImageUrl: URL | null;
+    apId: URL;
+    apFollowers: URL | null;
+};
+
+type AccountDraftData = InternalAccountDraftData | ExternalAccountDraftData;
+
+type Data<T> = {
+    // biome-ignore lint/suspicious/noExplicitAny: These anys are internal and don't leak to our code
+    [K in keyof T as T[K] extends (...args: any[]) => any ? never : K]: T[K];
+};

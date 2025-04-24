@@ -1,28 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
-import { Account } from 'account/account.entity';
+import { AccountEntity } from 'account/account.entity';
 import { Post, PostType } from 'post/post.entity';
 import { postToDTO } from './post';
 
+function createAuthor() {
+    const draft = AccountEntity.draft({
+        isInternal: true,
+        host: new URL('http://foobar.com'),
+        username: 'foobar',
+        name: 'Foo Bar',
+        bio: 'Just a foobar',
+        url: null,
+        avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
+        bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+    });
+
+    return AccountEntity.create({
+        id: 123,
+        ...draft,
+    });
+}
+
 describe('postToPostDTO', () => {
     it('Should use apIds as the id', () => {
-        const author = new Account(
-            123,
-            null,
-            'foobar',
-            'Foo Bar',
-            'Just a foobar',
-            new URL('https://foobar.com/avatar/foobar.png'),
-            new URL('https://foobar.com/banner/foobar.png'),
-            {
-                id: 123,
-                host: 'foobar.com',
-            },
-            new URL('https://foobar.com/user/123'),
-            null,
-            new URL('https://foobar.com/followers/123'),
-        );
-
+        const author = createAuthor();
         const post = Post.createFromData(author, {
             type: PostType.Note,
             content: 'Hello, world!',
@@ -35,22 +37,7 @@ describe('postToPostDTO', () => {
     });
 
     it('Should default title, excerpt and content to empty strings', () => {
-        const author = new Account(
-            123,
-            null,
-            'foobar',
-            'Foo Bar',
-            'Just a foobar',
-            new URL('https://foobar.com/avatar/foobar.png'),
-            new URL('https://foobar.com/banner/foobar.png'),
-            {
-                id: 123,
-                host: 'foobar.com',
-            },
-            new URL('https://foobar.com/user/123'),
-            null,
-            new URL('https://foobar.com/followers/123'),
-        );
+        const author = createAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Note,
@@ -64,22 +51,7 @@ describe('postToPostDTO', () => {
     });
 
     it('should default to a metadata object with an empty ghostAuthors array', () => {
-        const author = new Account(
-            123,
-            null,
-            'foobar',
-            'Foo Bar',
-            'Just a foobar',
-            new URL('https://foobar.com/avatar/foobar.png'),
-            new URL('https://foobar.com/banner/foobar.png'),
-            {
-                id: 123,
-                host: 'foobar.com',
-            },
-            new URL('https://foobar.com/user/123'),
-            null,
-            new URL('https://foobar.com/followers/123'),
-        );
+        const author = createAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Note,

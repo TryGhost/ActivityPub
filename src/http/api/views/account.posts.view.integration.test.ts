@@ -1,4 +1,4 @@
-import type { PersistedAccount } from 'account/account.entity';
+import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import type {
@@ -26,9 +26,9 @@ describe('AccountPostsView', () => {
     let internalAccountData: InternalAccountData;
     let db: Knex;
     let defaultAccount: AccountType;
-    let siteDefaultAccount: PersistedAccount | null;
+    let siteDefaultAccount: Account | null;
     let account: AccountType;
-    let accountEntity: PersistedAccount | null;
+    let accountEntity: Account | null;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -81,17 +81,17 @@ describe('AccountPostsView', () => {
             name: 'Account To Check',
         });
 
-        accountEntity = (await accountRepository.getByApId(
+        accountEntity = await accountRepository.getByApId(
             new URL(account.ap_id),
-        )) as PersistedAccount;
+        );
 
         defaultAccount = await accountService.createInternalAccount(site, {
             ...internalAccountData,
             username: 'default',
         });
-        siteDefaultAccount = (await accountRepository.getByApId(
+        siteDefaultAccount = await accountRepository.getByApId(
             new URL(defaultAccount.ap_id),
-        )) as PersistedAccount;
+        );
     });
 
     describe('getPostsByHandle', () => {
