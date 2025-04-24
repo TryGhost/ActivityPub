@@ -131,6 +131,13 @@ export class FixtureManager {
         });
     }
 
+    async createFollow(follower: Account, following: Account) {
+        await this.db('follows').insert({
+            follower_id: follower.id,
+            following_id: following.id,
+        });
+    }
+
     async createNotification(
         userAccount: Account,
         fromAccount: Account,
@@ -154,6 +161,7 @@ export class FixtureManager {
 
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
+        await this.db('follows').truncate();
         await this.db('notifications').truncate();
         await this.db('blocks').truncate();
         await this.db('posts').truncate();

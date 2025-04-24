@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
+import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import type { Account } from '../account/account.entity';
@@ -28,6 +29,7 @@ describe('FeedService', () => {
     let accountService: AccountService;
     let siteService: SiteService;
     let postRepository: KnexPostRepository;
+    let moderationService: ModerationService;
     let client: Knex;
 
     beforeAll(async () => {
@@ -141,11 +143,12 @@ describe('FeedService', () => {
             },
         });
         postRepository = new KnexPostRepository(client, events);
+        moderationService = new ModerationService(client);
     });
 
     describe('getFeedData', () => {
         it('should get the posts for a users feed, and make sure the content is sanitised', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount = await createInternalAccount('foo.com');
@@ -189,7 +192,7 @@ describe('FeedService', () => {
         });
 
         it('should sort feed items by published_at', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             const userAccount =
                 await createInternalAccount('sort-test-user.com');
@@ -265,7 +268,7 @@ describe('FeedService', () => {
 
     describe('addPostToFeeds', () => {
         it('should add a post to the feeds of the users that should see it', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount =
@@ -373,7 +376,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should add reposted posts to the feeds of the users that should see it', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount = await createInternalAccount(
@@ -460,7 +463,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should not add replies to feeds', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount = await createInternalAccount(
@@ -517,7 +520,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should use repost timestamp as published_at when post is a reposted', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
             const originalPublishDate = new Date('2024-01-01T00:00:00Z');
             const repostDate = new Date('2024-02-01T00:00:00Z');
 
@@ -560,7 +563,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should use original published_at timestamp when post is not reposted', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
             const originalPublishDate = new Date('2024-01-01T00:00:00Z');
 
             // Create test account
@@ -592,7 +595,7 @@ describe('FeedService', () => {
 
     describe('removePostFromFeeds', () => {
         it('should remove a post from the feeds of the users that can already see it', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount =
@@ -660,7 +663,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should remove dereposted post from feeds', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise accounts
             const userAccount = await createInternalAccount(
@@ -714,7 +717,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should not affect other reposts when removing a specific derepost', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise accounts
             const userAccount =
@@ -778,7 +781,7 @@ describe('FeedService', () => {
 
     describe('removeBlockedAccountPostsFromFeed', () => {
         it('should remove posts from feeds when an account is blocked', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount = await createInternalAccount('user.com');
@@ -883,7 +886,7 @@ describe('FeedService', () => {
         }, 10000);
 
         it('should remove reposts from feeds when an account is blocked', async () => {
-            const feedService = new FeedService(client);
+            const feedService = new FeedService(client, moderationService);
 
             // Initialise an internal account for user
             const userAccount = await createInternalAccount('user.com');
