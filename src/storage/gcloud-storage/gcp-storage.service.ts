@@ -146,7 +146,9 @@ export class GCPStorageService {
             // Extract the file path from the URL by removing the bucket prefix
             let filePath = url.pathname.split(`/${this.bucketName}/`)[1];
             if (!filePath) {
-                this.logger.error(`Testing GCP: invalid-file-path : ${url.host}`);
+                this.logger.error(
+                    `Testing GCP: invalid-file-path : ${url.host}`,
+                );
                 return error('invalid-file-path');
             }
 
