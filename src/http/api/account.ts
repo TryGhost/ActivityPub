@@ -139,36 +139,45 @@ export function createGetAccountFollowsHandler(
 
             const account = await accountRepository.getByApId(new URL(apId));
 
-            const result = await accountFollowsView.getFollowsByApId(
-                new URL(apId),
-                account,
-                type,
-                next,
-                siteDefaultAccount,
-            );
-            if (isError(result)) {
-                const error = getError(result);
-                switch (error) {
-                    case 'invalid-next-parameter':
-                        logger.error('Invalid next parameter');
-                        return new Response(null, { status: 400 });
-                    case 'not-an-actor':
-                        logger.error(`Actor not found for ${handle}`);
-                        return new Response(null, { status: 404 });
-                    case 'error-getting-follows':
-                        logger.error(`Error getting follows for ${handle}`);
-                        return new Response(
-                            JSON.stringify({
-                                accounts: [],
-                                next: null,
-                            }),
-                            { status: 200 },
-                        );
-                    default:
-                        return exhaustiveCheck(error);
+            if (account?.isInternal) {
+                accountFollows = await accountFollowsView.getFollowsByAccount(
+                    account,
+                    type,
+                    Number.parseInt(next || '0'),
+                    siteDefaultAccount,
+                );
+            } else {
+                const result =
+                    await accountFollowsView.getFollowsByRemoteLookUp(
+                        new URL(apId),
+                        next || '',
+                        type,
+                        siteDefaultAccount,
+                    );
+                if (isError(result)) {
+                    const error = getError(result);
+                    switch (error) {
+                        case 'invalid-next-parameter':
+                            logger.error('Invalid next parameter');
+                            return new Response(null, { status: 400 });
+                        case 'not-an-actor':
+                            logger.error(`Actor not found for ${handle}`);
+                            return new Response(null, { status: 404 });
+                        case 'error-getting-follows':
+                            logger.error(`Error getting follows for ${handle}`);
+                            return new Response(
+                                JSON.stringify({
+                                    accounts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
+                        default:
+                            return exhaustiveCheck(error);
+                    }
                 }
+                accountFollows = getValue(result);
             }
-            accountFollows = getValue(result);
         }
 
         // Return response

@@ -139,7 +139,7 @@ describe('AccountFollowsView', () => {
         )) as PersistedAccount;
     });
 
-    describe('getFollows', () => {
+    describe('getFollowsByAccount', () => {
         it('should return following accounts with correct format', async () => {
             const following1 = await accountService.createInternalAccount(
                 site,
@@ -330,6 +330,207 @@ describe('AccountFollowsView', () => {
         });
 
         it('remote lookup should return follows collection when available', async () => {
+            const mockCollection = {
+                id: new URL('https://example.com/accounts/123/following'),
+                type: 'Collection',
+                totalItems: 2,
+                getFirst: async () => ({
+                    id: new URL(
+                        'https://example.com/accounts/123/following?page=1',
+                    ),
+                    type: 'CollectionPage',
+                    totalItems: 2,
+                    itemIds: [
+                        {
+                            href: new URL(
+                                'https://example.com/accounts/follower1',
+                            ),
+                        },
+                        {
+                            href: new URL(
+                                'https://example.com/accounts/follower2',
+                            ),
+                        },
+                    ],
+                }),
+            };
+
+            const collectionActor = {
+                ...mockActor,
+                getFollowing: async () => mockCollection,
+            } as unknown as Actor;
+
+            // Mock lookupObject to return actor objects for each item
+            vi.mocked(lookupObject).mockImplementation(async (url) => {
+                if (url.toString() === 'https://example.com/accounts/123') {
+                    return collectionActor;
+                }
+                if (
+                    url.toString() === 'https://example.com/accounts/follower1'
+                ) {
+                    return {
+                        id: 'https://example.com/accounts/follower1',
+                        type: 'Person',
+                        name: 'Follower One',
+                        preferredUsername: 'follower1',
+                        icon: { url: 'https://example.com/avatar1.jpg' },
+                        isActor: () => true,
+                        toJsonLd: async () => ({
+                            id: 'https://example.com/accounts/follower1',
+                            type: 'Person',
+                            name: 'Follower One',
+                            preferredUsername: 'follower1',
+                            icon: { url: 'https://example.com/avatar1.jpg' },
+                        }),
+                    } as unknown as Actor;
+                }
+                if (
+                    url.toString() === 'https://example.com/accounts/follower2'
+                ) {
+                    return {
+                        id: 'https://example.com/accounts/follower2',
+                        type: 'Person',
+                        name: 'Follower Two',
+                        preferredUsername: 'follower2',
+                        icon: { url: 'https://example.com/avatar2.jpg' },
+                        isActor: () => true,
+                        toJsonLd: async () => ({
+                            id: 'https://example.com/accounts/follower2',
+                            type: 'Person',
+                            name: 'Follower Two',
+                            preferredUsername: 'follower2',
+                            icon: { url: 'https://example.com/avatar2.jpg' },
+                        }),
+                    } as unknown as Actor;
+                }
+                throw new Error('Unexpected URL');
+            });
+
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(
+                        ok({
+                            accounts: [
+                                {
+                                    id: 'https://example.com/accounts/follower1',
+                                    name: 'Follower One',
+                                    handle: '@follower1@example.com',
+                                    avatarUrl:
+                                        'https://example.com/avatar1.jpg',
+                                    isFollowing: false,
+                                },
+                                {
+                                    id: 'https://example.com/accounts/follower2',
+                                    name: 'Follower Two',
+                                    handle: '@follower2@example.com',
+                                    avatarUrl:
+                                        'https://example.com/avatar2.jpg',
+                                    isFollowing: false,
+                                },
+                            ],
+                            next: null,
+                        }),
+                    );
+                },
+            );
+        });
+    });
+
+    describe('getFollowsByRemoteLookUp', () => {
+        it('should handle invalid next parameter error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        'https://different-domain.com/next',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['invalid-next-parameter', null]);
+                },
+            );
+        });
+
+        it('should handle not-an-actor error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(false);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['not-an-actor', null]);
+                },
+            );
+        });
+
+        it('should handle error-getting-follows error', async () => {
+            const errorActor = {
+                ...mockActor,
+                getFollowing: async () => {
+                    throw new Error('Error getting follows');
+                },
+            } as unknown as Actor;
+
+            vi.mocked(lookupObject).mockResolvedValue(errorActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['error-getting-follows', null]);
+                },
+            );
+        });
+
+        it('should handle no-page-found error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['no-page-found', null]);
+                },
+            );
+        });
+
+        it('should return follows collection when available', async () => {
             const mockCollection = {
                 id: new URL('https://example.com/accounts/123/following'),
                 type: 'Collection',

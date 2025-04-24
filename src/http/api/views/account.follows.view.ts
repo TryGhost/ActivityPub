@@ -84,38 +84,10 @@ export class AccountFollowsView {
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
-    async getFollowsByApId(
-        apId: URL,
-        account: Account | null,
-        type: string,
-        offset: string | null,
-        siteDefaultAccount: PersistedAccount,
-    ): Promise<Result<AccountFollows, GetFollowsError>> {
-        //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account?.isInternal) {
-            return ok(
-                await this.getFollowsByAccount(
-                    account,
-                    type,
-                    Number.parseInt(offset || '0'),
-                    siteDefaultAccount,
-                ),
-            );
-        }
-
-        //Otherwise, do a remote lookup to fetch the posts
-        return this.getFollowsByRemoteLookUp(
-            apId,
-            offset || '',
-            type,
-            siteDefaultAccount,
-        );
-    }
-
     async getFollowsByAccount(
         account: Account,
         type: string,
-        offset: number,
+        next: number,
         siteDefaultAccount: PersistedAccount,
     ): Promise<AccountFollows> {
         if (!account.id) {
@@ -131,12 +103,12 @@ export class AccountFollowsView {
                 ? this.getFollowingAccountsCount.bind(this)
                 : this.getFollowerAccountsCount.bind(this);
 
-        const results = await getAccounts(account.id, FOLLOWS_LIMIT, offset);
+        const results = await getAccounts(account.id, FOLLOWS_LIMIT, next);
         const total = await getAccountsCount(account.id);
 
-        const next =
-            total > offset + FOLLOWS_LIMIT
-                ? (offset + FOLLOWS_LIMIT).toString()
+        const nextCursor =
+            total > next + FOLLOWS_LIMIT
+                ? (next + FOLLOWS_LIMIT).toString()
                 : null;
 
         const accounts: AccountInfo[] = [];
@@ -159,7 +131,7 @@ export class AccountFollowsView {
 
         return {
             accounts: accounts,
-            next: next,
+            next: nextCursor,
         };
     }
 
@@ -182,10 +154,6 @@ export class AccountFollowsView {
         if (!isActor(actor)) {
             return error('not-an-actor');
         }
-
-        const followeeAccount = await this.db('accounts')
-            .where('ap_id', actor.id?.toString() || '')
-            .first();
 
         let page: CollectionPage | null = null;
 
@@ -310,7 +278,6 @@ export class AccountFollowsView {
                 next: nextCursor,
             });
         }
-
         for await (const item of page.itemIds) {
             try {
                 const followsActorObj = await lookupObject(item.href, {
