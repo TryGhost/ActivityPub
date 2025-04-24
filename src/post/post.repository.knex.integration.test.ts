@@ -511,8 +511,8 @@ describe('KnexPostRepository', () => {
 
         assert(result);
 
-        assert(result.author.uuid === account.uuid);
-        assert(result.uuid === post.uuid);
+        assert.equal(result.author.uuid, account.uuid);
+        assert.equal(result.uuid, post.uuid);
     });
 
     it('Can get by id', async () => {

@@ -542,8 +542,8 @@ export class AccountService {
             return;
         }
 
-        account.updateProfile(profileData);
+        const updated = account.updateProfile(profileData);
 
-        await this.accountRepository.save(account);
+        await this.accountRepository.save(updated);
     }
 }

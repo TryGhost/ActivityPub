@@ -3,11 +3,11 @@
     {
       "attachments": [],
       "author": {
-        "avatarUrl": "https://example.com/avatars/foobar.png",
+        "avatarUrl": "http://example.com/avatar/foobar.png",
         "handle": "@foobar@example.com",
-        "id": "https://example.com/users/456",
+        "id": "http://example.com/.ghost/activitypub/users/index",
         "name": "Foo Bar",
-        "url": "https://example.com/users/456",
+        "url": "http://example.com/.ghost/activitypub/users/index",
       },
       "authoredByMe": true,
       "content": "Test Post 123 Content",
@@ -32,11 +32,11 @@
     {
       "attachments": [],
       "author": {
-        "avatarUrl": "https://example.com/avatars/foobar.png",
+        "avatarUrl": "http://example.com/avatar/foobar.png",
         "handle": "@foobar@example.com",
-        "id": "https://example.com/users/456",
+        "id": "http://example.com/.ghost/activitypub/users/index",
         "name": "Foo Bar",
-        "url": "https://example.com/users/456",
+        "url": "http://example.com/.ghost/activitypub/users/index",
       },
       "authoredByMe": true,
       "content": "Test Post 456 Content",
@@ -61,11 +61,11 @@
     {
       "attachments": [],
       "author": {
-        "avatarUrl": "https://example.com/avatars/foobar.png",
+        "avatarUrl": "http://example.com/avatar/foobar.png",
         "handle": "@foobar@example.com",
-        "id": "https://example.com/users/456",
+        "id": "http://example.com/.ghost/activitypub/users/index",
         "name": "Foo Bar",
-        "url": "https://example.com/users/456",
+        "url": "http://example.com/.ghost/activitypub/users/index",
       },
       "authoredByMe": true,
       "content": "Test Post 789 Content",

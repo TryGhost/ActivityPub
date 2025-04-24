@@ -1,5 +1,5 @@
 import EventEmitter from 'node:events';
-import { Account } from 'account/account.entity';
+import { AccountEntity } from 'account/account.entity';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { Post } from 'post/post.entity';
 import { describe, expect, it, vi } from 'vitest';
@@ -35,7 +35,7 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
-        const author = Object.create(Account);
+        const author = Object.create(AccountEntity);
         author.id = 123;
         author.username = 'index';
         author.apId = new URL('https://author.com/user/123');
@@ -80,7 +80,7 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
-        const author = Object.create(Account);
+        const author = Object.create(AccountEntity);
         author.id = 123;
         author.username = 'index';
         author.apId = new URL('https://author.com/user/123');

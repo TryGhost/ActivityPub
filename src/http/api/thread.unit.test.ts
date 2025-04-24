@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Account } from 'account/account.entity';
+import { type Account, AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import { Audience, Post, PostType } from 'post/post.entity';
@@ -22,18 +22,19 @@ describe('Thread API', () => {
             host: 'example.com',
             webhook_secret: 'secret',
         };
-        account = Account.createFromData({
-            id: 456,
-            uuid: 'f4ec91bd-56b7-406f-a174-91495df6e6c',
+        const draft = AccountEntity.draft({
+            isInternal: true,
+            host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
-            bio: 'Just a foo bar',
-            avatarUrl: new URL('https://example.com/avatars/foobar.png'),
-            bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
-            site,
-            apId: new URL('https://example.com/users/456'),
-            url: new URL('https://example.com/users/456'),
-            apFollowers: new URL('https://example.com/followers/456'),
+            bio: 'Just a foobar',
+            url: null,
+            avatarUrl: new URL('http://example.com/avatar/foobar.png'),
+            bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
+        });
+        account = AccountEntity.create({
+            id: 456,
+            ...draft,
         });
         accountService = {
             getDefaultAccountForSite: async (_site: Site) => {

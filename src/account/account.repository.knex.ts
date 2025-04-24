@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
 import { AccountUpdatedEvent } from './account-updated.event';
-import { Account, type AccountSite } from './account.entity';
+import { type Account, AccountEntity } from './account.entity';
 
 export class KnexAccountRepository {
     constructor(
@@ -13,12 +13,6 @@ export class KnexAccountRepository {
     ) {}
 
     async save(account: Account): Promise<void> {
-        if (account.isNew) {
-            throw new Error(
-                'Saving of new Accounts has not been implemented yet.',
-            );
-        }
-
         await this.db('accounts')
             .update({
                 name: account.name,
@@ -49,72 +43,24 @@ export class KnexAccountRepository {
 
         // We can safely assume that there is an account for the user due to
         // the foreign key constraint on the users table
-        const account = await this.db('accounts')
-            .where('id', user.account_id)
-            .first();
-
-        if (!account) {
-            throw new Error(`Default account not found for site ${site.id}`);
-        }
-
-        if (!account.uuid) {
-            account.uuid = randomUUID();
-            await this.db('accounts')
-                .update({ uuid: account.uuid })
-                .where({ id: account.id });
-        }
-
-        return new Account(
-            user.account_id,
-            account.uuid,
-            account.username,
-            account.name,
-            account.bio,
-            parseURL(account.avatar_url),
-            parseURL(account.banner_image_url),
-            {
-                id: site.id,
-                host: site.host,
-            },
-            parseURL(account.ap_id),
-            parseURL(account.url),
-            parseURL(account.ap_followers_url),
-        );
-    }
-
-    async getByApId(apId: URL): Promise<Account | null> {
         const accountRow = await this.db('accounts')
-            .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
-            .leftJoin('users', 'users.account_id', 'accounts.id')
-            .leftJoin('sites', 'sites.id', 'users.site_id')
+            .where('id', user.account_id)
             .select(
                 'accounts.id',
+                'accounts.uuid',
                 'accounts.username',
                 'accounts.name',
                 'accounts.bio',
+                'accounts.url',
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
                 'accounts.ap_id',
-                'accounts.url',
                 'accounts.ap_followers_url',
-                'users.site_id',
-                'sites.host',
             )
             .first();
 
         if (!accountRow) {
-            return null;
-        }
-
-        let site: AccountSite | null = null;
-        if (
-            typeof accountRow.site_id === 'number' &&
-            typeof accountRow.host === 'string'
-        ) {
-            site = {
-                id: accountRow.site_id,
-                host: accountRow.host,
-            };
+            throw new Error(`Default account not found for site ${site.id}`);
         }
 
         if (!accountRow.uuid) {
@@ -124,20 +70,63 @@ export class KnexAccountRepository {
                 .where({ id: accountRow.id });
         }
 
-        const account = new Account(
-            accountRow.id,
-            accountRow.uuid,
-            accountRow.username,
-            accountRow.name,
-            accountRow.bio,
-            parseURL(accountRow.avatar_url),
-            parseURL(accountRow.banner_image_url),
-            site,
-            parseURL(accountRow.ap_id),
-            parseURL(accountRow.url),
-            parseURL(accountRow.ap_followers_url),
-        );
+        return AccountEntity.create({
+            id: accountRow.id,
+            uuid: accountRow.uuid,
+            username: accountRow.username,
+            name: accountRow.name,
+            bio: accountRow.bio,
+            url: parseURL(accountRow.url) || new URL(accountRow.ap_id),
+            avatarUrl: parseURL(accountRow.avatar_url),
+            bannerImageUrl: parseURL(accountRow.banner_image_url),
+            apId: new URL(accountRow.ap_id),
+            apFollowers: parseURL(accountRow.ap_followers_url),
+            isInternal: true,
+        });
+    }
 
-        return account;
+    async getByApId(apId: URL): Promise<Account | null> {
+        const accountRow = await this.db('accounts')
+            .where('accounts.ap_id', apId.href)
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .select(
+                'accounts.id',
+                'accounts.uuid',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.url',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.ap_followers_url',
+                'users.site_id',
+            )
+            .first();
+
+        if (!accountRow) {
+            return null;
+        }
+
+        if (!accountRow.uuid) {
+            accountRow.uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: accountRow.uuid })
+                .where({ id: accountRow.id });
+        }
+
+        return AccountEntity.create({
+            id: accountRow.id,
+            uuid: accountRow.uuid,
+            username: accountRow.username,
+            name: accountRow.name,
+            bio: accountRow.bio,
+            url: parseURL(accountRow.url) || new URL(accountRow.ap_id),
+            avatarUrl: parseURL(accountRow.avatar_url),
+            bannerImageUrl: parseURL(accountRow.banner_image_url),
+            apId: new URL(accountRow.ap_id),
+            apFollowers: parseURL(accountRow.ap_followers_url),
+            isInternal: accountRow.site_id !== null,
+        });
     }
 }

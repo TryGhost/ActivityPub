@@ -8,9 +8,9 @@ import { createTestDb } from 'test/db';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { SiteService } from '../site/site.service';
+import { type Site, SiteService } from '../site/site.service';
 import { AccountUpdatedEvent } from './account-updated.event';
-import { Account } from './account.entity';
+import { AccountEntity } from './account.entity';
 
 describe('KnexAccountRepository', () => {
     let client: Knex;
@@ -76,7 +76,7 @@ describe('KnexAccountRepository', () => {
         const account = await accountRepository.getBySite(site);
 
         assert(
-            account instanceof Account,
+            account instanceof AccountEntity,
             'An Account should have been fetched',
         );
     });
@@ -151,28 +151,17 @@ describe('KnexAccountRepository', () => {
             throw new Error('No account found for test');
         }
 
-        // Create an Account entity
-        const accountEntity = new Account(
-            account.id,
-            account.uuid || 'test-uuid',
-            account.username,
-            account.name,
-            account.bio,
-            account.avatar_url ? new URL(account.avatar_url) : null,
-            account.banner_image_url ? new URL(account.banner_image_url) : null,
-            null, // site
-            account.ap_id ? new URL(account.ap_id) : null,
-            account.url ? new URL(account.url) : null,
-            account.ap_followers_url ? new URL(account.ap_followers_url) : null,
-        );
+        const accountEntity = await accountRepository.getBySite({
+            id: 1,
+        } as Site);
 
-        accountEntity.updateProfile({
+        const updated = accountEntity.updateProfile({
             name: 'Updated Name',
             bio: 'Updated Bio',
         });
 
         // Act
-        await accountRepository.save(accountEntity);
+        await accountRepository.save(updated);
 
         // Assert
         expect(emitSpy).toHaveBeenCalledWith(
@@ -182,7 +171,7 @@ describe('KnexAccountRepository', () => {
 
         // Verify that the event contains the account
         const event = emitSpy.mock.calls[0][1] as AccountUpdatedEvent;
-        expect(event.getAccount()).toBe(accountEntity);
+        expect(event.getAccount()).toBe(updated);
 
         // Verify the database was updated
         const updatedAccount = await client('accounts')
@@ -204,37 +193,23 @@ describe('KnexAccountRepository', () => {
             throw new Error('No account found for test');
         }
 
-        // Create an Account entity
-        const accountEntity = new Account(
-            account.id,
-            account.uuid || 'test-uuid',
-            account.username,
-            account.name,
-            account.bio,
-            account.avatar_url ? new URL(account.avatar_url) : null,
-            account.banner_image_url ? new URL(account.banner_image_url) : null,
-            null, // site
-            account.ap_id ? new URL(account.ap_id) : null,
-            account.url ? new URL(account.url) : null,
-            account.ap_followers_url ? new URL(account.ap_followers_url) : null,
-        );
+        const accountEntity = await accountRepository.getBySite({
+            id: 1,
+        } as Site);
 
-        // Ensure it has an avatarUrl and bannerImageUrl set
-        accountEntity.updateProfile({
+        const firstUpdated = accountEntity.updateProfile({
             avatarUrl: new URL('https://example.com/avatar.png'),
             bannerImageUrl: new URL('https://example.com/banner.png'),
         });
 
-        await accountRepository.save(accountEntity);
+        await accountRepository.save(firstUpdated);
 
-        // Act
-
-        accountEntity.updateProfile({
+        const secondUpdated = accountEntity.updateProfile({
             avatarUrl: null,
             bannerImageUrl: null,
         });
 
-        await accountRepository.save(accountEntity);
+        await accountRepository.save(secondUpdated);
 
         // Assert
 

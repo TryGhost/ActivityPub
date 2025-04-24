@@ -2,7 +2,7 @@ import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
-import { Account, type AccountSite } from '../account/account.entity';
+import { AccountEntity } from '../account/account.entity';
 import { parseURL } from '../core/url';
 import { PostCreatedEvent } from './post-created.event';
 import { PostDeletedEvent } from './post-deleted.event';
@@ -51,6 +51,7 @@ export class KnexPostRepository {
                 'posts.thread_root',
                 'posts.deleted_at',
                 'posts.metadata',
+                'accounts.id as author_id',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
                 'accounts.name',
@@ -76,31 +77,19 @@ export class KnexPostRepository {
                 .where({ id: row.author_id });
         }
 
-        let site: AccountSite | null = null;
-
-        if (
-            typeof row.site_id === 'number' &&
-            typeof row.site_host === 'string'
-        ) {
-            site = {
-                id: row.site_id,
-                host: row.site_host,
-            };
-        }
-
-        const author = new Account(
-            row.author_id,
-            row.author_uuid,
-            row.username,
-            row.name,
-            row.bio,
-            parseURL(row.avatar_url),
-            parseURL(row.banner_image_url),
-            site,
-            parseURL(row.author_ap_id),
-            parseURL(row.author_url),
-            parseURL(row.author_ap_followers_url),
-        );
+        const author = AccountEntity.create({
+            id: row.author_id,
+            uuid: row.author_uuid,
+            username: row.username,
+            name: row.name,
+            bio: row.bio,
+            url: parseURL(row.author_url) || new URL(row.ap_id),
+            avatarUrl: parseURL(row.avatar_url),
+            bannerImageUrl: parseURL(row.banner_image_url),
+            apId: new URL(row.ap_id),
+            apFollowers: parseURL(row.ap_followers_url),
+            isInternal: row.site_id !== null,
+        });
 
         // Parse attachments and convert URL strings back to URL objects
         const attachments = row.attachments
@@ -279,6 +268,7 @@ export class KnexPostRepository {
                 'posts.thread_root',
                 'posts.deleted_at',
                 // Author account fields
+                'accounts.id as author_id',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
                 'accounts.name',
@@ -332,31 +322,19 @@ export class KnexPostRepository {
                     .where({ id: row.author_id });
             }
 
-            let site: AccountSite | null = null;
-
-            if (
-                typeof row.site_id === 'number' &&
-                typeof row.site_host === 'string'
-            ) {
-                site = {
-                    id: row.site_id,
-                    host: row.site_host,
-                };
-            }
-
-            const author = new Account(
-                row.author_id,
-                row.author_uuid,
-                row.username,
-                row.name,
-                row.bio,
-                parseURL(row.avatar_url),
-                parseURL(row.banner_image_url),
-                site,
-                parseURL(row.author_ap_id),
-                parseURL(row.author_url),
-                parseURL(row.author_ap_followers_url),
-            );
+            const author = AccountEntity.create({
+                id: row.author_id,
+                uuid: row.author_uuid,
+                username: row.username,
+                name: row.name,
+                bio: row.bio,
+                url: parseURL(row.author_url) || new URL(row.ap_id),
+                avatarUrl: parseURL(row.avatar_url),
+                bannerImageUrl: parseURL(row.banner_image_url),
+                apId: new URL(row.ap_id),
+                apFollowers: parseURL(row.ap_followers_url),
+                isInternal: row.site_id !== null,
+            });
 
             const attachments = row.attachments
                 ? row.attachments.map(

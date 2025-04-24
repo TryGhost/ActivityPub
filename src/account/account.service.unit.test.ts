@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
-import type { Account } from './account.entity';
+import type { AccountEntity } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
 
@@ -35,9 +35,10 @@ describe('AccountService', () => {
 
     describe('updateAccountProfile', () => {
         it('should update the account profile with the provided data', async () => {
+            const updated = {} as unknown as AccountEntity;
             const account = {
-                updateProfile: vi.fn(),
-            } as unknown as Account;
+                updateProfile: vi.fn().mockReturnValue(updated),
+            } as unknown as AccountEntity;
             const data = {
                 name: 'Alice',
                 bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
@@ -56,7 +57,7 @@ describe('AccountService', () => {
                 bannerImageUrl: new URL(data.bannerImageUrl),
             });
 
-            expect(knexAccountRepository.save).toHaveBeenCalledWith(account);
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(updated);
         });
 
         it('should do nothing if the provided data is the same as the existing account profile', async () => {
@@ -75,7 +76,7 @@ describe('AccountService', () => {
                 avatarUrl: new URL(data.avatarUrl),
                 bannerImageUrl: new URL(data.bannerImageUrl),
                 updateProfile: vi.fn(),
-            } as unknown as Account;
+            } as unknown as AccountEntity;
 
             await accountService.updateAccountProfile(account, {
                 name: data.name,
@@ -91,7 +92,7 @@ describe('AccountService', () => {
         it('should handle empty values for avatarUrl and bannerImageUrl', async () => {
             const account = {
                 updateProfile: vi.fn(),
-            } as unknown as Account;
+            } as unknown as AccountEntity;
 
             await accountService.updateAccountProfile(account, {
                 name: 'Alice',
