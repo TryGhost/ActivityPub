@@ -10,6 +10,7 @@ import {
     Update,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import { addToList } from 'kv-helpers';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostType } from 'post/post.entity';
@@ -18,7 +19,6 @@ import type { FedifyContextFactory } from './fedify-context.factory';
 import type { AccountService } from 'account/account.service';
 import { AccountUpdatedEvent } from 'account/account-updated.event';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
-import { addToList } from 'kv-helpers';
 
 export class FediverseBridge {
     constructor(
@@ -70,7 +70,9 @@ export class FediverseBridge {
                 content: post.excerpt,
             });
             fedifyObject = new Article({
-                id: post.apId || ctx.getObjectUri(Article, { id: String(post.id) }),
+                id:
+                    post.apId ||
+                    ctx.getObjectUri(Article, { id: String(post.id) }),
                 attribution: post.author.apId,
                 name: post.title,
                 content: post.content,
