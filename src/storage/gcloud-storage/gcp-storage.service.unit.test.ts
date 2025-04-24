@@ -146,13 +146,15 @@ describe('GCPStorageService', () => {
             it('handles valid emulator URL verification', async () => {
                 const validUrl =
                     'http://localhost:4443/storage/v1/b/test-bucket/o/images/test-uuid/test.png?alt=media';
-                const result = await service.verifyImageUrl(validUrl);
+                const result = await service.verifyImageUrl(new URL(validUrl));
                 expect(result).toEqual(ok(true));
             });
 
             it('handles malformed emulator URL verification', async () => {
                 const invalidUrl = 'http://invalid-domain/test.png';
-                const result = await service.verifyImageUrl(invalidUrl);
+                const result = await service.verifyImageUrl(
+                    new URL(invalidUrl),
+                );
                 expect(result).toEqual(error('invalid-url'));
             });
         });
@@ -177,7 +179,7 @@ describe('GCPStorageService', () => {
             it('handles valid GCS URL verification when file exists', async () => {
                 const validUrl =
                     'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
-                const result = await service.verifyImageUrl(validUrl);
+                const result = await service.verifyImageUrl(new URL(validUrl));
 
                 expect(mockBucket.file).toHaveBeenCalledWith(
                     'images/test-uuid/test.png',
@@ -190,21 +192,25 @@ describe('GCPStorageService', () => {
                 mockFile.exists = vi.fn().mockResolvedValue([false]);
                 const validUrl =
                     'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
-                const result = await service.verifyImageUrl(validUrl);
+                const result = await service.verifyImageUrl(new URL(validUrl));
                 expect(result).toEqual(error('file-not-found'));
             });
 
             it('handles wrong bucket URL verification', async () => {
                 const invalidUrl =
                     'https://storage.googleapis.com/wrong-bucket/images/test-uuid/test.png';
-                const result = await service.verifyImageUrl(invalidUrl);
+                const result = await service.verifyImageUrl(
+                    new URL(invalidUrl),
+                );
                 expect(result).toEqual(error('invalid-url'));
             });
 
             it('handles malformed GCS URL verification', async () => {
                 const invalidUrl =
                     'https://storage.googleapis.com/test-bucket/';
-                const result = await service.verifyImageUrl(invalidUrl);
+                const result = await service.verifyImageUrl(
+                    new URL(invalidUrl),
+                );
                 expect(result).toEqual(error('invalid-file-path'));
             });
 
@@ -214,7 +220,7 @@ describe('GCPStorageService', () => {
                     .mockRejectedValue(new Error('GCS error'));
                 const validUrl =
                     'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
-                const result = await service.verifyImageUrl(validUrl);
+                const result = await service.verifyImageUrl(new URL(validUrl));
                 expect(result).toEqual(error('gcs-error'));
             });
         });

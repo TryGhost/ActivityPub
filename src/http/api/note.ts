@@ -31,7 +31,9 @@ export async function handleCreateNote(
 
     // Verify image URL if provided
     if (data.imageUrl) {
-        const result = await storageService.verifyImageUrl(data.imageUrl);
+        const result = await storageService.verifyImageUrl(
+            new URL(data.imageUrl),
+        );
         if (isError(result)) {
             const error = getError(result);
             let errorMessage = 'Error verifying image URL';
