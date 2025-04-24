@@ -89,16 +89,8 @@ export async function getRelatedActivities(
         .select(client.raw('JSON_EXTRACT(value, "$.id") as id'))
         .from('key_value')
         .where(function () {
-            this.where(
-                client.raw('JSON_EXTRACT(value, "$.object.id") = ?', [postUrl]),
-            )
-                .orWhere(
-                    client.raw('JSON_EXTRACT(value, "$.object") = ?', [
-                        postUrl,
-                    ]),
-                )
-                .orWhere(
-                    client.raw('JSON_EXTRACT(value, "$.id") = ?', [postUrl]),
-                );
+            this.where(client.raw('object_id = ?', [postUrl]))
+                .orWhere(client.raw('object = ?', [postUrl]))
+                .orWhere(client.raw('json_id = ?', [postUrl]));
         }) as unknown as Promise<{ id: string }[]>;
 }
