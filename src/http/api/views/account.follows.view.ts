@@ -155,10 +155,6 @@ export class AccountFollowsView {
             return error('not-an-actor');
         }
 
-        const followeeAccount = await this.db('accounts')
-            .where('ap_id', actor.id?.toString() || '')
-            .first();
-
         let page: CollectionPage | null = null;
 
         try {
@@ -209,8 +205,6 @@ export class AccountFollowsView {
                 return error('error-getting-follows');
             }
 
-            console.log('Follows: ', follows);
-
             const pageSize = 15;
             const pageNumber = next ? Number.parseInt(next, 10) : 1;
             const startIndex = (pageNumber - 1) * pageSize;
@@ -231,7 +225,9 @@ export class AccountFollowsView {
                     }
 
                     const followeeAccount = await this.db('accounts')
-                        .where('ap_id', followsActorObj.id?.toString() || '')
+                        .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
+                            followsActorObj.id?.toString() || '',
+                        ])
                         .first();
 
                     const followsActor = (await followsActorObj.toJsonLd({
@@ -294,7 +290,9 @@ export class AccountFollowsView {
                 }
 
                 const followeeAccount = await this.db('accounts')
-                    .where('ap_id', followsActorObj.id?.toString() || '')
+                    .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
+                        followsActorObj.id?.toString() || '',
+                    ])
                     .first();
 
                 const followsActor = (await followsActorObj.toJsonLd({
