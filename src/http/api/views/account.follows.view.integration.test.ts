@@ -139,7 +139,7 @@ describe('AccountFollowsView', () => {
         )) as PersistedAccount;
     });
 
-    describe('getFollows', () => {
+    describe('getFollowsByAccount', () => {
         it('should return following accounts with correct format', async () => {
             const following1 = await accountService.createInternalAccount(
                 site,
@@ -264,8 +264,10 @@ describe('AccountFollowsView', () => {
                 next: null,
             });
         });
+    });
 
-        it('remote lookup should handle invalid next parameter error', async () => {
+    describe('getFollowsByRemoteLookUp', () => {
+        it('should handle invalid next parameter error', async () => {
             vi.mocked(lookupObject).mockResolvedValue(mockActor);
             vi.mocked(isActor).mockReturnValue(true);
 
@@ -284,7 +286,7 @@ describe('AccountFollowsView', () => {
             );
         });
 
-        it('remote lookup should handle not-an-actor error', async () => {
+        it('should handle not-an-actor error', async () => {
             vi.mocked(lookupObject).mockResolvedValue(mockActor);
             vi.mocked(isActor).mockReturnValue(false);
 
@@ -303,7 +305,7 @@ describe('AccountFollowsView', () => {
             );
         });
 
-        it('remote lookup should handle error-getting-follows error', async () => {
+        it('should handle error-getting-follows error', async () => {
             const errorActor = {
                 ...mockActor,
                 getFollowing: async () => {
@@ -329,7 +331,7 @@ describe('AccountFollowsView', () => {
             );
         });
 
-        it('remote lookup should handle no-page-found error', async () => {
+        it('should handle no-page-found error', async () => {
             vi.mocked(lookupObject).mockResolvedValue(mockActor);
             vi.mocked(isActor).mockReturnValue(true);
 
@@ -348,7 +350,7 @@ describe('AccountFollowsView', () => {
             );
         });
 
-        it('remote lookup should return follows collection when available', async () => {
+        it('should return follows collection when available', async () => {
             const mockCollection = {
                 id: new URL('https://example.com/accounts/123/following'),
                 type: 'Collection',
