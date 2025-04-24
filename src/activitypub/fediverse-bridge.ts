@@ -98,10 +98,12 @@ export class FediverseBridge {
             await createActivity.toJsonLd(),
         );
 
-        await ctx.data.globaldb.set(
-            [fedifyObject?.id!.href || ''],
-            await fedifyObject?.toJsonLd(),
-        );
+        if (fedifyObject?.id!.href) {
+            await ctx.data.globaldb.set(
+                [fedifyObject?.id!.href],
+                await fedifyObject?.toJsonLd(),
+            );
+        }
 
         await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
 
