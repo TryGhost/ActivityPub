@@ -40,6 +40,7 @@ export class GCPStorageService {
     }
 
     async init(): Promise<void> {
+        this.logger.info('Testing GCP: Got init()');
         if (this.emulatorHost) {
             this.storage = new Storage({
                 apiEndpoint: this.emulatorHost,
