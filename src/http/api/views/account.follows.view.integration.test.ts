@@ -410,10 +410,20 @@ describe('AccountFollowsView', () => {
 
             vi.mocked(isActor).mockReturnValue(true);
 
+            // Create a new viewer with a mocked db that returns null for account lookups to by-pass local lookup
+            const mockDb = vi.fn().mockImplementation(() => ({
+                whereRaw: vi.fn().mockReturnThis(),
+                first: vi.fn().mockResolvedValue(null),
+            })) as unknown as Knex;
+            const mockViewer = new AccountFollowsView(
+                mockDb,
+                fedifyContextFactory,
+            );
+
             await fedifyContextFactory.registerContext(
                 mockContext,
                 async () => {
-                    const result = await viewer.getFollowsByRemoteLookUp(
+                    const result = await mockViewer.getFollowsByRemoteLookUp(
                         new URL('https://example.com/accounts/123'),
                         '',
                         'following',

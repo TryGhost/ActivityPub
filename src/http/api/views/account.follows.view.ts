@@ -216,43 +216,54 @@ export class AccountFollowsView {
 
             for await (const item of pageUrls) {
                 try {
-                    const followsActorObj = await lookupObject(item.href, {
-                        documentLoader,
-                    });
-
-                    if (!isActor(followsActorObj)) {
-                        continue;
-                    }
-
                     const followeeAccount = await this.db('accounts')
                         .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
-                            followsActorObj.id?.toString() || '',
+                            item.href || '',
                         ])
                         .first();
 
-                    const followsActor = (await followsActorObj.toJsonLd({
-                        format: 'compact',
-                    })) as unknown;
+                    if (followeeAccount) {
+                        accounts.push({
+                            id: String(followeeAccount.id),
+                            name: followeeAccount.name || '',
+                            handle: getAccountHandle(
+                                new URL(followeeAccount.ap_id).host,
+                                followeeAccount.username,
+                            ),
+                            avatarUrl: followeeAccount.avatar_url || '',
+                            isFollowing: await this.checkIfAccountIsFollowing(
+                                siteDefaultAccount.id,
+                                followeeAccount.id,
+                            ),
+                        });
+                    } else {
+                        const followsActorObj = await lookupObject(item.href, {
+                            documentLoader,
+                        });
 
-                    if (!isValidFollowsActor(followsActor)) {
-                        continue;
+                        if (!isActor(followsActorObj)) {
+                            continue;
+                        }
+
+                        const followsActor = (await followsActorObj.toJsonLd({
+                            format: 'compact',
+                        })) as unknown;
+
+                        if (!isValidFollowsActor(followsActor)) {
+                            continue;
+                        }
+
+                        accounts.push({
+                            id: followsActor.id,
+                            name: followsActor.name,
+                            handle: getAccountHandle(
+                                new URL(followsActor.id).host,
+                                followsActor.preferredUsername,
+                            ),
+                            avatarUrl: followsActor.icon.url,
+                            isFollowing: false,
+                        });
                     }
-
-                    accounts.push({
-                        id: followsActor.id,
-                        name: followsActor.name,
-                        handle: getAccountHandle(
-                            new URL(followsActor.id).host,
-                            followsActor.preferredUsername,
-                        ),
-                        avatarUrl: followsActor.icon.url,
-                        isFollowing: followeeAccount
-                            ? await this.checkIfAccountIsFollowing(
-                                  siteDefaultAccount.id,
-                                  followeeAccount.id,
-                              )
-                            : false,
-                    });
                 } catch {
                     ctx.data.logger.error(
                         `Error while iterating over follow list for ${actor.name}`,
@@ -281,43 +292,54 @@ export class AccountFollowsView {
 
         for await (const item of page.itemIds) {
             try {
-                const followsActorObj = await lookupObject(item.href, {
-                    documentLoader,
-                });
-
-                if (!isActor(followsActorObj)) {
-                    continue;
-                }
-
                 const followeeAccount = await this.db('accounts')
                     .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
-                        followsActorObj.id?.toString() || '',
+                        item.href || '',
                     ])
                     .first();
 
-                const followsActor = (await followsActorObj.toJsonLd({
-                    format: 'compact',
-                })) as unknown;
+                if (followeeAccount) {
+                    accounts.push({
+                        id: String(followeeAccount.id),
+                        name: followeeAccount.name || '',
+                        handle: getAccountHandle(
+                            new URL(followeeAccount.ap_id).host,
+                            followeeAccount.username,
+                        ),
+                        avatarUrl: followeeAccount.avatar_url || '',
+                        isFollowing: await this.checkIfAccountIsFollowing(
+                            siteDefaultAccount.id,
+                            followeeAccount.id,
+                        ),
+                    });
+                } else {
+                    const followsActorObj = await lookupObject(item.href, {
+                        documentLoader,
+                    });
 
-                if (!isValidFollowsActor(followsActor)) {
-                    continue;
+                    if (!isActor(followsActorObj)) {
+                        continue;
+                    }
+
+                    const followsActor = (await followsActorObj.toJsonLd({
+                        format: 'compact',
+                    })) as unknown;
+
+                    if (!isValidFollowsActor(followsActor)) {
+                        continue;
+                    }
+
+                    accounts.push({
+                        id: followsActor.id,
+                        name: followsActor.name,
+                        handle: getAccountHandle(
+                            new URL(followsActor.id).host,
+                            followsActor.preferredUsername,
+                        ),
+                        avatarUrl: followsActor.icon.url,
+                        isFollowing: false,
+                    });
                 }
-
-                accounts.push({
-                    id: followsActor.id,
-                    name: followsActor.name,
-                    handle: getAccountHandle(
-                        new URL(followsActor.id).host,
-                        followsActor.preferredUsername,
-                    ),
-                    avatarUrl: followsActor.icon.url,
-                    isFollowing: followeeAccount
-                        ? await this.checkIfAccountIsFollowing(
-                              siteDefaultAccount.id,
-                              followeeAccount.id,
-                          )
-                        : false,
-                });
             } catch {
                 ctx.data.logger.error(
                     `Error while iterating over follow list for ${actor.name}`,
