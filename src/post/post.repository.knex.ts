@@ -215,7 +215,7 @@ export class KnexPostRepository {
         // Get the post for the given AP ID
         const post = await this.db('posts')
             .select('id', 'in_reply_to')
-            .where('ap_id', apId)
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
             .first();
 
         if (!post) {
