@@ -70,7 +70,7 @@ export class FediverseBridge {
                 content: post.excerpt,
             });
             fedifyObject = new Article({
-                id: ctx.getObjectUri(Article, { id: String(post.id) }),
+                id: post.apId || ctx.getObjectUri(Article, { id: String(post.id) }),
                 attribution: post.author.apId,
                 name: post.title,
                 content: post.content,
