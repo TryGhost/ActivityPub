@@ -214,65 +214,11 @@ export class AccountFollowsView {
                 startIndex + pageSize,
             );
 
-            for await (const item of pageUrls) {
-                try {
-                    const followeeAccount = await this.db('accounts')
-                        .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
-                            item.href || '',
-                        ])
-                        .first();
-
-                    if (followeeAccount) {
-                        accounts.push({
-                            id: String(followeeAccount.id),
-                            name: followeeAccount.name || '',
-                            handle: getAccountHandle(
-                                new URL(followeeAccount.ap_id).host,
-                                followeeAccount.username,
-                            ),
-                            avatarUrl: followeeAccount.avatar_url || '',
-                            isFollowing: await this.checkIfAccountIsFollowing(
-                                siteDefaultAccount.id,
-                                followeeAccount.id,
-                            ),
-                        });
-                    } else {
-                        const followsActorObj = await lookupObject(item.href, {
-                            documentLoader,
-                        });
-
-                        if (!isActor(followsActorObj)) {
-                            continue;
-                        }
-
-                        const followsActor = (await followsActorObj.toJsonLd({
-                            format: 'compact',
-                        })) as unknown;
-
-                        if (!isValidFollowsActor(followsActor)) {
-                            continue;
-                        }
-
-                        accounts.push({
-                            id: followsActor.id,
-                            name: followsActor.name,
-                            handle: getAccountHandle(
-                                new URL(followsActor.id).host,
-                                followsActor.preferredUsername,
-                            ),
-                            avatarUrl: followsActor.icon.url,
-                            isFollowing: false,
-                        });
-                    }
-                } catch {
-                    ctx.data.logger.error(
-                        `Error while iterating over follow list for ${actor.name}`,
-                    );
-                    // Skip this item if processing fails
-                    // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows
-                    // If fetching any one follow fails, we can still return the other valid follows in the collection
-                }
-            }
+            await this.processFollowsList(
+                pageUrls,
+                accounts,
+                siteDefaultAccount,
+            );
 
             let nextCursor = null;
 
@@ -290,7 +236,32 @@ export class AccountFollowsView {
             });
         }
 
-        for await (const item of page.itemIds) {
+        await this.processFollowsList(
+            page.itemIds,
+            accounts,
+            siteDefaultAccount,
+        );
+
+        const nextCursor = page.nextId
+            ? encodeURIComponent(page.nextId.toString())
+            : null;
+
+        return ok({
+            accounts: accounts,
+            next: nextCursor,
+        });
+    }
+
+    private async processFollowsList(
+        followsList: URL[],
+        accounts: AccountInfo[],
+        siteDefaultAccount: PersistedAccount,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const documentLoader = await ctx.getDocumentLoader({
+            handle: 'index',
+        });
+        for await (const item of followsList) {
             try {
                 const followeeAccount = await this.db('accounts')
                     .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
@@ -341,23 +312,12 @@ export class AccountFollowsView {
                     });
                 }
             } catch {
-                ctx.data.logger.error(
-                    `Error while iterating over follow list for ${actor.name}`,
-                );
+                ctx.data.logger.error('Error while iterating over follow list');
                 // Skip this item if processing fails
                 // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows
                 // If fetching any one follow fails, we can still return the other valid follows in the collection
             }
         }
-
-        const nextCursor = page.nextId
-            ? encodeURIComponent(page.nextId.toString())
-            : null;
-
-        return ok({
-            accounts: accounts,
-            next: nextCursor,
-        });
     }
 
     private async getFollowingAccountsCount(
