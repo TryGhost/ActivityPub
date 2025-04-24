@@ -198,7 +198,7 @@ describe('GCPStorageService', () => {
 
             it('handles wrong bucket URL verification', async () => {
                 const invalidUrl =
-                    'https://storage.googleapis.com/wrong-bucket/images/test-uuid/test.png';
+                    'https://wronghost.com/test-bucket/images/test-uuid/test.png';
                 const result = await service.verifyImageUrl(
                     new URL(invalidUrl),
                 );
