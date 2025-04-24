@@ -339,6 +339,10 @@ describe('FediverseBridge', () => {
             accountService,
         );
         await bridge.init();
+        const mockDb = {
+            get: vi.fn().mockResolvedValue([]),
+            set: vi.fn().mockResolvedValue(undefined),
+        };
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
@@ -363,6 +367,8 @@ describe('FediverseBridge', () => {
 
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalledOnce();
+        expect(mockDb.get).toHaveBeenCalledWith(['outbox']);
+        expect(mockDb.set).toHaveBeenCalledWith(['outbox'], expect.any(Array));
 
         const storedActivity = await vi.fn().mock.calls[0][1];
         expect(storedActivity).toMatchObject({
@@ -383,6 +389,10 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
         );
+        const mockDb = {
+            get: vi.fn().mockResolvedValue([]),
+            set: vi.fn().mockResolvedValue(undefined),
+        };
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
@@ -412,6 +422,8 @@ describe('FediverseBridge', () => {
 
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalledOnce();
+        expect(mockDb.get).toHaveBeenCalledWith(['outbox']);
+        expect(mockDb.set).toHaveBeenCalledWith(['outbox'], expect.any(Array));
 
         const storedActivity = await vi.fn().mock.calls[0][1];
         expect(storedActivity).toMatchObject({

@@ -110,8 +110,6 @@ export class FediverseBridge {
 
         await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
 
-        console.log('################## Sending activity: ', createActivity);
-
         await ctx.sendActivity(
             {
                 handle: post.author.username,
