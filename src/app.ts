@@ -958,6 +958,7 @@ app.post(
             accountRepository,
             postService,
             postRepository,
+            gcpStorageService,
         ),
     ),
 );
@@ -989,7 +990,12 @@ app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) =>
-        handleCreateNote(ctx, accountRepository, postRepository),
+        handleCreateNote(
+            ctx,
+            accountRepository,
+            postRepository,
+            gcpStorageService,
+        ),
     ),
 );
 app.get(
