@@ -3,12 +3,6 @@ import { z } from 'zod';
 import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { PostService } from 'post/post.service';
-import { publishNote } from 'publishing/helpers';
-import type { ActivityJsonLd } from 'publishing/service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import type { KnexAccountRepository } from '../../account/account.repository.knex';
-import { Post } from '../../post/post.entity';
-import type { KnexPostRepository } from '../../post/post.repository.knex';
 
 const NoteSchema = z.object({
     content: z.string(),
@@ -64,6 +58,7 @@ export async function handleCreateNote(
     }
 
     const post = getValue(postResult);
+    //Todo: Return Activity here(or note and handle on UI)
 
     return new Response(JSON.stringify({post}), {
         headers: {

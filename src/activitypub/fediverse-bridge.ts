@@ -75,6 +75,7 @@ export class FediverseBridge {
                 name: post.title,
                 content: post.content,
                 image: post.imageUrl,
+                //Todo: Add Attachments
                 published: Temporal.Instant.from(
                     post.publishedAt.toISOString(),
                 ),
