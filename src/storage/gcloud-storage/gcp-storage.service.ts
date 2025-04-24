@@ -1,4 +1,5 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
+import type { Logger } from '@logtape/logtape';
 import { type Result, error, isError, ok } from 'core/result';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -10,14 +11,21 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 type FileValidationError = 'file-too-large' | 'file-type-not-supported';
+type ImageVerificationError =
+    | 'invalid-url'
+    | 'file-not-found'
+    | 'invalid-file-path'
+    | 'gcs-error';
 
 export class GCPStorageService {
+    private logger: Logger;
     private storage: Storage;
     private bucket: Bucket;
     private bucketName: string;
     private emulatorHost: string | undefined;
 
-    constructor() {
+    constructor(logger: Logger) {
+        this.logger = logger;
         this.bucketName = process.env.GCP_BUCKET_NAME || '';
         this.emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST;
         if (!this.bucketName) {
@@ -110,12 +118,17 @@ export class GCPStorageService {
         return ok(true);
     }
 
-    async verifyImageUrl(url: string): Promise<boolean> {
+    async verifyImageUrl(
+        url: string,
+    ): Promise<Result<boolean, ImageVerificationError>> {
         try {
             // Check if we're using the GCS emulator and verify the URL matches the emulator's base URL pattern
             if (this.emulatorHost) {
                 const emulatorBaseUrl = `${this.emulatorHost.replace('fake-gcs', 'localhost')}`;
-                return url.startsWith(emulatorBaseUrl);
+                if (!url.startsWith(emulatorBaseUrl)) {
+                    return error('invalid-url');
+                }
+                return ok(true);
             }
 
             // Verify if the URL matches the standard Google Cloud Storage public URL pattern for our bucket
@@ -123,7 +136,7 @@ export class GCPStorageService {
                 `https://storage.googleapis.com/${this.bucketName}/`,
             );
             if (!gcsUrlPattern.test(url)) {
-                return false;
+                return error('invalid-url');
             }
 
             // Extract the file path from the URL by removing the bucket prefix
@@ -131,14 +144,21 @@ export class GCPStorageService {
                 `https://storage.googleapis.com/${this.bucketName}/`,
             )[1];
             if (!filePath) {
-                return false;
+                return error('invalid-file-path');
             }
 
             // Verify that the file actually exists in our bucket
             const [exists] = await this.bucket.file(filePath).exists();
-            return exists;
-        } catch (error) {
-            return false;
+            if (!exists) {
+                return error('file-not-found');
+            }
+
+            return ok(true);
+        } catch (err) {
+            this.logger.error(`Error while verifying gcs image: ${err}`, {
+                err,
+            });
+            return error('gcs-error');
         }
     }
 }
