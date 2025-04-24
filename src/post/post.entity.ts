@@ -327,7 +327,7 @@ export class Post extends BaseEntity {
     static createNote(
         account: Account,
         noteContent: string,
-        imageUrl?: string,
+        imageUrl?: URL,
     ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
@@ -352,7 +352,7 @@ export class Post extends BaseEntity {
             null,
             content,
             null,
-            imageUrl ? new URL(imageUrl) : null,
+            imageUrl ?? null,
             new Date(),
             null,
             0,
@@ -370,7 +370,7 @@ export class Post extends BaseEntity {
         account: Account,
         replyContent: string,
         inReplyTo: Post,
-        imageUrl?: string,
+        imageUrl?: URL,
     ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
@@ -402,7 +402,7 @@ export class Post extends BaseEntity {
             null,
             content,
             null,
-            imageUrl ? new URL(imageUrl) : null,
+            imageUrl ?? null,
             new Date(),
             null,
             0,

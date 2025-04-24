@@ -438,7 +438,7 @@ export function createReplyActionHandler(
             account,
             data.content,
             parentPost,
-            data.imageUrl,
+            data.imageUrl ? new URL(data.imageUrl) : undefined,
         );
 
         await postRepository.save(newReply);

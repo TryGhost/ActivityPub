@@ -314,7 +314,7 @@ describe('Post', () => {
             const content = 'My first note';
             const imageUrl = 'https://example.com/image.jpg';
 
-            const note = Post.createNote(account, content, imageUrl);
+            const note = Post.createNote(account, content, new URL(imageUrl));
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe('<p>My first note</p>');
