@@ -100,6 +100,7 @@ export function createGetAccountFollowsHandler(
      * @param ctx App context
      */
     return async function handleGetAccountFollows(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const site = ctx.get('site');
 
         const handle = ctx.req.param('handle') || '';
@@ -112,7 +113,9 @@ export function createGetAccountFollowsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const siteDefaultAccount = await accountRepository.getBySite(site);
+        const siteDefaultAccount = (await accountRepository.getBySite(
+            site,
+        )) as PersistedAccount;
 
         const queryNext = ctx.req.query('next');
         const next = queryNext ? decodeURIComponent(queryNext) : null;
@@ -136,20 +139,62 @@ export function createGetAccountFollowsHandler(
 
             const account = await accountRepository.getByApId(new URL(apId));
 
-            accountFollows = await accountFollowsView.getFollowsByHandle(
-                handle,
-                account,
-                type,
-                next,
-                siteDefaultAccount,
-            );
+            if (account?.isInternal) {
+                accountFollows = await accountFollowsView.getFollowsByAccount(
+                    account,
+                    type,
+                    Number.parseInt(next || '0'),
+                    siteDefaultAccount,
+                );
+            } else {
+                const result =
+                    await accountFollowsView.getFollowsByRemoteLookUp(
+                        new URL(apId),
+                        next || '',
+                        type,
+                        siteDefaultAccount,
+                    );
+                if (isError(result)) {
+                    const error = getError(result);
+                    switch (error) {
+                        case 'invalid-next-parameter':
+                            logger.error('Invalid next parameter');
+                            return new Response(null, { status: 400 });
+                        case 'not-an-actor':
+                            logger.error(`Actor not found for ${handle}`);
+                            return new Response(null, { status: 404 });
+                        case 'error-getting-follows':
+                            logger.error(`Error getting follows for ${handle}`);
+                            return new Response(
+                                JSON.stringify({
+                                    accounts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
+                        case 'no-page-found':
+                            logger.error(
+                                `No page found in outbox for ${handle}`,
+                            );
+                            return new Response(
+                                JSON.stringify({
+                                    accounts: [],
+                                    next: null,
+                                }),
+                                { status: 200 },
+                            );
+                        default:
+                            return exhaustiveCheck(error);
+                    }
+                }
+                accountFollows = getValue(result);
+            }
         }
 
         // Return response
         return new Response(
             JSON.stringify({
                 accounts: accountFollows?.accounts,
-                total: accountFollows?.total,
                 next: accountFollows?.next,
             }),
             {

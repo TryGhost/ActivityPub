@@ -1,4 +1,5 @@
-import type { Account } from 'account/account.entity';
+import { type Actor, isActor, lookupObject } from '@fedify/fedify';
+import type { Account, PersistedAccount } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import type {
@@ -7,12 +8,30 @@ import type {
     Site,
 } from 'account/types';
 import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { FedifyContext } from 'app';
 import { AsyncEvents } from 'core/events';
+import { ok } from 'core/result';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountFollowsView } from './account.follows.view';
+
+vi.mock('@fedify/fedify', async () => {
+    // generateCryptoKeyPair is a slow operation so we generate a key pair
+    // upfront and re-use it for all tests
+    const original = await vi.importActual('@fedify/fedify');
+
+    // @ts-expect-error - generateCryptoKeyPair is not typed
+    const keyPair = await original.generateCryptoKeyPair();
+
+    return {
+        ...original,
+        generateCryptoKeyPair: vi.fn().mockReturnValue(keyPair),
+        lookupObject: vi.fn(),
+        isActor: vi.fn(),
+    };
+});
 
 describe('AccountFollowsView', () => {
     let viewer: AccountFollowsView;
@@ -23,9 +42,38 @@ describe('AccountFollowsView', () => {
     let internalAccountData: InternalAccountData;
     let db: Knex;
     let defaultAccount: AccountType;
-    let siteDefaultAccount: Account | null;
+    let siteDefaultAccount: PersistedAccount | null;
     let account: AccountType;
     let accountEntity: Account | null;
+    let fedifyContextFactory: FedifyContextFactory;
+
+    const mockContext = {
+        getDocumentLoader: vi.fn().mockResolvedValue({}),
+        data: {
+            db: {
+                get: vi.fn(),
+                set: vi.fn(),
+            },
+            logger: {
+                info: vi.fn(),
+                error: vi.fn(),
+            },
+        },
+    } as unknown as FedifyContext;
+
+    const mockActor = {
+        id: new URL('https://example.com/accounts/123'),
+        name: 'Test User',
+        isActor: () => true,
+        getFollowing: async () => null,
+        toJsonLd: async () => ({
+            id: 'https://example.com/accounts/123',
+            name: 'Test User',
+        }),
+        _documentLoader: {},
+        _contextLoader: {},
+        _tracerProvider: {},
+    } as unknown as Actor;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -60,7 +108,7 @@ describe('AccountFollowsView', () => {
 
         events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(db, events);
-        const fedifyContextFactory = new FedifyContextFactory();
+        fedifyContextFactory = new FedifyContextFactory();
 
         accountService = new AccountService(
             db,
@@ -86,12 +134,12 @@ describe('AccountFollowsView', () => {
             ...internalAccountData,
             username: 'default',
         });
-        siteDefaultAccount = await accountRepository.getByApId(
+        siteDefaultAccount = (await accountRepository.getByApId(
             new URL(defaultAccount.ap_id),
-        );
+        )) as PersistedAccount;
     });
 
-    describe('getFollows', () => {
+    describe('getFollowsByAccount', () => {
         it('should return following accounts with correct format', async () => {
             const following1 = await accountService.createInternalAccount(
                 site,
@@ -128,7 +176,6 @@ describe('AccountFollowsView', () => {
             );
 
             expect(result).toHaveProperty('accounts');
-            expect(result).toHaveProperty('total', 2);
             expect(result).toHaveProperty('next', null);
 
             expect(result.accounts).toHaveLength(2);
@@ -174,7 +221,6 @@ describe('AccountFollowsView', () => {
             );
 
             expect(result).toHaveProperty('accounts');
-            expect(result).toHaveProperty('total', 2);
             expect(result).toHaveProperty('next', null);
 
             expect(result.accounts).toHaveLength(2);
@@ -215,9 +261,209 @@ describe('AccountFollowsView', () => {
 
             expect(result).toMatchObject({
                 accounts: [],
-                total: 0,
                 next: null,
             });
+        });
+    });
+
+    describe('getFollowsByRemoteLookUp', () => {
+        it('should handle invalid next parameter error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        'https://different-domain.com/next',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['invalid-next-parameter', null]);
+                },
+            );
+        });
+
+        it('should handle not-an-actor error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(false);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['not-an-actor', null]);
+                },
+            );
+        });
+
+        it('should handle error-getting-follows error', async () => {
+            const errorActor = {
+                ...mockActor,
+                getFollowing: async () => {
+                    throw new Error('Error getting follows');
+                },
+            } as unknown as Actor;
+
+            vi.mocked(lookupObject).mockResolvedValue(errorActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['error-getting-follows', null]);
+                },
+            );
+        });
+
+        it('should handle no-page-found error', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(mockActor);
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(['no-page-found', null]);
+                },
+            );
+        });
+
+        it('should return follows collection when available', async () => {
+            const mockCollection = {
+                id: new URL('https://example.com/accounts/123/following'),
+                type: 'Collection',
+                totalItems: 2,
+                getFirst: async () => ({
+                    id: new URL(
+                        'https://example.com/accounts/123/following?page=1',
+                    ),
+                    type: 'CollectionPage',
+                    totalItems: 2,
+                    itemIds: [
+                        {
+                            href: new URL(
+                                'https://example.com/accounts/follower1',
+                            ),
+                        },
+                        {
+                            href: new URL(
+                                'https://example.com/accounts/follower2',
+                            ),
+                        },
+                    ],
+                }),
+            };
+
+            const collectionActor = {
+                ...mockActor,
+                getFollowing: async () => mockCollection,
+            } as unknown as Actor;
+
+            // Mock lookupObject to return actor objects for each item
+            vi.mocked(lookupObject).mockImplementation(async (url) => {
+                if (url.toString() === 'https://example.com/accounts/123') {
+                    return collectionActor;
+                }
+                if (
+                    url.toString() === 'https://example.com/accounts/follower1'
+                ) {
+                    return {
+                        id: 'https://example.com/accounts/follower1',
+                        type: 'Person',
+                        name: 'Follower One',
+                        preferredUsername: 'follower1',
+                        icon: { url: 'https://example.com/avatar1.jpg' },
+                        isActor: () => true,
+                        toJsonLd: async () => ({
+                            id: 'https://example.com/accounts/follower1',
+                            type: 'Person',
+                            name: 'Follower One',
+                            preferredUsername: 'follower1',
+                            icon: { url: 'https://example.com/avatar1.jpg' },
+                        }),
+                    } as unknown as Actor;
+                }
+                if (
+                    url.toString() === 'https://example.com/accounts/follower2'
+                ) {
+                    return {
+                        id: 'https://example.com/accounts/follower2',
+                        type: 'Person',
+                        name: 'Follower Two',
+                        preferredUsername: 'follower2',
+                        icon: { url: 'https://example.com/avatar2.jpg' },
+                        isActor: () => true,
+                        toJsonLd: async () => ({
+                            id: 'https://example.com/accounts/follower2',
+                            type: 'Person',
+                            name: 'Follower Two',
+                            preferredUsername: 'follower2',
+                            icon: { url: 'https://example.com/avatar2.jpg' },
+                        }),
+                    } as unknown as Actor;
+                }
+                throw new Error('Unexpected URL');
+            });
+
+            vi.mocked(isActor).mockReturnValue(true);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await viewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'following',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(
+                        ok({
+                            accounts: [
+                                {
+                                    id: 'https://example.com/accounts/follower1',
+                                    name: 'Follower One',
+                                    handle: '@follower1@example.com',
+                                    avatarUrl:
+                                        'https://example.com/avatar1.jpg',
+                                    isFollowing: false,
+                                },
+                                {
+                                    id: 'https://example.com/accounts/follower2',
+                                    name: 'Follower Two',
+                                    handle: '@follower2@example.com',
+                                    avatarUrl:
+                                        'https://example.com/avatar2.jpg',
+                                    isFollowing: false,
+                                },
+                            ],
+                            next: null,
+                        }),
+                    );
+                },
+            );
         });
     });
 });

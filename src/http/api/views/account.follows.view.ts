@@ -1,14 +1,20 @@
 import { CollectionPage, isActor, lookupObject } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
+import type { Account, PersistedAccount } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { isUri } from 'helpers/uri';
+import { type Result, error, ok } from 'core/result';
 import type { Knex } from 'knex';
 
 /**
  * Maximum number of follow accounts to return
  */
 const FOLLOWS_LIMIT = 20;
+
+export type GetFollowsError =
+    | 'invalid-next-parameter'
+    | 'error-getting-follows'
+    | 'no-page-found'
+    | 'not-an-actor';
 
 interface AccountInfo {
     id: string;
@@ -20,7 +26,6 @@ interface AccountInfo {
 
 export interface AccountFollows {
     accounts: AccountInfo[];
-    total: number;
     next: string | null;
 }
 
@@ -38,42 +43,12 @@ export class AccountFollowsView {
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
-    async getFollowsByHandle(
-        handle: string,
-        account: Account | null,
-        type: string,
-        offset: string | null,
-        siteDefaultAccount: Account,
-    ): Promise<AccountFollows> {
-        //If we found the account in our db and it's an internal account, do an internal lookup
-        if (account?.isInternal) {
-            return await this.getFollowsByAccount(
-                account,
-                type,
-                Number.parseInt(offset || '0'),
-                siteDefaultAccount,
-            );
-        }
-
-        //Otherwise, do a remote lookup to fetch the posts
-        return this.getFollowsByRemoteLookUp(
-            handle,
-            offset || '',
-            type,
-            siteDefaultAccount,
-        );
-    }
-
     async getFollowsByAccount(
         account: Account,
         type: string,
-        offset: number,
-        siteDefaultAccount: Account,
+        next: number,
+        siteDefaultAccount: PersistedAccount,
     ): Promise<AccountFollows> {
-        if (!siteDefaultAccount.id) {
-            throw new Error('Site default account not found');
-        }
-
         if (!account.id) {
             throw new Error('Account not found');
         }
@@ -87,12 +62,12 @@ export class AccountFollowsView {
                 ? this.getFollowingAccountsCount.bind(this)
                 : this.getFollowerAccountsCount.bind(this);
 
-        const results = await getAccounts(account.id, FOLLOWS_LIMIT, offset);
+        const results = await getAccounts(account.id, FOLLOWS_LIMIT, next);
         const total = await getAccountsCount(account.id);
 
-        const next =
-            total > offset + FOLLOWS_LIMIT
-                ? (offset + FOLLOWS_LIMIT).toString()
+        const nextCursor =
+            total > next + FOLLOWS_LIMIT
+                ? (next + FOLLOWS_LIMIT).toString()
                 : null;
 
         const accounts: AccountInfo[] = [];
@@ -115,22 +90,16 @@ export class AccountFollowsView {
 
         return {
             accounts: accounts,
-            total: total,
-            next: next,
+            next: nextCursor,
         };
     }
 
     async getFollowsByRemoteLookUp(
-        handle: string,
+        apId: URL,
         next: string,
         type: string,
-        siteDefaultAccount: Account,
-    ): Promise<AccountFollows> {
-        // If the next parameter is not a valid URI, return early
-        if (next !== '' && !isUri(next)) {
-            throw new Error('Invalid next parameter');
-        }
-
+        siteDefaultAccount: PersistedAccount,
+    ): Promise<Result<AccountFollows, GetFollowsError>> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await ctx.getDocumentLoader({
@@ -138,14 +107,10 @@ export class AccountFollowsView {
         });
 
         // Lookup actor by handle
-        const actor = await lookupObject(handle, { documentLoader });
+        const actor = await lookupObject(apId, { documentLoader });
 
         if (!isActor(actor)) {
-            throw new Error('Invalid actor');
-        }
-
-        if (!siteDefaultAccount.id) {
-            throw new Error('Site default account not found');
+            return error('not-an-actor');
         }
 
         let page: CollectionPage | null = null;
@@ -161,7 +126,7 @@ export class AccountFollowsView {
                 const { host: nextHost } = new URL(next);
 
                 if (actorHost !== nextHost) {
-                    throw new Error('Invalid next parameter');
+                    return error('invalid-next-parameter');
                 }
 
                 page = (await lookupObject(next, {
@@ -183,34 +148,76 @@ export class AccountFollowsView {
                 }
             }
         } catch (err) {
-            throw new Error('Error getting follows');
+            return error('error-getting-follows');
         }
 
         if (!page) {
-            throw new Error('Page not found');
+            return error('no-page-found');
         }
 
         const accounts: AccountInfo[] = [];
-        try {
-            for await (const item of page.getItems()) {
-                const actor = (await item.toJsonLd({
-                    format: 'compact',
-                    // TODO: Clean up the any type
-                    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                })) as any;
+
+        for await (const item of page.itemIds) {
+            try {
+                const followsActorObj = await lookupObject(item.href, {
+                    documentLoader,
+                });
+
+                if (!isActor(followsActorObj)) {
+                    continue;
+                }
 
                 const followeeAccount = await this.db('accounts')
-                    .where('ap_id', actor.id?.toString() || '')
+                    .where('ap_id', followsActorObj.id?.toString() || '')
                     .first();
 
+                const followsActor = (await followsActorObj.toJsonLd({
+                    format: 'compact',
+                })) as unknown;
+
+                if (!followsActor || typeof followsActor !== 'object') {
+                    continue;
+                }
+
+                if (
+                    !('id' in followsActor) ||
+                    typeof followsActor.id !== 'string'
+                ) {
+                    continue;
+                }
+
+                if (
+                    !('name' in followsActor) ||
+                    typeof followsActor.name !== 'string'
+                ) {
+                    continue;
+                }
+
+                if (
+                    !('preferredUsername' in followsActor) ||
+                    typeof followsActor.preferredUsername !== 'string'
+                ) {
+                    continue;
+                }
+
+                if (
+                    !('icon' in followsActor) ||
+                    !followsActor.icon ||
+                    typeof followsActor.icon !== 'object' ||
+                    !('url' in followsActor.icon) ||
+                    typeof followsActor.icon.url !== 'string'
+                ) {
+                    continue;
+                }
+
                 accounts.push({
-                    id: actor.id || '',
-                    name: actor.name || '',
+                    id: followsActor.id,
+                    name: followsActor.name,
                     handle: getAccountHandle(
-                        new URL(actor.id).host,
-                        actor.preferredUsername,
+                        new URL(followsActor.id).host,
+                        followsActor.preferredUsername,
                     ),
-                    avatarUrl: actor.icon?.url || '',
+                    avatarUrl: followsActor.icon.url,
                     isFollowing: followeeAccount
                         ? await this.checkIfAccountIsFollowing(
                               siteDefaultAccount.id,
@@ -218,20 +225,24 @@ export class AccountFollowsView {
                           )
                         : false,
                 });
+            } catch {
+                ctx.data.logger.error(
+                    `Error while iterating over follow list for ${actor.name}`,
+                );
+                // Skip this item if processing fails
+                // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows
+                // If fetching any one follow fails, we can still return the other valid follows in the collection
             }
-        } catch (err) {
-            throw new Error('Error getting follows');
         }
 
         const nextCursor = page.nextId
             ? encodeURIComponent(page.nextId.toString())
             : null;
 
-        return {
+        return ok({
             accounts: accounts,
-            total: 0,
             next: nextCursor,
-        };
+        });
     }
 
     private async getFollowingAccountsCount(
