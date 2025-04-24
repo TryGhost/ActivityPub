@@ -1,4 +1,6 @@
 import type { EventEmitter } from 'node:events';
+
+import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { NotificationService } from 'notification/notification.service';
 import { PostCreatedEvent } from 'post/post-created.event';
@@ -28,6 +30,10 @@ export class NotificationEventService {
             PostCreatedEvent.getName(),
             this.handlePostCreatedEvent.bind(this),
         );
+        this.events.on(
+            AccountBlockedEvent.getName(),
+            this.handleAccountBlockedEvent.bind(this),
+        );
     }
 
     private async handleAccountFollowedEvent(event: AccountFollowedEvent) {
@@ -53,5 +59,12 @@ export class NotificationEventService {
 
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
         await this.notificationService.createReplyNotification(event.getPost());
+    }
+
+    private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
+        await this.notificationService.removeBlockedAccountNotifications(
+            event.getBlocker(),
+            event.getAccount(),
+        );
     }
 }
