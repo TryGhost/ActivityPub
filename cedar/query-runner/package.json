@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "bottleneck": "2.19.5",
-    "mysql2": "3.14.0",
+    "mysql2": "3.14.1",
     "percentile": "1.6.0"
   }
 }
