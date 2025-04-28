@@ -2,6 +2,7 @@ import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { type Result, error, isError, ok } from 'core/result';
 import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
 
 const ALLOWED_IMAGE_TYPES = [
     'image/jpg',
@@ -75,8 +76,9 @@ export class GCPStorageService {
         }
 
         const storagePath = this.getStoragePath(file.name, accountUuid);
+        const compressedBuffer = await this.compressFile(file);
 
-        await this.bucket.file(storagePath).save(file.stream(), {
+        await this.bucket.file(storagePath).save(compressedBuffer, {
             metadata: {
                 contentType: file.type,
             },
@@ -117,6 +119,34 @@ export class GCPStorageService {
         }
 
         return ok(true);
+    }
+
+    private async compressFile(file: File): Promise<Buffer> {
+        const chunks: Buffer[] = [];
+        for await (const chunk of file.stream()) {
+            chunks.push(Buffer.from(chunk));
+        }
+        const fileBuffer = Buffer.concat(chunks);
+
+        const sharpPipeline = sharp(fileBuffer).resize({
+            width: 1200,
+            withoutEnlargement: true,
+        });
+
+        const format = file.type.split('/')[1];
+        if (format === 'jpeg' || format === 'jpg') {
+            return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
+        }
+
+        if (format === 'png') {
+            return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
+        }
+
+        if (format === 'webp') {
+            return sharpPipeline.webp({ quality: 75 }).toBuffer();
+        }
+
+        return fileBuffer;
     }
 
     async verifyImageUrl(

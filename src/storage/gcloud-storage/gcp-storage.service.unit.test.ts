@@ -3,6 +3,7 @@ import type { Logger } from '@logtape/logtape';
 import { error, ok } from 'core/result';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GCPStorageService } from './gcp-storage.service';
+import sharp from 'sharp';
 
 vi.mock('@google-cloud/storage', () => ({
     Storage: vi.fn(),
@@ -223,6 +224,102 @@ describe('GCPStorageService', () => {
                 const result = await service.verifyImageUrl(new URL(validUrl));
                 expect(result).toEqual(error('gcs-error'));
             });
+        });
+    });
+
+    describe('compressFile', () => {
+        beforeEach(() => {
+            service = new GCPStorageService(mockLogger);
+        });
+
+        async function createMockFile(
+            type: 'image/jpeg' | 'image/png' | 'image/webp',
+        ): Promise<File> {
+            // Create an in-memory image (e.g., 2000x2000 red square)
+            const buffer = await sharp({
+                create: {
+                    width: 2000,
+                    height: 2000,
+                    channels: 3,
+                    background: { r: 255, g: 0, b: 0 },
+                },
+            })
+                .toFormat(type.split('/')[1] as 'jpeg' | 'png' | 'webp')
+                .toBuffer();
+
+            return new File([buffer], `test.${type.split('/')[1]}`, { type });
+        }
+
+        it('compresses a JPEG file and reduces its size', async () => {
+            const mockFile = await createMockFile('image/jpeg');
+            const originalSize = mockFile.size;
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(mockFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toBeLessThan(originalSize);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('jpeg');
+            expect(metadata.width).toBeLessThanOrEqual(1200);
+        });
+
+        it('compresses a PNG file and reduces its size', async () => {
+            const mockFile = await createMockFile('image/png');
+            const originalSize = mockFile.size;
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(mockFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toBeLessThan(originalSize);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('png');
+            expect(metadata.width).toBeLessThanOrEqual(1200);
+        });
+
+        it('compresses a WebP file and reduces its size', async () => {
+            const mockFile = await createMockFile('image/webp');
+            const originalSize = mockFile.size;
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(mockFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toBeLessThan(originalSize);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('webp');
+            expect(metadata.width).toBeLessThanOrEqual(1200);
+        });
+
+        it('returns original buffer for unsupported types', async () => {
+            const textContent = 'hello world';
+            const unsupportedFile = new File([textContent], 'test.txt', {
+                type: 'text/plain',
+            });
+            const originalSize = unsupportedFile.size;
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(unsupportedFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toEqual(originalSize);
+            expect(compressedBuffer.toString()).toBe(textContent);
         });
     });
 });
