@@ -1391,10 +1391,10 @@
   dependencies:
     undici-types "~6.19.8"
 
-"@types/node@20.17.31":
-  version "20.17.31"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.17.31.tgz#7dd6ce2d88462bcd795ec5aa5e41fe79af965eef"
-  integrity sha512-quODOCNXQAbNf1Q7V+fI8WyErOCh0D5Yd31vHnKu4GkSztGQ7rlltAaqXhHhLl33tlVyUXs2386MkANSwgDn6A==
+"@types/node@20.17.32":
+  version "20.17.32"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.17.32.tgz#cb9703514cd8e172c11beff582c66006644c2d88"
+  integrity sha512-zeMXFn8zQ+UkjK4ws0RiOC9EWByyW1CcVmLe+2rQocXRsGEDxUCwPEIVgpsGcLHS/P8JkT0oa3839BRABS0oPw==
   dependencies:
     undici-types "~6.19.2"
 
