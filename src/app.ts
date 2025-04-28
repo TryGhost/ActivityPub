@@ -304,7 +304,7 @@ feedUpdateService.init();
 const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
 fediverseBridge.init();
 
-const notificationService = new NotificationService(client);
+const notificationService = new NotificationService(client, moderationService);
 const notificationEventService = new NotificationEventService(
     events,
     notificationService,

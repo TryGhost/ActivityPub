@@ -250,4 +250,32 @@ describe('ModerationService', () => {
             expect(users).toEqual([bobUserId]);
         });
     });
+
+    describe('filterUsersForAccountInteraction', () => {
+        it('should filter out users that have blocked the interaction account', async () => {
+            const [
+                [aliceAccount, , aliceUserId],
+                [bobAccount, , bobUserId],
+                [, , charlieUserId],
+            ] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await Promise.all([
+                // alice blocks bob
+                fixtureManager.createBlock(aliceAccount, bobAccount),
+            ]);
+
+            const users =
+                await moderationService.filterUsersForAccountInteraction(
+                    [aliceUserId, bobUserId, charlieUserId],
+                    bobAccount.id!,
+                );
+
+            // alice should be filtered out because she blocked bob
+            expect(users).toEqual([bobUserId, charlieUserId]);
+        });
+    });
 });

@@ -106,12 +106,15 @@ export class FixtureManager {
         account: Account,
         {
             type = PostType.Note,
+            inReplyTo,
         }: {
             type?: CreatePostType;
+            inReplyTo?: Post;
         } = {},
     ) {
         const post = Post.createFromData(account, {
             type,
+            inReplyTo,
             content:
                 type === PostType.Article
                     ? faker.lorem.paragraph()
@@ -122,6 +125,15 @@ export class FixtureManager {
         await this.postRepository.save(post);
 
         return post;
+    }
+
+    async createReply(account: Account, inReplyTo: Post) {
+        const reply = await this.createPost(account, {
+            type: PostType.Note,
+            inReplyTo,
+        });
+
+        return reply;
     }
 
     async createBlock(blocker: Account, blocked: Account) {

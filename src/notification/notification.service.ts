@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 import type { Account as AccountEntity } from 'account/account.entity';
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+import type { ModerationService } from 'moderation/moderation.service';
 import type { Post } from 'post/post.entity';
 
 export enum NotificationType {
@@ -54,10 +55,10 @@ export interface GetNotificationsDataResult {
 }
 
 export class NotificationService {
-    /**
-     * @param db Database client
-     */
-    constructor(private readonly db: Knex) {}
+    constructor(
+        private readonly db: Knex,
+        private readonly moderationService: ModerationService,
+    ) {}
 
     /**
      * Get data for a notifications based on the provided options
@@ -162,6 +163,19 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed = (
+            await this.moderationService.filterUsersForAccountInteraction(
+                [user.id],
+                followerAccount.id,
+            )
+        ).includes(user.id);
+
+        // If the user is filtered out for the follower account interaction,
+        // do not create a notification
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: followerAccount.id,
@@ -194,6 +208,19 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed = (
+            await this.moderationService.filterUsersForPost(
+                [user.id],
+                post,
+                accountId,
+            )
+        ).includes(user.id);
+
+        // If the user is filtered out for the post, do not create a notification
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: accountId,
@@ -223,6 +250,19 @@ export class NotificationService {
             // If this repost was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
+            return;
+        }
+
+        const notificationAllowed = (
+            await this.moderationService.filterUsersForPost(
+                [user.id],
+                post,
+                accountId,
+            )
+        ).includes(user.id);
+
+        // If the user is filtered out for the post, do not create a notification
+        if (!notificationAllowed) {
             return;
         }
 
@@ -269,6 +309,15 @@ export class NotificationService {
             // If this reply was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
+            return;
+        }
+
+        const notificationAllowed = (
+            await this.moderationService.filterUsersForPost([user.id], post)
+        ).includes(user.id);
+
+        // If the user is filtered out for the post, do not create a notification
+        if (!notificationAllowed) {
             return;
         }
 
