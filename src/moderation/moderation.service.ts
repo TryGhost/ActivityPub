@@ -32,7 +32,7 @@ export class ModerationService {
         userIds: number[],
         post: Post,
         repostedBy?: number,
-    ) {
+    ): Promise<number[]> {
         // Map user ids to their corresponding account ids
         const userAccountMap = new Map<number, number>();
 
@@ -47,12 +47,14 @@ export class ModerationService {
         // reposter
         if (repostedBy) {
             const authorHasBlockedReposter = await this.db('blocks')
+                .innerJoin('accounts', 'blocks.blocked_id', 'accounts.id')
                 .where('blocker_id', post.author.id)
                 .andWhere('blocked_id', repostedBy)
+                .select('blocked_id')
                 .first();
 
             if (authorHasBlockedReposter) {
-                return [userAccountMap.get(repostedBy)];
+                return [authorHasBlockedReposter.blocked_id];
             }
         }
 
