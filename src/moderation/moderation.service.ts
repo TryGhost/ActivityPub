@@ -48,15 +48,15 @@ export class ModerationService {
         // has blocked the author, and if so, filter out everybody but the
         // reposter
         if (repostedBy) {
-            const authorHasBlockedReposter = await this.db('blocks')
-                .innerJoin('accounts', 'blocks.blocked_id', 'accounts.id')
+            const block = await this.db('blocks')
+                .innerJoin('users', 'blocks.blocked_id', 'users.account_id')
                 .where('blocker_id', post.author.id)
                 .andWhere('blocked_id', repostedBy)
-                .select('blocked_id')
+                .select('users.id as blocked_user_id')
                 .first();
 
-            if (authorHasBlockedReposter) {
-                return [authorHasBlockedReposter.blocked_id];
+            if (block) {
+                return [block.blocked_user_id];
             }
         }
 
