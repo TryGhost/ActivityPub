@@ -1,9 +1,9 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { error, ok } from 'core/result';
+import sharp from 'sharp';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GCPStorageService } from './gcp-storage.service';
-import sharp from 'sharp';
 
 vi.mock('@google-cloud/storage', () => ({
     Storage: vi.fn(),
@@ -14,6 +14,28 @@ describe('GCPStorageService', () => {
     let mockBucket: Bucket;
     let mockStorage: Storage;
     let mockLogger: Logger;
+
+    async function createMockFile(
+        type: 'image/jpeg' | 'image/png' | 'image/webp',
+        fileName: string,
+        width = 100,
+        height = 100,
+    ): Promise<File> {
+        // Create an in-memory image, with the given height/width
+        const imageType = type.split('/')[1] as 'jpeg' | 'png' | 'webp';
+        const buffer = await sharp({
+            create: {
+                width,
+                height,
+                channels: 3,
+                background: { r: 255, g: 0, b: 0 },
+            },
+        })
+            .toFormat(imageType)
+            .toBuffer();
+
+        return new File([buffer], fileName, { type });
+    }
 
     beforeEach(() => {
         process.env.GCP_BUCKET_NAME = 'test-bucket';
@@ -86,27 +108,31 @@ describe('GCPStorageService', () => {
         });
 
         it('validates file size', async () => {
-            const largeFile = new globalThis.File(
+            const largeFile = new File(
                 ['x'.repeat(26 * 1024 * 1024)],
                 'large.jpg',
-                { type: 'image/jpeg' },
+                {
+                    type: 'image/jpeg',
+                },
             );
+
             const result = await service.saveFile(largeFile, 'test-uuid');
+
             expect(result).toEqual(error('file-too-large'));
         });
 
         it('validates file type', async () => {
-            const invalidFile = new globalThis.File(['test'], 'test.txt', {
+            const unsupportedFile = new File(['test'], 'test.txt', {
                 type: 'text/plain',
             });
-            const result = await service.saveFile(invalidFile, 'test-uuid');
+
+            const result = await service.saveFile(unsupportedFile, 'test-uuid');
             expect(result).toEqual(error('file-type-not-supported'));
         });
 
         it('saves valid file and returns URL', async () => {
-            const validFile = new globalThis.File(['test'], 'test.png', {
-                type: 'image/png',
-            });
+            const validFile = await createMockFile('image/png', 'my-image.png');
+
             const result = await service.saveFile(validFile, 'test-uuid');
             expect(result).toEqual(
                 ok(
@@ -119,19 +145,19 @@ describe('GCPStorageService', () => {
         });
 
         it('preserves file extension in storage path', async () => {
-            const validFile = new globalThis.File(['test'], 'test.png', {
-                type: 'image/png',
-            });
+            const validFile = await createMockFile('image/png', 'my-image.png');
+
             await service.saveFile(validFile, 'test-uuid');
+
             const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
             expect(storagePath).toMatch(/\.png$/);
         });
 
         it('generates path without extension if file has none', async () => {
-            const validFile = new globalThis.File(['test'], 'test', {
-                type: 'image/png',
-            });
+            const validFile = await createMockFile('image/png', 'my-image');
+
             await service.saveFile(validFile, 'test-uuid');
+
             const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
             expect(storagePath).toMatch(/^images\/test-uuid\/[a-f0-9-]+$/);
         });
@@ -232,26 +258,13 @@ describe('GCPStorageService', () => {
             service = new GCPStorageService(mockLogger);
         });
 
-        async function createMockFile(
-            type: 'image/jpeg' | 'image/png' | 'image/webp',
-        ): Promise<File> {
-            // Create an in-memory image (e.g., 2000x2000 red square)
-            const buffer = await sharp({
-                create: {
-                    width: 2000,
-                    height: 2000,
-                    channels: 3,
-                    background: { r: 255, g: 0, b: 0 },
-                },
-            })
-                .toFormat(type.split('/')[1] as 'jpeg' | 'png' | 'webp')
-                .toBuffer();
-
-            return new File([buffer], `test.${type.split('/')[1]}`, { type });
-        }
-
         it('compresses a JPEG file and reduces its size', async () => {
-            const mockFile = await createMockFile('image/jpeg');
+            const mockFile = await createMockFile(
+                'image/jpeg',
+                'image.jpg',
+                2000,
+                2000,
+            );
             const originalSize = mockFile.size;
 
             const compressedBuffer = await (
@@ -269,7 +282,12 @@ describe('GCPStorageService', () => {
         });
 
         it('compresses a PNG file and reduces its size', async () => {
-            const mockFile = await createMockFile('image/png');
+            const mockFile = await createMockFile(
+                'image/png',
+                'image.jpg',
+                2000,
+                2000,
+            );
             const originalSize = mockFile.size;
 
             const compressedBuffer = await (
@@ -287,7 +305,12 @@ describe('GCPStorageService', () => {
         });
 
         it('compresses a WebP file and reduces its size', async () => {
-            const mockFile = await createMockFile('image/webp');
+            const mockFile = await createMockFile(
+                'image/webp',
+                'image.jpg',
+                2000,
+                2000,
+            );
             const originalSize = mockFile.size;
 
             const compressedBuffer = await (
@@ -320,6 +343,29 @@ describe('GCPStorageService', () => {
             expect(compressedBuffer).toBeInstanceOf(Buffer);
             expect(compressedBuffer.length).toEqual(originalSize);
             expect(compressedBuffer.toString()).toBe(textContent);
+        });
+
+        it('does not enlarge small images beyond their original size', async () => {
+            const smallFile = await createMockFile(
+                'image/jpeg',
+                'small-file.jpg',
+                600,
+                400,
+            );
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(smallFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+
+            expect(metadata.width).toEqual(600);
+            expect(metadata.height).toEqual(400);
+            expect(metadata.format).toBe('jpeg');
         });
     });
 });
