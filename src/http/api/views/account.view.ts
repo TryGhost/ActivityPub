@@ -111,7 +111,8 @@ export class AccountView {
         context: ViewContext = {},
     ): Promise<AccountDTO | null> {
         const accountData = await this.getAccountByQuery(
-            (qb: Knex.QueryBuilder) => qb.where('accounts.ap_id', apId),
+            (qb: Knex.QueryBuilder) =>
+                qb.whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId]),
         );
 
         if (!accountData) {
