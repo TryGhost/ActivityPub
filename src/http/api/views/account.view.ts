@@ -181,7 +181,7 @@ export class AccountView {
 
         if (context.requestUserAccount?.id) {
             const externalAccount = await this.db('accounts')
-                .where('ap_id', apId)
+                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
                 .select('id')
                 .first();
 
