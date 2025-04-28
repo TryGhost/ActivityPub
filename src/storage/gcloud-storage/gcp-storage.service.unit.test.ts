@@ -109,7 +109,7 @@ describe('GCPStorageService', () => {
 
         it('validates file size', async () => {
             const largeFile = new File(
-                ['x'.repeat(26 * 1024 * 1024)],
+                ['x'.repeat(6 * 1024 * 1024)],
                 'large.jpg',
                 {
                     type: 'image/jpeg',

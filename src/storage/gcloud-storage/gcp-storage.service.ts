@@ -110,7 +110,7 @@ export class GCPStorageService {
     }
 
     private validateFile(file: File): Result<boolean, FileValidationError> {
-        if (file.size > 25 * 1024 * 1024) {
+        if (file.size > 5 * 1024 * 1024) {
             return error('file-too-large');
         }
 
