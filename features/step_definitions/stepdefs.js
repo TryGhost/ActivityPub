@@ -17,6 +17,7 @@ import { merge } from 'es-toolkit';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
 import jose from 'node-jose';
+import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
 
@@ -700,12 +701,21 @@ When(
 );
 
 When(
-    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with a file$/,
+    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with an image$/,
     async function (method, path) {
-        // Create a test file
-        const file = new File(['test image content'], 'test.jpg', {
-            type: 'image/jpeg',
-        });
+        const buffer = await sharp({
+            create: {
+                width: 200,
+                height: 200,
+                channels: 3,
+                background: { r: 255, g: 0, b: 0 },
+            },
+        })
+            .toFormat('jpg')
+            .toBuffer();
+
+        const file = new File([buffer], 'test.jpg', { type: 'image/jpeg' });
+
         const formData = new FormData();
         formData.append('file', file);
 
