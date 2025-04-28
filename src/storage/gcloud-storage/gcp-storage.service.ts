@@ -123,30 +123,37 @@ export class GCPStorageService {
 
     private async compressFile(file: File): Promise<Buffer> {
         const chunks: Buffer[] = [];
+
         for await (const chunk of file.stream()) {
             chunks.push(Buffer.from(chunk));
         }
         const fileBuffer = Buffer.concat(chunks);
 
-        const sharpPipeline = sharp(fileBuffer).resize({
-            width: 1200,
-            withoutEnlargement: true,
-        });
+        try {
+            const sharpPipeline = sharp(fileBuffer).resize({
+                width: 1200,
+                withoutEnlargement: true,
+            });
 
-        const format = file.type.split('/')[1];
-        if (format === 'jpeg' || format === 'jpg') {
-            return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
+            const format = file.type.split('/')[1];
+
+            if (format === 'jpeg' || format === 'jpg') {
+                return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
+            }
+
+            if (format === 'png') {
+                return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
+            }
+
+            if (format === 'webp') {
+                return sharpPipeline.webp({ quality: 75 }).toBuffer();
+            }
+
+            return fileBuffer;
+        } catch (error) {
+            // Return buffer on the original file if compression failed
+            return fileBuffer;
         }
-
-        if (format === 'png') {
-            return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
-        }
-
-        if (format === 'webp') {
-            return sharpPipeline.webp({ quality: 75 }).toBuffer();
-        }
-
-        return fileBuffer;
     }
 
     async verifyImageUrl(
