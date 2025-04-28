@@ -4,6 +4,7 @@ import { AsyncEvents } from 'core/events';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
 import type { Knex } from 'knex';
+import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -70,7 +71,8 @@ describe('KnexPostRepository', () => {
             },
         });
         postRepository = new KnexPostRepository(client, events);
-        const feedService = new FeedService(client);
+        const moderationService = new ModerationService(client);
+        const feedService = new FeedService(client, moderationService);
         const feedUpdateService = new FeedUpdateService(events, feedService);
         feedUpdateService.init();
     });

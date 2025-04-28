@@ -40,6 +40,7 @@ import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
+import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
 import { NotificationEventService } from 'notification/notification-event.service';
 import { NotificationService } from 'notification/notification.service';
@@ -295,7 +296,8 @@ const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
-const feedService = new FeedService(client);
+const moderationService = new ModerationService(client);
+const feedService = new FeedService(client, moderationService);
 const feedUpdateService = new FeedUpdateService(events, feedService);
 feedUpdateService.init();
 

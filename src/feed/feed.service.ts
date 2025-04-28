@@ -3,6 +3,7 @@ import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 
 import type { Account } from 'account/account.entity';
+import type { ModerationService } from 'moderation/moderation.service';
 import {
     type FollowersOnlyPost,
     type Post,
@@ -86,10 +87,10 @@ export interface GetFeedDataResult {
 }
 
 export class FeedService {
-    /**
-     * @param db Database client
-     */
-    constructor(private readonly db: Knex) {}
+    constructor(
+        private readonly db: Knex,
+        private readonly moderationService: ModerationService,
+    ) {}
 
     /**
      * Get data for a feed based on the provided options
@@ -273,7 +274,11 @@ export class FeedService {
         }
 
         // Add the post to the feeds
-        const userIds = Array.from(targetUserIds).map(Number);
+        const userIds = await this.moderationService.filterUsersForPost(
+            Array.from(targetUserIds).map(Number),
+            post,
+            repostedBy ?? undefined,
+        );
 
         if (userIds.length === 0) {
             return [];
