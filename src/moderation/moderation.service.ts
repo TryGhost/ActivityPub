@@ -36,9 +36,11 @@ export class ModerationService {
         // Map user ids to their corresponding account ids
         const userAccountMap = new Map<number, number>();
 
-        for (const row of await this.db('users')
+        const rows = await this.db('users')
             .whereIn('id', userIds)
-            .select('id', 'account_id')) {
+            .select('id', 'account_id');
+
+        for (const row of rows) {
             userAccountMap.set(row.id, row.account_id);
         }
 
