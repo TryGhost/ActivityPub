@@ -149,7 +149,7 @@ export class AccountService {
             } catch (error) {
                 if (isDuplicateEntryError(error)) {
                     const existingAccount = await tx('accounts')
-                        .where({ ap_id: apId })
+                        .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
                         .first<AccountType>();
 
                     if (!existingAccount) {
@@ -194,7 +194,9 @@ export class AccountService {
         } catch (error) {
             if (isDuplicateEntryError(error)) {
                 const existingAccount = await this.db('accounts')
-                    .where({ ap_id: accountData.ap_id })
+                    .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                        accountData.ap_id,
+                    ])
                     .first<AccountType>();
 
                 if (!existingAccount) {
