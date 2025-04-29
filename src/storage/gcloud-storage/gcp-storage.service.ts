@@ -151,7 +151,9 @@ export class GCPStorageService {
 
             return fileBuffer;
         } catch (error) {
-            this.logger.error('Image compression failed, keeping original file');
+            this.logger.error(
+                'Image compression failed, keeping original file',
+            );
             return fileBuffer;
         }
     }

@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +18,6 @@ import { merge } from 'es-toolkit';
 import jwt from 'jsonwebtoken';
 import Knex from 'knex';
 import jose from 'node-jose';
-import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
 
@@ -707,7 +706,10 @@ When(
         const image = await readFile(resolve(__dirname, '../fixtures/dog.jpg'));
 
         const formData = new FormData();
-        formData.append('file', new File([image], 'dog.jpg', { type: 'image/jpeg' }));
+        formData.append(
+            'file',
+            new File([image], 'dog.jpg', { type: 'image/jpeg' }),
+        );
 
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub.test${path}`,
