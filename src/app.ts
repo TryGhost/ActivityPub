@@ -40,6 +40,7 @@ import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatch
 import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
+import { BlockController } from 'http/api/block';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -311,6 +312,8 @@ const notificationEventService = new NotificationEventService(
     notificationService,
 );
 notificationEventService.init();
+
+const blockController = new BlockController(accountService);
 
 /** Fedify */
 
@@ -1102,6 +1105,12 @@ app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(createStorageHandler(accountService, gcpStorageService)),
+);
+
+app.post(
+    '/.ghost/activitypub/actions/block/:id',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => blockController.handleBlock(ctx)),
 );
 /** Federation wire up */
 
