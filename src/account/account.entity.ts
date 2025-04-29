@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { type CreatePostType, PostType } from '../post/post.entity';
+import { AccountBlockedEvent } from './account-blocked.event';
 
 export interface Account {
     readonly id: number;
@@ -13,6 +14,7 @@ export interface Account {
     readonly apId: URL;
     readonly apFollowers: URL | null;
     readonly isInternal: boolean;
+    block(account: Account): Account;
     /**
      * Returns a new Account instance which needs to be saved.
      */
@@ -135,6 +137,16 @@ export class AccountEntity implements Account {
             avatarUrl: get('avatarUrl'),
             bannerImageUrl: get('bannerImageUrl'),
         }) as Account;
+    }
+
+    block(account: Account): Account {
+        if (account.id === this.id) {
+            return this;
+        }
+        return AccountEntity.create(
+            this,
+            this.events.concat(new AccountBlockedEvent(account.id, this.id)),
+        );
     }
 }
 

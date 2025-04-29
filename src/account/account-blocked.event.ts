@@ -12,6 +12,10 @@ export class AccountBlockedEvent {
         return this.blockerId;
     }
 
+    getName(): string {
+        return 'account.blocked';
+    }
+
     static getName(): string {
         return 'account.blocked';
     }
