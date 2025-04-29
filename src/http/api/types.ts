@@ -10,6 +10,10 @@ export interface AccountDTO {
      */
     id: string;
     /**
+     * ActivityPub ID of the account
+     */
+    apId: string;
+    /**
      * Display name of the account
      */
     name: string;
