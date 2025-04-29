@@ -59,4 +59,42 @@ export class BlockController {
             status: 201,
         });
     }
+
+    async handleUnblock(ctx: AppContext) {
+        const accountToUnblock = parseURL(
+            decodeURIComponent(ctx.req.param('id')),
+        );
+
+        if (!accountToUnblock) {
+            return BadRequest('Expected a URL for the ID');
+        }
+
+        const result = await this.accountService.unblockAccountByApId(
+            ctx.get('account'),
+            accountToUnblock,
+        );
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'not-found':
+                    return NotFound('Remote account could not be found');
+                case 'invalid-type':
+                    return BadRequest('Remote account is not an Actor');
+                case 'invalid-data':
+                    return BadRequest('Remote account could not be parsed');
+                case 'network-failure':
+                    return NotFound('Remote account could not be fetched');
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        return new Response(null, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
+        });
+    }
 }

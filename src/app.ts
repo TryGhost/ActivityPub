@@ -1112,6 +1112,12 @@ app.post(
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => blockController.handleBlock(ctx)),
 );
+
+app.post(
+    '/.ghost/activitypub/actions/unblock/:id',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => blockController.handleUnblock(ctx)),
+);
 /** Federation wire up */
 
 app.get(

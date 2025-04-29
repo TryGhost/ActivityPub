@@ -257,6 +257,42 @@ describe('KnexAccountRepository', () => {
         ]);
     });
 
+    it('handles removing a row from blocks when an account has been unblocked', async () => {
+        const [[account], [accountToUnblock]] = await Promise.all([
+            fixtureManager.createInternalAccount(null, 'example.com'),
+            fixtureManager.createInternalAccount(null, 'blocked1.com'),
+        ]);
+
+        // First, block the account
+        const updatedWithBlock = account.block(accountToUnblock);
+        await accountRepository.save(updatedWithBlock);
+
+        // Verify the block was added
+        const blocksAfterBlock = await client('blocks').select(
+            'blocked_id',
+            'blocker_id',
+        );
+
+        expect(blocksAfterBlock).toStrictEqual([
+            {
+                blocked_id: accountToUnblock.id,
+                blocker_id: account.id,
+            },
+        ]);
+
+        // Now unblock the account
+        const updatedWithUnblock = account.unblock(accountToUnblock);
+        await accountRepository.save(updatedWithUnblock);
+
+        // Verify the block was removed
+        const blocksAfterUnblock = await client('blocks').select(
+            'blocked_id',
+            'blocker_id',
+        );
+
+        expect(blocksAfterUnblock).toStrictEqual([]);
+    });
+
     it('handles blocking the same account multiple times without creating duplicate blocks', async () => {
         const [[account], [accountToBlock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),
