@@ -87,7 +87,7 @@ export class KnexAccountRepository {
 
     async getByApId(apId: URL): Promise<Account | null> {
         const accountRow = await this.db('accounts')
-            .where('accounts.ap_id', apId.href)
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
             .leftJoin('users', 'users.account_id', 'accounts.id')
             .select(
                 'accounts.id',
