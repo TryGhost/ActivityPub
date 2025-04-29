@@ -2,8 +2,11 @@ name: Ephemeral Staging Tear Down
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 */4 * * *'
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 permissions:
   id-token: write
