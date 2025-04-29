@@ -17,7 +17,7 @@ export class KnexAccountRepository {
     async save(account: Account): Promise<void> {
         const events = AccountEntity.pullEvents(account);
         await this.db.transaction(async (transaction) => {
-            await transaction('accounts')
+            const rows = await transaction('accounts')
                 .update({
                     name: account.name,
                     bio: account.bio,
@@ -26,6 +26,12 @@ export class KnexAccountRepository {
                     banner_image_url: account.bannerImageUrl?.href ?? null,
                 })
                 .where({ id: account.id });
+
+            if (rows !== 1) {
+                throw new Error(
+                    `Account ${account.id} not found during save()`,
+                );
+            }
 
             for (const event of events) {
                 if (event instanceof AccountBlockedEvent) {
