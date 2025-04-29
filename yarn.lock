@@ -3680,7 +3680,7 @@ setimmediate@^1.0.5:
   resolved "https://registry.yarnpkg.com/setimmediate/-/setimmediate-1.0.5.tgz#290cbb232e306942d7d7ea9b83732ab7856f8285"
   integrity sha512-MATJdZp8sLqDl/68LfQmbP8zKPLQNV6BIZoIgrscFDQ+RsvK/BxeDQOgyxKKoh0y/8h3BqVFnCqQ/gd+reiIXA==
 
-sharp@^0.34.1:
+sharp@0.34.1:
   version "0.34.1"
   resolved "https://registry.yarnpkg.com/sharp/-/sharp-0.34.1.tgz#e5922894b0cc7ddf159eeabc6d5668e4e8b11d61"
   integrity sha512-1j0w61+eVxu7DawFJtnfYcvSv6qPFvfTaqzTQ2BLknVhHTwGS8sc63ZBF4rzkWMBVKybo4S5OBtDdZahh2A1xg==

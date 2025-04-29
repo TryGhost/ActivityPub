@@ -82,7 +82,7 @@
     "mysql2": "3.14.1",
     "node-jose": "2.2.0",
     "sanitize-html": "2.16.0",
-    "sharp": "^0.34.1",
+    "sharp": "0.34.1",
     "uuid": "10.0.0",
     "x-forwarded-fetch": "0.2.0",
     "zod": "3.24.3"
