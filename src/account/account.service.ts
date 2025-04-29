@@ -612,4 +612,23 @@ export class AccountService {
 
         await this.accountRepository.save(updated);
     }
+
+    async blockAccountByApId(
+        account: Account,
+        apId: URL,
+    ): Promise<Result<true, RemoteAccountFetchError>> {
+        const accountToBlockResult = await this.ensureByApId(apId);
+
+        if (isError(accountToBlockResult)) {
+            return accountToBlockResult;
+        }
+
+        const accountToBlock = getValue(accountToBlockResult);
+
+        const updated = account.block(accountToBlock);
+
+        await this.accountRepository.save(updated);
+
+        return ok(true);
+    }
 }
