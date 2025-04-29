@@ -61,19 +61,6 @@ export interface AccountDTO {
      * Whether the account of the current user is following this account
      */
     followedByMe: boolean;
-    /**
-     * Attachments of the account
-     */
-    attachment: {
-        /**
-         * Name of the attachment
-         */
-        name: string;
-        /**
-         * Value of the attachment
-         */
-        value: string;
-    }[];
 }
 
 export type AuthorDTO = Pick<
