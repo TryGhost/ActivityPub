@@ -1,8 +1,6 @@
 import { chunk } from 'es-toolkit';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-
-import type { Account } from 'account/account.entity';
 import type { ModerationService } from 'moderation/moderation.service';
 import {
     type FollowersOnlyPost,
@@ -351,17 +349,17 @@ export class FeedService {
     }
 
     async removeBlockedAccountPostsFromFeed(
-        feedAccount: Account,
-        blockedAccount: Account,
+        feedAccountId: number,
+        blockedAccountId: number,
     ) {
         await this.db('feeds')
             .where((qb) => {
-                qb.where('author_id', blockedAccount.id).orWhere(
+                qb.where('author_id', blockedAccountId).orWhere(
                     'reposted_by_id',
-                    blockedAccount.id,
+                    blockedAccountId,
                 );
             })
-            .andWhere('user_id', feedAccount.id)
+            .andWhere('user_id', feedAccountId)
             .delete();
     }
 }

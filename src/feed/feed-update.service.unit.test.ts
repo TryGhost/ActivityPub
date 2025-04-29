@@ -201,12 +201,12 @@ describe('FeedUpdateService', () => {
 
             events.emit(
                 AccountBlockedEvent.getName(),
-                new AccountBlockedEvent(blockedAccount, account),
+                new AccountBlockedEvent(blockedAccount.id, account.id),
             );
 
             expect(
                 feedService.removeBlockedAccountPostsFromFeed,
-            ).toHaveBeenCalledWith(account, blockedAccount);
+            ).toHaveBeenCalledWith(account.id, blockedAccount.id);
         });
     });
 });

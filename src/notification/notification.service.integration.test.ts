@@ -1,9 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { Knex } from 'knex';
-
-import type { Account as AccountEntity } from 'account/account.entity';
 import type { Account } from 'account/types';
+import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
@@ -813,8 +811,8 @@ describe('NotificationService', () => {
 
             // Remove notifications from the blocked account
             await notificationService.removeBlockedAccountNotifications(
-                account,
-                blockedAccount,
+                account.id,
+                blockedAccount.id,
             );
 
             // Verify only the blocked account's notifications were removed
@@ -828,8 +826,8 @@ describe('NotificationService', () => {
 
         it('should do nothing if user is not found for blocker account', async () => {
             await notificationService.removeBlockedAccountNotifications(
-                { id: 999 } as AccountEntity,
-                { id: 123 } as AccountEntity,
+                999,
+                123,
             );
 
             const notifications = await client('notifications').select('*');

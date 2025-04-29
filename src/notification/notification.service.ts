@@ -1,8 +1,6 @@
-import type { Knex } from 'knex';
-
-import type { Account as AccountEntity } from 'account/account.entity';
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+import type { Knex } from 'knex';
 import type { ModerationService } from 'moderation/moderation.service';
 import type { Post } from 'post/post.entity';
 
@@ -331,11 +329,11 @@ export class NotificationService {
     }
 
     async removeBlockedAccountNotifications(
-        blockerAccount: AccountEntity,
-        blockedAccount: AccountEntity,
+        blockerAccountId: number,
+        blockedAccountId: number,
     ) {
         const user = await this.db('users')
-            .where('account_id', blockerAccount.id)
+            .where('account_id', blockerAccountId)
             .select('id')
             .first();
 
@@ -348,7 +346,7 @@ export class NotificationService {
 
         await this.db('notifications')
             .where('user_id', user.id)
-            .andWhere('account_id', blockedAccount.id)
+            .andWhere('account_id', blockedAccountId)
             .delete();
     }
 }
