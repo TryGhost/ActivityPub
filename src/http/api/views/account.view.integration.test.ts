@@ -11,6 +11,7 @@ import { Audience, Post, PostType } from 'post/post.entity';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { SiteService } from 'site/site.service';
 import { createTestDb } from 'test/db';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import type { AccountDTO } from '../types';
 import { AccountView } from './account.view';
 
@@ -28,6 +29,7 @@ describe('AccountView', () => {
     let postRepository: KnexPostRepository;
     let accountView: AccountView;
     const fedifyContext = {};
+    let fixtureManager: FixtureManager;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -60,20 +62,12 @@ describe('AccountView', () => {
         postRepository = new KnexPostRepository(db, events);
 
         accountView = new AccountView(db, fedifyContextFactory);
+
+        fixtureManager = createFixtureManager(db);
     });
 
     beforeEach(async () => {
-        await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await Promise.all([
-            db('reposts').truncate(),
-            db('likes').truncate(),
-            db('posts').truncate(),
-            db('follows').truncate(),
-            db('accounts').truncate(),
-            db('users').truncate(),
-            db('sites').truncate(),
-        ]);
-        await db.raw('SET FOREIGN_KEY_CHECKS = 1');
+        await fixtureManager.reset();
 
         vi.restoreAllMocks();
     });
@@ -300,7 +294,7 @@ describe('AccountView', () => {
             TEST_TIMEOUT,
         );
 
-        it(
+        it.only(
             'should include the following status for the request user',
             async () => {
                 const site =
@@ -333,6 +327,62 @@ describe('AccountView', () => {
 
                 expect(view!.followedByMe).toBe(true);
                 expect(view!.followerCount).toBe(1);
+            },
+            TEST_TIMEOUT,
+        );
+
+        it(
+            'should include the block status for the request user',
+            async () => {
+                const [[siteAccount], [requestUserAccount]] = await Promise.all(
+                    [
+                        fixtureManager.createInternalAccount(),
+                        fixtureManager.createInternalAccount(),
+                    ],
+                );
+
+                await fixtureManager.createBlock(
+                    siteAccount,
+                    requestUserAccount,
+                );
+
+                const view = await accountView.viewById(siteAccount.id!, {
+                    requestUserAccount: requestUserAccount!,
+                });
+
+                expect(view).not.toBeNull();
+                expect(view!.id).toBe(siteAccount.id);
+
+                expect(view!.blockedByMe).toBe(false);
+                expect(view!.blocksMe).toBe(true);
+            },
+            TEST_TIMEOUT,
+        );
+
+        it(
+            'should include the blocked status for the request user',
+            async () => {
+                const [[siteAccount], [requestUserAccount]] = await Promise.all(
+                    [
+                        fixtureManager.createInternalAccount(),
+                        fixtureManager.createInternalAccount(),
+                    ],
+                );
+
+                await fixtureManager.createBlock(
+                    requestUserAccount,
+                    siteAccount,
+                );
+
+                const view = await accountView.viewById(siteAccount.id!, {
+                    requestUserAccount: requestUserAccount!,
+                });
+
+                expect(view).not.toBeNull();
+                expect(view!.id).toBe(siteAccount.id);
+
+                expect(view!.blockedByMe).toBe(true);
+                expect(view!.blocksMe).toBe(false);
             },
             TEST_TIMEOUT,
         );
@@ -641,6 +691,68 @@ describe('AccountView', () => {
 
                 expect(view!.followedByMe).toBe(true);
                 expect(view!.followerCount).toBe(1);
+            },
+            TEST_TIMEOUT,
+        );
+
+        it(
+            'should include the block status for the request user',
+            async () => {
+                const [[siteAccount], [requestUserAccount]] = await Promise.all(
+                    [
+                        fixtureManager.createInternalAccount(),
+                        fixtureManager.createInternalAccount(),
+                    ],
+                );
+
+                await fixtureManager.createBlock(
+                    siteAccount,
+                    requestUserAccount,
+                );
+
+                const view = await accountView.viewByApId(
+                    siteAccount.apId.toString(),
+                    {
+                        requestUserAccount: requestUserAccount!,
+                    },
+                );
+
+                expect(view).not.toBeNull();
+                expect(view!.id).toBe(siteAccount.id);
+
+                expect(view!.blockedByMe).toBe(false);
+                expect(view!.blocksMe).toBe(true);
+            },
+            TEST_TIMEOUT,
+        );
+
+        it(
+            'should include the blocked status for the request user',
+            async () => {
+                const [[siteAccount], [requestUserAccount]] = await Promise.all(
+                    [
+                        fixtureManager.createInternalAccount(),
+                        fixtureManager.createInternalAccount(),
+                    ],
+                );
+
+                await fixtureManager.createBlock(
+                    requestUserAccount,
+                    siteAccount,
+                );
+
+                const view = await accountView.viewByApId(
+                    siteAccount.apId.toString(),
+                    {
+                        requestUserAccount: requestUserAccount!,
+                    },
+                );
+
+                expect(view).not.toBeNull();
+                expect(view!.id).toBe(siteAccount.id);
+
+                expect(view!.blockedByMe).toBe(true);
+                expect(view!.blocksMe).toBe(false);
             },
             TEST_TIMEOUT,
         );

@@ -2,6 +2,8 @@
   "avatarUrl": "Test site",
   "bannerImageUrl": "",
   "bio": "Test site",
+  "blockedByMe": false,
+  "blocksMe": false,
   "customFields": {},
   "followedByMe": false,
   "followerCount": 0,

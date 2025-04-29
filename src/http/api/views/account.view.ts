@@ -41,16 +41,19 @@ export class AccountView {
 
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
+        let blocksMe = false;
 
         if (
             context.requestUserAccount?.id &&
-            // Don't check if the request user is following / followed by themselves
+            // Don't check if the request user is following / followed / blocking / blocked by themselves
             accountData.id !== context.requestUserAccount.id
         ) {
-            ({ followedByMe, followsMe } = await this.getRequestUserContextData(
-                context.requestUserAccount.id,
-                accountData.id,
-            ));
+            ({ followedByMe, followsMe, blockedByMe, blocksMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    accountData.id,
+                ));
         }
 
         return {
@@ -73,6 +76,8 @@ export class AccountView {
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
+            blockedByMe,
+            blocksMe,
         };
     }
 
@@ -120,16 +125,19 @@ export class AccountView {
 
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
+        let blocksMe = false;
 
         if (
             context.requestUserAccount?.id &&
-            // Don't check if the request user is following / followed by themselves
+            // Don't check if the request user is following / followed / blocking / blocked by themselves
             accountData.id !== context.requestUserAccount.id
         ) {
-            ({ followedByMe, followsMe } = await this.getRequestUserContextData(
-                context.requestUserAccount.id,
-                accountData.id,
-            ));
+            ({ followedByMe, followsMe, blockedByMe, blocksMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    accountData.id,
+                ));
         }
 
         return {
@@ -152,6 +160,8 @@ export class AccountView {
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
+            blockedByMe,
+            blocksMe,
         };
     }
 
@@ -177,6 +187,8 @@ export class AccountView {
 
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
+        let blocksMe = false;
 
         if (context.requestUserAccount?.id) {
             const externalAccount = await this.db('accounts')
@@ -185,7 +197,7 @@ export class AccountView {
                 .first();
 
             if (externalAccount) {
-                ({ followedByMe, followsMe } =
+                ({ followedByMe, followsMe, blockedByMe, blocksMe } =
                     await this.getRequestUserContextData(
                         context.requestUserAccount.id,
                         externalAccount.id,
@@ -230,6 +242,8 @@ export class AccountView {
             followerCount: followerCount,
             followedByMe,
             followsMe,
+            blockedByMe,
+            blocksMe,
         };
     }
 
@@ -275,6 +289,8 @@ export class AccountView {
     ) {
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
+        let blocksMe = false;
 
         followedByMe =
             (
@@ -292,9 +308,27 @@ export class AccountView {
                     .first()
             )?.id !== undefined;
 
+        blockedByMe =
+            (
+                await this.db('blocks')
+                    .where('blocker_id', requestUserAccountId)
+                    .where('blocked_id', retrievedAccountId)
+                    .first()
+            )?.id !== undefined;
+
+        blocksMe =
+            (
+                await this.db('blocks')
+                    .where('blocker_id', retrievedAccountId)
+                    .where('blocked_id', requestUserAccountId)
+                    .first()
+            )?.id !== undefined;
+
         return {
             followedByMe,
             followsMe,
+            blockedByMe,
+            blocksMe,
         };
     }
 

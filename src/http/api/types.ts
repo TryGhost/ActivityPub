@@ -61,6 +61,14 @@ export interface AccountDTO {
      * Whether the account of the current user is following this account
      */
     followedByMe: boolean;
+    /**
+     * Whether the account of the current user is blocked by this account
+     */
+    blocksMe: boolean;
+    /**
+     * Whether the account of the current user is blocking this account
+     */
+    blockedByMe: boolean;
 }
 
 export type AuthorDTO = Pick<
