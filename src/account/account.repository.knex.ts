@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
 import { AccountBlockedEvent } from './account-blocked.event';
+import { AccountUnblockedEvent } from './account-unblocked.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { type Account, AccountEntity } from './account.entity';
 
@@ -35,6 +36,13 @@ export class KnexAccountRepository {
                         })
                         .onConflict(['blocker_id', 'blocked_id'])
                         .ignore();
+                } else if (event instanceof AccountUnblockedEvent) {
+                    await transaction('blocks')
+                        .where({
+                            blocker_id: event.getUnblockerId(),
+                            blocked_id: event.getAccountId(),
+                        })
+                        .delete();
                 }
             }
         });

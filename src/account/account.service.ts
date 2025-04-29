@@ -631,4 +631,23 @@ export class AccountService {
 
         return ok(true);
     }
+
+    async unblockAccountByApId(
+        account: Account,
+        apId: URL,
+    ): Promise<Result<true, RemoteAccountFetchError>> {
+        const accountToUnblockResult = await this.ensureByApId(apId);
+
+        if (isError(accountToUnblockResult)) {
+            return accountToUnblockResult;
+        }
+
+        const accountToUnblock = getValue(accountToUnblockResult);
+
+        const updated = account.unblock(accountToUnblock);
+
+        await this.accountRepository.save(updated);
+
+        return ok(true);
+    }
 }
