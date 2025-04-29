@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AccountEntity } from 'account/account.entity';
 import { PostType } from 'post/post.entity';
+import { AccountBlockedEvent } from './account-blocked.event';
 
 describe('AccountEntity', () => {
     it('Uses the apId if the url is missing', () => {
@@ -364,6 +365,62 @@ describe('AccountEntity', () => {
             expect(updated.bannerImageUrl?.href).toBe(
                 'http://example.com/original-banner.png',
             );
+        });
+    });
+    describe('block', () => {
+        it('You cannot block yourself', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const updated = account.block(account);
+
+            expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
+        });
+
+        it('You can block another account', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const accountToBlock = AccountEntity.create({
+                id: 2,
+                ...draft,
+            });
+
+            const updated = account.block(accountToBlock);
+
+            expect(AccountEntity.pullEvents(updated)).toStrictEqual([
+                new AccountBlockedEvent(accountToBlock.id, account.id),
+            ]);
         });
     });
 });
