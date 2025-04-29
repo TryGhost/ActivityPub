@@ -853,8 +853,8 @@ describe('FeedService', () => {
 
             // Remove the blocked account's posts from the user's feed
             await feedService.removeBlockedAccountPostsFromFeed(
-                userAccount,
-                blockedAccount,
+                userAccount.id,
+                blockedAccount.id,
             );
 
             // Verify the post from the blocked account is removed from the
@@ -964,8 +964,8 @@ describe('FeedService', () => {
 
             // Remove the blocked account's reposts from the user's feed
             await feedService.removeBlockedAccountPostsFromFeed(
-                userAccount,
-                blockedAccount,
+                userAccount.id,
+                blockedAccount.id,
             );
 
             // Verify the repost from the blocked account is removed from the

@@ -62,9 +62,12 @@ export class NotificationEventService {
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
+        const blockerId = event.getBlockerId();
+        const blockedId = event.getAccountId();
+
         await this.notificationService.removeBlockedAccountNotifications(
-            event.getBlocker(),
-            event.getAccount(),
+            blockerId,
+            blockedId,
         );
     }
 }
