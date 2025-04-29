@@ -57,6 +57,7 @@ export class AccountView {
 
         return {
             id: accountData.id,
+            apId: accountData.ap_id,
             name: accountData.name,
             handle: getAccountHandle(
                 new URL(accountData.ap_id).host,
@@ -139,6 +140,7 @@ export class AccountView {
 
         return {
             id: accountData.id,
+            apId: accountData.ap_id,
             name: accountData.name,
             handle: getAccountHandle(
                 new URL(accountData.ap_id).host,
@@ -213,6 +215,7 @@ export class AccountView {
 
         return {
             id: actor.id?.toString() || '',
+            apId: actor.id?.toString() || '',
             name: actor.name?.toString() || '',
             handle: getHandle(actor),
             bio: sanitizeHtml(actor.summary?.toString() || ''),
