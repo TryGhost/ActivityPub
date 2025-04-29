@@ -18,8 +18,8 @@ describe('GCPStorageService', () => {
     async function createMockFile(
         type: 'image/jpeg' | 'image/png' | 'image/webp',
         fileName: string,
-        width = 100,
         height = 100,
+        width = 100,
     ): Promise<File> {
         // Create an in-memory image, with the given height/width
         const imageType = type.split('/')[1] as 'jpeg' | 'png' | 'webp';
@@ -262,8 +262,8 @@ describe('GCPStorageService', () => {
             const mockFile = await createMockFile(
                 'image/jpeg',
                 'image.jpg',
-                2000,
-                2000,
+                3000,
+                3000,
             );
             const originalSize = mockFile.size;
 
@@ -278,15 +278,16 @@ describe('GCPStorageService', () => {
 
             const metadata = await sharp(compressedBuffer).metadata();
             expect(metadata.format).toBe('jpeg');
-            expect(metadata.width).toBeLessThanOrEqual(1200);
+            expect(metadata.width).toBeLessThanOrEqual(2000);
+            expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
         it('compresses a PNG file and reduces its size', async () => {
             const mockFile = await createMockFile(
                 'image/png',
                 'image.jpg',
-                2000,
-                2000,
+                3000,
+                3000,
             );
             const originalSize = mockFile.size;
 
@@ -301,15 +302,16 @@ describe('GCPStorageService', () => {
 
             const metadata = await sharp(compressedBuffer).metadata();
             expect(metadata.format).toBe('png');
-            expect(metadata.width).toBeLessThanOrEqual(1200);
+            expect(metadata.width).toBeLessThanOrEqual(2000);
+            expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
         it('compresses a WebP file and reduces its size', async () => {
             const mockFile = await createMockFile(
                 'image/webp',
                 'image.jpg',
-                2000,
-                2000,
+                3000,
+                3000,
             );
             const originalSize = mockFile.size;
 
@@ -324,7 +326,82 @@ describe('GCPStorageService', () => {
 
             const metadata = await sharp(compressedBuffer).metadata();
             expect(metadata.format).toBe('webp');
-            expect(metadata.width).toBeLessThanOrEqual(1200);
+            expect(metadata.width).toBeLessThanOrEqual(2000);
+            expect(metadata.height).toBeLessThanOrEqual(2000);
+        });
+
+        it('supports resizing large portrait images', async () => {
+            const height = 4000;
+            const width = 1000;
+            const mockFile = await createMockFile(
+                'image/webp',
+                'image.jpg',
+                width,
+                height,
+            );
+            const originalSize = mockFile.size;
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(mockFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toBeLessThan(originalSize);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('webp');
+            expect(metadata.width).toBeLessThanOrEqual(2000);
+            expect(metadata.height).toBeLessThanOrEqual(2000);
+        });
+
+        it('supports resizing large landscape images', async () => {
+            // Portrait image of 4000 width and 1000 height
+            const mockFile = await createMockFile(
+                'image/webp',
+                'image.jpg',
+                4000,
+                1000,
+            );
+            const originalSize = mockFile.size;
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(mockFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toBeLessThan(originalSize);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('webp');
+            expect(metadata.width).toBeLessThanOrEqual(2000);
+            expect(metadata.height).toBeLessThanOrEqual(2000);
+        });
+
+        it('does not enlarge small images beyond their original size', async () => {
+            const smallFile = await createMockFile(
+                'image/jpeg',
+                'small-file.jpg',
+                400,
+                600,
+            );
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(smallFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+
+            const metadata = await sharp(compressedBuffer).metadata();
+
+            expect(metadata.width).toEqual(600);
+            expect(metadata.height).toEqual(400);
+            expect(metadata.format).toBe('jpeg');
         });
 
         it('returns original buffer for unsupported types', async () => {
@@ -343,29 +420,6 @@ describe('GCPStorageService', () => {
             expect(compressedBuffer).toBeInstanceOf(Buffer);
             expect(compressedBuffer.length).toEqual(originalSize);
             expect(compressedBuffer.toString()).toBe(textContent);
-        });
-
-        it('does not enlarge small images beyond their original size', async () => {
-            const smallFile = await createMockFile(
-                'image/jpeg',
-                'small-file.jpg',
-                600,
-                400,
-            );
-
-            const compressedBuffer = await (
-                service as unknown as {
-                    compressFile: (file: File) => Promise<Buffer>;
-                }
-            ).compressFile(smallFile);
-
-            expect(compressedBuffer).toBeInstanceOf(Buffer);
-
-            const metadata = await sharp(compressedBuffer).metadata();
-
-            expect(metadata.width).toEqual(600);
-            expect(metadata.height).toEqual(400);
-            expect(metadata.format).toBe('jpeg');
         });
     });
 });

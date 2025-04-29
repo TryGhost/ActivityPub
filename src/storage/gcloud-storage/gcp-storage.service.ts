@@ -131,7 +131,9 @@ export class GCPStorageService {
 
         try {
             const sharpPipeline = sharp(fileBuffer).resize({
-                width: 1200,
+                width: 2000,
+                height: 2000,
+                fit: 'inside',
                 withoutEnlargement: true,
             });
 
