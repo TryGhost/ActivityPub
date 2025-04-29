@@ -262,7 +262,9 @@ export class AccountService {
             return null;
         }
 
-        return await this.db('accounts').where('ap_id', apId).first();
+        return await this.db('accounts')
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+            .first();
     }
 
     /**

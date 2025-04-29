@@ -164,7 +164,9 @@ export class AccountFollowsView {
                 }
 
                 const followeeAccount = await this.db('accounts')
-                    .where('ap_id', followsActorObj.id?.toString() || '')
+                    .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                        followsActorObj.id?.toString() || '',
+                    ])
                     .first();
 
                 const followsActor = (await followsActorObj.toJsonLd({
