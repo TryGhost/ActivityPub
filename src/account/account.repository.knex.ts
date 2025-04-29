@@ -29,6 +29,10 @@ export class KnexAccountRepository {
         );
     }
 
+    /**
+     * @deprecated
+     * Use `ctx.get('account')` instead
+     */
     async getBySite(site: Site): Promise<Account> {
         const users = await this.db('users').where('site_id', site.id);
         if (users.length === 0) {

@@ -32,6 +32,7 @@ import {
     withContext,
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
+import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
 import { FollowersService } from 'activitypub/followers.service';
@@ -542,6 +543,7 @@ export type HonoContextVariables = {
     logger: Logger;
     role: GhostRole;
     site: Site;
+    account: Account;
 };
 
 const app = new Hono<{ Variables: HonoContextVariables }>();
@@ -843,6 +845,24 @@ app.use(async (ctx, next) => {
     ctx.set('site', site);
 
     await next();
+});
+
+app.use(async (ctx, next) => {
+    const site = ctx.get('site');
+
+    try {
+        const account = await accountRepository.getBySite(ctx.get('site'));
+        ctx.set('account', account);
+
+        await next();
+    } catch (err) {
+        ctx.get('logger').error('No account found for {host}', {
+            host: site.host,
+        });
+        return new Response('No account found', {
+            status: 401,
+        });
+    }
 });
 
 app.use(async (ctx, next) => {
