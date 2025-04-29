@@ -173,13 +173,17 @@ export class FixtureManager {
 
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await this.db('follows').truncate();
-        await this.db('notifications').truncate();
-        await this.db('blocks').truncate();
-        await this.db('posts').truncate();
-        await this.db('accounts').truncate();
-        await this.db('users').truncate();
-        await this.db('sites').truncate();
+        await Promise.all([
+            this.db('notifications').truncate(),
+            this.db('likes').truncate(),
+            this.db('reposts').truncate(),
+            this.db('posts').truncate(),
+            this.db('blocks').truncate(),
+            this.db('follows').truncate(),
+            this.db('accounts').truncate(),
+            this.db('users').truncate(),
+            this.db('sites').truncate(),
+        ]);
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 1');
     }
 }
