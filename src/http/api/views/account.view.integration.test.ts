@@ -332,35 +332,7 @@ describe('AccountView', () => {
         );
 
         it(
-            'should include the block status for the request user',
-            async () => {
-                const [[siteAccount], [requestUserAccount]] = await Promise.all(
-                    [
-                        fixtureManager.createInternalAccount(),
-                        fixtureManager.createInternalAccount(),
-                    ],
-                );
-
-                await fixtureManager.createBlock(
-                    siteAccount,
-                    requestUserAccount,
-                );
-
-                const view = await accountView.viewById(siteAccount.id!, {
-                    requestUserAccount: requestUserAccount!,
-                });
-
-                expect(view).not.toBeNull();
-                expect(view!.id).toBe(siteAccount.id);
-
-                expect(view!.blockedByMe).toBe(false);
-                expect(view!.blocksMe).toBe(true);
-            },
-            TEST_TIMEOUT,
-        );
-
-        it(
-            'should include the blocked status for the request user',
+            'should include the blocking status for the request user',
             async () => {
                 const [[siteAccount], [requestUserAccount]] = await Promise.all(
                     [
@@ -382,7 +354,6 @@ describe('AccountView', () => {
                 expect(view!.id).toBe(siteAccount.id);
 
                 expect(view!.blockedByMe).toBe(true);
-                expect(view!.blocksMe).toBe(false);
             },
             TEST_TIMEOUT,
         );
@@ -696,38 +667,7 @@ describe('AccountView', () => {
         );
 
         it(
-            'should include the block status for the request user',
-            async () => {
-                const [[siteAccount], [requestUserAccount]] = await Promise.all(
-                    [
-                        fixtureManager.createInternalAccount(),
-                        fixtureManager.createInternalAccount(),
-                    ],
-                );
-
-                await fixtureManager.createBlock(
-                    siteAccount,
-                    requestUserAccount,
-                );
-
-                const view = await accountView.viewByApId(
-                    siteAccount.apId.toString(),
-                    {
-                        requestUserAccount: requestUserAccount!,
-                    },
-                );
-
-                expect(view).not.toBeNull();
-                expect(view!.id).toBe(siteAccount.id);
-
-                expect(view!.blockedByMe).toBe(false);
-                expect(view!.blocksMe).toBe(true);
-            },
-            TEST_TIMEOUT,
-        );
-
-        it(
-            'should include the blocked status for the request user',
+            'should include the blocking status for the request user',
             async () => {
                 const [[siteAccount], [requestUserAccount]] = await Promise.all(
                     [
@@ -752,7 +692,6 @@ describe('AccountView', () => {
                 expect(view!.id).toBe(siteAccount.id);
 
                 expect(view!.blockedByMe).toBe(true);
-                expect(view!.blocksMe).toBe(false);
             },
             TEST_TIMEOUT,
         );

@@ -42,14 +42,13 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
         let blockedByMe = false;
-        let blocksMe = false;
 
         if (
             context.requestUserAccount?.id &&
-            // Don't check if the request user is following / followed / blocking / blocked by themselves
+            // Don't check if the request user is following / followed / blocking themselves
             accountData.id !== context.requestUserAccount.id
         ) {
-            ({ followedByMe, followsMe, blockedByMe, blocksMe } =
+            ({ followedByMe, followsMe, blockedByMe } =
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     accountData.id,
@@ -77,7 +76,6 @@ export class AccountView {
             followedByMe,
             followsMe,
             blockedByMe,
-            blocksMe,
         };
     }
 
@@ -126,14 +124,13 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
         let blockedByMe = false;
-        let blocksMe = false;
 
         if (
             context.requestUserAccount?.id &&
-            // Don't check if the request user is following / followed / blocking / blocked by themselves
+            // Don't check if the request user is following / followed / blocking themselves
             accountData.id !== context.requestUserAccount.id
         ) {
-            ({ followedByMe, followsMe, blockedByMe, blocksMe } =
+            ({ followedByMe, followsMe, blockedByMe } =
                 await this.getRequestUserContextData(
                     context.requestUserAccount.id,
                     accountData.id,
@@ -161,7 +158,6 @@ export class AccountView {
             followedByMe,
             followsMe,
             blockedByMe,
-            blocksMe,
         };
     }
 
@@ -188,7 +184,6 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
         let blockedByMe = false;
-        let blocksMe = false;
 
         if (context.requestUserAccount?.id) {
             const externalAccount = await this.db('accounts')
@@ -197,7 +192,7 @@ export class AccountView {
                 .first();
 
             if (externalAccount) {
-                ({ followedByMe, followsMe, blockedByMe, blocksMe } =
+                ({ followedByMe, followsMe, blockedByMe } =
                     await this.getRequestUserContextData(
                         context.requestUserAccount.id,
                         externalAccount.id,
@@ -243,7 +238,6 @@ export class AccountView {
             followedByMe,
             followsMe,
             blockedByMe,
-            blocksMe,
         };
     }
 
@@ -290,7 +284,6 @@ export class AccountView {
         let followedByMe = false;
         let followsMe = false;
         let blockedByMe = false;
-        let blocksMe = false;
 
         followedByMe =
             (
@@ -316,19 +309,10 @@ export class AccountView {
                     .first()
             )?.id !== undefined;
 
-        blocksMe =
-            (
-                await this.db('blocks')
-                    .where('blocker_id', retrievedAccountId)
-                    .where('blocked_id', requestUserAccountId)
-                    .first()
-            )?.id !== undefined;
-
         return {
             followedByMe,
             followsMe,
             blockedByMe,
-            blocksMe,
         };
     }
 

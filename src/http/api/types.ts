@@ -62,10 +62,6 @@ export interface AccountDTO {
      */
     followedByMe: boolean;
     /**
-     * Whether the account of the current user is blocked by this account
-     */
-    blocksMe: boolean;
-    /**
      * Whether the account of the current user is blocking this account
      */
     blockedByMe: boolean;
