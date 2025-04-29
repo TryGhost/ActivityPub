@@ -125,7 +125,7 @@ export class GCPStorageService {
         const chunks: Buffer[] = [];
 
         for await (const chunk of file.stream()) {
-            chunks.push(Buffer.from(chunk));
+            chunks.push(chunk as Buffer);
         }
         const fileBuffer = Buffer.concat(chunks);
 
