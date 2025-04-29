@@ -35,6 +35,7 @@ import * as Sentry from '@sentry/node';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { CreateHandler } from 'activity-handlers/create.handler';
+import { FollowHandler } from 'activity-handlers/follow.handler';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { AsyncEvents } from 'core/events';
@@ -61,7 +62,6 @@ import {
     createAcceptHandler,
     createAnnounceHandler,
     createDispatcher,
-    createFollowHandler,
     createFollowersCounter,
     createFollowersDispatcher,
     createFollowingCounter,
@@ -377,12 +377,16 @@ const deleteHandler = new DeleteHandler(
     postRepository,
 );
 
+const followHandler = new FollowHandler(accountService);
+
 const deleteDispatcher = new DeleteDispatcher();
 
 inboxListener
     .on(
         Follow,
-        ensureCorrectContext(spanWrapper(createFollowHandler(accountService))),
+        ensureCorrectContext(
+            spanWrapper(followHandler.handle.bind(followHandler)),
+        ),
     )
     .onError(inboxErrorHandler)
     .on(
