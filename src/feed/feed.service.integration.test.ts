@@ -5,7 +5,7 @@ import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
-import type { AccountEntity } from '../account/account.entity';
+import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import type { Account as AccountType, Site } from '../account/types';
@@ -72,10 +72,7 @@ describe('FeedService', () => {
     };
 
     let postCount = 0;
-    const createPost = async (
-        account: AccountEntity,
-        data: Partial<PostData>,
-    ) => {
+    const createPost = async (account: Account, data: Partial<PostData>) => {
         postCount++;
 
         const site = accountSitesMap.get(Number(account.id)) ?? {
@@ -97,7 +94,7 @@ describe('FeedService', () => {
         return post;
     };
 
-    const getFeedDataForAccount = async (account: AccountEntity) => {
+    const getFeedDataForAccount = async (account: Account) => {
         const feed = await client('feeds')
             .join('users', 'users.id', 'feeds.user_id')
             .join('accounts', 'accounts.id', 'users.account_id')
