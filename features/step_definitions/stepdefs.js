@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
+import { readFile } from 'fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -703,21 +704,10 @@ When(
 When(
     /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with an image$/,
     async function (method, path) {
-        const buffer = await sharp({
-            create: {
-                width: 200,
-                height: 200,
-                channels: 3,
-                background: { r: 255, g: 0, b: 0 },
-            },
-        })
-            .toFormat('jpg')
-            .toBuffer();
-
-        const file = new File([buffer], 'test.jpg', { type: 'image/jpeg' });
+        const image = await readFile(resolve(__dirname, '../fixtures/dog.jpg'));
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', new File([image], 'dog.jpg', { type: 'image/jpeg' }));
 
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub.test${path}`,
