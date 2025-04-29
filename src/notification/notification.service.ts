@@ -161,15 +161,12 @@ export class NotificationService {
             return;
         }
 
-        const notificationAllowed = (
-            await this.moderationService.filterUsersForAccountInteraction(
-                [user.id],
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
                 followerAccount.id,
-            )
-        ).includes(user.id);
+                account.id,
+            );
 
-        // If the user is filtered out for the follower account interaction,
-        // do not create a notification
         if (!notificationAllowed) {
             return;
         }
@@ -206,15 +203,12 @@ export class NotificationService {
             return;
         }
 
-        const notificationAllowed = (
-            await this.moderationService.filterUsersForPost(
-                [user.id],
-                post,
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
                 accountId,
-            )
-        ).includes(user.id);
+                post.author.id,
+            );
 
-        // If the user is filtered out for the post, do not create a notification
         if (!notificationAllowed) {
             return;
         }
@@ -251,15 +245,12 @@ export class NotificationService {
             return;
         }
 
-        const notificationAllowed = (
-            await this.moderationService.filterUsersForPost(
-                [user.id],
-                post,
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
                 accountId,
-            )
-        ).includes(user.id);
+                post.author.id,
+            );
 
-        // If the user is filtered out for the post, do not create a notification
         if (!notificationAllowed) {
             return;
         }
@@ -310,11 +301,12 @@ export class NotificationService {
             return;
         }
 
-        const notificationAllowed = (
-            await this.moderationService.filterUsersForPost([user.id], post)
-        ).includes(user.id);
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                post.author.id,
+                inReplyToPost.author_id,
+            );
 
-        // If the user is filtered out for the post, do not create a notification
         if (!notificationAllowed) {
             return;
         }

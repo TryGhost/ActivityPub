@@ -251,31 +251,32 @@ describe('ModerationService', () => {
         });
     });
 
-    describe('filterUsersForAccountInteraction', () => {
-        it('should filter out users that have blocked the interaction account', async () => {
-            const [
-                [aliceAccount, , aliceUserId],
-                [bobAccount, , bobUserId],
-                [, , charlieUserId],
-            ] = await Promise.all([
-                fixtureManager.createInternalAccount(),
-                fixtureManager.createInternalAccount(),
-                fixtureManager.createInternalAccount(),
-            ]);
+    describe('canInteractWithAccount', () => {
+        it('should return a boolean to indicate if the interaction account can interact with the target account', async () => {
+            const [[aliceAccount], [bobAccount], [charlieAccount]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
 
-            await Promise.all([
-                // alice blocks bob
-                fixtureManager.createBlock(aliceAccount, bobAccount),
-            ]);
+            await fixtureManager.createBlock(aliceAccount, bobAccount);
 
-            const users =
-                await moderationService.filterUsersForAccountInteraction(
-                    [aliceUserId, bobUserId, charlieUserId],
-                    bobAccount.id!,
+            const bobCanInteractWithAlice =
+                await moderationService.canInteractWithAccount(
+                    bobAccount.id,
+                    aliceAccount.id,
                 );
 
-            // alice should be filtered out because she blocked bob
-            expect(users).toEqual([bobUserId, charlieUserId]);
+            expect(bobCanInteractWithAlice).toBe(false);
+
+            const charlieCanInteractWithAlice =
+                await moderationService.canInteractWithAccount(
+                    charlieAccount.id,
+                    aliceAccount.id,
+                );
+
+            expect(charlieCanInteractWithAlice).toBe(true);
         });
     });
 });
