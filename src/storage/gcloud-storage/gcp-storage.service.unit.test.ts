@@ -421,5 +421,32 @@ describe('GCPStorageService', () => {
             expect(compressedBuffer.length).toEqual(originalSize);
             expect(compressedBuffer.toString()).toBe(textContent);
         });
+
+        it('returns original buffer if compression fails', async () => {
+            const mockFile = await createMockFile(
+                'image/jpeg',
+                'my-img.jpg',
+                1000,
+                1000,
+            );
+            const originalSize = mockFile.size;
+
+            const sharpSpy = vi
+                .spyOn(sharp.prototype, 'toBuffer')
+                .mockImplementation(() => {
+                    throw new Error('Simulated sharp failure');
+                });
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(mockFile);
+
+            sharpSpy.mockRestore();
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+            expect(compressedBuffer.length).toEqual(originalSize);
+        });
     });
 });

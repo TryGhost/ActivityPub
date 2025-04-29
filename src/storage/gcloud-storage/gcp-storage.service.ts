@@ -125,7 +125,11 @@ export class GCPStorageService {
         const chunks: Buffer[] = [];
 
         for await (const chunk of file.stream()) {
-            chunks.push(chunk as Buffer);
+            if (Buffer.isBuffer(chunk)) {
+                chunks.push(chunk);
+            } else {
+                chunks.push(Buffer.from(chunk));
+            }
         }
         const fileBuffer = Buffer.concat(chunks);
 
@@ -155,6 +159,11 @@ export class GCPStorageService {
         } catch (error) {
             this.logger.error(
                 'Image compression failed, keeping original file',
+                {
+                    error,
+                    fileName: file.name,
+                    fileType: file.type,
+                },
             );
             return fileBuffer;
         }
