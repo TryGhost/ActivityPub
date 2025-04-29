@@ -73,7 +73,6 @@ export class AccountView {
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
-            attachment: [], // TODO: I don't think we need this
         };
     }
 
@@ -153,7 +152,6 @@ export class AccountView {
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
-            attachment: [], // TODO: I don't think we need this
         };
     }
 
@@ -232,7 +230,6 @@ export class AccountView {
             followerCount: followerCount,
             followedByMe,
             followsMe,
-            attachment: [], // TODO: I don't think we need this
         };
     }
 
