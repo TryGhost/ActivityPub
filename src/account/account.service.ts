@@ -1,4 +1,5 @@
 import {
+    type Actor,
     exportJwk,
     generateCryptoKeyPair,
     isActor,
@@ -8,6 +9,7 @@ import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
+import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
@@ -43,6 +45,12 @@ function isDuplicateEntryError(error: unknown): boolean {
     );
 }
 
+type RemoteAccountFetchError =
+    | 'invalid-type'
+    | 'invalid-data'
+    | 'network-failure'
+    | 'not-found';
+
 export class AccountService {
     /**
      * @param db Database client
@@ -56,6 +64,7 @@ export class AccountService {
     ) {}
 
     /**
+     * @deprecated use `ensureByApId`
      * Get an Account by the ActivityPub ID
      * If it is not found locally in our database it will be
      * remotely fetched and stored
@@ -90,6 +99,59 @@ export class AccountService {
         await this.createExternalAccount(data);
 
         return this.accountRepository.getByApId(id);
+    }
+
+    async ensureByApId(
+        id: URL,
+    ): Promise<Result<Account, RemoteAccountFetchError>> {
+        const account = await this.accountRepository.getByApId(id);
+        if (account) {
+            return ok(account);
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+
+        let actor: Actor;
+
+        try {
+            const potentialActor = await lookupObject(id, { documentLoader });
+
+            if (potentialActor === null) {
+                return error('not-found');
+            }
+
+            if (!isActor(potentialActor)) {
+                return error('invalid-type');
+            }
+
+            actor = potentialActor;
+        } catch (err) {
+            return error('network-failure');
+        }
+
+        let data: ExternalAccountData;
+
+        try {
+            data = await mapActorToExternalAccountData(actor);
+        } catch (err) {
+            return error('invalid-data');
+        }
+
+        await this.createExternalAccount(data);
+
+        const createdAccount = await this.accountRepository.getByApId(id);
+
+        if (!createdAccount) {
+            throw new Error(
+                'A newly created account was not found in the database.',
+            );
+        }
+
+        return ok(createdAccount);
     }
 
     /**
