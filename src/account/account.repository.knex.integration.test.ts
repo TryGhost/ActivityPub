@@ -5,6 +5,7 @@ import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
@@ -19,12 +20,16 @@ describe('KnexAccountRepository', () => {
     let fedifyContextFactory: FedifyContextFactory;
     let accountService: AccountService;
     let siteService: SiteService;
+    let fixtureManager: FixtureManager;
 
     beforeAll(async () => {
         client = await createTestDb();
+        fixtureManager = createFixtureManager(client);
     });
 
     beforeEach(async () => {
+        await fixtureManager.reset();
+
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
         await client('accounts').truncate();
         await client('users').truncate();
@@ -220,5 +225,76 @@ describe('KnexAccountRepository', () => {
 
         expect(updatedAccount.avatar_url).toBe(null);
         expect(updatedAccount.banner_image_url).toBe(null);
+    });
+
+    it('handles insert a row into blocks when an account has been blocked', async () => {
+        const [[account], [accountToBlock]] = await Promise.all([
+            fixtureManager.createInternalAccount(null, 'example.com'),
+            fixtureManager.createInternalAccount(null, 'blocked1.com'),
+        ]);
+
+        const blocksBefore = await client('blocks').select(
+            'blocked_id',
+            'blocker_id',
+        );
+
+        expect(blocksBefore).toStrictEqual([]);
+
+        const updated = account.block(accountToBlock);
+
+        await accountRepository.save(updated);
+
+        const blocks = await client('blocks').select(
+            'blocked_id',
+            'blocker_id',
+        );
+
+        expect(blocks).toStrictEqual([
+            {
+                blocked_id: accountToBlock.id,
+                blocker_id: account.id,
+            },
+        ]);
+    });
+
+    it('handles blocking the same account multiple times without creating duplicate blocks', async () => {
+        const [[account], [accountToBlock]] = await Promise.all([
+            fixtureManager.createInternalAccount(null, 'example.com'),
+            fixtureManager.createInternalAccount(null, 'blocked1.com'),
+        ]);
+
+        // First block
+        const firstBlockedAccount = account.block(accountToBlock);
+        await accountRepository.save(firstBlockedAccount);
+
+        // Get the block count after first block
+        const blocksAfterFirstBlock = await client('blocks')
+            .count('* as count')
+            .first();
+
+        expect(blocksAfterFirstBlock?.count).toBe(1);
+
+        // Second block (same account) - using the original account instance
+        const secondBlockedAccount = account.block(accountToBlock);
+        await accountRepository.save(secondBlockedAccount);
+
+        // Verify no duplicate was created
+        const blocksAfterSecondBlock = await client('blocks')
+            .count('* as count')
+            .first();
+
+        expect(blocksAfterSecondBlock?.count).toBe(1);
+
+        // Verify the block is correct
+        const blocks = await client('blocks').select(
+            'blocked_id',
+            'blocker_id',
+        );
+        expect(blocks).toStrictEqual([
+            {
+                blocked_id: accountToBlock.id,
+                blocker_id: account.id,
+            },
+        ]);
     });
 });

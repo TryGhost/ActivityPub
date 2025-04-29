@@ -3,6 +3,7 @@ import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
+import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { type Account, AccountEntity } from './account.entity';
 
@@ -13,17 +14,30 @@ export class KnexAccountRepository {
     ) {}
 
     async save(account: Account): Promise<void> {
-        await this.db('accounts')
-            .update({
-                name: account.name,
-                bio: account.bio,
-                username: account.username,
-                avatar_url: account.avatarUrl?.href ?? null,
-                banner_image_url: account.bannerImageUrl?.href ?? null,
-            })
-            .where({ id: account.id });
-
         const events = AccountEntity.pullEvents(account);
+        await this.db.transaction(async (transaction) => {
+            await transaction('accounts')
+                .update({
+                    name: account.name,
+                    bio: account.bio,
+                    username: account.username,
+                    avatar_url: account.avatarUrl?.href ?? null,
+                    banner_image_url: account.bannerImageUrl?.href ?? null,
+                })
+                .where({ id: account.id });
+
+            for (const event of events) {
+                if (event instanceof AccountBlockedEvent) {
+                    await transaction('blocks')
+                        .insert({
+                            blocker_id: event.getBlockerId(),
+                            blocked_id: event.getAccountId(),
+                        })
+                        .onConflict(['blocker_id', 'blocked_id'])
+                        .ignore();
+                }
+            }
+        });
 
         for (const event of events) {
             await this.events.emitAsync(event.getName(), event);
