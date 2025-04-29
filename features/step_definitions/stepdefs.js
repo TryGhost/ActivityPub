@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
 import fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -700,14 +701,15 @@ When(
 );
 
 When(
-    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with a file$/,
+    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with an image$/,
     async function (method, path) {
-        // Create a test file
-        const file = new File(['test image content'], 'test.jpg', {
-            type: 'image/jpeg',
-        });
+        const image = await readFile(resolve(__dirname, '../fixtures/dog.jpg'));
+
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append(
+            'file',
+            new File([image], 'dog.jpg', { type: 'image/jpeg' }),
+        );
 
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub.test${path}`,

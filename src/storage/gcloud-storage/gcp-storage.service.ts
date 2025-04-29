@@ -1,6 +1,7 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { type Result, error, isError, ok } from 'core/result';
+import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 
 const ALLOWED_IMAGE_TYPES = [
@@ -75,8 +76,9 @@ export class GCPStorageService {
         }
 
         const storagePath = this.getStoragePath(file.name, accountUuid);
+        const compressedBuffer = await this.compressFile(file);
 
-        await this.bucket.file(storagePath).save(file.stream(), {
+        await this.bucket.file(storagePath).save(compressedBuffer, {
             metadata: {
                 contentType: file.type,
             },
@@ -108,7 +110,7 @@ export class GCPStorageService {
     }
 
     private validateFile(file: File): Result<boolean, FileValidationError> {
-        if (file.size > 25 * 1024 * 1024) {
+        if (file.size > 5 * 1024 * 1024) {
             return error('file-too-large');
         }
 
@@ -117,6 +119,54 @@ export class GCPStorageService {
         }
 
         return ok(true);
+    }
+
+    private async compressFile(file: File): Promise<Buffer> {
+        const chunks: Buffer[] = [];
+
+        for await (const chunk of file.stream()) {
+            if (Buffer.isBuffer(chunk)) {
+                chunks.push(chunk);
+            } else {
+                chunks.push(Buffer.from(chunk));
+            }
+        }
+        const fileBuffer = Buffer.concat(chunks);
+
+        try {
+            const sharpPipeline = sharp(fileBuffer).resize({
+                width: 2000,
+                height: 2000,
+                fit: 'inside',
+                withoutEnlargement: true,
+            });
+
+            const format = file.type.split('/')[1];
+
+            if (format === 'jpeg' || format === 'jpg') {
+                return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
+            }
+
+            if (format === 'png') {
+                return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
+            }
+
+            if (format === 'webp') {
+                return sharpPipeline.webp({ quality: 75 }).toBuffer();
+            }
+
+            return fileBuffer;
+        } catch (error) {
+            this.logger.error(
+                'Image compression failed, keeping original file',
+                {
+                    error,
+                    fileName: file.name,
+                    fileType: file.type,
+                },
+            );
+            return fileBuffer;
+        }
     }
 
     async verifyImageUrl(
