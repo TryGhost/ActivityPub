@@ -294,7 +294,7 @@ describe('AccountView', () => {
             TEST_TIMEOUT,
         );
 
-        it.only(
+        it(
             'should include the following status for the request user',
             async () => {
                 const site =
