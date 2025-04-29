@@ -84,35 +84,15 @@ export class ModerationService {
         });
     }
 
-    async filterUsersForAccountInteraction(
-        userIds: number[],
+    async canInteractWithAccount(
         interactionAccountId: number,
-    ): Promise<number[]> {
-        // Map user ids to their corresponding account ids
-        const userAccountMap = new Map<number, number>();
+        targetAccountId: number,
+    ): Promise<boolean> {
+        const block = await this.db('blocks')
+            .where('blocker_id', targetAccountId)
+            .andWhere('blocked_id', interactionAccountId)
+            .first();
 
-        const rows = await this.db('users')
-            .whereIn('id', userIds)
-            .select('id', 'account_id');
-
-        for (const row of rows) {
-            userAccountMap.set(row.id, row.account_id);
-        }
-
-        // Filter out accounts that have blocked the interaction account
-        const accountIdsToBeFilteredOut = (
-            await this.db('blocks')
-                .whereIn('blocker_id', Array.from(userAccountMap.values()))
-                .andWhere('blocked_id', interactionAccountId)
-                .select('blocker_id')
-        ).map((row) => row.blocker_id);
-
-        // Of the users provided, filter out the ones that do not have an account
-        // that has blocked the interaction account
-        return userIds.filter((userId) => {
-            const accountId = userAccountMap.get(userId);
-
-            return !accountIdsToBeFilteredOut.includes(accountId);
-        });
+        return block === undefined;
     }
 }
