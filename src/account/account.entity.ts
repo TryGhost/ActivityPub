@@ -36,6 +36,10 @@ export interface AccountDraft {
     isInternal: boolean;
 }
 
+export type AccountEvent = {
+    getName(): string;
+};
+
 export class AccountEntity implements Account {
     constructor(
         public readonly id: number,
@@ -49,9 +53,19 @@ export class AccountEntity implements Account {
         public readonly apId: URL,
         public readonly apFollowers: URL | null,
         public readonly isInternal: boolean,
+        private events: AccountEvent[],
     ) {}
 
-    static create(data: Data<Account>) {
+    static pullEvents(account: Account): AccountEvent[] {
+        if (account instanceof AccountEntity) {
+            const events = account.events;
+            account.events = [];
+            return events;
+        }
+        return [];
+    }
+
+    static create(data: Data<Account>, events: AccountEvent[] = []) {
         return new AccountEntity(
             data.id,
             data.uuid,
@@ -64,6 +78,7 @@ export class AccountEntity implements Account {
             data.apId,
             data.apFollowers,
             data.isInternal,
+            events,
         );
     }
 
@@ -119,7 +134,7 @@ export class AccountEntity implements Account {
             bio: get('bio'),
             avatarUrl: get('avatarUrl'),
             bannerImageUrl: get('bannerImageUrl'),
-        });
+        }) as Account;
     }
 }
 

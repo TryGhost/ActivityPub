@@ -23,6 +23,12 @@ export class KnexAccountRepository {
             })
             .where({ id: account.id });
 
+        const events = AccountEntity.pullEvents(account);
+
+        for (const event of events) {
+            await this.events.emitAsync(event.getName(), event);
+        }
+
         await this.events.emitAsync(
             AccountUpdatedEvent.getName(),
             new AccountUpdatedEvent(account),
