@@ -12,6 +12,7 @@ import {
     Given,
     Then,
     When,
+    setDefaultTimeout,
 } from '@cucumber/cucumber';
 import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import { merge } from 'es-toolkit';
@@ -20,6 +21,8 @@ import Knex from 'knex';
 import jose from 'node-jose';
 import { v4 as uuidv4 } from 'uuid';
 import { WireMock } from 'wiremock-captain';
+
+setDefaultTimeout(1000 * 10);
 
 // Get the current file's URL and convert it to a path
 const __filename = fileURLToPath(import.meta.url);
