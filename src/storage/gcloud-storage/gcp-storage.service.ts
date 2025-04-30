@@ -12,7 +12,7 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 type FileValidationError = 'file-too-large' | 'file-type-not-supported';
-type ImageVerificationError =
+export type ImageVerificationError =
     | 'invalid-url'
     | 'file-not-found'
     | 'invalid-file-path'
