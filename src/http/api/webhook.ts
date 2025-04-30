@@ -23,7 +23,7 @@ const PostInputSchema = z.object({
         .array(
             z.object({
                 name: z.string(),
-                profile_image: z.string().url().nullable(),
+                profile_image: z.string().nullable(),
             }),
         )
         .nullable()

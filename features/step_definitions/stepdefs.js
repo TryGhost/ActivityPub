@@ -403,7 +403,12 @@ function createWebhookPost() {
                 published_at: new Date().toISOString(),
                 url: `http://fake-external-activitypub.test/post/${uuid}`,
                 visibility: 'public',
-                authors: [],
+                authors: [
+                    {
+                        name: 'Testing',
+                        profile_image: '//gravatar.com/avatar/blah',
+                    },
+                ],
             },
         },
     };
