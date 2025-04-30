@@ -234,5 +234,30 @@ describe('PostService', () => {
             }
             expect(getError(result)).toBe('upstream-error');
         });
+
+        it('should not allow replying to a post when blocked by the post author', async () => {
+            // Create another account (post author)
+            const [postAuthor] = await fixtureManager.createInternalAccount();
+
+            // Create a post from the post author
+            const originalPost = await fixtureManager.createPost(postAuthor);
+
+            // Block the replier
+            await fixtureManager.createBlock(postAuthor, account);
+
+            const replyContent = 'This reply should not be allowed';
+
+            const result = await postService.createReply(
+                account,
+                replyContent,
+                originalPost.apId,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('cannot-interact');
+        });
     });
 });
