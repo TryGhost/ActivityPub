@@ -1,62 +1,31 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import assert from 'node:assert';
-import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
+
+import { AsyncEvents } from 'core/events';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { KnexAccountRepository } from '../account/account.repository.knex';
-import { AccountService } from '../account/account.service';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { type Site, SiteService } from '../site/site.service';
+import type { Site } from '../site/site.service';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { AccountEntity } from './account.entity';
 
 describe('KnexAccountRepository', () => {
     let client: Knex;
+    let fixtureManager: FixtureManager;
     let events: AsyncEvents;
     let accountRepository: KnexAccountRepository;
-    let fedifyContextFactory: FedifyContextFactory;
-    let accountService: AccountService;
-    let siteService: SiteService;
-    let fixtureManager: FixtureManager;
 
     beforeAll(async () => {
         client = await createTestDb();
         fixtureManager = createFixtureManager(client);
+        events = new AsyncEvents();
+        accountRepository = new KnexAccountRepository(client, events);
     });
 
     beforeEach(async () => {
         await fixtureManager.reset();
-
-        await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client('accounts').truncate();
-        await client('users').truncate();
-        await client('sites').truncate();
-        await client.raw('SET FOREIGN_KEY_CHECKS = 1');
-
-        events = new AsyncEvents();
-        accountRepository = new KnexAccountRepository(client, events);
-        fedifyContextFactory = new FedifyContextFactory();
-        accountService = new AccountService(
-            client,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-            generateTestCryptoKeyPair,
-        );
-        siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
-                return {
-                    site: {
-                        title: 'Test Site',
-                        description: 'A fake site used for testing',
-                        icon: 'https://testing.com/favicon.ico',
-                    },
-                };
-            },
-        });
     });
 
     const getSiteDefaultAccount = async (siteId: number) => {
@@ -76,7 +45,7 @@ describe('KnexAccountRepository', () => {
     };
 
     it('Can get by site', async () => {
-        const site = await siteService.initialiseSiteForHost('testing.com');
+        const [, site] = await fixtureManager.createInternalAccount();
 
         const account = await accountRepository.getBySite(site);
 
@@ -87,7 +56,7 @@ describe('KnexAccountRepository', () => {
     });
 
     it('Ensures an account has a uuid when retrieved for a site', async () => {
-        const site = await siteService.initialiseSiteForHost('testing.com');
+        const [, site] = await fixtureManager.createInternalAccount();
 
         const siteDefaultAccount = await getSiteDefaultAccount(site.id);
 
@@ -103,7 +72,7 @@ describe('KnexAccountRepository', () => {
     });
 
     it('Can get by apId', async () => {
-        const site = await siteService.initialiseSiteForHost('testing.com');
+        const [, site] = await fixtureManager.createInternalAccount();
 
         const account = await accountRepository.getBySite(site);
 
@@ -120,7 +89,7 @@ describe('KnexAccountRepository', () => {
     });
 
     it('Ensures an account has a uuid when retrieved by apId', async () => {
-        const site = await siteService.initialiseSiteForHost('testing.com');
+        const [, site] = await fixtureManager.createInternalAccount();
 
         const siteDefaultAccount = await getSiteDefaultAccount(site.id);
 
@@ -147,7 +116,7 @@ describe('KnexAccountRepository', () => {
         // Setup
         const emitSpy = vi.spyOn(events, 'emitAsync');
 
-        await siteService.initialiseSiteForHost('testing.com');
+        await fixtureManager.createInternalAccount();
 
         // Get an account from the DB to update
         const account = await client('accounts').select('*').first();
@@ -187,9 +156,9 @@ describe('KnexAccountRepository', () => {
         expect(updatedAccount.bio).toBe('Updated Bio');
     });
 
-    it('handles saving a new account when avatarUrl or bannerImageUrl with null values', async () => {
+    it('handles saving a new account when avatarUrl or bannerImageUrl have null values', async () => {
         // Setup
-        await siteService.initialiseSiteForHost('testing.com');
+        await fixtureManager.createInternalAccount();
 
         // Get an account from the DB to update
         const account = await client('accounts').select('*').first();
@@ -227,7 +196,7 @@ describe('KnexAccountRepository', () => {
         expect(updatedAccount.banner_image_url).toBe(null);
     });
 
-    it('handles insert a row into blocks when an account has been blocked', async () => {
+    it('handles inserting a row into the blocks table when an account has been blocked', async () => {
         const [[account], [accountToBlock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),
             fixtureManager.createInternalAccount(null, 'blocked1.com'),
@@ -257,7 +226,7 @@ describe('KnexAccountRepository', () => {
         ]);
     });
 
-    it('handles removing a row from blocks when an account has been unblocked', async () => {
+    it('handles removing a row from the blocks table when an account has been unblocked', async () => {
         const [[account], [accountToUnblock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),
             fixtureManager.createInternalAccount(null, 'blocked1.com'),
@@ -332,5 +301,41 @@ describe('KnexAccountRepository', () => {
                 blocker_id: account.id,
             },
         ]);
+    });
+
+    it('handles removing the follow relationship between blocker → blocked when an account has been blocked', async () => {
+        const [[aliceAccount], [bobAccount]] = await Promise.all([
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+        ]);
+
+        // alice follows bob
+        await fixtureManager.createFollow(aliceAccount, bobAccount);
+
+        // alice blocks bob
+        const aliceWithBlock = aliceAccount.block(bobAccount);
+        await accountRepository.save(aliceWithBlock);
+
+        // Verify the follow relationship between alice and bob has been removed
+        const follows = await client('follows').select('*');
+        expect(follows).toStrictEqual([]);
+    });
+
+    it('handles removing the follow relationship between blocked → blocker when an account has been blocked', async () => {
+        const [[aliceAccount], [bobAccount]] = await Promise.all([
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+        ]);
+
+        // bob follows alice
+        await fixtureManager.createFollow(bobAccount, aliceAccount);
+
+        // alice blocks bob
+        const aliceWithBlock = aliceAccount.block(bobAccount);
+        await accountRepository.save(aliceWithBlock);
+
+        // Verify the follow relationship between bob and alice has been removed
+        const follows = await client('follows').select('*');
+        expect(follows).toStrictEqual([]);
     });
 });
