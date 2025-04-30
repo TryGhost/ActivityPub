@@ -44,6 +44,7 @@ import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
 import { FollowController } from 'http/api/follow';
+import { createReplyActionHandler } from 'http/api/reply';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -93,7 +94,6 @@ import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
     createLikeAction,
-    createReplyActionHandler,
     createRepostActionHandler,
     createUnlikeAction,
     getSiteDataHandler,
