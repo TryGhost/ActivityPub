@@ -352,6 +352,15 @@ export class FeedService {
         feedAccountId: number,
         blockedAccountId: number,
     ) {
+        const user = await this.db('users')
+            .where('account_id', feedAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
         await this.db('feeds')
             .where((qb) => {
                 qb.where('author_id', blockedAccountId).orWhere(
@@ -359,7 +368,7 @@ export class FeedService {
                     blockedAccountId,
                 );
             })
-            .andWhere('user_id', feedAccountId)
+            .andWhere('user_id', user.id)
             .delete();
     }
 }
