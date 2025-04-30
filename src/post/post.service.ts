@@ -11,6 +11,7 @@ import {
     isError,
     ok,
 } from 'core/result';
+import type { ModerationService } from 'moderation/moderation.service';
 import type {
     GCPStorageService,
     ImageVerificationError,
@@ -19,6 +20,8 @@ import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
+
+export type InteractionError = 'cannot-interact';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -32,6 +35,7 @@ export class PostService {
         private readonly accountService: AccountService,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly storageService: GCPStorageService,
+        private readonly moderationService: ModerationService,
     ) {}
 
     /**
@@ -191,7 +195,9 @@ export class PostService {
         content: string,
         inReplyToId: URL,
         image?: URL,
-    ): Promise<Result<Post, ImageVerificationError | GetByApIdError>> {
+    ): Promise<
+        Result<Post, ImageVerificationError | GetByApIdError | InteractionError>
+    > {
         if (image) {
             const result = await this.storageService.verifyImageUrl(image);
             if (isError(result)) {
@@ -206,6 +212,15 @@ export class PostService {
         }
 
         const inReplyTo = getValue(inReplyToResult);
+
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            inReplyTo.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
 
         const post = Post.createReply(account, content, inReplyTo, image);
 

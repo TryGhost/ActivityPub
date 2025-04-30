@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { ModerationService } from 'moderation/moderation.service';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import type { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
@@ -24,6 +25,7 @@ describe('PostService', () => {
             {} as AccountService,
             {} as FedifyContextFactory,
             {} as GCPStorageService,
+            {} as ModerationService,
         );
 
         const result = await postService.isLikedByAccount(postId, accountId);
@@ -48,6 +50,7 @@ describe('PostService', () => {
             {} as AccountService,
             {} as FedifyContextFactory,
             {} as GCPStorageService,
+            {} as ModerationService,
         );
 
         const result = await postService.isRepostedByAccount(postId, accountId);

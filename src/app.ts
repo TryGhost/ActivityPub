@@ -286,11 +286,14 @@ const accountService = new AccountService(
 
 const followersService = new FollowersService(client);
 
+const moderationService = new ModerationService(client);
+
 const postService = new PostService(
     postRepository,
     accountService,
     fedifyContextFactory,
     gcpStorageService,
+    moderationService,
 );
 
 const accountView = new AccountView(client, fedifyContextFactory);
@@ -299,7 +302,6 @@ const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
-const moderationService = new ModerationService(client);
 const feedService = new FeedService(client, moderationService);
 const feedUpdateService = new FeedUpdateService(events, feedService);
 feedUpdateService.init();

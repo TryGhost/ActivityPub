@@ -167,6 +167,15 @@ export async function handleCreateReply(
                         status: 400,
                     },
                 );
+            case 'cannot-interact':
+                return new Response(
+                    JSON.stringify({
+                        error: 'Cannot interact with this account',
+                    }),
+                    {
+                        status: 403,
+                    },
+                );
             default:
                 return exhaustiveCheck(error);
         }
