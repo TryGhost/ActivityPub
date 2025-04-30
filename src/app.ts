@@ -43,6 +43,7 @@ import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
+import { FollowController } from 'http/api/follow';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -91,11 +92,9 @@ import { FeedService } from './feed/feed.service';
 import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
-    createFollowActionHandler,
     createLikeAction,
     createReplyActionHandler,
     createRepostActionHandler,
-    createUnfollowActionHandler,
     createUnlikeAction,
     getSiteDataHandler,
     inboxHandler,
@@ -316,7 +315,7 @@ const notificationEventService = new NotificationEventService(
 notificationEventService.init();
 
 const blockController = new BlockController(accountService);
-
+const followController = new FollowController(accountService);
 /** Fedify */
 
 /**
@@ -966,12 +965,12 @@ app.get(
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createFollowActionHandler(accountService)),
+    spanWrapper(followController.handleFollow.bind(followController)),
 );
 app.post(
     '/.ghost/activitypub/actions/unfollow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createUnfollowActionHandler(accountService)),
+    spanWrapper(followController.handleUnfollow.bind(followController)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',

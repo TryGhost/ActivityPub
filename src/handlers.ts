@@ -3,14 +3,12 @@ import {
     type Actor,
     Announce,
     Create,
-    Follow,
     Image,
     Like,
     Mention,
     Note,
     PUBLIC_COLLECTION,
     Undo,
-    isActor,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Context } from 'hono';
@@ -21,8 +19,6 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import type { KnexAccountRepository } from './account/account.repository.knex';
-import type { AccountService } from './account/account.service';
-import { mapActorToExternalAccountData } from './account/utils';
 import { type HonoContextVariables, fedify } from './app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { buildActivity } from './helpers/activitypub/activity';
@@ -532,180 +528,6 @@ export function createReplyActionHandler(
         }
 
         return new Response(JSON.stringify(activityJson), {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-            status: 200,
-        });
-    };
-}
-
-export function createUnfollowActionHandler(accountService: AccountService) {
-    return async function unfollowAction(
-        ctx: Context<{ Variables: HonoContextVariables }>,
-    ) {
-        const handle = ctx.req.param('handle');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
-            globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
-        });
-
-        const actorToUnfollow = await lookupObject(apCtx, handle);
-
-        if (!isActor(actorToUnfollow)) {
-            return new Response(null, {
-                status: 404,
-            });
-        }
-
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
-
-        if (actorToUnfollow.id!.href === account.ap_id) {
-            return new Response(null, {
-                status: 400,
-            });
-        }
-
-        let accountToUnfollow = await accountService.getAccountByApId(
-            actorToUnfollow.id!.href,
-        );
-
-        // TODO I think we can exit early here - there is obviously no follow relation if there is no account
-        if (!accountToUnfollow) {
-            accountToUnfollow = await accountService.createExternalAccount(
-                await mapActorToExternalAccountData(actorToUnfollow),
-            );
-        }
-
-        const isFollowing = await accountService.checkIfAccountIsFollowing(
-            account.id,
-            accountToUnfollow.id,
-        );
-
-        if (!isFollowing) {
-            return new Response(null, {
-                status: 409,
-            });
-        }
-
-        // Need to get the follow
-        const unfollowId = apCtx.getObjectUri(Undo, {
-            id: uuidv4(),
-        });
-
-        const follow = new Follow({
-            id: null,
-            actor: new URL(account.ap_id),
-            object: actorToUnfollow,
-        });
-
-        const unfollow = new Undo({
-            id: unfollowId,
-            actor: new URL(account.ap_id),
-            object: follow,
-        });
-
-        const unfollowJson = await unfollow.toJsonLd();
-
-        await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
-
-        await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            actorToUnfollow,
-            unfollow,
-        );
-
-        await accountService.recordAccountUnfollow(accountToUnfollow, account);
-
-        return new Response(JSON.stringify(unfollowJson), {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-            status: 202,
-        });
-    };
-}
-export function createFollowActionHandler(accountService: AccountService) {
-    return async function followAction(
-        ctx: Context<{ Variables: HonoContextVariables }>,
-    ) {
-        const handle = ctx.req.param('handle');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
-            globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
-        });
-        const actorToFollow = await lookupObject(apCtx, handle);
-
-        if (!isActor(actorToFollow)) {
-            return new Response(null, {
-                status: 404,
-            });
-        }
-
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
-        if (actorToFollow.id!.href === actor!.id!.href) {
-            return new Response(null, {
-                status: 400,
-            });
-        }
-
-        const followerAccount = await accountService.getAccountByApId(
-            actor!.id!.href,
-        );
-
-        if (!followerAccount) {
-            return new Response(null, {
-                status: 404,
-            });
-        }
-
-        let followeeAccount = await accountService.getAccountByApId(
-            actorToFollow.id!.href,
-        );
-        if (!followeeAccount) {
-            followeeAccount = await accountService.createExternalAccount(
-                await mapActorToExternalAccountData(actorToFollow),
-            );
-        }
-
-        if (
-            await accountService.checkIfAccountIsFollowing(
-                followerAccount.id,
-                followeeAccount.id,
-            )
-        ) {
-            return new Response(null, {
-                status: 409,
-            });
-        }
-
-        const followId = apCtx.getObjectUri(Follow, {
-            id: uuidv4(),
-        });
-
-        const follow = new Follow({
-            id: followId,
-            actor: actor,
-            object: actorToFollow,
-        });
-
-        const followJson = await follow.toJsonLd();
-
-        ctx.get('globaldb').set([follow.id!.href], followJson);
-
-        await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            actorToFollow,
-            follow,
-        );
-
-        // We return the actor because the serialisation of the object property is not working as expected
-        return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
             headers: {
                 'Content-Type': 'application/activity+json',
             },
