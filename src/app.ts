@@ -13,6 +13,7 @@ import {
     type KvStore,
     Like,
     Note,
+    Reject,
     type RequestContext,
     Undo,
     Update,
@@ -50,6 +51,7 @@ import { NotificationService } from 'notification/notification.service';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
+import { dispatchRejectActivity } from './activity-dispatchers/reject.dispatcher';
 import { DeleteHandler } from './activity-handlers/delete.handler';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
 import { FediverseBridge } from './activitypub/fediverse-bridge';
@@ -377,7 +379,7 @@ const deleteHandler = new DeleteHandler(
     postRepository,
 );
 
-const followHandler = new FollowHandler(accountService);
+const followHandler = new FollowHandler(accountService, moderationService);
 
 const deleteDispatcher = new DeleteDispatcher();
 
@@ -497,6 +499,11 @@ fedify.setObjectDispatcher(
     Accept,
     '/.ghost/activitypub/accept/{id}',
     spanWrapper(acceptDispatcher),
+);
+fedify.setObjectDispatcher(
+    Reject,
+    '/.ghost/activitypub/reject/{id}',
+    spanWrapper(dispatchRejectActivity),
 );
 fedify.setObjectDispatcher(
     Create,

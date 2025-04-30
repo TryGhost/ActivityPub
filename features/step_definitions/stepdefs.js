@@ -59,6 +59,20 @@ async function createActivity(type, object, actor) {
         };
     }
 
+    if (type === 'Reject') {
+        activity = {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            type: 'Reject',
+            id: `${URL_EXTERNAL_ACTIVITY_PUB}/reject/${uuidv4()}`,
+            to: 'as:Public',
+            object: object,
+            actor: actor,
+        };
+    }
+
     if (type === 'Create') {
         activity = {
             '@context': [
@@ -461,6 +475,22 @@ let /* @type WireMock */ externalActivityPub;
 let /* @type WireMock */ ghostActivityPub;
 let webhookSecret;
 
+async function resetDatabase() {
+    await client.raw('SET FOREIGN_KEY_CHECKS = 0');
+    await client('key_value').truncate();
+    await client('notifications').truncate();
+    await client('feeds').truncate();
+    await client('blocks').truncate();
+    await client('follows').truncate();
+    await client('likes').truncate();
+    await client('reposts').truncate();
+    await client('posts').truncate();
+    await client('accounts').truncate();
+    await client('users').truncate();
+    await client('sites').truncate();
+    await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+}
+
 BeforeAll(async () => {
     client = Knex({
         client: 'mysql2',
@@ -474,13 +504,7 @@ BeforeAll(async () => {
         },
     });
 
-    await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client('key_value').truncate();
-    await client('follows').truncate();
-    await client('accounts').truncate();
-    await client('users').truncate();
-    await client('sites').truncate();
-    await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+    await resetDatabase();
 
     webhookSecret = fs.readFileSync(
         resolve(__dirname, '../fixtures/webhook_secret.txt'),
@@ -547,13 +571,7 @@ AfterAll(async () => {
 
 Before(async function () {
     await externalActivityPub.clearAllRequests();
-    await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client('key_value').truncate();
-    await client('follows').truncate();
-    await client('users').truncate();
-    await client('accounts').truncate();
-    await client('sites').truncate();
-    await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+    await resetDatabase();
 
     const [siteId] = await client('sites').insert({
         host: new URL(URL_GHOST_ACTIVITY_PUB).host,
@@ -1667,6 +1685,26 @@ Then('{string} is in our Followers once only', async function (actorName) {
     assert.equal(found.length, 1);
 });
 
+Then('{string} is not in our Followers', async function (actorName) {
+    const initialResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const followers = await initialResponse.json();
+
+    const actor = this.actors[actorName];
+
+    const found = (followers.orderedItems || []).find(
+        (item) => item === actor.id,
+    );
+
+    assert(!found);
+});
+
 Then(
     'a {string} activity is sent to {string}',
     async function (activityString, actorName) {
@@ -2109,4 +2147,18 @@ Then('the response contains the account details:', async function (data) {
             `Expected ${key} to be "${value}" but got "${responseJson[key]}"`,
         );
     }
+});
+
+When('we block {string}', async function (actorName) {
+    const actor = this.actors[actorName];
+
+    this.response = await fetchActivityPub(
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/block/${encodeURIComponent(actor.id)}`,
+        {
+            method: 'POST',
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
 });
