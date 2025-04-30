@@ -289,7 +289,6 @@ const followersService = new FollowersService(client);
 const postService = new PostService(
     postRepository,
     accountService,
-    client,
     fedifyContextFactory,
 );
 

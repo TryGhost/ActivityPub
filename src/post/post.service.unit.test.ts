@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Knex } from 'knex';
-
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { KnexPostRepository } from './post.repository.knex';
@@ -23,7 +21,6 @@ describe('PostService', () => {
         const postService = new PostService(
             postRepository as unknown as KnexPostRepository,
             {} as AccountService,
-            {} as Knex,
             {} as FedifyContextFactory,
         );
 
@@ -47,7 +44,6 @@ describe('PostService', () => {
         const postService = new PostService(
             postRepository as unknown as KnexPostRepository,
             {} as AccountService,
-            {} as Knex,
             {} as FedifyContextFactory,
         );
 

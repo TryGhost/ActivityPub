@@ -10,7 +10,6 @@ import {
     isError,
     ok,
 } from 'core/result';
-import type { Knex } from 'knex';
 import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
@@ -26,7 +25,6 @@ export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
         private readonly accountService: AccountService,
-        private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
     ) {}
 
