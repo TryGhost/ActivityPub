@@ -44,7 +44,7 @@ import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
 import { FollowController } from 'http/api/follow';
-import { createReplyActionHandler } from 'http/api/reply';
+import { handleCreateReply } from 'http/api/reply';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -290,6 +290,7 @@ const postService = new PostService(
     postRepository,
     accountService,
     fedifyContextFactory,
+    gcpStorageService,
 );
 
 const accountView = new AccountView(client, fedifyContextFactory);
@@ -988,14 +989,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createReplyActionHandler(
-            accountRepository,
-            postService,
-            postRepository,
-            gcpStorageService,
-        ),
-    ),
+    spanWrapper((ctx: AppContext) => handleCreateReply(ctx, postService)),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
@@ -1024,14 +1018,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) =>
-        handleCreateNote(
-            ctx,
-            accountRepository,
-            postRepository,
-            gcpStorageService,
-        ),
-    ),
+    spanWrapper((ctx: AppContext) => handleCreateNote(ctx, postService)),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
