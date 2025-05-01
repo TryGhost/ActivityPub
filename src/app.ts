@@ -44,6 +44,7 @@ import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
 import { FollowController } from 'http/api/follow';
+import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
@@ -93,9 +94,7 @@ import { FeedService } from './feed/feed.service';
 import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
-    createLikeAction,
     createRepostActionHandler,
-    createUnlikeAction,
     getSiteDataHandler,
     inboxHandler,
 } from './handlers';
@@ -324,6 +323,11 @@ const blockController = new BlockController(accountService);
 const followController = new FollowController(
     accountService,
     moderationService,
+);
+const likeController = new LikeController(
+    accountRepository,
+    postService,
+    postRepository,
 );
 
 /** Fedify */
@@ -975,26 +979,22 @@ app.get(
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(followController.handleFollow.bind(followController)),
+    spanWrapper((ctx: AppContext) => followController.handleFollow(ctx)),
 );
 app.post(
     '/.ghost/activitypub/actions/unfollow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(followController.handleUnfollow.bind(followController)),
+    spanWrapper((ctx: AppContext) => followController.handleUnfollow(ctx)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createLikeAction(accountRepository, postService, postRepository),
-    ),
+    spanWrapper((ctx: AppContext) => likeController.handleLike(ctx)),
 );
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createUnlikeAction(accountRepository, postService, postRepository),
-    ),
+    spanWrapper((ctx: AppContext) => likeController.handleUnlike(ctx)),
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
