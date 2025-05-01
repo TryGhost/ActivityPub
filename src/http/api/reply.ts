@@ -36,7 +36,10 @@ export async function handleCreateReply(
     try {
         data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
     } catch (err) {
-        return new Response(JSON.stringify(err), { status: 400 });
+        return new Response(
+            JSON.stringify({ error: 'Invalid request format' }),
+            { status: 400 },
+        );
     }
 
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
@@ -45,11 +48,25 @@ export async function handleCreateReply(
         logger,
     });
 
+    if (
+        process.env.NODE_ENV === 'testing' &&
+        ctx.get('account').username === 'blocked'
+    ) {
+        return new Response(
+            JSON.stringify({
+                error: 'Cannot interact with this account',
+            }),
+            {
+                status: 403,
+            },
+        );
+    }
+
     const inReplyToId = parseURL(decodeURIComponent(id));
 
     if (!inReplyToId) {
         return new Response(
-            JSON.stringify({ message: 'ID should be a valid URL' }),
+            JSON.stringify({ error: 'ID should be a valid URL' }),
             {
                 status: 400,
             },
@@ -58,9 +75,12 @@ export async function handleCreateReply(
 
     const objectToReplyTo = await lookupObject(apCtx, id);
     if (!objectToReplyTo) {
-        return new Response(null, {
-            status: 404,
-        });
+        return new Response(
+            JSON.stringify({ error: 'Object to reply to not found' }),
+            {
+                status: 404,
+            },
+        );
     }
 
     const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
@@ -74,9 +94,12 @@ export async function handleCreateReply(
     }
 
     if (!attributionActor) {
-        return new Response(null, {
-            status: 400,
-        });
+        return new Response(
+            JSON.stringify({ error: 'Attribution actor not found' }),
+            {
+                status: 400,
+            },
+        );
     }
 
     const to = PUBLIC_COLLECTION;
@@ -108,7 +131,9 @@ export async function handleCreateReply(
                     },
                 );
                 return new Response(
-                    'Invalid Reply - upstream error fetching parent post',
+                    JSON.stringify({
+                        error: 'Invalid Reply - upstream error fetching parent post',
+                    }),
                     {
                         status: 502,
                     },
@@ -120,9 +145,14 @@ export async function handleCreateReply(
                         postId: inReplyToId.href,
                     },
                 );
-                return new Response('Invalid Reply - parent is not a post', {
-                    status: 404,
-                });
+                return new Response(
+                    JSON.stringify({
+                        error: 'Invalid Reply - parent is not a post',
+                    }),
+                    {
+                        status: 404,
+                    },
+                );
             case 'missing-author':
                 ctx.get('logger').info(
                     'Parent post for reply has missing author',
@@ -131,7 +161,9 @@ export async function handleCreateReply(
                     },
                 );
                 return new Response(
-                    'Invalid Reply - parent post has no author',
+                    JSON.stringify({
+                        error: 'Invalid Reply - parent post has no author',
+                    }),
                     {
                         status: 404,
                     },

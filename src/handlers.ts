@@ -37,9 +37,12 @@ export function createUnlikeAction(
 
         const objectToLike = await lookupObject(apCtx, id);
         if (!objectToLike) {
-            return new Response(null, {
-                status: 404,
-            });
+            return new Response(
+                JSON.stringify({ error: 'Object to like not found' }),
+                {
+                    status: 404,
+                },
+            );
         }
 
         const likeId = apCtx.getObjectUri(Like, {
@@ -54,17 +57,23 @@ export function createUnlikeAction(
 
         const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
         if (!likeToUndoJson) {
-            return new Response(null, {
-                status: 409,
-            });
+            return new Response(
+                JSON.stringify({ error: 'Like activity not found' }),
+                {
+                    status: 409,
+                },
+            );
         }
 
         const idAsUrl = parseURL(id);
 
         if (!idAsUrl) {
-            return new Response(null, {
-                status: 400,
-            });
+            return new Response(
+                JSON.stringify({ error: 'ID should be a valid URL' }),
+                {
+                    status: 400,
+                },
+            );
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
@@ -171,17 +180,23 @@ export function createLikeAction(
 
         const objectToLike = await lookupObject(apCtx, id);
         if (!objectToLike) {
-            return new Response(null, {
-                status: 404,
-            });
+            return new Response(
+                JSON.stringify({ error: 'Object to like not found' }),
+                {
+                    status: 404,
+                },
+            );
         }
 
         const idAsUrl = parseURL(id);
 
         if (!idAsUrl) {
-            return new Response(null, {
-                status: 400,
-            });
+            return new Response(
+                JSON.stringify({ error: 'ID should be a valid URL' }),
+                {
+                    status: 400,
+                },
+            );
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
@@ -226,9 +241,12 @@ export function createLikeAction(
         });
 
         if (await ctx.get('globaldb').get([likeId.href])) {
-            return new Response(null, {
-                status: 409,
-            });
+            return new Response(
+                JSON.stringify({ error: 'Post already liked' }),
+                {
+                    status: 409,
+                },
+            );
         }
 
         const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
@@ -287,7 +305,7 @@ export const getSiteDataHandler =
         const host = request.header('host');
         if (!host) {
             ctx.get('logger').info('No Host header');
-            return new Response('No Host header', {
+            return new Response(JSON.stringify({ error: 'No Host header' }), {
                 status: 401,
             });
         }
@@ -397,7 +415,7 @@ export function createRepostActionHandler(
 
         const post = await lookupObject(apCtx, id);
         if (!post) {
-            return new Response(null, {
+            return new Response(JSON.stringify({ error: 'Post not found' }), {
                 status: 404,
             });
         }
@@ -407,9 +425,12 @@ export function createRepostActionHandler(
         });
 
         if (await ctx.get('globaldb').get([announceId.href])) {
-            return new Response(null, {
-                status: 409,
-            });
+            return new Response(
+                JSON.stringify({ error: 'Post already reposted' }),
+                {
+                    status: 409,
+                },
+            );
         }
 
         await post.getAttribution();
@@ -502,7 +523,7 @@ export function createDerepostActionHandler(
 
         const post = await lookupObject(apCtx, id);
         if (!post) {
-            return new Response(null, {
+            return new Response(JSON.stringify({ error: 'Post not found' }), {
                 status: 404,
             });
         }
@@ -520,9 +541,12 @@ export function createDerepostActionHandler(
             .get([announceId.href]);
 
         if (!announceToUndoJson) {
-            return new Response(null, {
-                status: 409,
-            });
+            return new Response(
+                JSON.stringify({ error: 'Repost activity not found' }),
+                {
+                    status: 409,
+                },
+            );
         }
 
         const announceToUndo = await Announce.fromJsonLd(announceToUndoJson);
@@ -532,9 +556,12 @@ export function createDerepostActionHandler(
         const idAsUrl = parseURL(id);
 
         if (!idAsUrl) {
-            return new Response(null, {
-                status: 400,
-            });
+            return new Response(
+                JSON.stringify({ error: 'ID should be a valid URL' }),
+                {
+                    status: 400,
+                },
+            );
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
