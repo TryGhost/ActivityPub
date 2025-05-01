@@ -3,13 +3,18 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from 'account/account.service';
 import { mapActorToExternalAccountData } from 'account/utils';
-import type { AppContext } from 'app';
-import { fedify } from 'app';
-import { lookupObject } from 'lookup-helpers';
+import { type AppContext, fedify } from 'app';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import { lookupAPIdByHandle, lookupActor, lookupObject } from 'lookup-helpers';
+import type { ModerationService } from 'moderation/moderation.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 export class FollowController {
-    constructor(private readonly accountService: AccountService) {}
+    constructor(
+        private readonly accountService: AccountService,
+        private readonly moderationService: ModerationService,
+    ) {}
 
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
@@ -18,50 +23,72 @@ export class FollowController {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
-        const actorToFollow = await lookupObject(apCtx, handle);
+        const followerAccount = ctx.get('account');
 
-        if (!isActor(actorToFollow)) {
-            return new Response(null, {
-                status: 404,
-            });
+        // Retrieve the AP ID of the account to follow
+        const accountToFollowApId = await lookupAPIdByHandle(apCtx, handle);
+
+        if (!accountToFollowApId) {
+            return NotFound('Remote account could not be found');
         }
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
-        if (actorToFollow.id!.href === actor!.id!.href) {
-            return new Response(null, {
-                status: 400,
-            });
+        // We cannot follow ourselves
+        if (accountToFollowApId === followerAccount.apId.toString()) {
+            return BadRequest('Cannot follow yourself');
         }
 
-        const followerAccount = await this.accountService.getAccountByApId(
-            actor!.id!.href,
+        // Ensure the account to follow exists
+        const getAccountToFollowResult = await this.accountService.ensureByApId(
+            new URL(accountToFollowApId),
         );
 
-        if (!followerAccount) {
-            return new Response(null, {
-                status: 404,
-            });
+        if (isError(getAccountToFollowResult)) {
+            const error = getError(getAccountToFollowResult);
+            switch (error) {
+                case 'not-found':
+                    return NotFound('Remote account could not be found');
+                case 'invalid-type':
+                    return BadRequest('Remote account is not an Actor');
+                case 'invalid-data':
+                    return BadRequest('Remote account could not be parsed');
+                case 'network-failure':
+                    return NotFound('Remote account could not be fetched');
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
 
-        let followeeAccount = await this.accountService.getAccountByApId(
-            actorToFollow.id!.href,
-        );
-        if (!followeeAccount) {
-            followeeAccount = await this.accountService.createExternalAccount(
-                await mapActorToExternalAccountData(actorToFollow),
-            );
+        const accountToFollow = getValue(getAccountToFollowResult);
+
+        // Check we can follow the account
+        if (
+            !(await this.moderationService.canInteractWithAccount(
+                followerAccount.id,
+                accountToFollow.id,
+            ))
+        ) {
+            return Forbidden('You cannot follow this account');
         }
 
+        // Check if we are already following the account
         if (
             await this.accountService.checkIfAccountIsFollowing(
                 followerAccount.id,
-                followeeAccount.id,
+                accountToFollow.id,
             )
         ) {
-            return new Response(null, {
-                status: 409,
-            });
+            return Conflict('Already following this account');
+        }
+
+        // Federate the follow
+        const actor = await lookupActor(apCtx, followerAccount.apId.toString());
+        const actorToFollow = await lookupActor(
+            apCtx,
+            accountToFollow.apId.toString(),
+        );
+
+        if (!actor || !actorToFollow) {
+            return NotFound('Remote account could not be found');
         }
 
         const followId = apCtx.getObjectUri(Follow, {
@@ -79,12 +106,11 @@ export class FollowController {
         ctx.get('globaldb').set([follow.id!.href], followJson);
 
         await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
+            { username: followerAccount.username },
             actorToFollow,
             follow,
         );
 
-        // We return the actor because the serialisation of the object property is not working as expected
         return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
             headers: {
                 'Content-Type': 'application/activity+json',

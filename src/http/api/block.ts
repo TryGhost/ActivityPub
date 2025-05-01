@@ -2,22 +2,7 @@ import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
-
-const NotFound = (message: string) =>
-    new Response(JSON.stringify({ message }), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        status: 404,
-    });
-
-const BadRequest = (message: string) =>
-    new Response(JSON.stringify({ message }), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        status: 400,
-    });
+import { BadRequest, NotFound } from './helpers/response';
 
 export class BlockController {
     constructor(private readonly accountService: AccountService) {}

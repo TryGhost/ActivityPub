@@ -317,7 +317,11 @@ const notificationEventService = new NotificationEventService(
 notificationEventService.init();
 
 const blockController = new BlockController(accountService);
-const followController = new FollowController(accountService);
+const followController = new FollowController(
+    accountService,
+    moderationService,
+);
+
 /** Fedify */
 
 /**
