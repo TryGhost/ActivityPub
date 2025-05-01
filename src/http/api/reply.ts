@@ -48,20 +48,6 @@ export async function handleCreateReply(
         logger,
     });
 
-    if (
-        process.env.NODE_ENV === 'testing' &&
-        ctx.get('account').username === 'blocked'
-    ) {
-        return new Response(
-            JSON.stringify({
-                error: 'Cannot interact with this account',
-            }),
-            {
-                status: 403,
-            },
-        );
-    }
-
     const inReplyToId = parseURL(decodeURIComponent(id));
 
     if (!inReplyToId) {
