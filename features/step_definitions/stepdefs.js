@@ -12,6 +12,7 @@ import {
     Given,
     Then,
     When,
+    setDefaultTimeout,
 } from '@cucumber/cucumber';
 import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import { merge } from 'es-toolkit';
@@ -30,6 +31,8 @@ import {
     getGhostActivityPub,
     reset as resetWiremock,
 } from '../support/wiremock.js';
+
+setDefaultTimeout(1000 * 10);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -373,7 +373,7 @@ describe('FeedService', () => {
                 author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
-        }, 10000);
+        });
 
         it('should add reposted posts to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -460,7 +460,7 @@ describe('FeedService', () => {
                 author_id: unfollowedAccount.id,
                 reposted_by_id: null,
             });
-        }, 10000);
+        });
 
         it('should not add replies to feeds', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -517,7 +517,7 @@ describe('FeedService', () => {
             const followedAccountFeed =
                 await getFeedDataForAccount(followedAccount);
             expect(followedAccountFeed.length).toBe(0);
-        }, 10000);
+        });
 
         it('should use repost timestamp as published_at when post is a reposted', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -560,7 +560,7 @@ describe('FeedService', () => {
 
             expect(feedEntry).toBeTruthy();
             expect(feedEntry.published_at).toEqual(repostDate);
-        }, 10000);
+        });
 
         it('should use original published_at timestamp when post is not reposted', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -590,7 +590,7 @@ describe('FeedService', () => {
 
             expect(feedEntry).toBeTruthy();
             expect(feedEntry.published_at).toEqual(originalPublishDate);
-        }, 10000);
+        });
     });
 
     describe('removePostFromFeeds', () => {
@@ -660,7 +660,7 @@ describe('FeedService', () => {
             // - The post from followedAccount was removed
             const otherAccountFeed = await getFeedDataForAccount(otherAccount);
             expect(otherAccountFeed.length).toBe(0);
-        }, 10000);
+        });
 
         it('should remove dereposted post from feeds', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -714,7 +714,7 @@ describe('FeedService', () => {
             // Verify repost was removed
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);
             expect(feedAfterRemoval.length).toBe(0);
-        }, 10000);
+        });
 
         it('should not affect other reposts when removing a specific derepost', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -776,7 +776,7 @@ describe('FeedService', () => {
                 author_id: postAuthorAccount.id,
                 reposted_by_id: reposter2.id,
             });
-        }, 10000);
+        });
     });
 
     describe('removeBlockedAccountPostsFromFeed', () => {
@@ -883,7 +883,7 @@ describe('FeedService', () => {
             expect(blockedAccountFeedAfterRemoval[0]).toMatchObject({
                 post_id: blockedAccountPost.id,
             });
-        }, 10000);
+        });
 
         it('should remove reposts from feeds when an account is blocked', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -999,6 +999,6 @@ describe('FeedService', () => {
                 post_id: followedAccountPost.id,
                 reposted_by_id: blockedAccount.id,
             });
-        }, 10000);
+        });
     });
 });
