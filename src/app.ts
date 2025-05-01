@@ -958,6 +958,23 @@ function requireRole(...roles: GhostRole[]) {
     };
 }
 
+function testBlockedMiddleware(ctx: AppContext, next: Next) {
+    if (process.env.NODE_ENV !== 'development') {
+        return next();
+    }
+    if (ctx.get('account').username !== 'blocked') {
+        return next();
+    }
+    return new Response(
+        JSON.stringify({
+            error: 'Cannot interact with this account',
+        }),
+        {
+            status: 403,
+        },
+    );
+}
+
 app.get(
     '/.well-known/webfinger',
     spanWrapper(createWebFingerHandler(accountRepository, siteService)),
@@ -970,6 +987,7 @@ app.get(
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
+    testBlockedMiddleware,
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(followController.handleFollow.bind(followController)),
 );
@@ -980,6 +998,7 @@ app.post(
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
+    testBlockedMiddleware,
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         createLikeAction(accountRepository, postService, postRepository),
@@ -994,11 +1013,13 @@ app.post(
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
+    testBlockedMiddleware,
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => handleCreateReply(ctx, postService)),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
+    testBlockedMiddleware,
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper(
         spanWrapper(
