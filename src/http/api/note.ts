@@ -21,7 +21,10 @@ export async function handleCreateNote(
     try {
         data = NoteSchema.parse((await ctx.req.json()) as unknown);
     } catch (err) {
-        return new Response(JSON.stringify({}), { status: 400 });
+        return new Response(
+            JSON.stringify({ error: 'Invalid request format' }),
+            { status: 400 },
+        );
     }
 
     const postResult = await postService.createNote(
