@@ -103,7 +103,7 @@ jobs:
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
       - name: "Run Tests"
-        run: docker run ${{ steps.activitypub-docker-metadata.outputs.tags }} bash -c "yarn test"
+        run: docker run --rm europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ steps.activitypub-docker-metadata.outputs.version }} bash -c "yarn test"
 
       - name: "Authenticate with GCP"
         if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
