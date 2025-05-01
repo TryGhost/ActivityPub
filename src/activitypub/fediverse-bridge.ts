@@ -1,14 +1,24 @@
 import type EventEmitter from 'node:events';
-import { Delete, PUBLIC_COLLECTION, Update } from '@fedify/fedify';
-import { PostDeletedEvent } from 'post/post-deleted.event';
 import { v4 as uuidv4 } from 'uuid';
+
+import {
+    Delete,
+    Follow,
+    PUBLIC_COLLECTION,
+    Reject,
+    Update,
+} from '@fedify/fedify';
+import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import { AccountUpdatedEvent } from '../account/account-updated.event';
+import type { AccountService } from '../account/account.service';
 import type { FedifyContextFactory } from './fedify-context.factory';
 
 export class FediverseBridge {
     constructor(
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly accountService: AccountService,
     ) {}
 
     async init() {
@@ -19,6 +29,10 @@ export class FediverseBridge {
         this.events.on(
             PostDeletedEvent.getName(),
             this.handlePostDeleted.bind(this),
+        );
+        this.events.on(
+            AccountBlockedEvent.getName(),
+            this.handleAccountBlockedEvent.bind(this),
         );
     }
 
@@ -80,6 +94,46 @@ export class FediverseBridge {
             {
                 preferSharedInbox: true,
             },
+        );
+    }
+
+    private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const blockerAccount = await this.accountService.getAccountById(
+            event.getBlockerId(),
+        );
+        const blockedAccount = await this.accountService.getAccountById(
+            event.getAccountId(),
+        );
+
+        if (!blockerAccount || !blockedAccount) {
+            return;
+        }
+
+        if (blockedAccount.isInternal) {
+            return;
+        }
+
+        const reject = new Reject({
+            id: ctx.getObjectUri(Reject, { id: uuidv4() }),
+            actor: blockerAccount.apId,
+            object: new Follow({
+                id: ctx.getObjectUri(Follow, { id: uuidv4() }),
+                actor: blockedAccount.apId,
+                object: blockerAccount.apId,
+            }),
+        });
+
+        await ctx.data.globaldb.set([reject.id!.href], await reject.toJsonLd());
+
+        await ctx.sendActivity(
+            { username: blockerAccount.username },
+            {
+                id: blockedAccount.apId,
+                inboxId: blockedAccount.apInbox,
+            },
+            reject,
         );
     }
 }

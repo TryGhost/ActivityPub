@@ -61,6 +61,7 @@ export class KnexPostRepository {
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
+                'accounts.ap_inbox_url as author_ap_inbox_url',
                 'sites.id as site_id',
                 'sites.host as site_host',
             )
@@ -88,6 +89,7 @@ export class KnexPostRepository {
             bannerImageUrl: parseURL(row.banner_image_url),
             apId: new URL(row.ap_id),
             apFollowers: parseURL(row.ap_followers_url),
+            apInbox: parseURL(row.ap_inbox_url),
             isInternal: row.site_id !== null,
         });
 
@@ -333,6 +335,7 @@ export class KnexPostRepository {
                 bannerImageUrl: parseURL(row.banner_image_url),
                 apId: new URL(row.ap_id),
                 apFollowers: parseURL(row.ap_followers_url),
+                apInbox: parseURL(row.ap_inbox_url),
                 isInternal: row.site_id !== null,
             });
 

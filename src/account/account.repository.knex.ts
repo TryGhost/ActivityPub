@@ -8,6 +8,21 @@ import { AccountUnblockedEvent } from './account-unblocked.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { type Account, AccountEntity } from './account.entity';
 
+interface AccountRow {
+    id: number;
+    uuid: string | null;
+    username: string;
+    name: string | null;
+    bio: string | null;
+    url: string | null;
+    avatar_url: string | null;
+    banner_image_url: string | null;
+    ap_id: string;
+    ap_followers_url: string | null;
+    ap_inbox_url: string | null;
+    site_id: number | null;
+}
+
 export class KnexAccountRepository {
     constructor(
         private readonly db: Knex,
@@ -105,6 +120,7 @@ export class KnexAccountRepository {
                 'accounts.banner_image_url',
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
+                'accounts.ap_inbox_url',
             )
             .first();
 
@@ -112,26 +128,7 @@ export class KnexAccountRepository {
             throw new Error(`Default account not found for site ${site.id}`);
         }
 
-        if (!accountRow.uuid) {
-            accountRow.uuid = randomUUID();
-            await this.db('accounts')
-                .update({ uuid: accountRow.uuid })
-                .where({ id: accountRow.id });
-        }
-
-        return AccountEntity.create({
-            id: accountRow.id,
-            uuid: accountRow.uuid,
-            username: accountRow.username,
-            name: accountRow.name,
-            bio: accountRow.bio,
-            url: parseURL(accountRow.url) || new URL(accountRow.ap_id),
-            avatarUrl: parseURL(accountRow.avatar_url),
-            bannerImageUrl: parseURL(accountRow.banner_image_url),
-            apId: new URL(accountRow.ap_id),
-            apFollowers: parseURL(accountRow.ap_followers_url),
-            isInternal: true,
-        });
+        return this.mapRowToAccountEntity(accountRow);
     }
 
     async getByApId(apId: URL): Promise<Account | null> {
@@ -149,6 +146,7 @@ export class KnexAccountRepository {
                 'accounts.banner_image_url',
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
+                'accounts.ap_inbox_url',
                 'users.site_id',
             )
             .first();
@@ -157,25 +155,57 @@ export class KnexAccountRepository {
             return null;
         }
 
-        if (!accountRow.uuid) {
-            accountRow.uuid = randomUUID();
+        return this.mapRowToAccountEntity(accountRow);
+    }
+
+    async getById(id: number): Promise<Account | null> {
+        const accountRow = await this.db('accounts')
+            .where('accounts.id', id)
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .select(
+                'accounts.id',
+                'accounts.uuid',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.url',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.ap_followers_url',
+                'accounts.ap_inbox_url',
+                'users.site_id',
+            )
+            .first();
+
+        if (!accountRow) {
+            return null;
+        }
+
+        return this.mapRowToAccountEntity(accountRow);
+    }
+
+    private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {
+        if (!row.uuid) {
+            row.uuid = randomUUID();
             await this.db('accounts')
-                .update({ uuid: accountRow.uuid })
-                .where({ id: accountRow.id });
+                .update({ uuid: row.uuid })
+                .where({ id: row.id });
         }
 
         return AccountEntity.create({
-            id: accountRow.id,
-            uuid: accountRow.uuid,
-            username: accountRow.username,
-            name: accountRow.name,
-            bio: accountRow.bio,
-            url: parseURL(accountRow.url) || new URL(accountRow.ap_id),
-            avatarUrl: parseURL(accountRow.avatar_url),
-            bannerImageUrl: parseURL(accountRow.banner_image_url),
-            apId: new URL(accountRow.ap_id),
-            apFollowers: parseURL(accountRow.ap_followers_url),
-            isInternal: accountRow.site_id !== null,
+            id: row.id,
+            uuid: row.uuid,
+            username: row.username,
+            name: row.name,
+            bio: row.bio,
+            url: parseURL(row.url) || new URL(row.ap_id),
+            avatarUrl: parseURL(row.avatar_url),
+            bannerImageUrl: parseURL(row.banner_image_url),
+            apId: new URL(row.ap_id),
+            apFollowers: parseURL(row.ap_followers_url),
+            apInbox: parseURL(row.ap_inbox_url),
+            isInternal: row.site_id !== null,
         });
     }
 }

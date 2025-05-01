@@ -650,4 +650,8 @@ export class AccountService {
 
         return ok(true);
     }
+
+    async getAccountById(id: number) {
+        return await this.accountRepository.getById(id);
+    }
 }
