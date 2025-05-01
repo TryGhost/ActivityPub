@@ -228,4 +228,24 @@ export class PostService {
 
         return ok(post);
     }
+
+    async likePost(
+        account: Account,
+        post: Post,
+    ): Promise<Result<Post, InteractionError>> {
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            post.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        post.addLike(account);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
 }
