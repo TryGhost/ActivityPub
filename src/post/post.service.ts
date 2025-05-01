@@ -1,4 +1,5 @@
 import { Article, Note, lookupObject } from '@fedify/fedify';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import {
@@ -10,11 +11,17 @@ import {
     isError,
     ok,
 } from 'core/result';
-import type { Knex } from 'knex';
+import type { ModerationService } from 'moderation/moderation.service';
+import type {
+    GCPStorageService,
+    ImageVerificationError,
+} from 'storage/gcloud-storage/gcp-storage.service';
 import { Post, type PostAttachment, PostType } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
+
+export type InteractionError = 'cannot-interact';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -26,8 +33,9 @@ export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
         private readonly accountService: AccountService,
-        private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly storageService: GCPStorageService,
+        private readonly moderationService: ModerationService,
     ) {}
 
     /**
@@ -161,5 +169,63 @@ export class PostService {
      */
     async isRepostedByAccount(postId: number, accountId: number) {
         return this.postRepository.isRepostedByAccount(postId, accountId);
+    }
+
+    async createNote(
+        account: Account,
+        content: string,
+        image?: URL,
+    ): Promise<Result<Post, ImageVerificationError>> {
+        if (image) {
+            const result = await this.storageService.verifyImageUrl(image);
+            if (isError(result)) {
+                return result;
+            }
+        }
+
+        const post = Post.createNote(account, content, image);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async createReply(
+        account: Account,
+        content: string,
+        inReplyToId: URL,
+        image?: URL,
+    ): Promise<
+        Result<Post, ImageVerificationError | GetByApIdError | InteractionError>
+    > {
+        if (image) {
+            const result = await this.storageService.verifyImageUrl(image);
+            if (isError(result)) {
+                return result;
+            }
+        }
+
+        const inReplyToResult = await this.getByApId(inReplyToId);
+
+        if (isError(inReplyToResult)) {
+            return inReplyToResult;
+        }
+
+        const inReplyTo = getValue(inReplyToResult);
+
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            inReplyTo.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        const post = Post.createReply(account, content, inReplyTo, image);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
     }
 }

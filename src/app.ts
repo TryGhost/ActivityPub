@@ -43,6 +43,8 @@ import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
+import { FollowController } from 'http/api/follow';
+import { handleCreateReply } from 'http/api/reply';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -91,11 +93,8 @@ import { FeedService } from './feed/feed.service';
 import { FlagService } from './flag/flag.service';
 import {
     createDerepostActionHandler,
-    createFollowActionHandler,
     createLikeAction,
-    createReplyActionHandler,
     createRepostActionHandler,
-    createUnfollowActionHandler,
     createUnlikeAction,
     getSiteDataHandler,
     inboxHandler,
@@ -287,11 +286,14 @@ const accountService = new AccountService(
 
 const followersService = new FollowersService(client);
 
+const moderationService = new ModerationService(client);
+
 const postService = new PostService(
     postRepository,
     accountService,
-    client,
     fedifyContextFactory,
+    gcpStorageService,
+    moderationService,
 );
 
 const accountView = new AccountView(client, fedifyContextFactory);
@@ -300,7 +302,6 @@ const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
-const moderationService = new ModerationService(client);
 const feedService = new FeedService(client, moderationService);
 const feedUpdateService = new FeedUpdateService(events, feedService);
 feedUpdateService.init();
@@ -316,7 +317,7 @@ const notificationEventService = new NotificationEventService(
 notificationEventService.init();
 
 const blockController = new BlockController(accountService);
-
+const followController = new FollowController(accountService);
 /** Fedify */
 
 /**
@@ -966,12 +967,12 @@ app.get(
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createFollowActionHandler(accountService)),
+    spanWrapper(followController.handleFollow.bind(followController)),
 );
 app.post(
     '/.ghost/activitypub/actions/unfollow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createUnfollowActionHandler(accountService)),
+    spanWrapper(followController.handleUnfollow.bind(followController)),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
@@ -990,14 +991,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createReplyActionHandler(
-            accountRepository,
-            postService,
-            postRepository,
-            gcpStorageService,
-        ),
-    ),
+    spanWrapper((ctx: AppContext) => handleCreateReply(ctx, postService)),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
@@ -1026,14 +1020,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) =>
-        handleCreateNote(
-            ctx,
-            accountRepository,
-            postRepository,
-            gcpStorageService,
-        ),
-    ),
+    spanWrapper((ctx: AppContext) => handleCreateNote(ctx, postService)),
 );
 app.get(
     '/.ghost/activitypub/actions/search',

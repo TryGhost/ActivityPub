@@ -112,7 +112,13 @@ export class FixtureManager {
             inReplyTo?: Post;
         } = {},
     ) {
+        let apId = null;
+        if (!account.isInternal) {
+            apId = new URL(`/post/${faker.string.uuid()}`, account.apId);
+        }
+
         const post = Post.createFromData(account, {
+            apId: apId ?? undefined,
             type,
             inReplyTo,
             content:

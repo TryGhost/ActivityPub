@@ -16,499 +16,30 @@ import {
 } from '@cucumber/cucumber';
 import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import { merge } from 'es-toolkit';
-import jwt from 'jsonwebtoken';
-import Knex from 'knex';
 import jose from 'node-jose';
-import { v4 as uuidv4 } from 'uuid';
-import { WireMock } from 'wiremock-captain';
+
+import { getClient, reset as resetDatabase } from '../support/db.js';
+import {
+    createActivity,
+    createActor,
+    createObject,
+    createWebhookPost,
+} from '../support/fixtures.js';
+import { fetchActivityPub, waitForRequest } from '../support/request.js';
+import { parseActivityString, parseActorString } from '../support/steps.js';
+import {
+    getGhostActivityPub,
+    reset as resetWiremock,
+} from '../support/wiremock.js';
 
 setDefaultTimeout(1000 * 10);
 
-// Get the current file's URL and convert it to a path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const URL_EXTERNAL_ACTIVITY_PUB = 'http://fake-external-activitypub.test';
-const URL_GHOST_ACTIVITY_PUB = 'http://fake-ghost-activitypub.test';
-
-async function createActivity(type, object, actor) {
-    let activity;
-
-    if (type === 'Follow') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Follow',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/follow/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Accept') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Accept',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/accept/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Reject') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Reject',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/reject/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Create') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Create',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/create/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Announce') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Announce',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/announce/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Like') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Like',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/like/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Undo') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Undo',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/undo/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    if (type === 'Delete') {
-        activity = {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Delete',
-            id: `${URL_EXTERNAL_ACTIVITY_PUB}/delete/${uuidv4()}`,
-            to: 'as:Public',
-            object: object,
-            actor: actor,
-        };
-    }
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: activity.id.replace(URL_EXTERNAL_ACTIVITY_PUB, ''),
-        },
-        {
-            status: 200,
-            body: activity,
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-        },
-    );
-
-    return activity;
-}
-
-async function createActor(name, { remote = true, type = 'Person' } = {}) {
-    if (remote === false) {
-        return {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
-            url: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
-            type,
-
-            handle: '@index@fake-ghost-activitypub.test',
-
-            preferredUsername: 'index',
-            name,
-            summary: 'A test actor for testing',
-
-            inbox: 'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-            outbox: 'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
-            followers:
-                'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
-            following:
-                'http://fake-ghost-activitypub.test/.ghost/activitypub/following/index',
-            liked: 'http://fake-ghost-activitypub.test/.ghost/activitypub/liked/index',
-
-            'https://w3id.org/security#publicKey': {
-                id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index#main-key',
-                type: 'https://w3id.org/security#Key',
-                'https://w3id.org/security#owner': {
-                    id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
-                },
-                'https://w3id.org/security#publicKeyPem':
-                    '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
-            },
-        };
-    }
-
-    const user = {
-        '@context': [
-            'https://www.w3.org/ns/activitystreams',
-            'https://w3id.org/security/data-integrity/v1',
-        ],
-        id: `http://fake-external-activitypub.test/user/${name}`,
-        url: `http://fake-external-activitypub.test/user/${name}`,
-        type,
-
-        handle: `@${name}@fake-external-activitypub.test`,
-
-        preferredUsername: name,
-        name,
-        summary: 'A test actor for testing',
-
-        inbox: `http://fake-external-activitypub.test/inbox/${name}`,
-        outbox: `http://fake-external-activitypub.test/inbox/${name}`,
-        followers: `http://fake-external-activitypub.test/followers/${name}`,
-        following: `http://fake-external-activitypub.test/following/${name}`,
-        liked: `http://fake-external-activitypub.test/liked/${name}`,
-
-        'https://w3id.org/security#publicKey': {
-            id: 'http://fake-external-activitypub.test/user#main-key',
-            type: 'https://w3id.org/security#Key',
-            'https://w3id.org/security#owner': {
-                id: 'http://fake-external-activitypub.test/user',
-            },
-            'https://w3id.org/security#publicKeyPem':
-                '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
-        },
-    };
-
-    externalActivityPub.register(
-        {
-            method: 'POST',
-            endpoint: `/inbox/${name}`,
-        },
-        {
-            status: 202,
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/user/${name}`,
-        },
-        {
-            status: 200,
-            body: user,
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/followers/${name}`,
-        },
-        {
-            status: 200,
-            body: {
-                '@context': 'https://www.w3.org/ns/activitystreams',
-                type: 'OrderedCollection',
-                totalItems: 0,
-                orderedItems: [],
-            },
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/following/${name}`,
-        },
-        {
-            status: 200,
-            body: {
-                '@context': 'https://www.w3.org/ns/activitystreams',
-                type: 'OrderedCollection',
-                totalItems: 0,
-                orderedItems: [],
-            },
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub.test`)}`,
-        },
-        {
-            status: 200,
-            body: {
-                subject: `acct:${name}@fake-external-activitypub.test`,
-                aliases: [`http://fake-external-activitypub.test/user/${name}`],
-                links: [
-                    {
-                        rel: 'self',
-                        href: `http://fake-external-activitypub.test/user/${name}`,
-                        type: 'application/activity+json',
-                    },
-                    {
-                        rel: 'http://webfinger.net/rel/profile-page',
-                        href: 'https://activitypub.ghost.org/',
-                    },
-                    {
-                        rel: 'http://webfinger.net/rel/avatar',
-                        href: 'https://activitypub.ghost.org/content/images/2024/09/ghost-orb-white-squircle-07.png',
-                    },
-                ],
-            },
-        },
-    );
-
-    return user;
-}
-
-function generateObject(type, content) {
-    if (type === 'Article') {
-        const uuid = uuidv4();
-        return {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Article',
-            id: `http://fake-external-activitypub.test/article/${uuid}`,
-            url: `http://fake-external-activitypub.test/article/${uuid}`,
-            to: 'as:Public',
-            cc: 'http://fake-external-activitypub.test/followers',
-            content: content ?? '<p>This is a test article</p>',
-            published: new Date(),
-            attributedTo: 'http://fake-external-activitypub.test/user',
-        };
-    }
-
-    if (type === 'Note') {
-        const uuid = uuidv4();
-        return {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Note',
-            id: `http://fake-external-activitypub.test/note/${uuid}`,
-            url: `http://fake-external-activitypub.test/note/${uuid}`,
-            to: 'as:Public',
-            cc: 'http://fake-external-activitypub.test/followers',
-            content: content ?? '<p>This is a test note</p>',
-            published: new Date(),
-            attributedTo: 'http://fake-external-activitypub.test/user',
-        };
-    }
-
-    if (type === 'Accept') {
-        const uuid = uuidv4();
-        return {
-            '@context': [
-                'https://www.w3.org/ns/activitystreams',
-                'https://w3id.org/security/data-integrity/v1',
-            ],
-            type: 'Accept',
-            id: `http://fake-external-activitypub.test/accept/${uuid}`,
-            url: `http://fake-external-activitypub.test/accept/${uuid}`,
-        };
-    }
-}
-
-async function createObject(type, actor, content) {
-    const object = generateObject(type, content);
-
-    if (!object) {
-        throw new Error(`Cannot create objects of type ${type}`);
-    }
-
-    object.attributedTo = actor.id;
-
-    const url = new URL(object.id);
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: url.pathname,
-        },
-        {
-            status: 200,
-            body: object,
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-        },
-    );
-
-    return object;
-}
-
-function createWebhookPost() {
-    const uuid = uuidv4();
-
-    return {
-        post: {
-            current: {
-                uuid,
-                title: 'Test Post',
-                html: '<p>This is a test post</p>',
-                excerpt: 'This is a test post',
-                custom_excerpt: null,
-                feature_image: null,
-                published_at: new Date().toISOString(),
-                url: `http://fake-external-activitypub.test/post/${uuid}`,
-                visibility: 'public',
-                authors: [
-                    {
-                        name: 'Testing',
-                        profile_image: '//gravatar.com/avatar/blah',
-                    },
-                ],
-            },
-        },
-    };
-}
-
-/**
- *
- * Splits a string like `Create(Note)` or `Like(A)` into its activity and object parts
- *
- * @param {string} string
- * @returns {{activity: string, object: string} | {activity: null, object: null}}
- */
-function parseActivityString(string) {
-    const [match, activity, object] = string.match(/(\w+)\((.+)\)/) || [null];
-    if (!match) {
-        return {
-            activity: null,
-            object: null,
-        };
-    }
-    return {
-        activity,
-        object,
-    };
-}
-
-/**
- *
- * Splits a string like `Person(Alice)` or `Group(Wonderland)` into its type and name parts
- *
- * @param {string} string
- * @returns {{type: string, name: string} | {type: null, name: null}}
- */
-function parseActorString(string) {
-    const [match, type, name] = string.match(/(\w+)\((.+)\)/) || [null];
-    if (!match) {
-        return {
-            type: null,
-            name: null,
-        };
-    }
-    return {
-        type,
-        name,
-    };
-}
-
-let /* @type Knex */ client;
-let /* @type WireMock */ externalActivityPub;
-let /* @type WireMock */ ghostActivityPub;
 let webhookSecret;
 
-async function resetDatabase() {
-    await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await client('key_value').truncate();
-    await client('notifications').truncate();
-    await client('feeds').truncate();
-    await client('blocks').truncate();
-    await client('follows').truncate();
-    await client('likes').truncate();
-    await client('reposts').truncate();
-    await client('posts').truncate();
-    await client('accounts').truncate();
-    await client('users').truncate();
-    await client('sites').truncate();
-    await client.raw('SET FOREIGN_KEY_CHECKS = 1');
-}
-
 BeforeAll(async () => {
-    client = Knex({
-        client: 'mysql2',
-        connection: {
-            host: process.env.MYSQL_HOST,
-            port: Number.parseInt(process.env.MYSQL_PORT),
-            user: process.env.MYSQL_USER,
-            password: process.env.MYSQL_PASSWORD,
-            database: process.env.MYSQL_DATABASE,
-            timezone: '+00:00',
-        },
-    });
-
-    await resetDatabase();
-
     webhookSecret = fs.readFileSync(
         resolve(__dirname, '../fixtures/webhook_secret.txt'),
         'utf8',
@@ -516,8 +47,7 @@ BeforeAll(async () => {
 });
 
 BeforeAll(async () => {
-    externalActivityPub = new WireMock(URL_EXTERNAL_ACTIVITY_PUB);
-    ghostActivityPub = new WireMock(URL_GHOST_ACTIVITY_PUB);
+    const ghostActivityPub = getGhostActivityPub();
 
     const publicKey = fs.readFileSync(
         resolve(__dirname, '../fixtures/private.key'),
@@ -569,15 +99,15 @@ BeforeAll(async () => {
 });
 
 AfterAll(async () => {
-    await client.destroy();
+    await getClient().destroy();
 });
 
 Before(async function () {
-    await externalActivityPub.clearAllRequests();
+    await resetWiremock();
     await resetDatabase();
 
-    const [siteId] = await client('sites').insert({
-        host: new URL(URL_GHOST_ACTIVITY_PUB).host,
+    const [siteId] = await getClient()('sites').insert({
+        host: new URL(process.env.URL_GHOST_ACTIVITY_PUB).host,
         webhook_secret: webhookSecret,
     });
 
@@ -596,7 +126,7 @@ Before(async function () {
 
         const keypair = await generateCryptoKeyPair();
 
-        const [accountId] = await client('accounts').insert({
+        const [accountId] = await getClient()('accounts').insert({
             username: actor.preferredUsername,
             name: actor.name,
             bio: actor.summary,
@@ -615,7 +145,7 @@ Before(async function () {
             ap_private_key: JSON.stringify(await exportJwk(keypair.privateKey)),
         });
 
-        await client('users').insert({
+        await getClient()('users').insert({
             account_id: accountId,
             site_id: this.SITE_ID,
         });
@@ -626,36 +156,8 @@ Before(async function () {
     }
 });
 
-async function fetchActivityPub(url, options = {}, auth = true) {
-    if (!options.headers) {
-        options.headers = {};
-    }
-
-    const privateKey = fs.readFileSync(
-        resolve(__dirname, '../fixtures/private.key'),
-    );
-    const token = jwt.sign(
-        {
-            sub: 'test@user.com',
-            role: 'Owner',
-        },
-        privateKey,
-        {
-            algorithm: 'RS256',
-            keyid: 'test-key-id',
-            expiresIn: '5m',
-        },
-    );
-
-    if (auth) {
-        options.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return fetch(url, options);
-}
-
 Given('there is no entry in the sites table', async function () {
-    await client('sites').del();
+    await getClient()('sites').del();
 
     this.SITE_ID = null;
 });
@@ -1210,32 +712,6 @@ When(
         );
     },
 );
-
-async function wait(n) {
-    return new Promise((resolve) => setTimeout(resolve, n));
-}
-
-async function waitForRequest(
-    method,
-    path,
-    matcher,
-    step = 100,
-    milliseconds = 1000,
-) {
-    const calls = await externalActivityPub.getRequestsForAPI(method, path);
-    const found = calls.find(matcher);
-
-    if (found) {
-        return found;
-    }
-
-    if (milliseconds <= 0) {
-        return null;
-    }
-
-    await wait(step);
-    return waitForRequest(method, path, matcher, step, milliseconds - step);
-}
 
 async function waitForInboxActivity(
     activity,
@@ -2150,18 +1626,4 @@ Then('the response contains the account details:', async function (data) {
             `Expected ${key} to be "${value}" but got "${responseJson[key]}"`,
         );
     }
-});
-
-When('we block {string}', async function (actorName) {
-    const actor = this.actors[actorName];
-
-    this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/block/${encodeURIComponent(actor.id)}`,
-        {
-            method: 'POST',
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
 });

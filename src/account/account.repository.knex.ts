@@ -42,6 +42,17 @@ export class KnexAccountRepository {
                         })
                         .onConflict(['blocker_id', 'blocked_id'])
                         .ignore();
+
+                    await transaction('follows')
+                        .where({
+                            follower_id: event.getBlockerId(),
+                            following_id: event.getAccountId(),
+                        })
+                        .orWhere({
+                            follower_id: event.getAccountId(),
+                            following_id: event.getBlockerId(),
+                        })
+                        .delete();
                 } else if (event instanceof AccountUnblockedEvent) {
                     await transaction('blocks')
                         .where({
