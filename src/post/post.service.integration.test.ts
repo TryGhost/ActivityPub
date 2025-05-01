@@ -260,4 +260,44 @@ describe('PostService', () => {
             expect(getError(result)).toBe('cannot-interact');
         });
     });
+
+    describe('likePost', () => {
+        it('should like a post successfully', async () => {
+            const [likeAccount] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+
+            const result = await postService.likePost(likeAccount, post);
+
+            expect(isError(result)).toBe(false);
+
+            const postWasLiked = await postRepository.isLikedByAccount(
+                post.id!,
+                likeAccount.id,
+            );
+
+            expect(postWasLiked).toBe(true);
+        });
+
+        it('should return error when moderation check fails', async () => {
+            const [accountToBlock] =
+                await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+
+            await fixtureManager.createBlock(account, accountToBlock);
+
+            const result = await postService.likePost(accountToBlock, post);
+
+            expect(isError(result)).toBe(true);
+            expect(getError(result as Err<string>)).toBe('cannot-interact');
+
+            const postWasLiked = await postRepository.isLikedByAccount(
+                post.id!,
+                accountToBlock.id,
+            );
+
+            expect(postWasLiked).toBe(false);
+        });
+    });
 });
