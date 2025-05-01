@@ -112,6 +112,33 @@ describe('KnexAccountRepository', () => {
         assert(result.uuid !== null, 'Account should have a uuid');
     });
 
+    it('Can get by id', async () => {
+        const [, [account2]] = await Promise.all([
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+        ]);
+
+        const result = await accountRepository.getById(account2.id);
+
+        assert(result, 'Account should have been found');
+        assert(
+            result.apId.href === account2.apId.href,
+            'Account should have correct data',
+        );
+    });
+
+    it('Ensures an account has a uuid when retrieved by id', async () => {
+        const [, [account2]] = await Promise.all([
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+        ]);
+
+        const result = await accountRepository.getById(account2.id);
+
+        assert(result, 'Account should have been found');
+        assert(result.uuid !== null, 'Account should have a uuid');
+    });
+
     it('emits AccountUpdatedEvent when an account is saved', async () => {
         // Setup
         const emitSpy = vi.spyOn(events, 'emitAsync');

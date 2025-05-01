@@ -14,6 +14,7 @@ export interface Account {
     readonly bannerImageUrl: URL | null;
     readonly apId: URL;
     readonly apFollowers: URL | null;
+    readonly apInbox: URL | null;
     readonly isInternal: boolean;
     unblock(account: Account): Account;
     block(account: Account): Account;
@@ -37,6 +38,7 @@ export interface AccountDraft {
     bannerImageUrl: URL | null;
     apId: URL;
     apFollowers: URL | null;
+    apInbox: URL | null;
     isInternal: boolean;
 }
 
@@ -56,6 +58,7 @@ export class AccountEntity implements Account {
         public readonly bannerImageUrl: URL | null,
         public readonly apId: URL,
         public readonly apFollowers: URL | null,
+        public readonly apInbox: URL | null,
         public readonly isInternal: boolean,
         private events: AccountEvent[],
     ) {}
@@ -81,6 +84,7 @@ export class AccountEntity implements Account {
             data.bannerImageUrl,
             data.apId,
             data.apFollowers,
+            data.apInbox,
             data.isInternal,
             events,
         );
@@ -94,6 +98,9 @@ export class AccountEntity implements Account {
         const apFollowers = !from.isInternal
             ? from.apFollowers
             : new URL('/.ghost/activitypub/followers/index', from.host);
+        const apInbox = !from.isInternal
+            ? from.apInbox
+            : new URL('/.ghost/activitypub/inbox/index', from.host);
         const url = from.url || apId;
         return {
             ...from,
@@ -101,6 +108,7 @@ export class AccountEntity implements Account {
             url,
             apId,
             apFollowers,
+            apInbox,
         };
     }
 
@@ -197,6 +205,7 @@ type ExternalAccountDraftData = {
     bannerImageUrl: URL | null;
     apId: URL;
     apFollowers: URL | null;
+    apInbox: URL | null;
 };
 
 type AccountDraftData = InternalAccountDraftData | ExternalAccountDraftData;

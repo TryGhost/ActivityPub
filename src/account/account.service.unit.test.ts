@@ -20,6 +20,7 @@ describe('AccountService', () => {
         asyncEvents = {} as AsyncEvents;
         knexAccountRepository = {
             save: vi.fn(),
+            getById: vi.fn(),
         } as unknown as KnexAccountRepository;
         fedifyContextFactory = {} as FedifyContextFactory;
         generateKeyPair = vi.fn();
@@ -109,6 +110,27 @@ describe('AccountService', () => {
                 avatarUrl: null,
                 bannerImageUrl: null,
             });
+        });
+    });
+
+    describe('getAccountById', () => {
+        it('should return the result from the account repository', async () => {
+            const accountId = 1;
+            const account = { id: accountId } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getById).mockImplementation(
+                (_id) => {
+                    if (_id === accountId) {
+                        return Promise.resolve(account);
+                    }
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            const result = await accountService.getAccountById(accountId);
+
+            expect(result).toBe(account);
         });
     });
 });

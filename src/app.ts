@@ -306,7 +306,11 @@ const feedService = new FeedService(client, moderationService);
 const feedUpdateService = new FeedUpdateService(events, feedService);
 feedUpdateService.init();
 
-const fediverseBridge = new FediverseBridge(events, fedifyContextFactory);
+const fediverseBridge = new FediverseBridge(
+    events,
+    fedifyContextFactory,
+    accountService,
+);
 fediverseBridge.init();
 
 const notificationService = new NotificationService(client, moderationService);
