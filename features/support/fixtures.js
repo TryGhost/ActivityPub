@@ -1,4 +1,9 @@
+import fs from 'node:fs';
+import { resolve } from 'node:path';
+
 import { v4 as uuidv4 } from 'uuid';
+
+import { getCurrentDirectory } from './path.js';
 import { getExternalActivityPub } from './wiremock.js';
 
 function generateObject(type, content) {
@@ -409,4 +414,17 @@ export function createWebhookPost() {
             },
         },
     };
+}
+
+let webhookSecret;
+
+export function getWebhookSecret() {
+    if (!webhookSecret) {
+        webhookSecret = fs.readFileSync(
+            resolve(getCurrentDirectory(), '../fixtures/webhook_secret.txt'),
+            'utf8',
+        );
+    }
+
+    return webhookSecret;
 }

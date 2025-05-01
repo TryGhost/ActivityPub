@@ -1,13 +1,11 @@
 import fs from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
 import jwt from 'jsonwebtoken';
 
+import { getCurrentDirectory } from './path.js';
 import { wait } from './utils.js';
 import { getExternalActivityPub } from './wiremock.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export async function fetchActivityPub(url, options = {}, auth = true) {
     if (!options.headers) {
@@ -15,7 +13,7 @@ export async function fetchActivityPub(url, options = {}, auth = true) {
     }
 
     const privateKey = fs.readFileSync(
-        resolve(__dirname, '../fixtures/private.key'),
+        resolve(getCurrentDirectory(), '../fixtures/private.key'),
     );
 
     const token = jwt.sign(
