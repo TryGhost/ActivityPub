@@ -2170,10 +2170,10 @@ es-module-lexer@^1.5.4:
   resolved "https://registry.yarnpkg.com/es-module-lexer/-/es-module-lexer-1.5.4.tgz#a8efec3a3da991e60efa6b633a7cad6ab8d26b78"
   integrity sha512-MVNK56NiMrOwitFB7cqDwq0CQutbw+0BvLshJSse0MUNU+y1FC3bUS/AQg7oUng+/wKrrki7JfmwtVHkVfPLlw==
 
-es-toolkit@1.37.1:
-  version "1.37.1"
-  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.37.1.tgz#599a10177784ca1d2182033e9836d1d6be8bc3d4"
-  integrity sha512-DdySDruhCtmP793ePSFKz3eD+m6YEDtXyBxeiDxSJeFJ95K7zeE8GhPgKRAAskJ21GvnDB60DPSvAVbK2mE9WQ==
+es-toolkit@1.37.2:
+  version "1.37.2"
+  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.37.2.tgz#f23a509a71885f13c6ebdd5d3797d7fe518ee977"
+  integrity sha512-ADDfk+pPFF0ofMpRAIc6on01p8heiuwuuJsYLzTP4UOjxVK9QsE2+0D1Q4J/zX2XBo6ac+27H5++YBIwmGAX/g==
 
 es6-promise@^4.2.8:
   version "4.2.8"
