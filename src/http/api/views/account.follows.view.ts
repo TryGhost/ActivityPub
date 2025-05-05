@@ -1,8 +1,14 @@
-import { CollectionPage, isActor, lookupObject } from '@fedify/fedify';
+import {
+    type Actor,
+    CollectionPage,
+    type DocumentLoader,
+    isActor,
+    lookupObject,
+} from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { type Result, error, ok } from 'core/result';
+import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
 
 /**
@@ -131,6 +137,80 @@ export class AccountFollowsView {
         };
     }
 
+    private async getRemoteFollowsPage(
+        actor: Actor,
+        next: URL,
+        documentLoader: DocumentLoader,
+    ): Promise<Result<CollectionPage, GetFollowsError>> {
+        let page: CollectionPage | null = null;
+
+        try {
+            // Ensure the next parameter is for the same host as the actor. We
+            // do this to prevent blindly passing URIs to lookupObject (i.e next
+            // param has been tampered with)
+            const { host: actorHost } = actor?.id || new URL('');
+            const { host: nextHost } = next;
+
+            if (actorHost !== nextHost) {
+                return error('invalid-next-parameter');
+            }
+
+            page = (await lookupObject(next, {
+                documentLoader,
+            })) as CollectionPage | null;
+
+            // Check that we have a valid page
+            if (!(page instanceof CollectionPage) || !page?.itemIds) {
+                return error('error-getting-follows');
+            }
+        } catch (err) {
+            return error('error-getting-follows');
+        }
+
+        return ok(page);
+    }
+
+    private async getUnpaginatedFollows(
+        actor: Actor,
+        type: string,
+        next: number,
+        siteDefaultAccount: Account,
+    ): Promise<Result<AccountFollows, GetFollowsError>> {
+        const follows =
+            type === 'following'
+                ? await actor.getFollowing()
+                : await actor.getFollowers();
+
+        if (!follows) {
+            return error('error-getting-follows');
+        }
+
+        const pageSize = FOLLOWS_LIMIT;
+        const pageNumber = next;
+        const startIndex = (pageNumber - 1) * pageSize;
+
+        const pageUrls = follows.itemIds.slice(
+            startIndex,
+            startIndex + pageSize,
+        );
+
+        const accounts = await this.processFollowsList(
+            pageUrls,
+            siteDefaultAccount,
+        );
+
+        let nextCursor = null;
+
+        if (follows.totalItems && pageNumber * pageSize < follows.totalItems) {
+            nextCursor = (pageNumber + 1).toString();
+        }
+
+        return ok({
+            accounts: accounts,
+            next: nextCursor,
+        });
+    }
+
     async getFollowsByRemoteLookUp(
         apId: URL,
         next: string,
@@ -150,84 +230,51 @@ export class AccountFollowsView {
             return error('not-an-actor');
         }
 
+        // If next is a number, it's an unpaginated request
+        if (Number(next)) {
+            return this.getUnpaginatedFollows(
+                actor,
+                type,
+                Number.parseInt(next, 10),
+                siteDefaultAccount,
+            );
+        }
+
         let page: CollectionPage | null = null;
 
+        // If next is an empty string, get the first page
         try {
-            //next would be a number only in case of non-paginated follow lists
-            if (next !== '' && !Number(next)) {
-                // Ensure the next parameter is for the same host as the actor. We
-                // do this to prevent blindly passing URIs to lookupObject (i.e next
-                // param has been tampered with)
-                // @TODO: Does this provide enough security? Can the host of the
-                // actor be different to the host of the actor's following collection?
-                const { host: actorHost } = actor?.id || new URL('');
-                const { host: nextHost } = new URL(next);
-
-                if (actorHost !== nextHost) {
-                    return error('invalid-next-parameter');
-                }
-
-                page = (await lookupObject(next, {
-                    documentLoader,
-                })) as CollectionPage | null;
-
-                // Check that we have a valid page
-                if (!(page instanceof CollectionPage) || !page?.itemIds) {
-                    page = null;
-                }
-            } else if (next === '') {
+            if (next === '') {
                 const follows =
                     type === 'following'
                         ? await actor.getFollowing()
                         : await actor.getFollowers();
 
-                if (follows) {
-                    page = await follows.getFirst();
+                page = follows ? await follows.getFirst() : null;
+                if (!page) {
+                    return this.getUnpaginatedFollows(
+                        actor,
+                        type,
+                        1,
+                        siteDefaultAccount,
+                    );
                 }
+            } else {
+                // Handle subsequent pages
+                const pageResult = await this.getRemoteFollowsPage(
+                    actor,
+                    new URL(next),
+                    documentLoader,
+                );
+
+                if (isError(pageResult)) {
+                    return pageResult;
+                }
+
+                page = getValue(pageResult);
             }
         } catch (err) {
             return error('error-getting-follows');
-        }
-
-        // Handling non-paginated follow lists
-        if (!page || Number(next)) {
-            const follows =
-                type === 'following'
-                    ? await actor.getFollowing()
-                    : await actor.getFollowers();
-
-            if (!follows) {
-                return error('error-getting-follows');
-            }
-
-            const pageSize = 15;
-            const pageNumber = next ? Number.parseInt(next, 10) : 1;
-            const startIndex = (pageNumber - 1) * pageSize;
-
-            const pageUrls = follows.itemIds.slice(
-                startIndex,
-                startIndex + pageSize,
-            );
-
-            const accounts = await this.processFollowsList(
-                pageUrls,
-                siteDefaultAccount,
-            );
-
-            let nextCursor = null;
-
-            if (
-                follows.totalItems &&
-                pageNumber * pageSize < follows.totalItems
-            ) {
-                nextCursor = (pageNumber + 1).toString();
-            }
-
-            return ok({
-                accounts: accounts,
-                total: 0,
-                next: nextCursor,
-            });
         }
 
         const accounts = await this.processFollowsList(
