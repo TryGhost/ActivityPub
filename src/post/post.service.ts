@@ -29,7 +29,10 @@ export type GetPostsError =
     | 'no-page-found'
     | 'not-an-actor';
 
-export type RepostError = GetByApIdError | 'already-reposted';
+export type RepostError =
+    | GetByApIdError
+    | 'already-reposted'
+    | InteractionError;
 
 export class PostService {
     constructor(
@@ -262,6 +265,15 @@ export class PostService {
         }
 
         const post = getValue(postToRepostResult);
+
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            post.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
 
         // We know this is not `null` because it just came from the DB
         const reposted = await this.isRepostedByAccount(post.id!, account.id);

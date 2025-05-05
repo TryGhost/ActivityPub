@@ -6,7 +6,7 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import { addToList } from 'kv-helpers';
 import type { PostService } from 'post/post.service';
-import { BadRequest, Conflict, NotFound } from './helpers/response';
+import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 export function createRepostActionHandler(postService: PostService) {
     return async function repostAction(ctx: AppContext): Promise<Response> {
@@ -37,6 +37,8 @@ export function createRepostActionHandler(postService: PostService) {
                     return BadRequest('Not a post');
                 case 'missing-author':
                     return NotFound('Post does not have an author');
+                case 'cannot-interact':
+                    return Forbidden('Cannot interact with this account');
                 default:
                     exhaustiveCheck(error);
             }

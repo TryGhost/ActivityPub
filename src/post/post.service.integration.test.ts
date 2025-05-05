@@ -419,5 +419,34 @@ describe('PostService', () => {
             }
             expect(getError(result)).toBe('already-reposted');
         });
+
+        it('should not allow reposting a post when blocked by the post author', async () => {
+            // Create another account (post author)
+            const [postAuthor] = await fixtureManager.createInternalAccount();
+
+            // Create a post from the post author
+            const originalPost = await fixtureManager.createPost(postAuthor);
+
+            // Block the reposter
+            await fixtureManager.createBlock(postAuthor, account);
+
+            const result = await postService.repostByApId(
+                account,
+                originalPost.apId,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('cannot-interact');
+
+            // Verify the post was not reposted
+            const wasReposted = await postService.isRepostedByAccount(
+                originalPost.id!,
+                account.id,
+            );
+            expect(wasReposted).toBe(false);
+        });
     });
 });
