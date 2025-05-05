@@ -10,6 +10,10 @@ export interface AccountDTO {
      */
     id: string;
     /**
+     * ActivityPub ID of the account
+     */
+    apId: string;
+    /**
      * Display name of the account
      */
     name: string;
@@ -62,18 +66,9 @@ export interface AccountDTO {
      */
     followedByMe: boolean;
     /**
-     * Attachments of the account
+     * Whether the account of the current user is blocking this account
      */
-    attachment: {
-        /**
-         * Name of the attachment
-         */
-        name: string;
-        /**
-         * Value of the attachment
-         */
-        value: string;
-    }[];
+    blockedByMe: boolean;
 }
 
 export type AuthorDTO = Pick<

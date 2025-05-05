@@ -1,8 +1,9 @@
 {
-  "attachment": [],
+  "apId": "https://example.com/.ghost/activitypub/users/index",
   "avatarUrl": "Test site",
   "bannerImageUrl": "",
   "bio": "Test site",
+  "blockedByMe": false,
   "customFields": {},
   "followedByMe": false,
   "followerCount": 0,

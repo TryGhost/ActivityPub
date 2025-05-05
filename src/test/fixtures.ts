@@ -106,12 +106,21 @@ export class FixtureManager {
         account: Account,
         {
             type = PostType.Note,
+            inReplyTo,
         }: {
             type?: CreatePostType;
+            inReplyTo?: Post;
         } = {},
     ) {
+        let apId = null;
+        if (!account.isInternal) {
+            apId = new URL(`/post/${faker.string.uuid()}`, account.apId);
+        }
+
         const post = Post.createFromData(account, {
+            apId: apId ?? undefined,
             type,
+            inReplyTo,
             content:
                 type === PostType.Article
                     ? faker.lorem.paragraph()
@@ -124,10 +133,26 @@ export class FixtureManager {
         return post;
     }
 
+    async createReply(account: Account, inReplyTo: Post) {
+        const reply = await this.createPost(account, {
+            type: PostType.Note,
+            inReplyTo,
+        });
+
+        return reply;
+    }
+
     async createBlock(blocker: Account, blocked: Account) {
         await this.db('blocks').insert({
             blocker_id: blocker.id,
             blocked_id: blocked.id,
+        });
+    }
+
+    async createFollow(follower: Account, following: Account) {
+        await this.db('follows').insert({
+            follower_id: follower.id,
+            following_id: following.id,
         });
     }
 
@@ -154,12 +179,17 @@ export class FixtureManager {
 
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await this.db('notifications').truncate();
-        await this.db('blocks').truncate();
-        await this.db('posts').truncate();
-        await this.db('accounts').truncate();
-        await this.db('users').truncate();
-        await this.db('sites').truncate();
+        await Promise.all([
+            this.db('notifications').truncate(),
+            this.db('likes').truncate(),
+            this.db('reposts').truncate(),
+            this.db('posts').truncate(),
+            this.db('blocks').truncate(),
+            this.db('follows').truncate(),
+            this.db('accounts').truncate(),
+            this.db('users').truncate(),
+            this.db('sites').truncate(),
+        ]);
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 1');
     }
 }

@@ -124,12 +124,12 @@ describe('NotificationEventService', () => {
 
             events.emit(
                 AccountBlockedEvent.getName(),
-                new AccountBlockedEvent(blockedAccount, blockerAccount),
+                new AccountBlockedEvent(blockedAccount.id, blockerAccount.id),
             );
 
             expect(
                 notificationService.removeBlockedAccountNotifications,
-            ).toHaveBeenCalledWith(blockerAccount, blockedAccount);
+            ).toHaveBeenCalledWith(blockerAccount.id, blockedAccount.id);
         });
     });
 });

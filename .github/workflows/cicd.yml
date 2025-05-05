@@ -255,7 +255,7 @@ jobs:
           export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-netherlands-activitypub-api"
           export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
           # Add host rules and path matchers if they don't exist
-          yq '.hostRules = (.hostRules // [{"hosts": ["activitypub.infra.ghost.is"], "pathMatcher": "staging-environments"}])' config.yml > config.yml.tmp
+          yq '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "staging-environments"}])' config.yml > config.yml.tmp
           mv config.yml.tmp config.yml
           yq '.pathMatchers = (.pathMatchers // [{"name": "staging-environments", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml > config.yml.tmp
           mv config.yml.tmp config.yml

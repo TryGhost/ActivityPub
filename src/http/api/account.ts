@@ -1,4 +1,3 @@
-import type { PersistedAccount } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -113,9 +112,7 @@ export function createGetAccountFollowsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const siteDefaultAccount = (await accountRepository.getBySite(
-            site,
-        )) as PersistedAccount;
+        const siteDefaultAccount = await accountRepository.getBySite(site);
 
         const queryNext = ctx.req.query('next');
         const next = queryNext ? decodeURIComponent(queryNext) : null;
@@ -246,9 +243,7 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const currentContextAccount = (await accountRepository.getBySite(
-            site,
-        )) as PersistedAccount;
+        const currentContextAccount = await accountRepository.getBySite(site);
 
         let accountPosts: AccountPosts;
 
@@ -270,9 +265,7 @@ export function createGetAccountPostsHandler(
                 });
             }
 
-            const account = (await accountRepository.getByApId(
-                new URL(apId),
-            )) as PersistedAccount;
+            const account = await accountRepository.getByApId(new URL(apId));
 
             const result = await accountPostsView.getPostsByApId(
                 new URL(apId),

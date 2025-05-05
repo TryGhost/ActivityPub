@@ -41,20 +41,23 @@ export class AccountView {
 
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
 
         if (
             context.requestUserAccount?.id &&
-            // Don't check if the request user is following / followed by themselves
+            // Don't check if the request user is following / followed / blocking themselves
             accountData.id !== context.requestUserAccount.id
         ) {
-            ({ followedByMe, followsMe } = await this.getRequestUserContextData(
-                context.requestUserAccount.id,
-                accountData.id,
-            ));
+            ({ followedByMe, followsMe, blockedByMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    accountData.id,
+                ));
         }
 
         return {
             id: accountData.id,
+            apId: accountData.ap_id,
             name: accountData.name,
             handle: getAccountHandle(
                 new URL(accountData.ap_id).host,
@@ -73,7 +76,7 @@ export class AccountView {
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
-            attachment: [], // TODO: I don't think we need this
+            blockedByMe,
         };
     }
 
@@ -111,7 +114,8 @@ export class AccountView {
         context: ViewContext = {},
     ): Promise<AccountDTO | null> {
         const accountData = await this.getAccountByQuery(
-            (qb: Knex.QueryBuilder) => qb.where('accounts.ap_id', apId),
+            (qb: Knex.QueryBuilder) =>
+                qb.whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId]),
         );
 
         if (!accountData) {
@@ -120,20 +124,23 @@ export class AccountView {
 
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
 
         if (
             context.requestUserAccount?.id &&
-            // Don't check if the request user is following / followed by themselves
+            // Don't check if the request user is following / followed / blocking themselves
             accountData.id !== context.requestUserAccount.id
         ) {
-            ({ followedByMe, followsMe } = await this.getRequestUserContextData(
-                context.requestUserAccount.id,
-                accountData.id,
-            ));
+            ({ followedByMe, followsMe, blockedByMe } =
+                await this.getRequestUserContextData(
+                    context.requestUserAccount.id,
+                    accountData.id,
+                ));
         }
 
         return {
             id: accountData.id,
+            apId: accountData.ap_id,
             name: accountData.name,
             handle: getAccountHandle(
                 new URL(accountData.ap_id).host,
@@ -152,7 +159,7 @@ export class AccountView {
             followerCount: accountData.follower_count,
             followedByMe,
             followsMe,
-            attachment: [], // TODO: I don't think we need this
+            blockedByMe,
         };
     }
 
@@ -178,15 +185,16 @@ export class AccountView {
 
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
 
         if (context.requestUserAccount?.id) {
             const externalAccount = await this.db('accounts')
-                .where('ap_id', apId)
+                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
                 .select('id')
                 .first();
 
             if (externalAccount) {
-                ({ followedByMe, followsMe } =
+                ({ followedByMe, followsMe, blockedByMe } =
                     await this.getRequestUserContextData(
                         context.requestUserAccount.id,
                         externalAccount.id,
@@ -207,6 +215,7 @@ export class AccountView {
 
         return {
             id: actor.id?.toString() || '',
+            apId: actor.id?.toString() || '',
             name: actor.name?.toString() || '',
             handle: getHandle(actor),
             bio: sanitizeHtml(actor.summary?.toString() || ''),
@@ -231,7 +240,7 @@ export class AccountView {
             followerCount: followerCount,
             followedByMe,
             followsMe,
-            attachment: [], // TODO: I don't think we need this
+            blockedByMe,
         };
     }
 
@@ -277,6 +286,7 @@ export class AccountView {
     ) {
         let followedByMe = false;
         let followsMe = false;
+        let blockedByMe = false;
 
         followedByMe =
             (
@@ -294,9 +304,18 @@ export class AccountView {
                     .first()
             )?.id !== undefined;
 
+        blockedByMe =
+            (
+                await this.db('blocks')
+                    .where('blocker_id', requestUserAccountId)
+                    .where('blocked_id', retrievedAccountId)
+                    .first()
+            )?.id !== undefined;
+
         return {
             followedByMe,
             followsMe,
+            blockedByMe,
         };
     }
 

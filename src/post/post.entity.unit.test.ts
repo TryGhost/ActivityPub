@@ -1,27 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
-import { Account } from '../account/account.entity';
+import { AccountEntity } from '../account/account.entity';
 import { Audience, Post, PostType } from './post.entity';
 
 function mockAccount(id: number | null, internal: boolean) {
-    return new Account(
-        id,
-        null,
-        'foobar',
-        'Foo Bar',
-        'Just a foobar',
-        new URL('https://foobar.com/avatar/foobar.png'),
-        new URL('https://foobar.com/banner/foobar.png'),
-        internal
-            ? {
-                  id: 123,
-                  host: 'foobar.com',
-              }
-            : null,
-        new URL(`https://foobar.com/user/${id}`),
-        null,
-        new URL(`https://foobar.com/followers/${id}`),
-    );
+    const draft = internal
+        ? AccountEntity.draft({
+              isInternal: true,
+              host: new URL('http://foobar.com'),
+              username: 'foobar',
+              name: 'Foo Bar',
+              bio: 'Just a foobar',
+              url: null,
+              avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
+              bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+          })
+        : AccountEntity.draft({
+              isInternal: false,
+              username: 'foobar',
+              name: 'Foo Bar',
+              bio: 'Just a foobar',
+              url: null,
+              avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
+              bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+              apFollowers: new URL(`https://foobar.com/followers/${id}`),
+              apInbox: new URL(`https://foobar.com/inbox/${id}`),
+              apId: new URL(`https://foobar.com/user/${id}`),
+          });
+
+    return AccountEntity.create({
+        id: id || 1,
+        ...draft,
+    });
 }
 
 const externalAccount = (id: number | null = 456) => mockAccount(id, false);
@@ -451,19 +461,6 @@ describe('Post', () => {
             ],
             repostsToRemove: [postDereposterAccount.id],
         });
-    });
-
-    it('should not add a repost for an account with no id', () => {
-        const postAuthorAccount = internalAccount(456);
-        const postReposterAccount = externalAccount(null);
-        const post = Post.createFromData(postAuthorAccount, {
-            type: PostType.Note,
-            content: 'Hello, world!',
-        });
-
-        expect(() => post.addRepost(postReposterAccount)).toThrow(
-            'Cannot add repost for account with no id',
-        );
     });
 
     it('should sanitize HTML content when creating a new post', () => {

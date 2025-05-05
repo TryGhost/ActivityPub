@@ -1,8 +1,7 @@
-import type { Knex } from 'knex';
-
-import type { Account as AccountEntity } from 'account/account.entity';
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
+import type { Knex } from 'knex';
+import type { ModerationService } from 'moderation/moderation.service';
 import type { Post } from 'post/post.entity';
 
 export enum NotificationType {
@@ -54,10 +53,10 @@ export interface GetNotificationsDataResult {
 }
 
 export class NotificationService {
-    /**
-     * @param db Database client
-     */
-    constructor(private readonly db: Knex) {}
+    constructor(
+        private readonly db: Knex,
+        private readonly moderationService: ModerationService,
+    ) {}
 
     /**
      * Get data for a notifications based on the provided options
@@ -162,6 +161,16 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                followerAccount.id,
+                account.id,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: followerAccount.id,
@@ -194,6 +203,16 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                accountId,
+                post.author.id,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: accountId,
@@ -223,6 +242,16 @@ export class NotificationService {
             // If this repost was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
+            return;
+        }
+
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                accountId,
+                post.author.id,
+            );
+
+        if (!notificationAllowed) {
             return;
         }
 
@@ -272,6 +301,16 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                post.author.id,
+                inReplyToPost.author_id,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: post.author.id,
@@ -282,11 +321,11 @@ export class NotificationService {
     }
 
     async removeBlockedAccountNotifications(
-        blockerAccount: AccountEntity,
-        blockedAccount: AccountEntity,
+        blockerAccountId: number,
+        blockedAccountId: number,
     ) {
         const user = await this.db('users')
-            .where('account_id', blockerAccount.id)
+            .where('account_id', blockerAccountId)
             .select('id')
             .first();
 
@@ -299,7 +338,7 @@ export class NotificationService {
 
         await this.db('notifications')
             .where('user_id', user.id)
-            .andWhere('account_id', blockedAccount.id)
+            .andWhere('account_id', blockedAccountId)
             .delete();
     }
 }

@@ -68,12 +68,12 @@ export class FeedUpdateService {
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
-        const blockerAccount = event.getBlocker();
-        const blockedAccount = event.getAccount();
+        const blockerId = event.getBlockerId();
+        const blockedId = event.getAccountId();
 
         await this.feedService.removeBlockedAccountPostsFromFeed(
-            blockerAccount,
-            blockedAccount,
+            blockerId,
+            blockedId,
         );
     }
 }

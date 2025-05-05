@@ -4,6 +4,7 @@ import { AsyncEvents } from 'core/events';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
 import type { Knex } from 'knex';
+import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -70,7 +71,8 @@ describe('KnexPostRepository', () => {
             },
         });
         postRepository = new KnexPostRepository(client, events);
-        const feedService = new FeedService(client);
+        const moderationService = new ModerationService(client);
+        const feedService = new FeedService(client, moderationService);
         const feedUpdateService = new FeedUpdateService(events, feedService);
         feedUpdateService.init();
     });
@@ -509,8 +511,10 @@ describe('KnexPostRepository', () => {
 
         assert(result);
 
-        assert(result.author.uuid === account.uuid);
-        assert(result.uuid === post.uuid);
+        assert.equal(result.author.uuid, account.uuid);
+        assert.equal(result.uuid, post.uuid);
+        assert.equal(result.author.apId.href, account.apId.href);
+        assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
     it('Can get by id', async () => {
@@ -537,8 +541,10 @@ describe('KnexPostRepository', () => {
 
         assert(result);
 
-        assert(result.author.uuid === account.uuid);
-        assert(result.uuid === post.uuid);
+        assert.equal(result.author.uuid, account.uuid);
+        assert.equal(result.uuid, post.uuid);
+        assert.equal(result.author.apId.href, account.apId.href);
+        assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
     it('Ensures an account associated with a post has a uuid when retrieved by apId', async () => {

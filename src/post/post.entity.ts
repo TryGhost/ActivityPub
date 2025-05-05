@@ -201,17 +201,11 @@ export class Post extends BaseEntity {
     }
 
     addRepost(account: Account) {
-        if (!account.id) {
-            throw new Error('Cannot add repost for account with no id');
-        }
         this.repostsToRemove.delete(account.id);
         this.repostsToAdd.add(account.id);
     }
 
     removeRepost(account: Account) {
-        if (!account.id) {
-            throw new Error('Cannot remove repost for account with no id');
-        }
         this.repostsToAdd.delete(account.id);
         this.repostsToRemove.add(account.id);
     }

@@ -4,7 +4,7 @@ import {
     isActor,
     lookupObject,
 } from '@fedify/fedify';
-import type { PersistedAccount } from 'account/account.entity';
+import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, ok } from 'core/result';
@@ -82,8 +82,8 @@ export class AccountPostsView {
 
     async getPostsByApId(
         apId: URL,
-        account: PersistedAccount,
-        currentContextAccount: PersistedAccount,
+        account: Account | null,
+        currentContextAccount: Account,
         limit: number,
         cursor: string | null,
     ): Promise<Result<AccountPosts, GetPostsError>> {
