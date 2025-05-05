@@ -87,9 +87,9 @@ export class KnexPostRepository {
             url: parseURL(row.author_url) || new URL(row.ap_id),
             avatarUrl: parseURL(row.avatar_url),
             bannerImageUrl: parseURL(row.banner_image_url),
-            apId: new URL(row.ap_id),
+            apId: new URL(row.author_ap_id),
             apFollowers: parseURL(row.ap_followers_url),
-            apInbox: parseURL(row.ap_inbox_url),
+            apInbox: parseURL(row.author_ap_inbox_url),
             isInternal: row.site_id !== null,
         });
 
@@ -278,6 +278,7 @@ export class KnexPostRepository {
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
                 'accounts.ap_id as author_ap_id',
+                'accounts.ap_inbox_url as author_ap_inbox_url',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
                 // Account metadata fields
@@ -333,9 +334,9 @@ export class KnexPostRepository {
                 url: parseURL(row.author_url) || new URL(row.ap_id),
                 avatarUrl: parseURL(row.avatar_url),
                 bannerImageUrl: parseURL(row.banner_image_url),
-                apId: new URL(row.ap_id),
+                apId: new URL(row.author_ap_id),
                 apFollowers: parseURL(row.ap_followers_url),
-                apInbox: parseURL(row.ap_inbox_url),
+                apInbox: parseURL(row.author_ap_inbox_url),
                 isInternal: row.site_id !== null,
             });
 

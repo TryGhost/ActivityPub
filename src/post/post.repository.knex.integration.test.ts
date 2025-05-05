@@ -513,6 +513,8 @@ describe('KnexPostRepository', () => {
 
         assert.equal(result.author.uuid, account.uuid);
         assert.equal(result.uuid, post.uuid);
+        assert.equal(result.author.apId.href, account.apId.href);
+        assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
     it('Can get by id', async () => {
@@ -539,8 +541,10 @@ describe('KnexPostRepository', () => {
 
         assert(result);
 
-        assert(result.author.uuid === account.uuid);
-        assert(result.uuid === post.uuid);
+        assert.equal(result.author.uuid, account.uuid);
+        assert.equal(result.uuid, post.uuid);
+        assert.equal(result.author.apId.href, account.apId.href);
+        assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
     it('Ensures an account associated with a post has a uuid when retrieved by apId', async () => {
