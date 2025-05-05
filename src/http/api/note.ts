@@ -60,7 +60,7 @@ export async function handleCreateNote(
     const post = getValue(postResult);
     //Todo: Return Activity here(or note and handle on UI)
 
-    return new Response(JSON.stringify({post}), {
+    return new Response(JSON.stringify({ post }), {
         headers: {
             'Content-Type': 'application/json',
         },

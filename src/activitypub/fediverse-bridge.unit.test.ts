@@ -36,6 +36,10 @@ describe('FediverseBridge', () => {
                 globaldb: {
                     set: vi.fn(),
                 },
+                db: {
+                    get: vi.fn().mockResolvedValue([]),
+                    set: vi.fn().mockResolvedValue(undefined),
+                },
             },
         } as unknown as FedifyContext;
         fedifyContextFactory = {
@@ -339,12 +343,9 @@ describe('FediverseBridge', () => {
             accountService,
         );
         await bridge.init();
-        const mockDb = {
-            get: vi.fn().mockResolvedValue([]),
-            set: vi.fn().mockResolvedValue(undefined),
-        };
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
+        const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
 
         const author = Object.create(AccountEntity);
         author.id = 123;
@@ -366,11 +367,14 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         expect(sendActivity).toHaveBeenCalledOnce();
-        expect(context.data.globaldb.set).toHaveBeenCalledOnce();
-        expect(mockDb.get).toHaveBeenCalledWith(['outbox']);
-        expect(mockDb.set).toHaveBeenCalledWith(['outbox'], expect.any(Array));
+        expect(context.data.globaldb.set).toHaveBeenCalled();
+        expect(context.data.db.get).toHaveBeenCalledWith(['outbox']);
+        expect(context.data.db.set).toHaveBeenCalledWith(
+            ['outbox'],
+            expect.any(Array),
+        );
 
-        const storedActivity = await vi.fn().mock.calls[0][1];
+        const storedActivity = await globalDbSet.mock.calls[0][1];
         expect(storedActivity).toMatchObject({
             '@context': expect.any(Array),
             type: 'Create',
@@ -389,13 +393,10 @@ describe('FediverseBridge', () => {
             fedifyContextFactory,
             accountService,
         );
-        const mockDb = {
-            get: vi.fn().mockResolvedValue([]),
-            set: vi.fn().mockResolvedValue(undefined),
-        };
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
+        const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
 
         const author = Object.create(AccountEntity);
         author.id = 123;
@@ -421,11 +422,14 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         expect(sendActivity).toHaveBeenCalledOnce();
-        expect(context.data.globaldb.set).toHaveBeenCalledOnce();
-        expect(mockDb.get).toHaveBeenCalledWith(['outbox']);
-        expect(mockDb.set).toHaveBeenCalledWith(['outbox'], expect.any(Array));
+        expect(context.data.globaldb.set).toHaveBeenCalled();
+        expect(context.data.db.get).toHaveBeenCalledWith(['outbox']);
+        expect(context.data.db.set).toHaveBeenCalledWith(
+            ['outbox'],
+            expect.any(Array),
+        );
 
-        const storedActivity = await vi.fn().mock.calls[0][1];
+        const storedActivity = await globalDbSet.mock.calls[0][1];
         expect(storedActivity).toMatchObject({
             '@context': expect.any(Array),
             type: 'Create',
