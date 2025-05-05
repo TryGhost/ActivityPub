@@ -180,7 +180,7 @@ describe('AccountFollowsView', () => {
 
             expect(result.accounts).toHaveLength(2);
             expect(result.accounts[0]).toMatchObject({
-                id: String(following2.id),
+                id: following2.ap_id,
                 name: 'Following Two',
                 handle: '@following2@example.com',
                 avatarUrl: following2.avatar_url,
@@ -225,7 +225,7 @@ describe('AccountFollowsView', () => {
 
             expect(result.accounts).toHaveLength(2);
             const follower2Result = result.accounts.find(
-                (a) => a.id === String(follower2.id),
+                (a) => a.id === follower2.ap_id,
             );
             expect(follower2Result).toMatchObject({
                 name: 'Follower Two',
@@ -234,7 +234,7 @@ describe('AccountFollowsView', () => {
                 isFollowing: true,
             });
             const follower1Result = result.accounts.find(
-                (a) => a.id === String(follower1.id),
+                (a) => a.id === follower1.ap_id,
             );
             expect(follower1Result).toMatchObject({
                 name: 'Follower One',

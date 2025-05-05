@@ -111,7 +111,7 @@ export class AccountFollowsView {
 
         for (const result of results) {
             accounts.push({
-                id: String(result.id),
+                id: result.ap_id,
                 name: result.name || '',
                 handle: getAccountHandle(
                     new URL(result.ap_id).host,
@@ -138,7 +138,6 @@ export class AccountFollowsView {
         siteDefaultAccount: Account,
     ): Promise<Result<AccountFollows, GetFollowsError>> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
-        const accounts: AccountInfo[] = [];
 
         const documentLoader = await ctx.getDocumentLoader({
             handle: 'index',
@@ -210,9 +209,8 @@ export class AccountFollowsView {
                 startIndex + pageSize,
             );
 
-            await this.processFollowsList(
+            const accounts = await this.processFollowsList(
                 pageUrls,
-                accounts,
                 siteDefaultAccount,
             );
 
@@ -232,9 +230,8 @@ export class AccountFollowsView {
             });
         }
 
-        await this.processFollowsList(
+        const accounts = await this.processFollowsList(
             page.itemIds,
-            accounts,
             siteDefaultAccount,
         );
 
@@ -250,24 +247,25 @@ export class AccountFollowsView {
 
     private async processFollowsList(
         followsList: URL[],
-        accounts: AccountInfo[],
-        siteDefaultAccount: PersistedAccount,
-    ) {
+        siteDefaultAccount: Account,
+    ): Promise<AccountInfo[]> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const documentLoader = await ctx.getDocumentLoader({
             handle: 'index',
         });
+        const accounts: AccountInfo[] = [];
+
         for await (const item of followsList) {
             try {
                 const followeeAccount = await this.db('accounts')
                     .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
-                        item.href || '',
+                        item.href,
                     ])
                     .first();
 
                 if (followeeAccount) {
                     accounts.push({
-                        id: String(followeeAccount.id),
+                        id: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
                         handle: getAccountHandle(
                             new URL(followeeAccount.ap_id).host,
@@ -314,6 +312,8 @@ export class AccountFollowsView {
                 // If fetching any one follow fails, we can still return the other valid follows in the collection
             }
         }
+
+        return accounts;
     }
 
     private async getFollowingAccountsCount(
