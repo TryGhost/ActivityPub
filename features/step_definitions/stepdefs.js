@@ -476,38 +476,40 @@ When('we repost the object {string}', async function (name) {
 
 Then('the object {string} should be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed',
         {
             headers: {
                 Accept: 'application/ld+json',
             },
         },
     );
-    const inbox = await response.json();
+
+    const feed = await response.json();
     const object = this.objects[name];
 
-    const found = inbox.items.find((item) => item.object.id === object.id);
+    const post = feed.posts.find((item) => item.id === object.id);
 
-    assert(found.object.reposted === true);
+    assert.equal(post.repostedByMe, true);
 });
 
 Then(
     'the object {string} should have a repost count of {int}',
     async function (name, repostCount) {
         const response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed',
             {
                 headers: {
                     Accept: 'application/ld+json',
                 },
             },
         );
-        const inbox = await response.json();
+
+        const feed = await response.json();
         const object = this.objects[name];
 
-        const found = inbox.items.find((item) => item.object.id === object.id);
+        const post = feed.posts.find((item) => item.id === object.id);
 
-        assert(found.object.repostCount === repostCount);
+        assert.equal(post.repostCount, repostCount);
     },
 );
 
@@ -794,7 +796,7 @@ async function waitForOutboxActivity(
     const found = await findInOutbox(activity);
 
     if (found) {
-        return;
+        return found;
     }
 
     if (options.retryCount >= MAX_RETRIES) {
@@ -1182,6 +1184,65 @@ Then('{string} is not in our Followers', async function (actorName) {
     );
 
     assert(!found);
+});
+
+Then('an Undo\\(Announce) is sent to {string}', async function (actorName) {
+    if (!this.actors[actorName]) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
+    const actor = this.actors[actorName];
+
+    const inboxUrl = new URL(actor.inbox);
+
+    const foundInInbox = await waitForRequest(
+        'POST',
+        inboxUrl.pathname,
+        (call) => {
+            const body = JSON.parse(call.request.body);
+            return body.type === 'Undo' && body.object.type === 'Announce';
+        },
+    );
+
+    const foundActivity = JSON.parse(foundInInbox.request.body);
+});
+
+Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
+    if (!this.actors[actorName]) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
+    const actor = this.actors[actorName];
+
+    const object = this.objects.Note;
+
+    const inboxUrl = new URL(actor.inbox);
+
+    const foundInInbox = await waitForRequest(
+        'POST',
+        inboxUrl.pathname,
+        (call) => {
+            const body = JSON.parse(call.request.body);
+            if (body.type !== 'Announce') {
+                return false;
+            }
+
+            if (object) {
+                if (typeof body.object === 'string') {
+                    return body.object === object.id;
+                }
+                return body.object.id === object.id;
+            }
+
+            return body.object.type === 'Note';
+        },
+    );
+
+    const foundActivity = JSON.parse(foundInInbox.request.body);
+
+    assert(foundActivity);
+
+    const foundInOutbox = await waitForOutboxActivity(foundActivity);
+
+    assert(foundInOutbox);
 });
 
 Then(

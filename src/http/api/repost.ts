@@ -1,105 +1,83 @@
 import { createHash } from 'node:crypto';
 
-import { type Actor, Announce, PUBLIC_COLLECTION } from '@fedify/fedify';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
+import { Announce, PUBLIC_COLLECTION } from '@fedify/fedify';
 import { type AppContext, fedify } from 'app';
-import { getValue, isError } from 'core/result';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import { parseURL } from 'core/url';
 import { addToList } from 'kv-helpers';
-import { lookupActor, lookupObject } from 'lookup-helpers';
-import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { BadRequest, Conflict, NotFound } from './helpers/response';
 
-export function createRepostActionHandler(
-    accountRepository: KnexAccountRepository,
-    postService: PostService,
-    postRepository: KnexPostRepository,
-) {
-    return async function repostAction(ctx: AppContext) {
+export function createRepostActionHandler(postService: PostService) {
+    return async function repostAction(ctx: AppContext): Promise<Response> {
         const id = ctx.req.param('id');
+        const apId = parseURL(id);
+
+        if (apId === null) {
+            return BadRequest('Could not parse id as URL');
+        }
+
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db: ctx.get('db'),
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
 
-        const post = await lookupObject(apCtx, id);
-        if (!post) {
-            return new Response(JSON.stringify({ error: 'Post not found' }), {
-                status: 404,
-            });
-        }
+        const account = ctx.get('account');
+        const postResult = await postService.repostByApId(account, apId);
 
-        const announceId = apCtx.getObjectUri(Announce, {
-            id: createHash('sha256').update(post.id!.href).digest('hex'),
-        });
-
-        if (await ctx.get('globaldb').get([announceId.href])) {
-            return new Response(
-                JSON.stringify({ error: 'Post already reposted' }),
-                {
-                    status: 409,
-                },
-            );
-        }
-
-        await post.getAttribution();
-
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
-        if (!post.id) {
-            ctx.get('logger').info('Invalid Repost - no post id');
-            return;
-        }
-
-        const account = await accountRepository.getBySite(ctx.get('site'));
-        if (account !== null) {
-            const originalPostResult = await postService.getByApId(post.id);
-            if (!isError(originalPostResult)) {
-                const originalPost = getValue(originalPostResult);
-                originalPost.addRepost(account);
-                await postRepository.save(originalPost);
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'already-reposted':
+                    return Conflict('Already reposted');
+                case 'upstream-error':
+                    return NotFound('Upstream error fetching post');
+                case 'not-a-post':
+                    return BadRequest('Not a post');
+                case 'missing-author':
+                    return NotFound('Post does not have an author');
+                default:
+                    exhaustiveCheck(error);
             }
         }
 
+        const post = getValue(postResult);
+
+        const announceId = apCtx.getObjectUri(Announce, {
+            id: createHash('sha256').update(post.apId.href).digest('hex'),
+        });
+
         const announce = new Announce({
             id: announceId,
-            actor: actor,
-            object: post,
+            actor: account.apId,
+            object: post.apId,
             to: PUBLIC_COLLECTION,
-            cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+            cc: account.apFollowers,
         });
 
         const announceJson = await announce.toJsonLd();
 
         // Add announce activity to the database
         await ctx.get('globaldb').set([announce.id!.href], announceJson);
-        await addToList(ctx.get('db'), ['reposted'], announce.id!.href);
 
         // Add announce activity to the actor's outbox
         await addToList(ctx.get('db'), ['outbox'], announce.id!.href);
 
-        // Send the announce activity
-        let attributionActor: Actor | null = null;
-        if (post.attributionId) {
-            attributionActor = await lookupActor(
-                apCtx,
-                post.attributionId.href,
-            );
-        }
-        if (attributionActor) {
-            apCtx.sendActivity(
-                { handle: ACTOR_DEFAULT_HANDLE },
-                attributionActor,
-                announce,
-                {
-                    preferSharedInbox: true,
-                },
-            );
-        }
+        await apCtx.sendActivity(
+            { username: account.username },
+            {
+                id: post.author.apId,
+                inboxId: post.author.apInbox,
+            },
+            announce,
+            {
+                preferSharedInbox: true,
+            },
+        );
 
-        apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
+        await apCtx.sendActivity(
+            { username: account.username },
             'followers',
             announce,
             {

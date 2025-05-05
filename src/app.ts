@@ -1001,15 +1001,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        spanWrapper(
-            createRepostActionHandler(
-                accountRepository,
-                postService,
-                postRepository,
-            ),
-        ),
-    ),
+    spanWrapper(createRepostActionHandler(postService)),
 );
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',

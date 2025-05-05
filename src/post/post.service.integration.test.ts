@@ -300,4 +300,124 @@ describe('PostService', () => {
             expect(postWasLiked).toBe(false);
         });
     });
+
+    describe('repostByApId', () => {
+        it('should repost a post successfully', async () => {
+            // Create a post to repost
+            const postToRepost = await fixtureManager.createPost(account);
+
+            // Create another account to repost the post
+            const [reposter] = await fixtureManager.createInternalAccount();
+
+            const result = await postService.repostByApId(
+                reposter,
+                postToRepost.apId,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const repostedPost = getValue(result);
+            expect(repostedPost.id).toBe(postToRepost.id);
+
+            // Verify the post was reposted
+            const wasReposted = await postService.isRepostedByAccount(
+                repostedPost.id!,
+                reposter.id,
+            );
+            expect(wasReposted).toBe(true);
+        });
+
+        it('should handle reposting an external post', async () => {
+            // Create an external account
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+
+            // Create a post from the external account
+            const externalPost =
+                await fixtureManager.createPost(externalAccount);
+
+            const result = await postService.repostByApId(
+                account,
+                externalPost.apId,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const repostedPost = getValue(result);
+            expect(repostedPost.id).toBe(externalPost.id);
+
+            // Verify the post was reposted
+            const wasReposted = await postService.isRepostedByAccount(
+                repostedPost.id!,
+                account.id,
+            );
+            expect(wasReposted).toBe(true);
+        });
+
+        it('should return error when trying to repost a nonexistent post', async () => {
+            const nonExistentPostUrl = new URL(
+                'https://example.com/posts/nonexistent',
+            );
+
+            // Mock the fedify context to simulate upstream error
+            const mockFedifyContextFactory = {
+                getFedifyContext: () => ({
+                    getDocumentLoader: async () => ({}),
+                }),
+                asyncLocalStorage: {
+                    getStore: vi.fn(),
+                    run: vi.fn(),
+                },
+                registerContext: vi.fn(),
+            } as unknown as FedifyContextFactory;
+
+            const serviceWithMockContext = new PostService(
+                postRepository,
+                accountService,
+                mockFedifyContextFactory,
+                storageService,
+                moderationService,
+            );
+
+            const result = await serviceWithMockContext.repostByApId(
+                account,
+                nonExistentPostUrl,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+            expect(getError(result)).toBe('upstream-error');
+        });
+
+        it('should return error when trying to repost an already reposted post', async () => {
+            // Create a post to repost
+            const postToRepost = await fixtureManager.createPost(account);
+
+            // Create another account to repost the post
+            const [reposter] = await fixtureManager.createInternalAccount();
+
+            // Repost the post once and make sure it succeeds
+            const firstRepost = await postService.repostByApId(
+                reposter,
+                postToRepost.apId,
+            );
+            expect(isError(firstRepost)).toBe(false);
+
+            // Try to repost it again
+            const result = await postService.repostByApId(
+                reposter,
+                postToRepost.apId,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+            expect(getError(result)).toBe('already-reposted');
+        });
+    });
 });
