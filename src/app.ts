@@ -43,9 +43,11 @@ import { AsyncEvents } from 'core/events';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
+import { createDerepostActionHandler } from 'http/api/derepost';
 import { FollowController } from 'http/api/follow';
 import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
+import { createRepostActionHandler } from 'http/api/repost';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -92,12 +94,7 @@ import {
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
 import { FlagService } from './flag/flag.service';
-import {
-    createDerepostActionHandler,
-    createRepostActionHandler,
-    getSiteDataHandler,
-    inboxHandler,
-} from './handlers';
+import { getSiteDataHandler, inboxHandler } from './handlers';
 import { getTraceContext } from './helpers/context-header';
 import { getSiteSettings } from './helpers/ghost';
 import { getRequestData } from './helpers/request-data';
