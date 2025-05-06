@@ -42,6 +42,7 @@ interface AccountRow {
     name: string;
     username: string;
     avatar_url: string;
+    followed_by_me: number;
 }
 
 interface FollowsActor {
@@ -107,7 +108,12 @@ export class AccountFollowsView {
                 ? this.getFollowingAccountsCount.bind(this)
                 : this.getFollowerAccountsCount.bind(this);
 
-        const results = await getAccounts(account.id, FOLLOWS_LIMIT, next);
+        const results = await getAccounts(
+            account.id,
+            siteDefaultAccount.id,
+            FOLLOWS_LIMIT,
+            next,
+        );
         const total = await getAccountsCount(account.id);
 
         const nextCursor =
@@ -118,10 +124,6 @@ export class AccountFollowsView {
         const accounts: AccountInfo[] = [];
 
         for (const result of results) {
-            const followedByMe = await this.checkIfAccountIsFollowing(
-                siteDefaultAccount.id,
-                result.id,
-            );
             accounts.push({
                 id: result.ap_id,
                 name: result.name || '',
@@ -130,8 +132,8 @@ export class AccountFollowsView {
                     result.username,
                 ),
                 avatarUrl: result.avatar_url || '',
-                isFollowing: followedByMe,
-                followedByMe: followedByMe,
+                isFollowing: !!result.followed_by_me,
+                followedByMe: !!result.followed_by_me,
             });
         }
 
@@ -309,16 +311,32 @@ export class AccountFollowsView {
         for await (const item of followsList) {
             try {
                 const followeeAccount = await this.db('accounts')
+                    .select('accounts.*')
+                    .select(
+                        this.db.raw(`
+                            CASE
+                                WHEN follows.follower_id IS NOT NULL THEN 1
+                                ELSE 0
+                            END AS followed_by_me
+                        `),
+                    )
+                    .leftJoin('follows', function () {
+                        this.on(
+                            'follows.following_id',
+                            '=',
+                            'accounts.id',
+                        ).andOnVal(
+                            'follows.follower_id',
+                            '=',
+                            siteDefaultAccount.id,
+                        );
+                    })
                     .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
                         item.href,
                     ])
                     .first();
 
                 if (followeeAccount) {
-                    const followedByMe = await this.checkIfAccountIsFollowing(
-                        siteDefaultAccount.id,
-                        followeeAccount.id,
-                    );
                     accounts.push({
                         id: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
@@ -327,8 +345,8 @@ export class AccountFollowsView {
                             followeeAccount.username,
                         ),
                         avatarUrl: followeeAccount.avatar_url || '',
-                        isFollowing: followedByMe,
-                        followedByMe: followedByMe,
+                        isFollowing: !!followeeAccount.followed_by_me,
+                        followedByMe: !!followeeAccount.followed_by_me,
                     });
                 } else {
                     const followsActorObj = await lookupObject(item.href, {
@@ -359,7 +377,7 @@ export class AccountFollowsView {
                         followedByMe: false,
                     });
                 }
-            } catch {
+            } catch (err) {
                 ctx.data.logger.error('Error while iterating over follow list');
                 // Skip this item if processing fails
                 // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows
@@ -390,6 +408,7 @@ export class AccountFollowsView {
 
     private async getFollowerAccounts(
         accountId: number,
+        contextAccountId: number,
         limit: number,
         offset: number,
     ): Promise<AccountRow[]> {
@@ -401,8 +420,23 @@ export class AccountFollowsView {
                 'accounts.username',
                 'accounts.avatar_url',
             ])
+            .select(
+                this.db.raw(`
+                    CASE
+                        WHEN f2.follower_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS followed_by_me
+                `),
+            )
             .where('follows.following_id', accountId)
             .innerJoin('accounts', 'accounts.id', 'follows.follower_id')
+            .leftJoin({ f2: 'follows' }, function () {
+                this.on('f2.following_id', '=', 'accounts.id').andOnVal(
+                    'f2.follower_id',
+                    '=',
+                    contextAccountId,
+                );
+            })
             .limit(limit)
             .offset(offset)
             // order by the date created at in descending order and then by the
@@ -415,6 +449,7 @@ export class AccountFollowsView {
 
     private async getFollowingAccounts(
         accountId: number,
+        contextAccountId: number,
         limit: number,
         offset: number,
     ): Promise<AccountRow[]> {
@@ -426,8 +461,23 @@ export class AccountFollowsView {
                 'accounts.username',
                 'accounts.avatar_url',
             ])
+            .select(
+                this.db.raw(`
+                    CASE
+                        WHEN f2.follower_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS followed_by_me
+                `),
+            )
             .where('follows.follower_id', accountId)
             .innerJoin('accounts', 'accounts.id', 'follows.following_id')
+            .leftJoin({ f2: 'follows' }, function () {
+                this.on('f2.following_id', '=', 'accounts.id').andOnVal(
+                    'f2.follower_id',
+                    '=',
+                    contextAccountId,
+                );
+            })
             .limit(limit)
             .offset(offset)
             // order by the date created at in descending order and then by the
@@ -436,18 +486,5 @@ export class AccountFollowsView {
             // the same time)
             .orderBy('follows.created_at', 'desc')
             .orderBy('accounts.id', 'desc');
-    }
-
-    private async checkIfAccountIsFollowing(
-        accountId: number,
-        followeeAccountId: number,
-    ): Promise<boolean> {
-        const result = await this.db('follows')
-            .where('follower_id', accountId)
-            .where('following_id', followeeAccountId)
-            .select(1)
-            .first();
-
-        return result !== undefined;
     }
 }
