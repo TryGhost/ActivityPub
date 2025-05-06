@@ -260,4 +260,193 @@ describe('PostService', () => {
             expect(getError(result)).toBe('cannot-interact');
         });
     });
+
+    describe('likePost', () => {
+        it('should like a post successfully', async () => {
+            const [likeAccount] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+
+            const result = await postService.likePost(likeAccount, post);
+
+            expect(isError(result)).toBe(false);
+
+            const postWasLiked = await postRepository.isLikedByAccount(
+                post.id!,
+                likeAccount.id,
+            );
+
+            expect(postWasLiked).toBe(true);
+        });
+
+        it('should return error when moderation check fails', async () => {
+            const [accountToBlock] =
+                await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+
+            await fixtureManager.createBlock(account, accountToBlock);
+
+            const result = await postService.likePost(accountToBlock, post);
+
+            expect(isError(result)).toBe(true);
+            expect(getError(result as Err<string>)).toBe('cannot-interact');
+
+            const postWasLiked = await postRepository.isLikedByAccount(
+                post.id!,
+                accountToBlock.id,
+            );
+
+            expect(postWasLiked).toBe(false);
+        });
+    });
+
+    describe('repostByApId', () => {
+        it('should repost a post successfully', async () => {
+            // Create a post to repost
+            const postToRepost = await fixtureManager.createPost(account);
+
+            // Create another account to repost the post
+            const [reposter] = await fixtureManager.createInternalAccount();
+
+            const result = await postService.repostByApId(
+                reposter,
+                postToRepost.apId,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const repostedPost = getValue(result);
+            expect(repostedPost.id).toBe(postToRepost.id);
+
+            // Verify the post was reposted
+            const wasReposted = await postService.isRepostedByAccount(
+                repostedPost.id!,
+                reposter.id,
+            );
+            expect(wasReposted).toBe(true);
+        });
+
+        it('should handle reposting an external post', async () => {
+            // Create an external account
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+
+            // Create a post from the external account
+            const externalPost =
+                await fixtureManager.createPost(externalAccount);
+
+            const result = await postService.repostByApId(
+                account,
+                externalPost.apId,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const repostedPost = getValue(result);
+            expect(repostedPost.id).toBe(externalPost.id);
+
+            // Verify the post was reposted
+            const wasReposted = await postService.isRepostedByAccount(
+                repostedPost.id!,
+                account.id,
+            );
+            expect(wasReposted).toBe(true);
+        });
+
+        it('should return error when trying to repost a nonexistent post', async () => {
+            const nonExistentPostUrl = new URL(
+                'https://example.com/posts/nonexistent',
+            );
+
+            // Mock the fedify context to simulate upstream error
+            const mockFedifyContextFactory = {
+                getFedifyContext: () => ({
+                    getDocumentLoader: async () => ({}),
+                }),
+                asyncLocalStorage: {
+                    getStore: vi.fn(),
+                    run: vi.fn(),
+                },
+                registerContext: vi.fn(),
+            } as unknown as FedifyContextFactory;
+
+            const serviceWithMockContext = new PostService(
+                postRepository,
+                accountService,
+                mockFedifyContextFactory,
+                storageService,
+                moderationService,
+            );
+
+            const result = await serviceWithMockContext.repostByApId(
+                account,
+                nonExistentPostUrl,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+            expect(getError(result)).toBe('upstream-error');
+        });
+
+        it('should return error when trying to repost an already reposted post', async () => {
+            // Create a post to repost
+            const postToRepost = await fixtureManager.createPost(account);
+
+            // Create another account to repost the post
+            const [reposter] = await fixtureManager.createInternalAccount();
+
+            // Repost the post once and make sure it succeeds
+            const firstRepost = await postService.repostByApId(
+                reposter,
+                postToRepost.apId,
+            );
+            expect(isError(firstRepost)).toBe(false);
+
+            // Try to repost it again
+            const result = await postService.repostByApId(
+                reposter,
+                postToRepost.apId,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+            expect(getError(result)).toBe('already-reposted');
+        });
+
+        it('should not allow reposting a post when blocked by the post author', async () => {
+            // Create another account (post author)
+            const [postAuthor] = await fixtureManager.createInternalAccount();
+
+            // Create a post from the post author
+            const originalPost = await fixtureManager.createPost(postAuthor);
+
+            // Block the reposter
+            await fixtureManager.createBlock(postAuthor, account);
+
+            const result = await postService.repostByApId(
+                account,
+                originalPost.apId,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('cannot-interact');
+
+            // Verify the post was not reposted
+            const wasReposted = await postService.isRepostedByAccount(
+                originalPost.id!,
+                account.id,
+            );
+            expect(wasReposted).toBe(false);
+        });
+    });
 });

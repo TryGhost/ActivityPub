@@ -82,4 +82,36 @@ export class BlockController {
             status: 200,
         });
     }
+
+    async handleBlockDomain(ctx: AppContext) {
+        const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
+
+        if (!domain) {
+            return BadRequest('Expected a URL for the domain');
+        }
+
+        // For now, just return successfully
+        return new Response(null, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 201,
+        });
+    }
+
+    async handleUnblockDomain(ctx: AppContext) {
+        const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
+
+        if (!domain) {
+            return BadRequest('Expected a URL for the domain');
+        }
+
+        // For now, just return successfully
+        return new Response(null, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
+        });
+    }
 }

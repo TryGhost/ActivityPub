@@ -7,8 +7,8 @@
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/app.ts --sourcemap --platform=neutral --packages=external --bundle --outfile=dist/app.js",
-    "build:watch": "concurrently \"yarn build --watch\" \"node --watch dist/app.js\"",
+    "build": "esbuild src/app.ts --sourcemap --platform=node --format=cjs --bundle --external:perf_hooks --external:ky-universal --external:sqlite3 --external:better-sqlite3 --external:mysql --external:tedious --external:pg --external:pg-query-stream --external:oracledb --outfile=dist/app.cjs",
+    "build:watch": "concurrently \"yarn build --watch\" \"node --watch dist/app.cjs\"",
     "dev": "docker compose up activitypub nginx -d --build",
     "stop": "docker compose stop",
     "db": "docker compose exec mysql mysql -uroot -proot activitypub",
@@ -43,9 +43,9 @@
     "@fedify/cli": "1.5.1",
     "@types/html-to-text": "9.0.4",
     "@types/jsonwebtoken": "9.0.9",
-    "@types/node": "20.17.32",
+    "@types/node": "20.17.40",
     "@types/node-jose": "1.1.13",
-    "@types/sanitize-html": "2.15.0",
+    "@types/sanitize-html": "2.16.0",
     "@types/sinon": "17.0.4",
     "@types/uuid": "10.0.0",
     "@vitest/coverage-v8": "2.1.9",
@@ -57,7 +57,7 @@
     "wiremock-captain": "3.5.0"
   },
   "dependencies": {
-    "@fedify/fedify": "1.5.0",
+    "@fedify/fedify": "1.5.1",
     "@google-cloud/opentelemetry-cloud-trace-exporter": "2.4.1",
     "@google-cloud/opentelemetry-cloud-trace-propagator": "0.20.0",
     "@google-cloud/pubsub": "4.11.0",
@@ -71,7 +71,7 @@
     "@opentelemetry/resources": "1.29.0",
     "@opentelemetry/sdk-trace-base": "1.29.0",
     "@sentry/node": "8.49.0",
-    "es-toolkit": "1.36.0",
+    "es-toolkit": "1.37.2",
     "hono": "4.7.8",
     "html-to-text": "9.0.5",
     "jsonwebtoken": "9.0.2",
@@ -85,6 +85,6 @@
     "sharp": "0.34.1",
     "uuid": "10.0.0",
     "x-forwarded-fetch": "0.2.0",
-    "zod": "3.24.3"
+    "zod": "3.24.4"
   }
 }

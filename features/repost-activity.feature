@@ -12,9 +12,7 @@ Feature: Reposting a post/note
     Then the request is accepted
     And the object "Note" should be reposted
     And the object "Note" should have a repost count of 1
-    And a "Announce(Note)" activity is sent to "Alice"
-    And a "Announce(Note)" activity is in the Outbox
-    And the found "Announce(Note)" has property "object.attributedTo" of type "object"
+    And an Announce(Note) is sent to "Alice"
 
   Scenario: Trying to repost a post/note that has already been reposted
     Given we are following "Alice"
@@ -36,7 +34,7 @@ Feature: Reposting a post/note
     When we undo the repost of the object "Note"
     Then the request is accepted
     And the object "Note" should not be reposted
-    And a "Undo(Announce)" activity is sent to "Alice"
+    And an Undo(Announce) is sent to "Alice"
 
   Scenario: Trying to undo a repost on a post/note that has not been reposted
     Given we are following "Alice"

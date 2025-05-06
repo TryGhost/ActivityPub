@@ -2,7 +2,11 @@ import assert from 'node:assert';
 
 import { Given, Then, When } from '@cucumber/cucumber';
 
-import { waitForInboxActivity } from '../support/activitypub.js';
+import {
+    findInOutbox,
+    waitForInboxActivity,
+    waitForOutboxActivity,
+} from '../support/activitypub.js';
 import {
     createActivity,
     createActor,
@@ -215,56 +219,6 @@ Then(
         assert(!objectInCollection);
     },
 );
-
-async function findInOutbox(activity) {
-    const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const initialResponseJson = await initialResponse.json();
-    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
-        headers: {
-            Accept: 'application/ld+json',
-        },
-    });
-    const outbox = await firstPageReponse.json();
-
-    return (outbox.orderedItems || []).find((item) => item.id === activity.id);
-}
-
-async function waitForOutboxActivity(
-    activity,
-    options = {
-        retryCount: 0,
-        delay: 0,
-    },
-) {
-    const MAX_RETRIES = 5;
-    const found = await findInOutbox(activity);
-
-    if (found) {
-        return;
-    }
-
-    if (options.retryCount >= MAX_RETRIES) {
-        throw new Error(
-            `Max retries reached (${MAX_RETRIES}) when waiting on an activity in the outbox`,
-        );
-    }
-
-    if (options.delay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, options.delay));
-    }
-
-    await waitForOutboxActivity(activity, {
-        retryCount: options.retryCount + 1,
-        delay: options.delay + 500,
-    });
-}
 
 Then('{string} is not in our Outbox', async function (activityName) {
     const activity = this.activities[activityName];

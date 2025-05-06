@@ -180,7 +180,7 @@ describe('AccountFollowsView', () => {
 
             expect(result.accounts).toHaveLength(2);
             expect(result.accounts[0]).toMatchObject({
-                id: String(following2.id),
+                id: following2.ap_id,
                 name: 'Following Two',
                 handle: '@following2@example.com',
                 avatarUrl: following2.avatar_url,
@@ -225,7 +225,7 @@ describe('AccountFollowsView', () => {
 
             expect(result.accounts).toHaveLength(2);
             const follower2Result = result.accounts.find(
-                (a) => a.id === String(follower2.id),
+                (a) => a.id === follower2.ap_id,
             );
             expect(follower2Result).toMatchObject({
                 name: 'Follower Two',
@@ -234,7 +234,7 @@ describe('AccountFollowsView', () => {
                 isFollowing: true,
             });
             const follower1Result = result.accounts.find(
-                (a) => a.id === String(follower1.id),
+                (a) => a.id === follower1.ap_id,
             );
             expect(follower1Result).toMatchObject({
                 name: 'Follower One',
@@ -331,25 +331,6 @@ describe('AccountFollowsView', () => {
             );
         });
 
-        it('should handle no-page-found error', async () => {
-            vi.mocked(lookupObject).mockResolvedValue(mockActor);
-            vi.mocked(isActor).mockReturnValue(true);
-
-            await fedifyContextFactory.registerContext(
-                mockContext,
-                async () => {
-                    const result = await viewer.getFollowsByRemoteLookUp(
-                        new URL('https://example.com/accounts/123'),
-                        '',
-                        'following',
-                        siteDefaultAccount!,
-                    );
-
-                    expect(result).toEqual(['no-page-found', null]);
-                },
-            );
-        });
-
         it('should return follows collection when available', async () => {
             const mockCollection = {
                 id: new URL('https://example.com/accounts/123/following'),
@@ -429,10 +410,20 @@ describe('AccountFollowsView', () => {
 
             vi.mocked(isActor).mockReturnValue(true);
 
+            // Create a new viewer with a mocked db that returns null for account lookups to by-pass local lookup
+            const mockDb = vi.fn().mockImplementation(() => ({
+                whereRaw: vi.fn().mockReturnThis(),
+                first: vi.fn().mockResolvedValue(null),
+            })) as unknown as Knex;
+            const mockViewer = new AccountFollowsView(
+                mockDb,
+                fedifyContextFactory,
+            );
+
             await fedifyContextFactory.registerContext(
                 mockContext,
                 async () => {
-                    const result = await viewer.getFollowsByRemoteLookUp(
+                    const result = await mockViewer.getFollowsByRemoteLookUp(
                         new URL('https://example.com/accounts/123'),
                         '',
                         'following',

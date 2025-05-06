@@ -10,6 +10,7 @@ import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { Forbidden } from './helpers/response';
 
 export class LikeController {
     constructor(
@@ -77,8 +78,24 @@ export class LikeController {
                 }
             } else {
                 const post = getValue(postResult);
-                post.addLike(account);
-                await this.postRepository.save(post);
+
+                const likePostResult = await this.postService.likePost(
+                    account,
+                    post,
+                );
+
+                if (isError(likePostResult)) {
+                    const error = getError(likePostResult);
+
+                    switch (error) {
+                        case 'cannot-interact':
+                            return Forbidden(
+                                'Cannot interact with this account',
+                            );
+                        default:
+                            return exhaustiveCheck(error);
+                    }
+                }
             }
         }
 

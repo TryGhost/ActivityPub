@@ -29,6 +29,11 @@ export type GetPostsError =
     | 'no-page-found'
     | 'not-an-actor';
 
+export type RepostError =
+    | GetByApIdError
+    | 'already-reposted'
+    | InteractionError;
+
 export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
@@ -223,6 +228,61 @@ export class PostService {
         }
 
         const post = Post.createReply(account, content, inReplyTo, image);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async likePost(
+        account: Account,
+        post: Post,
+    ): Promise<Result<Post, InteractionError>> {
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            post.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        post.addLike(account);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async repostByApId(
+        account: Account,
+        postId: URL,
+    ): Promise<Result<Post, RepostError>> {
+        const postToRepostResult = await this.getByApId(postId);
+
+        if (isError(postToRepostResult)) {
+            return postToRepostResult;
+        }
+
+        const post = getValue(postToRepostResult);
+
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            post.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        // We know this is not `null` because it just came from the DB
+        const reposted = await this.isRepostedByAccount(post.id!, account.id);
+
+        if (reposted) {
+            return error('already-reposted');
+        }
+
+        post.addRepost(account);
 
         await this.postRepository.save(post);
 
