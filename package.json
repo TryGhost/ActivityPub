@@ -43,7 +43,7 @@
     "@fedify/cli": "1.5.1",
     "@types/html-to-text": "9.0.4",
     "@types/jsonwebtoken": "9.0.9",
-    "@types/node": "20.17.38",
+    "@types/node": "20.17.40",
     "@types/node-jose": "1.1.13",
     "@types/sanitize-html": "2.16.0",
     "@types/sinon": "17.0.4",
