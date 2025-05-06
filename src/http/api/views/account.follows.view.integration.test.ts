@@ -167,6 +167,10 @@ describe('AccountFollowsView', () => {
             // Set up follows
             await accountService.recordAccountFollow(following1, account);
             await accountService.recordAccountFollow(following2, account);
+            await accountService.recordAccountFollow(
+                following2,
+                defaultAccount,
+            );
 
             const result = await viewer.getFollowsByAccount(
                 accountEntity,
@@ -184,7 +188,16 @@ describe('AccountFollowsView', () => {
                 name: 'Following Two',
                 handle: '@following2@example.com',
                 avatarUrl: following2.avatar_url,
+                isFollowing: true,
+                followedByMe: true,
+            });
+            expect(result.accounts[1]).toMatchObject({
+                id: following1.ap_id,
+                name: 'Following One',
+                handle: '@following1@example.com',
+                avatarUrl: following1.avatar_url,
                 isFollowing: false,
+                followedByMe: false,
             });
         });
 
@@ -209,7 +222,6 @@ describe('AccountFollowsView', () => {
             // Set up follows
             await accountService.recordAccountFollow(account, follower1);
             await accountService.recordAccountFollow(account, follower2);
-            // Make follower2 follow defaultAccount back to test isFollowing
             await accountService.recordAccountFollow(follower2, defaultAccount);
 
             // Get follows
@@ -232,6 +244,7 @@ describe('AccountFollowsView', () => {
                 handle: '@follower2@example.com',
                 avatarUrl: follower2.avatar_url,
                 isFollowing: true,
+                followedByMe: true,
             });
             const follower1Result = result.accounts.find(
                 (a) => a.id === follower1.ap_id,
@@ -241,6 +254,7 @@ describe('AccountFollowsView', () => {
                 handle: '@follower1@example.com',
                 avatarUrl: follower1.avatar_url,
                 isFollowing: false,
+                followedByMe: false,
             });
         });
 
@@ -331,35 +345,51 @@ describe('AccountFollowsView', () => {
             );
         });
 
-        it('should return follows collection when available', async () => {
+        it('should return followers collection when available', async () => {
+            const follower3 = await accountService.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower3',
+                name: 'Follower Three',
+            });
+            const follower4 = await accountService.createInternalAccount(site, {
+                ...internalAccountData,
+                username: 'follower4',
+                name: 'Follower Four',
+            });
+            if (!siteDefaultAccount) {
+                throw new Error('Site default account not found');
+            }
+            if (!accountEntity) {
+                throw new Error('Account not found');
+            }
+
+            // Set up follows
+            await accountService.recordAccountFollow(follower3, account);
+            await accountService.recordAccountFollow(follower4, account);
+            await accountService.recordAccountFollow(follower4, defaultAccount);
+
             const mockCollection = {
-                id: new URL('https://example.com/accounts/123/following'),
+                id: new URL('https://example.com/accounts/123/followers'),
                 type: 'Collection',
                 totalItems: 2,
                 getFirst: async () => ({
                     id: new URL(
-                        'https://example.com/accounts/123/following?page=1',
+                        'https://example.com/accounts/123/followers?page=1',
                     ),
                     type: 'CollectionPage',
-                    totalItems: 2,
+                    totalItems: 4,
                     itemIds: [
-                        {
-                            href: new URL(
-                                'https://example.com/accounts/follower1',
-                            ),
-                        },
-                        {
-                            href: new URL(
-                                'https://example.com/accounts/follower2',
-                            ),
-                        },
+                        new URL('https://example.com/accounts/follower1'),
+                        new URL('https://example.com/accounts/follower2'),
+                        new URL(follower3.ap_id),
+                        new URL(follower4.ap_id),
                     ],
                 }),
             };
 
             const collectionActor = {
                 ...mockActor,
-                getFollowing: async () => mockCollection,
+                getFollowers: async () => mockCollection,
             } as unknown as Actor;
 
             // Mock lookupObject to return actor objects for each item
@@ -410,15 +440,168 @@ describe('AccountFollowsView', () => {
 
             vi.mocked(isActor).mockReturnValue(true);
 
-            // Create a new viewer with a mocked db that returns null for account lookups to by-pass local lookup
-            const mockDb = vi.fn().mockImplementation(() => ({
-                whereRaw: vi.fn().mockReturnThis(),
-                first: vi.fn().mockResolvedValue(null),
-            })) as unknown as Knex;
-            const mockViewer = new AccountFollowsView(
-                mockDb,
-                fedifyContextFactory,
+            const mockViewer = new AccountFollowsView(db, fedifyContextFactory);
+
+            await fedifyContextFactory.registerContext(
+                mockContext,
+                async () => {
+                    const result = await mockViewer.getFollowsByRemoteLookUp(
+                        new URL('https://example.com/accounts/123'),
+                        '',
+                        'followers',
+                        siteDefaultAccount!,
+                    );
+
+                    expect(result).toEqual(
+                        ok({
+                            accounts: [
+                                {
+                                    id: 'https://example.com/accounts/follower1',
+                                    name: 'Follower One',
+                                    handle: '@follower1@example.com',
+                                    avatarUrl:
+                                        'https://example.com/avatar1.jpg',
+                                    isFollowing: false,
+                                    followedByMe: false,
+                                },
+                                {
+                                    id: 'https://example.com/accounts/follower2',
+                                    name: 'Follower Two',
+                                    handle: '@follower2@example.com',
+                                    avatarUrl:
+                                        'https://example.com/avatar2.jpg',
+                                    isFollowing: false,
+                                    followedByMe: false,
+                                },
+                                {
+                                    id: 'https://www.example.com/.ghost/activitypub/users/follower3',
+                                    name: 'Follower Three',
+                                    handle: '@follower3@example.com',
+                                    avatarUrl: 'https://example.com/avatar.jpg',
+                                    isFollowing: false,
+                                    followedByMe: false,
+                                },
+                                {
+                                    id: 'https://www.example.com/.ghost/activitypub/users/follower4',
+                                    name: 'Follower Four',
+                                    handle: '@follower4@example.com',
+                                    avatarUrl: 'https://example.com/avatar.jpg',
+                                    isFollowing: true,
+                                    followedByMe: true,
+                                },
+                            ],
+                            next: null,
+                        }),
+                    );
+                },
             );
+        });
+
+        it('should return following collection when available', async () => {
+            const following3 = await accountService.createInternalAccount(
+                site,
+                {
+                    ...internalAccountData,
+                    username: 'following3',
+                    name: 'Following Three',
+                },
+            );
+            const following4 = await accountService.createInternalAccount(
+                site,
+                {
+                    ...internalAccountData,
+                    username: 'following4',
+                    name: 'Following Four',
+                },
+            );
+            if (!siteDefaultAccount) {
+                throw new Error('Site default account not found');
+            }
+            if (!accountEntity) {
+                throw new Error('Account not found');
+            }
+
+            // Set up follows
+            await accountService.recordAccountFollow(following3, account);
+            await accountService.recordAccountFollow(following4, account);
+            await accountService.recordAccountFollow(
+                following3,
+                defaultAccount,
+            );
+
+            const mockCollection = {
+                id: new URL('https://example.com/accounts/123/following'),
+                type: 'Collection',
+                totalItems: 2,
+                getFirst: async () => ({
+                    id: new URL(
+                        'https://example.com/accounts/123/following?page=1',
+                    ),
+                    type: 'CollectionPage',
+                    totalItems: 4,
+                    itemIds: [
+                        new URL('https://example.com/accounts/following1'),
+                        new URL('https://example.com/accounts/following2'),
+                        new URL(following3.ap_id),
+                        new URL(following4.ap_id),
+                    ],
+                }),
+            };
+
+            const collectionActor = {
+                ...mockActor,
+                getFollowing: async () => mockCollection,
+            } as unknown as Actor;
+
+            // Mock lookupObject to return actor objects for each item
+            vi.mocked(lookupObject).mockImplementation(async (url) => {
+                if (url.toString() === 'https://example.com/accounts/123') {
+                    return collectionActor;
+                }
+                if (
+                    url.toString() === 'https://example.com/accounts/following1'
+                ) {
+                    return {
+                        id: 'https://example.com/accounts/following1',
+                        type: 'Person',
+                        name: 'Following One',
+                        preferredUsername: 'following1',
+                        icon: { url: 'https://example.com/avatar1.jpg' },
+                        isActor: () => true,
+                        toJsonLd: async () => ({
+                            id: 'https://example.com/accounts/following1',
+                            type: 'Person',
+                            name: 'Following One',
+                            preferredUsername: 'following1',
+                            icon: { url: 'https://example.com/avatar1.jpg' },
+                        }),
+                    } as unknown as Actor;
+                }
+                if (
+                    url.toString() === 'https://example.com/accounts/following2'
+                ) {
+                    return {
+                        id: 'https://example.com/accounts/following2',
+                        type: 'Person',
+                        name: 'Following Two',
+                        preferredUsername: 'following2',
+                        icon: { url: 'https://example.com/avatar2.jpg' },
+                        isActor: () => true,
+                        toJsonLd: async () => ({
+                            id: 'https://example.com/accounts/following2',
+                            type: 'Person',
+                            name: 'Following Two',
+                            preferredUsername: 'following2',
+                            icon: { url: 'https://example.com/avatar2.jpg' },
+                        }),
+                    } as unknown as Actor;
+                }
+                throw new Error('Unexpected URL');
+            });
+
+            vi.mocked(isActor).mockReturnValue(true);
+
+            const mockViewer = new AccountFollowsView(db, fedifyContextFactory);
 
             await fedifyContextFactory.registerContext(
                 mockContext,
@@ -434,20 +617,38 @@ describe('AccountFollowsView', () => {
                         ok({
                             accounts: [
                                 {
-                                    id: 'https://example.com/accounts/follower1',
-                                    name: 'Follower One',
-                                    handle: '@follower1@example.com',
+                                    id: 'https://example.com/accounts/following1',
+                                    name: 'Following One',
+                                    handle: '@following1@example.com',
                                     avatarUrl:
                                         'https://example.com/avatar1.jpg',
                                     isFollowing: false,
+                                    followedByMe: false,
                                 },
                                 {
-                                    id: 'https://example.com/accounts/follower2',
-                                    name: 'Follower Two',
-                                    handle: '@follower2@example.com',
+                                    id: 'https://example.com/accounts/following2',
+                                    name: 'Following Two',
+                                    handle: '@following2@example.com',
                                     avatarUrl:
                                         'https://example.com/avatar2.jpg',
                                     isFollowing: false,
+                                    followedByMe: false,
+                                },
+                                {
+                                    id: 'https://www.example.com/.ghost/activitypub/users/following3',
+                                    name: 'Following Three',
+                                    handle: '@following3@example.com',
+                                    avatarUrl: 'https://example.com/avatar.jpg',
+                                    isFollowing: true,
+                                    followedByMe: true,
+                                },
+                                {
+                                    id: 'https://www.example.com/.ghost/activitypub/users/following4',
+                                    name: 'Following Four',
+                                    handle: '@following4@example.com',
+                                    avatarUrl: 'https://example.com/avatar.jpg',
+                                    isFollowing: false,
+                                    followedByMe: false,
                                 },
                             ],
                             next: null,
