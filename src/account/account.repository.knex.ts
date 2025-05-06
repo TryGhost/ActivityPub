@@ -20,6 +20,7 @@ interface AccountRow {
     ap_id: string;
     ap_followers_url: string | null;
     ap_inbox_url: string | null;
+    domain: string;
     site_id: number | null;
 }
 
@@ -121,6 +122,7 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.domain',
             )
             .first();
 
@@ -147,6 +149,7 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.domain',
                 'users.site_id',
             )
             .first();
@@ -174,6 +177,7 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.domain',
                 'users.site_id',
             )
             .first();
@@ -205,6 +209,7 @@ export class KnexAccountRepository {
             apId: new URL(row.ap_id),
             apFollowers: parseURL(row.ap_followers_url),
             apInbox: parseURL(row.ap_inbox_url),
+            domain: row.domain,
             isInternal: row.site_id !== null,
         });
     }

@@ -49,6 +49,26 @@ describe('AccountEntity', () => {
         expect(account.url).toEqual(account.apId);
     });
 
+    it('Infers the domain from the apId', () => {
+        const draft = AccountEntity.draft({
+            isInternal: true,
+            host: new URL('http://foobar.com'),
+            username: 'foobar',
+            name: 'Foo Bar',
+            bio: 'Just a foobar',
+            url: null,
+            avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
+            bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+        });
+
+        const account = AccountEntity.create({
+            id: 1,
+            ...draft,
+        });
+
+        expect(account.domain).toBe('foobar.com');
+    });
+
     it('Can generate the apFollowers', () => {
         const draft = AccountEntity.draft({
             isInternal: true,

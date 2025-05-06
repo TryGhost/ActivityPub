@@ -62,6 +62,7 @@ export class KnexPostRepository {
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
                 'accounts.ap_inbox_url as author_ap_inbox_url',
+                'accounts.domain as author_domain',
                 'sites.id as site_id',
                 'sites.host as site_host',
             )
@@ -90,6 +91,7 @@ export class KnexPostRepository {
             apId: new URL(row.author_ap_id),
             apFollowers: parseURL(row.ap_followers_url),
             apInbox: parseURL(row.author_ap_inbox_url),
+            domain: row.author_domain,
             isInternal: row.site_id !== null,
         });
 
@@ -281,6 +283,7 @@ export class KnexPostRepository {
                 'accounts.ap_inbox_url as author_ap_inbox_url',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
+                'accounts.domain as author_domain',
                 // Account metadata fields
                 this.db.raw(`
                     CASE
@@ -337,6 +340,7 @@ export class KnexPostRepository {
                 apId: new URL(row.author_ap_id),
                 apFollowers: parseURL(row.ap_followers_url),
                 apInbox: parseURL(row.author_ap_inbox_url),
+                domain: row.author_domain,
                 isInternal: row.site_id !== null,
             });
 

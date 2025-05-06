@@ -15,6 +15,7 @@ export interface Account {
     readonly apId: URL;
     readonly apFollowers: URL | null;
     readonly apInbox: URL | null;
+    readonly domain: string;
     readonly isInternal: boolean;
     unblock(account: Account): Account;
     block(account: Account): Account;
@@ -39,6 +40,7 @@ export interface AccountDraft {
     apId: URL;
     apFollowers: URL | null;
     apInbox: URL | null;
+    domain: string;
     isInternal: boolean;
 }
 
@@ -59,6 +61,7 @@ export class AccountEntity implements Account {
         public readonly apId: URL,
         public readonly apFollowers: URL | null,
         public readonly apInbox: URL | null,
+        public readonly domain: string,
         public readonly isInternal: boolean,
         private events: AccountEvent[],
     ) {}
@@ -85,6 +88,7 @@ export class AccountEntity implements Account {
             data.apId,
             data.apFollowers,
             data.apInbox,
+            data.domain,
             data.isInternal,
             events,
         );
@@ -102,6 +106,7 @@ export class AccountEntity implements Account {
             ? from.apInbox
             : new URL('/.ghost/activitypub/inbox/index', from.host);
         const url = from.url || apId;
+        const domain = apId.host;
         return {
             ...from,
             uuid,
@@ -109,6 +114,7 @@ export class AccountEntity implements Account {
             apId,
             apFollowers,
             apInbox,
+            domain,
         };
     }
 

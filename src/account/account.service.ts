@@ -191,6 +191,7 @@ export class AccountService {
             ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
             ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
+            domain: site.host,
         };
 
         const createOrFetchAccountAndUser = async (
@@ -245,6 +246,7 @@ export class AccountService {
             ...accountData,
             uuid: randomUUID(),
             ap_private_key: null,
+            domain: new URL(accountData.ap_id).host,
         };
 
         try {
