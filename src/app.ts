@@ -969,7 +969,7 @@ function setupHono(
     app.get(
         '/.ghost/activitypub/actions/search',
         requireRole(GhostRole.Owner, GhostRole.Administrator),
-        spanWrapper(createSearchHandler(accountService)),
+        spanWrapper(createSearchHandler(accountView)),
     );
     app.get(
         '/.ghost/activitypub/thread/:post_ap_id',

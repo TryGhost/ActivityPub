@@ -1,21 +1,30 @@
-import { isActor } from '@fedify/fedify';
-
-import type { AccountService } from '../../account/account.service';
-import { type AppContext, fedify } from '../../app';
-import {
-    getFollowerCount,
-    getHandle,
-    isFollowedByDefaultSiteAccount,
-    isHandle,
-} from '../../helpers/activitypub/actor';
+import { pick } from 'es-toolkit';
+import type { AppContext } from '../../app';
+import { isHandle } from '../../helpers/activitypub/actor';
 import { isUri } from '../../helpers/uri';
-import { lookupObject } from '../../lookup-helpers';
 import type { AccountDTO } from './types';
+import type { AccountView } from './views/account.view';
 
 type AccountSearchResult = Pick<
     AccountDTO,
-    'id' | 'name' | 'handle' | 'avatarUrl' | 'followerCount' | 'followedByMe'
+    | 'id'
+    | 'name'
+    | 'handle'
+    | 'avatarUrl'
+    | 'followerCount'
+    | 'followedByMe'
 >;
+
+function toSearchResult(dto: AccountDTO): AccountSearchResult {
+    return pick(dto, [
+        'id',
+        'name',
+        'handle',
+        'avatarUrl',
+        'followerCount',
+        'followedByMe',
+    ]);
+}
 
 interface SearchResults {
     accounts: AccountSearchResult[];
@@ -26,21 +35,13 @@ interface SearchResults {
  *
  * @param accountService Account service instance
  */
-export function createSearchHandler(accountService: AccountService) {
+export function createSearchHandler(accountView: AccountView) {
     /**
      * Handle a search request
      *
      * @param ctx App context instance
      */
     return async function handleSearch(ctx: AppContext) {
-        const db = ctx.get('db');
-        const logger = ctx.get('logger');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db,
-            globaldb: ctx.get('globaldb'),
-            logger,
-        });
-
         // Parse "query" from query parameters
         // ?query=<string>
         const queryQuery = ctx.req.query('query');
@@ -51,43 +52,24 @@ export function createSearchHandler(accountService: AccountService) {
             accounts: [],
         };
 
-        // If the query is not a handle or URI, return early
-        if (isHandle(query) === false && isUri(query) === false) {
-            return new Response(JSON.stringify(results), {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                status: 200,
-            });
+        const requestUserContext = {
+            requestUserAccount: ctx.get('account'),
+        };
+
+        let dto: AccountDTO | null = null;
+
+        if (isHandle(query)) {
+            dto = await accountView.viewByHandle(query, requestUserContext);
         }
 
-        // Lookup actor by handle or URI
-        try {
-            const actor = await lookupObject(apCtx, query);
-
-            if (isActor(actor)) {
-                results.accounts.push({
-                    id: actor.id?.toString() || '',
-                    name: actor.name?.toString() || '',
-                    handle: getHandle(actor),
-                    avatarUrl:
-                        (await actor.getIcon())?.url?.href?.toString() || '',
-                    followerCount: await getFollowerCount(actor),
-                    followedByMe: await isFollowedByDefaultSiteAccount(
-                        actor,
-                        ctx.get('site'),
-                        accountService,
-                    ),
-                });
-            }
-        } catch (err) {
-            logger.error('Account search failed ({query}): {error}', {
-                query,
-                error: err,
-            });
+        if (isUri(query)) {
+            dto = await accountView.viewByApId(query, requestUserContext);
         }
 
-        // Return results
+        if (dto !== null) {
+            results.accounts.push(toSearchResult(dto));
+        }
+
         return new Response(JSON.stringify(results), {
             headers: {
                 'Content-Type': 'application/json',
