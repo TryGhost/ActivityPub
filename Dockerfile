@@ -17,4 +17,4 @@ RUN yarn build
 
 EXPOSE 8080
 
-CMD ["node", "dist/app.cjs"]
+CMD ["node", "dist/app.js"]
