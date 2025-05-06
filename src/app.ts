@@ -609,6 +609,11 @@ function setupHono(
         );
     });
 
+    app.use('*', async (c, next) => {
+        c.req.raw.headers.set('accept', 'application/activity+json');
+        await next();
+    });
+
     app.use(async (ctx, next) => {
         if (ctx.req.url.endsWith('/')) {
             return ctx.redirect(ctx.req.url.slice(0, -1));
@@ -1234,16 +1239,9 @@ async function main() {
         likeController,
     );
 
-    function forceAcceptHeader(fn: (req: Request) => unknown) {
-        return (request: Request) => {
-            request.headers.set('accept', 'application/activity+json');
-            return fn(request);
-        };
-    }
-
     serve(
         {
-            fetch: forceAcceptHeader(behindProxy(app.fetch)),
+            fetch: behindProxy(app.fetch),
             port: Number.parseInt(process.env.PORT || '8080'),
         },
         (info) => {
