@@ -187,7 +187,6 @@ async function setupObservability() {
 async function setupStorage(logging: Logger): Promise<GCPStorageService> {
     const gcpStorageService = new GCPStorageService(logging);
     try {
-        logging.info('Initialising GCP storage service');
         await gcpStorageService.init();
         logging.info('GCP storage service initialised');
     } catch (err) {
