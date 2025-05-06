@@ -169,17 +169,6 @@ export function createGetAccountFollowsHandler(
                                 }),
                                 { status: 200 },
                             );
-                        case 'no-page-found':
-                            logger.error(
-                                `No page found in outbox for ${handle}`,
-                            );
-                            return new Response(
-                                JSON.stringify({
-                                    accounts: [],
-                                    next: null,
-                                }),
-                                { status: 200 },
-                            );
                         default:
                             return exhaustiveCheck(error);
                     }
