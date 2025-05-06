@@ -1065,6 +1065,22 @@ function setupHono(
         requireRole(GhostRole.Owner, GhostRole.Administrator),
         spanWrapper((ctx: AppContext) => blockController.handleUnblock(ctx)),
     );
+
+    app.post(
+        '/.ghost/activitypub/actions/block/domain/:domain',
+        requireRole(GhostRole.Owner, GhostRole.Administrator),
+        spanWrapper((ctx: AppContext) =>
+            blockController.handleBlockDomain(ctx),
+        ),
+    );
+
+    app.post(
+        '/.ghost/activitypub/actions/unblock/domain/:domain',
+        requireRole(GhostRole.Owner, GhostRole.Administrator),
+        spanWrapper((ctx: AppContext) =>
+            blockController.handleUnblockDomain(ctx),
+        ),
+    );
     /** Federation wire up */
 
     app.get(
