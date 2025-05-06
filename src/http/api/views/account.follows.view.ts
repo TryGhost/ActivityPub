@@ -26,7 +26,9 @@ interface AccountInfo {
     name: string;
     handle: string;
     avatarUrl: string;
+    /** @deprecated */
     isFollowing: boolean;
+    followedByMe: boolean;
 }
 
 export interface AccountFollows {
@@ -116,6 +118,10 @@ export class AccountFollowsView {
         const accounts: AccountInfo[] = [];
 
         for (const result of results) {
+            const followedByMe = await this.checkIfAccountIsFollowing(
+                siteDefaultAccount.id,
+                result.id,
+            );
             accounts.push({
                 id: result.ap_id,
                 name: result.name || '',
@@ -124,10 +130,8 @@ export class AccountFollowsView {
                     result.username,
                 ),
                 avatarUrl: result.avatar_url || '',
-                isFollowing: await this.checkIfAccountIsFollowing(
-                    siteDefaultAccount.id,
-                    result.id,
-                ),
+                isFollowing: followedByMe,
+                followedByMe: followedByMe,
             });
         }
 
@@ -311,6 +315,10 @@ export class AccountFollowsView {
                     .first();
 
                 if (followeeAccount) {
+                    const followedByMe = await this.checkIfAccountIsFollowing(
+                        siteDefaultAccount.id,
+                        followeeAccount.id,
+                    );
                     accounts.push({
                         id: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
@@ -319,10 +327,8 @@ export class AccountFollowsView {
                             followeeAccount.username,
                         ),
                         avatarUrl: followeeAccount.avatar_url || '',
-                        isFollowing: await this.checkIfAccountIsFollowing(
-                            siteDefaultAccount.id,
-                            followeeAccount.id,
-                        ),
+                        isFollowing: followedByMe,
+                        followedByMe: followedByMe,
                     });
                 } else {
                     const followsActorObj = await lookupObject(item.href, {
@@ -350,6 +356,7 @@ export class AccountFollowsView {
                         ),
                         avatarUrl: followsActor.icon.url,
                         isFollowing: false,
+                        followedByMe: false,
                     });
                 }
             } catch {
