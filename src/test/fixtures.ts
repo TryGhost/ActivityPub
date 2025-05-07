@@ -149,6 +149,13 @@ export class FixtureManager {
         });
     }
 
+    async createDomainBlock(blocker: Account, domain: URL) {
+        await this.db('domain_blocks').insert({
+            blocker_id: blocker.id,
+            domain: domain.hostname,
+        });
+    }
+
     async createFollow(follower: Account, following: Account) {
         await this.db('follows').insert({
             follower_id: follower.id,

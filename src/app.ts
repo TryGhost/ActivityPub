@@ -291,7 +291,11 @@ const postService = new PostService(
 );
 
 const accountView = new AccountView(client, fedifyContextFactory);
-const accountFollowsView = new AccountFollowsView(client, fedifyContextFactory);
+const accountFollowsView = new AccountFollowsView(
+    client,
+    fedifyContextFactory,
+    moderationService,
+);
 const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,

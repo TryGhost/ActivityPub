@@ -3,7 +3,7 @@ import type { Account } from 'account/account.entity';
 import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { FedifyContext } from 'app';
 import { ok } from 'core/result';
-import type { Knex } from 'knex';
+import { ModerationService } from 'moderation/moderation.service';
 import nock from 'nock';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
@@ -13,7 +13,6 @@ import { AccountFollowsView } from './account.follows.view';
 describe('AccountFollowsView', () => {
     let accountFollowsView: AccountFollowsView;
     let fixtureManager: FixtureManager;
-    let db: Knex;
     let siteDefaultAccount: Account | null;
     let fedifyContextFactory: FedifyContextFactory;
 
@@ -39,11 +38,17 @@ describe('AccountFollowsView', () => {
 
     beforeAll(async () => {
         nock.disableNetConnect();
-        db = await createTestDb();
+        const db = await createTestDb();
 
         fedifyContextFactory = new FedifyContextFactory();
 
-        accountFollowsView = new AccountFollowsView(db, fedifyContextFactory);
+        const moderationService = new ModerationService(db);
+
+        accountFollowsView = new AccountFollowsView(
+            db,
+            fedifyContextFactory,
+            moderationService,
+        );
 
         fixtureManager = createFixtureManager(db);
     });
@@ -61,7 +66,9 @@ describe('AccountFollowsView', () => {
                 [accountToReadFollows],
                 [followingAccountOne],
                 [followingAccountTwo],
+                [followingAccountThree],
             ] = await Promise.all([
+                fixtureManager.createInternalAccount(),
                 fixtureManager.createInternalAccount(),
                 fixtureManager.createInternalAccount(),
                 fixtureManager.createInternalAccount(),
@@ -77,8 +84,20 @@ describe('AccountFollowsView', () => {
                 followingAccountTwo,
             );
             await fixtureManager.createFollow(
+                accountToReadFollows,
+                followingAccountThree,
+            );
+            await fixtureManager.createFollow(
                 accountMakingRequest,
                 followingAccountTwo,
+            );
+            await fixtureManager.createBlock(
+                accountMakingRequest,
+                followingAccountOne,
+            );
+            await fixtureManager.createDomainBlock(
+                accountMakingRequest,
+                followingAccountThree.apId,
             );
 
             const result = await accountFollowsView.getFollowsByAccount(
@@ -91,23 +110,37 @@ describe('AccountFollowsView', () => {
             expect(result).toHaveProperty('accounts');
             expect(result).toHaveProperty('next', null);
 
-            expect(result.accounts).toHaveLength(2);
+            expect(result.accounts).toHaveLength(3);
 
             expect(result.accounts[0]).toMatchObject({
+                id: followingAccountThree.apId.href,
+                name: followingAccountThree.name,
+                handle: `@${followingAccountThree.username}@${followingAccountThree.apId.host}`,
+                avatarUrl: followingAccountThree.avatarUrl?.href,
+                isFollowing: false,
+                followedByMe: false,
+                blockedByMe: false,
+                domainBlockedByMe: true,
+            });
+            expect(result.accounts[1]).toMatchObject({
                 id: followingAccountTwo.apId.href,
                 name: followingAccountTwo.name,
                 handle: `@${followingAccountTwo.username}@${followingAccountTwo.apId.host}`,
                 avatarUrl: followingAccountTwo.avatarUrl?.href,
                 isFollowing: true,
                 followedByMe: true,
+                blockedByMe: false,
+                domainBlockedByMe: false,
             });
-            expect(result.accounts[1]).toMatchObject({
+            expect(result.accounts[2]).toMatchObject({
                 id: followingAccountOne.apId.href,
                 name: followingAccountOne.name,
                 handle: `@${followingAccountOne.username}@${followingAccountOne.apId.host}`,
                 avatarUrl: followingAccountOne.avatarUrl?.href,
                 isFollowing: false,
                 followedByMe: false,
+                blockedByMe: true,
+                domainBlockedByMe: false,
             });
         });
 
@@ -284,12 +317,17 @@ describe('AccountFollowsView', () => {
         it(
             'should return followers collection when available',
             withContext(async () => {
-                const [[followerOne], [followerTwo], [accountMakingRequest]] =
-                    await Promise.all([
-                        fixtureManager.createInternalAccount(),
-                        fixtureManager.createInternalAccount(),
-                        fixtureManager.createInternalAccount(),
-                    ]);
+                const [
+                    [followerOne],
+                    [followerTwo],
+                    [followerThree],
+                    [accountMakingRequest],
+                ] = await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
 
                 await fixtureManager.createFollow(
                     accountMakingRequest,
@@ -298,7 +336,12 @@ describe('AccountFollowsView', () => {
 
                 await fixtureManager.createBlock(
                     accountMakingRequest,
-                    followerTwo,
+                    followerOne,
+                );
+
+                await fixtureManager.createDomainBlock(
+                    accountMakingRequest,
+                    followerThree.apId,
                 );
 
                 nock('https://activitypub.ghost.org:443')
@@ -333,6 +376,7 @@ describe('AccountFollowsView', () => {
                         orderedItems: [
                             followerOne.apId.href,
                             followerTwo.apId.href,
+                            followerThree.apId.href,
                             'https://404media.co/.ghost/activitypub/users/index',
                             'https://john.onolan.org/.ghost/activitypub/users/index',
                         ],
@@ -368,19 +412,15 @@ describe('AccountFollowsView', () => {
                         preferredUsername: 'feed',
                     });
 
-                const mockViewer = new AccountFollowsView(
-                    db,
-                    fedifyContextFactory,
-                );
-
-                const result = await mockViewer.getFollowsByRemoteLookUp(
-                    new URL(
-                        'https://activitypub.ghost.org/.ghost/activitypub/users/index',
-                    ),
-                    '',
-                    'followers',
-                    accountMakingRequest,
-                );
+                const result =
+                    await accountFollowsView.getFollowsByRemoteLookUp(
+                        new URL(
+                            'https://activitypub.ghost.org/.ghost/activitypub/users/index',
+                        ),
+                        '',
+                        'followers',
+                        accountMakingRequest,
+                    );
 
                 expect(result).toEqual(
                     ok({
@@ -392,7 +432,8 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: followerOne.avatarUrl?.href,
                                 isFollowing: false,
                                 followedByMe: false,
-                                blockedByMe: false,
+                                blockedByMe: true,
+                                domainBlockedByMe: false,
                             },
                             {
                                 id: followerTwo.apId.href,
@@ -401,7 +442,18 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: followerTwo.avatarUrl?.href,
                                 isFollowing: true,
                                 followedByMe: true,
-                                blockedByMe: true,
+                                blockedByMe: false,
+                                domainBlockedByMe: false,
+                            },
+                            {
+                                id: followerThree.apId.href,
+                                name: followerThree.name,
+                                handle: `@${followerThree.username}@${followerThree.apId.host}`,
+                                avatarUrl: followerThree.avatarUrl?.href,
+                                isFollowing: false,
+                                followedByMe: false,
+                                blockedByMe: false,
+                                domainBlockedByMe: true,
                             },
                             {
                                 id: 'https://404media.co/.ghost/activitypub/users/index',
@@ -411,6 +463,7 @@ describe('AccountFollowsView', () => {
                                 isFollowing: false,
                                 followedByMe: false,
                                 blockedByMe: false,
+                                domainBlockedByMe: false,
                             },
                             {
                                 id: 'https://john.onolan.org/.ghost/activitypub/users/index',
@@ -420,6 +473,7 @@ describe('AccountFollowsView', () => {
                                 isFollowing: false,
                                 followedByMe: false,
                                 blockedByMe: false,
+                                domainBlockedByMe: false,
                             },
                         ],
                         next: null,
@@ -431,12 +485,17 @@ describe('AccountFollowsView', () => {
         it(
             'should return following collection when available',
             withContext(async () => {
-                const [[followerOne], [followerTwo], [accountMakingRequest]] =
-                    await Promise.all([
-                        fixtureManager.createInternalAccount(),
-                        fixtureManager.createInternalAccount(),
-                        fixtureManager.createInternalAccount(),
-                    ]);
+                const [
+                    [followerOne],
+                    [followerTwo],
+                    [followerThree],
+                    [accountMakingRequest],
+                ] = await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
 
                 await fixtureManager.createFollow(
                     accountMakingRequest,
@@ -446,6 +505,11 @@ describe('AccountFollowsView', () => {
                 await fixtureManager.createBlock(
                     accountMakingRequest,
                     followerOne,
+                );
+
+                await fixtureManager.createDomainBlock(
+                    accountMakingRequest,
+                    followerThree.apId,
                 );
 
                 nock('https://activitypub.ghost.org:443')
@@ -480,6 +544,7 @@ describe('AccountFollowsView', () => {
                         orderedItems: [
                             followerOne.apId.href,
                             followerTwo.apId.href,
+                            followerThree.apId.href,
                             'https://404media.co/.ghost/activitypub/users/index',
                             'https://john.onolan.org/.ghost/activitypub/users/index',
                         ],
@@ -515,19 +580,15 @@ describe('AccountFollowsView', () => {
                         preferredUsername: 'feed',
                     });
 
-                const mockViewer = new AccountFollowsView(
-                    db,
-                    fedifyContextFactory,
-                );
-
-                const result = await mockViewer.getFollowsByRemoteLookUp(
-                    new URL(
-                        'https://activitypub.ghost.org/.ghost/activitypub/users/index',
-                    ),
-                    '',
-                    'following',
-                    accountMakingRequest,
-                );
+                const result =
+                    await accountFollowsView.getFollowsByRemoteLookUp(
+                        new URL(
+                            'https://activitypub.ghost.org/.ghost/activitypub/users/index',
+                        ),
+                        '',
+                        'following',
+                        accountMakingRequest,
+                    );
 
                 expect(result).toEqual(
                     ok({
@@ -540,6 +601,7 @@ describe('AccountFollowsView', () => {
                                 isFollowing: false,
                                 followedByMe: false,
                                 blockedByMe: true,
+                                domainBlockedByMe: false,
                             },
                             {
                                 id: followerTwo.apId.href,
@@ -549,6 +611,17 @@ describe('AccountFollowsView', () => {
                                 isFollowing: true,
                                 followedByMe: true,
                                 blockedByMe: false,
+                                domainBlockedByMe: false,
+                            },
+                            {
+                                id: followerThree.apId.href,
+                                name: followerThree.name,
+                                handle: `@${followerThree.username}@${followerThree.apId.host}`,
+                                avatarUrl: followerThree.avatarUrl?.href,
+                                isFollowing: false,
+                                followedByMe: false,
+                                blockedByMe: false,
+                                domainBlockedByMe: true,
                             },
                             {
                                 id: 'https://404media.co/.ghost/activitypub/users/index',
@@ -558,6 +631,7 @@ describe('AccountFollowsView', () => {
                                 isFollowing: false,
                                 followedByMe: false,
                                 blockedByMe: false,
+                                domainBlockedByMe: false,
                             },
                             {
                                 id: 'https://john.onolan.org/.ghost/activitypub/users/index',
@@ -567,6 +641,7 @@ describe('AccountFollowsView', () => {
                                 isFollowing: false,
                                 followedByMe: false,
                                 blockedByMe: false,
+                                domainBlockedByMe: false,
                             },
                         ],
                         next: null,

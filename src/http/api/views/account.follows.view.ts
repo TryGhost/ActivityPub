@@ -10,6 +10,7 @@ import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
+import type { ModerationService } from 'moderation/moderation.service';
 import type { AccountDTO } from '../types';
 
 /**
@@ -24,7 +25,13 @@ export type GetFollowsError =
 
 type AccountInfo = Pick<
     AccountDTO,
-    'id' | 'name' | 'handle' | 'avatarUrl' | 'followedByMe' | 'blockedByMe'
+    | 'id'
+    | 'name'
+    | 'handle'
+    | 'avatarUrl'
+    | 'followedByMe'
+    | 'blockedByMe'
+    | 'domainBlockedByMe'
 > & { isFollowing: boolean };
 
 export interface AccountFollows {
@@ -88,6 +95,7 @@ export class AccountFollowsView {
     constructor(
         private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly moderationService: ModerationService,
     ) {}
 
     async getFollowsByAccount(
@@ -121,6 +129,12 @@ export class AccountFollowsView {
         const accounts: AccountInfo[] = [];
 
         for (const result of results) {
+            const domainBlockedByMe =
+                await this.moderationService.domainIsBlocked(
+                    siteDefaultAccount.id,
+                    new URL(result.ap_id),
+                );
+
             accounts.push({
                 id: result.ap_id,
                 name: result.name || '',
@@ -132,6 +146,7 @@ export class AccountFollowsView {
                 isFollowing: !!result.followed_by_me,
                 followedByMe: !!result.followed_by_me,
                 blockedByMe: !!result.blocked_by_me,
+                domainBlockedByMe,
             });
         }
 
@@ -352,6 +367,12 @@ export class AccountFollowsView {
                     .first();
 
                 if (followeeAccount) {
+                    const domainBlockedByMe =
+                        await this.moderationService.domainIsBlocked(
+                            siteDefaultAccount.id,
+                            new URL(followeeAccount.ap_id),
+                        );
+
                     accounts.push({
                         id: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
@@ -363,6 +384,7 @@ export class AccountFollowsView {
                         isFollowing: !!followeeAccount.followed_by_me,
                         followedByMe: !!followeeAccount.followed_by_me,
                         blockedByMe: !!followeeAccount.blocked_by_me,
+                        domainBlockedByMe,
                     });
                 } else {
                     const followsActorObj = await lookupObject(item.href, {
@@ -381,6 +403,12 @@ export class AccountFollowsView {
                         continue;
                     }
 
+                    const domainBlockedByMe =
+                        await this.moderationService.domainIsBlocked(
+                            siteDefaultAccount.id,
+                            item,
+                        );
+
                     accounts.push({
                         id: followsActor.id,
                         name: followsActor.name,
@@ -392,6 +420,7 @@ export class AccountFollowsView {
                         isFollowing: false,
                         followedByMe: false,
                         blockedByMe: false,
+                        domainBlockedByMe,
                     });
                 }
             } catch (err) {

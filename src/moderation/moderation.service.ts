@@ -71,4 +71,16 @@ export class ModerationService {
 
         return block === undefined;
     }
+
+    async domainIsBlocked(
+        targetAccountId: number,
+        domain: URL,
+    ): Promise<boolean> {
+        const block = await this.db('domain_blocks')
+            .where('blocker_id', targetAccountId)
+            .andWhere('domain', domain.hostname)
+            .first();
+
+        return block !== undefined;
+    }
 }

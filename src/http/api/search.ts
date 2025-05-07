@@ -14,6 +14,7 @@ type AccountSearchResult = Pick<
     | 'followerCount'
     | 'followedByMe'
     | 'blockedByMe'
+    | 'domainBlockedByMe'
 >;
 
 function toSearchResult(dto: AccountDTO): AccountSearchResult {
@@ -25,6 +26,7 @@ function toSearchResult(dto: AccountDTO): AccountSearchResult {
         'followerCount',
         'followedByMe',
         'blockedByMe',
+        'domainBlockedByMe',
     ]);
 }
 
