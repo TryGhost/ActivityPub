@@ -136,6 +136,10 @@ describe('AccountFollowsView', () => {
                 accountMakingRequest,
                 followerAccountTwo,
             );
+            await fixtureManager.createBlock(
+                accountMakingRequest,
+                followerAccountOne,
+            );
 
             const result = await accountFollowsView.getFollowsByAccount(
                 accountToReadFollows,
@@ -155,6 +159,7 @@ describe('AccountFollowsView', () => {
                 avatarUrl: followerAccountTwo.avatarUrl?.href,
                 isFollowing: true,
                 followedByMe: true,
+                blockedByMe: false,
             });
             expect(result.accounts[1]).toMatchObject({
                 id: followerAccountOne.apId.href,
@@ -163,6 +168,7 @@ describe('AccountFollowsView', () => {
                 avatarUrl: followerAccountOne.avatarUrl?.href,
                 isFollowing: false,
                 followedByMe: false,
+                blockedByMe: true,
             });
         });
 
@@ -290,6 +296,11 @@ describe('AccountFollowsView', () => {
                     followerTwo,
                 );
 
+                await fixtureManager.createBlock(
+                    accountMakingRequest,
+                    followerTwo,
+                );
+
                 nock('https://activitypub.ghost.org:443')
                     .get('/.ghost/activitypub/users/index')
                     .reply(200, {
@@ -381,6 +392,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: followerOne.avatarUrl?.href,
                                 isFollowing: false,
                                 followedByMe: false,
+                                blockedByMe: false,
                             },
                             {
                                 id: followerTwo.apId.href,
@@ -389,6 +401,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: followerTwo.avatarUrl?.href,
                                 isFollowing: true,
                                 followedByMe: true,
+                                blockedByMe: true,
                             },
                             {
                                 id: 'https://404media.co/.ghost/activitypub/users/index',
@@ -397,6 +410,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: 'https://404media.co/avatar.jpg',
                                 isFollowing: false,
                                 followedByMe: false,
+                                blockedByMe: false,
                             },
                             {
                                 id: 'https://john.onolan.org/.ghost/activitypub/users/index',
@@ -405,6 +419,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: 'https://john.onolan.org/avatar.jpg',
                                 isFollowing: false,
                                 followedByMe: false,
+                                blockedByMe: false,
                             },
                         ],
                         next: null,
@@ -426,6 +441,11 @@ describe('AccountFollowsView', () => {
                 await fixtureManager.createFollow(
                     accountMakingRequest,
                     followerTwo,
+                );
+
+                await fixtureManager.createBlock(
+                    accountMakingRequest,
+                    followerOne,
                 );
 
                 nock('https://activitypub.ghost.org:443')
@@ -519,6 +539,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: followerOne.avatarUrl?.href,
                                 isFollowing: false,
                                 followedByMe: false,
+                                blockedByMe: true,
                             },
                             {
                                 id: followerTwo.apId.href,
@@ -527,6 +548,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: followerTwo.avatarUrl?.href,
                                 isFollowing: true,
                                 followedByMe: true,
+                                blockedByMe: false,
                             },
                             {
                                 id: 'https://404media.co/.ghost/activitypub/users/index',
@@ -535,6 +557,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: 'https://404media.co/avatar.jpg',
                                 isFollowing: false,
                                 followedByMe: false,
+                                blockedByMe: false,
                             },
                             {
                                 id: 'https://john.onolan.org/.ghost/activitypub/users/index',
@@ -543,6 +566,7 @@ describe('AccountFollowsView', () => {
                                 avatarUrl: 'https://john.onolan.org/avatar.jpg',
                                 isFollowing: false,
                                 followedByMe: false,
+                                blockedByMe: false,
                             },
                         ],
                         next: null,
