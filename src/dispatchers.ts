@@ -23,7 +23,6 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { FollowersService } from 'activitypub/followers.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { AccountService } from './account/account.service';
-import { mapActorToExternalAccountData } from './account/utils';
 import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { addToList } from './kv-helpers';
@@ -135,6 +134,12 @@ export function createAcceptHandler(accountService: AccountService) {
             return;
         }
 
+        const recipient = await object.getActor();
+        if (recipient === null || recipient.id === null) {
+            ctx.data.logger.info('Recipient missing, exit early');
+            return;
+        }
+
         const senderJson = await sender.toJsonLd();
         const acceptJson = await accept.toJsonLd();
         ctx.data.globaldb.set([accept.id.href], acceptJson);
@@ -142,30 +147,25 @@ export function createAcceptHandler(accountService: AccountService) {
         await addToList(ctx.data.db, ['inbox'], accept.id.href);
 
         // Record the account of the sender as well as the follow
-        const recipient = await (object as Activity).getActor();
-        const followerAccount = await accountService.getAccountByApId(
-            recipient?.id?.href ?? '',
+        const followerAccountResult = await accountService.ensureByApId(
+            recipient.id,
         );
-        if (followerAccount) {
-            let followeeAccount = await accountService.getAccountByApId(
-                sender.id.href,
-            );
-
-            if (!followeeAccount) {
-                ctx.data.logger.info(
-                    `Accepting account "${sender.id.href}" not found, creating`,
-                );
-
-                followeeAccount = await accountService.createExternalAccount(
-                    await mapActorToExternalAccountData(sender),
-                );
-            }
-
-            await accountService.recordAccountFollow(
-                followeeAccount,
-                followerAccount,
-            );
+        if (isError(followerAccountResult)) {
+            ctx.data.logger.info('Follower account not found, exit early');
+            return;
         }
+        const followerAccount = getValue(followerAccountResult);
+
+        const ensureAccountToFollowResult = await accountService.ensureByApId(
+            sender.id,
+        );
+        if (isError(ensureAccountToFollowResult)) {
+            ctx.data.logger.info('Account to follow not found, exit early');
+            return;
+        }
+        const accountToFollow = getValue(ensureAccountToFollowResult);
+
+        await accountService.followAccount(followerAccount, accountToFollow);
     };
 }
 

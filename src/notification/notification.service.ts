@@ -1,4 +1,3 @@
-import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import type { ModerationService } from 'moderation/moderation.service';
@@ -177,15 +176,12 @@ export class NotificationService {
         };
     }
 
-    /**
-     * Create a notification for an account being followed
-     *
-     * @param account The account that is being followed
-     * @param followerAccount The account that is following
-     */
-    async createFollowNotification(account: Account, followerAccount: Account) {
+    async createFollowNotification(
+        accountId: number,
+        followerAccountId: number,
+    ) {
         const user = await this.db('users')
-            .where('account_id', account.id)
+            .where('account_id', accountId)
             .select('id')
             .first();
 
@@ -198,8 +194,8 @@ export class NotificationService {
 
         const notificationAllowed =
             await this.moderationService.canInteractWithAccount(
-                followerAccount.id,
-                account.id,
+                followerAccountId,
+                accountId,
             );
 
         if (!notificationAllowed) {
@@ -208,7 +204,7 @@ export class NotificationService {
 
         await this.db('notifications').insert({
             user_id: user.id,
-            account_id: followerAccount.id,
+            account_id: followerAccountId,
             event_type: NotificationType.Follow,
         });
     }

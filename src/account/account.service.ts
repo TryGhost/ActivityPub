@@ -277,6 +277,8 @@ export class AccountService {
      *
      * @param followee Account to follow
      * @param follower Following account
+     *
+     * @deprecated Use `followAccount` instead
      */
     async recordAccountFollow(
         followee: AccountType,
@@ -296,7 +298,7 @@ export class AccountService {
 
         await this.events.emitAsync(
             AccountFollowedEvent.getName(),
-            new AccountFollowedEvent(followee, follower),
+            new AccountFollowedEvent(followee.id, follower.id),
         );
     }
 
@@ -305,6 +307,8 @@ export class AccountService {
      *
      * @param following The account that is being unfollowed
      * @param follower The account that is a follower
+     *
+     * @deprecated Use `unfollowAccount` instead
      */
     async recordAccountUnfollow(
         following: AccountType,
@@ -673,5 +677,17 @@ export class AccountService {
         const updated = account.unblockDomain(domain);
         await this.accountRepository.save(updated);
         return ok(true);
+    }
+
+    async followAccount(account: Account, accountToFollow: Account) {
+        const updated = account.follow(accountToFollow);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async unfollowAccount(account: Account, accountToUnfollow: Account) {
+        const updated = account.unfollow(accountToUnfollow);
+
+        await this.accountRepository.save(updated);
     }
 }

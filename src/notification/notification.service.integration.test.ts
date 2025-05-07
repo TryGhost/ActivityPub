@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { Account } from 'account/types';
 import type { Knex } from 'knex';
+
 import { ModerationService } from 'moderation/moderation.service';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
@@ -327,17 +327,9 @@ describe('NotificationService', () => {
                 domain: 'bob.com',
             });
 
-            const account = {
-                id: accountId,
-            } as Account;
-
-            const followerAccount = {
-                id: followerAccountId,
-            } as Account;
-
             await notificationService.createFollowNotification(
-                account,
-                followerAccount,
+                accountId,
+                followerAccountId,
             );
 
             const notifications = await client('notifications').select('*');
@@ -349,18 +341,7 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for account', async () => {
-            const accountWithoutUser = {
-                id: 999,
-            } as Account;
-
-            const followerAccount = {
-                id: 1,
-            } as Account;
-
-            await notificationService.createFollowNotification(
-                accountWithoutUser,
-                followerAccount,
-            );
+            await notificationService.createFollowNotification(999, 1);
 
             const notifications = await client('notifications').select('*');
 
@@ -375,17 +356,9 @@ describe('NotificationService', () => {
 
             await fixtureManager.createBlock(aliceAccount, bobAccount);
 
-            const account = {
-                id: aliceAccount.id,
-            } as Account;
-
-            const followerAccount = {
-                id: bobAccount.id,
-            } as Account;
-
             await notificationService.createFollowNotification(
-                account,
-                followerAccount,
+                aliceAccount.id,
+                bobAccount.id,
             );
 
             const notifications = await client('notifications').select('*');
