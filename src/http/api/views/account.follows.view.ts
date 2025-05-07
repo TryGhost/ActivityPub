@@ -24,7 +24,7 @@ export type GetFollowsError =
 
 type AccountInfo = Pick<
     AccountDTO,
-    'id' | 'name' | 'handle' | 'avatarUrl' | 'followedByMe'
+    'id' | 'name' | 'handle' | 'avatarUrl' | 'followedByMe' | 'blockedByMe'
 > & { isFollowing: boolean };
 
 export interface AccountFollows {
@@ -39,6 +39,7 @@ interface AccountRow {
     username: string;
     avatar_url: string;
     followed_by_me: number;
+    blocked_by_me: number;
 }
 
 interface FollowsActor {
@@ -130,6 +131,7 @@ export class AccountFollowsView {
                 avatarUrl: result.avatar_url || '',
                 isFollowing: !!result.followed_by_me,
                 followedByMe: !!result.followed_by_me,
+                blockedByMe: !!result.blocked_by_me,
             });
         }
 
@@ -315,6 +317,12 @@ export class AccountFollowsView {
                                 ELSE 0
                             END AS followed_by_me
                         `),
+                        this.db.raw(`
+                            CASE
+                                WHEN blocks.blocker_id IS NOT NULL THEN 1
+                                ELSE 0
+                            END AS blocked_by_me
+                        `),
                     )
                     .leftJoin('follows', function () {
                         this.on(
@@ -323,6 +331,17 @@ export class AccountFollowsView {
                             'accounts.id',
                         ).andOnVal(
                             'follows.follower_id',
+                            '=',
+                            siteDefaultAccount.id,
+                        );
+                    })
+                    .leftJoin('blocks', function () {
+                        this.on(
+                            'blocks.blocked_id',
+                            '=',
+                            'accounts.id',
+                        ).andOnVal(
+                            'blocks.blocker_id',
                             '=',
                             siteDefaultAccount.id,
                         );
@@ -343,6 +362,7 @@ export class AccountFollowsView {
                         avatarUrl: followeeAccount.avatar_url || '',
                         isFollowing: !!followeeAccount.followed_by_me,
                         followedByMe: !!followeeAccount.followed_by_me,
+                        blockedByMe: !!followeeAccount.blocked_by_me,
                     });
                 } else {
                     const followsActorObj = await lookupObject(item.href, {
@@ -371,6 +391,7 @@ export class AccountFollowsView {
                         avatarUrl: followsActor.icon.url,
                         isFollowing: false,
                         followedByMe: false,
+                        blockedByMe: false,
                     });
                 }
             } catch (err) {
@@ -424,11 +445,26 @@ export class AccountFollowsView {
                     END AS followed_by_me
                 `),
             )
+            .select(
+                this.db.raw(`
+                    CASE
+                        WHEN b.blocker_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS blocked_by_me
+                `),
+            )
             .where('follows.following_id', accountId)
             .innerJoin('accounts', 'accounts.id', 'follows.follower_id')
             .leftJoin({ f2: 'follows' }, function () {
                 this.on('f2.following_id', '=', 'accounts.id').andOnVal(
                     'f2.follower_id',
+                    '=',
+                    contextAccountId,
+                );
+            })
+            .leftJoin({ b: 'blocks' }, function () {
+                this.on('b.blocked_id', '=', 'accounts.id').andOnVal(
+                    'b.blocker_id',
                     '=',
                     contextAccountId,
                 );
@@ -465,11 +501,26 @@ export class AccountFollowsView {
                     END AS followed_by_me
                 `),
             )
+            .select(
+                this.db.raw(`
+                    CASE
+                        WHEN b.blocker_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS blocked_by_me
+                `),
+            )
             .where('follows.follower_id', accountId)
             .innerJoin('accounts', 'accounts.id', 'follows.following_id')
             .leftJoin({ f2: 'follows' }, function () {
                 this.on('f2.following_id', '=', 'accounts.id').andOnVal(
                     'f2.follower_id',
+                    '=',
+                    contextAccountId,
+                );
+            })
+            .leftJoin({ b: 'blocks' }, function () {
+                this.on('b.blocked_id', '=', 'accounts.id').andOnVal(
+                    'b.blocker_id',
                     '=',
                     contextAccountId,
                 );
