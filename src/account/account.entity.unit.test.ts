@@ -4,6 +4,8 @@ import { AccountEntity } from 'account/account.entity';
 import { PostType } from 'post/post.entity';
 import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
+import { DomainBlockedEvent } from './domain-blocked.event';
+import { DomainUnblockedEvent } from './domain-unblocked.event';
 
 describe('AccountEntity', () => {
     it('Uses the apId if the url is missing', () => {
@@ -477,6 +479,72 @@ describe('AccountEntity', () => {
             expect(AccountEntity.pullEvents(updated)).toStrictEqual([
                 new AccountUnblockedEvent(accountToUnblock.id, account.id),
             ]);
+        });
+    });
+
+    describe('blockDomain and unblockDomain', () => {
+        it('should block domain', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const domainUrl = new URL('https://example.org');
+            const result = account.blockDomain(domainUrl);
+            const events = AccountEntity.pullEvents(result);
+
+            expect(events.length).toBe(1);
+            expect(events[0]).toBeInstanceOf(DomainBlockedEvent);
+
+            if (events[0] instanceof DomainBlockedEvent) {
+                expect(events[0].getDomain()).toEqual(domainUrl);
+                expect(events[0].getBlockerId()).toBe(account.id);
+            }
+        });
+
+        it('should unblock domain', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const domainUrl = new URL('https://example.org');
+            const result = account.unblockDomain(domainUrl);
+            const events = AccountEntity.pullEvents(result);
+
+            expect(events.length).toBe(1);
+            expect(events[0]).toBeInstanceOf(DomainUnblockedEvent);
+
+            if (events[0] instanceof DomainUnblockedEvent) {
+                expect(events[0].getDomain()).toEqual(domainUrl);
+                expect(events[0].getUnblockerId()).toBe(account.id);
+            }
         });
     });
 });

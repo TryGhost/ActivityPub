@@ -85,12 +85,12 @@ export class BlockController {
 
     async handleBlockDomain(ctx: AppContext) {
         const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
-
         if (!domain) {
             return BadRequest('Expected a URL for the domain');
         }
 
-        // For now, just return successfully
+        await this.accountService.blockDomain(ctx.get('account'), domain);
+
         return new Response(null, {
             headers: {
                 'Content-Type': 'application/json',
@@ -101,12 +101,12 @@ export class BlockController {
 
     async handleUnblockDomain(ctx: AppContext) {
         const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
-
         if (!domain) {
             return BadRequest('Expected a URL for the domain');
         }
 
-        // For now, just return successfully
+        await this.accountService.unblockDomain(ctx.get('account'), domain);
+
         return new Response(null, {
             headers: {
                 'Content-Type': 'application/json',
