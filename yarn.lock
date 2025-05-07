@@ -1580,10 +1580,10 @@
   dependencies:
     undici-types "~6.19.8"
 
-"@types/node@20.17.43":
-  version "20.17.43"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.17.43.tgz#66e6923e8e5a56317866c7813dc2b555c158332a"
-  integrity sha512-DnDEcDUnVAUYSa7U03QvrXbj1MZj00xoyi/a3lRGkR/c7BFUnqv+OY9EUphMqXUKdZJEOmuzu2mm+LmCisnPow==
+"@types/node@20.17.44":
+  version "20.17.44"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.17.44.tgz#f8b971ee3a3aea6cce4a3fc0c44c782a80744df0"
+  integrity sha512-50sE4Ibb4BgUMxHrcJQSAU0Fu7fLcTdwcXwRzEF7wnVMWvImFLg2Rxc7SW0vpvaJm4wvhoWEZaQiPpBpocZiUA==
   dependencies:
     undici-types "~6.19.2"
 
