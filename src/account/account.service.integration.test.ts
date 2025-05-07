@@ -408,8 +408,8 @@ describe('AccountService', () => {
             });
 
             expect(accountFollowedEvent).toBeDefined();
-            expect(accountFollowedEvent?.getAccount()).toBe(account);
-            expect(accountFollowedEvent?.getFollower()).toBe(follower);
+            expect(accountFollowedEvent?.getAccountId()).toBe(account.id);
+            expect(accountFollowedEvent?.getFollowerId()).toBe(follower.id);
         });
 
         it('should not emit an account.followed event if the follow is not recorded due to being a duplicate', async () => {

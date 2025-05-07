@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { AccountEntity } from 'account/account.entity';
 import { PostType } from 'post/post.entity';
 import { AccountBlockedEvent } from './account-blocked.event';
+import { AccountFollowedEvent } from './account-followed.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
+import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
 
@@ -370,6 +372,7 @@ describe('AccountEntity', () => {
             );
         });
     });
+
     describe('block and unblock', () => {
         it('You cannot block yourself', () => {
             const draft = AccountEntity.draft({
@@ -545,6 +548,118 @@ describe('AccountEntity', () => {
                 expect(events[0].getDomain()).toEqual(domainUrl);
                 expect(events[0].getUnblockerId()).toBe(account.id);
             }
+        });
+    });
+
+    describe('follow and unfollow', () => {
+        it('You cannot follow yourself', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const updated = account.follow(account);
+
+            expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
+        });
+
+        it('You can follow another account', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const accountToFollow = AccountEntity.create({
+                id: 2,
+                ...draft,
+            });
+
+            const updated = account.follow(accountToFollow);
+
+            expect(AccountEntity.pullEvents(updated)).toStrictEqual([
+                new AccountFollowedEvent(accountToFollow.id, account.id),
+            ]);
+        });
+
+        it('You cannot unfollow yourself', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const updated = account.unfollow(account);
+
+            expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
+        });
+
+        it('You can unfollow another account', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const accountToUnfollow = AccountEntity.create({
+                id: 2,
+                ...draft,
+            });
+
+            const updated = account.unfollow(accountToUnfollow);
+
+            expect(AccountEntity.pullEvents(updated)).toStrictEqual([
+                new AccountUnfollowedEvent(accountToUnfollow.id, account.id),
+            ]);
         });
     });
 });

@@ -416,4 +416,82 @@ describe('KnexAccountRepository', () => {
             following_id: charlieAccount.id,
         });
     });
+
+    it('handles inserting a row into the follows table when an account has been followed', async () => {
+        const [[account], [accountToFollow]] = await Promise.all([
+            fixtureManager.createInternalAccount(null, 'example.com'),
+            fixtureManager.createInternalAccount(null, 'followed.com'),
+            fixtureManager.createInternalAccount(null, 'notfollowed.com'),
+        ]);
+
+        const followsBefore = await client('follows').select(
+            'follower_id',
+            'following_id',
+        );
+
+        expect(followsBefore).toStrictEqual([]);
+
+        const updated = account.follow(accountToFollow);
+
+        await accountRepository.save(updated);
+
+        const follows = await client('follows').select(
+            'follower_id',
+            'following_id',
+        );
+
+        expect(follows).toStrictEqual([
+            {
+                follower_id: account.id,
+                following_id: accountToFollow.id,
+            },
+        ]);
+    });
+
+    it('handles removing rows from the follows table when an account has been unfollowed', async () => {
+        const [[account], [accountToFollow], [accountNotFollowed]] =
+            await Promise.all([
+                fixtureManager.createInternalAccount(null, 'example.com'),
+                fixtureManager.createInternalAccount(null, 'followed.com'),
+                fixtureManager.createInternalAccount(
+                    null,
+                    'notfollowedbyexample.com',
+                ),
+            ]);
+
+        await accountRepository.save(account.follow(accountToFollow));
+        await accountRepository.save(
+            accountToFollow.follow(accountNotFollowed),
+        );
+
+        const followsBeforeUnfollow = await client('follows').select(
+            'follower_id',
+            'following_id',
+        );
+
+        expect(followsBeforeUnfollow).toStrictEqual([
+            {
+                follower_id: account.id,
+                following_id: accountToFollow.id,
+            },
+            {
+                follower_id: accountToFollow.id,
+                following_id: accountNotFollowed.id,
+            },
+        ]);
+
+        await accountRepository.save(account.unfollow(accountToFollow));
+
+        const follows = await client('follows').select(
+            'follower_id',
+            'following_id',
+        );
+
+        expect(follows).toStrictEqual([
+            {
+                follower_id: accountToFollow.id,
+                following_id: accountNotFollowed.id,
+            },
+        ]);
+    });
 });

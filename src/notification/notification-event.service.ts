@@ -53,8 +53,8 @@ export class NotificationEventService {
 
     private async handleAccountFollowedEvent(event: AccountFollowedEvent) {
         await this.notificationService.createFollowNotification(
-            event.getAccount(),
-            event.getFollower(),
+            event.getAccountId(),
+            event.getFollowerId(),
         );
     }
 
