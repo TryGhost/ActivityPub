@@ -121,7 +121,8 @@ Then(
             assert.equal(activity.object.attachment.url, expectedImageUrl);
             assert.equal(activity.object.attachment.type, 'Image');
         } else if (note) {
-            assert.equal(note.featureImageUrl, expectedImageUrl);
+            assert.equal(note.attachments[0].type, 'Image');
+            assert.equal(note.attachments[0].url, expectedImageUrl);
         }
     },
 );

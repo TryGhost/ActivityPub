@@ -157,12 +157,15 @@ export class FediverseBridge {
             content: post.content,
             summary: null,
             published: Temporal.Now.instant(),
-            attachments: post.imageUrl
-                ? [
-                      new Image({
-                          url: post.imageUrl,
-                      }),
-                  ]
+            attachments: post.attachments
+                ? post.attachments
+                      .filter((attachment) => attachment.type === 'Image')
+                      .map(
+                          (attachment) =>
+                              new Image({
+                                  url: attachment.url,
+                              }),
+                      )
                 : undefined,
             to: PUBLIC_COLLECTION,
             cc: post.author.apFollowers,
@@ -245,12 +248,15 @@ export class FediverseBridge {
             attribution: reply.author.apId,
             replyTarget: objectToReplyTo,
             content: reply.content,
-            attachments: reply.imageUrl
-                ? [
-                      new Image({
-                          url: reply.imageUrl,
-                      }),
-                  ]
+            attachments: reply.attachments
+                ? reply.attachments
+                      .filter((attachment) => attachment.type === 'Image')
+                      .map(
+                          (attachment) =>
+                              new Image({
+                                  url: attachment.url,
+                              }),
+                      )
                 : undefined,
             summary: null,
             published: Temporal.Now.instant(),

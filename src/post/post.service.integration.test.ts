@@ -109,7 +109,14 @@ describe('PostService', () => {
             }
 
             const post = getValue(result);
-            expect(post.imageUrl).toEqual(imageUrl);
+            expect(post.attachments).toEqual([
+                {
+                    type: 'Image',
+                    mediaType: null,
+                    name: null,
+                    url: new URL(imageUrl),
+                },
+            ]);
         });
 
         it('should return error when image verification fails', async () => {
