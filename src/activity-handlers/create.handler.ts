@@ -82,7 +82,12 @@ export class CreateHandler {
             const data = await ctx.data.globaldb.get<any>([
                 replyTarget.id.href,
             ]);
-            const replyTargetAuthor = data?.attributedTo?.id;
+            let replyTargetAuthor = '';
+            if (typeof data?.attributedTo === 'string') {
+                replyTargetAuthor = data?.attributedTo;
+            } else {
+                replyTargetAuthor = data?.attributedTo?.id;
+            }
             const inboxActor = await getUserData(ctx, 'index');
 
             if (replyTargetAuthor === inboxActor.id.href) {
