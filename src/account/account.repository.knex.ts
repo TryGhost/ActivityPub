@@ -4,7 +4,9 @@ import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
 import { AccountBlockedEvent } from './account-blocked.event';
+import { AccountFollowedEvent } from './account-followed.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
+import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { type Account, AccountEntity } from './account.entity';
 
@@ -73,6 +75,18 @@ export class KnexAccountRepository {
                         .where({
                             blocker_id: event.getUnblockerId(),
                             blocked_id: event.getAccountId(),
+                        })
+                        .delete();
+                } else if (event instanceof AccountFollowedEvent) {
+                    await transaction('follows').insert({
+                        follower_id: event.getFollowerId(),
+                        following_id: event.getAccountId(),
+                    });
+                } else if (event instanceof AccountUnfollowedEvent) {
+                    await transaction('follows')
+                        .where({
+                            follower_id: event.getUnfollowerId(),
+                            following_id: event.getAccountId(),
                         })
                         .delete();
                 }

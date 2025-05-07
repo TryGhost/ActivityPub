@@ -133,4 +133,50 @@ describe('AccountService', () => {
             expect(result).toBe(account);
         });
     });
+
+    describe('followAccount', () => {
+        it('should follow an account', async () => {
+            const account = {
+                id: 1,
+                follow: vi.fn(),
+            } as unknown as AccountEntity;
+            const accountToFollow = { id: 2 } as unknown as AccountEntity;
+            const updatedAccount = {
+                id: 1,
+            } as unknown as AccountEntity;
+
+            vi.mocked(account.follow).mockImplementation(() => updatedAccount);
+
+            await accountService.followAccount(account, accountToFollow);
+
+            expect(account.follow).toHaveBeenCalledWith(accountToFollow);
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
+    });
+
+    describe('unfollowAccount', () => {
+        it('should unfollow an account', async () => {
+            const account = {
+                id: 1,
+                unfollow: vi.fn(),
+            } as unknown as AccountEntity;
+            const accountToUnfollow = { id: 2 } as unknown as AccountEntity;
+            const updatedAccount = {
+                id: 1,
+            } as unknown as AccountEntity;
+
+            vi.mocked(account.unfollow).mockImplementation(
+                () => updatedAccount,
+            );
+
+            await accountService.unfollowAccount(account, accountToUnfollow);
+
+            expect(account.unfollow).toHaveBeenCalledWith(accountToUnfollow);
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
+    });
 });

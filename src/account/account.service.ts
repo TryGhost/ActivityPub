@@ -294,7 +294,7 @@ export class AccountService {
 
         await this.events.emitAsync(
             AccountFollowedEvent.getName(),
-            new AccountFollowedEvent(followee, follower),
+            new AccountFollowedEvent(followee.id, follower.id),
         );
     }
 
@@ -653,5 +653,17 @@ export class AccountService {
 
     async getAccountById(id: number) {
         return await this.accountRepository.getById(id);
+    }
+
+    async followAccount(account: Account, accountToFollow: Account) {
+        const updated = account.follow(accountToFollow);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async unfollowAccount(account: Account, accountToUnfollow: Account) {
+        const updated = account.unfollow(accountToUnfollow);
+
+        await this.accountRepository.save(updated);
     }
 }

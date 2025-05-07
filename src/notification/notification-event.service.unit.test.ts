@@ -5,7 +5,6 @@ import { EventEmitter } from 'node:events';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { Account as AccountEntity } from 'account/account.entity';
-import type { Account } from 'account/types';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
@@ -42,15 +41,12 @@ describe('NotificationEventService', () => {
 
             events.emit(
                 AccountFollowedEvent.getName(),
-                new AccountFollowedEvent(
-                    account as Account,
-                    followerAccount as Account,
-                ),
+                new AccountFollowedEvent(account.id, followerAccount.id),
             );
 
             expect(
                 notificationService.createFollowNotification,
-            ).toHaveBeenCalledWith(account, followerAccount);
+            ).toHaveBeenCalledWith(account.id, followerAccount.id);
         });
     });
 
