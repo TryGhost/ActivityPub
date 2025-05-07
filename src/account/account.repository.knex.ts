@@ -7,6 +7,8 @@ import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { type Account, AccountEntity } from './account.entity';
+import { DomainBlockedEvent } from './domain-blocked.event';
+import { DomainUnblockedEvent } from './domain-unblocked.event';
 
 interface AccountRow {
     id: number;
@@ -73,6 +75,21 @@ export class KnexAccountRepository {
                         .where({
                             blocker_id: event.getUnblockerId(),
                             blocked_id: event.getAccountId(),
+                        })
+                        .delete();
+                } else if (event instanceof DomainBlockedEvent) {
+                    await transaction('domain_blocks')
+                        .insert({
+                            blocker_id: event.getBlockerId(),
+                            domain: event.getDomain().hostname,
+                        })
+                        .onConflict(['blocker_id', 'domain'])
+                        .ignore();
+                } else if (event instanceof DomainUnblockedEvent) {
+                    await transaction('domain_blocks')
+                        .where({
+                            blocker_id: event.getUnblockerId(),
+                            domain: event.getDomain().hostname,
                         })
                         .delete();
                 }

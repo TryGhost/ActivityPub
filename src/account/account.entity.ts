@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { type CreatePostType, PostType } from '../post/post.entity';
 import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
+import { DomainBlockedEvent } from './domain-blocked.event';
+import { DomainUnblockedEvent } from './domain-unblocked.event';
 
 export interface Account {
     readonly id: number;
@@ -18,6 +20,8 @@ export interface Account {
     readonly isInternal: boolean;
     unblock(account: Account): Account;
     block(account: Account): Account;
+    blockDomain(domain: URL): Account;
+    unblockDomain(domain: URL): Account;
     /**
      * Returns a new Account instance which needs to be saved.
      */
@@ -166,6 +170,20 @@ export class AccountEntity implements Account {
         return AccountEntity.create(
             this,
             this.events.concat(new AccountBlockedEvent(account.id, this.id)),
+        );
+    }
+
+    blockDomain(domain: URL): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(new DomainBlockedEvent(domain, this.id)),
+        );
+    }
+
+    unblockDomain(domain: URL): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(new DomainUnblockedEvent(domain, this.id)),
         );
     }
 }

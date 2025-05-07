@@ -654,4 +654,22 @@ export class AccountService {
     async getAccountById(id: number) {
         return await this.accountRepository.getById(id);
     }
+
+    async blockDomain(
+        account: Account,
+        domain: URL,
+    ): Promise<Result<true, never>> {
+        const updated = account.blockDomain(domain);
+        await this.accountRepository.save(updated);
+        return ok(true);
+    }
+
+    async unblockDomain(
+        account: Account,
+        domain: URL,
+    ): Promise<Result<true, never>> {
+        const updated = account.unblockDomain(domain);
+        await this.accountRepository.save(updated);
+        return ok(true);
+    }
 }
