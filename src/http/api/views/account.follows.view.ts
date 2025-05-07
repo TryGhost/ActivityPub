@@ -10,6 +10,7 @@ import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
+import type { AccountDTO } from '../types';
 
 /**
  * Maximum number of follow accounts to return
@@ -21,15 +22,10 @@ export type GetFollowsError =
     | 'error-getting-follows'
     | 'not-an-actor';
 
-interface AccountInfo {
-    id: string;
-    name: string;
-    handle: string;
-    avatarUrl: string;
-    /** @deprecated */
-    isFollowing: boolean;
-    followedByMe: boolean;
-}
+type AccountInfo = Pick<
+    AccountDTO,
+    'id' | 'name' | 'handle' | 'avatarUrl' | 'followedByMe'
+> & { isFollowing: boolean };
 
 export interface AccountFollows {
     accounts: AccountInfo[];
