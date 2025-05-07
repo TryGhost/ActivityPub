@@ -25,7 +25,7 @@ Feature: Creating a reply
       """
       This is a great article!
       """
-    Then "Reply" is in our Outbox
+    Then note "Reply" is in our Outbox
     And "Reply" has the content "<p>This is a great article!</p>"
 
   Scenario: Created reply contains newlines
@@ -34,7 +34,7 @@ Feature: Creating a reply
       Hello
       World
       """
-    Then "Reply" is in our Outbox
+    Then note "Reply" is in our Outbox
     And "Reply" has the content "<p>Hello<br />World</p>"
 
   Scenario: Created reply has user provided HTML escaped
@@ -42,7 +42,7 @@ Feature: Creating a reply
       """
       This is a great article!<script>alert("Hello, world!");</script>
       """
-    Then "Reply" is in our Outbox
+    Then note "Reply" is in our Outbox
     And "Reply" has the content "<p>This is a great article!&lt;script&gt;alert(\"Hello, world!\");&lt;/script&gt;</p>"
 
   Scenario: Created reply is sent to followers
@@ -58,7 +58,7 @@ Feature: Creating a reply
       """
       This is a great article!
       """
-    Then "Reply" is in our Outbox
+    Then note "Reply" is in our Outbox
     And "Reply" has the content "<p>This is a great article!</p>"
     And note "Reply" has the image URL "http://localhost:4443/image.jpg"
 

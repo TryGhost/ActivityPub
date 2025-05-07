@@ -7,7 +7,7 @@ Then(
     async function (postNumber, objectName) {
         const responseJson = await this.response.clone().json();
 
-        const object = this.objects[objectName];
+        const object = this.objects[objectName] || this.posts[objectName];
         const post = responseJson.posts[Number(postNumber) - 1];
 
         assert(post, `Expected to find ${objectName} in thread`);

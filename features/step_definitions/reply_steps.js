@@ -64,7 +64,7 @@ When('we attempt to reply to an unknown object', async function () {
 When(
     'we reply {string} to {string} with the content',
     async function (replyName, objectName, replyContent) {
-        const object = this.objects[objectName];
+        const object = this.objects[objectName] || this.posts[objectName];
 
         this.response = await fetchActivityPub(
             `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
@@ -80,10 +80,9 @@ When(
         );
 
         if (this.response.ok) {
-            const activity = await this.response.clone().json();
-
-            this.activities[replyName] = activity;
-            this.objects[replyName] = activity.object;
+            const responseJson = await this.response.clone().json();
+            const reply = responseJson.reply;
+            this.posts[replyName] = reply;
         }
     },
 );
@@ -108,10 +107,9 @@ When(
         );
 
         if (this.response.ok) {
-            const activity = await this.response.clone().json();
-
-            this.activities[replyName] = activity;
-            this.objects[replyName] = activity.object;
+            const responseJson = await this.response.clone().json();
+            const reply = responseJson.reply;
+            this.posts[replyName] = reply;
         }
     },
 );

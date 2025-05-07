@@ -2,11 +2,7 @@ import assert from 'node:assert';
 
 import { Given, Then, When } from '@cucumber/cucumber';
 
-import {
-    findInOutbox,
-    waitForInboxActivity,
-    waitForOutboxActivity,
-} from '../support/activitypub.js';
+import { findInOutbox, waitForInboxActivity } from '../support/activitypub.js';
 import {
     createActivity,
     createActor,
@@ -229,11 +225,6 @@ Then('{string} is not in our Outbox', async function (activityName) {
     );
 });
 
-Then('{string} is in our Outbox', async function (activityName) {
-    const activity = this.activities[activityName];
-    await waitForOutboxActivity(activity);
-});
-
 async function waitForOutboxActivityType(
     activityType,
     objectType,
@@ -290,9 +281,14 @@ Then(
         const actor = this.actors[actorName];
         const inbox = new URL(actor.inbox);
         const activity = this.activities[activityName];
+        const post = this.posts[activityName];
 
         const found = await waitForRequest('POST', inbox.pathname, (call) => {
             const json = JSON.parse(call.request.body);
+
+            if (post) {
+                return json.object.id === post.id;
+            }
             return (
                 json.type === activity.type &&
                 json.object.id === activity.object.id

@@ -62,7 +62,7 @@ export async function handleCreateReply(
                         error: 'Invalid Reply - upstream error fetching parent post',
                     }),
                     {
-                        status: 502,
+                        status: 404,
                     },
                 );
             case 'not-a-post':
