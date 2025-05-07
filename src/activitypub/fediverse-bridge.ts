@@ -1,14 +1,20 @@
 import type EventEmitter from 'node:events';
 import {
+    type Activity,
+    type Actor,
     Article,
     Create,
     Delete,
     Note as FedifyNote,
     Follow,
     Image,
+    Mention,
     PUBLIC_COLLECTION,
+    type Recipient,
     Reject,
     Update,
+    isActor,
+    lookupObject,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
@@ -17,7 +23,8 @@ import type { AccountService } from 'account/account.service';
 import { addToList } from 'kv-helpers';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
-import { PostType } from 'post/post.entity';
+import { type Post, PostType } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 import { v4 as uuidv4 } from 'uuid';
 import type { FedifyContextFactory } from './fedify-context.factory';
 
@@ -26,6 +33,7 @@ export class FediverseBridge {
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
+        private readonly postRepository: KnexPostRepository,
     ) {}
 
     async init() {
@@ -53,58 +61,39 @@ export class FediverseBridge {
             return;
         }
         const ctx = this.fedifyContextFactory.getFedifyContext();
-        let fedifyObject = null;
+        let fedifyObject: FedifyNote | Article | null = null;
+        let createActivity: Create | null = null;
 
         if (post.type === PostType.Note) {
             if (post.inReplyTo) {
-                return;
+                let attributionActor: Actor | null = null;
+                try {
+                    [createActivity, fedifyObject, attributionActor] =
+                        await this.getActivityDataForReply(post);
+                } catch (error) {
+                    ctx.data.logger.error(
+                        'Error getting activity data for reply',
+                        { postId: post.id, error },
+                    );
+                    return;
+                }
+                await this.sendActivityToRecipient(
+                    createActivity,
+                    post.author.username,
+                    attributionActor,
+                );
+            } else {
+                [createActivity, fedifyObject] =
+                    await this.getActivityDataForNote(post);
             }
-            fedifyObject = new FedifyNote({
-                id: post.apId || ctx.getObjectUri(FedifyNote, { id: uuidv4() }),
-                attribution: post.author.apId,
-                content: post.content,
-                summary: null,
-                published: Temporal.Now.instant(),
-                attachments: post.imageUrl
-                    ? [
-                          new Image({
-                              url: post.imageUrl,
-                          }),
-                      ]
-                    : undefined,
-                to: PUBLIC_COLLECTION,
-                cc: post.author.apFollowers,
-            });
         } else if (post.type === PostType.Article) {
-            const preview = new FedifyNote({
-                id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
-                content: post.excerpt,
-            });
-            fedifyObject = new Article({
-                id:
-                    post.apId ||
-                    ctx.getObjectUri(Article, { id: String(post.id) }),
-                attribution: post.author.apId,
-                name: post.title,
-                content: post.content,
-                image: post.imageUrl,
-                published: Temporal.Instant.from(
-                    post.publishedAt.toISOString(),
-                ),
-                preview,
-                url: post.url,
-                to: PUBLIC_COLLECTION,
-                cc: post.author.apFollowers,
-            });
+            [createActivity, fedifyObject] =
+                await this.getActivityDataForArticle(post);
         }
 
-        const createActivity = new Create({
-            id: ctx.getObjectUri(Create, { id: uuidv4() }),
-            actor: post.author.apId,
-            object: fedifyObject,
-            to: PUBLIC_COLLECTION,
-            cc: post.author.apFollowers,
-        });
+        if (!createActivity) {
+            return;
+        }
 
         await ctx.data.globaldb.set(
             [createActivity.id!.href],
@@ -120,16 +109,199 @@ export class FediverseBridge {
 
         await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
 
+        await this.sendActivityToFollowers(
+            createActivity,
+            post.author.username,
+        );
+    }
+
+    private async sendActivityToFollowers(activity: Activity, handle: string) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
         await ctx.sendActivity(
             {
-                handle: post.author.username,
+                handle: handle,
             },
             'followers',
-            createActivity,
+            activity,
             {
                 preferSharedInbox: true,
             },
         );
+    }
+
+    private async sendActivityToRecipient(
+        activity: Activity,
+        handle: string,
+        recipient: Recipient | Recipient[],
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        await ctx.sendActivity(
+            {
+                handle: handle,
+            },
+            recipient,
+            activity,
+            {
+                preferSharedInbox: true,
+            },
+        );
+    }
+
+    private async getActivityDataForNote(
+        post: Post,
+    ): Promise<[Create, FedifyNote]> {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const fedifyObject = new FedifyNote({
+            id: post.apId || ctx.getObjectUri(FedifyNote, { id: uuidv4() }),
+            attribution: post.author.apId,
+            content: post.content,
+            summary: null,
+            published: Temporal.Now.instant(),
+            attachments: post.imageUrl
+                ? [
+                      new Image({
+                          url: post.imageUrl,
+                      }),
+                  ]
+                : undefined,
+            to: PUBLIC_COLLECTION,
+            cc: post.author.apFollowers,
+        });
+        const createActivity = new Create({
+            id: ctx.getObjectUri(Create, { id: uuidv4() }),
+            actor: post.author.apId,
+            object: fedifyObject,
+            to: PUBLIC_COLLECTION,
+            cc: post.author.apFollowers,
+        });
+
+        return [createActivity, fedifyObject];
+    }
+
+    private async getActivityDataForReply(
+        reply: Post,
+    ): Promise<[Create, FedifyNote, Actor]> {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const parentPost = await this.postRepository.getById(reply.inReplyTo);
+        if (!parentPost) {
+            ctx.data.logger.error(
+                `Parent post not found for reply ${reply.id}`,
+            );
+            throw new Error('Parent post not found');
+        }
+
+        const documentLoader = await ctx.getDocumentLoader({
+            handle: 'index',
+        });
+        const inReplyToId = parentPost.apId;
+
+        const objectToReplyTo = await lookupObject(inReplyToId, {
+            documentLoader,
+        });
+
+        if (!objectToReplyTo) {
+            ctx.data.logger.error(
+                `objectToReplyTo not found for reply ${reply.id}`,
+            );
+            throw new Error('objectToReplyTo not found');
+        }
+
+        let attributionActor = null;
+        if (objectToReplyTo.attributionId) {
+            attributionActor = await lookupObject(
+                objectToReplyTo.attributionId.href,
+                { documentLoader },
+            );
+        }
+
+        if (!attributionActor || !isActor(attributionActor)) {
+            ctx.data.logger.error(
+                `attributionActor not found for reply ${reply.id} or it's not of type actor`,
+            );
+            throw new Error(
+                'attributionActor not found or it is not of type actor',
+            );
+        }
+
+        const conversation =
+            objectToReplyTo.replyTargetId || objectToReplyTo.id!;
+        const mentions = [
+            new Mention({
+                href: attributionActor.id,
+                name: attributionActor.name,
+            }),
+        ];
+
+        const cc = [];
+        if (reply.author.apFollowers) {
+            cc.push(reply.author.apFollowers);
+        }
+        if (attributionActor.id) {
+            cc.push(attributionActor.id);
+        }
+
+        const fedifyObject = new FedifyNote({
+            id: reply.apId || ctx.getObjectUri(FedifyNote, { id: uuidv4() }),
+            attribution: reply.author.apId,
+            replyTarget: objectToReplyTo,
+            content: reply.content,
+            attachments: reply.imageUrl
+                ? [
+                      new Image({
+                          url: reply.imageUrl,
+                      }),
+                  ]
+                : undefined,
+            summary: null,
+            published: Temporal.Now.instant(),
+            contexts: [conversation],
+            tags: mentions,
+            to: PUBLIC_COLLECTION,
+            ccs: cc,
+        });
+
+        const createActivity = new Create({
+            id: ctx.getObjectUri(Create, { id: uuidv4() }),
+            actor: reply.author.apId,
+            object: fedifyObject,
+            to: PUBLIC_COLLECTION,
+            ccs: cc,
+        });
+
+        return [createActivity, fedifyObject, attributionActor];
+    }
+
+    private async getActivityDataForArticle(
+        post: Post,
+    ): Promise<[Create, Article]> {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const preview = new FedifyNote({
+            id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
+            content: post.excerpt,
+        });
+
+        const fedifyObject = new Article({
+            id: post.apId || ctx.getObjectUri(Article, { id: String(post.id) }),
+            attribution: post.author.apId,
+            name: post.title,
+            content: post.content,
+            image: post.imageUrl,
+            published: Temporal.Instant.from(post.publishedAt.toISOString()),
+            preview,
+            url: post.url,
+            to: PUBLIC_COLLECTION,
+            cc: post.author.apFollowers,
+        });
+
+        const createActivity = new Create({
+            id: ctx.getObjectUri(Create, { id: uuidv4() }),
+            actor: post.author.apId,
+            object: fedifyObject,
+            to: PUBLIC_COLLECTION,
+            cc: post.author.apFollowers,
+        });
+
+        return [createActivity, fedifyObject];
     }
 
     private async handlePostDeleted(event: PostDeletedEvent) {
@@ -151,15 +323,9 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                handle: post.author.username,
-            },
-            'followers',
+        await this.sendActivityToFollowers(
             deleteActivity,
-            {
-                preferSharedInbox: true,
-            },
+            post.author.username,
         );
     }
 
@@ -181,16 +347,7 @@ export class FediverseBridge {
 
         await ctx.data.globaldb.set([update.id!.href], await update.toJsonLd());
 
-        await ctx.sendActivity(
-            {
-                handle: account.username,
-            },
-            'followers',
-            update,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(update, account.username);
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {

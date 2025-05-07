@@ -304,6 +304,7 @@ const fediverseBridge = new FediverseBridge(
     events,
     fedifyContextFactory,
     accountService,
+    postRepository,
 );
 fediverseBridge.init();
 

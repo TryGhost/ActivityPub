@@ -16,17 +16,17 @@ Feature: Thread
         """
         This is a great article!
         """
-    And "Reply1" is in our Outbox
+    And note "Reply1" is in our Outbox
     And we reply "Reply2" to "Article" with the content
         """
         This is still a great article!
         """
-    And "Reply2" is in our Outbox
+    And note "Reply2" is in our Outbox
     And we reply "Reply3" to "Reply1" with the content
         """
         This is a great reply!
         """
-    And "Reply3" is in our Outbox
+    And note "Reply3" is in our Outbox
     When an authenticated request is made to "/.ghost/activitypub/thread/Article"
     Then the request is accepted
     And the thread contains "3" posts
@@ -39,17 +39,17 @@ Feature: Thread
         """
         This is a great article!
         """
-    And "Reply1" is in our Outbox
+    And note "Reply1" is in our Outbox
     And we reply "Reply2" to "Article" with the content
         """
         This is still a great article!
         """
-    And "Reply2" is in our Outbox
+    And note "Reply2" is in our Outbox
     And we reply "Reply3" to "Reply1" with the content
         """
         This is a great reply!
         """
-    And "Reply3" is in our Outbox
+    And note "Reply3" is in our Outbox
     When an authenticated request is made to "/.ghost/activitypub/thread/Reply3"
     Then the request is accepted
     And the thread contains "3" posts
@@ -62,22 +62,22 @@ Feature: Thread
         """
         This is a great article!
         """
-    And "Reply1" is in our Outbox
+    And note "Reply1" is in our Outbox
     And we reply "Reply2" to "Article" with the content
         """
         This is still a great article!
         """
-    And "Reply2" is in our Outbox
+    And note "Reply2" is in our Outbox
     And we reply "Reply3" to "Article" with the content
         """
         This is probably the best article I have ever read!
         """
-    And "Reply3" is in our Outbox
+    And note "Reply3" is in our Outbox
     And we reply "Reply4" to "Article" with the content
         """
         Maybe its just an ok article after all!
         """
-    And "Reply4" is in our Outbox
+    And note "Reply4" is in our Outbox
     And an authenticated "delete" request is made to "/.ghost/activitypub/post/Reply2"
     And the request is accepted
     And an authenticated "delete" request is made to "/.ghost/activitypub/post/Reply4"
@@ -94,17 +94,17 @@ Feature: Thread
         """
         This is a great article!
         """
-    And "Reply1" is in our Outbox
+    And note "Reply1" is in our Outbox
     And we reply "Reply2" to "Article" with the content
         """
         This is still a great article!
         """
-    And "Reply2" is in our Outbox
+    And note "Reply2" is in our Outbox
     And we reply "Reply3" to "Reply1" with the content
         """
         This is a great reply!
         """
-    And "Reply3" is in our Outbox
+    And note "Reply3" is in our Outbox
     And an authenticated "delete" request is made to "/.ghost/activitypub/post/Reply1"
     And the request is accepted
     When an authenticated request is made to "/.ghost/activitypub/thread/Reply3"

@@ -10,6 +10,7 @@ import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { Post } from 'post/post.entity';
 import { PostType } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
@@ -19,6 +20,7 @@ const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 describe('FediverseBridge', () => {
     let events: EventEmitter;
     let accountService: AccountService;
+    let postRepository: KnexPostRepository;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
 
@@ -27,6 +29,9 @@ describe('FediverseBridge', () => {
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
+        postRepository = {
+            getById: vi.fn(),
+        } as unknown as KnexPostRepository;
         context = {
             getObjectUri() {
                 return new URL('https://mockdeleteurl.com');
@@ -54,6 +59,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
 
         await bridge.init();
@@ -85,6 +91,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
 
         await bridge.init();
@@ -146,6 +153,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -230,6 +238,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -275,6 +284,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -317,6 +327,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -341,6 +352,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -392,6 +404,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -453,6 +466,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
