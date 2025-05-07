@@ -5,15 +5,12 @@ import {
     type Follow,
     Reject,
 } from '@fedify/fedify';
-import { v4 as uuidv4 } from 'uuid';
-
-import type { Logger } from '@logtape/logtape';
 import type { AccountService } from 'account/account.service';
-import type { Account } from 'account/types';
-import { mapActorToExternalAccountData } from 'account/utils';
 import type { ContextData } from 'app';
+import { getValue, isError } from 'core/result';
 import { addToList } from 'kv-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
+import { v4 as uuidv4 } from 'uuid';
 
 export class FollowHandler {
     constructor(
@@ -52,24 +49,23 @@ export class FollowHandler {
 
         // Resolve the accounts of the account to follow and the follower,
         // and check if the follow is allowed
-        const accountToFollow = await this.accountService.getAccountByApId(
-            follow.objectId.href,
+        const accountToFollowResult = await this.accountService.ensureByApId(
+            follow.objectId,
         );
-
-        if (!accountToFollow) {
+        if (isError(accountToFollowResult)) {
             ctx.data.logger.info('Account to follow not found, exit early');
             return;
         }
+        const accountToFollow = getValue(accountToFollowResult);
 
-        const followerAccount = await this.getFollowerAccount(
-            sender,
-            ctx.data.logger,
+        const followerAccountResult = await this.accountService.ensureByApId(
+            sender.id,
         );
-
-        if (!followerAccount) {
+        if (isError(followerAccountResult)) {
             ctx.data.logger.info('Follower account not found, exit early');
             return;
         }
+        const followerAccount = getValue(followerAccountResult);
 
         const isFollowAllowed =
             await this.moderationService.canInteractWithAccount(
@@ -79,7 +75,7 @@ export class FollowHandler {
 
         if (!isFollowAllowed) {
             ctx.data.logger.info(
-                `${followerAccount.ap_id} is not allowed to follow ${accountToFollow.ap_id}, sending reject`,
+                `${followerAccount.apId} is not allowed to follow ${accountToFollow.apId}, sending reject`,
             );
 
             await this.sendReject(ctx, follow, parsed.handle, sender);
@@ -88,9 +84,9 @@ export class FollowHandler {
         }
 
         // Record the follow and send an accept activity to the sender
-        await this.accountService.recordAccountFollow(
-            accountToFollow,
+        await this.accountService.followAccount(
             followerAccount,
+            accountToFollow,
         );
 
         await this.sendAccept(ctx, follow, parsed.handle, sender);
@@ -112,27 +108,6 @@ export class FollowHandler {
             // Persist or update sender in global db
             ctx.data.globaldb.set([sender.id!.href], senderJson),
         ]);
-    }
-
-    private async getFollowerAccount(
-        sender: Actor,
-        logger: Logger,
-    ): Promise<Account> {
-        let account = await this.accountService.getAccountByApId(
-            sender.id?.href ?? '',
-        );
-
-        if (!account) {
-            logger.info(
-                `Follower account "${sender.id?.href}" not found, creating`,
-            );
-
-            account = await this.accountService.createExternalAccount(
-                await mapActorToExternalAccountData(sender),
-            );
-        }
-
-        return account;
     }
 
     private async sendAccept(
