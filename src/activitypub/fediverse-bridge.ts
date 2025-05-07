@@ -1,5 +1,6 @@
 import type EventEmitter from 'node:events';
 import {
+    type Activity,
     Article,
     Create,
     Delete,
@@ -85,12 +86,20 @@ export class FediverseBridge {
 
         await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
 
+        await this.sendActivityToFollowers(
+            createActivity,
+            post.author.username,
+        );
+    }
+
+    private async sendActivityToFollowers(activity: Activity, handle: string) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
         await ctx.sendActivity(
             {
-                handle: post.author.username,
+                handle: handle,
             },
             'followers',
-            createActivity,
+            activity,
             {
                 preferSharedInbox: true,
             },
@@ -180,15 +189,9 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                handle: post.author.username,
-            },
-            'followers',
+        await this.sendActivityToFollowers(
             deleteActivity,
-            {
-                preferSharedInbox: true,
-            },
+            post.author.username,
         );
     }
 
@@ -210,16 +213,7 @@ export class FediverseBridge {
 
         await ctx.data.globaldb.set([update.id!.href], await update.toJsonLd());
 
-        await ctx.sendActivity(
-            {
-                handle: account.username,
-            },
-            'followers',
-            update,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(update, account.username);
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
