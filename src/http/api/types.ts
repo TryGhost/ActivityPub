@@ -69,6 +69,10 @@ export interface AccountDTO {
      * Whether the account of the current user is blocking this account
      */
     blockedByMe: boolean;
+    /**
+     * Whether the account of the current user is blocking this accounts domain
+     */
+    domainBlockedByMe: boolean;
 }
 
 export type AuthorDTO = Pick<

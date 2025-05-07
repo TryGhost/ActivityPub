@@ -5,6 +5,7 @@
   "bio": "Test site",
   "blockedByMe": false,
   "customFields": {},
+  "domainBlockedByMe": false,
   "followedByMe": false,
   "followerCount": 0,
   "followingCount": 0,
