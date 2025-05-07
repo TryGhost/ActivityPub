@@ -436,6 +436,8 @@ Then(
         const object =
             this.objects[objectNameOrType] || this.actors[objectNameOrType];
 
+        const post = this.posts[objectNameOrType];
+
         const inboxUrl = new URL(actor.inbox);
 
         const found = await waitForRequest(
@@ -454,6 +456,13 @@ Then(
                     return body.object.id === object.id;
                 }
 
+                if (post) {
+                    if (typeof body.object === 'string') {
+                        return body.object === post.id;
+                    }
+                    return body.object.id === post.id;
+                }
+
                 return body.object.type === objectNameOrType;
             },
         );
@@ -462,8 +471,12 @@ Then(
     },
 );
 
-Then('{string} has the content {string}', function (activityName, content) {
-    const activity = this.activities[activityName];
-
-    assert.equal(activity.object.content, content);
+Then('{string} has the content {string}', function (postName, content) {
+    const activity = this.activities[postName];
+    const post = this.posts[postName];
+    if (activity) {
+        assert.equal(activity.object.content, content);
+    } else if (post) {
+        assert.equal(post.content, content);
+    }
 });

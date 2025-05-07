@@ -11,4 +11,4 @@ Feature: Followers
       """
       Hello, world!
       """
-    Then Activity "Note" is sent to all followers
+    Then note "Note" is sent to all followers
