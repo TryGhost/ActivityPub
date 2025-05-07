@@ -3,9 +3,7 @@ import { z } from 'zod';
 import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { PostService } from 'post/post.service';
-import { publishNote } from 'publishing/helpers';
-import type { ActivityJsonLd } from 'publishing/service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { postToDTO } from './helpers/post';
 
 const NoteSchema = z.object({
     content: z.string(),
@@ -62,24 +60,16 @@ export async function handleCreateNote(
 
     const post = getValue(postResult);
 
-    let result: ActivityJsonLd | null = null;
+    const account = ctx.get('account');
 
-    try {
-        result = await publishNote(ctx, {
-            content: post.content ?? '',
-            author: {
-                handle: ACTOR_DEFAULT_HANDLE,
-            },
-            apId: post.apId,
-            imageUrl: post.imageUrl,
-        });
-    } catch (err) {
-        ctx.get('logger').error('Failed to publish note: {error}', {
-            error: err,
-        });
-    }
+    const postDTO = postToDTO(post, {
+        authoredByMe: post.author.id === account.id,
+        likedByMe: false,
+        repostedByMe: false,
+        repostedBy: null,
+    });
 
-    return new Response(JSON.stringify(result || {}), {
+    return new Response(JSON.stringify({ post: postDTO }), {
         headers: {
             'Content-Type': 'application/json',
         },
