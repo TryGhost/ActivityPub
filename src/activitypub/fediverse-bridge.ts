@@ -56,6 +56,9 @@ export class FediverseBridge {
         let fedifyObject = null;
 
         if (post.type === PostType.Note) {
+            if (post.inReplyTo) {
+                return;
+            }
             fedifyObject = new FedifyNote({
                 id: post.apId || ctx.getObjectUri(FedifyNote, { id: uuidv4() }),
                 attribution: post.author.apId,
