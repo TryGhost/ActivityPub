@@ -31,6 +31,8 @@
     "test:code": "docker compose run --rm activitypub-testing yarn _test:code",
     "_test:all": "yarn _test:types && yarn _test:code",
     "test:all": "docker compose run --rm activitypub-testing yarn _test:all",
+    "_test:single": "vitest run --coverage --reporter=dot",
+    "test:single": "docker compose run --rm activitypub-testing yarn _test:single",
     "lint": "biome check"
   },
   "files": [
