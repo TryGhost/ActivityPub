@@ -1,23 +1,11 @@
-import {
-    type Actor,
-    Create,
-    Image,
-    Mention,
-    Note,
-    PUBLIC_COLLECTION,
-} from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
-import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
-import { type AppContext, fedify } from 'app';
+import type { AppContext } from 'app';
 import { getValue } from 'core/result';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
-import { addToList } from 'kv-helpers';
-import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { postToDTO } from './helpers/post';
 
 const ReplyActionSchema = z.object({
     content: z.string(),
@@ -28,7 +16,6 @@ export async function handleCreateReply(
     ctx: AppContext,
     postService: PostService,
 ) {
-    const logger = ctx.get('logger');
     const id = ctx.req.param('id');
 
     let data: z.infer<typeof ReplyActionSchema>;
@@ -42,12 +29,6 @@ export async function handleCreateReply(
         );
     }
 
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
-        globaldb: ctx.get('globaldb'),
-        logger,
-    });
-
     const inReplyToId = parseURL(decodeURIComponent(id));
 
     if (!inReplyToId) {
@@ -58,46 +39,6 @@ export async function handleCreateReply(
             },
         );
     }
-
-    const objectToReplyTo = await lookupObject(apCtx, id);
-    if (!objectToReplyTo) {
-        return new Response(
-            JSON.stringify({ error: 'Object to reply to not found' }),
-            {
-                status: 404,
-            },
-        );
-    }
-
-    const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE);
-
-    let attributionActor: Actor | null = null;
-    if (objectToReplyTo.attributionId) {
-        attributionActor = await lookupActor(
-            apCtx,
-            objectToReplyTo.attributionId.href,
-        );
-    }
-
-    if (!attributionActor) {
-        return new Response(
-            JSON.stringify({ error: 'Attribution actor not found' }),
-            {
-                status: 400,
-            },
-        );
-    }
-
-    const to = PUBLIC_COLLECTION;
-    const cc = [attributionActor, apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
-
-    const conversation = objectToReplyTo.replyTargetId || objectToReplyTo.id!;
-    const mentions = [
-        new Mention({
-            href: attributionActor.id,
-            name: attributionActor.name,
-        }),
-    ];
 
     const newReplyResult = await postService.createReply(
         ctx.get('account'),
@@ -201,72 +142,16 @@ export async function handleCreateReply(
 
     const newReply = getValue(newReplyResult);
 
-    const reply = new Note({
-        id: newReply.apId,
-        attribution: actor,
-        replyTarget: objectToReplyTo,
-        content: newReply.content,
-        attachments: newReply.imageUrl
-            ? [
-                  new Image({
-                      url: newReply.imageUrl,
-                  }),
-              ]
-            : undefined,
-        summary: null,
-        published: Temporal.Now.instant(),
-        contexts: [conversation],
-        tags: mentions,
-        to: to,
-        ccs: cc,
+    const replyDTO = postToDTO(newReply, {
+        authoredByMe: newReply.author.id === ctx.get('account').id,
+        likedByMe: false,
+        repostedByMe: false,
+        repostedBy: null,
     });
 
-    const createId = apCtx.getObjectUri(Create, {
-        id: uuidv4(),
-    });
-
-    const create = new Create({
-        id: createId,
-        actor: actor,
-        object: reply,
-        to: to,
-        ccs: cc,
-    });
-
-    const activityJson = await create.toJsonLd();
-
-    await ctx.get('globaldb').set([create.id!.href], activityJson);
-    await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
-
-    await addToList(ctx.get('db'), ['outbox'], create.id!.href);
-
-    apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
-        attributionActor,
-        create,
-        {
-            preferSharedInbox: true,
-        },
-    );
-
-    try {
-        await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            create,
-            {
-                preferSharedInbox: true,
-            },
-        );
-    } catch (err) {
-        logger.error('Error sending reply activity - {error}', {
-            error: err,
-        });
-    }
-
-    return new Response(JSON.stringify(activityJson), {
+    return new Response(JSON.stringify({ reply: replyDTO }), {
         headers: {
-            'Content-Type': 'application/activity+json',
+            'Content-Type': 'application/json',
         },
         status: 200,
     });
