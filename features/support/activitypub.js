@@ -70,6 +70,28 @@ export async function findInOutbox(activity) {
     return (outbox.orderedItems || []).find((item) => item.id === activity.id);
 }
 
+export async function findNoteInOutbox(note) {
+    const initialResponse = await fetchActivityPub(
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const initialResponseJson = await initialResponse.json();
+    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
+        headers: {
+            Accept: 'application/ld+json',
+        },
+    });
+    const outbox = await firstPageReponse.json();
+
+    return (outbox.orderedItems || []).find(
+        (item) => item.object.id === note.id,
+    );
+}
+
 export async function waitForOutboxActivity(
     activity,
     options = {
@@ -95,6 +117,36 @@ export async function waitForOutboxActivity(
     }
 
     await waitForOutboxActivity(activity, {
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 500,
+    });
+}
+
+export async function waitForOutboxNote(
+    note,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+    const found = await findNoteInOutbox(note);
+
+    if (found) {
+        return found;
+    }
+
+    if (options.retryCount >= MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting on a note in the outbox`,
+        );
+    }
+
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
+
+    await waitForOutboxNote(note, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });

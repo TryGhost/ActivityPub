@@ -13,7 +13,7 @@ Feature: Creating a note
       """
       Hello, world!
       """
-    Then "Note" is in our Outbox
+    Then note "Note" is in our Outbox
 
   Scenario: Created note is formatted
     When we create a note "Note" with the content
@@ -21,7 +21,7 @@ Feature: Creating a note
       Hello
       World
       """
-    Then "Note" is in our Outbox
+    Then note "Note" is in our Outbox
     And "Note" has the content "<p>Hello<br />World</p>"
 
   Scenario: Created note has user provided HTML escaped
@@ -33,7 +33,7 @@ Feature: Creating a note
       <p>Hello, world!</p>
       <script>alert("Hello, world!");</script>
       """
-    Then "Note" is in our Outbox
+    Then note "Note" is in our Outbox
     And "Note" has the content "<p>&lt;p&gt;Hello, world!&lt;/p&gt;<br />&lt;script&gt;alert(\"Hello, world!\");&lt;/script&gt;</p>"
 
   Scenario: Created note is sent to followers
@@ -45,14 +45,14 @@ Feature: Creating a note
       """
       Hello, world!
       """
-    Then Activity "Note" is sent to all followers
+    Then note "Note" is sent to all followers
 
   Scenario: Creating a note with an image URL
     When we create a note "Note" with imageUrl "http://localhost:4443/image.jpg" and content
       """
       Hello, world!
       """
-    Then "Note" is in our Outbox
+    Then note "Note" is in our Outbox
     And "Note" has the content "<p>Hello, world!</p>"
     And note "Note" has the image URL "http://localhost:4443/image.jpg"
 
