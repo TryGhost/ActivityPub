@@ -64,12 +64,28 @@ export class ModerationService {
         interactionAccountId: number,
         targetAccountId: number,
     ): Promise<boolean> {
-        const block = await this.db('blocks')
+        const accountBlock = await this.db('blocks')
             .where('blocker_id', targetAccountId)
             .andWhere('blocked_id', interactionAccountId)
             .first();
 
-        return block === undefined;
+        if (accountBlock !== undefined) {
+            return false;
+        }
+
+        const domainBlock = await this.db('domain_blocks')
+            .join(
+                'accounts',
+                'domain_blocks.domain_hash',
+                'accounts.domain_hash',
+            )
+            .where({
+                'domain_blocks.blocker_id': targetAccountId,
+                'accounts.id': interactionAccountId,
+            })
+            .first();
+
+        return domainBlock === undefined;
     }
 
     async domainIsBlocked(

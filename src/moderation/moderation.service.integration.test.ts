@@ -177,5 +177,36 @@ describe('ModerationService', () => {
 
             expect(charlieCanInteractWithAlice).toBe(true);
         });
+
+        it('should prevent interaction when the domain is blocked', async () => {
+            const [[aliceAccount], [bobAccount, bobSite]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(null, 'blocked.com'),
+            ]);
+
+            const [charlieAccount] =
+                await fixtureManager.createInternalAccount(bobSite);
+
+            await fixtureManager.createDomainBlock(
+                aliceAccount,
+                bobAccount.apId,
+            );
+
+            const bobCanInteractWithAlice =
+                await moderationService.canInteractWithAccount(
+                    bobAccount.id,
+                    aliceAccount.id,
+                );
+
+            expect(bobCanInteractWithAlice).toBe(false);
+
+            const charlieCanInteractWithAlice =
+                await moderationService.canInteractWithAccount(
+                    charlieAccount.id,
+                    aliceAccount.id,
+                );
+
+            expect(charlieCanInteractWithAlice).toBe(false);
+        });
     });
 });
