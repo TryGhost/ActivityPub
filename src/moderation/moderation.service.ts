@@ -78,7 +78,9 @@ export class ModerationService {
     ): Promise<boolean> {
         const block = await this.db('domain_blocks')
             .where('blocker_id', targetAccountId)
-            .andWhere('domain', domain.hostname)
+            .whereRaw('domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
+                domain.hostname,
+            ])
             .first();
 
         return block !== undefined;
