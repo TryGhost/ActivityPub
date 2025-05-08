@@ -398,4 +398,28 @@ export class FeedService {
             ])
             .delete();
     }
+
+    async removeUnfollowedAccountPostsFromFeed(
+        feedAccountId: number,
+        unfollowedAccountId: number,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', feedAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('feeds')
+            .where((qb) => {
+                qb.where('author_id', unfollowedAccountId).orWhere(
+                    'reposted_by_id',
+                    unfollowedAccountId,
+                );
+            })
+            .andWhere('user_id', user.id)
+            .delete();
+    }
 }

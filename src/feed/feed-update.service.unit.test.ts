@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { AccountUnfollowedEvent } from 'account/account-unfollowed.event';
 import { AccountEntity } from 'account/account.entity';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import { FeedUpdateService } from 'feed/feed-update.service';
@@ -29,6 +30,7 @@ describe('FeedUpdateService', () => {
             removePostFromFeeds: vi.fn(),
             removeBlockedAccountPostsFromFeed: vi.fn(),
             removeBlockedDomainPostsFromFeed: vi.fn(),
+            removeUnfollowedAccountPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
         const draft = AccountEntity.draft({
@@ -225,6 +227,22 @@ describe('FeedUpdateService', () => {
             expect(
                 feedService.removeBlockedDomainPostsFromFeed,
             ).toHaveBeenCalledWith(blockerAccount.id, blockedDomain);
+        });
+    });
+
+    describe('handling an unfollowed account', () => {
+        it("should remove an unfollowed account's posts from the feed of the unfollower", () => {
+            const unfollower = { id: 456 } as AccountEntity;
+            const account = { id: 789 } as AccountEntity;
+
+            events.emit(
+                AccountUnfollowedEvent.getName(),
+                new AccountUnfollowedEvent(account.id, unfollower.id),
+            );
+
+            expect(
+                feedService.removeUnfollowedAccountPostsFromFeed,
+            ).toHaveBeenCalledWith(unfollower.id, account.id);
         });
     });
 });
