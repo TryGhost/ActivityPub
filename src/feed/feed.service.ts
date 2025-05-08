@@ -371,4 +371,31 @@ export class FeedService {
             .andWhere('user_id', user.id)
             .delete();
     }
+
+    async removeBlockedDomainPostsFromFeed(
+        feedAccountId: number,
+        blockedDomain: URL,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', feedAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('feeds')
+            .join('accounts', function () {
+                this.on('feeds.author_id', 'accounts.id').orOn(
+                    'feeds.reposted_by_id',
+                    'accounts.id',
+                );
+            })
+            .where('feeds.user_id', user.id)
+            .andWhereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
+                blockedDomain.host,
+            ])
+            .delete();
+    }
 }

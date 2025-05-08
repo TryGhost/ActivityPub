@@ -1,6 +1,7 @@
 import type { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
@@ -34,6 +35,10 @@ export class FeedUpdateService {
         this.events.on(
             AccountBlockedEvent.getName(),
             this.handleAccountBlockedEvent.bind(this),
+        );
+        this.events.on(
+            DomainBlockedEvent.getName(),
+            this.handleDomainBlockedEvent.bind(this),
         );
     }
 
@@ -74,6 +79,16 @@ export class FeedUpdateService {
         await this.feedService.removeBlockedAccountPostsFromFeed(
             blockerId,
             blockedId,
+        );
+    }
+
+    private async handleDomainBlockedEvent(event: DomainBlockedEvent) {
+        const blockerId = event.getBlockerId();
+        const domain = event.getDomain();
+
+        await this.feedService.removeBlockedDomainPostsFromFeed(
+            blockerId,
+            domain,
         );
     }
 }

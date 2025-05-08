@@ -892,15 +892,17 @@ describe('FeedService', () => {
             const userAccount = await createInternalAccount('user.com');
 
             // Initialise an internal account that the user will follow and block
-            const blockedAccount = await createInternalAccount('blocked.com');
+            // the domain of
+            const blockedDomainAccount =
+                await createInternalAccount('blocked.com');
 
             await accountService.recordAccountFollow(
-                blockedAccount as unknown as AccountType,
+                blockedDomainAccount as unknown as AccountType,
                 userAccount as unknown as AccountType,
             );
 
             // Initialise an internal account that the user will follow and that
-            // also follows the blocked account
+            // also follows the blocked domain account
             const followedAccount = await createInternalAccount('followed.com');
 
             await accountService.recordAccountFollow(
@@ -909,7 +911,7 @@ describe('FeedService', () => {
             );
 
             await accountService.recordAccountFollow(
-                blockedAccount as unknown as AccountType,
+                blockedDomainAccount as unknown as AccountType,
                 followedAccount as unknown as AccountType,
             );
 
@@ -920,11 +922,11 @@ describe('FeedService', () => {
             await postRepository.save(followedAccountPost);
             await feedService.addPostToFeeds(followedAccountPost as PublicPost);
 
-            followedAccountPost.addRepost(blockedAccount);
+            followedAccountPost.addRepost(blockedDomainAccount);
             await postRepository.save(followedAccountPost);
             await feedService.addPostToFeeds(
                 followedAccountPost as PublicPost,
-                blockedAccount.id,
+                blockedDomainAccount.id,
             );
 
             // Verify the feeds have the correct posts
@@ -935,7 +937,7 @@ describe('FeedService', () => {
             });
             expect(userAccountFeed[1]).toMatchObject({
                 post_id: followedAccountPost.id,
-                reposted_by_id: blockedAccount.id,
+                reposted_by_id: blockedDomainAccount.id,
             });
 
             const followedAccountFeed =
@@ -948,21 +950,253 @@ describe('FeedService', () => {
             });
             expect(followedAccountFeed[1]).toMatchObject({
                 post_id: followedAccountPost.id,
-                reposted_by_id: blockedAccount.id,
+                reposted_by_id: blockedDomainAccount.id,
             });
 
-            const blockedAccountFeed =
-                await getFeedDataForAccount(blockedAccount);
-            expect(blockedAccountFeed.length).toBe(1);
-            expect(blockedAccountFeed[0]).toMatchObject({
+            const blockedDomainAccountFeed =
+                await getFeedDataForAccount(blockedDomainAccount);
+            expect(blockedDomainAccountFeed.length).toBe(1);
+            expect(blockedDomainAccountFeed[0]).toMatchObject({
                 post_id: followedAccountPost.id,
-                reposted_by_id: blockedAccount.id,
+                reposted_by_id: blockedDomainAccount.id,
             });
 
             // Remove the blocked account's reposts from the user's feed
             await feedService.removeBlockedAccountPostsFromFeed(
                 userAccount.id,
-                blockedAccount.id,
+                blockedDomainAccount.id,
+            );
+
+            // Verify the repost from the blocked domain account is removed from
+            // the user's feed
+            const userAccountFeedAfterRemoval =
+                await getFeedDataForAccount(userAccount);
+            expect(userAccountFeedAfterRemoval.length).toBe(1);
+            expect(userAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                author_id: followedAccount.id,
+                reposted_by_id: null,
+            });
+
+            // Verify the blocked domain account's repost is not removed from
+            // the followed account's feed
+            const followedAccountFeedAfterRemoval =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeedAfterRemoval.length).toBe(2);
+            expect(followedAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: null,
+            });
+            expect(followedAccountFeedAfterRemoval[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: blockedDomainAccount.id,
+            });
+
+            // Verify the blocked domain account's repost is not removed from
+            // the blocked domain account's feed
+            const blockedDomainAccountFeedAfterRemoval =
+                await getFeedDataForAccount(blockedDomainAccount);
+            expect(blockedDomainAccountFeedAfterRemoval.length).toBe(1);
+            expect(blockedDomainAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: blockedDomainAccount.id,
+            });
+        });
+    });
+
+    describe('removeBlockedDomainPostsFromFeed', () => {
+        it('should remove posts from feeds when a domain is blocked', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Initialise an internal account for user
+            const userAccount = await createInternalAccount('user.com');
+
+            // Initialise an internal account that the user will follow and block
+            // the domain of
+            const blockedDomainAccount =
+                await createInternalAccount('blocked.com');
+
+            await accountService.recordAccountFollow(
+                blockedDomainAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Initialise an internal account that the user will follow and that
+            // also follows the blocked domain account
+            const followedAccount = await createInternalAccount('followed.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            await accountService.recordAccountFollow(
+                blockedDomainAccount as unknown as AccountType,
+                followedAccount as unknown as AccountType,
+            );
+
+            // Initialise posts
+            const blockedDomainAccountPost = await createPost(
+                blockedDomainAccount,
+                {
+                    audience: Audience.Public,
+                },
+            );
+            await postRepository.save(blockedDomainAccountPost);
+            await feedService.addPostToFeeds(
+                blockedDomainAccountPost as PublicPost,
+            );
+
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAccountPost);
+            await feedService.addPostToFeeds(followedAccountPost as PublicPost);
+
+            // Verify the feeds have the correct posts
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
+            expect(userAccountFeed.length).toBe(2);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_id: blockedDomainAccountPost.id,
+            });
+            expect(userAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            const followedAccountFeed =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeed.length).toBe(2);
+            expect(followedAccountFeed[0]).toMatchObject({
+                post_id: blockedDomainAccountPost.id,
+            });
+            expect(followedAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            const blockedDomainAccountFeed =
+                await getFeedDataForAccount(blockedDomainAccount);
+            expect(blockedDomainAccountFeed.length).toBe(1);
+            expect(blockedDomainAccountFeed[0]).toMatchObject({
+                post_id: blockedDomainAccountPost.id,
+            });
+
+            // Remove the blocked domain account's posts from the user's feed
+            await feedService.removeBlockedDomainPostsFromFeed(
+                userAccount.id,
+                blockedDomainAccount.apId,
+            );
+
+            // Verify the post from the blocked domain account is removed from
+            // the user's feed
+            const userAccountFeedAfterRemoval =
+                await getFeedDataForAccount(userAccount);
+            expect(userAccountFeedAfterRemoval.length).toBe(1);
+            expect(userAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            // Verify the post from the blocked domain account is not removed
+            // from the followed account feed
+            const followedAccountFeedAfterRemoval =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeedAfterRemoval.length).toBe(2);
+            expect(followedAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: blockedDomainAccountPost.id,
+            });
+            expect(followedAccountFeedAfterRemoval[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            // Verify the blocked domain account's post is not removed from the
+            // blocked domain account's feed
+            const blockedDomainAccountFeedAfterRemoval =
+                await getFeedDataForAccount(blockedDomainAccount);
+            expect(blockedDomainAccountFeedAfterRemoval.length).toBe(1);
+            expect(blockedDomainAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: blockedDomainAccountPost.id,
+            });
+        });
+
+        it('should remove reposts from feeds when a domain is blocked', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Initialise an internal account for user
+            const userAccount = await createInternalAccount('user.com');
+
+            // Initialise an internal account that the user will follow and block
+            // the domain of
+            const blockedDomainAccount =
+                await createInternalAccount('blocked.com');
+
+            await accountService.recordAccountFollow(
+                blockedDomainAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Initialise an internal account that the user will follow and that
+            // also follows the blocked domain account
+            const followedAccount = await createInternalAccount('followed.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            await accountService.recordAccountFollow(
+                blockedDomainAccount as unknown as AccountType,
+                followedAccount as unknown as AccountType,
+            );
+
+            // Initialise posts
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAccountPost);
+            await feedService.addPostToFeeds(followedAccountPost as PublicPost);
+
+            followedAccountPost.addRepost(blockedDomainAccount);
+            await postRepository.save(followedAccountPost);
+            await feedService.addPostToFeeds(
+                followedAccountPost as PublicPost,
+                blockedDomainAccount.id,
+            );
+
+            // Verify the feeds have the correct posts
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
+            expect(userAccountFeed.length).toBe(2);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+            expect(userAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: blockedDomainAccount.id,
+            });
+
+            const followedAccountFeed =
+                await getFeedDataForAccount(followedAccount);
+
+            expect(followedAccountFeed.length).toBe(2);
+            expect(followedAccountFeed[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: null,
+            });
+            expect(followedAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: blockedDomainAccount.id,
+            });
+
+            const blockedDomainAccountFeed =
+                await getFeedDataForAccount(blockedDomainAccount);
+            expect(blockedDomainAccountFeed.length).toBe(1);
+            expect(blockedDomainAccountFeed[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: blockedDomainAccount.id,
+            });
+
+            // Remove the blocked account's reposts from the user's feed
+            await feedService.removeBlockedDomainPostsFromFeed(
+                userAccount.id,
+                blockedDomainAccount.apId,
             );
 
             // Verify the repost from the blocked account is removed from the
@@ -987,17 +1221,17 @@ describe('FeedService', () => {
             });
             expect(followedAccountFeedAfterRemoval[1]).toMatchObject({
                 post_id: followedAccountPost.id,
-                reposted_by_id: blockedAccount.id,
+                reposted_by_id: blockedDomainAccount.id,
             });
 
-            // Verify the blocked account's repost is not removed from the
-            // blocked account's feed
-            const blockedAccountFeedAfterRemoval =
-                await getFeedDataForAccount(blockedAccount);
-            expect(blockedAccountFeedAfterRemoval.length).toBe(1);
-            expect(blockedAccountFeedAfterRemoval[0]).toMatchObject({
+            // Verify the blocked domain account's repost is not removed from
+            // the blocked domain account's feed
+            const blockedDomainAccountFeedAfterRemoval =
+                await getFeedDataForAccount(blockedDomainAccount);
+            expect(blockedDomainAccountFeedAfterRemoval.length).toBe(1);
+            expect(blockedDomainAccountFeedAfterRemoval[0]).toMatchObject({
                 post_id: followedAccountPost.id,
-                reposted_by_id: blockedAccount.id,
+                reposted_by_id: blockedDomainAccount.id,
             });
         });
     });
