@@ -6,6 +6,7 @@ import {
     findInOutbox,
     waitForInboxActivity,
     waitForOutboxActivity,
+    waitForOutboxObject,
 } from '../support/activitypub.js';
 import {
     createActivity,
@@ -229,9 +230,11 @@ Then('{string} is not in our Outbox', async function (activityName) {
     );
 });
 
-Then('{string} is in our Outbox', async function (activityName) {
-    const activity = this.activities[activityName];
-    await waitForOutboxActivity(activity);
+Then('{string} is in our Outbox', async function (name) {
+    const activity = this.activities[name]; 
+    if (activity) return waitForOutboxActivity(activity); 
+    const object = this.objects[name]; 
+    if (object) return waitForOutboxObject(object);
 });
 
 async function waitForOutboxActivityType(
@@ -314,6 +317,7 @@ Then(
         const followers = followersResponseJson.orderedItems;
 
         const activity = this.activities[activityName];
+        //todo fix with object
 
         for (const followerUrl of followers) {
             const follower = await (await fetchActivityPub(followerUrl)).json();
@@ -436,8 +440,6 @@ Then(
         const object =
             this.objects[objectNameOrType] || this.actors[objectNameOrType];
 
-        const post = this.posts[objectNameOrType];
-
         const inboxUrl = new URL(actor.inbox);
 
         const found = await waitForRequest(
@@ -456,13 +458,6 @@ Then(
                     return body.object.id === object.id;
                 }
 
-                if (post) {
-                    if (typeof body.object === 'string') {
-                        return body.object === post.id;
-                    }
-                    return body.object.id === post.id;
-                }
-
                 return body.object.type === objectNameOrType;
             },
         );
@@ -473,10 +468,11 @@ Then(
 
 Then('{string} has the content {string}', function (postName, content) {
     const activity = this.activities[postName];
-    const post = this.posts[postName];
     if (activity) {
         assert.equal(activity.object.content, content);
-    } else if (post) {
-        assert.equal(post.content, content);
     }
+    const object = this.objects[postName];
+    assert.equal(object.content, content);
+
+    
 });

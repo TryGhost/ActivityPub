@@ -11,7 +11,7 @@ Feature: Delete a post
       Hello
       World
       """
-    And note "OurNote" is in our Outbox
+    And "OurNote" is in our Outbox
     And an authenticated request is made to "/.ghost/activitypub/feed"
     And the request is accepted
     And "OurNote" is in the feed

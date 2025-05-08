@@ -24,8 +24,7 @@ When(
 
             const object =
                 this.objects[objectName] ||
-                this.activities[objectName]?.object ||
-                this.posts[objectName];
+                this.activities[objectName]?.object
 
             if (object) {
                 requestPath = path.replace(

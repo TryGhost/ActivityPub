@@ -92,9 +92,6 @@ Before(async function () {
     if (!this.activities) {
         this.activities = {};
     }
-    if (!this.posts) {
-        this.posts = {};
-    }
     if (!this.objects) {
         this.objects = {};
     }
