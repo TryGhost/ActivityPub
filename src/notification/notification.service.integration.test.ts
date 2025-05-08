@@ -41,6 +41,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -63,18 +64,21 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [follower2AccountId] = await client('accounts').insert({
                 username: 'charlie',
                 ap_id: 'https://charlie.com/user/charlie',
                 ap_inbox_url: 'https://charlie.com/user/charlie/inbox',
+                domain: 'charlie.com',
             });
 
             const [follower3AccountId] = await client('accounts').insert({
                 username: 'dan',
                 ap_id: 'https://dan.com/user/dan',
                 ap_inbox_url: 'https://dan.com/user/dan/inbox',
+                domain: 'dan.com',
             });
 
             const [follower1ReplyPostId] = await client('posts').insert({
@@ -147,6 +151,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -169,18 +174,21 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [follower2AccountId] = await client('accounts').insert({
                 username: 'charlie',
                 ap_id: 'https://charlie.com/user/charlie',
                 ap_inbox_url: 'https://charlie.com/user/charlie/inbox',
+                domain: 'charlie.com',
             });
 
             const [follower3AccountId] = await client('accounts').insert({
                 username: 'dan',
                 ap_id: 'https://dan.com/user/dan',
                 ap_inbox_url: 'https://dan.com/user/dan/inbox',
+                domain: 'dan.com',
             });
 
             const [follower1ReplyPostId] = await client('posts').insert({
@@ -274,6 +282,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -285,6 +294,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const account = {
@@ -365,6 +375,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -386,6 +397,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const post = {
@@ -474,6 +486,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -495,6 +508,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const post = {
@@ -584,6 +598,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -605,6 +620,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [replierPostId] = await client('posts').insert({
@@ -665,6 +681,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             await client('users').insert({
@@ -716,6 +733,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [externalAccountPostId] = await client('posts').insert({

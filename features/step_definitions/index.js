@@ -117,6 +117,7 @@ Before(async function () {
             ap_liked_url: actor.liked,
             ap_public_key: JSON.stringify(await exportJwk(keypair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keypair.privateKey)),
+            domain: new URL(actor.id).host,
         });
 
         await getClient()('users').insert({
