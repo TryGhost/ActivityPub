@@ -83,22 +83,22 @@ describe('AccountService', () => {
             username: 'external-account',
             name: 'External Account',
             bio: 'External Account Bio',
-            avatar_url: 'https://example.com/avatars/external-account.png',
+            avatar_url: 'https://www.example.com/avatars/external-account.png',
             banner_image_url:
-                'https://example.com/banners/external-account.png',
-            url: 'https://example.com/users/external-account',
+                'https://www.example.com/banners/external-account.png',
+            url: 'https://www.example.com/users/external-account',
             custom_fields: {},
-            ap_id: 'https://example.com/activitypub/users/external-account',
+            ap_id: 'https://www.example.com/activitypub/users/external-account',
             ap_inbox_url:
-                'https://example.com/activitypub/inbox/external-account',
+                'https://www.example.com/activitypub/inbox/external-account',
             ap_outbox_url:
-                'https://example.com/activitypub/outbox/external-account',
+                'https://www.example.com/activitypub/outbox/external-account',
             ap_following_url:
-                'https://example.com/activitypub/following/external-account',
+                'https://www.example.com/activitypub/following/external-account',
             ap_followers_url:
-                'https://example.com/activitypub/followers/external-account',
+                'https://www.example.com/activitypub/followers/external-account',
             ap_liked_url:
-                'https://example.com/activitypub/liked/external-account',
+                'https://www.example.com/activitypub/liked/external-account',
             ap_shared_inbox_url: null,
             ap_public_key: '',
         };
@@ -231,6 +231,19 @@ describe('AccountService', () => {
 
             expect(secondAccount).toMatchObject(account);
         });
+
+        it('should ensure the account is created with a domain', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            const accountRow = await db('accounts')
+                .where({ id: account.id })
+                .first();
+
+            expect(accountRow.domain).toBe(site.host);
+        });
     });
 
     describe('createExternalAccount', () => {
@@ -273,6 +286,17 @@ describe('AccountService', () => {
                 await service.createExternalAccount(externalAccountData);
 
             expect(secondAccount).toMatchObject(account);
+        });
+
+        it('should ensure the account is created with a domain', async () => {
+            const account =
+                await service.createExternalAccount(externalAccountData);
+
+            const accountRow = await db('accounts')
+                .where({ id: account.id })
+                .first();
+
+            expect(accountRow.domain).toBe(site.host);
         });
     });
 
