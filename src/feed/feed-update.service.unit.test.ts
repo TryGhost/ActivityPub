@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountEntity } from 'account/account.entity';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
@@ -27,6 +28,7 @@ describe('FeedUpdateService', () => {
             addPostToFeeds: vi.fn(),
             removePostFromFeeds: vi.fn(),
             removeBlockedAccountPostsFromFeed: vi.fn(),
+            removeBlockedDomainPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
         const draft = AccountEntity.draft({
@@ -207,6 +209,22 @@ describe('FeedUpdateService', () => {
             expect(
                 feedService.removeBlockedAccountPostsFromFeed,
             ).toHaveBeenCalledWith(account.id, blockedAccount.id);
+        });
+    });
+
+    describe('handling a blocked domain', () => {
+        it('should remove blocked domain posts from feeds', () => {
+            const blockedDomain = new URL('https://blocked.com');
+            const blockerAccount = { id: 456 } as AccountEntity;
+
+            events.emit(
+                DomainBlockedEvent.getName(),
+                new DomainBlockedEvent(blockedDomain, blockerAccount.id),
+            );
+
+            expect(
+                feedService.removeBlockedDomainPostsFromFeed,
+            ).toHaveBeenCalledWith(blockerAccount.id, blockedDomain);
         });
     });
 });
