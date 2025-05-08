@@ -317,7 +317,6 @@ Then(
         const followers = followersResponseJson.orderedItems;
 
         const activity = this.activities[activityName];
-        //todo fix with object
 
         for (const followerUrl of followers) {
             const follower = await (await fetchActivityPub(followerUrl)).json();
@@ -339,6 +338,42 @@ Then(
             assert(
                 found,
                 `Activity "${activityName}" was not sent to "${follower.name}"`,
+            );
+        }
+    },
+);
+
+Then(
+    'Activity with object {string} is sent to all followers',
+    async function (objectName) {
+        const followersResponse = await fetchActivityPub(
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        );
+        const followersResponseJson = await followersResponse.json();
+
+        const followers = followersResponseJson.orderedItems;
+
+        const object = this.objects[objectName];
+
+        for (const followerUrl of followers) {
+            const follower = await (await fetchActivityPub(followerUrl)).json();
+            const inbox = new URL(follower.inbox);
+
+            const found = await waitForRequest(
+                'POST',
+                inbox.pathname,
+                (call) => {
+                    const json = JSON.parse(call.request.body);
+
+                    return (
+                        json.object.id === object.id
+                    );
+                },
+            );
+
+            assert(
+                found,
+                `Activity with object "${objectName}" was not sent to "${follower.name}"`,
             );
         }
     },

@@ -45,7 +45,7 @@ Feature: Creating a note
       """
       Hello, world!
       """
-    Then Activity "Note" is sent to all followers
+    Then Activity with object "Note" is sent to all followers
 
   Scenario: Creating a note with an image URL
     When we create a note "Note" with imageUrl "http://localhost:4443/image.jpg" and content
