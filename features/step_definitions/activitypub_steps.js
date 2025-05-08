@@ -6,6 +6,7 @@ import {
     findInOutbox,
     waitForInboxActivity,
     waitForOutboxActivity,
+    waitForOutboxObject,
 } from '../support/activitypub.js';
 import {
     createActivity,
@@ -229,9 +230,11 @@ Then('{string} is not in our Outbox', async function (activityName) {
     );
 });
 
-Then('{string} is in our Outbox', async function (activityName) {
-    const activity = this.activities[activityName];
-    await waitForOutboxActivity(activity);
+Then('{string} is in our Outbox', async function (name) {
+    const activity = this.activities[name];
+    if (activity) return waitForOutboxActivity(activity);
+    const object = this.objects[name];
+    if (object) return waitForOutboxObject(object);
 });
 
 async function waitForOutboxActivityType(
@@ -335,6 +338,40 @@ Then(
             assert(
                 found,
                 `Activity "${activityName}" was not sent to "${follower.name}"`,
+            );
+        }
+    },
+);
+
+Then(
+    'Activity with object {string} is sent to all followers',
+    async function (objectName) {
+        const followersResponse = await fetchActivityPub(
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        );
+        const followersResponseJson = await followersResponse.json();
+
+        const followers = followersResponseJson.orderedItems;
+
+        const object = this.objects[objectName];
+
+        for (const followerUrl of followers) {
+            const follower = await (await fetchActivityPub(followerUrl)).json();
+            const inbox = new URL(follower.inbox);
+
+            const found = await waitForRequest(
+                'POST',
+                inbox.pathname,
+                (call) => {
+                    const json = JSON.parse(call.request.body);
+
+                    return json.object.id === object.id;
+                },
+            );
+
+            assert(
+                found,
+                `Activity with object "${objectName}" was not sent to "${follower.name}"`,
             );
         }
     },
@@ -462,8 +499,11 @@ Then(
     },
 );
 
-Then('{string} has the content {string}', function (activityName, content) {
-    const activity = this.activities[activityName];
-
-    assert.equal(activity.object.content, content);
+Then('{string} has the content {string}', function (postName, content) {
+    const activity = this.activities[postName];
+    if (activity) {
+        assert.equal(activity.object.content, content);
+    }
+    const object = this.objects[postName];
+    assert.equal(object.content, content);
 });

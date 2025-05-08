@@ -21,20 +21,14 @@
       "votersCount": "toot:votersCount",
     },
   ],
-  "actor": {
-    "id": "https://example.com/user/foo",
-    "type": "Person",
-  },
+  "actor": "https://example.com/user/foo",
   "cc": "https://example.com/user/foo/followers",
   "id": "https://example.com/create/cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4",
   "object": {
-    "attributedTo": {
-      "id": "https://example.com/user/foo",
-      "type": "Person",
-    },
+    "attributedTo": "https://example.com/user/foo",
     "cc": "https://example.com/user/foo/followers",
     "content": "Note content",
-    "id": "https://example.com/note/cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4",
+    "id": "https://example.com/note/post-123",
     "published": "2025-01-17T10:30:00Z",
     "to": "as:Public",
     "type": "Note",

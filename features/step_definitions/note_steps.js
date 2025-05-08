@@ -2,6 +2,8 @@ import assert from 'node:assert';
 
 import { Then, When } from '@cucumber/cucumber';
 
+import { mapPostToActivityPubObject } from '../support/utils.js';
+
 import { fetchActivityPub } from '../support/request.js';
 
 When('we attempt to create a note with no content', async function () {
@@ -49,10 +51,10 @@ When(
         );
 
         if (this.response.ok) {
-            const activity = await this.response.clone().json();
-
-            this.activities[noteName] = activity;
-            this.objects[noteName] = activity.object;
+            const responseJson = await this.response.clone().json();
+            const post = responseJson.post;
+            const object = await mapPostToActivityPubObject(post);
+            this.objects[noteName] = object;
         }
     },
 );
@@ -75,19 +77,19 @@ When(
         );
 
         if (this.response.ok) {
-            const activity = await this.response.clone().json();
-
-            this.activities[noteName] = activity;
-            this.objects[noteName] = activity.object;
+            const responseJson = await this.response.clone().json();
+            const post = responseJson.post;
+            const object = await mapPostToActivityPubObject(post);
+            this.objects[noteName] = object;
         }
     },
 );
 
 Then(
     'note {string} has the image URL {string}',
-    function (activityName, expectedImageUrl) {
-        const activity = this.activities[activityName];
-        assert.equal(activity.object.attachment.url, expectedImageUrl);
-        assert.equal(activity.object.attachment.type, 'Image');
+    function (noteName, expectedImageUrl) {
+        const object = this.objects[noteName];
+        assert.equal(object.attachment.url, expectedImageUrl);
+        assert.equal(object.attachment.type, 'Image');
     },
 );

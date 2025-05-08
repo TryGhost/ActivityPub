@@ -1,13 +1,9 @@
-import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 
 import type { KnexAccountRepository } from '../../account/account.repository.knex';
 import type { AppContext } from '../../app';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { Post } from '../../post/post.entity';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
-import { publishPost } from '../../publishing/helpers';
-import { PostVisibility } from '../../publishing/types';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -18,7 +14,7 @@ const PostInputSchema = z.object({
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
-    visibility: z.nativeEnum(PostVisibility),
+    visibility: z.enum(['public', 'members', 'paid', 'tiers']),
     authors: z
         .array(
             z.object({
@@ -68,33 +64,6 @@ export function createPostPublishedWebhookHandler(
             ctx.get('logger').error('Failed to store post: {error}', {
                 error: err,
             });
-        }
-
-        if (post) {
-            try {
-                await publishPost(ctx, {
-                    id: data.uuid,
-                    title: data.title,
-                    content: post.content,
-                    excerpt: data.excerpt,
-                    featureImageUrl: data.feature_image
-                        ? new URL(data.feature_image)
-                        : null,
-                    publishedAt: Temporal.Instant.from(data.published_at),
-                    url: new URL(data.url),
-                    author: {
-                        handle: ACTOR_DEFAULT_HANDLE,
-                    },
-                    visibility: data.visibility,
-                    metadata: {
-                        ghostAuthors: data.authors ?? [],
-                    },
-                });
-            } catch (err) {
-                ctx.get('logger').error('Failed to publish post: {error}', {
-                    error: err,
-                });
-            }
         }
 
         return new Response(JSON.stringify({}), {

@@ -1,16 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
-import { Follow, Reject } from '@fedify/fedify';
+import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
+import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { Post } from 'post/post.entity';
+import { PostType } from 'post/post.entity';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
+import type { UriBuilder } from './uri';
+
+vi.mock('uuid', () => ({
+    v4: vi.fn().mockReturnValue('cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4'),
+}));
+
+vi.mock('@js-temporal/polyfill', async () => {
+    const original = await import('@js-temporal/polyfill');
+
+    return {
+        Temporal: {
+            ...original.Temporal,
+            Now: {
+                // Return a fixed instant for deterministic testing
+                instant: vi
+                    .fn()
+                    .mockReturnValue(
+                        original.Temporal.Instant.from('2025-01-17T10:30:00Z'),
+                    ),
+            },
+        },
+    };
+});
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 
@@ -19,20 +44,37 @@ describe('FediverseBridge', () => {
     let accountService: AccountService;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
+    let mockUriBuilder: UriBuilder<FedifyObject>;
 
     beforeEach(() => {
         events = new EventEmitter();
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
+        mockUriBuilder = {
+            buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
+                return new URL(
+                    `https://example.com/${object.name.toLowerCase()}/${id}`,
+                );
+            }),
+            buildFollowersCollectionUri: vi
+                .fn()
+                .mockImplementation((handle) => {
+                    return new URL(
+                        `https://example.com/user/${handle}/followers`,
+                    );
+                }),
+        } as UriBuilder<FedifyObject>;
         context = {
-            getObjectUri() {
-                return new URL('https://mockdeleteurl.com');
-            },
+            getObjectUri: mockUriBuilder.buildObjectUri,
             async sendActivity() {},
             data: {
                 globaldb: {
                     set: vi.fn(),
+                },
+                db: {
+                    get: vi.fn().mockResolvedValue([]),
+                    set: vi.fn().mockResolvedValue(undefined),
                 },
             },
         } as unknown as FedifyContext;
@@ -327,6 +369,129 @@ describe('FediverseBridge', () => {
         expect(sendActivity.mock.lastCall).not.toBeDefined();
 
         // Assert that the activity was not saved to the database
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should create and send a Note activity for internal accounts on the PostCreatedEvent', async () => {
+        const bridge = new FediverseBridge(
+            events,
+            fedifyContextFactory,
+            accountService,
+        );
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+        const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://example.com/user/foo');
+        author.isInternal = true;
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
+
+        const post = Object.create(Post);
+        post.id = 'post-123';
+        post.author = author;
+        post.type = PostType.Note;
+        post.content = 'Note content';
+        post.apId = new URL('https://example.com/note/post-123');
+
+        const event = new PostCreatedEvent(post);
+        events.emit(PostCreatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(context.data.globaldb.set).toHaveBeenCalled();
+        expect(context.data.db.get).toHaveBeenCalledWith(['outbox']);
+        expect(context.data.db.set).toHaveBeenCalledWith(
+            ['outbox'],
+            expect.any(Array),
+        );
+
+        const storedActivity = await globalDbSet.mock.calls[0][1];
+        await expect(storedActivity).toMatchFileSnapshot(
+            './__snapshots__/publish-note-create-activity.json',
+        );
+    });
+
+    it('should create and send an Article activity for internal accounts on the PostCreatedEvent', async () => {
+        const bridge = new FediverseBridge(
+            events,
+            fedifyContextFactory,
+            accountService,
+        );
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+        const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://example.com/user/foo');
+        author.isInternal = true;
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
+
+        const post = Object.create(Post);
+        post.id = 'post-123';
+        post.author = author;
+        post.type = PostType.Article;
+        post.title = 'Post title';
+        post.content = 'Post content';
+        post.excerpt = 'Post excerpt';
+        post.imageUrl = new URL('https://example.com/img/post-123_feature.jpg');
+        post.publishedAt = new Date('2025-01-12T10:30:00Z');
+        post.url = new URL('https://example.com/post/post-123');
+        post.apId = new URL('https://example.com/article/post-123');
+
+        const event = new PostCreatedEvent(post);
+        events.emit(PostCreatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(context.data.globaldb.set).toHaveBeenCalled();
+        expect(context.data.db.get).toHaveBeenCalledWith(['outbox']);
+        expect(context.data.db.set).toHaveBeenCalledWith(
+            ['outbox'],
+            expect.any(Array),
+        );
+
+        const storedActivity = await globalDbSet.mock.calls[0][1];
+        await expect(storedActivity).toMatchFileSnapshot(
+            './__snapshots__/publish-post-create-activity.json',
+        );
+    });
+
+    it('should not create or send activities for external accounts on the PostCreatedEvent', async () => {
+        const bridge = new FediverseBridge(
+            events,
+            fedifyContextFactory,
+            accountService,
+        );
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://author.com/user/123');
+        author.isInternal = false;
+
+        const post = Object.create(Post);
+        post.author = author;
+        post.type = PostType.Note;
+        post.content = 'Test content';
+
+        const event = new PostCreatedEvent(post);
+        events.emit(PostCreatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
 });
