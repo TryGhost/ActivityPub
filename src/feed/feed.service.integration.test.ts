@@ -1235,4 +1235,247 @@ describe('FeedService', () => {
             });
         });
     });
+
+    describe('removeUnfollowedAccountPostsFromFeed', () => {
+        it('should remove posts from feeds when an account is unfollowed', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Initialise an internal account for user
+            const userAccount = await createInternalAccount('user.com');
+
+            // Initialise an internal account that the user will follow and block
+            const unfollowedAccount =
+                await createInternalAccount('unfollowed.com');
+
+            await accountService.recordAccountFollow(
+                unfollowedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Initialise an internal account that the user will follow and that
+            // also follows the unfollowed account
+            const followedAccount = await createInternalAccount('followed.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            await accountService.recordAccountFollow(
+                unfollowedAccount as unknown as AccountType,
+                followedAccount as unknown as AccountType,
+            );
+
+            // Initialise posts
+            const unfollowedAccountPost = await createPost(unfollowedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(unfollowedAccountPost);
+            await feedService.addPostToFeeds(
+                unfollowedAccountPost as PublicPost,
+            );
+
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAccountPost);
+            await feedService.addPostToFeeds(followedAccountPost as PublicPost);
+
+            // Verify the feeds have the correct posts
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
+            expect(userAccountFeed.length).toBe(2);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_id: unfollowedAccountPost.id,
+            });
+            expect(userAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            const followedAccountFeed =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeed.length).toBe(2);
+            expect(followedAccountFeed[0]).toMatchObject({
+                post_id: unfollowedAccountPost.id,
+            });
+            expect(followedAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            const unfollowedAccountFeed =
+                await getFeedDataForAccount(unfollowedAccount);
+            expect(unfollowedAccountFeed.length).toBe(1);
+            expect(unfollowedAccountFeed[0]).toMatchObject({
+                post_id: unfollowedAccountPost.id,
+            });
+
+            // Unfollow the unfollowed account
+            await client('follows')
+                .where({
+                    following_id: unfollowedAccount.id,
+                    follower_id: userAccount.id,
+                })
+                .del();
+
+            // Remove the unfollowed account's posts from the user's feed
+            await feedService.removeUnfollowedAccountPostsFromFeed(
+                userAccount.id,
+                unfollowedAccount.id,
+            );
+
+            // Verify the post from the unfollowed account is removed from the
+            // user's feed
+            const userAccountFeedAfterRemoval =
+                await getFeedDataForAccount(userAccount);
+            expect(userAccountFeedAfterRemoval.length).toBe(1);
+            expect(userAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            // Verify the post from the unfollowed account is not removed from the
+            // followed account feed
+            const followedAccountFeedAfterRemoval =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeedAfterRemoval.length).toBe(2);
+            expect(followedAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: unfollowedAccountPost.id,
+            });
+            expect(followedAccountFeedAfterRemoval[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+
+            // Verify the unfollowed account's post is not removed from the
+            // unfollowed account's feed
+            const unfollowedAccountFeedAfterRemoval =
+                await getFeedDataForAccount(unfollowedAccount);
+            expect(unfollowedAccountFeedAfterRemoval.length).toBe(1);
+            expect(unfollowedAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: unfollowedAccountPost.id,
+            });
+        });
+
+        it('should remove reposts from feeds when an account is unfollowed', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Initialise an internal account for user
+            const userAccount = await createInternalAccount('user.com');
+
+            // Initialise an internal account that the user will follow and unfollow
+            const unfollowedAccount =
+                await createInternalAccount('unfollowed.com');
+
+            await accountService.recordAccountFollow(
+                unfollowedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Initialise an internal account that the user will follow and that
+            // also follows the unfollowed account
+            const followedAccount = await createInternalAccount('followed.com');
+
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            await accountService.recordAccountFollow(
+                unfollowedAccount as unknown as AccountType,
+                followedAccount as unknown as AccountType,
+            );
+
+            // Initialise posts
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAccountPost);
+            await feedService.addPostToFeeds(followedAccountPost as PublicPost);
+
+            followedAccountPost.addRepost(unfollowedAccount);
+            await postRepository.save(followedAccountPost);
+            await feedService.addPostToFeeds(
+                followedAccountPost as PublicPost,
+                unfollowedAccount.id,
+            );
+
+            // Verify the feeds have the correct posts
+            const userAccountFeed = await getFeedDataForAccount(userAccount);
+            expect(userAccountFeed.length).toBe(2);
+            expect(userAccountFeed[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+            });
+            expect(userAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: unfollowedAccount.id,
+            });
+
+            const followedAccountFeed =
+                await getFeedDataForAccount(followedAccount);
+
+            expect(followedAccountFeed.length).toBe(2);
+            expect(followedAccountFeed[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: null,
+            });
+            expect(followedAccountFeed[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: unfollowedAccount.id,
+            });
+
+            const unfollowedAccountFeed =
+                await getFeedDataForAccount(unfollowedAccount);
+            expect(unfollowedAccountFeed.length).toBe(1);
+            expect(unfollowedAccountFeed[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: unfollowedAccount.id,
+            });
+
+            // Unfollow the unfollowed account
+            await client('follows')
+                .where({
+                    following_id: unfollowedAccount.id,
+                    follower_id: userAccount.id,
+                })
+                .del();
+
+            // Remove the blocked account's reposts from the user's feed
+            await feedService.removeUnfollowedAccountPostsFromFeed(
+                userAccount.id,
+                unfollowedAccount.id,
+            );
+
+            // Verify the repost from the unfollowed account is removed from
+            // the user's feed
+            const userAccountFeedAfterRemoval =
+                await getFeedDataForAccount(userAccount);
+            expect(userAccountFeedAfterRemoval.length).toBe(1);
+            expect(userAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                author_id: followedAccount.id,
+                reposted_by_id: null,
+            });
+
+            // Verify the unfollowed account's repost is not removed from
+            // the followed account's feed
+            const followedAccountFeedAfterRemoval =
+                await getFeedDataForAccount(followedAccount);
+            expect(followedAccountFeedAfterRemoval.length).toBe(2);
+            expect(followedAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: null,
+            });
+            expect(followedAccountFeedAfterRemoval[1]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: unfollowedAccount.id,
+            });
+
+            // Verify the unfollowed account's repost is not removed from
+            // the unfollowed account's feed
+            const unfollowedAccountFeedAfterRemoval =
+                await getFeedDataForAccount(unfollowedAccount);
+            expect(unfollowedAccountFeedAfterRemoval.length).toBe(1);
+            expect(unfollowedAccountFeedAfterRemoval[0]).toMatchObject({
+                post_id: followedAccountPost.id,
+                reposted_by_id: unfollowedAccount.id,
+            });
+        });
+    });
 });
