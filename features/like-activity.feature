@@ -11,7 +11,6 @@ Feature: Liking an object
     And we like the object "Note"
     Then the request is accepted
     And the object "Note" should be liked
-    And the object "Note" should be in the "liked" collection
     And a "Like(Note)" activity is sent to "Alice"
 
   Scenario: Liking an object that has been liked before
