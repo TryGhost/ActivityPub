@@ -51,7 +51,6 @@ export async function waitForInboxActivity(
 }
 
 export async function findInOutbox(activity) {
-    console.log('activity', activity);
     const initialResponse = await fetchActivityPub(
         'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
         {
