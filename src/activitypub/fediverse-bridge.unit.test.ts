@@ -444,6 +444,7 @@ describe('FediverseBridge', () => {
         post.imageUrl = new URL('https://example.com/img/post-123_feature.jpg');
         post.publishedAt = new Date('2025-01-12T10:30:00Z');
         post.url = new URL('https://example.com/post/post-123');
+        post.apId = new URL('https://example.com/article/post-123');
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
