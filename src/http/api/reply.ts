@@ -206,12 +206,15 @@ export async function handleCreateReply(
         attribution: actor,
         replyTarget: objectToReplyTo,
         content: newReply.content,
-        attachments: newReply.imageUrl
-            ? [
-                  new Image({
-                      url: newReply.imageUrl,
-                  }),
-              ]
+        attachments: newReply.attachments
+            ? newReply.attachments
+                  .filter((attachment) => attachment.type === 'Image')
+                  .map(
+                      (attachment) =>
+                          new Image({
+                              url: attachment.url,
+                          }),
+                  )
             : undefined,
         summary: null,
         published: Temporal.Now.instant(),

@@ -6,11 +6,11 @@ export async function mapPostToActivityPubObject(post) {
     return {
         id: post.id,
         content: post.content,
-        attachment: post.featureImageUrl
-            ? {
-                  url: post.featureImageUrl,
-                  type: 'Image',
-              }
+        attachment: post.attachments
+            ? post.attachments.map((attachment) => ({
+                  url: attachment.url,
+                  type: attachment.type,
+              }))
             : null,
     };
 }

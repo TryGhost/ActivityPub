@@ -336,6 +336,17 @@ export class Post extends BaseEntity {
             addPaidContentMessage: false,
         });
 
+        const postAttachment = imageUrl
+            ? [
+                  {
+                      type: 'Image',
+                      mediaType: null,
+                      name: null,
+                      url: imageUrl,
+                  },
+              ]
+            : [];
+
         return new Post(
             null,
             null,
@@ -346,7 +357,7 @@ export class Post extends BaseEntity {
             null,
             content,
             null,
-            imageUrl ?? null,
+            null,
             new Date(),
             null,
             0,
@@ -355,7 +366,7 @@ export class Post extends BaseEntity {
             null,
             null,
             null,
-            [],
+            postAttachment,
             null,
         );
     }
@@ -386,6 +397,17 @@ export class Post extends BaseEntity {
             addPaidContentMessage: false,
         });
 
+        const postAttachment = imageUrl
+            ? [
+                  {
+                      type: 'Image',
+                      mediaType: null,
+                      name: null,
+                      url: imageUrl,
+                  },
+              ]
+            : [];
+
         return new Post(
             null,
             null,
@@ -396,7 +418,7 @@ export class Post extends BaseEntity {
             null,
             content,
             null,
-            imageUrl ?? null,
+            null,
             new Date(),
             null,
             0,
@@ -405,7 +427,7 @@ export class Post extends BaseEntity {
             inReplyToId,
             threadRootId,
             null,
-            [],
+            postAttachment,
             null,
         );
     }
