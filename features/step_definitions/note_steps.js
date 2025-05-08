@@ -89,7 +89,9 @@ Then(
     'note {string} has the image URL {string}',
     function (noteName, expectedImageUrl) {
         const object = this.objects[noteName];
-        assert.equal(object.attachment[0].url, expectedImageUrl);
-        assert.equal(object.attachment[0].type, 'Image');
+        assert.ok(object.attachment, 'Note does not have attachments');
+
+        assert.equal(object.attachment.url, expectedImageUrl);
+        assert.equal(object.attachment.type, 'Image');
     },
 );
