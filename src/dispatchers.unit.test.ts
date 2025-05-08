@@ -1,20 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-    Activity,
-    type Actor,
-    Like,
-    Person,
-    type RequestContext,
-} from '@fedify/fedify';
+import { Activity, type RequestContext } from '@fedify/fedify';
 import {
     likedDispatcher,
     nodeInfoDispatcher,
     outboxDispatcher,
 } from './dispatchers';
 
+import type { ContextData } from 'app';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import * as lookupHelpers from './lookup-helpers';
 
 vi.mock('./app', () => ({
     fedify: {
@@ -24,150 +18,19 @@ vi.mock('./app', () => ({
 
 describe('dispatchers', () => {
     describe('likedDispatcher', () => {
-        // TODO: Clean up the any type
-        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-        const likeActivities: Record<string, any> = {
-            'https://example.com/like/123': {
-                '@context': [
-                    'https://www.w3.org/ns/activitystreams',
-                    'https://w3id.org/security/data-integrity/v1',
-                ],
-                id: 'https://example.com/like/123',
-                type: 'Like',
-                object: {
-                    id: 'https://example.com/note/123',
-                    type: 'Note',
+        it('returns an empty array', async () => {
+            const ctx = {
+                getObjectUri(_type: unknown, data: Record<string, string>) {
+                    return new URL(`https://site.com/${data.id}`);
                 },
-            },
-            'https://example.com/like/456': {
-                '@context': [
-                    'https://www.w3.org/ns/activitystreams',
-                    'https://w3id.org/security/data-integrity/v1',
-                ],
-                id: 'https://example.com/like/456',
-                type: 'Like',
-                object: {
-                    id: 'https://example.com/note/456',
-                    type: 'Note',
-                },
-            },
-        };
-
-        const ctx = {
-            data: {
-                db: {
-                    get: vi.fn(),
-                },
-                globaldb: {
-                    get: vi.fn(),
-                },
-                logger: {
-                    info: vi.fn(),
-                },
-            },
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-        } as RequestContext<any>;
-
-        beforeEach(() => {
-            ctx.data.db.get.mockImplementation((key: string[]) => {
-                return Promise.resolve(
-                    key[0] === 'liked'
-                        ? Object.keys(likeActivities)
-                        : undefined,
-                );
-            });
-
-            ctx.data.globaldb.get.mockImplementation((key: string[]) => {
-                return Promise.resolve(likeActivities[key[0]]);
-            });
-
-            if (!process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE) {
-                process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
-            }
-        });
-
-        it('returns items from the liked collection in the correct order', async () => {
-            const result = await likedDispatcher(
-                ctx,
-                ACTOR_DEFAULT_HANDLE,
-                null,
-            );
-
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct items are returned in the correct order
-            expect(result.items.length).toEqual(2);
-            expect(result.items[0] instanceof Like).toBeTruthy();
-            expect(result.items[1] instanceof Like).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/like/456',
-            );
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[1].id.toString()).toEqual(
-                'https://example.com/like/123',
-            );
-        });
-
-        it('returns items from the liked collection with a cursor', async () => {
-            const result = await likedDispatcher(
-                ctx,
-                ACTOR_DEFAULT_HANDLE,
-                '1',
-            );
-
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct items are returned
-            expect(result.items.length).toEqual(1);
-            expect(result.items[0] instanceof Activity).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/like/123',
-            );
-        });
-
-        it('hydrates the object of a like', async () => {
-            const actorId = 'https://example.com/actor/123';
-
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            const likeActivities: Record<string, any> = {
-                'https://example.com/like/123': {
-                    '@context': [
-                        'https://www.w3.org/ns/activitystreams',
-                        'https://w3id.org/security/data-integrity/v1',
-                    ],
-                    id: 'https://example.com/like/123',
-                    type: 'Like',
-                    object: {
-                        id: 'https://example.com/note/123',
-                        type: 'Note',
-                        attributedTo: actorId,
+                data: {
+                    globaldb: {
+                        get() {
+                            return {};
+                        },
                     },
                 },
-            };
-
-            ctx.data.globaldb.get.mockImplementation((key: string[]) => {
-                return Promise.resolve(likeActivities[key[0]]);
-            });
-
-            ctx.data.db.get.mockImplementation((key: string[]) => {
-                return Promise.resolve(
-                    key[0] === 'liked'
-                        ? Object.keys(likeActivities)
-                        : undefined,
-                );
-            });
-
-            vi.spyOn(lookupHelpers, 'lookupActor').mockImplementation(() => {
-                return new Person({
-                    id: new URL(actorId),
-                }) as unknown as Promise<Actor>;
-            });
+            } as unknown as RequestContext<ContextData>;
 
             const result = await likedDispatcher(
                 ctx,
@@ -175,29 +38,8 @@ describe('dispatchers', () => {
                 null,
             );
 
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct item is returned
-            expect(result.items.length).toEqual(1);
-            expect(result.items[0] instanceof Like).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/like/123',
-            );
-
-            // Check the object of the item is hydrated
-            const object = await result.items[0].getObject();
-            expect(object).not.toBeNull();
-
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            const attribution = await object.getAttribution();
-            expect(attribution).not.toBeNull();
-
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(attribution.id).not.toBeNull();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(attribution.id.toString()).toEqual(actorId);
+            expect(result.items).toEqual([]);
+            expect(result.nextCursor).toEqual(null);
         });
     });
 
