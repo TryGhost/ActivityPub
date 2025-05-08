@@ -341,4 +341,26 @@ export class NotificationService {
             .andWhere('account_id', blockedAccountId)
             .delete();
     }
+
+    async removeBlockedDomainNotifications(blockerId: number, domain: URL) {
+        const user = await this.db('users')
+            .where('account_id', blockerId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If this block was for an internal account that doesn't exist,
+            // or an external account, we can't remove notifications for it as
+            // there is not a corresponding user record in the database
+            return;
+        }
+
+        await this.db('notifications')
+            .join('accounts', 'notifications.account_id', 'accounts.id')
+            .where('notifications.user_id', user.id)
+            .andWhereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
+                domain.host,
+            ])
+            .delete();
+    }
 }

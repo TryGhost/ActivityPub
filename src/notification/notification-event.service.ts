@@ -2,6 +2,7 @@ import type { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { NotificationService } from 'notification/notification.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
@@ -33,6 +34,10 @@ export class NotificationEventService {
         this.events.on(
             AccountBlockedEvent.getName(),
             this.handleAccountBlockedEvent.bind(this),
+        );
+        this.events.on(
+            DomainBlockedEvent.getName(),
+            this.handleDomainBlockedEvent.bind(this),
         );
     }
 
@@ -68,6 +73,16 @@ export class NotificationEventService {
         await this.notificationService.removeBlockedAccountNotifications(
             blockerId,
             blockedId,
+        );
+    }
+
+    private async handleDomainBlockedEvent(event: DomainBlockedEvent) {
+        const blockerId = event.getBlockerId();
+        const domain = event.getDomain();
+
+        await this.notificationService.removeBlockedDomainNotifications(
+            blockerId,
+            domain,
         );
     }
 }

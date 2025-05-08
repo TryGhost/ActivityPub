@@ -843,13 +843,117 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for blocker account', async () => {
-            await notificationService.removeBlockedAccountNotifications(
-                999,
-                123,
+            const [account] = await fixtureManager.createInternalAccount(
+                null,
+                'alice.com',
             );
 
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            await notificationService.removeBlockedAccountNotifications(
+                999,
+                otherAccount.id,
+            );
+
+            // Verify the existing notifications were not deleted
             const notifications = await client('notifications').select('*');
-            expect(notifications).toHaveLength(0);
+            expect(notifications).toHaveLength(2);
+            expect(notifications[0].account_id).toBe(otherAccount.id);
+            expect(notifications[1].account_id).toBe(otherAccount.id);
+        });
+    });
+
+    describe('removeBlockedDomainNotifications', () => {
+        it('should remove all notifications from accounts from a blocked domain', async () => {
+            // Create internal blocker account
+            const [account, site, userId] =
+                await fixtureManager.createInternalAccount(null, 'alice.com');
+
+            // Create an external account that will have its domain blocked
+            const blockedAccount = await fixtureManager.createExternalAccount();
+
+            // Create some notifications from the blocked domain account
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            // Create a notification from another account to ensure it does not get deleted
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await fixtureManager.createNotification(
+                account,
+                otherAccount,
+                NotificationType.Follow,
+            );
+
+            // Remove notifications from the blocked domain
+            await notificationService.removeBlockedDomainNotifications(
+                account.id,
+                blockedAccount.apId,
+            );
+
+            // Verify only the blocked domain account's notifications were removed
+            const remainingNotifications = await client('notifications')
+                .where('user_id', userId)
+                .select('*');
+
+            expect(remainingNotifications).toHaveLength(1);
+            expect(remainingNotifications[0].account_id).toBe(otherAccount.id);
+        });
+
+        it('should do nothing if user is not found for blocker account', async () => {
+            const [account] = await fixtureManager.createInternalAccount(
+                null,
+                'alice.com',
+            );
+
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            await notificationService.removeBlockedDomainNotifications(
+                999,
+                otherAccount.apId,
+            );
+
+            // Verify the existing notifications were not deleted
+            const notifications = await client('notifications').select('*');
+            expect(notifications).toHaveLength(2);
+            expect(notifications[0].account_id).toBe(otherAccount.id);
+            expect(notifications[1].account_id).toBe(otherAccount.id);
         });
     });
 });
