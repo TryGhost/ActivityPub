@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { Account as AccountEntity } from 'account/account.entity';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { Account } from 'account/types';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
@@ -26,6 +27,7 @@ describe('NotificationEventService', () => {
             createRepostNotification: vi.fn(),
             createReplyNotification: vi.fn(),
             removeBlockedAccountNotifications: vi.fn(),
+            removeBlockedDomainNotifications: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -130,6 +132,22 @@ describe('NotificationEventService', () => {
             expect(
                 notificationService.removeBlockedAccountNotifications,
             ).toHaveBeenCalledWith(blockerAccount.id, blockedAccount.id);
+        });
+    });
+
+    describe('handling a domain blocked event', () => {
+        it('should remove notifications from accounts from the blocked domain', () => {
+            const blockedDomain = new URL('https://example.com');
+            const blockerAccount = { id: 456 } as AccountEntity;
+
+            events.emit(
+                DomainBlockedEvent.getName(),
+                new DomainBlockedEvent(blockedDomain, blockerAccount.id),
+            );
+
+            expect(
+                notificationService.removeBlockedDomainNotifications,
+            ).toHaveBeenCalledWith(blockerAccount.id, blockedDomain);
         });
     });
 });
