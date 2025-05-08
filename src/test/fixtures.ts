@@ -191,6 +191,7 @@ export class FixtureManager {
             this.db('likes').truncate(),
             this.db('reposts').truncate(),
             this.db('posts').truncate(),
+            this.db('domain_blocks').truncate(),
             this.db('blocks').truncate(),
             this.db('follows').truncate(),
             this.db('accounts').truncate(),

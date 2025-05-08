@@ -34,22 +34,57 @@ export class ModerationService {
             if (block) {
                 return [block.blocked_user_id];
             }
+
+            const domainBlock = await this.db('domain_blocks')
+                .join(
+                    'accounts',
+                    'domain_blocks.domain_hash',
+                    'accounts.domain_hash',
+                )
+                .innerJoin('users', 'accounts.id', 'users.account_id')
+                .where({
+                    'domain_blocks.blocker_id': post.author.id,
+                    'accounts.id': interactionAccountId,
+                })
+                .select('users.id as blocked_user_id')
+                .first();
+
+            if (domainBlock) {
+                return [domainBlock.blocked_user_id];
+            }
         }
+
+        const userBlocks = await this.db('blocks')
+            .whereIn('blocker_id', Array.from(userAccountMap.values()))
+            .andWhere(
+                'blocked_id',
+                'in',
+                [interactionAccountId, post.author.id].filter(
+                    (id) => id !== undefined,
+                ),
+            )
+            .select('blocker_id');
+
+        const domainBlocks = await this.db('domain_blocks')
+            .join(
+                'accounts',
+                'domain_blocks.domain_hash',
+                'accounts.domain_hash',
+            )
+            .whereIn('blocker_id', Array.from(userAccountMap.values()))
+            .whereIn(
+                'accounts.id',
+                [interactionAccountId, post.author.id].filter(
+                    (id) => id !== undefined,
+                ),
+            )
+            .select('blocker_id');
 
         // Filter out accounts that have either blocked the author or the
         // interaction account
-        const accountIdsToBeFilteredOut = (
-            await this.db('blocks')
-                .whereIn('blocker_id', Array.from(userAccountMap.values()))
-                .andWhere(
-                    'blocked_id',
-                    'in',
-                    [interactionAccountId, post.author.id].filter(
-                        (id) => id !== undefined,
-                    ),
-                )
-                .select('blocker_id')
-        ).map((row) => row.blocker_id);
+        const accountIdsToBeFilteredOut = userBlocks
+            .concat(domainBlocks)
+            .map((row) => row.blocker_id);
 
         // Of the users provided, filter out the ones that do not have an account
         // that has blocked the author or the interaction account
