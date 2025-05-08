@@ -365,4 +365,55 @@ describe('KnexAccountRepository', () => {
         const follows = await client('follows').select('*');
         expect(follows).toStrictEqual([]);
     });
+
+    it('handles removing follow relationships when a domain is blocked', async () => {
+        // Create Alice from a different domain
+        const [aliceAccount] = await fixtureManager.createInternalAccount(
+            null,
+            'alice-domain.com',
+        );
+
+        // Create Bob from the domain to be blocked
+        const [bobAccount, bobSite] =
+            await fixtureManager.createInternalAccount(
+                null,
+                'blocked-domain.com',
+            );
+
+        // Create Charlie using the same site as Bob
+        const [charlieAccount] =
+            await fixtureManager.createInternalAccount(bobSite);
+
+        // Create follow relationships:
+        // 1. Alice follows Bob (will be removed when domain is blocked)
+        // 2. Charlie follows Alice (will be removed when domain is blocked)
+        await fixtureManager.createFollow(aliceAccount, bobAccount);
+        await fixtureManager.createFollow(charlieAccount, aliceAccount);
+        await fixtureManager.createFollow(bobAccount, charlieAccount);
+
+        // Verify the follows exist
+        const followsBefore = await client('follows').select('*');
+        expect(followsBefore).toHaveLength(3);
+
+        // Alice blocks the domain blocked-domain.com
+        const blockedDomain = new URL('https://blocked-domain.com');
+        const aliceWithDomainBlock = aliceAccount.blockDomain(blockedDomain);
+
+        // Save the domain block
+        await accountRepository.save(aliceWithDomainBlock);
+
+        // Verify the domain block was created
+        const domainBlocks = await client('domain_blocks').select('*');
+        expect(domainBlocks).toHaveLength(1);
+        expect(domainBlocks[0].blocker_id).toBe(aliceAccount.id);
+        expect(domainBlocks[0].domain).toBe('blocked-domain.com');
+
+        // Verify all follow relationships with accounts from the blocked domain have been removed
+        const followsAfter = await client('follows').select('*');
+        expect(followsAfter).toHaveLength(1);
+        expect(followsAfter[0]).toMatchObject({
+            follower_id: bobAccount.id,
+            following_id: charlieAccount.id,
+        });
+    });
 });

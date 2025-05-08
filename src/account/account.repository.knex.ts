@@ -85,6 +85,40 @@ export class KnexAccountRepository {
                         })
                         .onConflict(['blocker_id', 'domain'])
                         .ignore();
+
+                    // Remove follows between the blocker and any accounts from the blocked domain
+                    const blockerId = event.getBlockerId();
+                    const domainHostname = event.getDomain().hostname;
+
+                    // Delete follows where the blocker follows accounts from the blocked domain
+                    await transaction('follows')
+                        .join(
+                            'accounts',
+                            'follows.following_id',
+                            '=',
+                            'accounts.id',
+                        )
+                        .where('follows.follower_id', blockerId)
+                        .whereRaw(
+                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
+                            [domainHostname],
+                        )
+                        .delete();
+
+                    // Delete follows where accounts from the blocked domain follow the blocker
+                    await transaction('follows')
+                        .join(
+                            'accounts',
+                            'follows.follower_id',
+                            '=',
+                            'accounts.id',
+                        )
+                        .where('follows.following_id', blockerId)
+                        .whereRaw(
+                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
+                            [domainHostname],
+                        )
+                        .delete();
                 } else if (event instanceof DomainUnblockedEvent) {
                     await transaction('domain_blocks')
                         .where({
