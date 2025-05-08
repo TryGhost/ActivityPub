@@ -6,5 +6,9 @@ export async function mapPostToObject(post) {
     return {
         id: post.id,
         content: post.content,
+        attachment: post.featureImageUrl ? {
+            url: post.featureImageUrl,
+            type: 'Image',
+        } : null,
     };
 }

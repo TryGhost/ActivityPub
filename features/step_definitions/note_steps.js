@@ -88,8 +88,8 @@ When(
 Then(
     'note {string} has the image URL {string}',
     function (noteName, expectedImageUrl) {
-        const activity = this.activities[noteName];
-        assert.equal(activity.object.attachment.url, expectedImageUrl);
-        assert.equal(activity.object.attachment.type, 'Image');
+        const object = this.objects[noteName];
+        assert.equal(object.attachment.url, expectedImageUrl);
+        assert.equal(object.attachment.type, 'Image');
     },
 );
