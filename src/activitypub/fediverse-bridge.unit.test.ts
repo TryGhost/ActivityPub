@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
-import { Follow, Reject } from '@fedify/fedify';
+import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountEntity } from 'account/account.entity';
@@ -13,6 +13,29 @@ import { PostType } from 'post/post.entity';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
+import type { UriBuilder } from './uri';
+
+vi.mock('uuid', () => ({
+    v4: vi.fn().mockReturnValue('cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4'),
+}));
+
+vi.mock('@js-temporal/polyfill', async () => {
+    const original = await import('@js-temporal/polyfill');
+
+    return {
+        Temporal: {
+            ...original.Temporal,
+            Now: {
+                // Return a fixed instant for deterministic testing
+                instant: vi
+                    .fn()
+                    .mockReturnValue(
+                        original.Temporal.Instant.from('2025-01-17T10:30:00Z'),
+                    ),
+            },
+        },
+    };
+});
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 
@@ -21,16 +44,29 @@ describe('FediverseBridge', () => {
     let accountService: AccountService;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
+    let mockUriBuilder: UriBuilder<FedifyObject>;
 
     beforeEach(() => {
         events = new EventEmitter();
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
+        mockUriBuilder = {
+            buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
+                return new URL(
+                    `https://example.com/${object.name.toLowerCase()}/${id}`,
+                );
+            }),
+            buildFollowersCollectionUri: vi
+                .fn()
+                .mockImplementation((handle) => {
+                    return new URL(
+                        `https://example.com/user/${handle}/followers`,
+                    );
+                }),
+        } as UriBuilder<FedifyObject>;
         context = {
-            getObjectUri() {
-                return new URL('https://mockdeleteurl.com');
-            },
+            getObjectUri: mockUriBuilder.buildObjectUri,
             async sendActivity() {},
             data: {
                 globaldb: {
@@ -350,16 +386,16 @@ describe('FediverseBridge', () => {
         const author = Object.create(AccountEntity);
         author.id = 123;
         author.username = 'testuser';
-        author.apId = new URL('https://author.com/user/123');
+        author.apId = new URL('https://example.com/user/foo');
         author.isInternal = true;
-        author.apFollowers = new URL('https://author.com/user/123/followers');
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
 
         const post = Object.create(Post);
         post.id = 'post-123';
         post.author = author;
         post.type = PostType.Note;
-        post.content = 'Test note content';
-        post.apId = new URL('https://author.com/post/123');
+        post.content = 'Note content';
+        post.apId = new URL('https://example.com/note/post-123');
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -375,16 +411,9 @@ describe('FediverseBridge', () => {
         );
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
-        expect(storedActivity).toMatchObject({
-            '@context': expect.any(Array),
-            type: 'Create',
-            actor: author.apId.href,
-            object: {
-                type: 'Note',
-                content: post.content,
-                attributedTo: author.apId.href,
-            },
-        });
+        await expect(storedActivity).toMatchFileSnapshot(
+            './__snapshots__/publish-note-create-activity.json',
+        );
     });
 
     it('should create and send an Article activity for internal accounts on the PostCreatedEvent', async () => {
@@ -401,20 +430,20 @@ describe('FediverseBridge', () => {
         const author = Object.create(AccountEntity);
         author.id = 123;
         author.username = 'testuser';
-        author.apId = new URL('https://author.com/user/123');
+        author.apId = new URL('https://example.com/user/foo');
         author.isInternal = true;
-        author.apFollowers = new URL('https://author.com/user/123/followers');
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
 
         const post = Object.create(Post);
         post.id = 'post-123';
         post.author = author;
         post.type = PostType.Article;
-        post.title = 'Test Article';
-        post.content = 'Test article content';
-        post.excerpt = 'Test excerpt';
-        post.imageUrl = new URL('https://example.com/image.jpg');
-        post.publishedAt = new Date('2024-01-01T00:00:00Z');
-        post.url = new URL('https://example.com/post/123');
+        post.title = 'Post title';
+        post.content = 'Post content';
+        post.excerpt = 'Post excerpt';
+        post.imageUrl = new URL('https://example.com/img/post-123_feature.jpg');
+        post.publishedAt = new Date('2025-01-12T10:30:00Z');
+        post.url = new URL('https://example.com/post/post-123');
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -430,22 +459,9 @@ describe('FediverseBridge', () => {
         );
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
-        expect(storedActivity).toMatchObject({
-            '@context': expect.any(Array),
-            type: 'Create',
-            actor: author.apId.href,
-            object: {
-                type: 'Article',
-                name: post.title,
-                content: post.content,
-                image: post.imageUrl.href,
-                url: post.url.href,
-                preview: {
-                    type: 'Note',
-                    content: post.excerpt,
-                },
-            },
-        });
+        await expect(storedActivity).toMatchFileSnapshot(
+            './__snapshots__/publish-post-create-activity.json',
+        );
     });
 
     it('should not create or send activities for external accounts on the PostCreatedEvent', async () => {
