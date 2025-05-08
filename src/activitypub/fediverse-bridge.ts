@@ -53,14 +53,14 @@ export class FediverseBridge {
             return;
         }
         const ctx = this.fedifyContextFactory.getFedifyContext();
-        let fedifyObject = null;
+        let fedifyObject: FedifyNote | Article;
 
         if (post.type === PostType.Note) {
             if (post.inReplyTo) {
                 return;
             }
             fedifyObject = new FedifyNote({
-                id: post.apId || ctx.getObjectUri(FedifyNote, { id: uuidv4() }),
+                id: post.apId,
                 attribution: post.author.apId,
                 content: post.content,
                 summary: null,
@@ -81,9 +81,7 @@ export class FediverseBridge {
                 content: post.excerpt,
             });
             fedifyObject = new Article({
-                id:
-                    post.apId ||
-                    ctx.getObjectUri(Article, { id: String(post.id) }),
+                id: post.apId,
                 attribution: post.author.apId,
                 name: post.title,
                 content: post.content,
@@ -96,6 +94,8 @@ export class FediverseBridge {
                 to: PUBLIC_COLLECTION,
                 cc: post.author.apFollowers,
             });
+        } else {
+            throw new Error(`Unsupported post type: ${post.type}`);
         }
 
         const createActivity = new Create({
@@ -111,12 +111,10 @@ export class FediverseBridge {
             await createActivity.toJsonLd(),
         );
 
-        if (fedifyObject?.id!.href) {
-            await ctx.data.globaldb.set(
-                [fedifyObject?.id!.href],
-                await fedifyObject?.toJsonLd(),
-            );
-        }
+        await ctx.data.globaldb.set(
+            [fedifyObject.id!.href],
+            await fedifyObject.toJsonLd(),
+        );
 
         await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
 

@@ -63,7 +63,7 @@ export async function handleCreateNote(
     const account = ctx.get('account');
 
     const postDTO = postToDTO(post, {
-        authoredByMe: post.author.id === account.id,
+        authoredByMe: true,
         likedByMe: false,
         repostedByMe: false,
         repostedBy: null,

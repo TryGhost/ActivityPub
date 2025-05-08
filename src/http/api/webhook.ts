@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from '../../account/account.repository.knex';
 import type { AppContext } from '../../app';
-import { Post, PostVisibility } from '../../post/post.entity';
+import { Post } from '../../post/post.entity';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
 
 const PostInputSchema = z.object({
@@ -14,7 +14,7 @@ const PostInputSchema = z.object({
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
-    visibility: z.nativeEnum(PostVisibility),
+    visibility: z.enum(['public', 'members', 'paid', 'tiers']),
     authors: z
         .array(
             z.object({
