@@ -8,7 +8,6 @@ Then(
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];
-        const postToFind = this.posts[activityOrObjectName];
         let found;
 
         if (activity) {
@@ -17,10 +16,6 @@ Then(
             );
         } else if (object) {
             found = responseJson.posts.find((post) => post.url === object.id);
-        } else if (postToFind) {
-            found = responseJson.posts.find(
-                (post) => post.url === postToFind.url,
-            );
         }
 
         assert(

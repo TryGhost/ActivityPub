@@ -5,7 +5,7 @@ import { Then, When } from '@cucumber/cucumber';
 import { fetchActivityPub } from '../support/request.js';
 
 When('we like the object {string}', async function (name) {
-    const id = this.objects[name]?.id || this.posts[name]?.id;
+    const id = this.objects[name].id;
     this.response = await fetchActivityPub(
         `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`,
         {
@@ -15,7 +15,7 @@ When('we like the object {string}', async function (name) {
 });
 
 When('we unlike the object {string}', async function (name) {
-    const id = this.objects[name]?.id || this.posts[name]?.id;
+    const id = this.objects[name].id;
     this.response = await fetchActivityPub(
         `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`,
         {

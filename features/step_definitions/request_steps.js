@@ -23,9 +23,7 @@ When(
             const objectName = path.split('/').pop(); // Object name is the last part of the path
 
             const object =
-                this.objects[objectName] ||
-                this.activities[objectName]?.object ||
-                this.posts[objectName];
+                this.objects[objectName] || this.activities[objectName]?.object;
 
             if (object) {
                 requestPath = path.replace(

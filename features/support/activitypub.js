@@ -70,7 +70,7 @@ export async function findInOutbox(activity) {
     return (outbox.orderedItems || []).find((item) => item.id === activity.id);
 }
 
-export async function findNoteInOutbox(note) {
+export async function findObjectInOutbox(object) {
     const initialResponse = await fetchActivityPub(
         'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
         {
@@ -88,7 +88,7 @@ export async function findNoteInOutbox(note) {
     const outbox = await firstPageReponse.json();
 
     return (outbox.orderedItems || []).find(
-        (item) => item.object.id === note.id,
+        (item) => item.object.id === object.id,
     );
 }
 
@@ -122,15 +122,15 @@ export async function waitForOutboxActivity(
     });
 }
 
-export async function waitForOutboxNote(
-    note,
+export async function waitForOutboxObject(
+    object,
     options = {
         retryCount: 0,
         delay: 0,
     },
 ) {
     const MAX_RETRIES = 5;
-    const found = await findNoteInOutbox(note);
+    const found = await findObjectInOutbox(object);
 
     if (found) {
         return found;
@@ -146,7 +146,7 @@ export async function waitForOutboxNote(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    await waitForOutboxNote(note, {
+    await waitForOutboxObject(note, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });

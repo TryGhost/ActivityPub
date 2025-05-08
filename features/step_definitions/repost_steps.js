@@ -7,7 +7,7 @@ import { fetchActivityPub } from '../support/request.js';
 import { waitForRequest } from '../support/request.js';
 
 When('we repost the object {string}', async function (name) {
-    const id = this.objects[name]?.id || this.posts[name]?.id;
+    const id = this.objects[name].id;
     this.response = await fetchActivityPub(
         `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/repost/${encodeURIComponent(id)}`,
         {
@@ -56,7 +56,7 @@ Then(
 );
 
 When('we undo the repost of the object {string}', async function (name) {
-    const id = this.objects[name]?.id || this.posts[name]?.id;
+    const id = this.objects[name].id;
     this.response = await fetchActivityPub(
         `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/derepost/${encodeURIComponent(id)}`,
         {
