@@ -328,7 +328,14 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe('<p>My first note</p>');
-            expect(note.imageUrl?.toString()).toBe(imageUrl);
+            expect(note.attachments).toEqual([
+                {
+                    type: 'Image',
+                    mediaType: null,
+                    name: null,
+                    url: new URL(imageUrl),
+                },
+            ]);
         });
 
         it('creates a note with line breaks', () => {
