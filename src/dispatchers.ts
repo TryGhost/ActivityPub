@@ -698,7 +698,16 @@ export function createLikeHandler(
                 'Like object not found in globalDb, performing network lookup',
             );
 
-            object = await like.getObject();
+            try {
+                object = await like.getObject();
+            } catch (err) {
+                ctx.data.logger.info(
+                    'Error performing like object network lookup',
+                    {
+                        error: err,
+                    },
+                );
+            }
         }
 
         // Validate object
