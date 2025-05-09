@@ -1,17 +1,19 @@
-import type { Account } from 'account/types';
-
 export class AccountFollowedEvent {
     constructor(
-        private readonly account: Account,
-        private readonly follower: Account,
+        private readonly accountId: number,
+        private readonly followerId: number,
     ) {}
 
-    getAccount(): Account {
-        return this.account;
+    getAccountId(): number {
+        return this.accountId;
     }
 
-    getFollower(): Account {
-        return this.follower;
+    getFollowerId(): number {
+        return this.followerId;
+    }
+
+    getName(): string {
+        return 'account.followed';
     }
 
     static getName(): string {
