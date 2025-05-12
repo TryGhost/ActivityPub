@@ -250,24 +250,24 @@ jobs:
           # Get current config
           gcloud compute url-maps export stg-activitypub --global --project ${GCP_PROJECT} > config.yml
           # Delete unnecessary fields
-          yq 'del(.fingerprint)' config.yml -i
-          yq 'del(.creationTimestamp)' config.yml -i
+          yq -i 'del(.fingerprint)' config.yml
+          yq -i 'del(.creationTimestamp)' config.yml
           export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-netherlands-activitypub-api"
           export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
           # Add host rules and path matchers if they don't exist
-          yq '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "staging-environments"}])' config.yml > config.yml.tmp
-          mv config.yml.tmp config.yml
-          yq '.pathMatchers = (.pathMatchers // [{"name": "staging-environments", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml > config.yml.tmp
-          mv config.yml.tmp config.yml
+          yq -i '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "staging-environments"}])' config.yml
+          yq -i '.pathMatchers = (.pathMatchers // [{"name": "staging-environments", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml
           # Remove existing route rules for the PR service
-          yq '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml > config.yml.tmp
-          mv config.yml.tmp config.yml
+          yq -i '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml
           # Add new route rules for the PR service
           export MAX_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "staging-environments") | .routeRules[]?.priority] | max // 0' config.yml)
           export NEXT_PRIORITY=$((MAX_PRIORITY + 1))
-          export HEADER_MATCHES=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | { "headerName": "X-Forwarded-Host", "exactMatch": "\(.name)" }'])
-          yq '.pathMatchers[0].routeRules += [{"priority": '"$NEXT_PRIORITY"', "matchRules": [{"prefixMatch": "/", "headerMatches": '$HEADER_MATCHES'}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] } }]' config.yml > config.yml.tmp
-          mv config.yml.tmp config.yml
+          LABELS_JSON=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | .name]')
+          for LABEL in $(echo "$LABELS_JSON" | jq -r '.[]'); do
+            echo "Adding route for label: $LABEL"
+            yq -i '.pathMatchers[0].routeRules += [{"priority": '$NEXT_PRIORITY', "matchRules": [{"prefixMatch": "/", "headerMatches": [{ "headerName": "X-Forwarded-Host", "exactMatch": "'$LABEL'" }]}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] } }]' config.yml
+            export NEXT_PRIORITY=$((NEXT_PRIORITY + 1))
+          done
           echo "Updating url map with:"
           cat config.yml
           gcloud compute url-maps import stg-activitypub --source=config.yml --global --project ${GCP_PROJECT} --quiet

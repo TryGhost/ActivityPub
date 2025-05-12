@@ -100,12 +100,11 @@ jobs:
             # Get current config
             gcloud compute url-maps export stg-activitypub --global --project ${GCP_PROJECT} > config.yml
             # Delete unnecessary fields
-            yq 'del(.fingerprint)' config.yml -i
-            yq 'del(.creationTimestamp)' config.yml -i
+            yq -i 'del(.fingerprint)' config.yml
+            yq -i 'del(.creationTimestamp)' config.yml
             export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${PR_NUMBER}-api"
             # Remove existing route rules for the PR service
-            yq '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml > config.yml.tmp
-            mv config.yml.tmp config.yml
+            yq -i '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml
             echo "Updating url map with:"
             cat config.yml
             gcloud compute url-maps import stg-activitypub --source=config.yml --global --project ${GCP_PROJECT} --quiet
