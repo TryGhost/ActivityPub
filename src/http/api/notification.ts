@@ -12,6 +12,7 @@ const notificationTypeMap: Record<number, NotificationDTO['type']> = {
     2: 'reply',
     3: 'repost',
     4: 'follow',
+    5: 'mention',
 };
 
 const postTypeMap: Record<number, 'article' | 'note'> = {
