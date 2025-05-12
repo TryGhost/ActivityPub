@@ -195,7 +195,7 @@ export interface NotificationDTO {
     /**
      * Type of the notification
      */
-    type: 'like' | 'repost' | 'reply' | 'follow';
+    type: 'like' | 'repost' | 'reply' | 'follow' | 'mention';
     /**
      * Actor of the notification
      */

@@ -9,6 +9,7 @@ export enum NotificationType {
     Reply = 2,
     Repost = 3,
     Follow = 4,
+    Mention = 5,
 }
 
 export interface GetNotificationsDataOptions {
