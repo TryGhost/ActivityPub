@@ -1,16 +1,15 @@
 import type { Metadata, PostType } from '../../post/post.entity';
 
 /**
- * Account returned by the API - Anywhere an account is returned via the API,
- * it should be this shape, or a partial version of it
+ * Base account DTO that can be used across different views
  */
-export interface AccountDTO {
+export interface MinimalAccountDTO {
     /**
      * Internal ID of the account
      */
     id: string;
     /**
-     * ActivityPub ID of the account
+     * Internal ID of the account
      */
     apId: string;
     /**
@@ -22,17 +21,40 @@ export interface AccountDTO {
      */
     handle: string;
     /**
+     * URL of the avatar of the account
+     */
+    avatarUrl: string | null;
+    /**
+     * Whether the account of the current user is followed by this account
+     */
+    followedByMe: boolean;
+    /**
+     * Whether the account of the current user is blocking this account
+     */
+    blockedByMe: boolean;
+    /**
+     * Whether the account of the current user is blocking this accounts domain
+     */
+    domainBlockedByMe: boolean;
+    /**
+     * Whether the current user is following this account
+     */
+    isFollowing: boolean;
+}
+
+/**
+ * Account returned by the API - Anywhere an account is returned via the API,
+ * it should be this shape, or a partial version of it
+ */
+export interface AccountDTO extends Omit<MinimalAccountDTO, 'isFollowing'> {
+    /**
      * Bio of the account
      */
-    bio: string;
+    bio: string | null;
     /**
      * Public URL of the account
      */
-    url: string;
-    /**
-     * URL of the avatar of the account
-     */
-    avatarUrl: string;
+    url: string | null;
     /**
      * URL of the banner image of the account
      */
@@ -61,18 +83,6 @@ export interface AccountDTO {
      * Whether the account of the current user is followed by this account
      */
     followsMe: boolean;
-    /**
-     * Whether the account of the current user is following this account
-     */
-    followedByMe: boolean;
-    /**
-     * Whether the account of the current user is blocking this account
-     */
-    blockedByMe: boolean;
-    /**
-     * Whether the account of the current user is blocking this accounts domain
-     */
-    domainBlockedByMe: boolean;
 }
 
 export type AuthorDTO = Pick<
@@ -227,4 +237,14 @@ export interface NotificationDTO {
               type: 'article' | 'note';
           })
         | null;
+}
+
+/**
+ * DTO for a blocked domain
+ */
+export interface BlockedDomainDTO {
+    /**
+     * The fully qualified URL of the blocked domain
+     */
+    url: string;
 }

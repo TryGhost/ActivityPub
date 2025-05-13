@@ -115,6 +115,7 @@ import {
 import { AccountFollowsView } from './http/api/views/account.follows.view';
 import { AccountPostsView } from './http/api/views/account.posts.view';
 import { AccountView } from './http/api/views/account.view';
+import { BlocksView } from './http/api/views/blocks.view';
 import { createWebFingerHandler } from './http/handler/webfinger';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
@@ -297,6 +298,7 @@ const accountFollowsView = new AccountFollowsView(
     moderationService,
 );
 const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
+const blocksView = new BlocksView(client);
 const siteService = new SiteService(client, accountService, {
     getSiteSettings: getSiteSettings,
 });
@@ -318,7 +320,7 @@ const notificationEventService = new NotificationEventService(
 );
 notificationEventService.init();
 
-const blockController = new BlockController(accountService);
+const blockController = new BlockController(accountService, blocksView);
 const followController = new FollowController(
     accountService,
     moderationService,
@@ -1126,6 +1128,22 @@ app.post(
     '/.ghost/activitypub/actions/unblock/domain/:domain',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => blockController.handleUnblockDomain(ctx)),
+);
+
+app.get(
+    '/.ghost/activitypub/blocks/accounts',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) =>
+        blockController.handleGetBlockedAccounts(ctx),
+    ),
+);
+
+app.get(
+    '/.ghost/activitypub/blocks/domains',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) =>
+        blockController.handleGetBlockedDomains(ctx),
+    ),
 );
 /** Federation wire up */
 

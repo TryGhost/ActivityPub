@@ -3,9 +3,13 @@ import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import { BadRequest, NotFound } from './helpers/response';
+import type { BlocksView } from './views/blocks.view';
 
 export class BlockController {
-    constructor(private readonly accountService: AccountService) {}
+    constructor(
+        private readonly accountService: AccountService,
+        private readonly blocksView: BlocksView,
+    ) {}
 
     async handleBlock(ctx: AppContext) {
         const accountToBlock = parseURL(
@@ -113,5 +117,39 @@ export class BlockController {
             },
             status: 200,
         });
+    }
+
+    async handleGetBlockedAccounts(ctx: AppContext) {
+        const account = ctx.get('account');
+        const blockedAccounts = await this.blocksView.getBlockedAccounts(
+            account.id,
+        );
+
+        return new Response(
+            JSON.stringify({ blocked_accounts: blockedAccounts }),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
+    }
+
+    async handleGetBlockedDomains(ctx: AppContext) {
+        const account = ctx.get('account');
+        const blockedDomains = await this.blocksView.getBlockedDomains(
+            account.id,
+        );
+
+        return new Response(
+            JSON.stringify({ blocked_domains: blockedDomains }),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
     }
 }

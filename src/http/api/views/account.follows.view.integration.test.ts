@@ -427,6 +427,7 @@ describe('AccountFollowsView', () => {
                         accounts: [
                             {
                                 id: followerOne.apId.href,
+                                apId: followerOne.apId.href,
                                 name: followerOne.name,
                                 handle: `@${followerOne.username}@${followerOne.apId.host}`,
                                 avatarUrl: followerOne.avatarUrl?.href,
@@ -437,6 +438,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: followerTwo.apId.href,
+                                apId: followerTwo.apId.href,
                                 name: followerTwo.name,
                                 handle: `@${followerTwo.username}@${followerTwo.apId.host}`,
                                 avatarUrl: followerTwo.avatarUrl?.href,
@@ -447,6 +449,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: followerThree.apId.href,
+                                apId: followerThree.apId.href,
                                 name: followerThree.name,
                                 handle: `@${followerThree.username}@${followerThree.apId.host}`,
                                 avatarUrl: followerThree.avatarUrl?.href,
@@ -457,6 +460,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: 'https://404media.co/.ghost/activitypub/users/index',
+                                apId: 'https://404media.co/.ghost/activitypub/users/index',
                                 name: '404 Media',
                                 handle: '@feed@404media.co',
                                 avatarUrl: 'https://404media.co/avatar.jpg',
@@ -467,6 +471,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: 'https://john.onolan.org/.ghost/activitypub/users/index',
+                                apId: 'https://john.onolan.org/.ghost/activitypub/users/index',
                                 name: "John O'Nolan",
                                 handle: '@john@john.onolan.org',
                                 avatarUrl: 'https://john.onolan.org/avatar.jpg',
@@ -595,6 +600,7 @@ describe('AccountFollowsView', () => {
                         accounts: [
                             {
                                 id: followerOne.apId.href,
+                                apId: followerOne.apId.href,
                                 name: followerOne.name,
                                 handle: `@${followerOne.username}@${followerOne.apId.host}`,
                                 avatarUrl: followerOne.avatarUrl?.href,
@@ -605,6 +611,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: followerTwo.apId.href,
+                                apId: followerTwo.apId.href,
                                 name: followerTwo.name,
                                 handle: `@${followerTwo.username}@${followerTwo.apId.host}`,
                                 avatarUrl: followerTwo.avatarUrl?.href,
@@ -615,6 +622,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: followerThree.apId.href,
+                                apId: followerThree.apId.href,
                                 name: followerThree.name,
                                 handle: `@${followerThree.username}@${followerThree.apId.host}`,
                                 avatarUrl: followerThree.avatarUrl?.href,
@@ -625,6 +633,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: 'https://404media.co/.ghost/activitypub/users/index',
+                                apId: 'https://404media.co/.ghost/activitypub/users/index',
                                 name: '404 Media',
                                 handle: '@feed@404media.co',
                                 avatarUrl: 'https://404media.co/avatar.jpg',
@@ -635,6 +644,7 @@ describe('AccountFollowsView', () => {
                             },
                             {
                                 id: 'https://john.onolan.org/.ghost/activitypub/users/index',
+                                apId: 'https://john.onolan.org/.ghost/activitypub/users/index',
                                 name: "John O'Nolan",
                                 handle: '@john@john.onolan.org',
                                 avatarUrl: 'https://john.onolan.org/avatar.jpg',

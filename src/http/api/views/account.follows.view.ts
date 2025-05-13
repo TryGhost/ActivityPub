@@ -11,7 +11,7 @@ import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
 import type { ModerationService } from 'moderation/moderation.service';
-import type { AccountDTO } from '../types';
+import type { MinimalAccountDTO } from '../types';
 
 /**
  * Maximum number of follow accounts to return
@@ -23,19 +23,8 @@ export type GetFollowsError =
     | 'error-getting-follows'
     | 'not-an-actor';
 
-type AccountInfo = Pick<
-    AccountDTO,
-    | 'id'
-    | 'name'
-    | 'handle'
-    | 'avatarUrl'
-    | 'followedByMe'
-    | 'blockedByMe'
-    | 'domainBlockedByMe'
-> & { isFollowing: boolean };
-
 export interface AccountFollows {
-    accounts: AccountInfo[];
+    accounts: MinimalAccountDTO[];
     next: string | null;
 }
 
@@ -126,7 +115,7 @@ export class AccountFollowsView {
                 ? (next + FOLLOWS_LIMIT).toString()
                 : null;
 
-        const accounts: AccountInfo[] = [];
+        const accounts: MinimalAccountDTO[] = [];
 
         for (const result of results) {
             const domainBlockedByMe =
@@ -137,6 +126,7 @@ export class AccountFollowsView {
 
             accounts.push({
                 id: result.ap_id,
+                apId: result.ap_id,
                 name: result.name || '',
                 handle: getAccountHandle(
                     new URL(result.ap_id).host,
@@ -314,12 +304,12 @@ export class AccountFollowsView {
     private async processFollowsList(
         followsList: URL[],
         siteDefaultAccount: Account,
-    ): Promise<AccountInfo[]> {
+    ): Promise<MinimalAccountDTO[]> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const documentLoader = await ctx.getDocumentLoader({
             handle: 'index',
         });
-        const accounts: AccountInfo[] = [];
+        const accounts: MinimalAccountDTO[] = [];
 
         for await (const item of followsList) {
             try {
@@ -375,6 +365,7 @@ export class AccountFollowsView {
 
                     accounts.push({
                         id: followeeAccount.ap_id,
+                        apId: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
                         handle: getAccountHandle(
                             new URL(followeeAccount.ap_id).host,
@@ -411,6 +402,7 @@ export class AccountFollowsView {
 
                     accounts.push({
                         id: followsActor.id,
+                        apId: followsActor.id,
                         name: followsActor.name,
                         handle: getAccountHandle(
                             new URL(followsActor.id).host,
