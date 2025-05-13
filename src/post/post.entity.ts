@@ -86,6 +86,7 @@ export class Post extends BaseEntity {
     public readonly url: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
+    private mentionsToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
@@ -219,6 +220,19 @@ export class Post extends BaseEntity {
             repostsToRemove,
             repostsToAdd,
         };
+    }
+
+    addMention(account: Account) {
+        if (!account.id) {
+            throw new Error('Cannot add mention for account with no id');
+        }
+        this.mentionsToAdd.add(account.id);
+    }
+
+    getMentions() {
+        const mentionsToAdd = [...this.mentionsToAdd.values()];
+        this.mentionsToAdd.clear();
+        return mentionsToAdd;
     }
 
     static createArticleFromGhostPost(
