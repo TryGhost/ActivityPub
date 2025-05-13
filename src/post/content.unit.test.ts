@@ -16,6 +16,7 @@ describe('ContentPreparer', () => {
             wrapInParagraph: false,
             extractLinks: false,
             addPaidContentMessage: false as const,
+            addMentions: false as const,
         };
 
         describe('Removing member content', () => {
@@ -161,6 +162,85 @@ describe('ContentPreparer', () => {
                 expect(result).toEqual(content);
             });
         });
+
+        describe('Adding mentions', () => {
+            it('should convert mentions to hyperlinks', () => {
+                const content = 'Hello @user@example.xyz, how are you?';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [
+                        {
+                            name: '@user@example.xyz',
+                            href: new URL('https://example.xyz/@user'),
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>, how are you?',
+                );
+            });
+
+            it('should handle multiple mentions in the same content', () => {
+                const content =
+                    'Hello @user@example.xyz and @newUser@example.co.uk!';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [
+                        {
+                            name: '@user@example.xyz',
+                            href: new URL('https://example.xyz/@user'),
+                        },
+                        {
+                            name: '@newUser@example.co.uk',
+                            href: new URL('https://example.co.uk/@newUser'),
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a> and <a href="https://example.co.uk/@newUser" rel="nofollow noopener noreferrer">@newUser@example.co.uk</a>!',
+                );
+            });
+
+            it('should handle repeated mentions in the content', () => {
+                const content =
+                    'Hello @user@example.xyz, @user@example.xyz, and @user@example.xyz!';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [
+                        {
+                            name: '@user@example.xyz',
+                            href: new URL('https://example.xyz/@user'),
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>, <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>, and <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>!',
+                );
+            });
+
+            it('should not modify content when no mentions are provided', () => {
+                const content = 'Hello @user@example.xyz, how are you?';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [],
+                });
+
+                expect(result).toEqual(content);
+            });
+
+            it('should not modify content when addMentions is false', () => {
+                const content = 'Hello @user@example.xyz, how are you?';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: false,
+                });
+
+                expect(result).toEqual(content);
+            });
+        });
     });
 
     describe('regenerateExcerpt', () => {
@@ -223,6 +303,81 @@ describe('ContentPreparer', () => {
             expect(result).toEqual(
                 'I expect content to be truncated exactly here...',
             );
+        });
+    });
+
+    describe('parseMentions', () => {
+        it('should parse valid ActivityPub handles', () => {
+            const content =
+                'Hello @user@example.com and @another@domain.co.uk!';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(
+                new Set(['@user@example.com', '@another@domain.co.uk']),
+            );
+        });
+
+        it('should return empty array when no mentions are found', () => {
+            const content = 'Hello world! No mentions here.';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(new Set([]));
+        });
+
+        it('should filter out invalid handles', () => {
+            const content = 'Hello @invalid@ and @valid@example.com!';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(new Set(['@valid@example.com']));
+        });
+
+        it('should handle multiple mentions in different formats', () => {
+            const content =
+                '@user1@domain.com Hello @user2@sub.domain.org! @invalid@ @user3@test.com';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(
+                new Set([
+                    '@user1@domain.com',
+                    '@user2@sub.domain.org',
+                    '@user3@test.com',
+                ]),
+            );
+        });
+
+        it('should handle empty string', () => {
+            const result = ContentPreparer.parseMentions('');
+
+            expect(result).toEqual(new Set([]));
+        });
+
+        it('should filter out handles with surrounding punctuations', () => {
+            const content =
+                'Hello, @user@example.com! And (@another@domain.org) or "@another@test.com"';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(
+                new Set([
+                    '@user@example.com',
+                    '@another@domain.org',
+                    '@another@test.com',
+                ]),
+            );
+        });
+
+        it('should filter out handles that match regex but fail isHandle validation', () => {
+            const content = 'Hello @user@invalid-domain and @user@example.com';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(new Set(['@user@example.com']));
+        });
+
+        it('should deduplicate repeated mentions', () => {
+            const content =
+                'Hello @user@example.com and @user@example.com and @user@example.com';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(new Set(['@user@example.com']));
         });
     });
 });

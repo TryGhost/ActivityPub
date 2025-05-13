@@ -49,6 +49,11 @@ export interface PostAttachment {
     url: URL;
 }
 
+export interface Mention {
+    name: string;
+    href: URL;
+}
+
 export interface PostData {
     type: CreatePostType;
     audience?: Audience;
@@ -251,6 +256,7 @@ export class Post extends BaseEntity {
                 wrapInParagraph: false,
                 extractLinks: false,
                 addPaidContentMessage: false,
+                addMentions: false,
             });
 
             if (content === '') {
@@ -274,6 +280,7 @@ export class Post extends BaseEntity {
                 addPaidContentMessage: {
                     url: new URL(ghostPost.url),
                 },
+                addMentions: false,
             });
         }
 
@@ -348,6 +355,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
+            addMentions: false,
         });
 
         const postAttachment = imageUrl
@@ -409,6 +417,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
+            addMentions: false,
         });
 
         const postAttachment = imageUrl
