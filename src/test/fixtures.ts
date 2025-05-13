@@ -184,6 +184,13 @@ export class FixtureManager {
         });
     }
 
+    async createMention(account: Account, post: Post) {
+        return this.db('mentions').insert({
+            account_id: account.id,
+            post_id: post.id,
+        });
+    }
+
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
         await Promise.all([

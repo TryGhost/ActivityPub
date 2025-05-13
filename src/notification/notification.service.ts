@@ -364,4 +364,39 @@ export class NotificationService {
             ])
             .delete();
     }
+
+    async createMentionNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification if author mentioned themselves (lol)
+            return;
+        }
+
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If the mention is for an account that no longer exists or is external,
+            // don't create a notification
+            return;
+        }
+
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                post.author.id,
+                accountId,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: post.author.id,
+            post_id: post.id,
+            event_type: NotificationType.Mention,
+        });
+    }
 }

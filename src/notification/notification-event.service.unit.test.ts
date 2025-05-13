@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
+import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import type { Account as AccountEntity } from 'account/account.entity';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { Account } from 'account/types';
@@ -28,6 +29,7 @@ describe('NotificationEventService', () => {
             createReplyNotification: vi.fn(),
             removeBlockedAccountNotifications: vi.fn(),
             removeBlockedDomainNotifications: vi.fn(),
+            createMentionNotification: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -148,6 +150,28 @@ describe('NotificationEventService', () => {
             expect(
                 notificationService.removeBlockedDomainNotifications,
             ).toHaveBeenCalledWith(blockerAccount.id, blockedDomain);
+        });
+    });
+
+    describe('handling a mention created event', () => {
+        it('should create a mention notification', () => {
+            const postWithMention = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+                content: 'Hello @bob@coolsite.com',
+            } as Post;
+            const mentionedAccountId = 789;
+
+            events.emit(
+                AccountMentionedEvent.getName(),
+                new AccountMentionedEvent(postWithMention, mentionedAccountId),
+            );
+
+            expect(
+                notificationService.createMentionNotification,
+            ).toHaveBeenCalledWith(postWithMention, mentionedAccountId);
         });
     });
 });
