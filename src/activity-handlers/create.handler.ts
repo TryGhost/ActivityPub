@@ -24,7 +24,25 @@ export class CreateHandler {
             return;
         }
 
-        const sender = await create.getActor(ctx);
+        let sender = null;
+        try {
+            sender = await create.getActor(ctx);
+        } catch (err) {
+            if (
+                err instanceof Error &&
+                'code' in err &&
+                (err.code === 'ETIMEDOUT' || err.code === 'EHOSTUNREACH')
+            ) {
+                ctx.data.logger.info(
+                    'Error performing getActor network lookup: ',
+                    {
+                        error: err,
+                    },
+                );
+            } else {
+                throw err;
+            }
+        }
         if (sender === null || sender.id === null) {
             ctx.data.logger.info('Create sender missing, exit early');
             return;
