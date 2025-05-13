@@ -106,3 +106,63 @@ export async function lookupAPIdByHandle(
         return null;
     }
 }
+
+export async function lookupActorProfile(
+    ctx: Context<ContextData>,
+    handle: string,
+): Promise<URL | null> {
+    try {
+        // Remove leading @ if present
+        const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+
+        const resource = `acct:${cleanHandle}`;
+
+        const webfingerData = await lookupWebFinger(resource, {
+            allowPrivateAddress:
+                process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+                ['development', 'testing'].includes(process.env.NODE_ENV || ''),
+        });
+
+        if (!webfingerData?.links) {
+            ctx.data.logger.info(
+                `No links found in WebFinger response for handle ${handle}`,
+            );
+            return null;
+        }
+
+        const profileLink = webfingerData.links.find(
+            (link) => link.rel === 'http://webfinger.net/rel/profile-page',
+        );
+
+        if (profileLink?.href) {
+            try {
+                return new URL(profileLink.href);
+            } catch (err) {
+                ctx.data.logger.info(
+                    `Invalid profile page URL for handle ${handle}, falling back to self link`,
+                );
+            }
+        }
+
+        // Fallback to ActivityPub self link if profile link not found or is not valid
+        const selfLink = webfingerData.links.find(
+            (link) =>
+                link.rel === 'self' &&
+                link.type === 'application/activity+json',
+        );
+
+        if (!selfLink?.href) {
+            ctx.data.logger.info(
+                `No ActivityPub profile found in WebFinger response for handle ${handle}`,
+            );
+            return null;
+        }
+
+        return new URL(selfLink.href);
+    } catch (err) {
+        ctx.data.logger.error(
+            `Error looking up actor profile for handle ${handle} - ${err}`,
+        );
+        return null;
+    }
+}
