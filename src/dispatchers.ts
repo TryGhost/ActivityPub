@@ -24,7 +24,7 @@ import type { FollowersService } from 'activitypub/followers.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { AccountService } from './account/account.service';
 import { mapActorToExternalAccountData } from './account/utils';
-import { type ContextData, fedify } from './app';
+import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
 import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
@@ -958,91 +958,9 @@ export async function likedDispatcher(
     handle: string,
     cursor: string | null,
 ) {
-    ctx.data.logger.info('Liked Dispatcher');
-
-    const db = ctx.data.db;
-    const globaldb = ctx.data.globaldb;
-    const logger = ctx.data.logger;
-    const apCtx = fedify.createContext(ctx.request as Request, {
-        db,
-        globaldb,
-        logger,
-    });
-
-    const pageSize = Number.parseInt(
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-    );
-
-    if (Number.isNaN(pageSize)) {
-        throw new Error(`Page size: ${pageSize} is not valid`);
-    }
-
-    const offset = Number.parseInt(cursor ?? '0');
-    let nextCursor: string | null = null;
-
-    const results = ((await db.get<string[]>(['liked'])) || []).reverse();
-
-    nextCursor =
-        results.length > offset + pageSize
-            ? (offset + pageSize).toString()
-            : null;
-
-    const slicedResults = results.slice(offset, offset + pageSize);
-
-    ctx.data.logger.info('Liked results', { results: slicedResults });
-
-    const items: Like[] = (
-        await Promise.all(
-            slicedResults.map(async (result) => {
-                try {
-                    const thing = await globaldb.get<{
-                        object:
-                            | string
-                            | {
-                                  // TODO: Clean up the any type
-                                  // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                                  [key: string]: any;
-                              };
-                        // TODO: Clean up the any type
-                        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                        [key: string]: any;
-                    }>([result]);
-
-                    if (
-                        thing &&
-                        typeof thing.object !== 'string' &&
-                        typeof thing.object.attributedTo === 'string'
-                    ) {
-                        const actor = await lookupActor(
-                            apCtx,
-                            thing.object.attributedTo,
-                        );
-
-                        if (actor) {
-                            const json = await actor.toJsonLd();
-
-                            if (typeof json === 'object' && json !== null) {
-                                thing.object.attributedTo = json;
-                            }
-                        }
-                    }
-
-                    const activity = await Like.fromJsonLd(thing);
-                    return activity;
-                } catch (err) {
-                    Sentry.captureException(err);
-                    ctx.data.logger.error('Error getting liked activity', {
-                        error: err,
-                    });
-                    return null;
-                }
-            }),
-        )
-    ).filter((item): item is Like => item !== null);
-
     return {
-        items,
-        nextCursor,
+        items: [],
+        nextCursor: null,
     };
 }
 
@@ -1050,13 +968,11 @@ export async function likedCounter(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
-
-    return results.length;
+    return 0;
 }
 
 export function likedFirstCursor() {
-    return '0';
+    return null;
 }
 
 export async function articleDispatcher(
