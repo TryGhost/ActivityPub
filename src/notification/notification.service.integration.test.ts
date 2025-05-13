@@ -2,7 +2,6 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Account } from 'account/types';
 import type { Knex } from 'knex';
-import type { Mention } from 'mention/mention.entity';
 import { ModerationService } from 'moderation/moderation.service';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
@@ -972,18 +971,12 @@ describe('NotificationService', () => {
                 type: PostType.Article,
             });
 
-            const [mentionId] = await fixtureManager.createMention(
-                bobAccount,
+            await fixtureManager.createMention(bobAccount, alicePost);
+
+            await notificationService.createAccountMentionedNotification(
                 alicePost,
+                bobAccount.id,
             );
-
-            const mention = {
-                id: mentionId,
-                accountId: bobAccount.id,
-                postId: alicePost.id,
-            } as Mention;
-
-            await notificationService.createMentionNotification(mention);
 
             const notifications = await client('notifications').select('*');
 
@@ -1009,18 +1002,12 @@ describe('NotificationService', () => {
                 type: PostType.Article,
             });
 
-            const [mentionId] = await fixtureManager.createMention(
-                bobAccount,
+            await fixtureManager.createMention(bobAccount, alicePost);
+
+            await notificationService.createAccountMentionedNotification(
                 alicePost,
+                bobAccount.id,
             );
-
-            const mention = {
-                id: mentionId,
-                accountId: bobAccount.id,
-                postId: alicePost.id,
-            } as Mention;
-
-            await notificationService.createMentionNotification(mention);
 
             const notifications = await client('notifications').select('*');
 

@@ -4,11 +4,10 @@ import { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
+import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import type { Account as AccountEntity } from 'account/account.entity';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { Account } from 'account/types';
-import { MentionCreatedEvent } from 'mention/mention-created.event';
-import type { Mention } from 'mention/mention.entity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
@@ -30,7 +29,7 @@ describe('NotificationEventService', () => {
             createReplyNotification: vi.fn(),
             removeBlockedAccountNotifications: vi.fn(),
             removeBlockedDomainNotifications: vi.fn(),
-            createMentionNotification: vi.fn(),
+            createAccountMentionedNotification: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -156,20 +155,23 @@ describe('NotificationEventService', () => {
 
     describe('handling a mention created event', () => {
         it('should create a mention notification', () => {
-            const mention = {
+            const postWithMention = {
                 id: 123,
-                accountId: 345,
-                postId: 678,
-            } as Mention;
+                author: {
+                    id: 456,
+                },
+                content: 'Hello @bob@coolsite.com',
+            } as Post;
+            const mentionedAccountId = 789;
 
             events.emit(
-                MentionCreatedEvent.getName(),
-                new MentionCreatedEvent(mention),
+                AccountMentionedEvent.getName(),
+                new AccountMentionedEvent(postWithMention, mentionedAccountId),
             );
 
             expect(
-                notificationService.createMentionNotification,
-            ).toHaveBeenCalledWith(mention);
+                notificationService.createAccountMentionedNotification,
+            ).toHaveBeenCalledWith(postWithMention, mentionedAccountId);
         });
     });
 });

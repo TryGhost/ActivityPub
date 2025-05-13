@@ -1,7 +1,6 @@
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-import type { Mention } from 'mention/mention.entity';
 import type { ModerationService } from 'moderation/moderation.service';
 import type { Post } from 'post/post.entity';
 
@@ -366,9 +365,14 @@ export class NotificationService {
             .delete();
     }
 
-    async createMentionNotification(mention: Mention) {
+    async createAccountMentionedNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification if author mentioned themselves (lol)
+            return;
+        }
+
         const user = await this.db('users')
-            .where('account_id', mention.accountId)
+            .where('account_id', accountId)
             .select('id')
             .first();
 
@@ -378,15 +382,10 @@ export class NotificationService {
             return;
         }
 
-        const post = await this.db('posts')
-            .where('id', mention.postId)
-            .select('id', 'author_id')
-            .first();
-
         const notificationAllowed =
             await this.moderationService.canInteractWithAccount(
-                post.author_id,
-                mention.accountId,
+                post.author.id,
+                accountId,
             );
 
         if (!notificationAllowed) {
@@ -395,7 +394,7 @@ export class NotificationService {
 
         await this.db('notifications').insert({
             user_id: user.id,
-            account_id: post.author_id,
+            account_id: post.author.id,
             post_id: post.id,
             event_type: NotificationType.Mention,
         });
