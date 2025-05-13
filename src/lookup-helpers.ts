@@ -144,7 +144,7 @@ export async function lookupActorProfile(
             }
         }
 
-        // Fallback to ActivityPub self link if profile link not found
+        // Fallback to ActivityPub self link if profile link not found or is not valid
         const selfLink = webfingerData.links.find(
             (link) =>
                 link.rel === 'self' &&
