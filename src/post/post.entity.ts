@@ -4,6 +4,9 @@ import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
 import { ContentPreparer } from './content';
+import { lookupActorProfile } from '../lookup-helpers';
+import type { Context } from '@fedify/fedify';
+import type { ContextData } from '../app';
 
 export enum PostType {
     Note = 0,
@@ -47,6 +50,11 @@ export interface PostAttachment {
     mediaType: string | null;
     name: string | null;
     url: URL;
+}
+
+export interface Mention {
+    name: string;
+    href: URL;
 }
 
 export interface PostData {
@@ -237,6 +245,7 @@ export class Post extends BaseEntity {
                 wrapInParagraph: false,
                 extractLinks: false,
                 addPaidContentMessage: false,
+                addMentions: false,
             });
 
             if (content === '') {
@@ -260,6 +269,7 @@ export class Post extends BaseEntity {
                 addPaidContentMessage: {
                     url: new URL(ghostPost.url),
                 },
+                addMentions: false,
             });
         }
 
@@ -294,6 +304,8 @@ export class Post extends BaseEntity {
             threadRoot = data.inReplyTo.threadRoot ?? data.inReplyTo.id;
         }
 
+        // TODO: Handle mentions?
+
         return new Post(
             null,
             null,
@@ -318,13 +330,28 @@ export class Post extends BaseEntity {
         );
     }
 
-    static createNote(
+    static async createNote(
+        ctx: Context<ContextData> | null,
         account: Account,
         noteContent: string,
         imageUrl?: URL,
-    ): Post {
+    ): Promise<Post> {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
+        }
+
+        const mentions = ContentPreparer.parseMentions(noteContent);
+        console.log('Mentions', mentions);
+
+        const processedMentions: Mention[] = [];
+        for (const mention of mentions) {
+            const profileUrl = await lookupActorProfile(ctx, mention);
+            if (profileUrl) {
+                processedMentions.push({
+                    name: mention,
+                    href: profileUrl,
+                });
+            }
         }
 
         const content = ContentPreparer.prepare(noteContent, {
@@ -334,7 +361,10 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
+            addMentions: processedMentions,
         });
+
+        console.log('Processed Mentions', processedMentions);
 
         const postAttachment = imageUrl
             ? [
@@ -371,12 +401,13 @@ export class Post extends BaseEntity {
         );
     }
 
-    static createReply(
+    static async createReply(
+        ctx: Context<ContextData> | null,
         account: Account,
         replyContent: string,
         inReplyTo: Post,
         imageUrl?: URL,
-    ): Post {
+    ): Promise<Post> {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
         }
@@ -388,6 +419,22 @@ export class Post extends BaseEntity {
         const inReplyToId = inReplyTo.id;
         const threadRootId = inReplyTo.threadRoot ?? inReplyTo.id;
 
+        const mentions = ContentPreparer.parseMentions(replyContent);
+        console.log('Mentions in Reply', mentions);
+
+        const processedMentions: Mention[] = [];
+        for (const mention of mentions) {
+            const profileUrl = await lookupActorProfile(ctx, mention);
+            if (profileUrl) {
+                processedMentions.push({
+                    name: mention,
+                    href: profileUrl,
+                });
+            }
+        }
+
+        console.log('Processed Mentions in Reply', processedMentions);
+
         const content = ContentPreparer.prepare(replyContent, {
             removeMemberContent: false,
             escapeHtml: true,
@@ -395,6 +442,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
+            addMentions: processedMentions,
         });
 
         const postAttachment = imageUrl

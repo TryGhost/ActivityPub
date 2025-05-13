@@ -1,6 +1,7 @@
 import { isHandle } from 'helpers/activitypub/actor';
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
+import type { Mention } from './post.entity';
 
 /**
  * Marker to indicate that the proceeding content is member content
@@ -45,6 +46,10 @@ interface PrepareContentOptions {
         | {
               url: URL;
           };
+    /**
+     * Whether to add mentions to the content
+     */
+    addMentions: false | Mention[];
 }
 
 export class ContentPreparer {
@@ -59,6 +64,7 @@ export class ContentPreparer {
             wrapInParagraph: false,
             extractLinks: false,
             addPaidContentMessage: false,
+            addMentions: false,
         },
     ) {
         return ContentPreparer.instance.prepare(content, options);
@@ -87,6 +93,7 @@ export class ContentPreparer {
             wrapInParagraph: false,
             extractLinks: false,
             addPaidContentMessage: false,
+            addMentions: false,
         },
     ) {
         let prepared = content;
@@ -118,6 +125,10 @@ export class ContentPreparer {
             );
         }
 
+        if (options.addMentions !== false) {
+            prepared = this.addMentions(prepared, options.addMentions);
+        }
+
         return prepared;
     }
 
@@ -128,6 +139,18 @@ export class ContentPreparer {
      */
     private addPaidContentMessage(content: string, url: URL) {
         return content + PAID_CONTENT_PREVIEW_HTML(url);
+    }
+
+    private addMentions(content: string, mentions: Mention[]) {
+        let preparedContent = content;
+        for (const mention of mentions) {
+            const mentionRegex = new RegExp(mention.name, 'g');
+            preparedContent = preparedContent.replace(
+                mentionRegex,
+                `<a href="${mention.href}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
+            );
+        }
+        return preparedContent;
     }
 
     /**
@@ -175,10 +198,10 @@ export class ContentPreparer {
         return `${text.substring(0, charLimit - 3)}...`;
     }
 
-    private parseMentions(content: string): string[] {
+    private parseMentions(content: string): Set<string> {
         const handleRegex = /@[\w.-]+@[\w-]+\.[\w.-]+/g;
         const mentions = content.match(handleRegex) || [];
-        return mentions.filter(isHandle);
+        return new Set(mentions.filter(isHandle));
     }
 
     /**
