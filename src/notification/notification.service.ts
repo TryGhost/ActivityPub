@@ -365,7 +365,7 @@ export class NotificationService {
             .delete();
     }
 
-    async createAccountMentionedNotification(post: Post, accountId: number) {
+    async createMentionNotification(post: Post, accountId: number) {
         if (post.author.id === accountId) {
             // Do not create a notification if author mentioned themselves (lol)
             return;

@@ -29,7 +29,7 @@ describe('NotificationEventService', () => {
             createReplyNotification: vi.fn(),
             removeBlockedAccountNotifications: vi.fn(),
             removeBlockedDomainNotifications: vi.fn(),
-            createAccountMentionedNotification: vi.fn(),
+            createMentionNotification: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -170,7 +170,7 @@ describe('NotificationEventService', () => {
             );
 
             expect(
-                notificationService.createAccountMentionedNotification,
+                notificationService.createMentionNotification,
             ).toHaveBeenCalledWith(postWithMention, mentionedAccountId);
         });
     });

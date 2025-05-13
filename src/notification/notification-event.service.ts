@@ -92,7 +92,7 @@ export class NotificationEventService {
     }
 
     private async handleAccountMentionedEvent(event: AccountMentionedEvent) {
-        await this.notificationService.createAccountMentionedNotification(
+        await this.notificationService.createMentionNotification(
             event.getPost(),
             event.getAccountId(),
         );

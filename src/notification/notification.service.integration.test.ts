@@ -973,7 +973,7 @@ describe('NotificationService', () => {
 
             await fixtureManager.createMention(bobAccount, alicePost);
 
-            await notificationService.createAccountMentionedNotification(
+            await notificationService.createMentionNotification(
                 alicePost,
                 bobAccount.id,
             );
@@ -1004,7 +1004,7 @@ describe('NotificationService', () => {
 
             await fixtureManager.createMention(bobAccount, alicePost);
 
-            await notificationService.createAccountMentionedNotification(
+            await notificationService.createMentionNotification(
                 alicePost,
                 bobAccount.id,
             );
