@@ -135,7 +135,13 @@ export async function lookupActorProfile(
         );
 
         if (profileLink?.href) {
-            return new URL(profileLink.href);
+            try {
+                return new URL(profileLink.href);
+            } catch (err) {
+                ctx.data.logger.info(
+                    `Invalid profile page URL for handle ${handle}, falling back to self link`,
+                );
+            }
         }
 
         // Fallback to ActivityPub self link if profile link not found
