@@ -1,6 +1,7 @@
 import type { Account } from 'account/types';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
+import type { Mention } from 'mention/mention.entity';
 import type { ModerationService } from 'moderation/moderation.service';
 import type { Post } from 'post/post.entity';
 
@@ -363,5 +364,40 @@ export class NotificationService {
                 domain.host,
             ])
             .delete();
+    }
+
+    async createMentionNotification(mention: Mention) {
+        const user = await this.db('users')
+            .where('account_id', mention.accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If the mention is for an account that no longer exists or is external,
+            // don't create a notification
+            return;
+        }
+
+        const post = await this.db('posts')
+            .where('id', mention.postId)
+            .select('id', 'author_id')
+            .first();
+
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                post.author_id,
+                mention.accountId,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: post.author_id,
+            post_id: post.id,
+            event_type: NotificationType.Mention,
+        });
     }
 }

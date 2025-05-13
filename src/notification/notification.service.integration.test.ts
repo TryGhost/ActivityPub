@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Account } from 'account/types';
 import type { Knex } from 'knex';
+import type { Mention } from 'mention/mention.entity';
 import { ModerationService } from 'moderation/moderation.service';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
@@ -954,6 +955,76 @@ describe('NotificationService', () => {
             expect(notifications).toHaveLength(2);
             expect(notifications[0].account_id).toBe(otherAccount.id);
             expect(notifications[1].account_id).toBe(otherAccount.id);
+        });
+    });
+
+    describe('createMentionNotification', () => {
+        it('should create a mention notification', async () => {
+            // Delete existing mentions
+            await client('mentions').delete();
+
+            const [aliceAccount, ,] =
+                await fixtureManager.createInternalAccount();
+            const [bobAccount, , bobUserId] =
+                await fixtureManager.createInternalAccount();
+
+            const alicePost = await fixtureManager.createPost(aliceAccount, {
+                type: PostType.Article,
+            });
+
+            const [mentionId] = await fixtureManager.createMention(
+                bobAccount,
+                alicePost,
+            );
+
+            const mention = {
+                id: mentionId,
+                accountId: bobAccount.id,
+                postId: alicePost.id,
+            } as Mention;
+
+            await notificationService.createMentionNotification(mention);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].user_id).toBe(bobUserId);
+            expect(notifications[0].account_id).toBe(aliceAccount.id);
+            expect(notifications[0].post_id).toBe(alicePost.id);
+            expect(notifications[0].event_type).toBe(NotificationType.Mention);
+        });
+
+        it('does not create a notification if the post author is blocked', async () => {
+            // Delete existing mentions
+            await client('mentions').delete();
+
+            const [aliceAccount, ,] =
+                await fixtureManager.createInternalAccount();
+            const [bobAccount, ,] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.createBlock(bobAccount, aliceAccount);
+
+            const alicePost = await fixtureManager.createPost(aliceAccount, {
+                type: PostType.Article,
+            });
+
+            const [mentionId] = await fixtureManager.createMention(
+                bobAccount,
+                alicePost,
+            );
+
+            const mention = {
+                id: mentionId,
+                accountId: bobAccount.id,
+                postId: alicePost.id,
+            } as Mention;
+
+            await notificationService.createMentionNotification(mention);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
         });
     });
 });
