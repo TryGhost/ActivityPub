@@ -225,4 +225,68 @@ describe('ContentPreparer', () => {
             );
         });
     });
+
+    describe('parseMentions', () => {
+        it('should parse valid ActivityPub handles', () => {
+            const content =
+                'Hello @user@example.com and @another@domain.co.uk!';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual([
+                '@user@example.com',
+                '@another@domain.co.uk',
+            ]);
+        });
+
+        it('should return empty array when no mentions are found', () => {
+            const content = 'Hello world! No mentions here.';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual([]);
+        });
+
+        it('should filter out invalid handles', () => {
+            const content = 'Hello @invalid@ and @valid@example.com!';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(['@valid@example.com']);
+        });
+
+        it('should handle multiple mentions in different formats', () => {
+            const content =
+                '@user1@domain.com Hello @user2@sub.domain.org! @invalid@ @user3@test.com';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual([
+                '@user1@domain.com',
+                '@user2@sub.domain.org',
+                '@user3@test.com',
+            ]);
+        });
+
+        it('should handle empty string', () => {
+            const result = ContentPreparer.parseMentions('');
+
+            expect(result).toEqual([]);
+        });
+
+        it('should filter out handles with surrounding punctuations', () => {
+            const content =
+                'Hello, @user@example.com! And (@another@domain.org) or "@another@test.com"';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual([
+                '@user@example.com',
+                '@another@domain.org',
+                '@another@test.com',
+            ]);
+        });
+
+        it('should filter out handles that match regex but fail isHandle validation', () => {
+            const content = 'Hello @user@invalid-domain and @user@example.com';
+            const result = ContentPreparer.parseMentions(content);
+
+            expect(result).toEqual(['@user@example.com']);
+        });
+    });
 });

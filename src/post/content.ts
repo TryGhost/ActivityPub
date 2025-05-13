@@ -1,3 +1,4 @@
+import { isHandle } from 'helpers/activitypub/actor';
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
 
@@ -65,6 +66,10 @@ export class ContentPreparer {
 
     static regenerateExcerpt(html: string, charLimit = 500) {
         return ContentPreparer.instance.regenerateExcerpt(html, charLimit);
+    }
+
+    static parseMentions(content: string) {
+        return ContentPreparer.instance.parseMentions(content);
     }
 
     /**
@@ -168,6 +173,12 @@ export class ContentPreparer {
         }
 
         return `${text.substring(0, charLimit - 3)}...`;
+    }
+
+    private parseMentions(content: string): string[] {
+        const handleRegex = /@[\w.-]+@[\w-]+\.[\w.-]+/g;
+        const mentions = content.match(handleRegex) || [];
+        return mentions.filter(isHandle);
     }
 
     /**
