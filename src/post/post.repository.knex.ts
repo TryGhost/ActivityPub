@@ -1,3 +1,4 @@
+import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
@@ -411,8 +412,10 @@ export class KnexPostRepository {
         try {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
+            const mentionsToAdd = post.getMentions();
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
+            let mentionedAccountIds: number[] = [];
             let wasDeleted = false;
 
             if (isNewPost) {
@@ -455,6 +458,14 @@ export class KnexPostRepository {
                         (accountId) => accountId,
                     );
                 }
+
+                if (mentionsToAdd.length > 0) {
+                    await this.insertMentions(post, mentionsToAdd, transaction);
+
+                    mentionedAccountIds = mentionsToAdd.map(
+                        (accountId) => accountId,
+                    );
+                }
             } else if (isDeletedPost) {
                 const existingRow = await transaction('posts')
                     .select('deleted_at')
@@ -480,6 +491,11 @@ export class KnexPostRepository {
 
                     // Delete likes associated with the deleted post
                     await transaction('likes')
+                        .where({ post_id: post.id })
+                        .del();
+
+                    // Delete mentions associated with the deleted post
+                    await transaction('mentions')
                         .where({ post_id: post.id })
                         .del();
 
@@ -588,6 +604,13 @@ export class KnexPostRepository {
                 await this.events.emitAsync(
                     PostRepostedEvent.getName(),
                     new PostRepostedEvent(post, accountId),
+                );
+            }
+
+            for (const accountId of mentionedAccountIds) {
+                await this.events.emitAsync(
+                    AccountMentionedEvent.getName(),
+                    new AccountMentionedEvent(post, accountId),
                 );
             }
 
@@ -867,6 +890,26 @@ export class KnexPostRepository {
             insertedRepostsCount: count,
             accountIdsInserted: newRepostAccountIds,
         };
+    }
+
+    /**
+     * Insert mentions of a post into the database
+     *
+     * @param post Post to insert mentions for
+     * @param mentionedAccountIds Account IDs to insert mentions for
+     * @param transaction Database transaction to use
+     */
+    private async insertMentions(
+        post: Post,
+        mentionedAccountIds: number[],
+        transaction: Knex.Transaction,
+    ) {
+        const mentionsToInsert = mentionedAccountIds.map((accountId) => ({
+            account_id: accountId,
+            post_id: post.id,
+        }));
+
+        await transaction('mentions').insert(mentionsToInsert);
     }
 
     /**
