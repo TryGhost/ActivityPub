@@ -52,6 +52,7 @@ export interface PostAttachment {
 export interface Mention {
     name: string;
     href: URL;
+    account: Account;
 }
 
 export interface PostData {
@@ -343,6 +344,7 @@ export class Post extends BaseEntity {
         account: Account,
         noteContent: string,
         imageUrl?: URL,
+        mentions: Mention[] = [],
     ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
@@ -355,7 +357,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
-            addMentions: false,
+            addMentions: mentions,
         });
 
         const postAttachment = imageUrl
@@ -369,7 +371,7 @@ export class Post extends BaseEntity {
               ]
             : [];
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -391,6 +393,14 @@ export class Post extends BaseEntity {
             postAttachment,
             null,
         );
+
+        for (const mention of mentions) {
+            if (mention.account) {
+                post.addMention(mention.account);
+            }
+        }
+
+        return post;
     }
 
     static createReply(
@@ -398,6 +408,7 @@ export class Post extends BaseEntity {
         replyContent: string,
         inReplyTo: Post,
         imageUrl?: URL,
+        mentions: Mention[] = [],
     ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
@@ -417,7 +428,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
-            addMentions: false,
+            addMentions: mentions,
         });
 
         const postAttachment = imageUrl
@@ -431,7 +442,7 @@ export class Post extends BaseEntity {
               ]
             : [];
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -453,5 +464,13 @@ export class Post extends BaseEntity {
             postAttachment,
             null,
         );
+
+        for (const mention of mentions) {
+            if (mention.account) {
+                post.addMention(mention.account);
+            }
+        }
+
+        return post;
     }
 }
