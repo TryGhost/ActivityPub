@@ -508,6 +508,31 @@ describe('Post', () => {
         });
     });
 
+    it('should handle adding mentions', () => {
+        const postAuthorAccount = internalAccount(456);
+        const mentionedAccount1 = externalAccount(789);
+        const mentionedAccount2 = externalAccount(987);
+        const mentionedAccount3 = externalAccount(654);
+
+        const post = Post.createFromData(postAuthorAccount, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        post.addMention(mentionedAccount1);
+        post.addMention(mentionedAccount2);
+        post.addMention(mentionedAccount3);
+
+        expect(post.getMentions()).toEqual([
+            mentionedAccount1.id,
+            mentionedAccount2.id,
+            mentionedAccount3.id,
+        ]);
+
+        // Verify mentions are cleared after getting them
+        expect(post.getMentions()).toEqual([]);
+    });
+
     it('should save ghost authors in posts metadata', () => {
         const account = internalAccount();
         const ghostPost = {
