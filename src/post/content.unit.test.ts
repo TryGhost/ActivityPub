@@ -1,3 +1,4 @@
+import { AccountEntity } from 'account/account.entity';
 import { describe, expect, it } from 'vitest';
 import {
     ContentPreparer,
@@ -164,6 +165,20 @@ describe('ContentPreparer', () => {
         });
 
         describe('Adding mentions', () => {
+            const account = AccountEntity.create({
+                id: 1,
+                uuid: 'test-uuid',
+                username: 'user',
+                name: 'Test User',
+                bio: null,
+                url: new URL('https://example.xyz/@user'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                apId: new URL('https://example.xyz/@user'),
+                apFollowers: null,
+                apInbox: null,
+                isInternal: false,
+            });
             it('should convert mentions to hyperlinks', () => {
                 const content = 'Hello @user@example.xyz, how are you?';
                 const result = preparer.prepare(content, {
@@ -172,6 +187,7 @@ describe('ContentPreparer', () => {
                         {
                             name: '@user@example.xyz',
                             href: new URL('https://example.xyz/@user'),
+                            account: account,
                         },
                     ],
                 });
@@ -190,10 +206,12 @@ describe('ContentPreparer', () => {
                         {
                             name: '@user@example.xyz',
                             href: new URL('https://example.xyz/@user'),
+                            account: account,
                         },
                         {
                             name: '@newUser@example.co.uk',
                             href: new URL('https://example.co.uk/@newUser'),
+                            account: account,
                         },
                     ],
                 });
@@ -212,6 +230,7 @@ describe('ContentPreparer', () => {
                         {
                             name: '@user@example.xyz',
                             href: new URL('https://example.xyz/@user'),
+                            account: account,
                         },
                     ],
                 });
