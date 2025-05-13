@@ -1145,4 +1145,56 @@ describe('KnexPostRepository', () => {
             'Metadata should match',
         );
     });
+
+    it('Handles mentions of a new post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-one.com',
+                'testing-mentions-two.com',
+                'testing-mentions-three.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(accounts[0], 'Hello, @index@testing-mentions-two.com and @index@testing-mentions-three.com!');
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'A row should have been saved in the DB');
+
+        const mentionsInDb = await client('mentions')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+
+        assert.equal(
+            mentionsInDb.length,
+            2,
+            'There should be 2 mentions in the DB',
+        );
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(3); // 1 post created + 2 mentions
+        expect(eventsEmitSpy).nthCalledWith(
+            2,
+            PostLikedEvent.getName(), // TODO: This should be PostMentionedEvent once implemented
+            new PostLikedEvent(post, Number(accounts[1].id)), // TODO: This should be PostMentionedEvent once implemented
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            3,
+            PostLikedEvent.getName(), // TODO: This should be PostMentionedEvent once implemented
+            new PostLikedEvent(post, Number(accounts[2].id)), // TODO: This should be PostMentionedEvent once implemented
+        );
+    });
 });

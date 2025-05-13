@@ -125,7 +125,7 @@ export class ContentPreparer {
             );
         }
 
-        if (options.addMentions !== false) {
+        if (options.addMentions !== false && options.addMentions.length > 0) {
             prepared = this.addMentions(prepared, options.addMentions);
         }
 

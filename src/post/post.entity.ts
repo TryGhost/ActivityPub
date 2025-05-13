@@ -4,9 +4,6 @@ import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
 import { ContentPreparer } from './content';
-import { lookupActorProfile } from '../lookup-helpers';
-import type { Context } from '@fedify/fedify';
-import type { ContextData } from '../app';
 
 export enum PostType {
     Note = 0,
@@ -55,6 +52,7 @@ export interface PostAttachment {
 export interface Mention {
     name: string;
     href: URL;
+    account: Account;
 }
 
 export interface PostData {
@@ -94,6 +92,7 @@ export class Post extends BaseEntity {
     public readonly url: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
+    private mentionsToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
@@ -229,6 +228,19 @@ export class Post extends BaseEntity {
         };
     }
 
+    addMention(account: Account) {
+        if (!account.id) {
+            throw new Error('Cannot add mention for account with no id');
+        }
+        this.mentionsToAdd.add(account.id);
+    }
+
+    getMentions() {
+        const mentionsToAdd = [...this.mentionsToAdd.values()];
+        this.mentionsToAdd.clear();
+        return mentionsToAdd;
+    }
+
     static createArticleFromGhostPost(
         account: Account,
         ghostPost: GhostPost,
@@ -304,8 +316,6 @@ export class Post extends BaseEntity {
             threadRoot = data.inReplyTo.threadRoot ?? data.inReplyTo.id;
         }
 
-        // TODO: Handle mentions?
-
         return new Post(
             null,
             null,
@@ -330,28 +340,14 @@ export class Post extends BaseEntity {
         );
     }
 
-    static async createNote(
-        ctx: Context<ContextData> | null,
+    static createNote(
         account: Account,
         noteContent: string,
         imageUrl?: URL,
-    ): Promise<Post> {
+        mentions: Mention[] = [],
+    ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
-        }
-
-        const mentions = ContentPreparer.parseMentions(noteContent);
-        console.log('Mentions', mentions);
-
-        const processedMentions: Mention[] = [];
-        for (const mention of mentions) {
-            const profileUrl = await lookupActorProfile(ctx, mention);
-            if (profileUrl) {
-                processedMentions.push({
-                    name: mention,
-                    href: profileUrl,
-                });
-            }
         }
 
         const content = ContentPreparer.prepare(noteContent, {
@@ -361,10 +357,8 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
-            addMentions: processedMentions,
+            addMentions: mentions,
         });
-
-        console.log('Processed Mentions', processedMentions);
 
         const postAttachment = imageUrl
             ? [
@@ -377,7 +371,7 @@ export class Post extends BaseEntity {
               ]
             : [];
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -399,15 +393,23 @@ export class Post extends BaseEntity {
             postAttachment,
             null,
         );
+
+        for (const mention of mentions) {
+            if (mention.account) {
+                post.addMention(mention.account);
+            }
+        }
+
+        return post;
     }
 
-    static async createReply(
-        ctx: Context<ContextData> | null,
+    static createReply(
         account: Account,
         replyContent: string,
         inReplyTo: Post,
         imageUrl?: URL,
-    ): Promise<Post> {
+        mentions: Mention[] = [],
+    ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
         }
@@ -419,22 +421,6 @@ export class Post extends BaseEntity {
         const inReplyToId = inReplyTo.id;
         const threadRootId = inReplyTo.threadRoot ?? inReplyTo.id;
 
-        const mentions = ContentPreparer.parseMentions(replyContent);
-        console.log('Mentions in Reply', mentions);
-
-        const processedMentions: Mention[] = [];
-        for (const mention of mentions) {
-            const profileUrl = await lookupActorProfile(ctx, mention);
-            if (profileUrl) {
-                processedMentions.push({
-                    name: mention,
-                    href: profileUrl,
-                });
-            }
-        }
-
-        console.log('Processed Mentions in Reply', processedMentions);
-
         const content = ContentPreparer.prepare(replyContent, {
             removeMemberContent: false,
             escapeHtml: true,
@@ -442,7 +428,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
-            addMentions: processedMentions,
+            addMentions: mentions,
         });
 
         const postAttachment = imageUrl
@@ -456,7 +442,7 @@ export class Post extends BaseEntity {
               ]
             : [];
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -478,5 +464,13 @@ export class Post extends BaseEntity {
             postAttachment,
             null,
         );
+
+        for (const mention of mentions) {
+            if (mention.account) {
+                post.addMention(mention.account);
+            }
+        }
+
+        return post;
     }
 }

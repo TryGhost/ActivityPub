@@ -11,12 +11,19 @@ import {
     isError,
     ok,
 } from 'core/result';
+import { lookupAPIdByHandle, lookupActorProfile } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import type {
     GCPStorageService,
     ImageVerificationError,
 } from 'storage/gcloud-storage/gcp-storage.service';
-import { Post, type PostAttachment, PostType } from './post.entity';
+import { ContentPreparer } from './content';
+import {
+    type Mention,
+    Post,
+    type PostAttachment,
+    PostType,
+} from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
@@ -181,6 +188,7 @@ export class PostService {
         content: string,
         image?: URL,
     ): Promise<Result<Post, ImageVerificationError>> {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
         if (image) {
             const result = await this.storageService.verifyImageUrl(image);
             if (isError(result)) {
@@ -188,7 +196,48 @@ export class PostService {
             }
         }
 
-        const post = Post.createNote(account, content, image);
+        const mentions = ContentPreparer.parseMentions(content);
+        //console.log('Mentions', mentions);
+
+        const processedMentions: Mention[] = [];
+        for (const mention of mentions) {
+            let account: Account | null = null;
+            const apId = await lookupAPIdByHandle(ctx, mention);
+            console.log('apId: ', apId);
+            if (apId) {
+                const accountResult = await this.accountService.ensureByApId(
+                    new URL(apId),
+                );
+                if (isError(accountResult)) {
+                    console.log(
+                        'accountResult Error: ',
+                        getError(accountResult),
+                    );
+                    continue;
+                }
+                account = getValue(accountResult);
+                console.log('account: ', account);
+            }
+
+            const profileUrl = await lookupActorProfile(ctx, mention);
+            console.log('profileUrl: ', profileUrl);
+            if (profileUrl && account) {
+                processedMentions.push({
+                    name: mention,
+                    href: profileUrl,
+                    account: account,
+                });
+            }
+        }
+
+        //console.log('Processed mentions', processedMentions);
+
+        const post = Post.createNote(
+            account,
+            content,
+            image,
+            processedMentions,
+        );
 
         await this.postRepository.save(post);
 
@@ -203,12 +252,42 @@ export class PostService {
     ): Promise<
         Result<Post, ImageVerificationError | GetByApIdError | InteractionError>
     > {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
         if (image) {
             const result = await this.storageService.verifyImageUrl(image);
             if (isError(result)) {
                 return result;
             }
         }
+
+        const mentions = ContentPreparer.parseMentions(content);
+        //console.log('Mentions', mentions);
+
+        const processedMentions: Mention[] = [];
+        for (const mention of mentions) {
+            let account: Account | undefined = undefined;
+            const apId = await lookupAPIdByHandle(ctx, mention);
+            if (apId) {
+                const accountResult = await this.accountService.ensureByApId(
+                    new URL(apId),
+                );
+                if (isError(accountResult)) {
+                    continue;
+                }
+                account = getValue(accountResult);
+            }
+
+            const profileUrl = await lookupActorProfile(ctx, mention);
+            if (profileUrl && account) {
+                processedMentions.push({
+                    name: mention,
+                    href: profileUrl,
+                    account: account,
+                });
+            }
+        }
+
+        //console.log('Processed mentions', processedMentions);
 
         const inReplyToResult = await this.getByApId(inReplyToId);
 
@@ -227,7 +306,13 @@ export class PostService {
             return error('cannot-interact');
         }
 
-        const post = Post.createReply(account, content, inReplyTo, image);
+        const post = Post.createReply(
+            account,
+            content,
+            inReplyTo,
+            image,
+            processedMentions,
+        );
 
         await this.postRepository.save(post);
 
