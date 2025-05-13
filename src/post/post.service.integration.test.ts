@@ -61,23 +61,17 @@ describe('PostService', () => {
 
         // Mock the lookup functions
         vi.mock('lookup-helpers', () => ({
-            lookupAPIdByHandle: vi
-                .fn()
-                .mockImplementation(async (ctx, handle) => {
-                    // Extract username and domain from handle
-                    const match = handle.match(/@?([^@]+)@(.+)/);
-                    if (!match) return null;
-                    const [, username, domain] = match;
-                    return `https://${domain}/${username}`;
-                }),
             lookupActorProfile: vi
                 .fn()
                 .mockImplementation(async (ctx, handle) => {
                     // Extract username and domain from handle
                     const match = handle.match(/@?([^@]+)@(.+)/);
-                    if (!match) return null;
+                    if (!match) return { profileUrl: null, apId: null };
                     const [, username, domain] = match;
-                    return new URL(`https://${domain}/${username}`);
+                    return {
+                        profileUrl: new URL(`https://${domain}/${username}`),
+                        apId: new URL(`https://${domain}/${username}`),
+                    };
                 }),
         }));
 

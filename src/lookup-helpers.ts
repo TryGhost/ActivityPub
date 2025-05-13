@@ -110,7 +110,7 @@ export async function lookupAPIdByHandle(
 export async function lookupActorProfile(
     ctx: Context<ContextData>,
     handle: string,
-): Promise<URL | null> {
+): Promise<{ profileUrl: URL | null; apId: URL | null }> {
     try {
         // Remove leading @ if present
         const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
@@ -127,42 +127,53 @@ export async function lookupActorProfile(
             ctx.data.logger.info(
                 `No links found in WebFinger response for handle ${handle}`,
             );
-            return null;
+            return { profileUrl: null, apId: null };
         }
 
         const profileLink = webfingerData.links.find(
             (link) => link.rel === 'http://webfinger.net/rel/profile-page',
         );
 
+        let profileUrl: URL | null = null;
         if (profileLink?.href) {
             try {
-                return new URL(profileLink.href);
+                profileUrl = new URL(profileLink.href);
             } catch (err) {
                 ctx.data.logger.info(
-                    `Invalid profile page URL for handle ${handle}, falling back to self link`,
+                    `Invalid profile page URL for handle ${handle}`,
                 );
             }
         }
 
-        // Fallback to ActivityPub self link if profile link not found or is not valid
+        // Get ActivityPub self link
         const selfLink = webfingerData.links.find(
             (link) =>
                 link.rel === 'self' &&
                 link.type === 'application/activity+json',
         );
 
-        if (!selfLink?.href) {
-            ctx.data.logger.info(
-                `No ActivityPub profile found in WebFinger response for handle ${handle}`,
-            );
-            return null;
+        let apId: URL | null = null;
+        if (selfLink?.href) {
+            try {
+                apId = new URL(selfLink.href);
+            } catch (err) {
+                ctx.data.logger.info(
+                    `Invalid self link URL for handle ${handle}`,
+                );
+            }
         }
 
-        return new URL(selfLink.href);
+        if (!profileUrl && !apId) {
+            ctx.data.logger.info(
+                `No valid ActivityPub links found in WebFinger response for handle ${handle}`,
+            );
+        }
+
+        return { profileUrl: profileUrl, apId: apId };
     } catch (err) {
         ctx.data.logger.error(
             `Error looking up actor profile for handle ${handle} - ${err}`,
         );
-        return null;
+        return { profileUrl: null, apId: null };
     }
 }

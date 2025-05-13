@@ -143,7 +143,7 @@ describe('lookupActorProfile', () => {
         vi.clearAllMocks();
     });
 
-    it('should return profile page URL when available', async () => {
+    it('should return both profile page URL and apId when available', async () => {
         const mockWebFingerResponse = {
             links: [
                 {
@@ -170,10 +170,13 @@ describe('lookupActorProfile', () => {
         expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com', {
             allowPrivateAddress: true,
         });
-        expect(result).toEqual(new URL('https://example.com/profile'));
+        expect(result).toEqual({
+            profileUrl: new URL('https://example.com/profile'),
+            apId: new URL('https://example.com/actor'),
+        });
     });
 
-    it('should fallback to self link when profile page is not available', async () => {
+    it('should return only apid when profile page is not available', async () => {
         const mockWebFingerResponse = {
             links: [
                 {
@@ -193,7 +196,10 @@ describe('lookupActorProfile', () => {
             'user@example.com',
         );
 
-        expect(result).toEqual(new URL('https://example.com/actor'));
+        expect(result).toEqual({
+            profileUrl: null,
+            apId: new URL('https://example.com/actor'),
+        });
     });
 
     it('should handle handles with leading @', async () => {
@@ -202,6 +208,11 @@ describe('lookupActorProfile', () => {
                 {
                     rel: 'http://webfinger.net/rel/profile-page',
                     href: 'https://example.com/profile',
+                },
+                {
+                    rel: 'self',
+                    type: 'application/activity+json',
+                    href: 'https://example.com/actor',
                 },
             ],
         };
@@ -218,10 +229,13 @@ describe('lookupActorProfile', () => {
         expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com', {
             allowPrivateAddress: true,
         });
-        expect(result).toEqual(new URL('https://example.com/profile'));
+        expect(result).toEqual({
+            profileUrl: new URL('https://example.com/profile'),
+            apId: new URL('https://example.com/actor'),
+        });
     });
 
-    it('should return null when WebFinger response has no links', async () => {
+    it('should return null for both links when WebFinger response has no links', async () => {
         const mockWebFingerResponse = {};
 
         (
@@ -233,13 +247,13 @@ describe('lookupActorProfile', () => {
             'user@example.com',
         );
 
-        expect(result).toBeNull();
+        expect(result).toEqual({ profileUrl: null, apId: null });
         expect(mockCtx.data.logger.info).toHaveBeenCalledWith(
             'No links found in WebFinger response for handle user@example.com',
         );
     });
 
-    it('should return null when no profile page or self link is found', async () => {
+    it('should return null for both links when no profile page or self link is found', async () => {
         const mockWebFingerResponse = {
             links: [
                 {
@@ -258,13 +272,13 @@ describe('lookupActorProfile', () => {
             'user@example.com',
         );
 
-        expect(result).toBeNull();
+        expect(result).toEqual({ profileUrl: null, apId: null });
         expect(mockCtx.data.logger.info).toHaveBeenCalledWith(
-            'No ActivityPub profile found in WebFinger response for handle user@example.com',
+            'No valid ActivityPub links found in WebFinger response for handle user@example.com',
         );
     });
 
-    it('should return null when WebFinger lookup fails', async () => {
+    it('should return null for both links when WebFinger lookup fails', async () => {
         (
             lookupWebFinger as unknown as ReturnType<typeof vi.fn>
         ).mockRejectedValue(new Error('WebFinger lookup failed'));
@@ -274,39 +288,13 @@ describe('lookupActorProfile', () => {
             'user@example.com',
         );
 
-        expect(result).toBeNull();
+        expect(result).toEqual({ profileUrl: null, apId: null });
         expect(mockCtx.data.logger.error).toHaveBeenCalledWith(
             'Error looking up actor profile for handle user@example.com - Error: WebFinger lookup failed',
         );
     });
 
-    it('should return null when self link href is not a valid URL', async () => {
-        const mockWebFingerResponse = {
-            links: [
-                {
-                    rel: 'self',
-                    type: 'application/activity+json',
-                    href: 'not-a-valid-url',
-                },
-            ],
-        };
-
-        (
-            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
-        ).mockResolvedValue(mockWebFingerResponse);
-
-        const result = await lookupActorProfile(
-            mockCtx as unknown as Context<ContextData>,
-            'user@example.com',
-        );
-
-        expect(result).toBeNull();
-        expect(mockCtx.data.logger.error).toHaveBeenCalledWith(
-            'Error looking up actor profile for handle user@example.com - TypeError: Invalid URL',
-        );
-    });
-
-    it('should fall back to self link when profile link href is not a valid URL', async () => {
+    it('should handle invalid URLs in both profile and self links', async () => {
         const mockWebFingerResponse = {
             links: [
                 {
@@ -316,7 +304,7 @@ describe('lookupActorProfile', () => {
                 {
                     rel: 'self',
                     type: 'application/activity+json',
-                    href: 'https://example.com/actor',
+                    href: 'also-not-valid',
                 },
             ],
         };
@@ -330,6 +318,42 @@ describe('lookupActorProfile', () => {
             'user@example.com',
         );
 
-        expect(result).toEqual(new URL('https://example.com/actor'));
+        expect(result).toEqual({ profileUrl: null, apId: null });
+        expect(mockCtx.data.logger.info).toHaveBeenCalledWith(
+            'Invalid profile page URL for handle user@example.com',
+        );
+        expect(mockCtx.data.logger.info).toHaveBeenCalledWith(
+            'Invalid self link URL for handle user@example.com',
+        );
+    });
+
+    it('should handle valid profile link but invalid self link', async () => {
+        const mockWebFingerResponse = {
+            links: [
+                {
+                    rel: 'http://webfinger.net/rel/profile-page',
+                    href: 'https://example.com/profile',
+                },
+                {
+                    rel: 'self',
+                    type: 'application/activity+json',
+                    href: 'not-a-valid-url',
+                },
+            ],
+        };
+
+        (
+            lookupWebFinger as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(mockWebFingerResponse);
+
+        const result = await lookupActorProfile(
+            mockCtx as unknown as Context<ContextData>,
+            'user@example.com',
+        );
+
+        expect(result).toEqual({
+            profileUrl: new URL('https://example.com/profile'),
+            apId: null,
+        });
     });
 });

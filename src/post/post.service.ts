@@ -11,7 +11,7 @@ import {
     isError,
     ok,
 } from 'core/result';
-import { lookupAPIdByHandle, lookupActorProfile } from 'lookup-helpers';
+import { lookupActorProfile } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import type {
     GCPStorageService,
@@ -190,25 +190,27 @@ export class PostService {
 
         for (const mention of mentions) {
             let account: Account | null = null;
-            const apId = await lookupAPIdByHandle(ctx, mention);
-            if (apId) {
-                const accountResult = await this.accountService.ensureByApId(
-                    new URL(apId),
-                );
-                if (isError(accountResult)) {
-                    continue;
-                }
-                account = getValue(accountResult);
+            const lookupResult = await lookupActorProfile(ctx, mention);
+            if (!lookupResult.apId) {
+                continue;
             }
+            const accountResult = await this.accountService.ensureByApId(
+                lookupResult.apId,
+            );
+            if (isError(accountResult)) {
+                continue;
+            }
+            account = getValue(accountResult);
 
-            const profileUrl = await lookupActorProfile(ctx, mention);
-            if (profileUrl && account) {
-                processedMentions.push({
-                    name: mention,
-                    href: profileUrl,
-                    account: account,
-                });
-            }
+            const profileUrl = lookupResult.profileUrl
+                ? lookupResult.profileUrl
+                : lookupResult.apId;
+
+            processedMentions.push({
+                name: mention,
+                href: profileUrl,
+                account: account,
+            });
         }
 
         return processedMentions;
