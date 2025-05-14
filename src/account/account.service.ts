@@ -503,16 +503,16 @@ export class AccountService {
      * @param followeeAccountId: id of the followee account
      */
     async checkIfAccountIsFollowing(
-        accountId: number | null,
-        followeeAccountId: number | null,
+        followerId: number | null,
+        followingId: number | null,
     ): Promise<boolean> {
-        if (!accountId || !followeeAccountId) {
+        if (!followerId || !followingId) {
             return false;
         }
 
         const result = await this.db('follows')
-            .where('follower_id', accountId)
-            .where('following_id', followeeAccountId)
+            .where('follower_id', followerId)
+            .where('following_id', followingId)
             .select(1)
             .first();
 
