@@ -41,6 +41,11 @@ interface BaseGetNotificationsDataResultRow {
     post_title: string;
     post_content: string;
     post_url: string;
+    post_like_count: number;
+    post_liked_by_user: 0 | 1;
+    post_reply_count: number;
+    post_repost_count: number;
+    post_reposted_by_user: 0 | 1;
     in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
@@ -94,6 +99,21 @@ export class NotificationService {
                 'post.title as post_title',
                 'post.content as post_content',
                 'post.url as post_url',
+                'post.like_count as post_like_count',
+                this.db.raw(`
+                    CASE
+                        WHEN post_likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_user
+                `),
+                'post.reply_count as post_reply_count',
+                'post.repost_count as post_repost_count',
+                this.db.raw(`
+                    CASE
+                        WHEN post_reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_user
+                `),
                 // In reply to post fields
                 'in_reply_to_post.ap_id as in_reply_to_post_ap_id',
                 'in_reply_to_post.type as in_reply_to_post_type',
@@ -112,6 +132,20 @@ export class NotificationService {
                 'in_reply_to_post.id',
                 'notifications.in_reply_to_post_id',
             )
+            .leftJoin('likes as post_likes', function () {
+                this.onVal(
+                    'post_likes.account_id',
+                    '=',
+                    options.accountId.toString(),
+                ).andOn('post_likes.post_id', 'post.id');
+            })
+            .leftJoin('reposts as post_reposts', function () {
+                this.onVal(
+                    'post_reposts.account_id',
+                    '=',
+                    options.accountId.toString(),
+                ).andOn('post_reposts.post_id', 'post.id');
+            })
             .where('notifications.user_id', user.id)
             .modify((query) => {
                 if (options.cursor) {

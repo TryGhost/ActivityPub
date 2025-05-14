@@ -204,7 +204,18 @@ export interface NotificationDTO {
      * Post (partial) associated with the notification
      */
     post:
-        | (Pick<PostDTO, 'id' | 'title' | 'content' | 'url'> & {
+        | (Pick<
+              PostDTO,
+              | 'id'
+              | 'title'
+              | 'content'
+              | 'url'
+              | 'likeCount'
+              | 'replyCount'
+              | 'repostCount'
+              | 'likedByMe'
+              | 'repostedByMe'
+          > & {
               type: 'article' | 'note';
           })
         | null;
