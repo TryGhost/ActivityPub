@@ -9,6 +9,7 @@ import type { Account as AccountEntity } from 'account/account.entity';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { Account } from 'account/types';
 import { PostCreatedEvent } from 'post/post-created.event';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import type { Post } from 'post/post.entity';
@@ -30,6 +31,7 @@ describe('NotificationEventService', () => {
             removeBlockedAccountNotifications: vi.fn(),
             removeBlockedDomainNotifications: vi.fn(),
             createMentionNotification: vi.fn(),
+            removePostNotifications: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -117,6 +119,27 @@ describe('NotificationEventService', () => {
 
             expect(
                 notificationService.createReplyNotification,
+            ).toHaveBeenCalledWith(post);
+        });
+    });
+
+    describe('handling a post deleted event', () => {
+        it('should remove notifications for the deleted post', () => {
+            const post = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+            } as Post;
+            const deletedById = 456;
+
+            events.emit(
+                PostDeletedEvent.getName(),
+                new PostDeletedEvent(post as Post, deletedById),
+            );
+
+            expect(
+                notificationService.removePostNotifications,
             ).toHaveBeenCalledWith(post);
         });
     });
