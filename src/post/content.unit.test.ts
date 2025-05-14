@@ -240,6 +240,24 @@ describe('ContentPreparer', () => {
                 );
             });
 
+            it('should reject partially matching mentions', () => {
+                const content = 'Hello @user@example.xyz and @user@exampleXxyz';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [
+                        {
+                            name: '@user@example.xyz',
+                            href: new URL('https://example.xyz/@user'),
+                            account: account,
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a> and @user@exampleXxyz',
+                );
+            });
+
             it('should not modify content when no mentions are provided', () => {
                 const content = 'Hello @user@example.xyz, how are you?';
                 const result = preparer.prepare(content, {

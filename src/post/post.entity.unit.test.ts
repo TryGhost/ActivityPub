@@ -215,9 +215,7 @@ describe('Post', () => {
         it('creates a reply with mentions', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            (inReplyTo as any).id = 'fake-id';
+            (inReplyTo as unknown as { id: string }).id = 'fake-id';
             const content = 'My reply to @test@example.com';
             const mentionedAccount = externalAccount(789);
             const mentions = [
@@ -246,9 +244,7 @@ describe('Post', () => {
         it('creates a reply with multiple mentions', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            (inReplyTo as any).id = 'fake-id';
+            (inReplyTo as unknown as { id: string }).id = 'fake-id';
             const content =
                 'My reply to @test@example.com and @test2@example.com';
             const mentionedAccount1 = externalAccount(789);

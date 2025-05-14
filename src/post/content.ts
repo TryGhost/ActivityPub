@@ -1,6 +1,6 @@
-import { isHandle } from 'helpers/activitypub/actor';
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
+import { HANDLE_REGEX } from '../constants';
 import type { Mention } from './post.entity';
 
 /**
@@ -144,7 +144,10 @@ export class ContentPreparer {
     private addMentions(content: string, mentions: Mention[]) {
         let preparedContent = content;
         for (const mention of mentions) {
-            const mentionRegex = new RegExp(mention.name, 'g');
+            const mentionRegex = new RegExp(
+                mention.name.replace(/\./g, '\\.'), // Escape the dot (.) character
+                'g',
+            );
             preparedContent = preparedContent.replace(
                 mentionRegex,
                 `<a href="${mention.href}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
@@ -199,9 +202,9 @@ export class ContentPreparer {
     }
 
     private parseMentions(content: string): Set<string> {
-        const handleRegex = /@[\w.-]+@[\w-]+\.[\w.-]+/g;
-        const mentions = content.match(handleRegex) || [];
-        return new Set(mentions.filter(isHandle));
+        const mentions =
+            content.match(new RegExp(HANDLE_REGEX.source, 'g')) || [];
+        return new Set(mentions);
     }
 
     /**

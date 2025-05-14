@@ -192,12 +192,18 @@ export class PostService {
             let account: Account | null = null;
             const lookupResult = await lookupActorProfile(ctx, mention);
             if (!lookupResult.apId) {
+                ctx.data.logger.info(
+                    `Failed to lookup apId for mention: ${mention}`,
+                );
                 continue;
             }
             const accountResult = await this.accountService.ensureByApId(
                 lookupResult.apId,
             );
             if (isError(accountResult)) {
+                ctx.data.logger.info(
+                    `Failed to lookup account for mention: ${mention}, error: ${getError(accountResult)}`,
+                );
                 continue;
             }
             account = getValue(accountResult);
