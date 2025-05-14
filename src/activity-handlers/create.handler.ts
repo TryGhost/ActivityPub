@@ -1,8 +1,7 @@
 import type { Context, Create } from '@fedify/fedify';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
-import { exhaustiveCheck, getError, isError } from 'core/result';
-import { isFollowedByDefaultSiteAccount } from 'helpers/activitypub/actor';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { getUserData } from 'helpers/user';
 import { addToList } from 'kv-helpers';
 import type { PostService } from 'post/post.service';
@@ -24,30 +23,6 @@ export class CreateHandler {
             return;
         }
 
-        let sender = null;
-        try {
-            sender = await create.getActor(ctx);
-        } catch (err) {
-            if (
-                err instanceof Error &&
-                'code' in err &&
-                (err.code === 'ETIMEDOUT' || err.code === 'EHOSTUNREACH')
-            ) {
-                ctx.data.logger.info(
-                    'Error performing getActor network lookup: ',
-                    {
-                        error: err,
-                    },
-                );
-            } else {
-                throw err;
-            }
-        }
-        if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Create sender missing, exit early');
-            return;
-        }
-
         if (!create.objectId) {
             ctx.data.logger.info('Create object id missing, exit early');
             return;
@@ -66,7 +41,7 @@ export class CreateHandler {
                             postId: create.objectId.href,
                         },
                     );
-                    break;
+                    return;
                 case 'not-a-post':
                     ctx.data.logger.info(
                         'Resource is not a post in create handling',
@@ -74,7 +49,7 @@ export class CreateHandler {
                             postId: create.objectId.href,
                         },
                     );
-                    break;
+                    return;
                 case 'missing-author':
                     ctx.data.logger.info(
                         'Post has missing author in create handling',
@@ -82,7 +57,7 @@ export class CreateHandler {
                             postId: create.objectId.href,
                         },
                     );
-                    break;
+                    return;
                 default:
                     return exhaustiveCheck(error);
             }
@@ -114,21 +89,22 @@ export class CreateHandler {
             }
         }
 
-        let shouldAddToInbox = false;
-
         const site = await this.siteService.getSiteByHost(ctx.host);
 
         if (!site) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            this.accountService,
+        const post = getValue(postResult);
+
+        const account = await this.accountService.getAccountForSite(site);
+
+        const isFollowing = await this.accountService.checkIfAccountIsFollowing(
+            account.id,
+            post.author.id,
         );
 
-        if (shouldAddToInbox) {
+        if (isFollowing) {
             await addToList(ctx.data.db, ['inbox'], create.id.href);
             return;
         }
