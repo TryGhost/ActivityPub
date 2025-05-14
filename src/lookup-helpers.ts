@@ -6,6 +6,9 @@ import {
     lookupWebFinger,
 } from '@fedify/fedify';
 import type { ContextData } from './app';
+import { type Result, error, ok } from './core/result';
+
+export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
 export async function lookupActor(
     ctx: Context<ContextData>,
@@ -61,6 +64,9 @@ export async function lookupObject(
     return ctx.lookupObject(identifier, { documentLoader });
 }
 
+/**
+ * @deprecated use `lookupActorProfile`
+ */
 export async function lookupAPIdByHandle(
     ctx: Context<ContextData>,
     handle: string,
@@ -110,7 +116,7 @@ export async function lookupAPIdByHandle(
 export async function lookupActorProfile(
     ctx: Context<ContextData>,
     handle: string,
-): Promise<{ profileUrl: URL | null; apId: URL | null }> {
+): Promise<Result<URL, LookupError>> {
     try {
         // Remove leading @ if present
         const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
@@ -124,56 +130,30 @@ export async function lookupActorProfile(
         });
 
         if (!webfingerData?.links) {
-            ctx.data.logger.info(
-                `No links found in WebFinger response for handle ${handle}`,
-            );
-            return { profileUrl: null, apId: null };
+            ctx.data.logger.info('No links found in WebFinger response');
+            return error('no-links-found');
         }
 
-        const profileLink = webfingerData.links.find(
-            (link) => link.rel === 'http://webfinger.net/rel/profile-page',
-        );
-
-        let profileUrl: URL | null = null;
-        if (profileLink?.href) {
-            try {
-                profileUrl = new URL(profileLink.href);
-            } catch (err) {
-                ctx.data.logger.info(
-                    `Invalid profile page URL for handle ${handle}`,
-                );
-            }
-        }
-
-        // Get ActivityPub self link
+        // Find the ActivityPub self link
         const selfLink = webfingerData.links.find(
             (link) =>
                 link.rel === 'self' &&
                 link.type === 'application/activity+json',
         );
 
-        let apId: URL | null = null;
-        if (selfLink?.href) {
-            try {
-                apId = new URL(selfLink.href);
-            } catch (err) {
-                ctx.data.logger.info(
-                    `Invalid self link URL for handle ${handle}`,
-                );
-            }
-        }
-
-        if (!profileUrl && !apId) {
+        if (!selfLink?.href) {
             ctx.data.logger.info(
-                `No valid ActivityPub links found in WebFinger response for handle ${handle}`,
+                'No ActivityPub self link found in WebFinger response',
             );
+            return error('no-self-link');
         }
 
-        return { profileUrl: profileUrl, apId: apId };
+        return ok(new URL(selfLink.href));
     } catch (err) {
         ctx.data.logger.error(
-            `Error looking up actor profile for handle ${handle} - ${err}`,
+            'Error looking up actor by handle ({handle}): {error}',
+            { handle, error: err },
         );
-        return { profileUrl: null, apId: null };
+        return error('lookup-error');
     }
 }

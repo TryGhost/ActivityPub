@@ -6,6 +6,7 @@ import { AsyncEvents } from 'core/events';
 import {
     type Error as Err,
     error as createError,
+    error,
     getError,
     getValue,
     isError,
@@ -66,12 +67,9 @@ describe('PostService', () => {
                 .mockImplementation(async (ctx, handle) => {
                     // Extract username and domain from handle
                     const match = handle.match(/@?([^@]+)@(.+)/);
-                    if (!match) return { profileUrl: null, apId: null };
+                    if (!match) return error('lookup-error');
                     const [, username, domain] = match;
-                    return {
-                        profileUrl: new URL(`https://${domain}/${username}`),
-                        apId: new URL(`https://${domain}/${username}`),
-                    };
+                    return ok(new URL(`https://${domain}/${username}`));
                 }),
         }));
 

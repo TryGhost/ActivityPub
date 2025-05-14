@@ -229,9 +229,6 @@ export class Post extends BaseEntity {
     }
 
     addMention(account: Account) {
-        if (!account.id) {
-            throw new Error('Cannot add mention for account with no id');
-        }
         this.mentionsToAdd.add(account.id);
     }
 

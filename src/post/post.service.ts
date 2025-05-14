@@ -191,14 +191,15 @@ export class PostService {
         for (const mention of mentions) {
             let account: Account | null = null;
             const lookupResult = await lookupActorProfile(ctx, mention);
-            if (!lookupResult.apId) {
+            if (isError(lookupResult)) {
                 ctx.data.logger.info(
-                    `Failed to lookup apId for mention: ${mention}`,
+                    `Failed to lookup apId for mention: ${mention}, error: ${getError(lookupResult)}`,
                 );
                 continue;
             }
+
             const accountResult = await this.accountService.ensureByApId(
-                lookupResult.apId,
+                getValue(lookupResult),
             );
             if (isError(accountResult)) {
                 ctx.data.logger.info(
@@ -208,13 +209,9 @@ export class PostService {
             }
             account = getValue(accountResult);
 
-            const profileUrl = lookupResult.profileUrl
-                ? lookupResult.profileUrl
-                : lookupResult.apId;
-
             processedMentions.push({
                 name: mention,
-                href: profileUrl,
+                href: account.url,
                 account: account,
             });
         }
