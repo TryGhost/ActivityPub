@@ -525,10 +525,10 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.24.2.tgz#34aa0b52d0fbb1a654b596acfa595f0c7b77a77b"
   integrity sha512-7VTgWzgMGvup6aSqDPLiW5zHaxYJGTO4OokMjIlrCtf+VpEL+cXKtCvg723iguPYI5oaUNdS+/V7OU2gvXVWEg==
 
-"@faker-js/faker@9.7.0":
-  version "9.7.0"
-  resolved "https://registry.yarnpkg.com/@faker-js/faker/-/faker-9.7.0.tgz#1cf1fecfcad5e2da2332140bf3b5f23cc1c2a7f4"
-  integrity sha512-aozo5vqjCmDoXLNUJarFZx2IN/GgGaogY4TMJ6so/WLZOWpSV7fvj2dmrV6sEAnUm1O7aCrhTibjpzeDFgNqbg==
+"@faker-js/faker@9.8.0":
+  version "9.8.0"
+  resolved "https://registry.yarnpkg.com/@faker-js/faker/-/faker-9.8.0.tgz#3344284028d1c9dc98dee2479f82939310370d88"
+  integrity sha512-U9wpuSrJC93jZBxx/Qq2wPjCuYISBueyVUGK7qqdmj7r/nxaxwW8AQDCLeRO7wZnjj94sh3p246cAYjUKuqgfg==
 
 "@fastify/busboy@^2.0.0":
   version "2.1.1"
