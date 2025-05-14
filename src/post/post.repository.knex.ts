@@ -1,3 +1,4 @@
+import { Mention } from '@fedify/fedify';
 import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import type { Knex } from 'knex';
 
@@ -946,5 +947,27 @@ export class KnexPostRepository {
             .first();
 
         return result !== undefined;
+    }
+
+    async getMentionsForPost(post: Post): Promise<Mention[]> {
+        const rows = await this.db('mentions')
+            .select(
+                'mentions.post_id',
+                'accounts.username as account_username',
+                'accounts.domain as account_domain',
+                'accounts.ap_id as account_apid',
+            )
+            .join('accounts', 'mentions.account_id', 'accounts.id')
+            .where({
+                post_id: post.id,
+            });
+
+        return rows.map(
+            (row) =>
+                new Mention({
+                    name: `@${row.account_username}@${row.account_domain}`,
+                    href: new URL(row.account_apid),
+                }),
+        );
     }
 }

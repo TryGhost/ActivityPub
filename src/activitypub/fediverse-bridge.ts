@@ -6,6 +6,7 @@ import {
     Note as FedifyNote,
     Follow,
     Image,
+    type Mention,
     PUBLIC_COLLECTION,
     Reject,
     Update,
@@ -18,6 +19,7 @@ import { addToList } from 'kv-helpers';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostType } from 'post/post.entity';
+import type { PostService } from 'post/post.service';
 import { v4 as uuidv4 } from 'uuid';
 import type { FedifyContextFactory } from './fedify-context.factory';
 
@@ -26,6 +28,7 @@ export class FediverseBridge {
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
+        private readonly postService: PostService,
     ) {}
 
     async init() {
@@ -55,10 +58,19 @@ export class FediverseBridge {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         let fedifyObject: FedifyNote | Article;
 
+        let mentions: Mention[] = [];
+        let ccs: URL[] = [];
+
         if (post.type === PostType.Note) {
             if (post.inReplyTo) {
                 return;
             }
+            mentions = await this.postService.getMentionsForPost(post);
+            ccs = [
+                post.author.apFollowers,
+                ...mentions.map((mention) => mention.href),
+            ].filter((url) => url !== null);
+
             fedifyObject = new FedifyNote({
                 id: post.apId,
                 attribution: post.author.apId,
@@ -75,14 +87,17 @@ export class FediverseBridge {
                                   }),
                           )
                     : undefined,
+                tags: mentions,
                 to: PUBLIC_COLLECTION,
-                cc: post.author.apFollowers,
+                ccs: ccs,
             });
         } else if (post.type === PostType.Article) {
             const preview = new FedifyNote({
                 id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
                 content: post.excerpt,
             });
+            ccs = post.author.apFollowers ? [post.author.apFollowers] : [];
+
             fedifyObject = new Article({
                 id: post.apId,
                 attribution: post.author.apId,
@@ -95,7 +110,7 @@ export class FediverseBridge {
                 preview,
                 url: post.url,
                 to: PUBLIC_COLLECTION,
-                cc: post.author.apFollowers,
+                ccs: ccs,
             });
         } else {
             throw new Error(`Unsupported post type: ${post.type}`);
@@ -106,7 +121,7 @@ export class FediverseBridge {
             actor: post.author.apId,
             object: fedifyObject,
             to: PUBLIC_COLLECTION,
-            cc: post.author.apFollowers,
+            ccs: ccs,
         });
 
         await ctx.data.globaldb.set(
