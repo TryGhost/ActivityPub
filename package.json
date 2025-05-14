@@ -84,7 +84,7 @@
     "linkifyjs": "4.3.1",
     "mysql2": "3.14.1",
     "node-jose": "2.2.0",
-    "sanitize-html": "2.16.0",
+    "sanitize-html": "2.17.0",
     "sharp": "0.34.1",
     "uuid": "10.0.0",
     "x-forwarded-fetch": "0.2.0",
