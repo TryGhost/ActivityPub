@@ -1,11 +1,12 @@
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
-import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
 import {
     type Error as Err,
     error as createError,
+    error,
     getError,
     getValue,
     isError,
@@ -16,7 +17,7 @@ import { ModerationService } from 'moderation/moderation.service';
 import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
@@ -26,7 +27,7 @@ describe('PostService', () => {
     let postRepository: KnexPostRepository;
     let accountRepository: KnexAccountRepository;
     let fixtureManager: FixtureManager;
-    let fedifyContextFactory: FedifyContextFactory;
+    let mockFedifyContextFactory: FedifyContextFactory;
     let storageService: GCPStorageService;
     let moderationService: ModerationService;
     let postService: PostService;
@@ -40,7 +41,37 @@ describe('PostService', () => {
         postRepository = new KnexPostRepository(db, events);
         accountRepository = new KnexAccountRepository(db, events);
         fixtureManager = createFixtureManager(db, events);
-        fedifyContextFactory = new FedifyContextFactory();
+        mockFedifyContextFactory = {
+            getFedifyContext: () => ({
+                getDocumentLoader: async () => ({}),
+                data: {
+                    logger: {
+                        info: vi.fn(),
+                        error: vi.fn(),
+                        warn: vi.fn(),
+                    },
+                },
+                lookupObject: vi.fn(),
+            }),
+            asyncLocalStorage: {
+                getStore: vi.fn(),
+                run: vi.fn(),
+            },
+            registerContext: vi.fn(),
+        } as unknown as FedifyContextFactory;
+
+        // Mock the lookup functions
+        vi.mock('lookup-helpers', () => ({
+            lookupActorProfile: vi
+                .fn()
+                .mockImplementation(async (ctx, handle) => {
+                    // Extract username and domain from handle
+                    const match = handle.match(/@?([^@]+)@(.+)/);
+                    if (!match) return error('lookup-error');
+                    const [, username, domain] = match;
+                    return ok(new URL(`https://${domain}/${username}`));
+                }),
+        }));
 
         storageService = {
             verifyImageUrl: vi.fn().mockResolvedValue(ok(true)),
@@ -52,13 +83,13 @@ describe('PostService', () => {
             db,
             events,
             accountRepository,
-            fedifyContextFactory,
+            mockFedifyContextFactory,
         );
 
         postService = new PostService(
             postRepository,
             accountService,
-            fedifyContextFactory,
+            mockFedifyContextFactory,
             storageService,
             moderationService,
         );
@@ -68,6 +99,11 @@ describe('PostService', () => {
 
         // Create a test account
         [account] = await fixtureManager.createInternalAccount();
+    });
+
+    afterEach(async () => {
+        // Clean up database connections
+        await db.destroy();
     });
 
     describe('createNote', () => {
@@ -129,7 +165,7 @@ describe('PostService', () => {
             const serviceWithFailingStorage = new PostService(
                 postRepository,
                 accountService,
-                fedifyContextFactory,
+                mockFedifyContextFactory,
                 failingStorageService,
                 moderationService,
             );
@@ -145,6 +181,46 @@ describe('PostService', () => {
 
             expect(isError(result)).toBe(true);
             expect(getError(result as Err<string>)).toBe('invalid-url');
+        });
+
+        it('should store mentions in database and format them in content', async () => {
+            // Create an external account to mention
+            const mentionedAccount =
+                await fixtureManager.createExternalAccount();
+
+            const content = `This is a test note mentioning @${mentionedAccount.username}@${mentionedAccount.apId.hostname}`;
+
+            const result = await postService.createNote(account, content);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post).toBeInstanceOf(Post);
+            expect(post.author.id).toBe(account.id);
+            expect(post.type).toBe(PostType.Note);
+
+            // Verify mention is wrapped in hyperlink in content
+            expect(post.content).toBe(
+                `<p>This is a test note mentioning <a href="${mentionedAccount.apId}" rel="nofollow noopener noreferrer">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a></p>`,
+            );
+
+            // Verify the post was saved to database
+            const savedPost = await postRepository.getById(post.id!);
+            expect(savedPost).not.toBeNull();
+            expect(savedPost!.id).toBe(post.id);
+
+            // Verify mention is stored in database
+            const mentionInDb = await db('mentions')
+                .where({
+                    post_id: post.id,
+                    account_id: mentionedAccount.id,
+                })
+                .first();
+            expect(mentionInDb).not.toBeNull();
+            expect(mentionInDb.post_id).toBe(post.id);
+            expect(mentionInDb.account_id).toBe(mentionedAccount.id);
         });
     });
 
@@ -210,27 +286,7 @@ describe('PostService', () => {
             );
             const replyContent = 'This reply will fail';
 
-            // Mock the fedify context to simulate upstream error
-            const mockFedifyContextFactory = {
-                getFedifyContext: () => ({
-                    getDocumentLoader: async () => ({}),
-                }),
-                asyncLocalStorage: {
-                    getStore: vi.fn(),
-                    run: vi.fn(),
-                },
-                registerContext: vi.fn(),
-            } as unknown as FedifyContextFactory;
-
-            const serviceWithMockContext = new PostService(
-                postRepository,
-                accountService,
-                mockFedifyContextFactory,
-                storageService,
-                moderationService,
-            );
-
-            const result = await serviceWithMockContext.createReply(
+            const result = await postService.createReply(
                 account,
                 replyContent,
                 nonExistentPostUrl,
@@ -265,6 +321,55 @@ describe('PostService', () => {
             }
 
             expect(getError(result)).toBe('cannot-interact');
+        });
+
+        it('should store mentions in database and format them in content', async () => {
+            // Create an original post to reply to
+            const originalPost = await fixtureManager.createPost(account);
+
+            // Create an external account to mention
+            const mentionedAccount =
+                await fixtureManager.createExternalAccount();
+
+            const replyContent = `This is a reply mentioning @${mentionedAccount.username}@${mentionedAccount.apId.hostname}`;
+
+            const result = await postService.createReply(
+                account,
+                replyContent,
+                originalPost.apId,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const reply = getValue(result);
+            expect(reply).toBeInstanceOf(Post);
+            expect(reply.author.id).toBe(account.id);
+            expect(reply.type).toBe(PostType.Note);
+            expect(reply.inReplyTo).toBe(originalPost.id);
+
+            // Verify mention is wrapped in hyperlink in content
+            expect(reply.content).toBe(
+                `<p>This is a reply mentioning <a href="${mentionedAccount.apId}" rel="nofollow noopener noreferrer">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a></p>`,
+            );
+
+            // Verify the reply was saved to database
+            const savedReply = await postRepository.getById(reply.id!);
+            expect(savedReply).not.toBeNull();
+            expect(savedReply!.id).toBe(reply.id);
+            expect(savedReply!.inReplyTo).toBe(originalPost.id);
+
+            // Verify mention is stored in database
+            const mentionInDb = await db('mentions')
+                .where({
+                    post_id: reply.id,
+                    account_id: mentionedAccount.id,
+                })
+                .first();
+            expect(mentionInDb).not.toBeNull();
+            expect(mentionInDb.post_id).toBe(reply.id);
+            expect(mentionInDb.account_id).toBe(mentionedAccount.id);
         });
     });
 
@@ -370,27 +475,7 @@ describe('PostService', () => {
                 'https://example.com/posts/nonexistent',
             );
 
-            // Mock the fedify context to simulate upstream error
-            const mockFedifyContextFactory = {
-                getFedifyContext: () => ({
-                    getDocumentLoader: async () => ({}),
-                }),
-                asyncLocalStorage: {
-                    getStore: vi.fn(),
-                    run: vi.fn(),
-                },
-                registerContext: vi.fn(),
-            } as unknown as FedifyContextFactory;
-
-            const serviceWithMockContext = new PostService(
-                postRepository,
-                accountService,
-                mockFedifyContextFactory,
-                storageService,
-                moderationService,
-            );
-
-            const result = await serviceWithMockContext.repostByApId(
+            const result = await postService.repostByApId(
                 account,
                 nonExistentPostUrl,
             );

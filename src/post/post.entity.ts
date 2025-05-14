@@ -49,6 +49,12 @@ export interface PostAttachment {
     url: URL;
 }
 
+export interface Mention {
+    name: string;
+    href: URL;
+    account: Account;
+}
+
 export interface PostData {
     type: CreatePostType;
     audience?: Audience;
@@ -86,6 +92,7 @@ export class Post extends BaseEntity {
     public readonly url: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
+    private mentionsToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
@@ -221,6 +228,16 @@ export class Post extends BaseEntity {
         };
     }
 
+    addMention(account: Account) {
+        this.mentionsToAdd.add(account.id);
+    }
+
+    getMentions() {
+        const mentionsToAdd = [...this.mentionsToAdd.values()];
+        this.mentionsToAdd.clear();
+        return mentionsToAdd;
+    }
+
     static createArticleFromGhostPost(
         account: Account,
         ghostPost: GhostPost,
@@ -237,6 +254,7 @@ export class Post extends BaseEntity {
                 wrapInParagraph: false,
                 extractLinks: false,
                 addPaidContentMessage: false,
+                addMentions: false,
             });
 
             if (content === '') {
@@ -260,6 +278,7 @@ export class Post extends BaseEntity {
                 addPaidContentMessage: {
                     url: new URL(ghostPost.url),
                 },
+                addMentions: false,
             });
         }
 
@@ -322,6 +341,7 @@ export class Post extends BaseEntity {
         account: Account,
         noteContent: string,
         imageUrl?: URL,
+        mentions: Mention[] = [],
     ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
@@ -334,6 +354,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
+            addMentions: mentions,
         });
 
         const postAttachment = imageUrl
@@ -347,7 +368,7 @@ export class Post extends BaseEntity {
               ]
             : [];
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -369,6 +390,14 @@ export class Post extends BaseEntity {
             postAttachment,
             null,
         );
+
+        for (const mention of mentions) {
+            if (mention.account) {
+                post.addMention(mention.account);
+            }
+        }
+
+        return post;
     }
 
     static createReply(
@@ -376,6 +405,7 @@ export class Post extends BaseEntity {
         replyContent: string,
         inReplyTo: Post,
         imageUrl?: URL,
+        mentions: Mention[] = [],
     ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
@@ -395,6 +425,7 @@ export class Post extends BaseEntity {
             wrapInParagraph: true,
             extractLinks: true,
             addPaidContentMessage: false,
+            addMentions: mentions,
         });
 
         const postAttachment = imageUrl
@@ -408,7 +439,7 @@ export class Post extends BaseEntity {
               ]
             : [];
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -430,5 +461,13 @@ export class Post extends BaseEntity {
             postAttachment,
             null,
         );
+
+        for (const mention of mentions) {
+            if (mention.account) {
+                post.addMention(mention.account);
+            }
+        }
+
+        return post;
     }
 }

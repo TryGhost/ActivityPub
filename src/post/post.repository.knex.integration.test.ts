@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
+import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import { AsyncEvents } from 'core/events';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
@@ -1143,6 +1144,61 @@ describe('KnexPostRepository', () => {
                 ],
             },
             'Metadata should match',
+        );
+    });
+
+    it('Handles mentions of a new post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-one.com',
+                'testing-mentions-two.com',
+                'testing-mentions-three.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(
+            accounts[0],
+            'Hello, @index@testing-mentions-two.com and @index@testing-mentions-three.com!',
+        );
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'A row should have been saved in the DB');
+
+        const mentionsInDb = await client('mentions')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+
+        assert.equal(
+            mentionsInDb.length,
+            2,
+            'There should be 2 mentions in the DB',
+        );
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(3); // 1 post created + 2 mentions
+        expect(eventsEmitSpy).nthCalledWith(
+            2,
+            AccountMentionedEvent.getName(),
+            new AccountMentionedEvent(post, Number(accounts[1].id)),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            3,
+            AccountMentionedEvent.getName(),
+            new AccountMentionedEvent(post, Number(accounts[2].id)),
         );
     });
 });

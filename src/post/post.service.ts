@@ -11,12 +11,19 @@ import {
     isError,
     ok,
 } from 'core/result';
+import { lookupActorProfile } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import type {
     GCPStorageService,
     ImageVerificationError,
 } from 'storage/gcloud-storage/gcp-storage.service';
-import { Post, type PostAttachment, PostType } from './post.entity';
+import { ContentPreparer } from './content';
+import {
+    type Mention,
+    Post,
+    type PostAttachment,
+    PostType,
+} from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
@@ -176,6 +183,42 @@ export class PostService {
         return this.postRepository.isRepostedByAccount(postId, accountId);
     }
 
+    private async getMentionsFromContent(content: string): Promise<Mention[]> {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const mentions = ContentPreparer.parseMentions(content);
+        const processedMentions: Mention[] = [];
+
+        for (const mention of mentions) {
+            let account: Account | null = null;
+            const lookupResult = await lookupActorProfile(ctx, mention);
+            if (isError(lookupResult)) {
+                ctx.data.logger.info(
+                    `Failed to lookup apId for mention: ${mention}, error: ${getError(lookupResult)}`,
+                );
+                continue;
+            }
+
+            const accountResult = await this.accountService.ensureByApId(
+                getValue(lookupResult),
+            );
+            if (isError(accountResult)) {
+                ctx.data.logger.info(
+                    `Failed to lookup account for mention: ${mention}, error: ${getError(accountResult)}`,
+                );
+                continue;
+            }
+            account = getValue(accountResult);
+
+            processedMentions.push({
+                name: mention,
+                href: account.url,
+                account: account,
+            });
+        }
+
+        return processedMentions;
+    }
+
     async createNote(
         account: Account,
         content: string,
@@ -188,7 +231,9 @@ export class PostService {
             }
         }
 
-        const post = Post.createNote(account, content, image);
+        const mentions = await this.getMentionsFromContent(content);
+
+        const post = Post.createNote(account, content, image, mentions);
 
         await this.postRepository.save(post);
 
@@ -210,6 +255,8 @@ export class PostService {
             }
         }
 
+        const mentions = await this.getMentionsFromContent(content);
+
         const inReplyToResult = await this.getByApId(inReplyToId);
 
         if (isError(inReplyToResult)) {
@@ -227,7 +274,13 @@ export class PostService {
             return error('cannot-interact');
         }
 
-        const post = Post.createReply(account, content, inReplyTo, image);
+        const post = Post.createReply(
+            account,
+            content,
+            inReplyTo,
+            image,
+            mentions,
+        );
 
         await this.postRepository.save(post);
 

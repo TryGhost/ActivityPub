@@ -1,5 +1,7 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
+import { HANDLE_REGEX } from '../constants';
+import type { Mention } from './post.entity';
 
 /**
  * Marker to indicate that the proceeding content is member content
@@ -44,6 +46,10 @@ interface PrepareContentOptions {
         | {
               url: URL;
           };
+    /**
+     * Whether to add mentions to the content
+     */
+    addMentions: false | Mention[];
 }
 
 export class ContentPreparer {
@@ -58,6 +64,7 @@ export class ContentPreparer {
             wrapInParagraph: false,
             extractLinks: false,
             addPaidContentMessage: false,
+            addMentions: false,
         },
     ) {
         return ContentPreparer.instance.prepare(content, options);
@@ -65,6 +72,10 @@ export class ContentPreparer {
 
     static regenerateExcerpt(html: string, charLimit = 500) {
         return ContentPreparer.instance.regenerateExcerpt(html, charLimit);
+    }
+
+    static parseMentions(content: string) {
+        return ContentPreparer.instance.parseMentions(content);
     }
 
     /**
@@ -82,6 +93,7 @@ export class ContentPreparer {
             wrapInParagraph: false,
             extractLinks: false,
             addPaidContentMessage: false,
+            addMentions: false,
         },
     ) {
         let prepared = content;
@@ -113,6 +125,10 @@ export class ContentPreparer {
             );
         }
 
+        if (options.addMentions !== false && options.addMentions.length > 0) {
+            prepared = this.addMentions(prepared, options.addMentions);
+        }
+
         return prepared;
     }
 
@@ -123,6 +139,21 @@ export class ContentPreparer {
      */
     private addPaidContentMessage(content: string, url: URL) {
         return content + PAID_CONTENT_PREVIEW_HTML(url);
+    }
+
+    private addMentions(content: string, mentions: Mention[]) {
+        let preparedContent = content;
+        for (const mention of mentions) {
+            const mentionRegex = new RegExp(
+                mention.name.replace(/\./g, '\\.'), // Escape the dot (.) character
+                'g',
+            );
+            preparedContent = preparedContent.replace(
+                mentionRegex,
+                `<a href="${mention.href}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
+            );
+        }
+        return preparedContent;
     }
 
     /**
@@ -168,6 +199,12 @@ export class ContentPreparer {
         }
 
         return `${text.substring(0, charLimit - 3)}...`;
+    }
+
+    private parseMentions(content: string): Set<string> {
+        const mentions =
+            content.match(new RegExp(HANDLE_REGEX.source, 'g')) || [];
+        return new Set(mentions);
     }
 
     /**

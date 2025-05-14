@@ -212,6 +212,74 @@ describe('Post', () => {
             expect(note.content).toBe('<p>My first note</p>');
         });
 
+        it('creates a reply with mentions', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as unknown as { id: string }).id = 'fake-id';
+            const content = 'My reply to @test@example.com';
+            const mentionedAccount = externalAccount(789);
+            const mentions = [
+                {
+                    name: '@test@example.com',
+                    href: new URL('https://example.com/@test'),
+                    account: mentionedAccount,
+                },
+            ];
+
+            const note = Post.createReply(
+                account,
+                content,
+                inReplyTo,
+                undefined,
+                mentions,
+            );
+
+            expect(note.type).toBe(PostType.Note);
+            expect(note.content).toBe(
+                '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
+            );
+            expect(note.getMentions()).toEqual([mentionedAccount.id]);
+        });
+
+        it('creates a reply with multiple mentions', () => {
+            const account = internalAccount();
+            const inReplyTo = Post.createNote(account, 'Parent');
+            (inReplyTo as unknown as { id: string }).id = 'fake-id';
+            const content =
+                'My reply to @test@example.com and @test2@example.com';
+            const mentionedAccount1 = externalAccount(789);
+            const mentionedAccount2 = externalAccount(790);
+            const mentions = [
+                {
+                    name: '@test@example.com',
+                    href: new URL('https://example.com/@test'),
+                    account: mentionedAccount1,
+                },
+                {
+                    name: '@test2@example.com',
+                    href: new URL('https://example.com/@test2'),
+                    account: mentionedAccount2,
+                },
+            ];
+
+            const note = Post.createReply(
+                account,
+                content,
+                inReplyTo,
+                undefined,
+                mentions,
+            );
+
+            expect(note.type).toBe(PostType.Note);
+            expect(note.content).toBe(
+                '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
+            );
+            expect(note.getMentions()).toEqual([
+                mentionedAccount1.id,
+                mentionedAccount2.id,
+            ]);
+        });
+
         it('creates a note with line breaks', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
@@ -317,6 +385,58 @@ describe('Post', () => {
             expect(note.type).toBe(PostType.Note);
 
             expect(note.content).toBe('<p>My first note</p>');
+        });
+
+        it('creates a note with mentions', () => {
+            const account = internalAccount();
+            const content = 'My note with @test@example.com';
+            const mentionedAccount = externalAccount(789);
+            const mentions = [
+                {
+                    name: '@test@example.com',
+                    href: new URL('https://example.com/@test'),
+                    account: mentionedAccount,
+                },
+            ];
+
+            const note = Post.createNote(account, content, undefined, mentions);
+
+            expect(note.type).toBe(PostType.Note);
+            expect(note.content).toBe(
+                '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
+            );
+            expect(note.getMentions()).toEqual([mentionedAccount.id]);
+        });
+
+        it('creates a note with multiple mentions', () => {
+            const account = internalAccount();
+            const content =
+                'My note with @test@example.com and @test2@example.com';
+            const mentionedAccount1 = externalAccount(789);
+            const mentionedAccount2 = externalAccount(790);
+            const mentions = [
+                {
+                    name: '@test@example.com',
+                    href: new URL('https://example.com/@test'),
+                    account: mentionedAccount1,
+                },
+                {
+                    name: '@test2@example.com',
+                    href: new URL('https://example.com/@test2'),
+                    account: mentionedAccount2,
+                },
+            ];
+
+            const note = Post.createNote(account, content, undefined, mentions);
+
+            expect(note.type).toBe(PostType.Note);
+            expect(note.content).toBe(
+                '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
+            );
+            expect(note.getMentions()).toEqual([
+                mentionedAccount1.id,
+                mentionedAccount2.id,
+            ]);
         });
 
         it('creates a note with an image URL', () => {
@@ -506,6 +626,31 @@ describe('Post', () => {
             likesToAdd: [liker.id, accidentalUnliker.id],
             likesToRemove: [unliker.id],
         });
+    });
+
+    it('should handle adding mentions', () => {
+        const postAuthorAccount = internalAccount(456);
+        const mentionedAccount1 = externalAccount(789);
+        const mentionedAccount2 = externalAccount(987);
+        const mentionedAccount3 = externalAccount(654);
+
+        const post = Post.createFromData(postAuthorAccount, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        post.addMention(mentionedAccount1);
+        post.addMention(mentionedAccount2);
+        post.addMention(mentionedAccount3);
+
+        expect(post.getMentions()).toEqual([
+            mentionedAccount1.id,
+            mentionedAccount2.id,
+            mentionedAccount3.id,
+        ]);
+
+        // Verify mentions are cleared after getting them
+        expect(post.getMentions()).toEqual([]);
     });
 
     it('should save ghost authors in posts metadata', () => {
