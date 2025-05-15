@@ -866,10 +866,10 @@
   dependencies:
     jsbi "^4.3.0"
 
-"@logtape/logtape@0.8.0":
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.8.0.tgz#e0b3423aa3003d582bb8f4cbe865923b4d238f6a"
-  integrity sha512-kTGbRE4tbHGlZk3+k9fIJbrLODcDiAvv9X2q+tHXjWyNjWXEH46efDBjsE63zDzR/b6Q4Abiloa4VNwKSDLyzQ==
+"@logtape/logtape@0.9.2":
+  version "0.9.2"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.9.2.tgz#eb716a88c0264e260c6cb9f1a3eada9c67af8719"
+  integrity sha512-ehmMe+Oe7ldApaAytWguHI5O74TVeCqWFdW5FYVfu7ytdcUzbO79qTFHBm2aoM0ELt7j1zSFcxqNCozxieCQCw==
 
 "@logtape/logtape@^0.8.2":
   version "0.8.2"
