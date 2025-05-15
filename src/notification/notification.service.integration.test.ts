@@ -1017,6 +1017,36 @@ describe('NotificationService', () => {
             expect(notifications[0].event_type).toBe(NotificationType.Mention);
         });
 
+        it('does not create a notification if the post is a reply to the author and also mentions the author', async () => {
+            // Delete existing mentions
+            await client('mentions').delete();
+
+            const [aliceAccount, ,] =
+                await fixtureManager.createInternalAccount();
+            const [bobAccount, ,] =
+                await fixtureManager.createInternalAccount();
+
+            const bobPost = await fixtureManager.createPost(bobAccount, {
+                type: PostType.Article,
+            });
+
+            const aliceReplyToBobPost = await fixtureManager.createReply(
+                aliceAccount,
+                bobPost,
+            );
+
+            await fixtureManager.createMention(bobAccount, aliceReplyToBobPost);
+
+            await notificationService.createMentionNotification(
+                aliceReplyToBobPost,
+                bobAccount.id,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+
         it('does not create a notification if the post author is blocked', async () => {
             // Delete existing mentions
             await client('mentions').delete();
