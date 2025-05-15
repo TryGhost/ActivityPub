@@ -55,6 +55,8 @@ export interface Mention {
     account: Account;
 }
 
+export type MentionedAccount = Pick<Account, 'id' | 'apId' | 'username'>;
+
 export interface PostData {
     type: CreatePostType;
     audience?: Audience;
@@ -98,7 +100,7 @@ export class Post extends BaseEntity {
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
     public readonly content: string | null;
-    public readonly mentions: Account[] = [];
+    public readonly mentions: MentionedAccount[] = [];
 
     constructor(
         public readonly id: number | null,
