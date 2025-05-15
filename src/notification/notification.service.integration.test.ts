@@ -1023,6 +1023,10 @@ describe('NotificationService', () => {
             ]);
 
             const post = await fixtureManager.createPost(aliceAccount);
+            const replyPost = await fixtureManager.createReply(
+                bobAccount,
+                post,
+            );
 
             // Create multiple notifications for the post
             await Promise.all([
@@ -1030,23 +1034,28 @@ describe('NotificationService', () => {
                     aliceAccount,
                     bobAccount,
                     NotificationType.Like,
+                    post.id,
                 ),
                 fixtureManager.createNotification(
                     aliceAccount,
                     bobAccount,
                     NotificationType.Repost,
+                    post.id,
                 ),
                 fixtureManager.createNotification(
                     aliceAccount,
                     bobAccount,
                     NotificationType.Mention,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Reply,
+                    replyPost.id,
+                    post.id,
                 ),
             ]);
-
-            // Add post_id to the notifications
-            await client('notifications')
-                .where('account_id', bobAccount.id)
-                .update({ post_id: post.id });
 
             // Create a notification for a different post to ensure it's not affected
             const otherPost = await fixtureManager.createPost(aliceAccount);
@@ -1054,12 +1063,8 @@ describe('NotificationService', () => {
                 aliceAccount,
                 bobAccount,
                 NotificationType.Like,
+                otherPost.id,
             );
-
-            await client('notifications')
-                .where('account_id', bobAccount.id)
-                .whereNull('post_id')
-                .update({ post_id: otherPost.id });
 
             await notificationService.removePostNotifications(post);
 
