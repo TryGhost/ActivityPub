@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AccountEntity } from '../account/account.entity';
-import { Audience, Post, PostType } from './post.entity';
+import { Audience, Post, type PostData, PostType } from './post.entity';
 
 function mockAccount(id: number | null, internal: boolean) {
     const draft = internal
@@ -814,6 +814,37 @@ describe('Post', () => {
                     expect(post.excerpt).toEqual(ghostPost.excerpt);
                 });
             });
+        });
+    });
+
+    describe('createFromData', () => {
+        it('creates a post of type note', async () => {
+            const account = internalAccount();
+            const postData = {
+                type: PostType.Note,
+                content: 'This is a test note',
+            } as PostData;
+
+            const result = Post.createFromData(account, postData);
+
+            expect(result).toBeInstanceOf(Post);
+            expect(result.content).toBe('This is a test note');
+        });
+
+        it('attaches mentions to the post', async () => {
+            const account = internalAccount();
+            const mentionedAccount = externalAccount();
+
+            const postData = {
+                type: PostType.Note,
+                content: 'This is a test note',
+                mentions: [mentionedAccount],
+            } as PostData;
+
+            const result = Post.createFromData(account, postData);
+
+            expect(result).toBeInstanceOf(Post);
+            expect(result.getMentions()).toEqual([mentionedAccount.id]);
         });
     });
 });
