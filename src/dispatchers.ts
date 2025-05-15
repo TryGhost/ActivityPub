@@ -1,6 +1,5 @@
 import {
     Accept,
-    Activity,
     Announce,
     Article,
     type Context,
@@ -881,62 +880,14 @@ export function followingFirstCursor() {
     return '0';
 }
 
-function filterOutboxActivityUris(activityUris: string[]) {
-    // Only return Create and Announce activityUris
-    return activityUris.filter((uri) => /(create|announce)/.test(uri));
-}
-
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
     cursor: string | null,
 ) {
-    ctx.data.logger.info('Outbox Dispatcher');
-
-    const pageSize = Number.parseInt(
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-    );
-
-    if (Number.isNaN(pageSize)) {
-        throw new Error(`Page size: ${pageSize} is not valid`);
-    }
-
-    const offset = Number.parseInt(cursor ?? '0');
-    let nextCursor: string | null = null;
-
-    const results = filterOutboxActivityUris(
-        (await ctx.data.db.get<string[]>(['outbox'])) || [],
-    ).reverse();
-
-    nextCursor =
-        results.length > offset + pageSize
-            ? (offset + pageSize).toString()
-            : null;
-
-    const slicedResults = results.slice(offset, offset + pageSize);
-
-    ctx.data.logger.info('Outbox results', { results: slicedResults });
-
-    const items: Activity[] = await Promise.all(
-        slicedResults.map(async (result) => {
-            try {
-                const thing = await ctx.data.globaldb.get([result]);
-                const activity = await Activity.fromJsonLd(thing);
-
-                return activity;
-            } catch (err) {
-                Sentry.captureException(err);
-                ctx.data.logger.error('Error getting outbox activity', {
-                    error: err,
-                });
-                return null;
-            }
-        }),
-    ).then((results) => results.filter((r): r is Activity => r !== null));
-
     return {
-        items,
-        nextCursor,
+        items: [],
+        nextCursor: null,
     };
 }
 
@@ -944,9 +895,7 @@ export async function outboxCounter(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
-
-    return filterOutboxActivityUris(results).length;
+    return 0;
 }
 
 export function outboxFirstCursor() {

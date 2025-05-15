@@ -69,6 +69,8 @@ export class CreateHandler {
         const object = await create.getObject();
         const replyTarget = await object?.getReplyTarget();
 
+        console.log({ replyTarget });
+
         if (replyTarget?.id?.href) {
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing

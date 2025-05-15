@@ -4,7 +4,6 @@ import { Announce, PUBLIC_COLLECTION } from '@fedify/fedify';
 import { type AppContext, fedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
-import { addToList } from 'kv-helpers';
 import type { PostService } from 'post/post.service';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
@@ -62,9 +61,6 @@ export function createRepostActionHandler(postService: PostService) {
 
         // Add announce activity to the database
         await ctx.get('globaldb').set([announce.id!.href], announceJson);
-
-        // Add announce activity to the actor's outbox
-        await addToList(ctx.get('db'), ['outbox'], announce.id!.href);
 
         await apCtx.sendActivity(
             { username: account.username },

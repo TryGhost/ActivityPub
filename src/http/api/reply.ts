@@ -15,7 +15,6 @@ import { getValue } from 'core/result';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import { getHandle } from 'helpers/activitypub/actor';
-import { addToList } from 'kv-helpers';
 import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
@@ -255,8 +254,6 @@ export async function handleCreateReply(
 
     await ctx.get('globaldb').set([create.id!.href], activityJson);
     await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
-
-    await addToList(ctx.get('db'), ['outbox'], create.id!.href);
 
     apCtx.sendActivity(
         { handle: ACTOR_DEFAULT_HANDLE },

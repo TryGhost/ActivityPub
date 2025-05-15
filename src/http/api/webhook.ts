@@ -4,6 +4,8 @@ import type { KnexAccountRepository } from '../../account/account.repository.kne
 import type { AppContext } from '../../app';
 import { Post } from '../../post/post.entity';
 import type { KnexPostRepository } from '../../post/post.repository.knex';
+import { postToDTO } from './helpers/post';
+import { BadRequest } from './helpers/response';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -51,22 +53,19 @@ export function createPostPublishedWebhookHandler(
                 (await ctx.req.json()) as unknown,
             ).post.current;
         } catch (err) {
-            return new Response(JSON.stringify({}), { status: 400 });
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
         }
 
         const account = await accountRepository.getBySite(ctx.get('site'));
 
-        let post: Post | null = null;
-        try {
-            post = Post.createArticleFromGhostPost(account, data);
-            await postRepository.save(post);
-        } catch (err) {
-            ctx.get('logger').error('Failed to store post: {error}', {
-                error: err,
-            });
-        }
+        const post = Post.createArticleFromGhostPost(account, data);
 
-        return new Response(JSON.stringify({}), {
+        await postRepository.save(post);
+
+        return new Response(JSON.stringify(postToDTO(post)), {
             headers: {
                 'Content-Type': 'application/json',
             },

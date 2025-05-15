@@ -116,9 +116,6 @@ export function createDerepostActionHandler(
         await removeFromList(ctx.get('db'), ['reposted'], announceId.href);
         await ctx.get('globaldb').delete([announceId.href]);
 
-        // Remove announce activity from the actor's outbox
-        await removeFromList(ctx.get('db'), ['outbox'], announceId.href);
-
         // Send the undo activity
         let attributionActor: Actor | null = null;
         if (post.attributionId) {

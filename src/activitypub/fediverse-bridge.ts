@@ -15,7 +15,6 @@ import { Temporal } from '@js-temporal/polyfill';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountUpdatedEvent } from 'account/account-updated.event';
 import type { AccountService } from 'account/account.service';
-import { addToList } from 'kv-helpers';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostType } from 'post/post.entity';
@@ -137,8 +136,6 @@ export class FediverseBridge {
             [fedifyObject.id!.href],
             await fedifyObject.toJsonLd(),
         );
-
-        await addToList(ctx.data.db, ['outbox'], createActivity.id!.href);
 
         await ctx.sendActivity(
             {

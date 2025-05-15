@@ -1,8 +1,6 @@
 import assert from 'node:assert';
 
 import { Then, When } from '@cucumber/cucumber';
-
-import { waitForOutboxActivity } from '../support/activitypub.js';
 import { fetchActivityPub } from '../support/request.js';
 import { waitForRequest } from '../support/request.js';
 
@@ -99,6 +97,8 @@ Then('an Undo\\(Announce) is sent to {string}', async function (actorName) {
     );
 
     const foundActivity = JSON.parse(foundInInbox.request.body);
+
+    assert(foundActivity);
 });
 
 Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
@@ -134,8 +134,4 @@ Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
     const foundActivity = JSON.parse(foundInInbox.request.body);
 
     assert(foundActivity);
-
-    const foundInOutbox = await waitForOutboxActivity(foundActivity);
-
-    assert(foundInOutbox);
 });

@@ -50,12 +50,6 @@ export async function inboxHandler(
     // This is used to add a "reposted" property to the item if the user has reposted it
     const reposted = (await db.get<string[]>(['reposted'])) || [];
 
-    // Fetch the outbox from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "authored" property to the item if the user has authored it
-    const outbox = (await db.get<string[]>(['outbox'])) || [];
-
     // Fetch the inbox from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
@@ -71,7 +65,7 @@ export async function inboxHandler(
                     apCtx,
                     liked,
                     reposted,
-                    outbox,
+                    [],
                     {
                         expandInReplyTo: false,
                         showReplyCount: true,

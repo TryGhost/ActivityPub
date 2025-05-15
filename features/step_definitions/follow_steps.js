@@ -29,6 +29,21 @@ async function getActor(input) {
     };
 }
 
+Given('we are not following {string}', async function (input) {
+    const { actor } = await getActor.call(this, input);
+
+    const unfollowResponse = await fetchActivityPub(
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unfollow/${actor.handle}`,
+        {
+            method: 'POST',
+        },
+    );
+
+    if (!unfollowResponse.ok && unfollowResponse.status !== 409) {
+        throw new Error('Something went wrong');
+    }
+});
+
 Given('we are following {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
 
