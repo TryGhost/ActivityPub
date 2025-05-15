@@ -1,7 +1,7 @@
 import {
     Article,
-    Note,
     Mention as FedifyMention,
+    Note,
     lookupObject,
 } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';

@@ -114,7 +114,6 @@ async function activityCreatedByWithMention(
     }
 }
 
-
 Given('a {string} Activity {string} by {string}', activityCreatedBy);
 
 Given(

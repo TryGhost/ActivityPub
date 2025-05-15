@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AccountEntity } from '../account/account.entity';
-import { Audience, Post, PostData, PostType } from './post.entity';
+import { Audience, Post, type PostData, PostType } from './post.entity';
 
 function mockAccount(id: number | null, internal: boolean) {
     const draft = internal
