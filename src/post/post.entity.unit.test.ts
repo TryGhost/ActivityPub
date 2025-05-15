@@ -238,7 +238,7 @@ describe('Post', () => {
             expect(note.content).toBe(
                 '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
             );
-            expect(note.getMentions()).toEqual([mentionedAccount.id]);
+            expect(note.mentions).toEqual([mentionedAccount]);
         });
 
         it('creates a reply with multiple mentions', () => {
@@ -274,9 +274,9 @@ describe('Post', () => {
             expect(note.content).toBe(
                 '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
             );
-            expect(note.getMentions()).toEqual([
-                mentionedAccount1.id,
-                mentionedAccount2.id,
+            expect(note.mentions).toEqual([
+                mentionedAccount1,
+                mentionedAccount2,
             ]);
         });
 
@@ -405,7 +405,7 @@ describe('Post', () => {
             expect(note.content).toBe(
                 '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
             );
-            expect(note.getMentions()).toEqual([mentionedAccount.id]);
+            expect(note.mentions).toEqual([mentionedAccount]);
         });
 
         it('creates a note with multiple mentions', () => {
@@ -433,9 +433,9 @@ describe('Post', () => {
             expect(note.content).toBe(
                 '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
             );
-            expect(note.getMentions()).toEqual([
-                mentionedAccount1.id,
-                mentionedAccount2.id,
+            expect(note.mentions).toEqual([
+                mentionedAccount1,
+                mentionedAccount2,
             ]);
         });
 
@@ -643,14 +643,11 @@ describe('Post', () => {
         post.addMention(mentionedAccount2);
         post.addMention(mentionedAccount3);
 
-        expect(post.getMentions()).toEqual([
-            mentionedAccount1.id,
-            mentionedAccount2.id,
-            mentionedAccount3.id,
+        expect(post.mentions).toEqual([
+            mentionedAccount1,
+            mentionedAccount2,
+            mentionedAccount3,
         ]);
-
-        // Verify mentions are cleared after getting them
-        expect(post.getMentions()).toEqual([]);
     });
 
     it('should save ghost authors in posts metadata', () => {

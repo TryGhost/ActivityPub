@@ -432,7 +432,7 @@ export class KnexPostRepository {
         try {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
-            const mentionsToAdd = post.getMentions();
+            const mentionsToAdd = post.mentions;
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let mentionedAccountIds: number[] = [];
@@ -483,7 +483,7 @@ export class KnexPostRepository {
                     await this.insertMentions(post, mentionsToAdd, transaction);
 
                     mentionedAccountIds = mentionsToAdd.map(
-                        (accountId) => accountId,
+                        (mentionedAccount) => mentionedAccount.id,
                     );
                 }
             } else if (isDeletedPost) {
@@ -921,11 +921,11 @@ export class KnexPostRepository {
      */
     private async insertMentions(
         post: Post,
-        mentionedAccountIds: number[],
+        mentionedAccounts: MentionedAccount[],
         transaction: Knex.Transaction,
     ) {
-        const mentionsToInsert = mentionedAccountIds.map((accountId) => ({
-            account_id: accountId,
+        const mentionsToInsert = mentionedAccounts.map((mentionedAccount) => ({
+            account_id: mentionedAccount.id,
             post_id: post.id,
         }));
 
