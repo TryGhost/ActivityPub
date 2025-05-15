@@ -67,6 +67,7 @@ export interface PostData {
     inReplyTo?: Post | null;
     apId?: URL | null;
     attachments?: PostAttachment[] | null;
+    mentions?: Account[] | null;
     metadata?: Metadata | null;
 }
 
@@ -313,7 +314,7 @@ export class Post extends BaseEntity {
             threadRoot = data.inReplyTo.threadRoot ?? data.inReplyTo.id;
         }
 
-        return new Post(
+        const post = new Post(
             null,
             null,
             account,
@@ -335,6 +336,12 @@ export class Post extends BaseEntity {
             data.attachments ?? [],
             data.apId ?? null,
         );
+
+        for (const mention of data.mentions ?? []) {
+            post.addMention(mention);
+        }
+
+        return post;
     }
 
     static createNote(

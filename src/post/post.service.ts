@@ -1,4 +1,9 @@
-import { Article, Note, lookupObject } from '@fedify/fedify';
+import {
+    Article,
+    Note,
+    Mention as FedifyMention,
+    lookupObject,
+} from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -79,6 +84,35 @@ export class PostService {
         return postAttachments;
     }
 
+    private async getMentionedAccounts(
+        object: Note | Article,
+    ): Promise<Account[]> {
+        const accounts: Account[] = [];
+        for await (const tag of object.getTags()) {
+            if (tag instanceof FedifyMention) {
+                if (!tag.href) {
+                    continue;
+                }
+
+                if (!tag.name) {
+                    continue;
+                }
+
+                const accountResult = await this.accountService.ensureByApId(
+                    tag.href,
+                );
+                if (isError(accountResult)) {
+                    continue;
+                }
+
+                const account = getValue(accountResult);
+                accounts.push(account);
+            }
+        }
+
+        return accounts;
+    }
+
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);
         if (post) {
@@ -144,6 +178,8 @@ export class PostService {
             }
         }
 
+        const mentions = await this.getMentionedAccounts(foundObject);
+
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
@@ -153,6 +189,7 @@ export class PostService {
             url: foundObject.url instanceof URL ? foundObject.url : id,
             apId: id,
             inReplyTo,
+            mentions,
             attachments: await this.getPostAttachments(foundObject),
         });
 
