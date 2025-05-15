@@ -46,6 +46,7 @@ describe('KnexPostRepository', () => {
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
         await client('reposts').truncate();
         await client('likes').truncate();
+        await client('mentions').truncate();
         await client('posts').truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
@@ -1097,6 +1098,140 @@ describe('KnexPostRepository', () => {
         );
 
         assert(isReposted, 'Post should be reposted by reposter account');
+    });
+
+    it('Includes mentions when getting a post by ID', async () => {
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-1.com',
+                'testing-mentions-2.com',
+                'testing-mentions-3.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(
+            accounts[0],
+            'Hello, @index@testing-mentions-2.com and @index@testing-mentions-3.com!',
+        );
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const fetchedPost = await postRepository.getById(post.id);
+
+        assert(fetchedPost, 'Post should be fetched from DB');
+        assert.equal(
+            fetchedPost.mentions.length,
+            2,
+            'Post should have 2 mentions',
+        );
+
+        // Check that both mentions exist
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[1].id),
+            'Post should mention second account',
+        );
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[2].id),
+            'Post should mention third account',
+        );
+    });
+
+    it('Includes mentions when getting a post by AP ID', async () => {
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-1.com',
+                'testing-mentions-2.com',
+                'testing-mentions-3.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(
+            accounts[0],
+            'Hello, @index@testing-mentions-2.com and @index@testing-mentions-3.com!',
+        );
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const fetchedPost = await postRepository.getByApId(post.apId);
+
+        assert(fetchedPost, 'Post should be fetched from DB');
+        assert.equal(
+            fetchedPost.mentions.length,
+            2,
+            'Post should have 2 mentions',
+        );
+
+        // Check that both mentions exist
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[1].id),
+            'Post should mention second account',
+        );
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[2].id),
+            'Post should mention third account',
+        );
+    });
+
+    it('Includes mentions when getting a thread of posts', async () => {
+        const accounts = await Promise.all(
+            [
+                'testing-thread-mentions-1.com',
+                'testing-thread-mentions-2.com',
+                'testing-thread-mentions-3.com',
+            ].map(getAccount),
+        );
+
+        const originalPost = Post.createNote(
+            accounts[0],
+            'Post mentioning @index@testing-thread-mentions-2.com',
+        );
+        originalPost.addMention(accounts[1]);
+        await postRepository.save(originalPost);
+
+        const reply = Post.createFromData(accounts[1], {
+            type: PostType.Note,
+            content: 'Reply mentioning @index@testing-thread-mentions-3.com',
+            inReplyTo: originalPost,
+        });
+        reply.addMention(accounts[2]);
+        await postRepository.save(reply);
+
+        const thread = await postRepository.getThreadByApId(
+            originalPost.apId.href,
+            accounts[0].id,
+        );
+
+        assert(thread.length === 2, 'Thread should contain 2 posts');
+
+        // Checking post mentions
+        assert.equal(
+            thread[0].post.mentions.length,
+            1,
+            'Original post should have 1 mention',
+        );
+        assert.equal(
+            thread[0].post.mentions[0].id,
+            accounts[1].id,
+            'Original post mention should match second account',
+        );
+
+        // Checking reply mentions
+        assert.equal(
+            thread[1].post.mentions.length,
+            1,
+            'Reply should have 1 mention',
+        );
+        assert.equal(
+            thread[1].post.mentions[0].id,
+            accounts[2].id,
+            'Reply mention should match third account',
+        );
     });
 
     it('Can save and retrieve a Post with metadata', async () => {

@@ -10,7 +10,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Post } from './post.entity';
+import { type MentionedAccount, Post } from './post.entity';
 
 type ThreadPosts = {
     post: Post;
@@ -132,7 +132,23 @@ export class KnexPostRepository {
             row.deleted_at !== null,
         );
 
+        if (post.id) {
+            post.mentions.push(...(await this.getPostMentions(post.id)));
+        }
+
         return post;
+    }
+
+    private async getPostMentions(postId: number): Promise<MentionedAccount[]> {
+        const mentions = await this.db('mentions')
+            .join('accounts', 'accounts.id', 'mentions.account_id')
+            .where('mentions.post_id', postId)
+            .select('accounts.id', 'accounts.ap_id', 'accounts.username');
+        return mentions.map((mention) => ({
+            id: mention.id,
+            apId: new URL(mention.ap_id),
+            username: mention.username,
+        }));
     }
 
     async getById(id: Post['id']): Promise<Post | null> {
@@ -378,6 +394,10 @@ export class KnexPostRepository {
                 row.deleted_at !== null,
             );
 
+            if (post.id) {
+                post.mentions.push(...(await this.getPostMentions(post.id)));
+            }
+
             posts.push({
                 post,
                 likedByAccount: row.liked_by_account === 1,
@@ -412,7 +432,7 @@ export class KnexPostRepository {
         try {
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
-            const mentionsToAdd = post.getMentions();
+            const mentionsToAdd = post.mentions;
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let mentionedAccountIds: number[] = [];
@@ -463,7 +483,7 @@ export class KnexPostRepository {
                     await this.insertMentions(post, mentionsToAdd, transaction);
 
                     mentionedAccountIds = mentionsToAdd.map(
-                        (accountId) => accountId,
+                        (mentionedAccount) => mentionedAccount.id,
                     );
                 }
             } else if (isDeletedPost) {
@@ -901,11 +921,11 @@ export class KnexPostRepository {
      */
     private async insertMentions(
         post: Post,
-        mentionedAccountIds: number[],
+        mentionedAccounts: MentionedAccount[],
         transaction: Knex.Transaction,
     ) {
-        const mentionsToInsert = mentionedAccountIds.map((accountId) => ({
-            account_id: accountId,
+        const mentionsToInsert = mentionedAccounts.map((mentionedAccount) => ({
+            account_id: mentionedAccount.id,
             post_id: post.id,
         }));
 

@@ -6,6 +6,7 @@ import {
     Note as FedifyNote,
     Follow,
     Image,
+    Mention,
     PUBLIC_COLLECTION,
     Reject,
     Update,
@@ -55,10 +56,25 @@ export class FediverseBridge {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         let fedifyObject: FedifyNote | Article;
 
+        let mentions: Mention[] = [];
+        let ccs: URL[] = [];
+
         if (post.type === PostType.Note) {
             if (post.inReplyTo) {
                 return;
             }
+            mentions = post.mentions.map(
+                (account) =>
+                    new Mention({
+                        name: `@${account.username}@${account.apId.hostname}`,
+                        href: account.apId,
+                    }),
+            );
+            ccs = [
+                post.author.apFollowers,
+                ...mentions.map((mention) => mention.href),
+            ].filter((url) => url !== null);
+
             fedifyObject = new FedifyNote({
                 id: post.apId,
                 attribution: post.author.apId,
@@ -75,14 +91,17 @@ export class FediverseBridge {
                                   }),
                           )
                     : undefined,
+                tags: mentions,
                 to: PUBLIC_COLLECTION,
-                cc: post.author.apFollowers,
+                ccs: ccs,
             });
         } else if (post.type === PostType.Article) {
             const preview = new FedifyNote({
                 id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
                 content: post.excerpt,
             });
+            ccs = post.author.apFollowers ? [post.author.apFollowers] : [];
+
             fedifyObject = new Article({
                 id: post.apId,
                 attribution: post.author.apId,
@@ -95,7 +114,7 @@ export class FediverseBridge {
                 preview,
                 url: post.url,
                 to: PUBLIC_COLLECTION,
-                cc: post.author.apFollowers,
+                ccs: ccs,
             });
         } else {
             throw new Error(`Unsupported post type: ${post.type}`);
@@ -106,7 +125,7 @@ export class FediverseBridge {
             actor: post.author.apId,
             object: fedifyObject,
             to: PUBLIC_COLLECTION,
-            cc: post.author.apFollowers,
+            ccs: ccs,
         });
 
         await ctx.data.globaldb.set(

@@ -14,6 +14,7 @@ import { type AppContext, fedify } from 'app';
 import { getValue } from 'core/result';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
+import { getHandle } from 'helpers/activitypub/actor';
 import { addToList } from 'kv-helpers';
 import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { PostService } from 'post/post.service';
@@ -89,13 +90,12 @@ export async function handleCreateReply(
     }
 
     const to = PUBLIC_COLLECTION;
-    const cc = [attributionActor, apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE)];
 
     const conversation = objectToReplyTo.replyTargetId || objectToReplyTo.id!;
     const mentions = [
         new Mention({
             href: attributionActor.id,
-            name: attributionActor.name,
+            name: getHandle(attributionActor),
         }),
     ];
 
@@ -200,6 +200,21 @@ export async function handleCreateReply(
     }
 
     const newReply = getValue(newReplyResult);
+    const replyMentions = newReply.mentions.map(
+        (account) =>
+            new Mention({
+                name: `@${account.username}@${account.apId.hostname}`,
+                href: account.apId,
+            }),
+    );
+    mentions.push(...replyMentions);
+
+    const cc = [
+        apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
+        ...mentions
+            .map((mention) => mention.href)
+            .filter((href) => href !== null),
+    ];
 
     const reply = new Note({
         id: newReply.apId,

@@ -55,6 +55,8 @@ export interface Mention {
     account: Account;
 }
 
+export type MentionedAccount = Pick<Account, 'id' | 'apId' | 'username'>;
+
 export interface PostData {
     type: CreatePostType;
     audience?: Audience;
@@ -93,11 +95,11 @@ export class Post extends BaseEntity {
     public readonly url: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
-    private mentionsToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
     public readonly content: string | null;
+    public readonly mentions: MentionedAccount[] = [];
 
     constructor(
         public readonly id: number | null,
@@ -230,13 +232,7 @@ export class Post extends BaseEntity {
     }
 
     addMention(account: Account) {
-        this.mentionsToAdd.add(account.id);
-    }
-
-    getMentions() {
-        const mentionsToAdd = [...this.mentionsToAdd.values()];
-        this.mentionsToAdd.clear();
-        return mentionsToAdd;
+        this.mentions.push(account);
     }
 
     static createArticleFromGhostPost(

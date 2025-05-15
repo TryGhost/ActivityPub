@@ -8,8 +8,7 @@ import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
-import { Post } from 'post/post.entity';
-import { PostType } from 'post/post.entity';
+import { Post, PostType } from 'post/post.entity';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
@@ -396,6 +395,7 @@ describe('FediverseBridge', () => {
         post.type = PostType.Note;
         post.content = 'Note content';
         post.apId = new URL('https://example.com/note/post-123');
+        post.mentions = [];
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -413,6 +413,47 @@ describe('FediverseBridge', () => {
         const storedActivity = await globalDbSet.mock.calls[0][1];
         await expect(storedActivity).toMatchFileSnapshot(
             './__snapshots__/publish-note-create-activity.json',
+        );
+    });
+
+    it('should include mentions in the Note activity for internal accounts on the PostCreatedEvent', async () => {
+        const bridge = new FediverseBridge(
+            events,
+            fedifyContextFactory,
+            accountService,
+        );
+        await bridge.init();
+        const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://example.com/user/foo');
+        author.isInternal = true;
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
+
+        const mentionedAccount = Object.create(AccountEntity);
+        mentionedAccount.id = 456;
+        mentionedAccount.username = 'test';
+        mentionedAccount.apId = new URL('https://example.com/@test');
+        mentionedAccount.isInternal = true;
+
+        const post = Object.create(Post);
+        post.id = 'post-123';
+        post.author = author;
+        post.type = PostType.Note;
+        post.content = 'Hello! @test@example.com';
+        post.apId = new URL('https://example.com/note/post-123');
+        post.mentions = [mentionedAccount];
+
+        const event = new PostCreatedEvent(post);
+        events.emit(PostCreatedEvent.getName(), event);
+
+        await nextTick();
+
+        const storedActivity = await globalDbSet.mock.calls[0][1];
+        await expect(storedActivity).toMatchFileSnapshot(
+            './__snapshots__/publish-note-create-activity-with-mentions.json',
         );
     });
 
