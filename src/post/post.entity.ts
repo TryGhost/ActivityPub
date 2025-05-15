@@ -338,6 +338,11 @@ export class Post extends BaseEntity {
         );
 
         for (const mention of data.mentions ?? []) {
+            if (data.inReplyTo && mention.id === data.inReplyTo.author.id) {
+                // If Bob replies to my content and also mentions me, don't create a mention (only a reply)
+                continue;
+            }
+
             post.addMention(mention);
         }
 
@@ -470,9 +475,17 @@ export class Post extends BaseEntity {
         );
 
         for (const mention of mentions) {
-            if (mention.account) {
-                post.addMention(mention.account);
+            if (!mention.account) {
+                continue;
             }
+
+            if (mention.account.id === inReplyTo.author.id) {
+                // If I reply to Bob and also mention Bob in my reply
+                // don't create a mention for Bob (only a reply)
+                continue;
+            }
+
+            post.addMention(mention.account);
         }
 
         return post;

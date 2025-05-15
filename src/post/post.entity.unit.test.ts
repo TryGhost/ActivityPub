@@ -280,6 +280,38 @@ describe('Post', () => {
             ]);
         });
 
+        it('does not create a mention when replying to the author (only a reply)', async () => {
+            const alice = internalAccount();
+            const bob = internalAccount();
+            const charlie = externalAccount();
+            const mentions = [
+                {
+                    name: '@bob@site.com',
+                    href: new URL('https://example.com/@bob'),
+                    account: bob,
+                },
+                {
+                    name: '@charlie@site.com',
+                    href: new URL('https://example.com/@charlie'),
+                    account: charlie,
+                },
+            ];
+
+            const bobPost = Post.createNote(bob, 'Parent');
+            (bobPost as unknown as { id: string }).id = 'fake-id';
+
+            const aliceReply = Post.createReply(
+                alice,
+                'Hey @bob@site.com, cool post! cc @charlie@site.com',
+                bobPost,
+                undefined,
+                mentions,
+            );
+
+            // Bob is not mentioned again, but Charlie is
+            expect(aliceReply.getMentions()).toEqual([charlie.id]);
+        });
+
         it('creates a note with line breaks', () => {
             const account = internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
@@ -831,7 +863,7 @@ describe('Post', () => {
             expect(result.content).toBe('This is a test note');
         });
 
-        it('attaches mentions to the post', async () => {
+        it('adds mentions to the post', async () => {
             const account = internalAccount();
             const mentionedAccount = externalAccount();
 
@@ -845,6 +877,31 @@ describe('Post', () => {
 
             expect(result).toBeInstanceOf(Post);
             expect(result.getMentions()).toEqual([mentionedAccount.id]);
+        });
+
+        it('does not create a mention when replying to the author (only a reply)', async () => {
+            const alice = internalAccount();
+            const bob = internalAccount();
+            const charlie = externalAccount();
+
+            const bobPost = Post.createFromData(bob, {
+                type: PostType.Note,
+                content: 'Parent post, authored by the Bob',
+            });
+
+            (bobPost as unknown as { id: string }).id = 'fake-id';
+
+            const aliceReply = {
+                type: PostType.Note,
+                content: 'Hey @bob@site.com, cool post! cc @charlie@site.com',
+                inReplyTo: bobPost,
+                mentions: [bob, charlie],
+            } as PostData;
+
+            const result = Post.createFromData(alice, aliceReply);
+
+            // Bob is not mentioned again, but Charlie is
+            expect(result.getMentions()).toEqual([charlie.id]);
         });
     });
 });
