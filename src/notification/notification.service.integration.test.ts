@@ -89,6 +89,28 @@ describe('NotificationService', () => {
                     'Nostrud incididunt pariatur non exercitation exercitation exercitation esse nulla enim consectetur qui ea.',
                 url: 'http://bob.com/post/some-reply',
                 ap_id: 'https://bob.com/post/some-reply',
+                like_count: 1,
+            });
+
+            const [follower2ReplyPostId] = await client('posts').insert({
+                author_id: follower2AccountId,
+                type: PostType.Note,
+                audience: Audience.Public,
+                content:
+                    'Nostrud incididunt pariatur non exercitation exercitation exercitation esse nulla enim consectetur qui ea.',
+                url: 'http://charlie.com/post/some-reply',
+                ap_id: 'https://charlie.com/post/some-reply',
+                repost_count: 1,
+            });
+
+            await client('likes').insert({
+                account_id: userId,
+                post_id: follower1ReplyPostId,
+            });
+
+            await client('reposts').insert({
+                account_id: userId,
+                post_id: follower2ReplyPostId,
             });
 
             // Setup the notifications
@@ -125,6 +147,14 @@ describe('NotificationService', () => {
                     event_type: 4,
                     created_at: '2025-03-20 14:00:00',
                 },
+                {
+                    user_id: userId,
+                    account_id: follower2AccountId,
+                    event_type: 3,
+                    post_id: follower2ReplyPostId,
+                    in_reply_to_post_id: userPostId,
+                    created_at: '2025-03-21 11:00:00',
+                },
             ]);
 
             const notifications =
@@ -134,7 +164,7 @@ describe('NotificationService', () => {
                     cursor: null,
                 });
 
-            expect(notifications.results).toHaveLength(4);
+            expect(notifications.results).toHaveLength(5);
             await expect(notifications.results).toMatchFileSnapshot(
                 './__snapshots__/get-notifications-data.json',
             );

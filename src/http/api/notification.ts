@@ -84,6 +84,11 @@ export function createGetNotificationsHandler(
                           title: result.post_title,
                           content: result.post_content,
                           url: result.post_url,
+                          likeCount: result.post_like_count || 0,
+                          likedByMe: result.post_liked_by_user === 1,
+                          replyCount: result.post_reply_count || 0,
+                          repostCount: result.post_repost_count || 0,
+                          repostedByMe: result.post_reposted_by_user === 1,
                       }
                     : null,
                 inReplyTo: result.in_reply_to_post_ap_id
