@@ -1044,4 +1044,64 @@ describe('NotificationService', () => {
             expect(notifications).toHaveLength(0);
         });
     });
+
+    describe('removePostNotifications', () => {
+        it('should remove all notifications for a given post', async () => {
+            const [[aliceAccount, ,], [bobAccount, ,]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const post = await fixtureManager.createPost(aliceAccount);
+            const replyPost = await fixtureManager.createReply(
+                bobAccount,
+                post,
+            );
+
+            // Create multiple notifications for the post
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Repost,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Mention,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Reply,
+                    replyPost.id,
+                    post.id,
+                ),
+            ]);
+
+            // Create a notification for a different post to ensure it's not affected
+            const otherPost = await fixtureManager.createPost(aliceAccount);
+            await fixtureManager.createNotification(
+                aliceAccount,
+                bobAccount,
+                NotificationType.Like,
+                otherPost.id,
+            );
+
+            await notificationService.removePostNotifications(post);
+
+            const remainingNotifications =
+                await client('notifications').select('*');
+            expect(remainingNotifications).toHaveLength(1); // One notification for the otherPost
+            expect(remainingNotifications[0].post_id).toBe(otherPost.id);
+        });
+    });
 });

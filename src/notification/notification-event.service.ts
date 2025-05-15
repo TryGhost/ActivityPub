@@ -6,6 +6,7 @@ import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { NotificationService } from 'notification/notification.service';
 import { PostCreatedEvent } from 'post/post-created.event';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 
@@ -31,6 +32,10 @@ export class NotificationEventService {
         this.events.on(
             PostCreatedEvent.getName(),
             this.handlePostCreatedEvent.bind(this),
+        );
+        this.events.on(
+            PostDeletedEvent.getName(),
+            this.handlePostDeletedEvent.bind(this),
         );
         this.events.on(
             AccountBlockedEvent.getName(),
@@ -69,6 +74,10 @@ export class NotificationEventService {
 
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
         await this.notificationService.createReplyNotification(event.getPost());
+    }
+
+    private async handlePostDeletedEvent(event: PostDeletedEvent) {
+        await this.notificationService.removePostNotifications(event.getPost());
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {

@@ -167,6 +167,8 @@ export class FixtureManager {
         userAccount: Account,
         fromAccount: Account,
         type: NotificationType,
+        postId?: number | null,
+        inReplyToPostId?: number | null,
     ) {
         const user = await this.db('users')
             .select('id')
@@ -181,6 +183,8 @@ export class FixtureManager {
             user_id: user.id,
             account_id: fromAccount.id,
             event_type: type,
+            post_id: postId,
+            in_reply_to_post_id: inReplyToPostId,
         });
     }
 

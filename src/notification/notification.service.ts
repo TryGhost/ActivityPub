@@ -377,6 +377,13 @@ export class NotificationService {
             .delete();
     }
 
+    async removePostNotifications(post: Post) {
+        await this.db('notifications')
+            .where('post_id', post.id)
+            .orWhere('in_reply_to_post_id', post.id)
+            .delete();
+    }
+
     async removeBlockedDomainNotifications(blockerId: number, domain: URL) {
         const user = await this.db('users')
             .where('account_id', blockerId)
