@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
-import {
-    type Object as FedifyObject,
-    Follow,
-    Mention,
-    Reject,
-} from '@fedify/fedify';
+import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountEntity } from 'account/account.entity';
@@ -14,7 +9,6 @@ import type { AccountService } from 'account/account.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { Post, PostType } from 'post/post.entity';
-import type { PostService } from 'post/post.service';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
@@ -47,7 +41,6 @@ const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 describe('FediverseBridge', () => {
     let events: EventEmitter;
     let accountService: AccountService;
-    let postService: PostService;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
     let mockUriBuilder: UriBuilder<FedifyObject>;
@@ -57,9 +50,6 @@ describe('FediverseBridge', () => {
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
-        postService = {
-            getMentionsForPost: vi.fn().mockResolvedValue([]),
-        } as unknown as PostService;
         mockUriBuilder = {
             buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
                 return new URL(
@@ -99,7 +89,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
 
         await bridge.init();
@@ -131,7 +120,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
 
         await bridge.init();
@@ -193,7 +181,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 
@@ -278,7 +265,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 
@@ -324,7 +310,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 
@@ -367,7 +352,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 
@@ -392,7 +376,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 
@@ -412,6 +395,7 @@ describe('FediverseBridge', () => {
         post.type = PostType.Note;
         post.content = 'Note content';
         post.apId = new URL('https://example.com/note/post-123');
+        post.mentions = [];
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -437,7 +421,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
         const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
@@ -449,19 +432,19 @@ describe('FediverseBridge', () => {
         author.isInternal = true;
         author.apFollowers = new URL('https://example.com/user/foo/followers');
 
+        const mentionedAccount = Object.create(AccountEntity);
+        mentionedAccount.id = 456;
+        mentionedAccount.username = 'test';
+        mentionedAccount.apId = new URL('https://example.com/@test');
+        mentionedAccount.isInternal = true;
+
         const post = Object.create(Post);
         post.id = 'post-123';
         post.author = author;
         post.type = PostType.Note;
         post.content = 'Hello! @test@example.com';
         post.apId = new URL('https://example.com/note/post-123');
-
-        vi.mocked(postService.getMentionsForPost).mockResolvedValue([
-            new Mention({
-                name: '@test@example.com',
-                href: new URL('https://example.com/@test'),
-            }),
-        ]);
+        post.mentions = [mentionedAccount];
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -479,7 +462,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 
@@ -529,7 +511,6 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
-            postService,
         );
         await bridge.init();
 

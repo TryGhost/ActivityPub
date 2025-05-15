@@ -378,8 +378,4 @@ export class PostService {
 
         return ok(post);
     }
-
-    async getMentionsForPost(post: Post) {
-        return this.postRepository.getMentionsForPost(post);
-    }
 }

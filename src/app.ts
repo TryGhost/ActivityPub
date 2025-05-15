@@ -310,7 +310,6 @@ const fediverseBridge = new FediverseBridge(
     events,
     fedifyContextFactory,
     accountService,
-    postService,
 );
 fediverseBridge.init();
 

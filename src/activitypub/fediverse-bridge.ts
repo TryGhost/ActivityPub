@@ -6,7 +6,7 @@ import {
     Note as FedifyNote,
     Follow,
     Image,
-    type Mention,
+    Mention,
     PUBLIC_COLLECTION,
     Reject,
     Update,
@@ -19,7 +19,6 @@ import { addToList } from 'kv-helpers';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostType } from 'post/post.entity';
-import type { PostService } from 'post/post.service';
 import { v4 as uuidv4 } from 'uuid';
 import type { FedifyContextFactory } from './fedify-context.factory';
 
@@ -28,7 +27,6 @@ export class FediverseBridge {
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
-        private readonly postService: PostService,
     ) {}
 
     async init() {
@@ -65,7 +63,13 @@ export class FediverseBridge {
             if (post.inReplyTo) {
                 return;
             }
-            mentions = await this.postService.getMentionsForPost(post);
+            mentions = post.mentions.map(
+                (account) =>
+                    new Mention({
+                        name: `@${account.username}@${account.apId.hostname}`,
+                        href: account.apId,
+                    }),
+            );
             ccs = [
                 post.author.apFollowers,
                 ...mentions.map((mention) => mention.href),

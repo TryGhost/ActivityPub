@@ -200,7 +200,13 @@ export async function handleCreateReply(
     }
 
     const newReply = getValue(newReplyResult);
-    const replyMentions = await postService.getMentionsForPost(newReply);
+    const replyMentions = newReply.mentions.map(
+        (account) =>
+            new Mention({
+                name: `@${account.username}@${account.apId.hostname}`,
+                href: account.apId,
+            }),
+    );
     mentions.push(...replyMentions);
 
     const cc = [

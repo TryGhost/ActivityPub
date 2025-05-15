@@ -98,6 +98,7 @@ export class Post extends BaseEntity {
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
     public readonly content: string | null;
+    public readonly mentions: Account[] = [];
 
     constructor(
         public readonly id: number | null,
@@ -231,6 +232,7 @@ export class Post extends BaseEntity {
 
     addMention(account: Account) {
         this.mentionsToAdd.add(account.id);
+        this.mentions.push(account);
     }
 
     getMentions() {
