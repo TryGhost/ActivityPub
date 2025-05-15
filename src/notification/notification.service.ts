@@ -412,6 +412,18 @@ export class NotificationService {
             return;
         }
 
+        if (post.inReplyTo) {
+            // Do not create a notification if the post is a reply to Bob and also mentions Bob
+            const inReplyToPost = await this.db('posts')
+                .where('id', post.inReplyTo)
+                .select('id', 'author_id')
+                .first();
+
+            if (inReplyToPost.author_id === accountId) {
+                return;
+            }
+        }
+
         const user = await this.db('users')
             .where('account_id', accountId)
             .select('id')
