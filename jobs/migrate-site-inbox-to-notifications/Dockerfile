@@ -1,4 +1,4 @@
-FROM node:20.18.0-alpine
+FROM node:20.19.2-alpine
 
 WORKDIR /opt/job
 
