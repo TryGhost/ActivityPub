@@ -841,7 +841,7 @@ describe('Post', () => {
             const result = Post.createFromData(account, postData);
 
             expect(result).toBeInstanceOf(Post);
-            expect(result.getMentions()).toEqual([mentionedAccount.id]);
+            expect(result.mentions).toEqual([mentionedAccount]);
         });
     });
 });
