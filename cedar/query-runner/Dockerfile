@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 node:20.18.0-alpine
+FROM --platform=linux/amd64 node:20.19.2-alpine
 
 WORKDIR /opt/query-runner
 
