@@ -540,10 +540,10 @@
   resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.5.2.tgz#e27e24a9ddf0996ff309fd48a6f3a741a80286b3"
   integrity sha512-JDI4Dhi8LlLq4wVjHqzZNw1EKrMDlpdVMPzpAN8oXusfs14MATceBesGseLb7DTxp8WkqQ/ok5v7qejzNRzhoQ==
 
-"@fedify/fedify@1.5.1":
-  version "1.5.1"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.5.1.tgz#750ad79c5bf6b9df02b0ca14395ca9fc8e92628e"
-  integrity sha512-I+QFHSnshhPUmklkQxU/A4v9pLY9c/BFQKUmYC5cCV7UuYROxoEALfUeE0LjI7EsnRBMFRx3V6Aq2MKTePXJkg==
+"@fedify/fedify@1.5.3":
+  version "1.5.3"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.5.3.tgz#50faad8f2b9006e746d3e60a144cd6fdc4950ec8"
+  integrity sha512-s4ev+HMu6TNH1/RMNvIGvyn17D2dahq8Fpn/aDuBBngi0rHuOodZsoOnQMvEl9MoU0isv9GhPq5BP8oPYSmGaw==
   dependencies:
     "@deno/shim-crypto" "~0.3.1"
     "@deno/shim-deno" "~0.18.0"
