@@ -43,6 +43,7 @@ import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
 import { createDerepostActionHandler } from 'http/api/derepost';
 import { FollowController } from 'http/api/follow';
+import { BadRequest } from 'http/api/helpers/response';
 import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
 import { createRepostActionHandler } from 'http/api/repost';
@@ -1181,6 +1182,12 @@ app.use(
 
 // Send errors to Sentry
 app.onError((err, c) => {
+    if (err?.details?.code === 'invalid term definition') {
+        return BadRequest('Invalid term definition');
+    }
+    if (err?.details?.code === 'invalid local context') {
+        return BadRequest('Invalid term definition');
+    }
     Sentry.captureException(err);
     c.get('logger').error('{error}', { error: err });
 
