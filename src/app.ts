@@ -38,6 +38,7 @@ import { FollowHandler } from 'activity-handlers/follow.handler';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { AsyncEvents } from 'core/events';
+import { get } from 'es-toolkit/compat';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
@@ -1182,11 +1183,14 @@ app.use(
 
 // Send errors to Sentry
 app.onError((err, c) => {
-    if (err?.details?.code === 'invalid term definition') {
-        return BadRequest('Invalid term definition');
-    }
-    if (err?.details?.code === 'invalid local context') {
-        return BadRequest('Invalid term definition');
+    if (err.name === 'jsonld.SyntaxError') {
+        const code = get(err, 'details.code');
+        if (code === 'invalid term definition') {
+            return BadRequest('Invalid JSON-LD');
+        }
+        if (code === 'invalid local context') {
+            return BadRequest('Invalid JSON-LD');
+        }
     }
     Sentry.captureException(err);
     c.get('logger').error('{error}', { error: err });
