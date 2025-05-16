@@ -38,11 +38,13 @@ import { FollowHandler } from 'activity-handlers/follow.handler';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { AsyncEvents } from 'core/events';
+import { get } from 'es-toolkit/compat';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
 import { createDerepostActionHandler } from 'http/api/derepost';
 import { FollowController } from 'http/api/follow';
+import { BadRequest } from 'http/api/helpers/response';
 import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
 import { createRepostActionHandler } from 'http/api/repost';
@@ -1181,6 +1183,15 @@ app.use(
 
 // Send errors to Sentry
 app.onError((err, c) => {
+    if (err.name === 'jsonld.SyntaxError') {
+        const code = get(err, 'details.code');
+        if (code === 'invalid term definition') {
+            return BadRequest('Invalid JSON-LD');
+        }
+        if (code === 'invalid local context') {
+            return BadRequest('Invalid JSON-LD');
+        }
+    }
     Sentry.captureException(err);
     c.get('logger').error('{error}', { error: err });
 
