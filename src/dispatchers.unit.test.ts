@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Activity, type RequestContext } from '@fedify/fedify';
+import type { RequestContext } from '@fedify/fedify';
 import {
     likedDispatcher,
     nodeInfoDispatcher,
@@ -121,40 +121,10 @@ describe('dispatchers', () => {
                 null,
             );
 
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct items are returned in the correct order
-            expect(result.items.length).toEqual(2);
-            expect(result.items[0] instanceof Activity).toBeTruthy();
-            expect(result.items[1] instanceof Activity).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/announce/456',
-            );
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[1].id.toString()).toEqual(
-                'https://example.com/create/123',
-            );
-        });
-
-        it('returns items from the outbox collection with a cursor', async () => {
-            const result = await outboxDispatcher(
-                ctx,
-                ACTOR_DEFAULT_HANDLE,
-                '1',
-            );
-
-            // Check items exist
-            expect(result.items).toBeDefined();
-
-            // Check correct items are returned
-            expect(result.items.length).toEqual(1);
-            expect(result.items[0] instanceof Activity).toBeTruthy();
-            // @ts-ignore: We know that this is the correct type because of the above assertions
-            expect(result.items[0].id.toString()).toEqual(
-                'https://example.com/create/123',
-            );
+            expect(result).toMatchObject({
+                items: [],
+                nextCursor: null,
+            });
         });
     });
 

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getCurrentDirectory } from './path.js';
 import { getExternalActivityPub } from './wiremock.js';
 
-function generateObject(type, content, tags = []) {
+function generateObject(type, content, tags = [], inReplyTo = null) {
     if (type === 'Article') {
         const uuid = uuidv4();
         return {
@@ -23,6 +23,7 @@ function generateObject(type, content, tags = []) {
             published: new Date(),
             attributedTo: 'http://fake-external-activitypub.test/user',
             tag: tags,
+            inReplyTo,
         };
     }
 
@@ -42,6 +43,7 @@ function generateObject(type, content, tags = []) {
             published: new Date(),
             attributedTo: 'http://fake-external-activitypub.test/user',
             tag: tags,
+            inReplyTo,
         };
     }
 
@@ -59,8 +61,23 @@ function generateObject(type, content, tags = []) {
     }
 }
 
-export async function createObject(type, actor, content, tags = []) {
-    const object = generateObject(type, content, tags);
+export async function createObject(
+    type,
+    actor,
+    content,
+    tags = [],
+    inReplyTo = null,
+) {
+    if (typeof content === 'object') {
+        return createObject(
+            type,
+            actor,
+            content.content,
+            content.tags,
+            content.inReplyTo,
+        );
+    }
+    const object = generateObject(type, content, tags, inReplyTo);
 
     if (!object) {
         throw new Error(`Cannot create objects of type ${type}`);

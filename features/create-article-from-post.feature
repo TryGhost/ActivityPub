@@ -1,21 +1,21 @@
 Feature: Deliver Create(Article) activities when a post.published webhook is received
 
   Scenario: We recieve a webhook for the post.published event
-    Given a "post.published" webhook
+    Given we are followed by "Alice"
+    And a "post.published" webhook
     When it is sent to the webhook endpoint
     Then the request is accepted
-    Then a "Create(Article)" activity is in the Outbox
-    And the found "Create(Article)" has property "object.attributedTo"
+    Then A "Create(Article)" Activity is sent to all followers
 
   Scenario: We recieve a webhook for the post.published event and the post has no content
-    Given a "post.published" webhook:
+    Given we are followed by "Alice"
+    And a "post.published" webhook:
       | property             | value |
       | post.current.html    | null  |
       | post.current.excerpt | null  |
     When it is sent to the webhook endpoint
     Then the request is accepted
-    Then a "Create(Article)" activity is in the Outbox
-    And the found "Create(Article)" has property "object.attributedTo"
+    Then A "Create(Article)" Activity is sent to all followers
 
   Scenario: We recieve a webhook for the post.published event with an old signature
     Given a "post.published" webhook

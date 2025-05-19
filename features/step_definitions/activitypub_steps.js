@@ -2,12 +2,7 @@ import assert from 'node:assert';
 
 import { Given, Then, When } from '@cucumber/cucumber';
 
-import {
-    findInOutbox,
-    waitForInboxActivity,
-    waitForOutboxActivity,
-    waitForOutboxObject,
-} from '../support/activitypub.js';
+import { waitForInboxActivity } from '../support/activitypub.js';
 import {
     createActivity,
     createActor,
@@ -266,72 +261,6 @@ Then(
     },
 );
 
-Then('{string} is not in our Outbox', async function (activityName) {
-    const activity = this.activities[activityName];
-    const found = await findInOutbox(activity);
-    assert(
-        !found,
-        `Expected not to find activity "${activityName}" in outbox, but it was found`,
-    );
-});
-
-Then('{string} is in our Outbox', async function (name) {
-    const activity = this.activities[name];
-    if (activity) return waitForOutboxActivity(activity);
-    const object = this.objects[name];
-    if (object) return waitForOutboxObject(object);
-});
-
-async function waitForOutboxActivityType(
-    activityType,
-    objectType,
-    options = {
-        retryCount: 0,
-        delay: 0,
-    },
-) {
-    const MAX_RETRIES = 5;
-
-    const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const initialResponseJson = await initialResponse.json();
-    const firstPageReponse = await fetchActivityPub(initialResponseJson.first, {
-        headers: {
-            Accept: 'application/ld+json',
-        },
-    });
-    const outbox = await firstPageReponse.json();
-
-    const found = (outbox.orderedItems || []).find((item) => {
-        return item.type === activityType && item.object?.type === objectType;
-    });
-
-    if (found) {
-        return found;
-    }
-
-    if (options.retryCount === MAX_RETRIES) {
-        throw new Error(
-            `Max retries reached (${MAX_RETRIES}) when waiting for ${activityType}(${objectType}) in the outbox`,
-        );
-    }
-
-    if (options.delay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, options.delay));
-    }
-
-    return waitForOutboxActivityType(activityType, objectType, {
-        retryCount: options.retryCount + 1,
-        delay: options.delay + 500,
-    });
-}
-
 Then(
     'Activity {string} is sent to {string}',
     async function (activityName, actorName) {
@@ -389,6 +318,52 @@ Then(
 );
 
 Then(
+    'A {string} Activity is sent to all followers',
+    async function (activityString) {
+        const followersResponse = await fetchActivityPub(
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        );
+        const followersResponseJson = await followersResponse.json();
+
+        const [match, activity, object] = activityString.match(
+            /(\w+)\((\w+)\)/,
+        ) || [null];
+        if (!match) {
+            throw new Error(`Could not match ${activityString} to an activity`);
+        }
+
+        const followers = followersResponseJson.orderedItems;
+
+        for (const followerUrl of followers) {
+            const follower = await (await fetchActivityPub(followerUrl)).json();
+            const inbox = new URL(follower.inbox);
+
+            const found = await waitForRequest(
+                'POST',
+                inbox.pathname,
+                (call) => {
+                    const json = JSON.parse(call.request.body);
+
+                    return (
+                        json.type === activity && json.object.type === object
+                    );
+                },
+            );
+
+            if (!this.found) {
+                this.found = {};
+            }
+            this.found[activityString] = found;
+
+            assert(
+                found,
+                `Activity "${activityString}" was not sent to "${follower.name}"`,
+            );
+        }
+    },
+);
+
+Then(
     'Activity with object {string} is sent to all followers',
     async function (objectName) {
         const followersResponse = await fetchActivityPub(
@@ -421,21 +396,6 @@ Then(
         }
     },
 );
-
-Then('a {string} activity is in the Outbox', async function (string) {
-    const [match, activity, object] = string.match(/(\w+)\((\w+)\)/) || [null];
-    if (!match) {
-        throw new Error(`Could not match ${string} to an activity`);
-    }
-
-    const found = await waitForOutboxActivityType(activity, object);
-
-    if (!this.found) {
-        this.found = {};
-    }
-    this.found[string] = found;
-    assert.ok(found);
-});
 
 Then('the found {string} as {string}', function (foundName, name) {
     const found = this.found[foundName];

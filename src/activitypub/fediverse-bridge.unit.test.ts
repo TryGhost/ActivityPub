@@ -404,11 +404,6 @@ describe('FediverseBridge', () => {
 
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalled();
-        expect(context.data.db.get).toHaveBeenCalledWith(['outbox']);
-        expect(context.data.db.set).toHaveBeenCalledWith(
-            ['outbox'],
-            expect.any(Array),
-        );
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
         await expect(storedActivity).toMatchFileSnapshot(
@@ -494,11 +489,6 @@ describe('FediverseBridge', () => {
 
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalled();
-        expect(context.data.db.get).toHaveBeenCalledWith(['outbox']);
-        expect(context.data.db.set).toHaveBeenCalledWith(
-            ['outbox'],
-            expect.any(Array),
-        );
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
         await expect(storedActivity).toMatchFileSnapshot(

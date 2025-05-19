@@ -11,7 +11,6 @@ Feature: Delete a post
       Hello
       World
       """
-    And "OurNote" is in our Outbox
     And an authenticated request is made to "/.ghost/activitypub/feed"
     And the request is accepted
     And "OurNote" is in the feed
@@ -23,7 +22,6 @@ Feature: Delete a post
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And "OurNote" is not in the feed
-    And "OurNote" is not in our Outbox
     And a "Delete(OurNote)" activity is sent to "Alice"
 
   Scenario: Attempting to delete another user's post
