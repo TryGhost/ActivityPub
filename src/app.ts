@@ -613,54 +613,25 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
         const originalFetch = globalThis.fetch;
 
         globalThis.fetch = async (input, init) => {
-            let url: string;
-            let method: string;
-            let headers: HeadersInit;
-            let bodyText: string | undefined;
-
-            if (input instanceof Request) {
-                url = input.url;
-                method = input.method;
-                headers = input.headers;
-
-                try {
-                    const cloned = input.clone();
-                    bodyText = await cloned.text();
-                } catch (e) {
-                    bodyText = '[body not readable]';
-                }
-            } else {
-                url = typeof input === 'string' ? input : input.toString();
-                method = init?.method || 'GET';
-                headers = init?.headers || {};
-                if (init?.body && typeof init.body === 'string') {
-                    bodyText = init.body;
-                } else if (init?.body) {
-                    try {
-                        bodyText = JSON.stringify(init.body);
-                    } catch {
-                        bodyText = '[non-serializable body]';
-                    }
-                }
-            }
-
-            logger.info('[fetch] Outgoing request', {
-                url,
-                method,
-                headers,
-                body: bodyText,
-            });
-
             try {
+                logger.info('[fetch] Outgoing request', {
+                    url: input instanceof Request ? input.url : input,
+                    method: input instanceof Request ? input.method : 'GET',
+                    headers: input instanceof Request ? input.headers : {},
+                    body: input instanceof Request ? input.body : undefined,
+                });
+
                 const res = await originalFetch(input, init);
+
                 logger.info('[fetch] Response received', {
-                    url,
+                    url: input instanceof Request ? input.url : input,
                     status: res.status,
                 });
+
                 return res;
             } catch (err) {
                 logger.error('[fetch] Request failed', {
-                    url,
+                    url: input instanceof Request ? input.url : input,
                     error: err instanceof Error ? err.message : String(err),
                 });
                 throw err;
