@@ -100,7 +100,15 @@ export function sanitizeHtml(content: string): string {
             '*': ['id', 'class', 'title', 'lang', 'dir', 'tabindex', 'style'],
 
             // Specific HTML elements
-            a: ['href', 'target', 'rel', 'download', 'hreflang', 'type'],
+            a: [
+                'href',
+                'target',
+                'rel',
+                'download',
+                'hreflang',
+                'type',
+                'data-profile',
+            ],
             img: [
                 'src',
                 'srcset',

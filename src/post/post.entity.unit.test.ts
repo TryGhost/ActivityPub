@@ -236,7 +236,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
+                '<p>My reply to <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
             );
             expect(note.mentions).toEqual([mentionedAccount]);
         });
@@ -272,7 +272,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
+                '<p>My reply to <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" data-profile="@test2@example.com" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
             );
             expect(note.mentions).toEqual([
                 mentionedAccount1,
@@ -403,7 +403,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
+                '<p>My note with <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
             );
             expect(note.mentions).toEqual([mentionedAccount]);
         });
@@ -431,7 +431,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
+                '<p>My note with <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" data-profile="@test2@example.com" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
             );
             expect(note.mentions).toEqual([
                 mentionedAccount1,

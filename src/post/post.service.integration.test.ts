@@ -203,7 +203,7 @@ describe('PostService', () => {
 
             // Verify mention is wrapped in hyperlink in content
             expect(post.content).toBe(
-                `<p>This is a test note mentioning <a href="${mentionedAccount.apId}" rel="nofollow noopener noreferrer">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a></p>`,
+                `<p>This is a test note mentioning <a href="${mentionedAccount.apId}" data-profile="@${mentionedAccount.username}@${mentionedAccount.apId.hostname}" rel="nofollow noopener noreferrer">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a></p>`,
             );
 
             // Verify the post was saved to database
@@ -351,7 +351,7 @@ describe('PostService', () => {
 
             // Verify mention is wrapped in hyperlink in content
             expect(reply.content).toBe(
-                `<p>This is a reply mentioning <a href="${mentionedAccount.apId}" rel="nofollow noopener noreferrer">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a></p>`,
+                `<p>This is a reply mentioning <a href="${mentionedAccount.apId}" data-profile="@${mentionedAccount.username}@${mentionedAccount.apId.hostname}" rel="nofollow noopener noreferrer">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a></p>`,
             );
 
             // Verify the reply was saved to database
