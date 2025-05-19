@@ -39,7 +39,12 @@ import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { AsyncEvents } from 'core/events';
 import { get } from 'es-toolkit/compat';
-import { Hono, type Context as HonoContext, type Next } from 'hono';
+import {
+    Hono,
+    type Context as HonoContext,
+    type MiddlewareHandler,
+    type Next,
+} from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
 import { createDerepostActionHandler } from 'http/api/derepost';
@@ -592,6 +597,54 @@ app.get('/ping', (ctx) => {
 });
 
 /** Middleware */
+
+declare global {
+    var __fetchLoggingPatched: boolean | undefined;
+}
+
+export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
+    ctx,
+    next,
+) => {
+    console.log('logOutgoingFetchMiddleware');
+    const logger = ctx.get('logger') || console;
+
+    if (!globalThis.__fetchLoggingPatched) {
+        const originalFetch = globalThis.fetch;
+
+        globalThis.fetch = async (input, init) => {
+            try {
+                logger.info('[fetch] Outgoing request', {
+                    url: input instanceof Request ? input.url : input,
+                    method: input instanceof Request ? input.method : 'GET',
+                    headers: input instanceof Request ? input.headers : {},
+                    body: input instanceof Request ? input.body : undefined,
+                });
+
+                const res = await originalFetch(input, init);
+
+                logger.info('[fetch] Response received', {
+                    url: input instanceof Request ? input.url : input,
+                    status: res.status,
+                });
+
+                return res;
+            } catch (err) {
+                logger.error('[fetch] Request failed', {
+                    url: input instanceof Request ? input.url : input,
+                    error: err instanceof Error ? err.message : String(err),
+                });
+                throw err;
+            }
+        };
+
+        globalThis.__fetchLoggingPatched = true;
+    }
+
+    await next();
+};
+
+app.use(logOutgoingFetchMiddleware);
 
 app.use(async (ctx, next) => {
     const extra: Record<string, string | boolean> = {};
