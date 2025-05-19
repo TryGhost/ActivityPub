@@ -102,8 +102,8 @@ jobs:
           load: true
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
-      - name: "Run Tests"
-        run: yarn test
+      #- name: "Run Tests"
+      #  run: yarn test
 
       - name: "Authenticate with GCP"
         if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
@@ -240,6 +240,26 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
+      - name: "Deploy Tests to Cloud Run"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
+          region: europe-west4
+          job: stg-pr-${{ github.event.pull_request.number }}-tests
+          flags: --command="yarn" --args "_test:single" --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Destroy Tests databases"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~pr_${{ github.event.pull_request.number }}_test*" --format="value(name)" --project ${GCP_PROJECT})
+          for TEST_DATABASE in ${TEST_DATABASES}; do
+            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+          done
+
       - name: "Add route to GCP Load Balancer"
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
         env:
@@ -305,6 +325,26 @@ jobs:
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
+
+      - name: "Deploy Tests to Cloud Run"
+        if: ${{ matrix.region == 'europe-west4' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
+          region: ${{ matrix.region }}
+          job: stg-${{ matrix.region_name }}-activitypub-tests
+          flags: --command="yarn _test:single" --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Destroy Tests databases"
+        if: ${{ matrix.region == 'europe-west4' }}
+        run: |
+          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~pr_${{ github.event.pull_request.number }}_test*" --format="value(name)" --project ${GCP_PROJECT})
+          for TEST_DATABASE in ${TEST_DATABASES}; do
+            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+          done
 
       - name: "Deploy ActivityPub Queue to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
