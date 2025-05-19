@@ -614,11 +614,21 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
 
         globalThis.fetch = async (input, init) => {
             try {
+                let bodyText = '';
+                if (input instanceof Request) {
+                    try {
+                        const cloned = input.clone();
+                        bodyText = await cloned.text();
+                    } catch (e) {
+                        bodyText = '[body not readable]';
+                    }
+                }
+
                 logger.info('[fetch] Outgoing request', {
                     url: input instanceof Request ? input.url : input,
                     method: input instanceof Request ? input.method : 'GET',
                     headers: input instanceof Request ? input.headers : {},
-                    body: input instanceof Request ? input.body : undefined,
+                    body: bodyText,
                 });
 
                 const res = await originalFetch(input, init);
