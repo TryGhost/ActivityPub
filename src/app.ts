@@ -598,65 +598,6 @@ app.get('/ping', (ctx) => {
 
 /** Middleware */
 
-declare global {
-    var __fetchLoggingPatched: boolean | undefined;
-}
-
-export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
-    ctx,
-    next,
-) => {
-    if (!globalThis.__fetchLoggingPatched) {
-        const originalFetch = globalThis.fetch;
-
-        globalThis.fetch = async (input, init) => {
-            try {
-                const url = input instanceof Request ? input.url : input;
-                const method = input instanceof Request ? input.method : 'GET';
-                const headers = input instanceof Request ? input.headers : {};
-                let bodyText = '';
-                if (input instanceof Request) {
-                    try {
-                        const cloned = input.clone();
-                        bodyText = await cloned.text();
-                    } catch (e) {
-                        bodyText = '[body not readable]';
-                    }
-                }
-
-                ctx.get('logger').info('Sending request...');
-                ctx.get('logger').info(
-                    'url: {url}, method: {method}, headers: {headers}, body: {body}',
-                    { url, method, headers, body: bodyText },
-                );
-
-                const res = await originalFetch(input, init);
-
-                ctx.get('logger').info('Response received:');
-                ctx.get('logger').info('url: {url}, status: {status}', {
-                    url,
-                    status: res.status,
-                });
-
-                return res;
-            } catch (err) {
-                ctx.get('logger').error('Request failed:');
-                ctx.get('logger').error('url: {url}, error: {error}', {
-                    url: input instanceof Request ? input.url : input,
-                    error: err instanceof Error ? err.message : String(err),
-                });
-                throw err;
-            }
-        };
-
-        globalThis.__fetchLoggingPatched = true;
-    }
-
-    await next();
-};
-
-app.use(logOutgoingFetchMiddleware);
-
 app.use(async (ctx, next) => {
     const extra: Record<string, string | boolean> = {};
 
@@ -972,6 +913,55 @@ app.use(async (ctx, next) => {
 
     await fedifyContextFactory.registerContext(fedifyContext, next);
 });
+
+export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
+    ctx,
+    next,
+) => {
+    const originalFetch = globalThis.fetch;
+    const logger = ctx.get('logger');
+
+    globalThis.fetch = async (input, init) => {
+        try {
+            const url = input instanceof Request ? input.url : input;
+            const method = input instanceof Request ? input.method : 'GET';
+            const headers = input instanceof Request ? input.headers : {};
+            let bodyText = '';
+            if (input instanceof Request) {
+                try {
+                    const cloned = input.clone();
+                    bodyText = await cloned.text();
+                } catch (e) {
+                    bodyText = '[body not readable]';
+                }
+            }
+
+            logger.info(
+                'Sending request with url: {url}, method: {method}, headers: {headers}, body: {body}',
+                { url, method, headers, body: bodyText },
+            );
+
+            const res = await originalFetch(input, init);
+
+            logger.info('Response received for url: {url}, status: {status}', {
+                url,
+                status: res.status,
+            });
+
+            return res;
+        } catch (err) {
+            logger.error('Request failed for url: {url}, error: {error}', {
+                url: input instanceof Request ? input.url : input,
+                error: err instanceof Error ? err.message : String(err),
+            });
+            throw err;
+        }
+    };
+
+    await next();
+};
+
+app.use(logOutgoingFetchMiddleware);
 
 /** Custom API routes */
 
