@@ -9,17 +9,25 @@ import { afterAll } from 'vitest';
 export async function createTestDb() {
     const systemClient = knex({
         client: 'mysql2',
-        connection: {
-            host: process.env.MYSQL_HOST,
-            port: Number.parseInt(process.env.MYSQL_PORT!),
-            user: process.env.MYSQL_USER,
-            password: process.env.MYSQL_PASSWORD,
-            database: 'mysql',
-            timezone: '+00:00',
-        },
+        connection: process.env.MYSQL_SOCKET_PATH
+            ? {
+                  socketPath: process.env.MYSQL_SOCKET_PATH,
+                  user: process.env.MYSQL_USER,
+                  password: process.env.MYSQL_PASSWORD,
+                  database: 'mysql',
+                  timezone: '+00:00',
+              }
+            : {
+                  host: process.env.MYSQL_HOST,
+                  port: Number.parseInt(process.env.MYSQL_PORT!),
+                  user: process.env.MYSQL_USER,
+                  password: process.env.MYSQL_PASSWORD,
+                  database: 'mysql',
+                  timezone: '+00:00',
+              },
     });
 
-    const dbName = `test_${randomBytes(16).toString('hex')}`;
+    const dbName = `${process.env.MYSQL_DATABASE?.includes('pr-') ? `${process.env.MYSQL_DATABASE.replace(/-/g, '_')}_` : ''}test_${randomBytes(16).toString('hex')}`;
 
     await systemClient.raw(`CREATE DATABASE ${dbName}`);
 
@@ -29,37 +37,60 @@ export async function createTestDb() {
 
     // Clone each table structure
     for (const { TABLE_NAME } of tables[0]) {
-        await systemClient.raw(
-            `CREATE TABLE ${dbName}.${TABLE_NAME} LIKE ${process.env.MYSQL_DATABASE}.${TABLE_NAME}`,
+        const [createTableResult] = await systemClient.raw(
+            `SHOW CREATE TABLE \`${process.env.MYSQL_DATABASE}\`.\`${TABLE_NAME}\``,
         );
+        const createTableSql = createTableResult[0]['Create Table']
+            .replace('CREATE TABLE ', `CREATE TABLE \`${dbName}\`.`)
+            .split('\n')
+            .filter((line: string) => !line.trim().startsWith('CONSTRAINT'))
+            .join('\n')
+            .replace(/,\n\)/, '\n)'); // clean up trailing comma
+        await systemClient.raw(createTableSql);
     }
 
     await systemClient.destroy();
 
     const dbClient = knex({
         client: 'mysql2',
-        connection: {
-            host: process.env.MYSQL_HOST,
-            port: Number.parseInt(process.env.MYSQL_PORT!),
-            user: process.env.MYSQL_USER,
-            password: process.env.MYSQL_PASSWORD,
-            database: dbName,
-            timezone: '+00:00',
-        },
+        connection: process.env.MYSQL_SOCKET_PATH
+            ? {
+                  socketPath: process.env.MYSQL_SOCKET_PATH,
+                  user: process.env.MYSQL_USER,
+                  password: process.env.MYSQL_PASSWORD,
+                  database: dbName,
+                  timezone: '+00:00',
+              }
+            : {
+                  host: process.env.MYSQL_HOST,
+                  port: Number.parseInt(process.env.MYSQL_PORT!),
+                  user: process.env.MYSQL_USER,
+                  password: process.env.MYSQL_PASSWORD,
+                  database: dbName,
+                  timezone: '+00:00',
+              },
     });
 
     afterAll(async () => {
         await dbClient.destroy();
         const systemClient = knex({
             client: 'mysql2',
-            connection: {
-                host: process.env.MYSQL_HOST,
-                port: Number.parseInt(process.env.MYSQL_PORT!),
-                user: process.env.MYSQL_USER,
-                password: process.env.MYSQL_PASSWORD,
-                database: 'mysql',
-                timezone: '+00:00',
-            },
+            connection: process.env.MYSQL_SOCKET_PATH
+                ? {
+                      socketPath: process.env.MYSQL_SOCKET_PATH,
+                      user: process.env.MYSQL_USER,
+                      password: process.env.MYSQL_PASSWORD,
+                      database: 'mysql',
+                      timezone: '+00:00',
+                  }
+                : {
+                      host: process.env.MYSQL_HOST,
+                      port: Number.parseInt(process.env.MYSQL_PORT!),
+                      user: process.env.MYSQL_USER,
+                      password: process.env.MYSQL_PASSWORD,
+                      database: 'mysql',
+                      timezone: '+00:00',
+                  },
         });
         await systemClient.raw(`DROP DATABASE ${dbName}`);
         await systemClient.destroy();
