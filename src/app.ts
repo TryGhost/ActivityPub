@@ -606,14 +606,14 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
     ctx,
     next,
 ) => {
+    console.log('logOutgoingFetchMiddleware');
+    const logger = ctx.get('logger') || console;
+
     if (!globalThis.__fetchLoggingPatched) {
         const originalFetch = globalThis.fetch;
 
         globalThis.fetch = async (input, init) => {
             try {
-                const url = input instanceof Request ? input.url : input;
-                const method = input instanceof Request ? input.method : 'GET';
-                const headers = input instanceof Request ? input.headers : {};
                 let bodyText = '';
                 if (input instanceof Request) {
                     try {
@@ -624,24 +624,23 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
                     }
                 }
 
-                ctx.get('logger').info('Sending request...');
-                ctx.get('logger').info(
-                    'url: {url}, method: {method}, headers: {headers}, body: {body}',
-                    { url, method, headers, body: bodyText },
-                );
+                logger.info('[fetch] Outgoing request', {
+                    url: input instanceof Request ? input.url : input,
+                    method: input instanceof Request ? input.method : 'GET',
+                    headers: input instanceof Request ? input.headers : {},
+                    body: bodyText,
+                });
 
                 const res = await originalFetch(input, init);
 
-                ctx.get('logger').info('Response received:');
-                ctx.get('logger').info('url: {url}, status: {status}', {
-                    url,
+                logger.info('[fetch] Response received', {
+                    url: input instanceof Request ? input.url : input,
                     status: res.status,
                 });
 
                 return res;
             } catch (err) {
-                ctx.get('logger').error('Request failed:');
-                ctx.get('logger').error('url: {url}, error: {error}', {
+                logger.error('[fetch] Request failed', {
                     url: input instanceof Request ? input.url : input,
                     error: err instanceof Error ? err.message : String(err),
                 });
