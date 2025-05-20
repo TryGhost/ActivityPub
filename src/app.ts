@@ -919,62 +919,41 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
     next,
 ) => {
     const originalFetch = globalThis.fetch;
-    const logger = ctx.get('logger') || console;
+    const logger = ctx.get('logger');
 
     globalThis.fetch = async (input, init) => {
-        let url: string;
-        let method: string;
-        let headers: Headers;
-        let bodyText = '';
-
-        if (input instanceof Request) {
-            const cloned = input.clone();
-
-            url = cloned.url;
-            method = cloned.method;
-            headers = cloned.headers;
-
-            try {
-                bodyText = await cloned.text();
-            } catch {
-                bodyText = '[body not readable]';
-            }
-        } else {
-            url = typeof input === 'string' ? input : input.toString();
-            method = init?.method || 'GET';
-            headers = new Headers(init?.headers || {});
-
-            if (init?.body && typeof init.body === 'string') {
-                bodyText = init.body;
-            } else if (init?.body) {
+        try {
+            const url = input instanceof Request ? input.url : input;
+            const method = input instanceof Request ? input.method : 'GET';
+            const headers = input instanceof Request ? input.headers : {};
+            let bodyText = '';
+            if (input instanceof Request) {
                 try {
-                    bodyText = JSON.stringify(init.body);
-                } catch {
-                    bodyText = '[non-serializable body]';
+                    const cloned = input.clone();
+                    bodyText = await cloned.text();
+                } catch (e) {
+                    bodyText = '[body not readable]';
                 }
             }
-        }
-
-        try {
-            const headerString = Array.from(headers.entries())
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('\n');
 
             logger.info(
-                `Sending request:\n${method} ${url}\n\n${headerString}\n\n${bodyText}`,
+                'Sending request with url: {url}, method: {method}, headers: {headers}, body: {body}',
+                { url, method, headers, body: bodyText },
             );
 
             const res = await originalFetch(input, init);
 
-            logger.info(
-                `Received response from ${url}:${res.status} ${res.statusText}`,
-            );
+            logger.info('Response received for url: {url}, status: {status}', {
+                url,
+                status: res.status,
+            });
 
             return res;
         } catch (err) {
-            logger.error(
-                `Request failed for ${url}: ${err instanceof Error ? err.message : String(err)}`,
-            );
+            logger.error('Request failed for url: {url}, error: {error}', {
+                url: input instanceof Request ? input.url : input,
+                error: err instanceof Error ? err.message : String(err),
+            });
             throw err;
         }
     };
