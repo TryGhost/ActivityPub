@@ -144,7 +144,7 @@ describe('AccountPostsView', () => {
                     handle: `@${accountEntity.username}@${site.host}`,
                     name: accountEntity.name,
                 },
-                authoredByMe: true,
+                authoredByMe: false,
             });
         });
 

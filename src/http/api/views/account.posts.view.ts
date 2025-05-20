@@ -110,7 +110,7 @@ export class AccountPostsView {
 
     async getPostsByAccount(
         accountId: number,
-        defaultAccountId: number,
+        contextAccountId: number,
         limit: number,
         cursor: string | null,
     ): Promise<AccountPosts> {
@@ -238,7 +238,7 @@ export class AccountPostsView {
                 ).andOnVal(
                     'current_user_likes.account_id',
                     '=',
-                    defaultAccountId.toString(),
+                    contextAccountId.toString(),
                 );
             })
             .leftJoin('reposts as current_user_reposts', function () {
@@ -248,7 +248,7 @@ export class AccountPostsView {
                 ).andOnVal(
                     'current_user_reposts.account_id',
                     '=',
-                    defaultAccountId.toString(),
+                    contextAccountId.toString(),
                 );
             })
             .modify((query) => {
@@ -273,7 +273,7 @@ export class AccountPostsView {
 
         return {
             results: paginatedResults.map((result: GetProfileDataResultRow) =>
-                this.mapToPostDTO(result, accountId),
+                this.mapToPostDTO(result, contextAccountId),
             ),
             nextCursor: hasMore ? lastResult.published_date : null,
         };
@@ -572,7 +572,16 @@ export class AccountPostsView {
         };
     }
 
-    mapToPostDTO(result: GetProfileDataResultRow, accountId: number): PostDTO {
+    /**
+     * Map a database result row to a PostDTO
+     * @param result - The database result row
+     * @param contextAccountId - The ID of the account that is viewing the posts
+     * @returns A PostDTO
+     */
+    mapToPostDTO(
+        result: GetProfileDataResultRow,
+        contextAccountId: number,
+    ): PostDTO {
         return {
             id: result.post_ap_id,
             type: result.post_type,
@@ -604,7 +613,7 @@ export class AccountPostsView {
                 url: result.author_url ?? '',
                 avatarUrl: result.author_avatar_url ?? '',
             },
-            authoredByMe: result.author_id === accountId,
+            authoredByMe: result.author_id === contextAccountId,
             repostCount: result.post_repost_count,
             repostedByMe: result.post_reposted_by_current_user === 1,
             repostedBy: result.reposter_id
