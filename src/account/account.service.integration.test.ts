@@ -284,6 +284,47 @@ describe('AccountService', () => {
 
             expect(accountRow.domain).toBe(site.host);
         });
+
+        it('should create a user row for an existing account when migrating a site', async () => {
+            // Simulate an account that already exists (e.g., from a previous external interaction)
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: 'public-key',
+                ap_private_key: null,
+                domain: site.host,
+            };
+            // Insert the account directly (simulate external interaction)
+            const [accountId] = await db('accounts').insert(accountData);
+
+            // There should be no user row for this account and site yet
+            let user = await db('users').where({ account_id: accountId, site_id: site.id }).first();
+            expect(user).toBeUndefined();
+
+            // Now, call createInternalAccount (should not throw, should create user row)
+            await service.createInternalAccount(site, internalAccountData);
+
+            // Now, there should be a user row linking the site to the account
+            user = await db('users').where({ account_id: accountId, site_id: site.id }).first();
+            expect(user).toBeDefined();
+            expect(user.account_id).toBe(accountId);
+            expect(user.site_id).toBe(site.id);
+        });
     });
 
     describe('createExternalAccount', () => {
