@@ -606,54 +606,65 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
     ctx,
     next,
 ) => {
-    const logger = ctx.get('logger') || console;
-
     if (!globalThis.__fetchLoggingPatched) {
         const originalFetch = globalThis.fetch;
 
         globalThis.fetch = async (input, init) => {
+            ctx.get('logger').debug('Overriding globalThis.fetch');
+
             if (!(input instanceof Request)) {
-                logger.info('Cannot log outgoing request for {input}', {
-                    input,
-                });
+                ctx.get('logger').info('Cannot log outgoing request');
                 return originalFetch(input, init);
             }
 
             const url = input.url;
             const method = input.method;
-            const headersRaw = input.headers;
+            const headers = Object.fromEntries(input.headers.entries());
 
             let body = '';
             try {
                 const cloned = input.clone();
-                body = await cloned.text();
+                body = await cloned.json();
             } catch (e) {
                 body = '[body not readable]';
             }
 
-            const headers = Array.from(headersRaw.entries())
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('\n');
-
-            logger.info(
-                `Outgoing request:\n\n${method} ${url}\n\n${headers}\n\n${body}`,
+            ctx.get('logger').info(
+                'Outgoing request:\n{method} {url}\n{headers}\n{body}',
+                {
+                    method,
+                    url,
+                    headers,
+                    body,
+                },
             );
 
             try {
                 const res = await originalFetch(input, init);
 
-                logger.info(
-                    `Response received from ${url}: HTTP ${res.status} ${res.statusText}`,
+                ctx.get('logger').info(
+                    'Response received from {url}: HTTP {status} {statusText}',
+                    {
+                        url,
+                        status: res.status,
+                        statusText: res.statusText,
+                    },
                 );
 
                 return res;
             } catch (err) {
                 if (err instanceof Error) {
-                    logger.error(
-                        `Request failed for url ${url}:${err.message}`,
+                    ctx.get('logger').error(
+                        'Request failed for url {url}: {error}',
+                        {
+                            url,
+                            error: err.message,
+                        },
                     );
                 } else {
-                    logger.error(`Request failed for url ${url}`);
+                    ctx.get('logger').error('Request failed for url {url}', {
+                        url,
+                    });
                 }
                 throw err;
             }
