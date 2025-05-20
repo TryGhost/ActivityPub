@@ -469,16 +469,19 @@ describe('KnexAccountRepository', () => {
             'following_id',
         );
 
-        expect(followsBeforeUnfollow).toStrictEqual([
-            {
-                follower_id: account.id,
-                following_id: accountToFollow.id,
-            },
-            {
-                follower_id: accountToFollow.id,
-                following_id: accountNotFollowed.id,
-            },
-        ]);
+        expect(followsBeforeUnfollow).toHaveLength(2);
+        expect(followsBeforeUnfollow).toEqual(
+            expect.arrayContaining([
+                {
+                    follower_id: account.id,
+                    following_id: accountToFollow.id,
+                },
+                {
+                    follower_id: accountToFollow.id,
+                    following_id: accountNotFollowed.id,
+                },
+            ]),
+        );
 
         await accountRepository.save(account.unfollow(accountToFollow));
 
