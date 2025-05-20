@@ -1,3 +1,5 @@
+import { type Actor, type Note, isActor, lookupObject } from '@fedify/fedify';
+import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import {
     afterEach,
     beforeAll,
@@ -9,10 +11,10 @@ import {
 } from 'vitest';
 
 import { AsyncEvents } from 'core/events';
+import { getError, getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import { KnexAccountRepository } from './account.repository.knex';
@@ -30,6 +32,8 @@ vi.mock('@fedify/fedify', async () => {
     return {
         ...original,
         generateCryptoKeyPair: vi.fn().mockReturnValue(keyPair),
+        lookupObject: vi.fn(),
+        isActor: vi.fn(),
     };
 });
 
@@ -40,6 +44,38 @@ describe('AccountService', () => {
     let internalAccountData: InternalAccountData;
     let externalAccountData: ExternalAccountData;
     let db: Knex;
+
+    const mockActor = {
+        id: new URL('https://example.com/activitypub/users/testuser'),
+        type: 'Person',
+        name: 'Test User',
+        preferredUsername: 'testuser',
+        inbox: new URL('https://example.com/activitypub/inbox/testuser'),
+        outbox: new URL('https://example.com/activitypub/outbox/testuser'),
+        following: new URL(
+            'https://example.com/activitypub/following/testuser',
+        ),
+        followers: new URL(
+            'https://example.com/activitypub/followers/testuser',
+        ),
+        liked: new URL('https://example.com/activitypub/liked/testuser'),
+        getAttachments: vi.fn().mockImplementation(async function* () {}),
+        getPublicKey: vi.fn().mockResolvedValue({
+            toJsonLd: vi.fn().mockResolvedValue({
+                id: 'https://example.com/activitypub/users/testuser#main-key',
+                owner: 'https://example.com/activitypub/users/testuser',
+                publicKeyPem:
+                    '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----',
+            }),
+        }),
+        getIcon: vi.fn().mockResolvedValue(null),
+        getImage: vi.fn().mockResolvedValue(null),
+        summary: null,
+        url: new URL('https://example.com/users/testuser'),
+    };
+
+    vi.mocked(lookupObject).mockResolvedValue(mockActor as unknown as Actor);
+    vi.mocked(isActor).mockReturnValue(true);
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -106,7 +142,11 @@ describe('AccountService', () => {
         // Init dependencies
         events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
-        const fedifyContextFactory = new FedifyContextFactory();
+        const fedifyContextFactory = {
+            getFedifyContext: () => ({
+                getDocumentLoader: async () => ({}),
+            }),
+        } as unknown as FedifyContextFactory;
 
         // Create the service
         service = new AccountService(
@@ -732,6 +772,85 @@ describe('AccountService', () => {
             );
 
             expect(isNotFollowing).toBe(false);
+        });
+    });
+
+    describe('ensureByApId', () => {
+        it('should create an account when it does not exist', async () => {
+            const apId = new URL(
+                'https://example.com/activitypub/users/testuser',
+            );
+
+            let account = await db('accounts').where({ ap_id: apId.href });
+            expect(account).toHaveLength(0);
+
+            const result = await service.ensureByApId(apId);
+
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const account = getValue(result);
+                expect(account.apId.href).toBe(apId.href);
+                expect(account.username).toBe('testuser');
+                expect(account.name).toBe('Test User');
+            }
+
+            account = await db('accounts').where({ ap_id: apId.href });
+            expect(account).toHaveLength(1);
+        });
+
+        it('should handle if account URL is passes as input ID', async () => {
+            const inputUrl = new URL('https://example.com/users/testuser');
+            const actualActorId = mockActor.id;
+
+            const result = await service.ensureByApId(inputUrl);
+
+            expect(lookupObject).toHaveBeenCalledWith(
+                inputUrl,
+                expect.any(Object),
+            );
+
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const account = getValue(result);
+                expect(account.apId.href).toBe(actualActorId.href);
+            }
+        });
+
+        it('should return error when actor is not found', async () => {
+            const apId = new URL(
+                'https://example.com/activitypub/users/nonexistent',
+            );
+
+            vi.mocked(lookupObject).mockResolvedValue(null);
+
+            const result = await service.ensureByApId(apId);
+
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('not-found');
+            }
+        });
+
+        it('should return error when object is not an actor', async () => {
+            const apId = new URL(
+                'https://example.com/activitypub/users/notanactor',
+            );
+            const mockObject = {
+                type: 'Note',
+                content: 'This is not an actor',
+            };
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                mockObject as unknown as Note,
+            );
+            vi.mocked(isActor).mockReturnValue(false);
+
+            const result = await service.ensureByApId(apId);
+
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('invalid-type');
+            }
         });
     });
 });

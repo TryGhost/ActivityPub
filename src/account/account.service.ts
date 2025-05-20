@@ -133,6 +133,14 @@ export class AccountService {
             return error('network-failure');
         }
 
+        // We need to check if the actor's id differs from the input id because:
+        // The input id might be the URL of an account (e.g., in the case of mentions).
+        // In this case, the lookup finds an actor, but the actual ActivityPub ID
+        // for the account might be different from the input id. Searching by the correct apId before creating a new account.
+        if (actor.id && actor.id.href !== id.href) {
+            return this.ensureByApId(actor.id);
+        }
+
         let data: ExternalAccountData;
 
         try {
@@ -147,7 +155,7 @@ export class AccountService {
 
         if (!createdAccount) {
             throw new Error(
-                'A newly created account was not found in the database.',
+                `A newly created account was not found in the database for id: ${id}`,
             );
         }
 
