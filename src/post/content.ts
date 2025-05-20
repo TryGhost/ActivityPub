@@ -150,7 +150,7 @@ export class ContentPreparer {
             );
             preparedContent = preparedContent.replace(
                 mentionRegex,
-                `<a href="${mention.href}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
+                `<a href="${mention.href}" data-profile="${mention.name}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
             );
         }
         return preparedContent;

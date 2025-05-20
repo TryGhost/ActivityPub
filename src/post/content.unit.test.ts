@@ -193,7 +193,7 @@ describe('ContentPreparer', () => {
                 });
 
                 expect(result).toEqual(
-                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>, how are you?',
+                    'Hello <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a>, how are you?',
                 );
             });
 
@@ -217,7 +217,7 @@ describe('ContentPreparer', () => {
                 });
 
                 expect(result).toEqual(
-                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a> and <a href="https://example.co.uk/@newUser" rel="nofollow noopener noreferrer">@newUser@example.co.uk</a>!',
+                    'Hello <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a> and <a href="https://example.co.uk/@newUser" data-profile="@newUser@example.co.uk" rel="nofollow noopener noreferrer">@newUser@example.co.uk</a>!',
                 );
             });
 
@@ -236,7 +236,7 @@ describe('ContentPreparer', () => {
                 });
 
                 expect(result).toEqual(
-                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>, <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>, and <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a>!',
+                    'Hello <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a>, <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a>, and <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a>!',
                 );
             });
 
@@ -254,7 +254,7 @@ describe('ContentPreparer', () => {
                 });
 
                 expect(result).toEqual(
-                    'Hello <a href="https://example.xyz/@user" rel="nofollow noopener noreferrer">@user@example.xyz</a> and @user@exampleXxyz',
+                    'Hello <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a> and @user@exampleXxyz',
                 );
             });
 
