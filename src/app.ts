@@ -649,7 +649,9 @@ export const logOutgoingFetchMiddleware: MiddlewareHandler = async (
                 return res;
             } catch (err) {
                 if (err instanceof Error) {
-                    logger.error(`Request failed for url ${url}:${err.message}`);
+                    logger.error(
+                        `Request failed for url ${url}:${err.message}`,
+                    );
                 } else {
                     logger.error(`Request failed for url ${url}`);
                 }
