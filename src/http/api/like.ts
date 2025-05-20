@@ -5,7 +5,6 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import { type AppContext, fedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
-import { addToList, removeFromList } from 'kv-helpers';
 import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
@@ -125,8 +124,6 @@ export class LikeController {
         });
         const likeJson = await like.toJsonLd();
         await ctx.get('globaldb').set([like.id!.href], likeJson);
-
-        await addToList(ctx.get('db'), ['liked'], like.id!.href);
 
         let attributionActor: Actor | null = null;
         if (objectToLike.attributionId) {
@@ -258,9 +255,8 @@ export class LikeController {
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
         });
         const undoJson = await undo.toJsonLd();
-        await ctx.get('globaldb').set([undo.id!.href], undoJson);
 
-        await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
+        await ctx.get('globaldb').set([undo.id!.href], undoJson);
         await ctx.get('globaldb').delete([likeId!.href]);
 
         let attributionActor: Actor | null = null;
