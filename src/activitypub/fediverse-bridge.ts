@@ -139,7 +139,7 @@ export class FediverseBridge {
 
         await ctx.sendActivity(
             {
-                handle: post.author.username,
+                handle: 'index',
             },
             'followers',
             createActivity,
@@ -170,7 +170,7 @@ export class FediverseBridge {
 
         await ctx.sendActivity(
             {
-                handle: post.author.username,
+                handle: 'index',
             },
             'followers',
             deleteActivity,
@@ -200,7 +200,7 @@ export class FediverseBridge {
 
         await ctx.sendActivity(
             {
-                handle: account.username,
+                handle: 'index',
             },
             'followers',
             update,
@@ -241,7 +241,7 @@ export class FediverseBridge {
         await ctx.data.globaldb.set([reject.id!.href], await reject.toJsonLd());
 
         await ctx.sendActivity(
-            { username: blockerAccount.username },
+            { username: 'index' },
             {
                 id: blockedAccount.apId,
                 inboxId: blockedAccount.apInbox,

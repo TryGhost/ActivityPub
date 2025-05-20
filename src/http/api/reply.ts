@@ -255,24 +255,14 @@ export async function handleCreateReply(
     await ctx.get('globaldb').set([create.id!.href], activityJson);
     await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
-    apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
-        attributionActor,
-        create,
-        {
-            preferSharedInbox: true,
-        },
-    );
+    apCtx.sendActivity({ handle: 'index' }, attributionActor, create, {
+        preferSharedInbox: true,
+    });
 
     try {
-        await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            create,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await apCtx.sendActivity({ handle: 'index' }, 'followers', create, {
+            preferSharedInbox: true,
+        });
     } catch (err) {
         logger.error('Error sending reply activity - {error}', {
             error: err,
