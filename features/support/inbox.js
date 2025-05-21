@@ -20,8 +20,6 @@ export async function waitForItemInInbox(
 
     const json = await response.json();
 
-    console.log('json:', json);
-
     const found = json.posts.find((item) => {
         return item.id === itemId;
     });
