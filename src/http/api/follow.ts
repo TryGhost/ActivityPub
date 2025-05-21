@@ -184,7 +184,7 @@ export class FollowController {
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
         await apCtx.sendActivity(
-            { handle: 'index' },
+            { username: 'index' },
             actorToUnfollow,
             unfollow,
         );

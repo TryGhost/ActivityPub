@@ -125,12 +125,12 @@ export function createDerepostActionHandler(
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity({ handle: 'index' }, attributionActor, undo, {
+            apCtx.sendActivity({ username: 'index' }, attributionActor, undo, {
                 preferSharedInbox: true,
             });
         }
 
-        apCtx.sendActivity({ handle: 'index' }, 'followers', undo, {
+        apCtx.sendActivity({ username: 'index' }, 'followers', undo, {
             preferSharedInbox: true,
         });
 

@@ -136,12 +136,12 @@ export class LikeController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity({ handle: 'index' }, attributionActor, like, {
+            apCtx.sendActivity({ username: 'index' }, attributionActor, like, {
                 preferSharedInbox: true,
             });
         }
 
-        apCtx.sendActivity({ handle: 'index' }, 'followers', like, {
+        apCtx.sendActivity({ username: 'index' }, 'followers', like, {
             preferSharedInbox: true,
         });
         return new Response(JSON.stringify(likeJson), {
@@ -261,12 +261,12 @@ export class LikeController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity({ handle: 'index' }, attributionActor, undo, {
+            apCtx.sendActivity({ username: 'index' }, attributionActor, undo, {
                 preferSharedInbox: true,
             });
         }
 
-        apCtx.sendActivity({ handle: 'index' }, 'followers', undo, {
+        apCtx.sendActivity({ username: 'index' }, 'followers', undo, {
             preferSharedInbox: true,
         });
         return new Response(JSON.stringify(undoJson), {

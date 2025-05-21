@@ -139,7 +139,7 @@ export class FediverseBridge {
 
         await ctx.sendActivity(
             {
-                handle: 'index',
+                username: 'index',
             },
             'followers',
             createActivity,
@@ -170,7 +170,7 @@ export class FediverseBridge {
 
         await ctx.sendActivity(
             {
-                handle: 'index',
+                username: 'index',
             },
             'followers',
             deleteActivity,
@@ -200,7 +200,7 @@ export class FediverseBridge {
 
         await ctx.sendActivity(
             {
-                handle: 'index',
+                username: 'index',
             },
             'followers',
             update,
