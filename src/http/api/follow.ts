@@ -7,7 +7,6 @@ import { type AppContext, fedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { lookupAPIdByHandle, lookupActor, lookupObject } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 export class FollowController {
@@ -105,11 +104,7 @@ export class FollowController {
 
         ctx.get('globaldb').set([follow.id!.href], followJson);
 
-        await apCtx.sendActivity(
-            { username: followerAccount.username },
-            actorToFollow,
-            follow,
-        );
+        await apCtx.sendActivity({ username: 'index' }, actorToFollow, follow);
 
         return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
             headers: {
@@ -189,7 +184,7 @@ export class FollowController {
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
         await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
+            { username: 'index' },
             actorToUnfollow,
             unfollow,
         );

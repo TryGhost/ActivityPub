@@ -126,7 +126,7 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([accept.id!.href], acceptJson);
 
-        await ctx.sendActivity({ handle }, sender, accept);
+        await ctx.sendActivity({ username: 'index' }, sender, accept);
     }
 
     private async sendReject(
@@ -145,6 +145,6 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([reject.id!.href], rejectJson);
 
-        await ctx.sendActivity({ handle }, sender, reject);
+        await ctx.sendActivity({ username: 'index' }, sender, reject);
     }
 }

@@ -136,24 +136,14 @@ export class LikeController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity(
-                { handle: ACTOR_DEFAULT_HANDLE },
-                attributionActor,
-                like,
-                {
-                    preferSharedInbox: true,
-                },
-            );
+            apCtx.sendActivity({ username: 'index' }, attributionActor, like, {
+                preferSharedInbox: true,
+            });
         }
 
-        apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            like,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        apCtx.sendActivity({ username: 'index' }, 'followers', like, {
+            preferSharedInbox: true,
+        });
         return new Response(JSON.stringify(likeJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
@@ -271,24 +261,14 @@ export class LikeController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity(
-                { handle: ACTOR_DEFAULT_HANDLE },
-                attributionActor,
-                undo,
-                {
-                    preferSharedInbox: true,
-                },
-            );
+            apCtx.sendActivity({ username: 'index' }, attributionActor, undo, {
+                preferSharedInbox: true,
+            });
         }
 
-        apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            undo,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        apCtx.sendActivity({ username: 'index' }, 'followers', undo, {
+            preferSharedInbox: true,
+        });
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
