@@ -90,3 +90,28 @@ When(
         });
     },
 );
+
+When(
+    'it is sent to the webhook endpoint with private visibility',
+    async function () {
+        const endpoint = endpoints[this.payloadType];
+        let payload = createWebhookPost();
+        if (this.payloadData) {
+            payload = merge(payload, this.payloadData);
+        }
+        const body = JSON.stringify(payload);
+        const timestamp = Date.now();
+        const hmac = createHmac('sha256', getWebhookSecret())
+            .update(body + timestamp)
+            .digest('hex');
+
+        this.response = await fetchActivityPub(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`,
+            },
+            body: body,
+        });
+    },
+);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { KnexAccountRepository } from '../../account/account.repository.knex';
 import type { AppContext } from '../../app';
 import { Post } from '../../post/post.entity';
@@ -61,7 +62,20 @@ export function createPostPublishedWebhookHandler(
 
         const account = await accountRepository.getBySite(ctx.get('site'));
 
-        const post = Post.createArticleFromGhostPost(account, data);
+        const postResult = await Post.createArticleFromGhostPost(account, data);
+
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'private-content':
+                    return BadRequest(
+                        'Cannot create Post from private content',
+                    );
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+        const post = getValue(postResult);
 
         await postRepository.save(post);
 

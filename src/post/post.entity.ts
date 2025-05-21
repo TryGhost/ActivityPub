@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { type Result, error, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
@@ -88,6 +89,8 @@ export function isPublicPost(post: Post): post is PublicPost {
 export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
     return post.audience === Audience.FollowersOnly;
 }
+
+type CreatePostError = 'private-content';
 
 export class Post extends BaseEntity {
     public readonly uuid: string;
@@ -235,10 +238,10 @@ export class Post extends BaseEntity {
         this.mentions.push(account);
     }
 
-    static createArticleFromGhostPost(
+    static async createArticleFromGhostPost(
         account: Account,
         ghostPost: GhostPost,
-    ): Post {
+    ): Promise<Result<Post, CreatePostError>> {
         const isPublic = ghostPost.visibility === 'public';
 
         let content = ghostPost.html;
@@ -255,7 +258,7 @@ export class Post extends BaseEntity {
             });
 
             if (content === '') {
-                throw new Error('Cannot create Post from private content');
+                return error('private-content');
             }
 
             if (
@@ -279,21 +282,23 @@ export class Post extends BaseEntity {
             });
         }
 
-        return new Post(
-            null,
-            ghostPost.uuid,
-            account,
-            PostType.Article,
-            Audience.Public,
-            ghostPost.title,
-            excerpt,
-            content,
-            new URL(ghostPost.url),
-            parseURL(ghostPost.feature_image),
-            new Date(ghostPost.published_at),
-            {
-                ghostAuthors: ghostPost.authors ?? [],
-            },
+        return ok(
+            new Post(
+                null,
+                ghostPost.uuid,
+                account,
+                PostType.Article,
+                Audience.Public,
+                ghostPost.title,
+                excerpt,
+                content,
+                new URL(ghostPost.url),
+                parseURL(ghostPost.feature_image),
+                new Date(ghostPost.published_at),
+                {
+                    ghostAuthors: ghostPost.authors ?? [],
+                },
+            ),
         );
     }
 
