@@ -1,6 +1,6 @@
 import { fetchActivityPub } from './request.js';
 
-export async function waitForItemInNotifications(
+export async function waitForItemInInbox(
     itemId,
     options = {
         retryCount: 0,
@@ -10,7 +10,7 @@ export async function waitForItemInNotifications(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/notifications',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -20,8 +20,10 @@ export async function waitForItemInNotifications(
 
     const json = await response.json();
 
-    const found = json.notifications.find((notificiation) => {
-        return notificiation.post?.id === itemId;
+    console.log('json:', json);
+
+    const found = json.posts.find((item) => {
+        return item.id === itemId;
     });
 
     if (found) {
@@ -30,7 +32,7 @@ export async function waitForItemInNotifications(
 
     if (options.retryCount === MAX_RETRIES) {
         throw new Error(
-            `Max retries reached (${MAX_RETRIES}) when waiting on item ${itemId} in notifications`,
+            `Max retries reached (${MAX_RETRIES}) when waiting on item ${itemId} in the inbox`,
         );
     }
 
@@ -38,7 +40,7 @@ export async function waitForItemInNotifications(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    return await waitForItemInNotifications(itemId, {
+    return await waitForItemInInbox(itemId, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });

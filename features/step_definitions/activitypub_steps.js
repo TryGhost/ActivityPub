@@ -225,8 +225,6 @@ async function getObjectInCollection(objectName, collectionType) {
         const itemIsString = typeof item === 'string';
         if (itemIsString) {
             id = item;
-        } else if (collectionType === 'liked') {
-            id = item.object.id;
         } else {
             id = item.id;
         }

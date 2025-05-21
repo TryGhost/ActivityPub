@@ -38,12 +38,6 @@ export async function inboxHandler(
         logger,
     });
 
-    // Fetch the liked items from the database:
-    //   - Data is structured as an array of strings
-    //   - Each string is a URI to an object in the database
-    // This is used to add a "liked" property to the item if the user has liked it
-    const liked = (await db.get<string[]>(['liked'])) || [];
-
     // Fetch the reposted items from the database:
     //   - Data is structured as an array of strings
     //   - Each string is a URI to an object in the database
@@ -63,7 +57,7 @@ export async function inboxHandler(
                     item,
                     globaldb,
                     apCtx,
-                    liked,
+                    [],
                     reposted,
                     [],
                     {
