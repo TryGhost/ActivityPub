@@ -63,7 +63,7 @@ export function createRepostActionHandler(postService: PostService) {
         await ctx.get('globaldb').set([announce.id!.href], announceJson);
 
         await apCtx.sendActivity(
-            { username: 'index' },
+            { username: account.username },
             {
                 id: post.author.apId,
                 inboxId: post.author.apInbox,
@@ -74,9 +74,14 @@ export function createRepostActionHandler(postService: PostService) {
             },
         );
 
-        await apCtx.sendActivity({ username: 'index' }, 'followers', announce, {
-            preferSharedInbox: true,
-        });
+        await apCtx.sendActivity(
+            { username: account.username },
+            'followers',
+            announce,
+            {
+                preferSharedInbox: true,
+            },
+        );
 
         return new Response(JSON.stringify(announceJson), {
             headers: {

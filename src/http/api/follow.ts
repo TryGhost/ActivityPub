@@ -104,7 +104,11 @@ export class FollowController {
 
         ctx.get('globaldb').set([follow.id!.href], followJson);
 
-        await apCtx.sendActivity({ username: 'index' }, actorToFollow, follow);
+        await apCtx.sendActivity(
+            { username: followerAccount.username },
+            actorToFollow,
+            follow,
+        );
 
         return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
             headers: {
@@ -184,7 +188,7 @@ export class FollowController {
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
         await apCtx.sendActivity(
-            { username: 'index' },
+            { username: account.username },
             actorToUnfollow,
             unfollow,
         );
