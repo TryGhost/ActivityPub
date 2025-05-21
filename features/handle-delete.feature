@@ -23,13 +23,13 @@ Feature: Delete(Note)
     And "AliceNote" is in the feed
     And "AliceNote" is not in the feed
 
-  Scenario: We recieve a Delete(Note) activity from someone we follow
+  Scenario: We receive a Delete(Note) activity from someone we follow
     Given a "Delete(AliceNote)" Activity "DeleteNote" by "Alice"
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted
     And "AliceNote" is not in the feed
 
-  Scenario: We recieve a Delete(Note) activity from someone who didn't create the post
+  Scenario: We receive a Delete(Note) activity from someone who didn't create the post
     Given a "Delete(AliceNote)" Activity "DeleteNote" by "Bob"
     When an authenticated request is made to "/.ghost/activitypub/feed"
     Then the request is accepted

@@ -1,13 +1,13 @@
 Feature: Deliver Create(Article) activities when a post.published webhook is received
 
-  Scenario: We recieve a webhook for the post.published event
+  Scenario: We receive a webhook for the post.published event
     Given we are followed by "Alice"
     And a "post.published" webhook
     When it is sent to the webhook endpoint
     Then the request is accepted
     Then A "Create(Article)" Activity is sent to all followers
 
-  Scenario: We recieve a webhook for the post.published event and the post has no content
+  Scenario: We receive a webhook for the post.published event and the post has no content
     Given we are followed by "Alice"
     And a "post.published" webhook:
       | property             | value |
@@ -17,12 +17,12 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
     Then the request is accepted
     Then A "Create(Article)" Activity is sent to all followers
 
-  Scenario: We recieve a webhook for the post.published event with an old signature
+  Scenario: We receive a webhook for the post.published event with an old signature
     Given a "post.published" webhook
     When it is sent to the webhook endpoint with an old signature
     Then the request is rejected with a 401
 
-  Scenario: We recieve a webhook for the post.published event without a signature
+  Scenario: We receive a webhook for the post.published event without a signature
     Given a "post.published" webhook
     When it is sent to the webhook endpoint without a signature
     Then the request is rejected with a 401
