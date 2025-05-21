@@ -1,6 +1,5 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
-import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import { AsyncEvents } from 'core/events';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
@@ -1324,16 +1323,11 @@ describe('KnexPostRepository', () => {
             'There should be 2 mentions in the DB',
         );
 
-        expect(eventsEmitSpy).toHaveBeenCalledTimes(3); // 1 post created + 2 mentions
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(1); // 1 post created
         expect(eventsEmitSpy).nthCalledWith(
-            2,
-            AccountMentionedEvent.getName(),
-            new AccountMentionedEvent(post, Number(accounts[1].id)),
-        );
-        expect(eventsEmitSpy).nthCalledWith(
-            3,
-            AccountMentionedEvent.getName(),
-            new AccountMentionedEvent(post, Number(accounts[2].id)),
+            1,
+            PostCreatedEvent.getName(),
+            new PostCreatedEvent(post),
         );
     });
 });

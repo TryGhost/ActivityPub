@@ -2,7 +2,6 @@ import type { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
-import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { NotificationService } from 'notification/notification.service';
 import { PostCreatedEvent } from 'post/post-created.event';
@@ -45,10 +44,6 @@ export class NotificationEventService {
             DomainBlockedEvent.getName(),
             this.handleDomainBlockedEvent.bind(this),
         );
-        this.events.on(
-            AccountMentionedEvent.getName(),
-            this.handleAccountMentionedEvent.bind(this),
-        );
     }
 
     private async handleAccountFollowedEvent(event: AccountFollowedEvent) {
@@ -74,6 +69,17 @@ export class NotificationEventService {
 
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
         await this.notificationService.createReplyNotification(event.getPost());
+
+        // Create a mention notification for each mention in the post
+        const mentions = event.getPost().mentions;
+        if (mentions && mentions.length > 0) {
+            for (const mention of mentions) {
+                await this.notificationService.createMentionNotification(
+                    event.getPost(),
+                    mention.id,
+                );
+            }
+        }
     }
 
     private async handlePostDeletedEvent(event: PostDeletedEvent) {
@@ -97,13 +103,6 @@ export class NotificationEventService {
         await this.notificationService.removeBlockedDomainNotifications(
             blockerId,
             domain,
-        );
-    }
-
-    private async handleAccountMentionedEvent(event: AccountMentionedEvent) {
-        await this.notificationService.createMentionNotification(
-            event.getPost(),
-            event.getAccountId(),
         );
     }
 }

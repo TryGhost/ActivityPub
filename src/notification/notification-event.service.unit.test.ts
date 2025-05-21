@@ -4,7 +4,6 @@ import { EventEmitter } from 'node:events';
 
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
-import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import type { Account as AccountEntity } from 'account/account.entity';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import { PostCreatedEvent } from 'post/post-created.event';
@@ -173,24 +172,46 @@ describe('NotificationEventService', () => {
     });
 
     describe('handling a mention created event', () => {
-        it('should create a mention notification', () => {
+        it('should create a mention notification', async () => {
             const postWithMention = {
                 id: 123,
                 author: {
                     id: 456,
                 },
                 content: 'Hello @bob@coolsite.com',
-            } as Post;
-            const mentionedAccountId = 789;
+                mentions: [
+                    {
+                        id: 788,
+                        apId: new URL('https://example.com/@bob'),
+                        username: 'bob',
+                    },
+                    {
+                        id: 789,
+                        apId: new URL('https://example.com/@alice'),
+                        username: 'alice',
+                    },
+                ],
+            } as unknown as Post;
 
             events.emit(
-                AccountMentionedEvent.getName(),
-                new AccountMentionedEvent(postWithMention, mentionedAccountId),
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(postWithMention),
             );
+
+            await new Promise(process.nextTick);
 
             expect(
                 notificationService.createMentionNotification,
-            ).toHaveBeenCalledWith(postWithMention, mentionedAccountId);
+            ).toHaveBeenCalledWith(
+                postWithMention,
+                postWithMention.mentions[0].id,
+            );
+            expect(
+                notificationService.createMentionNotification,
+            ).toHaveBeenCalledWith(
+                postWithMention,
+                postWithMention.mentions[1].id,
+            );
         });
     });
 });
