@@ -28,6 +28,7 @@ export async function handleCreateReply(
     ctx: AppContext,
     postService: PostService,
 ) {
+    const account = ctx.get('account');
     const logger = ctx.get('logger');
     const id = ctx.req.param('id');
 
@@ -99,7 +100,7 @@ export async function handleCreateReply(
     ];
 
     const newReplyResult = await postService.createReply(
-        ctx.get('account'),
+        account,
         data.content,
         inReplyToId,
         data.imageUrl ? new URL(data.imageUrl) : undefined,
@@ -200,10 +201,10 @@ export async function handleCreateReply(
 
     const newReply = getValue(newReplyResult);
     const replyMentions = newReply.mentions.map(
-        (account) =>
+        (mentionedAccount) =>
             new Mention({
-                name: `@${account.username}@${account.apId.hostname}`,
-                href: account.apId,
+                name: `@${mentionedAccount.username}@${mentionedAccount.apId.hostname}`,
+                href: mentionedAccount.apId,
             }),
     );
     mentions.push(...replyMentions);
@@ -255,14 +256,24 @@ export async function handleCreateReply(
     await ctx.get('globaldb').set([create.id!.href], activityJson);
     await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
-    apCtx.sendActivity({ username: 'index' }, attributionActor, create, {
-        preferSharedInbox: true,
-    });
+    apCtx.sendActivity(
+        { username: account.username },
+        attributionActor,
+        create,
+        {
+            preferSharedInbox: true,
+        },
+    );
 
     try {
-        await apCtx.sendActivity({ username: 'index' }, 'followers', create, {
-            preferSharedInbox: true,
-        });
+        await apCtx.sendActivity(
+            { username: account.username },
+            'followers',
+            create,
+            {
+                preferSharedInbox: true,
+            },
+        );
     } catch (err) {
         logger.error('Error sending reply activity - {error}', {
             error: err,

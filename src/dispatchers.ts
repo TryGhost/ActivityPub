@@ -36,7 +36,7 @@ export const actorDispatcher = (
 ) =>
     async function actorDispatcher(
         ctx: RequestContext<ContextData>,
-        handle: string,
+        identifier: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return null;
@@ -59,7 +59,7 @@ export const actorDispatcher = (
             followers: new URL(account.ap_followers_url),
             liked: new URL(account.ap_liked_url),
             url: new URL(account.url || account.ap_id),
-            publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+            publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
         });
@@ -73,7 +73,7 @@ export const keypairDispatcher = (
 ) =>
     async function keypairDispatcher(
         ctx: Context<ContextData>,
-        handle: string,
+        identifier: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
@@ -102,7 +102,7 @@ export const keypairDispatcher = (
                 },
             ];
         } catch (err) {
-            ctx.data.logger.warn(`Could not parse keypair for ${handle}`);
+            ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
             return [];
         }
     };

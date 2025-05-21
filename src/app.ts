@@ -327,11 +327,7 @@ const followController = new FollowController(
     accountService,
     moderationService,
 );
-const likeController = new LikeController(
-    accountRepository,
-    postService,
-    postRepository,
-);
+const likeController = new LikeController(postService, postRepository);
 
 /** Fedify */
 
@@ -369,9 +365,12 @@ function ensureCorrectContext<B, R>(
 fedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher(
-        '/.ghost/activitypub/users/{handle}',
+        '/.ghost/activitypub/users/{identifier}',
         spanWrapper(actorDispatcher(siteService, accountService)),
     )
+    .mapHandle(async () => {
+        return 'index'; // All identifiers are 'index'
+    })
     .setKeyPairsDispatcher(
         ensureCorrectContext(
             spanWrapper(keypairDispatcher(siteService, accountService)),
@@ -379,7 +378,7 @@ fedify
     );
 
 const inboxListener = fedify.setInboxListeners(
-    '/.ghost/activitypub/inbox/{handle}',
+    '/.ghost/activitypub/inbox/{identifier}',
     '/.ghost/activitypub/inbox',
 );
 
@@ -461,7 +460,7 @@ inboxListener
 
 fedify
     .setFollowersDispatcher(
-        '/.ghost/activitypub/followers/{handle}',
+        '/.ghost/activitypub/followers/{identifier}',
         spanWrapper(
             createFollowersDispatcher(
                 siteService,
@@ -474,7 +473,7 @@ fedify
 
 fedify
     .setFollowingDispatcher(
-        '/.ghost/activitypub/following/{handle}',
+        '/.ghost/activitypub/following/{identifier}',
         spanWrapper(createFollowingDispatcher(siteService, accountService)),
     )
     .setCounter(createFollowingCounter(siteService, accountService))
@@ -482,7 +481,7 @@ fedify
 
 fedify
     .setOutboxDispatcher(
-        '/.ghost/activitypub/outbox/{handle}',
+        '/.ghost/activitypub/outbox/{identifier}',
         spanWrapper(outboxDispatcher),
     )
     .setCounter(outboxCounter)
@@ -490,7 +489,7 @@ fedify
 
 fedify
     .setLikedDispatcher(
-        '/.ghost/activitypub/liked/{handle}',
+        '/.ghost/activitypub/liked/{identifier}',
         spanWrapper(likedDispatcher),
     )
     .setCounter(likedCounter)
@@ -1012,13 +1011,7 @@ app.post(
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createDerepostActionHandler(
-            accountRepository,
-            postService,
-            postRepository,
-        ),
-    ),
+    spanWrapper(createDerepostActionHandler(postService, postRepository)),
 );
 app.post(
     '/.ghost/activitypub/actions/note',

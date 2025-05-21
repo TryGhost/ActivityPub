@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
 import { type Actor, Announce, PUBLIC_COLLECTION, Undo } from '@fedify/fedify';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
 import { type AppContext, fedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
@@ -12,11 +11,11 @@ import type { PostService } from 'post/post.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 
 export function createDerepostActionHandler(
-    accountRepository: KnexAccountRepository,
     postService: PostService,
     postRepository: KnexPostRepository,
 ) {
     return async function derepostAction(ctx: AppContext) {
+        const account = ctx.get('account');
         const id = ctx.req.param('id');
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
             db: ctx.get('db'),
@@ -67,7 +66,6 @@ export function createDerepostActionHandler(
             );
         }
 
-        const account = await accountRepository.getBySite(ctx.get('site'));
         const originalPostResult = await postService.getByApId(idAsUrl);
 
         if (isError(originalPostResult)) {
@@ -125,12 +123,17 @@ export function createDerepostActionHandler(
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity({ username: 'index' }, attributionActor, undo, {
-                preferSharedInbox: true,
-            });
+            apCtx.sendActivity(
+                { username: account.username },
+                attributionActor,
+                undo,
+                {
+                    preferSharedInbox: true,
+                },
+            );
         }
 
-        apCtx.sendActivity({ username: 'index' }, 'followers', undo, {
+        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
             preferSharedInbox: true,
         });
 
