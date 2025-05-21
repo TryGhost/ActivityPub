@@ -86,8 +86,8 @@ export class PostService {
 
     private async getMentionedAccounts(
         object: Note | Article,
-    ): Promise<Account[]> {
-        const accounts: Account[] = [];
+    ): Promise<Mention[]> {
+        const mentions: Mention[] = [];
         for await (const tag of object.getTags()) {
             if (tag instanceof FedifyMention) {
                 if (!tag.href) {
@@ -106,11 +106,15 @@ export class PostService {
                 }
 
                 const account = getValue(accountResult);
-                accounts.push(account);
+                mentions.push({
+                    name: tag.name.toString(),
+                    href: tag.href,
+                    account,
+                });
             }
         }
 
-        return accounts;
+        return mentions;
     }
 
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
