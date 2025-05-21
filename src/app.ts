@@ -1185,6 +1185,11 @@ app.onError((err, c) => {
             return BadRequest('Invalid JSON-LD');
         }
     }
+    if (err.name === 'TypeError') {
+        if (err.message === 'Invalid URL') {
+            return BadRequest('Invalid URL');
+        }
+    }
     Sentry.captureException(err);
     c.get('logger').error('{error}', { error: err });
 

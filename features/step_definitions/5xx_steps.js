@@ -60,6 +60,31 @@ Given(
     },
 );
 
+Given('we are sent invalid url to the inbox', async function () {
+    this.response = await fetch(
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/ld+json',
+            },
+            body: JSON.stringify({
+                '@context': [
+                    'https://www.w3.org/ns/activitystreams',
+                    {
+                        alsoKnownAs: {
+                            '@id': 'as:alsoKnownAs',
+                            '@type': '@id',
+                        },
+                    },
+                ],
+                type: 'Person',
+                alsoKnownAs: 'invalid URL',
+            }),
+        },
+    );
+});
+
 Then('we respond with a {int}', function (int) {
     assert.equal(this.response.status, int);
 });
