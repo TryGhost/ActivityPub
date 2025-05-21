@@ -1,5 +1,6 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
+import { parse } from 'node-html-parser';
 import { HANDLE_REGEX } from '../constants';
 import type { Mention } from './post.entity';
 
@@ -76,6 +77,10 @@ export class ContentPreparer {
 
     static parseMentions(content: string) {
         return ContentPreparer.instance.parseMentions(content);
+    }
+
+    static updateMentions(content: string, mentions: Mention[]) {
+        return ContentPreparer.instance.updateMentions(content, mentions);
     }
 
     /**
@@ -205,6 +210,44 @@ export class ContentPreparer {
         const mentions =
             content.match(new RegExp(HANDLE_REGEX.source, 'g')) || [];
         return new Set(mentions);
+    }
+
+    /**
+     * Updates existing hyperlinks with data-profile attribute and rel attributes
+     */
+    private updateMentions(content: string, mentions: Mention[]) {
+        try {
+            const html = parse(content);
+            const links = html.querySelectorAll('a');
+
+            for (const mention of mentions) {
+                const apId = mention.account.apId
+                    .toString()
+                    .replace(/\/+$/, '');
+                const url = mention.account.url.toString().replace(/\/+$/, '');
+
+                // Find all links that matches the mentioned account
+                for (const link of links) {
+                    const href = link.getAttribute('href')?.replace(/\/+$/, '');
+                    if (href === apId || href === url) {
+                        // Update the link attributes
+                        link.setAttribute(
+                            'data-profile',
+                            `@${mention.account.username}@${mention.account.apId.hostname}`,
+                        );
+                        link.setAttribute(
+                            'rel',
+                            'nofollow noopener noreferrer',
+                        );
+                    }
+                }
+            }
+
+            return html.toString();
+        } catch (error) {
+            // If anything goes wrong during parsing or processing, return the original content
+            return content;
+        }
     }
 
     /**

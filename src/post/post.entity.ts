@@ -69,7 +69,7 @@ export interface PostData {
     inReplyTo?: Post | null;
     apId?: URL | null;
     attachments?: PostAttachment[] | null;
-    mentions?: Account[] | null;
+    mentions?: Mention[] | null;
     metadata?: Metadata | null;
 }
 
@@ -310,6 +310,13 @@ export class Post extends BaseEntity {
             threadRoot = data.inReplyTo.threadRoot ?? data.inReplyTo.id;
         }
 
+        if (data.mentions && data.mentions.length > 0) {
+            data.content = ContentPreparer.updateMentions(
+                data.content ?? '',
+                data.mentions,
+            );
+        }
+
         const post = new Post(
             null,
             null,
@@ -334,7 +341,7 @@ export class Post extends BaseEntity {
         );
 
         for (const mention of data.mentions ?? []) {
-            post.addMention(mention);
+            post.addMention(mention.account);
         }
 
         return post;

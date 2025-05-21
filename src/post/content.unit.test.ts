@@ -417,4 +417,291 @@ describe('ContentPreparer', () => {
             expect(result).toEqual(new Set(['@user@example.com']));
         });
     });
+
+    describe('updateMentions', () => {
+        const account = AccountEntity.create({
+            id: 1,
+            uuid: 'test-uuid',
+            username: 'user',
+            name: 'Test User',
+            bio: null,
+            url: new URL('https://example.xyz/@user'),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            apId: new URL('https://example.xyz/user/@user'),
+            apFollowers: null,
+            apInbox: null,
+            isInternal: false,
+        });
+
+        const account2 = AccountEntity.create({
+            id: 2,
+            uuid: 'test-uuid-2',
+            username: 'user2',
+            name: 'Test User 2',
+            bio: null,
+            url: new URL('https://example.xyz/@user2/'),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            apId: new URL('https://example.xyz/user/@user2/'),
+            apFollowers: null,
+            apInbox: null,
+            isInternal: false,
+        });
+
+        it('should add data-profile and rel to links matching account.apId', () => {
+            const content =
+                '<p>Hey there! <span class="h-card"><a href="https://example.xyz/user/@user">@user@example.xyz</a></span> How are you?</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Hey there! <span class="h-card"><a href="https://example.xyz/user/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> How are you?</p>',
+            );
+        });
+
+        it('should add data-profile and rel to links matching account.url', () => {
+            const content =
+                '<p>Check out <span class="mention"><a href="https://example.xyz/@user">@user@example.xyz</a></span> profile!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="mention"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> profile!</p>',
+            );
+        });
+
+        it('should add data-profile and rel to mentions that are not complete handles', () => {
+            const content =
+                '<p>Check out <span class="mention"><a href="https://example.xyz/@user">@user</a></span> profile!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="mention"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user</a></span> profile!</p>',
+            );
+        });
+
+        it('should add data-profile and rel to links with no rel attribute', () => {
+            const content =
+                '<p>Welcome <span class="h-card"><a href="https://example.xyz/@user" class="mention">@user@example.xyz</a></span> to our platform!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Welcome <span class="h-card"><a href="https://example.xyz/@user" class="mention" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> to our platform!</p>',
+            );
+        });
+
+        it('should replace any existing rel with rel="nofollow noopener noreferrer"', () => {
+            const content =
+                '<p>Hello <span class="h-card"><a href="https://example.xyz/@user" rel="nofollow">@user@example.xyz</a></span> nice to meet you!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Hello <span class="h-card"><a href="https://example.xyz/@user" rel="nofollow noopener noreferrer" data-profile="@user@example.xyz">@user@example.xyz</a></span> nice to meet you!</p>',
+            );
+        });
+
+        it('should handle multiple links in the same content', () => {
+            const content =
+                '<p>Check out <span class="h-card"><a href="https://example.xyz/@user">@user@example.xyz</a></span>, <span class="h-card"><a href="https://example.xyz/@user">@user@example.xyz</a></span> and <span class="h-card"><a href="https://example.xyz/@user2">@user2@example.xyz</a></span> profiles!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+                {
+                    name: '@user2@example.xyz',
+                    href: new URL('https://example.xyz/user/@user2'),
+                    account: account2,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span>, <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> and <span class="h-card"><a href="https://example.xyz/@user2" data-profile="@user2@example.xyz" rel="nofollow noopener noreferrer">@user2@example.xyz</a></span> profiles!</p>',
+            );
+        });
+
+        it('should handle links with different quote types', () => {
+            const content =
+                '<p>Welcome <span class="h-card"><a href=\'https://example.xyz/@user\'>@user@example.xyz</a></span> to our community!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Welcome <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> to our community!</p>',
+            );
+        });
+
+        it('should handle empty link content', () => {
+            const content =
+                '<p>Hey <a href="https://example.xyz/@user"></a>, how are you?</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toBe(
+                '<p>Hey <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer"></a>, how are you?</p>',
+            );
+        });
+
+        it('should handle links with existing data-profile', () => {
+            const content =
+                '<p>Hello <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz">@user@example.xyz</a></span> welcome back!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Hello <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> welcome back!</p>',
+            );
+        });
+
+        it('should not modify non-matching links', () => {
+            const content =
+                '<p>Check out <span class="h-card"><a href="https://other-domain.com/@user">@user@other-domain.com</a></span> and <span class="h-card"><a href="https://example.xyz/@user">@user@example.xyz</a></span> profiles!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/user/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="h-card"><a href="https://other-domain.com/@user">@user@other-domain.com</a></span> and <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> profiles!</p>',
+            );
+        });
+
+        it('should handle links with nested spans in their content', () => {
+            const content =
+                '<p>Hello check <span class="h-card" translate="no"><a href="https://example.xyz/@user" class="u-url mention">@<span>user</span></a></span> <span class="h-card" translate="no"><a href="https://other-domain.com/" class="u-url mention">@<span>other</span></a></span></p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Hello check <span class="h-card" translate="no"><a href="https://example.xyz/@user" class="u-url mention" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@<span>user</span></a></span> <span class="h-card" translate="no"><a href="https://other-domain.com/" class="u-url mention">@<span>other</span></a></span></p>',
+            );
+        });
+
+        it('should handle links with complex nested HTML structure', () => {
+            const content =
+                '<p>Check out <span class="h-card"><a href="https://example.xyz/@user" class="mention">@<span class="username"><strong>user</strong><em>@example.xyz</em></span><img src="avatar.jpg" alt="avatar" ></a></span> profile!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="h-card"><a href="https://example.xyz/@user" class="mention" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@<span class="username"><strong>user</strong><em>@example.xyz</em></span><img src="avatar.jpg" alt="avatar" ></a></span> profile!</p>',
+            );
+        });
+
+        it('should handle URLs with trailing slashes', () => {
+            const content =
+                '<p>Check out <span class="h-card"><a href="https://example.xyz/@user/">@user@example.xyz</a></span> profile!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="h-card"><a href="https://example.xyz/@user/" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a></span> profile!</p>',
+            );
+        });
+
+        it('should handle href attribute in any position within the tag', () => {
+            const content =
+                '<p>Check out <span class="h-card"><a class="mention" href="https://example.xyz/@user" data-other="value">@<span>user</span></a></span> profile!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(
+                '<p>Check out <span class="h-card"><a class="mention" href="https://example.xyz/@user" data-other="value" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@<span>user</span></a></span> profile!</p>',
+            );
+        });
+
+        it('should not do anything if the content is not valid HTML', () => {
+            const content = 'This is plain text with @user@example.xyz mention';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(content);
+        });
+
+        it('should not do anything if the mention is not wrapped in hyperlink', () => {
+            const content = '<p>Check out @user@example.xyz profile!</p>';
+            const result = ContentPreparer.updateMentions(content, [
+                {
+                    name: '@user@example.xyz',
+                    href: new URL('https://example.xyz/@user'),
+                    account: account,
+                },
+            ]);
+
+            expect(result).toEqual(content);
+        });
+    });
 });

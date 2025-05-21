@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AccountEntity } from '../account/account.entity';
+import { type Account, AccountEntity } from '../account/account.entity';
 import { Audience, Post, type PostData, PostType } from './post.entity';
 
 function mockAccount(id: number | null, internal: boolean) {
@@ -828,20 +828,52 @@ describe('Post', () => {
             expect(result.content).toBe('This is a test note');
         });
 
-        it('attaches mentions to the post', async () => {
+        it('attaches mentions to the post but should not modify content with no hyperlink', async () => {
             const account = internalAccount();
-            const mentionedAccount = externalAccount();
+            const extAccount = externalAccount() as Account;
+            const mention = {
+                name: '@foobar@foobar.com',
+                href: extAccount.url,
+                account: extAccount,
+            };
 
             const postData = {
                 type: PostType.Note,
-                content: 'This is a test note',
-                mentions: [mentionedAccount],
+                content:
+                    '<p>This is a test note with a mention @foobar@foobar.com</p>',
+                mentions: [mention],
             } as PostData;
 
             const result = Post.createFromData(account, postData);
 
             expect(result).toBeInstanceOf(Post);
-            expect(result.mentions).toEqual([mentionedAccount]);
+            expect(result.mentions).toEqual([extAccount]);
+            expect(result.content).toBe(
+                '<p>This is a test note with a mention @foobar@foobar.com</p>',
+            );
+        });
+
+        it('attaches mentions to the post and modify existing hyperlinks', async () => {
+            const account = internalAccount();
+            const extAccount = externalAccount() as Account;
+            const mention = {
+                name: '@foobar@foobar.com',
+                href: extAccount.url,
+                account: extAccount,
+            };
+
+            const postData = {
+                type: PostType.Note,
+                content: `<p>This is a test note with a mention <a href="${extAccount.url}">@foobar@foobar.com</a></p>`,
+                mentions: [mention],
+            } as PostData;
+
+            const result = Post.createFromData(account, postData);
+            expect(result).toBeInstanceOf(Post);
+            expect(result.mentions).toEqual([extAccount]);
+            expect(result.content).toBe(
+                `<p>This is a test note with a mention <a href="${extAccount.url}" data-profile="@${extAccount.username}@${extAccount.apId.hostname}" rel="nofollow noopener noreferrer">@foobar@foobar.com</a></p>`,
+            );
         });
     });
 });
