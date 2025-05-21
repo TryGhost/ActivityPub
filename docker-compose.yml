@@ -1,8 +1,12 @@
 services:
   activitypub:
     build: .
+    ports:
+      - "8080:8080"
+      - "9229:9229"
     volumes:
       - ./src:/opt/activitypub/src
+      - ./dist:/opt/activitypub/dist
     environment:
       - PORT=8080
       - MYSQL_USER=ghost
@@ -116,6 +120,9 @@ services:
     networks:
       - test_network
     build: .
+    ports:
+      - "8083:8083"
+      - "9230:9229"
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
