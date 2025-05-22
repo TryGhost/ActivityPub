@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import { AsyncEvents } from 'core/events';
+import { type Ok, getValue } from 'core/result';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
 import type { Knex } from 'knex';
@@ -82,7 +83,7 @@ describe('KnexPostRepository', () => {
         it('Waits for the post to be added to feeds before returning', async () => {
             const site = await siteService.initialiseSiteForHost('testing.com');
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -94,6 +95,7 @@ describe('KnexPostRepository', () => {
                 visibility: 'public',
                 authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -110,7 +112,7 @@ describe('KnexPostRepository', () => {
         it('Waits for the deleted post to be removed from feeds before returning', async () => {
             const site = await siteService.initialiseSiteForHost('testing.com');
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -122,6 +124,7 @@ describe('KnexPostRepository', () => {
                 visibility: 'public',
                 authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -160,7 +163,7 @@ describe('KnexPostRepository', () => {
             const site =
                 await siteService.initialiseSiteForHost('testing-delete.com');
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -172,6 +175,7 @@ describe('KnexPostRepository', () => {
                 visibility: 'public',
                 authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -207,7 +211,7 @@ describe('KnexPostRepository', () => {
                 'testing-deleted-reply.com',
             );
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -219,6 +223,7 @@ describe('KnexPostRepository', () => {
                 visibility: 'public',
                 authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -283,7 +288,7 @@ describe('KnexPostRepository', () => {
             );
 
             // Create a new post
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
@@ -295,6 +300,7 @@ describe('KnexPostRepository', () => {
                 visibility: 'public',
                 authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             // Add a like from another account
             post.addLike(likerAccount);
@@ -324,7 +330,7 @@ describe('KnexPostRepository', () => {
                 'testing-new-deleted.com',
             );
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
@@ -336,6 +342,7 @@ describe('KnexPostRepository', () => {
                 visibility: 'public',
                 authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             post.delete(account);
 
@@ -356,7 +363,7 @@ describe('KnexPostRepository', () => {
         const site =
             await siteService.initialiseSiteForHost('testing-saving.com');
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -368,6 +375,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -441,7 +449,7 @@ describe('KnexPostRepository', () => {
         );
         const account = await accountRepository.getBySite(site);
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -453,6 +461,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -469,7 +478,7 @@ describe('KnexPostRepository', () => {
         );
         const account = await accountRepository.getBySite(site);
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -481,6 +490,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
         await postRepository.save(post);
@@ -493,7 +503,7 @@ describe('KnexPostRepository', () => {
             'testing-by-apid.com',
         );
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -505,6 +515,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -523,7 +534,7 @@ describe('KnexPostRepository', () => {
             'testing-by-apid.com',
         );
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -535,6 +546,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -565,7 +577,7 @@ describe('KnexPostRepository', () => {
             .first();
         assert(accountInDb.uuid === null, 'Account should not have a uuid');
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -577,6 +589,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -596,7 +609,7 @@ describe('KnexPostRepository', () => {
             'testing-deleted-tombstone.com',
         );
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -608,6 +621,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -646,7 +660,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -658,6 +672,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addLike(accounts[0]);
         post.addLike(accounts[1]);
@@ -712,7 +727,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -724,6 +739,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addLike(accounts[1]);
 
@@ -777,7 +793,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -789,6 +805,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addRepost(accounts[1]);
         post.addRepost(accounts[2]);
@@ -840,7 +857,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -852,6 +869,7 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addRepost(accounts[1]);
 
@@ -909,18 +927,23 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const originalPost = Post.createArticleFromGhostPost(accounts[0], {
-            title: 'Original Post',
-            uuid: randomUUID(),
-            html: '<p>Original content</p>',
-            excerpt: 'Original content',
-            custom_excerpt: null,
-            feature_image: null,
-            url: 'https://testing.com/original-post',
-            published_at: '2025-01-01',
-            visibility: 'public',
-            authors: [],
-        });
+        const originalPostResult = await Post.createArticleFromGhostPost(
+            accounts[0],
+            {
+                title: 'Original Post',
+                uuid: randomUUID(),
+                html: '<p>Original content</p>',
+                excerpt: 'Original content',
+                custom_excerpt: null,
+                feature_image: null,
+                url: 'https://testing.com/original-post',
+                published_at: '2025-01-01',
+                visibility: 'public',
+                authors: [],
+            },
+        );
+
+        const originalPost = getValue(originalPostResult as Ok<Post>) as Post;
 
         await postRepository.save(originalPost);
 
@@ -1022,8 +1045,9 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-is-liked-by-account.com',
         );
+
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -1035,6 +1059,8 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addLike(account);
 
@@ -1065,7 +1091,8 @@ describe('KnexPostRepository', () => {
         const reposterAccount = await accountRepository.getBySite(
             await siteService.initialiseSiteForHost('reposter-site.com'),
         );
-        const post = Post.createArticleFromGhostPost(account, {
+
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -1077,6 +1104,8 @@ describe('KnexPostRepository', () => {
             visibility: 'public',
             authors: [],
         });
+
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addRepost(reposterAccount);
 
@@ -1239,7 +1268,7 @@ describe('KnexPostRepository', () => {
         );
         const account = await accountRepository.getBySite(site);
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -1257,8 +1286,8 @@ describe('KnexPostRepository', () => {
             ],
         });
 
+        const post = getValue(postResult as Ok<Post>) as Post;
         await postRepository.save(post);
-
         const rowInDb = await client('posts')
             .where({
                 uuid: post.uuid,
