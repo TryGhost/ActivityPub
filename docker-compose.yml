@@ -56,7 +56,7 @@ services:
         condition: service_healthy
 
   cleanup-expired-key-value-records:
-    build: jobs/cleanup-expired-key_value-records
+    build: jobs/cleanup-expired-key-value-records
     environment:
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
@@ -167,7 +167,7 @@ services:
         condition: service_healthy
 
   cleanup-expired-key-value-records-testing:
-    build: jobs/cleanup-expired-key_value-records
+    build: jobs/cleanup-expired-key-value-records
     environment:
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
