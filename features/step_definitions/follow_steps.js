@@ -4,9 +4,9 @@ import { Given, Then } from '@cucumber/cucumber';
 
 import { waitForInboxActivity } from '../support/activitypub.js';
 import { createActivity, createActor } from '../support/fixtures.js';
+import { waitForFollowerToBeRemoved } from '../support/followers.js';
 import { fetchActivityPub } from '../support/request.js';
 import { parseActorString } from '../support/steps.js';
-
 async function getActor(input) {
     const existingActor = this.actors[input];
 
@@ -185,21 +185,8 @@ Then('{string} is in our Followers once only', async function (actorName) {
 });
 
 Then('{string} is not in our Followers', async function (actorName) {
-    const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const followers = await initialResponse.json();
-
     const actor = this.actors[actorName];
 
-    const found = (followers.orderedItems || []).find(
-        (item) => item === actor.id,
-    );
-
-    assert(!found);
+    const removed = await waitForFollowerToBeRemoved(actor.id);
+    assert(removed);
 });
