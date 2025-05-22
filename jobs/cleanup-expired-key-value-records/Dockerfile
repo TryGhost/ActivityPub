@@ -1,4 +1,4 @@
-FROM mysql:8.3
+FROM mysql:8.4
 
 COPY cleanup-expired-key-value-records /bin
 
