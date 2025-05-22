@@ -386,3 +386,55 @@ jobs:
           status: ${{ job.status }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  build-cleanup-job:
+    name: Build & Push image for cleaning up key value records
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for changes in cleanup job
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            cleanup:
+              - 'jobs/cleanup-expired-key-value-records/**'
+
+      - name: "Authenticate with GCP"
+        if: steps.changes.outputs.cleanup == 'true'
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Login to GCP Artifact Registry
+        if: steps.changes.outputs.cleanup == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: europe-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: Docker metadata
+        if: steps.changes.outputs.cleanup == 'true'
+        id: cleanup-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/cleanup-expired-key-value-records
+          tags: |
+            type=sha
+            type=edge,branch=main
+
+      - name: Build & Push cleanup job image
+        if: steps.changes.outputs.cleanup == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: jobs/cleanup-expired-key-value-records
+          push: true
+          tags: ${{ steps.cleanup-meta.outputs.tags }}
