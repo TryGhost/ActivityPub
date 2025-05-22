@@ -7,10 +7,11 @@ import {
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { type Result, error, ok } from 'core/result';
+import { type Result, error, getValue, isError, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-import { PostType } from 'post/post.entity';
+import { ContentPreparer } from 'post/content';
+import { type Mention, PostType } from 'post/post.entity';
 import type { PostDTO } from '../types';
 
 export type GetPostsError =
@@ -73,6 +74,8 @@ export interface AccountPosts {
     results: PostDTO[];
     nextCursor: string | null;
 }
+
+type AccountFetchError = 'not-an-actor' | 'network-failure' | 'not-found';
 
 export class AccountPostsView {
     constructor(
@@ -393,6 +396,11 @@ export class AccountPostsView {
                         repostCount?: number;
                         reposted?: boolean;
                         inReplyTo?: unknown;
+                        tag?: Array<{
+                            type: string;
+                            name: string;
+                            href: string;
+                        }>;
                     };
                     actor: {
                         id: string;
@@ -471,6 +479,25 @@ export class AccountPostsView {
                         // If the attributedTo is not an actor, it is a repost and we don't want to show it
                         continue;
                     }
+                }
+
+                if (activity.object.tag && activity.object.type === 'Note') {
+                    const mentionedAccounts: Mention[] = [];
+                    for await (const tag of activity.object.tag) {
+                        if (tag.type === 'Mention') {
+                            const mention = await this.getMentionedAccount(
+                                new URL(tag.href),
+                                tag.name,
+                            );
+                            if (!isError(mention)) {
+                                mentionedAccounts.push(getValue(mention));
+                            }
+                        }
+                    }
+                    activity.object.content = ContentPreparer.updateMentions(
+                        activity.object.content ?? '',
+                        mentionedAccounts,
+                    );
                 }
 
                 result.results.push(this.mapActivityToPostDTO(activity));
@@ -712,5 +739,60 @@ export class AccountPostsView {
             .first();
 
         return result || null;
+    }
+
+    private async getAccountByApId(apId: URL) {
+        const result = await this.db('accounts')
+            .select('id', 'username', 'ap_id', 'url')
+            .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [apId.href])
+            .first();
+
+        return result || null;
+    }
+
+    private async getMentionedAccount(
+        apId: URL,
+        name: string,
+    ): Promise<Result<Mention, AccountFetchError>> {
+        const accountResult = await this.getAccountByApId(apId);
+        let account: Account | null = null;
+        if (accountResult) {
+            account = {
+                id: accountResult.id,
+                apId: new URL(accountResult.ap_id),
+                username: accountResult.username,
+                url: new URL(accountResult.url),
+            } as Account;
+        } else {
+            try {
+                const context = this.fedifyContextFactory.getFedifyContext();
+                const documentLoader = await context.getDocumentLoader({
+                    handle: 'index',
+                });
+                const actor = await lookupObject(apId, { documentLoader });
+
+                if (actor === null) {
+                    return error('not-found');
+                }
+
+                if (!isActor(actor)) {
+                    return error('not-an-actor');
+                }
+
+                account = {
+                    apId: actor.id,
+                    username: actor.preferredUsername,
+                    url: actor.url,
+                } as Account;
+            } catch (err) {
+                return error('network-failure');
+            }
+        }
+
+        return ok({
+            name: name,
+            href: apId,
+            account,
+        });
     }
 }
