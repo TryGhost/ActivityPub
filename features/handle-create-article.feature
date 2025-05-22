@@ -6,11 +6,11 @@ Feature: Create(Article)
     And a "Create(Article)" Activity "A" by "Alice"
     When "Alice" sends "A" to the Inbox
     Then the request is accepted
-    Then "A" is in our Inbox
+    And the article "A" is in our inbox
 
   Scenario: We receive a Create(Article) activity from someone we don't follow
-    Given an Actor "Person(Alice)"
-    And a "Create(Article)" Activity "A" by "Alice"
-    When "Alice" sends "A" to the Inbox
+    Given an Actor "Person(Bob)"
+    And a "Create(Article)" Activity "B" by "Bob"
+    When "Bob" sends "B" to the Inbox
     Then the request is accepted
-    Then "A" is not in our Inbox
+    And the article "B" is not in our inbox

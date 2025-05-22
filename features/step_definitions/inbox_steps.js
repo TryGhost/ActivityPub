@@ -17,12 +17,12 @@ Then('the article {string} is not in our inbox', async function (articleName) {
     try {
         await waitForAPObjectInInbox(article.id);
         assert.fail(
-            `Expected article ${article.id} to be not be found in the feed`,
+            `Expected article ${article.id} to be not be found in the inbox`,
         );
     } catch (error) {
         assert.equal(
             error.message,
-            `Max retries reached when waiting on item ${article.id} in the feed`,
+            `Max retries reached when waiting on item ${article.id} in the inbox`,
         );
     }
 });
