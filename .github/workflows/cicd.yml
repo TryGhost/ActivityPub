@@ -388,9 +388,9 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   build-cleanup-job:
-    name: Build & Push image for cleaning up key value records
+    name: Build & Push cleanup job
     runs-on: ubuntu-latest
-    # if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout
@@ -404,7 +404,7 @@ jobs:
             cleanup:
               - 'jobs/cleanup-expired-key-value-records/**'
 
-      - name: "Authenticate with GCP"
+      - name: Authenticate with GCP
         if: steps.changes.outputs.cleanup == 'true'
         id: gcp-auth
         uses: google-github-actions/auth@v2
