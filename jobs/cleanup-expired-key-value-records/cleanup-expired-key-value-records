@@ -1,10 +1,17 @@
 #!/bin/sh
 set -e
 
-mysql \
-  --host="$MYSQL_HOST" \
-  --port="$MYSQL_PORT" \
-  --user="$MYSQL_USER" \
-  --password="$MYSQL_PASSWORD" \
-  --database="$MYSQL_DATABASE" \
-  -e "DELETE FROM key_value WHERE expires IS NOT NULL AND expires < UTC_TIMESTAMP();"
+PORT=${MYSQL_PORT:-3306}
+
+if [ -n "$INSTANCE_CONNECTION_NAME" ]; then
+  echo "Using Unix socket for $INSTANCE_CONNECTION_NAME"
+  SOCKET="--socket=/cloudsql/$INSTANCE_CONNECTION_NAME"
+  HOSTPORT=""
+else
+  echo "Using TCP host $MYSQL_HOST:$PORT"
+  SOCKET=""
+  HOSTPORT="--host=$MYSQL_HOST --port=$PORT"
+fi
+
+mysql $SOCKET $HOSTPORT -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e \
+  "DELETE FROM key_value WHERE expires IS NOT NULL AND expires < UTC_TIMESTAMP();"
