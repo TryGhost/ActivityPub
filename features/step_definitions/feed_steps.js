@@ -57,7 +57,6 @@ Then(
     },
 );
 
-
 Then('the note {string} is not in our feed', async function (noteName) {
     const note = this.objects[noteName];
 
@@ -84,7 +83,9 @@ Then('the article {string} is not in our feed', async function (articleName) {
 
     try {
         await waitForAPObjectInFeed(article.id);
-        assert.fail(`Expected article ${article.id} to be not be found in the feed`);
+        assert.fail(
+            `Expected article ${article.id} to be not be found in the feed`,
+        );
     } catch (error) {
         assert.equal(
             error.message,
