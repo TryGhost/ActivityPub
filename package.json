@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild src/app.ts --sourcemap --platform=neutral --bundle --packages=external --outfile=dist/app.js",
-    "build:watch": "concurrently \"yarn build --watch\" \"node --watch dist/app.js\"",
+    "build:watch": "concurrently \"yarn build --watch\" \"node --inspect=0.0.0.0:9229 --watch dist/app.js\"",
     "dev": "docker compose up activitypub nginx -d --build",
     "stop": "docker compose stop",
     "db": "docker compose exec mysql mysql -uroot -proot activitypub",
@@ -19,7 +19,7 @@
     "migration": "docker compose run migrate create",
     "migrate": "docker compose up migrate",
     "test:cucumber": "./docker/cucumber-tests",
-    "test": "docker compose run --rm migrate-testing up && docker compose run --rm activitypub-testing yarn _test:all && yarn test:cucumber",
+    "test": "docker compose run --rm migrate-testing up && docker compose run --rm -v \"$(pwd)/dist:/opt/activitypub/dist\" activitypub-testing  yarn _test:all && yarn test:cucumber",
     "_test:types": "tsc --noEmit",
     "test:types": "docker compose run --rm activitypub-testing yarn _test:types",
     "_test:unit": "vitest run --dir src --coverage --reporter=dot '.unit.test.ts'",
