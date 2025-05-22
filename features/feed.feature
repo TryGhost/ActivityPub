@@ -6,17 +6,15 @@ Feature: Feed
   Background:
     Given we are following "Alice"
 
-  Scenario: Querying the feed
+  Scenario: Feed includes notes
     Given a "Create(Note)" Activity "Note1" by "Alice"
     And "Alice" sends "Note1" to the Inbox
-    And "Note1" is in our Inbox
-    And a "Create(Article)" Activity "Article1" by "Alice"
+    Then the note "Note1" is in our feed
+
+  Scenario: Feed does not include articles
+    Given a "Create(Article)" Activity "Article1" by "Alice"
     And "Alice" sends "Article1" to the Inbox
-    And "Article1" is in our Inbox
-    When an authenticated request is made to "/.ghost/activitypub/feed"
-    Then the request is accepted
-    And "Note1" is in the feed
-    And "Article1" is not in the feed
+    Then the article "Article1" is not in our feed
 
   Scenario: Feed is sorted by date descending
     Given a "Create(Note)" Activity "Note1" by "Alice"
