@@ -3,9 +3,9 @@ set -e
 
 PORT=${MYSQL_PORT:-3306}
 
-if [ -n "$INSTANCE_CONNECTION_NAME" ]; then
-  echo "Using Unix socket for $INSTANCE_CONNECTION_NAME"
-  SOCKET="--socket=/cloudsql/$INSTANCE_CONNECTION_NAME"
+if [ -n "$MYSQL_SOCKET_PATH" ]; then
+  echo "Using Unix socket for $MYSQL_SOCKET_PATH"
+  SOCKET="--socket=$MYSQL_SOCKET_PATH"
   HOSTPORT=""
 else
   echo "Using TCP host $MYSQL_HOST:$PORT"
