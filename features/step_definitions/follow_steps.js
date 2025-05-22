@@ -2,11 +2,15 @@ import assert from 'node:assert';
 
 import { Given, Then } from '@cucumber/cucumber';
 
-import { waitForInboxActivity } from '../support/activitypub.js';
 import { createActivity, createActor } from '../support/fixtures.js';
-import { waitForFollowerToBeRemoved } from '../support/followers.js';
+import {
+    waitForFollowerToBeAdded,
+    waitForFollowerToBeRemoved,
+} from '../support/followers.js';
+import { waitForFollowingToBeAdded } from '../support/following.js';
 import { fetchActivityPub } from '../support/request.js';
 import { parseActorString } from '../support/steps.js';
+
 async function getActor(input) {
     const existingActor = this.actors[input];
 
@@ -77,7 +81,7 @@ Given('we are following {string}', async function (input) {
         throw new Error('Something went wrong');
     }
 
-    await waitForInboxActivity(accept);
+    await waitForFollowingToBeAdded(actor.id);
 });
 
 Given('we follow {string}', async function (name) {
@@ -129,7 +133,7 @@ async function weAreFollowedBy(actor) {
         throw new Error('Something went wrong');
     }
 
-    await waitForInboxActivity(activity);
+    await waitForFollowerToBeAdded(actor.id);
 }
 
 Given('we are followed by {string}', async function (input) {
