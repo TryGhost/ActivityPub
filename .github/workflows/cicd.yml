@@ -390,7 +390,7 @@ jobs:
   build-cleanup-job:
     name: Build & Push image for cleaning up key value records
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout
