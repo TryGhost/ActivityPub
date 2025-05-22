@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+mysql \
+  --host="$MYSQL_HOST" \
+  --port="$MYSQL_PORT" \
+  --user="$MYSQL_USER" \
+  --password="$MYSQL_PASSWORD" \
+  --database="$MYSQL_DATABASE" \
+  -e "DELETE FROM key_value WHERE expires IS NOT NULL AND expires < UTC_TIMESTAMP();"
