@@ -1,6 +1,8 @@
 import assert from 'node:assert';
 
 import { Then, When } from '@cucumber/cucumber';
+import { createActivity } from '../support/fixtures.js';
+import { waitForItemInNotifications } from '../support/notifications.js';
 import { fetchActivityPub } from '../support/request.js';
 import { waitForRequest } from '../support/request.js';
 
@@ -134,4 +136,51 @@ Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
     const foundActivity = JSON.parse(foundInInbox.request.body);
 
     assert(foundActivity);
+});
+
+When('{string} reposts our note', async function (actorName) {
+    if (!this.noteId) {
+        throw new Error(
+            'You need to call a step which creates a note before this.',
+        );
+    }
+
+    const actor = this.actors[actorName];
+    if (!actor) {
+        throw new Error(
+            `Actor ${actorName} not found - did you forget a step?`,
+        );
+    }
+
+    const activity = await createActivity('Announce', this.noteId, actor);
+
+    await fetchActivityPub(
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/ld+json',
+            },
+            body: JSON.stringify(activity),
+        },
+    );
+
+    this.repostId = activity.id;
+});
+
+Then('the repost is in our notifications', async function () {
+    if (!this.noteId) {
+        throw new Error(
+            'You need to call a step which creates a note before this',
+        );
+    }
+
+    if (!this.repostId) {
+        throw new Error(
+            'You need to call a step which reposts a note before this',
+        );
+    }
+
+    const found = await waitForItemInNotifications(this.noteId);
+    assert(found);
 });

@@ -2,9 +2,8 @@ import assert from 'node:assert';
 
 import { Then, When } from '@cucumber/cucumber';
 
-import { mapPostToActivityPubObject } from '../support/utils.js';
-
 import { fetchActivityPub } from '../support/request.js';
+import { mapPostToActivityPubObject } from '../support/utils.js';
 
 When('we attempt to create a note with no content', async function () {
     this.response = await fetchActivityPub(

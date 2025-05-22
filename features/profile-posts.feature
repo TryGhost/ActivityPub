@@ -12,7 +12,6 @@ Feature: My Posts on Profile
     And we are following "Bob"
     And a "Create(Note)" Activity "AliceNote" by "Alice"
     And "Alice" sends "AliceNote" to the Inbox
-    And "AliceNote" is in our Inbox
     And we repost the object "AliceNote"
 
   Scenario: Querying profile posts
@@ -28,7 +27,6 @@ Feature: My Posts on Profile
   Scenario: My posts does not contain posts from followed accounts
     And a "Create(Note)" Activity "BobNote" by "Bob"
     And "Bob" sends "BobNote" to the Inbox
-    And "BobNote" is in our Inbox
     When an authenticated request is made to "/.ghost/activitypub/posts/me"
     Then the request is accepted
     And "MyNote" is in the posts
@@ -48,7 +46,6 @@ Feature: My Posts on Profile
   Scenario: Profile posts are paginated
     Given a "Create(Note)" Activity "BobNote" by "Bob"
     And "Bob" sends "BobNote" to the Inbox
-    And "BobNote" is in our Inbox
     And we repost the object "BobNote"
     When an authenticated request is made to "/.ghost/activitypub/posts/me?limit=2"
     Then the request is accepted

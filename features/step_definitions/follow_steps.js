@@ -2,8 +2,12 @@ import assert from 'node:assert';
 
 import { Given, Then } from '@cucumber/cucumber';
 
-import { waitForInboxActivity } from '../support/activitypub.js';
 import { createActivity, createActor } from '../support/fixtures.js';
+import {
+    waitForFollowerToBeAdded,
+    waitForFollowerToBeRemoved,
+} from '../support/followers.js';
+import { waitForFollowingToBeAdded } from '../support/following.js';
 import { fetchActivityPub } from '../support/request.js';
 import { parseActorString } from '../support/steps.js';
 
@@ -77,7 +81,7 @@ Given('we are following {string}', async function (input) {
         throw new Error('Something went wrong');
     }
 
-    await waitForInboxActivity(accept);
+    await waitForFollowingToBeAdded(actor.id);
 });
 
 Given('we follow {string}', async function (name) {
@@ -129,7 +133,7 @@ async function weAreFollowedBy(actor) {
         throw new Error('Something went wrong');
     }
 
-    await waitForInboxActivity(activity);
+    await waitForFollowerToBeAdded(actor.id);
 }
 
 Given('we are followed by {string}', async function (input) {
@@ -185,21 +189,8 @@ Then('{string} is in our Followers once only', async function (actorName) {
 });
 
 Then('{string} is not in our Followers', async function (actorName) {
-    const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const followers = await initialResponse.json();
-
     const actor = this.actors[actorName];
 
-    const found = (followers.orderedItems || []).find(
-        (item) => item === actor.id,
-    );
-
-    assert(!found);
+    const removed = await waitForFollowerToBeRemoved(actor.id);
+    assert(removed);
 });
