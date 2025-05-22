@@ -30,7 +30,7 @@ export async function waitForItemInFeed(
 
     if (options.retryCount === MAX_RETRIES) {
         throw new Error(
-            `Max retries reached (${MAX_RETRIES}) when waiting on item ${itemId} in the feed`,
+            `Max retries reached when waiting on item ${itemId} in the feed`,
         );
     }
 

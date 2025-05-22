@@ -46,12 +46,24 @@ Then('the note {string} is in our feed', async function (noteName) {
     assert(found);
 });
 
+Then(
+    'the note {string} is in our feed and has content {string}',
+    async function (noteName, content) {
+        const note = this.objects[noteName];
+
+        const found = await waitForAPObjectInFeed(note.id);
+        assert(found);
+        assert.equal(found.content, content);
+    },
+);
+
+
 Then('the note {string} is not in our feed', async function (noteName) {
     const note = this.objects[noteName];
 
     try {
         await waitForAPObjectInFeed(note.id);
-        assert.fail('Expected note to be not be found in the feed');
+        assert.fail(`Expected note ${note.id} to be not be found in the feed`);
     } catch (error) {
         assert.equal(
             error.message,
@@ -72,7 +84,7 @@ Then('the article {string} is not in our feed', async function (articleName) {
 
     try {
         await waitForAPObjectInFeed(article.id);
-        assert.fail('Expected article to be not be found in the feed');
+        assert.fail(`Expected article ${article.id} to be not be found in the feed`);
     } catch (error) {
         assert.equal(
             error.message,

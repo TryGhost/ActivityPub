@@ -29,3 +29,32 @@ Given('we publish an article', async function () {
 
     this.articleId = post.id;
 });
+
+Given('we publish a note', async function () {
+    if (this.noteId) {
+        throw new Error('This step does not support multiple notes');
+    }
+
+    const endpoint =
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note';
+    const payload = { content: 'This is a note' };
+    const body = JSON.stringify(payload);
+    const timestamp = Date.now();
+    const hmac = createHmac('sha256', getWebhookSecret())
+        .update(body + timestamp)
+        .digest('hex');
+
+    const response = await fetchActivityPub(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`,
+        },
+        body: body,
+    });
+
+    const json = await response.json();
+    const post = json.post;
+
+    this.noteId = post.id;
+});
