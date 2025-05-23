@@ -2,6 +2,7 @@ import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
 import { parse } from 'node-html-parser';
 import { HANDLE_REGEX } from '../constants';
+import { isEqual } from '../helpers/uri';
 import type { Mention } from './post.entity';
 
 /**
@@ -221,15 +222,14 @@ export class ContentPreparer {
             const links = html.querySelectorAll('a');
 
             for (const mention of mentions) {
-                const apId = mention.account.apId
-                    .toString()
-                    .replace(/\/+$/, '');
-                const url = mention.account.url.toString().replace(/\/+$/, '');
-
                 // Find all links that matches the mentioned account
                 for (const link of links) {
-                    const href = link.getAttribute('href')?.replace(/\/+$/, '');
-                    if (href === apId || href === url) {
+                    const href = link.getAttribute('href');
+                    if (
+                        href &&
+                        (isEqual(mention.account.apId, href) ||
+                            isEqual(mention.account.url, href))
+                    ) {
                         // Update the link attributes
                         link.setAttribute(
                             'data-profile',
