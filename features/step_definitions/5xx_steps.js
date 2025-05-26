@@ -85,6 +85,22 @@ Given('we are sent invalid url to the inbox', async function () {
     );
 });
 
+Given('we are sent invalid type to the inbox', async function () {
+    this.response = await fetch(
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/ld+json',
+            },
+            body: JSON.stringify({
+                '@context': ['https://www.w3.org/ns/activitystreams', {}],
+                type: 'https://www.w3.org/ns/activitystreams#Hashtag',
+            }),
+        },
+    );
+});
+
 Then('we respond with a {int}', function (int) {
     assert.equal(this.response.status, int);
 });
