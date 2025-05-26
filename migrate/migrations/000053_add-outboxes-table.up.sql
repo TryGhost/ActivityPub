@@ -1,0 +1,22 @@
+CREATE TABLE outboxes (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE DEFAULT (UUID()),
+    created_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6),
+    published_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6),
+    
+    item_type TINYINT UNSIGNED NOT NULL,
+
+    user_id INT UNSIGNED NOT NULL,
+    post_id INT UNSIGNED NOT NULL,
+    author_id INT UNSIGNED NOT NULL,
+    in_reply_to INT UNSIGNED NULL,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (author_id) REFERENCES accounts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (in_reply_to) REFERENCES posts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+
+
+    KEY idx_outboxes_user_id (user_id),
+    KEY idx_outboxes_item_type (item_type)
+);
