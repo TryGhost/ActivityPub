@@ -90,7 +90,6 @@ export class DeleteHandler {
 
             await ctx.data.globaldb.delete([activityId]);
 
-            await removeFromList(ctx.data.db, ['inbox'], activityId);
             await removeFromList(ctx.data.db, ['reposted'], activityId);
         }
     }
