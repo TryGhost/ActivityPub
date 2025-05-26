@@ -328,17 +328,17 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: "Deploy Tests to Cloud Run"
-        if: ${{ matrix.region == 'europe-west4' }}
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
-          region: ${{ matrix.region }}
-          job: stg-${{ matrix.region_name }}-activitypub-tests
-          flags: --command="yarn" --args="_test:integration" --wait --execute-now
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
+      # - name: "Deploy Tests to Cloud Run"
+      #   if: ${{ matrix.region == 'europe-west4' }}
+      #   uses: google-github-actions/deploy-cloudrun@v2
+      #   with:
+      #     image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
+      #     region: ${{ matrix.region }}
+      #     job: stg-${{ matrix.region_name }}-activitypub-tests
+      #     flags: --command="yarn" --args="_test:integration" --wait --execute-now
+      #     skip_default_labels: true
+      #     labels: |-
+      #       commit-sha=${{ github.sha }}
 
       - name: "Destroy Tests databases"
         if: ${{ matrix.region == 'europe-west4' }}
