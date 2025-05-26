@@ -308,6 +308,24 @@ jobs:
           - region: europe-west3
             region_name: frankfurt
     steps:
+      - name: "Authenticate with GCP (staging envs)"
+        if: ${{ matrix.region == 'europe-west4' }}
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Destroy Tests databases"
+        if: ${{ matrix.region == 'europe-west4' }}
+        env:
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~test*" --format="value(name)" --project ${GCP_PROJECT})
+          for TEST_DATABASE in ${TEST_DATABASES}; do
+            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+          done
+
       - name: "Authenticate with GCP"
         id: gcp-auth
         uses: google-github-actions/auth@v2
@@ -339,16 +357,6 @@ jobs:
       #     skip_default_labels: true
       #     labels: |-
       #       commit-sha=${{ github.sha }}
-
-      - name: "Destroy Tests databases"
-        if: ${{ matrix.region == 'europe-west4' }}
-        env:
-          GCP_PROJECT: ghost-activitypub
-        run: |
-          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~test*" --format="value(name)" --project ${GCP_PROJECT})
-          for TEST_DATABASE in ${TEST_DATABASES}; do
-            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
-          done
 
       - name: "Deploy ActivityPub Queue to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
