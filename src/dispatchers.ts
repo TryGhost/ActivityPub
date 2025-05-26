@@ -24,7 +24,6 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { AccountService } from './account/account.service';
 import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
-import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
@@ -444,8 +443,8 @@ export function createAnnounceHandler(
     ) {
         ctx.data.logger.info('Handling Announce');
 
-        // Validate announce
         if (!announce.id) {
+            // Validate announce
             ctx.data.logger.info('Invalid Announce - no id');
             return;
         }
@@ -493,8 +492,8 @@ export function createAnnounceHandler(
             object = await lookupObject(ctx, announce.objectId);
         }
 
-        // Validate object
         if (!existing && !object) {
+            // Validate object
             ctx.data.logger.info('Invalid Announce - could not find object');
             return;
         }
@@ -516,8 +515,8 @@ export function createAnnounceHandler(
             announceJson.object = existing;
         }
 
-        // Persist object if not already persisted
         if (!existing && object && object.id) {
+            // Persist object if not already persisted
             ctx.data.logger.info('Storing object in globalDb');
 
             const objectJson = await object.toJsonLd();

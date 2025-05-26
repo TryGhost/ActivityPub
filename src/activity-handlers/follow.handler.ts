@@ -8,7 +8,6 @@ import {
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
 import { getValue, isError } from 'core/result';
-import { addToList } from 'kv-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import { v4 as uuidv4 } from 'uuid';
 
