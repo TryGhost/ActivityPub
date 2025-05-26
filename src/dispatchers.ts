@@ -24,7 +24,6 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { AccountService } from './account/account.service';
 import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
-import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
@@ -143,7 +142,6 @@ export function createAcceptHandler(accountService: AccountService) {
         const acceptJson = await accept.toJsonLd();
         ctx.data.globaldb.set([accept.id.href], acceptJson);
         ctx.data.globaldb.set([sender.id.href], senderJson);
-        await addToList(ctx.data.db, ['inbox'], accept.id.href);
 
         // Record the account of the sender as well as the follow
         const followerAccountResult = await accountService.ensureByApId(
@@ -328,8 +326,6 @@ export async function handleAnnoucedCreate(
                 exhaustiveCheck(error);
         }
     }
-
-    await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
 export const createUndoHandler = (
@@ -372,8 +368,6 @@ export const createUndoHandler = (
             await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
 
             await accountService.recordAccountUnfollow(unfollowing, unfollower);
-
-            await addToList(ctx.data.db, ['inbox'], undo.id.href);
         } else if (object instanceof Announce) {
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
@@ -449,8 +443,8 @@ export function createAnnounceHandler(
     ) {
         ctx.data.logger.info('Handling Announce');
 
-        // Validate announce
         if (!announce.id) {
+            // Validate announce
             ctx.data.logger.info('Invalid Announce - no id');
             return;
         }
@@ -498,8 +492,8 @@ export function createAnnounceHandler(
             object = await lookupObject(ctx, announce.objectId);
         }
 
-        // Validate object
         if (!existing && !object) {
+            // Validate object
             ctx.data.logger.info('Invalid Announce - could not find object');
             return;
         }
@@ -521,8 +515,8 @@ export function createAnnounceHandler(
             announceJson.object = existing;
         }
 
-        // Persist object if not already persisted
         if (!existing && object && object.id) {
+            // Persist object if not already persisted
             ctx.data.logger.info('Storing object in globalDb');
 
             const objectJson = await object.toJsonLd();
@@ -547,8 +541,6 @@ export function createAnnounceHandler(
         }
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
-
-        let shouldAddToInbox = false;
 
         const site = await siteService.getSiteByHost(ctx.host);
 
@@ -598,17 +590,6 @@ export function createAnnounceHandler(
                 post.addRepost(senderAccount);
                 await postRepository.save(post);
             }
-        }
-
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            accountService,
-        );
-
-        if (shouldAddToInbox) {
-            await addToList(ctx.data.db, ['inbox'], announce.id.href);
-            return;
         }
     };
 }
@@ -732,8 +713,6 @@ export function createLikeHandler(
 
             ctx.data.globaldb.set([object.id.href], objectJson);
         }
-
-        await addToList(ctx.data.db, ['inbox'], like.id.href);
     };
 }
 

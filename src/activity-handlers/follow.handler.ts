@@ -8,7 +8,6 @@ import {
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
 import { getValue, isError } from 'core/result';
-import { addToList } from 'kv-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -103,8 +102,6 @@ export class FollowHandler {
         await Promise.all([
             // Persist activity in the global db
             ctx.data.globaldb.set([follow.id!.href], followJson),
-            // Add activity to the inbox for context account
-            addToList(ctx.data.db, ['inbox'], follow.id!.href),
             // Persist or update sender in global db
             ctx.data.globaldb.set([sender.id!.href], senderJson),
         ]);

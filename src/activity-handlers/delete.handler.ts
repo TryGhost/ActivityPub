@@ -6,7 +6,6 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { getRelatedActivities } from '../db';
-import { removeFromList } from '../kv-helpers';
 
 export class DeleteHandler {
     constructor(
@@ -89,9 +88,6 @@ export class DeleteHandler {
             const activityId = activity.id;
 
             await ctx.data.globaldb.delete([activityId]);
-
-            await removeFromList(ctx.data.db, ['inbox'], activityId);
-            await removeFromList(ctx.data.db, ['reposted'], activityId);
         }
     }
 }

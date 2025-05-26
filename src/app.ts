@@ -94,7 +94,7 @@ import {
 import { FeedUpdateService } from './feed/feed-update.service';
 import { FeedService } from './feed/feed.service';
 import { FlagService } from './flag/flag.service';
-import { getSiteDataHandler, inboxHandler } from './handlers';
+import { getSiteDataHandler } from './handlers';
 import { getTraceContext } from './helpers/context-header';
 import { getSiteSettings } from './helpers/ghost';
 import { getRequestData } from './helpers/request-data';
@@ -971,12 +971,6 @@ function requireRole(...roles: GhostRole[]) {
 app.get(
     '/.well-known/webfinger',
     spanWrapper(createWebFingerHandler(accountRepository, siteService)),
-);
-
-app.get(
-    '/.ghost/activitypub/inbox/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(inboxHandler),
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',

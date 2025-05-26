@@ -67,18 +67,20 @@ When('we undo the repost of the object {string}', async function (name) {
 
 Then('the object {string} should not be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed',
         {
             headers: {
                 Accept: 'application/ld+json',
             },
         },
     );
-    const inbox = await response.json();
-    const object = this.objects[name];
-    const found = inbox.items.find((item) => item.object.id === object.id);
 
-    assert(found.object.reposted !== true);
+    const feed = await response.json();
+    const object = this.objects[name];
+
+    const post = feed.posts.find((item) => item.id === object.id);
+
+    assert.equal(post.repostedByMe, false);
 });
 
 Then('an Undo\\(Announce) is sent to {string}', async function (actorName) {
