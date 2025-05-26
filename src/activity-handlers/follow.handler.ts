@@ -103,8 +103,6 @@ export class FollowHandler {
         await Promise.all([
             // Persist activity in the global db
             ctx.data.globaldb.set([follow.id!.href], followJson),
-            // Add activity to the inbox for context account
-            addToList(ctx.data.db, ['inbox'], follow.id!.href),
             // Persist or update sender in global db
             ctx.data.globaldb.set([sender.id!.href], senderJson),
         ]);

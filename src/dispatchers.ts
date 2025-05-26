@@ -143,7 +143,6 @@ export function createAcceptHandler(accountService: AccountService) {
         const acceptJson = await accept.toJsonLd();
         ctx.data.globaldb.set([accept.id.href], acceptJson);
         ctx.data.globaldb.set([sender.id.href], senderJson);
-        await addToList(ctx.data.db, ['inbox'], accept.id.href);
 
         // Record the account of the sender as well as the follow
         const followerAccountResult = await accountService.ensureByApId(
