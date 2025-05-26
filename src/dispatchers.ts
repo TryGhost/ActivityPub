@@ -369,8 +369,6 @@ export const createUndoHandler = (
             await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
 
             await accountService.recordAccountUnfollow(unfollowing, unfollower);
-
-            await addToList(ctx.data.db, ['inbox'], undo.id.href);
         } else if (object instanceof Announce) {
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
