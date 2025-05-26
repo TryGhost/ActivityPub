@@ -24,12 +24,6 @@ export const client = Knex({
     },
 });
 
-interface ActivityJsonLd {
-    // TODO: Clean up the any type
-    // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-    [key: string]: any;
-}
-
 export async function getRelatedActivities(
     postUrl: string,
 ): Promise<{ id: string }[]> {
