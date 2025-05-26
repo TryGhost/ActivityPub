@@ -4,7 +4,6 @@ import { type Actor, Announce, PUBLIC_COLLECTION, Undo } from '@fedify/fedify';
 import { type AppContext, fedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
-import { removeFromList } from 'kv-helpers';
 import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
@@ -111,7 +110,6 @@ export function createDerepostActionHandler(
         await ctx.get('globaldb').set([undo.id!.href], undoJson);
 
         // Remove announce activity from database
-        await removeFromList(ctx.get('db'), ['reposted'], announceId.href);
         await ctx.get('globaldb').delete([announceId.href]);
 
         // Send the undo activity
