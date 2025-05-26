@@ -327,8 +327,6 @@ export async function handleAnnoucedCreate(
                 exhaustiveCheck(error);
         }
     }
-
-    await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
 export const createUndoHandler = (
@@ -547,8 +545,6 @@ export function createAnnounceHandler(
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
-        let shouldAddToInbox = false;
-
         const site = await siteService.getSiteByHost(ctx.host);
 
         if (!site) {
@@ -597,17 +593,6 @@ export function createAnnounceHandler(
                 post.addRepost(senderAccount);
                 await postRepository.save(post);
             }
-        }
-
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            accountService,
-        );
-
-        if (shouldAddToInbox) {
-            await addToList(ctx.data.db, ['inbox'], announce.id.href);
-            return;
         }
     };
 }
