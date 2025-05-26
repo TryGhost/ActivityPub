@@ -714,8 +714,6 @@ export function createLikeHandler(
 
             ctx.data.globaldb.set([object.id.href], objectJson);
         }
-
-        await addToList(ctx.data.db, ['inbox'], like.id.href);
     };
 }
 
