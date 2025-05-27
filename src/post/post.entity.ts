@@ -63,6 +63,7 @@ export interface PostData {
     audience?: Audience;
     title?: string | null;
     excerpt?: string | null;
+    summary?: string | null;
     content?: string | null;
     url?: URL | null;
     imageUrl?: URL | null;
@@ -112,6 +113,7 @@ export class Post extends BaseEntity {
         public readonly audience: Audience,
         public readonly title: string | null,
         public readonly excerpt: string | null,
+        public readonly summary: string | null,
         content: string | null,
         url: URL | null,
         public readonly imageUrl: URL | null,
@@ -172,6 +174,7 @@ export class Post extends BaseEntity {
         self.title = null;
         self.content = null;
         self.excerpt = null;
+        self.summary = null;
         self.imageUrl = null;
         self.attachments = [];
         self.metadata = null;
@@ -291,6 +294,7 @@ export class Post extends BaseEntity {
                 Audience.Public,
                 ghostPost.title,
                 excerpt,
+                ghostPost.custom_excerpt,
                 content,
                 new URL(ghostPost.url),
                 parseURL(ghostPost.feature_image),
@@ -330,6 +334,7 @@ export class Post extends BaseEntity {
             data.audience ?? Audience.Public,
             data.title ?? null,
             data.excerpt ?? null,
+            data.summary ?? null,
             data.content ?? null,
             data.url ?? null,
             data.imageUrl ?? null,
@@ -389,6 +394,7 @@ export class Post extends BaseEntity {
             account,
             PostType.Note,
             Audience.Public,
+            null,
             null,
             null,
             content,
@@ -460,6 +466,7 @@ export class Post extends BaseEntity {
             account,
             PostType.Note,
             Audience.Public,
+            null,
             null,
             null,
             content,

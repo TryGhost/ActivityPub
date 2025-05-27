@@ -128,6 +128,7 @@ describe('Post', () => {
             expect(post.title).toBeNull();
             expect(post.content).toBeNull();
             expect(post.excerpt).toBeNull();
+            expect(post.summary).toBeNull();
             expect(post.imageUrl).toBeNull();
             expect(post.attachments).toEqual([]);
             expect(post.metadata).toBeNull();
@@ -144,6 +145,7 @@ describe('Post', () => {
                 Audience.Public,
                 'Title of my post',
                 'This is such a great...',
+                null,
                 '<p> This is such a great post </p>',
                 new URL('https://ghost.org/ap/note/123'),
                 new URL('https://ghost.org/feature-image.jpeg'),
@@ -179,6 +181,7 @@ describe('Post', () => {
             expect(post.title).toBeNull();
             expect(post.content).toBeNull();
             expect(post.excerpt).toBeNull();
+            expect(post.summary).toBeNull();
             expect(post.imageUrl).toBeNull();
             expect(post.attachments).toEqual([]);
             expect(post.metadata).toBeNull();
@@ -534,6 +537,34 @@ describe('Post', () => {
 
         expect(post.uuid).toEqual(ghostPost.uuid);
         expect(post.content).toEqual(ghostPost.html);
+        expect(post.summary).toBeNull();
+    });
+
+    it('should use custom_excerpt as summary when creating an article from a Ghost Post', async () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p> This is such a great post </p>',
+            excerpt: 'This is such a great...',
+            custom_excerpt: 'This is my custom excerpt for the post',
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'public',
+            authors: [],
+        };
+
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        const post = getValue(postResult as Ok<Post>) as Post;
+
+        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.content).toEqual(ghostPost.html);
+        expect(post.excerpt).toEqual(ghostPost.excerpt);
+        expect(post.summary).toEqual(ghostPost.custom_excerpt);
     });
 
     it('should refuse to create an article from a private Ghost Post with no public content', async () => {
@@ -861,6 +892,24 @@ describe('Post', () => {
 
             expect(result).toBeInstanceOf(Post);
             expect(result.content).toBe('This is a test note');
+        });
+
+        it('creates a post with summary', async () => {
+            const account = internalAccount();
+            const postData = {
+                type: PostType.Article,
+                title: 'Test Article',
+                content: 'This is a test article with a lot of content',
+                excerpt: 'This is a test article...',
+                summary: 'This is a custom summary',
+            } as PostData;
+
+            const result = Post.createFromData(account, postData);
+
+            expect(result).toBeInstanceOf(Post);
+            expect(result.title).toBe('Test Article');
+            expect(result.excerpt).toBe('This is a test article...');
+            expect(result.summary).toBe('This is a custom summary');
         });
 
         it('attaches mentions to the post but should not modify content with no hyperlink', async () => {

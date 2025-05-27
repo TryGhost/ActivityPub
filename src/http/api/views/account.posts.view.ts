@@ -25,6 +25,7 @@ interface BaseGetProfileDataResultRow {
     post_type: PostType;
     post_title: string | null;
     post_excerpt: string | null;
+    post_summary: string | null;
     post_content: string | null;
     post_url: string;
     post_image_url: string | null;
@@ -124,6 +125,7 @@ export class AccountPostsView {
                 'posts_with_source.type as post_type',
                 'posts_with_source.title as post_title',
                 'posts_with_source.excerpt as post_excerpt',
+                'posts_with_source.summary as post_summary',
                 'posts_with_source.content as post_content',
                 'posts_with_source.url as post_url',
                 'posts_with_source.image_url as post_image_url',
@@ -170,6 +172,7 @@ export class AccountPostsView {
                         'posts.type',
                         'posts.title',
                         'posts.excerpt',
+                        'posts.summary',
                         'posts.content',
                         'posts.url',
                         'posts.image_url',
@@ -197,6 +200,7 @@ export class AccountPostsView {
                                 'posts.type',
                                 'posts.title',
                                 'posts.excerpt',
+                                'posts.summary',
                                 'posts.content',
                                 'posts.url',
                                 'posts.image_url',
@@ -374,6 +378,7 @@ export class AccountPostsView {
                         type: string;
                         name?: string;
                         preview?: { content?: string };
+                        summary?: string;
                         content?: string;
                         url?: string;
                         image?: string | null;
@@ -527,6 +532,7 @@ export class AccountPostsView {
                 'posts.type as post_type',
                 'posts.title as post_title',
                 'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',
@@ -614,6 +620,7 @@ export class AccountPostsView {
             type: result.post_type,
             title: result.post_title ?? '',
             excerpt: result.post_excerpt ?? '',
+            summary: result.post_summary ?? null,
             content: result.post_content ?? '',
             url: result.post_url,
             featureImageUrl: result.post_image_url ?? null,
@@ -672,6 +679,7 @@ export class AccountPostsView {
             type: object.type === 'Article' ? PostType.Article : PostType.Note,
             title: object.name || '',
             excerpt: object.preview?.content || '',
+            summary: object.summary || null,
             content: object.content || '',
             url: object.url || '',
             featureImageUrl: object.image || null,

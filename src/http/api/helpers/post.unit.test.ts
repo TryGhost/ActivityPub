@@ -62,4 +62,36 @@ describe('postToPostDTO', () => {
 
         expect(dto.metadata).toEqual({ ghostAuthors: [] });
     });
+
+    it('Should include summary in the DTO', () => {
+        const author = createAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Article,
+            title: 'Test Article',
+            excerpt: 'Test excerpt',
+            summary: 'Test summary',
+            content: 'Test content',
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto.title).toEqual('Test Article');
+        expect(dto.excerpt).toEqual('Test excerpt');
+        expect(dto.summary).toEqual('Test summary');
+        expect(dto.content).toEqual('Test content');
+    });
+
+    it('Should default summary to null', () => {
+        const author = createAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto.summary).toBeNull();
+    });
 });

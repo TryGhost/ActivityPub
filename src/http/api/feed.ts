@@ -63,6 +63,7 @@ export function createGetFeedHandler(
                 type: result.post_type,
                 title: result.post_title ?? '',
                 excerpt: result.post_excerpt ?? '',
+                summary: result.post_summary ?? null,
                 content: result.post_content ?? '',
                 url: result.post_url,
                 featureImageUrl: result.post_image_url ?? null,

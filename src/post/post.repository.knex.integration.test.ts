@@ -406,6 +406,7 @@ describe('KnexPostRepository', () => {
                 Audience.Public,
                 'Some title',
                 'Some excerpt',
+                null,
                 'Some content',
                 new URL(`https://${site.host}/hello-world`),
                 new URL(`https://${site.host}/banners/hello-world.png`),
