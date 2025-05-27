@@ -67,9 +67,13 @@ export function createPostPublishedWebhookHandler(
         if (isError(postResult)) {
             const error = getError(postResult);
             switch (error) {
+                case 'missing-content':
+                    return BadRequest(
+                        'Error creating post: the post has no content',
+                    );
                 case 'private-content':
                     return BadRequest(
-                        'Cannot create Post from private content',
+                        'Error creating post: the post content is private',
                     );
                 default:
                     return exhaustiveCheck(error);

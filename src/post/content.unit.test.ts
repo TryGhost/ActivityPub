@@ -11,6 +11,7 @@ describe('ContentPreparer', () => {
 
     describe('prepare', () => {
         const allOptionsDisabled = {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: false,
             convertLineBreaks: false,
@@ -19,6 +20,43 @@ describe('ContentPreparer', () => {
             addPaidContentMessage: false as const,
             addMentions: false as const,
         };
+
+        describe('Removing gated content', () => {
+            it('removes content that is visible to members only', () => {
+                const content =
+                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:free" --> This is visible to free members only!<!--kg-gated-block:end-->';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeGatedContent: true,
+                });
+
+                expect(result).toEqual('Hello, world!');
+            });
+
+            it('removes content that is visible to paid members only', () => {
+                const content =
+                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:-free" --> This is visible to paid members only!<!--kg-gated-block:end-->';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeGatedContent: true,
+                });
+
+                expect(result).toEqual('Hello, world!');
+            });
+
+            it('keeps content that is visible publicly but removes markers', () => {
+                const content =
+                    'Hello, world!<!--kg-gated-block:begin nonMember:true memberSegment:"" --> This is visible publicly!<!--kg-gated-block:end-->';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeGatedContent: true,
+                });
+
+                expect(result).toEqual(
+                    'Hello, world! This is visible publicly!',
+                );
+            });
+        });
 
         describe('Removing member content', () => {
             it('should remove member content', () => {
