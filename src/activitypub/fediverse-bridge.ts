@@ -78,7 +78,7 @@ export class FediverseBridge {
                 id: post.apId,
                 attribution: post.author.apId,
                 content: post.content,
-                summary: null,
+                summary: post.summary,
                 published: Temporal.Now.instant(),
                 attachments: post.attachments
                     ? post.attachments
@@ -105,6 +105,7 @@ export class FediverseBridge {
                 id: post.apId,
                 attribution: post.author.apId,
                 name: post.title,
+                summary: post.summary,
                 content: post.content,
                 image: post.imageUrl,
                 published: Temporal.Instant.from(

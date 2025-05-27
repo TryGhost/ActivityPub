@@ -52,6 +52,7 @@ describe('Post API', () => {
             Audience.Public,
             `Test Post ${id}`,
             `Test Post ${id} Excerpt`,
+            null,
             `Test Post ${id} Content`,
             new URL(`https://${site.host}/posts/${id}`),
             new URL(`https://${site.host}/images/post-${id}.jpg`),

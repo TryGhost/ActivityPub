@@ -187,6 +187,7 @@ export class PostService {
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
+            summary: foundObject.summary?.toString() ?? null,
             content: foundObject.content?.toString(),
             imageUrl: foundObject.imageId,
             publishedAt: new Date(foundObject.published?.toString() || ''),

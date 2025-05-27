@@ -35,6 +35,7 @@ interface BaseGetFeedDataResultRow {
     post_type: PostType;
     post_title: string | null;
     post_excerpt: string | null;
+    post_summary: string | null;
     post_content: string | null;
     post_url: string;
     post_image_url: string | null;
@@ -114,6 +115,7 @@ export class FeedService {
                 'posts.type as post_type',
                 'posts.title as post_title',
                 'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',

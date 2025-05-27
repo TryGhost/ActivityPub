@@ -33,6 +33,7 @@ export function postToDTO(
         type: post.type,
         title: post.title ?? '',
         excerpt: post.excerpt ?? '',
+        summary: post.summary ?? null,
         content: post.content ?? '',
         url: post.url.href,
         featureImageUrl: post.imageUrl?.href ?? null,
