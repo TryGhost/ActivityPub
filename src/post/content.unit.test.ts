@@ -24,36 +24,75 @@ describe('ContentPreparer', () => {
         describe('Removing gated content', () => {
             it('removes content that is visible to members only', () => {
                 const content =
-                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:free" --> This is visible to free members only!<!--kg-gated-block:end-->';
+                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:free" --> This is visible to free members only!<!--kg-gated-block:end--> Bye!';
                 const result = preparer.prepare(content, {
                     ...allOptionsDisabled,
                     removeGatedContent: true,
                 });
 
-                expect(result).toEqual('Hello, world!');
+                expect(result).toEqual('Hello, world! Bye!');
             });
 
             it('removes content that is visible to paid members only', () => {
                 const content =
-                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:-free" --> This is visible to paid members only!<!--kg-gated-block:end-->';
+                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:-free" --> This is visible to paid members only!<!--kg-gated-block:end--> Bye!';
                 const result = preparer.prepare(content, {
                     ...allOptionsDisabled,
                     removeGatedContent: true,
                 });
 
-                expect(result).toEqual('Hello, world!');
+                expect(result).toEqual('Hello, world! Bye!');
             });
 
             it('keeps content that is visible publicly but removes markers', () => {
                 const content =
-                    'Hello, world!<!--kg-gated-block:begin nonMember:true memberSegment:"" --> This is visible publicly!<!--kg-gated-block:end-->';
+                    'Hello, world!<!--kg-gated-block:begin nonMember:true memberSegment:"" --> This is visible publicly!<!--kg-gated-block:end--> Bye!';
                 const result = preparer.prepare(content, {
                     ...allOptionsDisabled,
                     removeGatedContent: true,
                 });
 
                 expect(result).toEqual(
-                    'Hello, world! This is visible publicly!',
+                    'Hello, world! This is visible publicly! Bye!',
+                );
+            });
+
+            it('keeps content that is visible to both public visitors and free members', () => {
+                const content =
+                    'Hello, world!<!--kg-gated-block:begin nonMember:true memberSegment:"status:free" --> This is visible publicly and to free members!<!--kg-gated-block:end--> Bye!';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeGatedContent: true,
+                });
+
+                expect(result).toEqual(
+                    'Hello, world! This is visible publicly and to free members! Bye!',
+                );
+            });
+
+            it('keeps content that is visible to both public visitors and paid members', () => {
+                const content =
+                    'Hello, world!<!--kg-gated-block:begin nonMember:true memberSegment:"-status:free" --> This is visible publicly and to paid members!<!--kg-gated-block:end--> Bye!';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeGatedContent: true,
+                });
+
+                expect(result).toEqual(
+                    'Hello, world! This is visible publicly and to paid members! Bye!',
+                );
+            });
+
+            it('can handle multiple gated blocks', () => {
+                const content =
+                    'Hello, world!<!--kg-gated-block:begin nonMember:false memberSegment:"status:free" --> This is visible to free members only!<!--kg-gated-block:end--> How are you?<!--kg-gated-block:begin nonMember:true memberSegment:"" --> This is visible publicly!<!--kg-gated-block:end--> Good, and you?<!--kg-gated-block:begin nonMember:true memberSegment:"status:free" --> This is visible publicly and to free members!<!--kg-gated-block:end--> Bye!';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    removeGatedContent: true,
+                });
+
+                expect(result).toEqual(
+                    'Hello, world! How are you? This is visible publicly! Good, and you? This is visible publicly and to free members! Bye!',
                 );
             });
         });
