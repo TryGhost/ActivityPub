@@ -15,7 +15,5 @@ CREATE TABLE outboxes (
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (author_id) REFERENCES accounts(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
-
-    KEY idx_outboxes_user_id (user_id),
-    KEY idx_outboxes_outbox_type (outbox_type)
+    KEY idx_outboxes_user_id_outbox_type (user_id, outbox_type)
 );
