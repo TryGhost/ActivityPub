@@ -35,7 +35,7 @@ export async function createTestDb() {
         `SELECT table_name FROM information_schema.tables WHERE table_schema = '${process.env.MYSQL_DATABASE}'`,
     );
 
-    // Clone each table structure
+    // Clone each table structure - GCP SQL was having issues with the `CREATE TABLE LIKE` syntax
     for (const { TABLE_NAME } of tables[0]) {
         const [createTableResult] = await systemClient.raw(
             `SHOW CREATE TABLE \`${process.env.MYSQL_DATABASE}\`.\`${TABLE_NAME}\``,
