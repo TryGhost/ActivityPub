@@ -14,4 +14,4 @@ else
 fi
 
 mysql $SOCKET $HOSTPORT -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e \
-  "DELETE FROM key_value WHERE expires IS NOT NULL AND expires < UTC_TIMESTAMP();"
+  "DELETE FROM key_value WHERE `key` LIKE '%_fedify","activityIdempotence"%' AND expires IS NULL LIMIT 10000;"
