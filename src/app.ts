@@ -1183,6 +1183,9 @@ app.onError((err, c) => {
         if (err.message === 'Invalid URL') {
             return BadRequest('Invalid URL');
         }
+        if (err.message.includes('Invalid type')) {
+            return BadRequest('Invalid type');
+        }
     }
     Sentry.captureException(err);
     c.get('logger').error('{error}', { error: err });

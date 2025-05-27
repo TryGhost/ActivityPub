@@ -12,3 +12,8 @@ Feature: We do not 5xx error for previously known regressions
   Scenario: We do not throw a 5xx when we receive an invalid url
     Given we are sent invalid url to the inbox
     Then we respond with a 400
+
+  Scenario: We do not throw a 5xx when we receive an invalid type
+    Given we are sent invalid type to the inbox
+    Then we respond with a 400
+
