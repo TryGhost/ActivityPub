@@ -277,12 +277,12 @@ jobs:
           export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-netherlands-activitypub-api"
           export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
           # Add host rules and path matchers if they don't exist
-          yq -i '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "staging-environments"}])' config.yml
-          yq -i '.pathMatchers = (.pathMatchers // [{"name": "staging-environments", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml
+          yq -i '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "all-paths"}])' config.yml
+          yq -i '.pathMatchers = (.pathMatchers // [{"name": "all-paths", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml
           # Remove existing route rules for the PR service
           yq -i '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml
           # Add new route rules for the PR service
-          export MAX_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "staging-environments") | .routeRules[]?.priority] | max // 0' config.yml)
+          export MAX_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "all-paths") | .routeRules[]?.priority] | max // 0' config.yml)
           export NEXT_PRIORITY=$((MAX_PRIORITY + 1))
           LABELS_JSON=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | .name]')
           for LABEL in $(echo "$LABELS_JSON" | jq -r '.[]'); do
@@ -368,6 +368,16 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
+      - name: "Deploy ActivityPub External to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-external
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
       - name: "Deploy ActivityPub API to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -418,6 +428,16 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: prd-${{ matrix.region_name }}-activitypub-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Deploy ActivityPub External to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-external
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
