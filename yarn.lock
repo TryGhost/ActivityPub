@@ -4336,7 +4336,7 @@ yup@1.6.1:
     toposort "^2.0.2"
     type-fest "^2.19.0"
 
-zod@3.25.31:
-  version "3.25.31"
-  resolved "https://registry.yarnpkg.com/zod/-/zod-3.25.31.tgz#beff55c696ea66263310749989f3e63bb7faa11a"
-  integrity sha512-SVCtUpZ1D9TFcRnCY7wlCpGEzV4+2HlXnJiwrgq1T93m98BIT6M5lbxRrEm7v6pYZXV4QNQo1t2KVv93JXk6XA==
+zod@3.25.32:
+  version "3.25.32"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-3.25.32.tgz#769cc684072df780fc8f38130b0cd9283a8d3818"
+  integrity sha512-OSm2xTIRfW8CV5/QKgngwmQW/8aPfGdaQFlrGoErlgg/Epm7cjb6K6VEyExfe65a3VybUOnu381edLb0dfJl0g==
