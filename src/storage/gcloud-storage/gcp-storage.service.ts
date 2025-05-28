@@ -82,7 +82,11 @@ export class GCPStorageService {
         const outputExtension = isHeicFile ? 'jpg' : undefined;
         const outputContentType = isHeicFile ? 'image/jpeg' : file.type;
 
-        const storagePath = this.getStoragePath(file.name, accountUuid, outputExtension);
+        const storagePath = this.getStoragePath(
+            file.name,
+            accountUuid,
+            outputExtension,
+        );
         const compressedBuffer = await this.compressFile(file);
 
         await this.bucket.file(storagePath).save(compressedBuffer, {
@@ -105,10 +109,16 @@ export class GCPStorageService {
         return ok(fileUrl);
     }
 
-    private getStoragePath(fileName: string, accountUuid: string, overrideExtension?: string): string {
-        const extension = overrideExtension || (fileName.includes('.')
-            ? fileName.split('.').pop()?.toLowerCase()
-            : '');
+    private getStoragePath(
+        fileName: string,
+        accountUuid: string,
+        overrideExtension?: string,
+    ): string {
+        const extension =
+            overrideExtension ||
+            (fileName.includes('.')
+                ? fileName.split('.').pop()?.toLowerCase()
+                : '');
         let path = `images/${accountUuid}/${uuidv4()}`;
         if (extension) {
             path = `${path}.${extension}`;
@@ -141,18 +151,21 @@ export class GCPStorageService {
         const fileBuffer = Buffer.concat(chunks);
 
         try {
-            const sharpPipeline = sharp(fileBuffer)
-                .rotate()
-                .resize({
-                    width: 2000,
-                    height: 2000,
-                    fit: 'inside',
-                    withoutEnlargement: true,
-                });
+            const sharpPipeline = sharp(fileBuffer).rotate().resize({
+                width: 2000,
+                height: 2000,
+                fit: 'inside',
+                withoutEnlargement: true,
+            });
 
             const format = file.type.split('/')[1];
 
-            if (format === 'jpeg' || format === 'jpg' || format === 'heic' || format === 'heif') {
+            if (
+                format === 'jpeg' ||
+                format === 'jpg' ||
+                format === 'heic' ||
+                format === 'heif'
+            ) {
                 return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
             }
 
