@@ -16,16 +16,27 @@ describe('GCPStorageService', () => {
     let mockLogger: Logger;
 
     async function createMockFile(
-        type: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heic' | 'image/heif',
+        type:
+            | 'image/jpeg'
+            | 'image/png'
+            | 'image/webp'
+            | 'image/heic'
+            | 'image/heif',
         fileName: string,
         height = 100,
         width = 100,
     ): Promise<File> {
         // Create an in-memory image, with the given height/width
-        const imageType = type.split('/')[1] as 'jpeg' | 'png' | 'webp' | 'heic' | 'heif';
+        const imageType = type.split('/')[1] as
+            | 'jpeg'
+            | 'png'
+            | 'webp'
+            | 'heic'
+            | 'heif';
 
         // For HEIC/HEIF, we'll create a JPEG buffer since Sharp might not support HEIC in tests
-        const formatForSharp = (imageType === 'heic' || imageType === 'heif') ? 'jpeg' : imageType;
+        const formatForSharp =
+            imageType === 'heic' || imageType === 'heif' ? 'jpeg' : imageType;
 
         const buffer = await sharp({
             create: {
@@ -208,7 +219,9 @@ describe('GCPStorageService', () => {
             const mockFileSave = vi.fn().mockResolvedValue(undefined);
             const mockFileInstance = {
                 save: mockFileSave,
-                publicUrl: vi.fn().mockReturnValue('https://example.com/test.jpg'),
+                publicUrl: vi
+                    .fn()
+                    .mockReturnValue('https://example.com/test.jpg'),
             };
             (mockBucket.file as Mock).mockReturnValue(mockFileInstance);
 
