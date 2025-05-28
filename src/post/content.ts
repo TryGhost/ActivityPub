@@ -19,7 +19,11 @@ export const PAID_CONTENT_PREVIEW_HTML = (url: URL) =>
 /**
  * Options for preparing content
  */
-interface PrepareContentOptions {
+export interface PrepareContentOptions {
+    /**
+     * Whether to remove gated content
+     */
+    removeGatedContent: boolean;
     /**
      * Whether to remove member content
      */
@@ -60,6 +64,7 @@ export class ContentPreparer {
     static prepare(
         content: string,
         options: PrepareContentOptions = {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: false,
             convertLineBreaks: false,
@@ -93,6 +98,7 @@ export class ContentPreparer {
     prepare(
         content: string,
         options: PrepareContentOptions = {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: false,
             convertLineBreaks: false,
@@ -103,6 +109,10 @@ export class ContentPreparer {
         },
     ) {
         let prepared = content;
+
+        if (options.removeGatedContent === true) {
+            prepared = this.removeGatedContent(prepared);
+        }
 
         if (options.removeMemberContent === true) {
             prepared = this.removeMemberContent(prepared);
@@ -308,5 +318,27 @@ export class ContentPreparer {
         const memberContentIdx = content.indexOf(MEMBER_CONTENT_MARKER);
 
         return content.substring(0, memberContentIdx);
+    }
+
+    /**
+     * Remove gated content that is visible to members only, as well as gated content markers
+     *
+     * @param content Content to remove gated content from
+     * @returns {string} Content without gated content
+     */
+    private removeGatedContent(content: string) {
+        let result = content;
+
+        // Remove members-only content and markers
+        const membersOnlyContentRegex =
+            /<!--kg-gated-block:begin\s+nonMember:false[^>]*?-->([\s\S]*?)<!--kg-gated-block:end-->/g;
+        result = result.replace(membersOnlyContentRegex, '');
+
+        // Remove markers for public content but keep the content
+        const publicContentRegex =
+            /<!--kg-gated-block:begin\s+nonMember:true[^>]*?-->([\s\S]*?)<!--kg-gated-block:end-->/g;
+        result = result.replace(publicContentRegex, '$1');
+
+        return result;
     }
 }

@@ -4,7 +4,7 @@ import { sanitizeHtml } from 'helpers/html';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
-import { ContentPreparer } from './content';
+import { ContentPreparer, type PrepareContentOptions } from './content';
 
 export enum PostType {
     Note = 0,
@@ -91,7 +91,7 @@ export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
     return post.audience === Audience.FollowersOnly;
 }
 
-type CreatePostError = 'private-content';
+type CreatePostError = 'private-content' | 'missing-content';
 
 export class Post extends BaseEntity {
     public readonly uuid: string;
@@ -249,15 +249,31 @@ export class Post extends BaseEntity {
 
         let content = ghostPost.html;
         let excerpt = ghostPost.excerpt;
-        if (isPublic === false && ghostPost.html !== null) {
-            content = ContentPreparer.prepare(ghostPost.html, {
+
+        const allOptionsDisabled: PrepareContentOptions = {
+            removeGatedContent: false,
+            removeMemberContent: false,
+            escapeHtml: false,
+            convertLineBreaks: false,
+            wrapInParagraph: false,
+            extractLinks: false,
+            addPaidContentMessage: false,
+            addMentions: false,
+        };
+
+        if (content === null || content === '') {
+            return error('missing-content');
+        }
+
+        content = ContentPreparer.prepare(content, {
+            ...allOptionsDisabled,
+            removeGatedContent: true,
+        });
+
+        if (isPublic === false) {
+            content = ContentPreparer.prepare(content, {
+                ...allOptionsDisabled,
                 removeMemberContent: true,
-                escapeHtml: false,
-                convertLineBreaks: false,
-                wrapInParagraph: false,
-                extractLinks: false,
-                addPaidContentMessage: false,
-                addMentions: false,
             });
 
             if (content === '') {
@@ -273,15 +289,10 @@ export class Post extends BaseEntity {
 
             // We add the paid content message _after_ so it doesn't appear in excerpt
             content = ContentPreparer.prepare(content, {
-                removeMemberContent: false,
-                escapeHtml: false,
-                convertLineBreaks: false,
-                wrapInParagraph: false,
-                extractLinks: false,
+                ...allOptionsDisabled,
                 addPaidContentMessage: {
                     url: new URL(ghostPost.url),
                 },
-                addMentions: false,
             });
         }
 
@@ -368,6 +379,7 @@ export class Post extends BaseEntity {
         }
 
         const content = ContentPreparer.prepare(noteContent, {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: true,
             convertLineBreaks: true,
@@ -440,6 +452,7 @@ export class Post extends BaseEntity {
         const threadRootId = inReplyTo.threadRoot ?? inReplyTo.id;
 
         const content = ContentPreparer.prepare(replyContent, {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: true,
             convertLineBreaks: true,
