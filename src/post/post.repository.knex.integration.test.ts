@@ -8,6 +8,7 @@ import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
@@ -18,7 +19,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Audience, Post, PostType } from './post.entity';
+import { Audience, OutboxType, Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 describe('KnexPostRepository', () => {
@@ -29,6 +30,7 @@ describe('KnexPostRepository', () => {
     let siteService: SiteService;
     let postRepository: KnexPostRepository;
     let client: Knex;
+    let fixtureManager: FixtureManager;
 
     const getAccount = async (host: string) => {
         const site = await siteService.initialiseSiteForHost(host);
@@ -39,16 +41,11 @@ describe('KnexPostRepository', () => {
 
     beforeAll(async () => {
         client = await createTestDb();
+        fixtureManager = createFixtureManager(client);
     });
 
     beforeEach(async () => {
-        // Clean up the database
-        await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client('reposts').truncate();
-        await client('likes').truncate();
-        await client('mentions').truncate();
-        await client('posts').truncate();
-        await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+        await fixtureManager.reset();
 
         // Init dependencies
         events = new AsyncEvents();
@@ -1358,6 +1355,452 @@ describe('KnexPostRepository', () => {
             1,
             PostCreatedEvent.getName(),
             new PostCreatedEvent(post),
+        );
+    });
+
+    it('Adds Article to outbox', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const post = await fixtureManager.createPost(account, {
+            type: PostType.Article,
+        });
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: post.id,
+                outbox_type: OutboxType.Original,
+            })
+            .select('*')
+            .first();
+
+        assert(outboxEntry, 'An outbox entry should have been created');
+        assert.equal(
+            outboxEntry.post_type,
+            PostType.Article,
+            'Post type should be Article',
+        );
+        assert.equal(
+            outboxEntry.author_id,
+            account.id,
+            'Author ID should match',
+        );
+        assert.equal(
+            outboxEntry.account_id,
+            account.id,
+            'Outbox account ID should match account ID of the post author',
+        );
+    });
+
+    it('Adds Note to outbox', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const post = await fixtureManager.createPost(account);
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: post.id,
+                outbox_type: OutboxType.Original,
+            })
+            .select('*')
+            .first();
+
+        assert(outboxEntry, 'An outbox entry should have been created');
+        assert.equal(
+            outboxEntry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            outboxEntry.author_id,
+            account.id,
+            'Author ID should match',
+        );
+        assert.equal(
+            outboxEntry.account_id,
+            account.id,
+            'Outbox account ID should match account ID of the post author',
+        );
+    });
+
+    it('Adds Reply to outbox', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [replyAccount] = await fixtureManager.createInternalAccount();
+
+        const originalPost = await fixtureManager.createPost(account);
+
+        const reply = await fixtureManager.createReply(
+            replyAccount,
+            originalPost,
+        );
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: reply.id,
+                outbox_type: OutboxType.Reply,
+            })
+            .select('*')
+            .first();
+
+        assert(outboxEntry, 'An outbox entry should have been created');
+        assert.equal(
+            outboxEntry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            outboxEntry.author_id,
+            replyAccount.id,
+            'Author ID should match reply account',
+        );
+        assert.equal(
+            outboxEntry.account_id,
+            replyAccount.id,
+            'Outbox account ID should match account ID of the reply author',
+        );
+    });
+
+    it('Adds outbox entries for reposts', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter1] = await fixtureManager.createInternalAccount();
+        const [reposter2] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+
+        post.addRepost(reposter1);
+        post.addRepost(reposter2);
+        await postRepository.save(post);
+
+        // Check all outbox entries
+        const outboxEntries = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*')
+            .orderBy('outbox_type');
+
+        assert.equal(outboxEntries.length, 3, 'Should have 3 outbox entries');
+
+        const originalEntry = outboxEntries.find(
+            (entry) => entry.outbox_type === OutboxType.Original,
+        );
+        assert(originalEntry, 'Should have original post entry');
+        assert.equal(
+            originalEntry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            originalEntry.author_id,
+            account.id,
+            'Author ID should match original author',
+        );
+
+        // Verify repost entries
+        const repostEntries = outboxEntries.filter(
+            (entry) => entry.outbox_type === OutboxType.Repost,
+        );
+        assert.equal(repostEntries.length, 2, 'Should have 2 repost entries');
+
+        const reposter1Entry = repostEntries.find(
+            (entry) => entry.account_id === reposter1.id,
+        );
+        assert(reposter1Entry, 'Should have entry for reposter 1');
+        assert.equal(
+            reposter1Entry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            reposter1Entry.author_id,
+            account.id,
+            "Author ID should be original author's account ID",
+        );
+
+        const reposter2Entry = repostEntries.find(
+            (entry) => entry.account_id === reposter2.id,
+        );
+        assert(reposter2Entry, 'Should have entry for reposter 2');
+        assert.equal(
+            reposter2Entry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            reposter2Entry.author_id,
+            account.id,
+            "Author ID should be original author's account ID",
+        );
+    });
+
+    it('Updates outbox entries when adding and removing reposts', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter1] = await fixtureManager.createInternalAccount();
+        const [reposter2] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+
+        const initialOutboxEntries = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            initialOutboxEntries.length,
+            1,
+            'Should have 1 outbox entry initially (original post)',
+        );
+        assert.equal(
+            initialOutboxEntries[0].outbox_type,
+            OutboxType.Original,
+            'Initial entry should be of type Original',
+        );
+
+        // Add two reposts
+        post.addRepost(reposter1);
+        post.addRepost(reposter2);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterReposts = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterReposts.length,
+            3,
+            'Should have 3 outbox entries after adding reposts (1 original + 2 reposts)',
+        );
+
+        // Remove one repost
+        post.removeRepost(reposter1);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterRemove = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterRemove.length,
+            2,
+            'Should have 2 outbox entries after removing one repost (1 original + 1 repost)',
+        );
+
+        const remainingRepostEntries = outboxEntriesAfterRemove.filter(
+            (entry) => entry.outbox_type === OutboxType.Repost,
+        );
+        assert.equal(
+            remainingRepostEntries.length,
+            1,
+            'Should have 1 repost entry remaining',
+        );
+        assert.equal(
+            remainingRepostEntries[0].account_id,
+            reposter2.id,
+            'Remaining repost entry should be for reposter 2',
+        );
+    });
+
+    it('Deletes original post and repost outbox entries when a post is deleted', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter1] = await fixtureManager.createInternalAccount();
+        const [reposter2] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+        post.addRepost(reposter1);
+        post.addRepost(reposter2);
+        await postRepository.save(post);
+
+        const outboxEntriesBeforeDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesBeforeDelete.length,
+            3,
+            'Should have 3 outbox entries before deletion (1 for original post + 2 for reposts)',
+        );
+
+        // Delete the post
+        post.delete(account);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterDelete.length,
+            0,
+            'Should have no outbox entries after deletion',
+        );
+    });
+
+    it('Preserves reply outbox entries when original post is deleted', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+
+        const reply = await fixtureManager.createReply(account, post);
+
+        const outboxEntriesBeforeDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .orWhere({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesBeforeDelete.length,
+            2,
+            'Should have 2 outbox entries before deletion (1 for original post, 1 for reply)',
+        );
+
+        // Delete the original post
+        post.delete(account);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .orWhere({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterDelete.length,
+            1,
+            'Should have 1 outbox entry after deletion (only the reply entry should remain)',
+        );
+
+        const remainingEntry = outboxEntriesAfterDelete[0];
+        assert.equal(
+            remainingEntry.post_id,
+            reply.id,
+            'The remaining entry should be for the reply post',
+        );
+        assert.equal(
+            remainingEntry.outbox_type,
+            OutboxType.Reply,
+            'The remaining entry should be a reply type',
+        );
+    });
+
+    it('Handles reposting a reply and its deletion', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter] = await fixtureManager.createInternalAccount();
+
+        const originalPost = await fixtureManager.createPost(account);
+
+        const originalPostOutbox = await client('outboxes')
+            .where({
+                post_id: originalPost.id,
+            })
+            .select('*');
+        assert.equal(
+            originalPostOutbox.length,
+            1,
+            'Should have 1 outbox entry for original post',
+        );
+        assert.equal(
+            originalPostOutbox[0].outbox_type,
+            OutboxType.Original,
+            'Original post should have Original outbox type',
+        );
+
+        const reply = await fixtureManager.createReply(account, originalPost);
+
+        const replyOutbox = await client('outboxes')
+            .where({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            replyOutbox.length,
+            1,
+            'Should have 1 outbox entry for reply',
+        );
+        assert.equal(
+            replyOutbox[0].outbox_type,
+            OutboxType.Reply,
+            'Reply should have Reply outbox type',
+        );
+
+        // Add repost to the reply
+        reply.addRepost(reposter);
+        await postRepository.save(reply);
+
+        const outboxAfterRepost = await client('outboxes')
+            .where({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxAfterRepost.length,
+            2,
+            'Should have 2 outbox entries for reply (1 reply + 1 repost)',
+        );
+
+        // Verify repost entry
+        const repostEntry = outboxAfterRepost.find(
+            (entry) => entry.outbox_type === OutboxType.Repost,
+        );
+        assert(repostEntry, 'Should have repost entry');
+        assert.equal(
+            repostEntry.account_id,
+            reposter.id,
+            'Repost entry should be for reposter',
+        );
+        assert.equal(
+            repostEntry.author_id,
+            account.id,
+            'Repost entry should have original author ID',
+        );
+
+        // Delete the reply
+        reply.delete(account);
+        await postRepository.save(reply);
+
+        const outboxAfterDelete = await client('outboxes')
+            .where({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxAfterDelete.length,
+            0,
+            'Should have no outbox entries for deleted reply',
+        );
+
+        const originalPostOutboxAfterDelete = await client('outboxes')
+            .where({
+                post_id: originalPost.id,
+            })
+            .select('*');
+        assert.equal(
+            originalPostOutboxAfterDelete.length,
+            1,
+            'Original post should still have its outbox entry',
+        );
+    });
+
+    it('Does not create outbox entries for external accounts', async () => {
+        const externalAccount = await fixtureManager.createExternalAccount();
+
+        const post = await fixtureManager.createPost(externalAccount);
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*')
+            .first();
+
+        assert(
+            !outboxEntry,
+            'No outbox entry should be created for external accounts',
         );
     });
 });

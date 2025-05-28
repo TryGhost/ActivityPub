@@ -12,6 +12,12 @@ export enum PostType {
     Tombstone = 2,
 }
 
+export enum OutboxType {
+    Original = 0,
+    Repost = 1,
+    Reply = 2,
+}
+
 export type CreatePostType = Exclude<PostType, PostType.Tombstone>;
 
 export enum Audience {
