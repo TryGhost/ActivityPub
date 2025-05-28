@@ -16,13 +16,28 @@ describe('GCPStorageService', () => {
     let mockLogger: Logger;
 
     async function createMockFile(
-        type: 'image/jpeg' | 'image/png' | 'image/webp',
+        type:
+            | 'image/jpeg'
+            | 'image/png'
+            | 'image/webp'
+            | 'image/heic'
+            | 'image/heif',
         fileName: string,
         height = 100,
         width = 100,
     ): Promise<File> {
         // Create an in-memory image, with the given height/width
-        const imageType = type.split('/')[1] as 'jpeg' | 'png' | 'webp';
+        const imageType = type.split('/')[1] as
+            | 'jpeg'
+            | 'png'
+            | 'webp'
+            | 'heic'
+            | 'heif';
+
+        // For HEIC/HEIF, we'll create a JPEG buffer since Sharp might not support HEIC in tests
+        const formatForSharp =
+            imageType === 'heic' || imageType === 'heif' ? 'jpeg' : imageType;
+
         const buffer = await sharp({
             create: {
                 width,
@@ -31,7 +46,7 @@ describe('GCPStorageService', () => {
                 background: { r: 255, g: 0, b: 0 },
             },
         })
-            .toFormat(imageType)
+            .toFormat(formatForSharp as 'jpeg' | 'png' | 'webp')
             .toBuffer();
 
         return new File([buffer], fileName, { type });
@@ -160,6 +175,67 @@ describe('GCPStorageService', () => {
 
             const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
             expect(storagePath).toMatch(/^images\/test-uuid\/[a-f0-9-]+$/);
+        });
+
+        it('accepts HEIC files as valid image type', async () => {
+            const heicFile = await createMockFile('image/heic', 'photo.heic');
+
+            const result = await service.saveFile(heicFile, 'test-uuid');
+
+            expect(result).toEqual(
+                ok(
+                    expect.stringMatching(
+                        /^http:\/\/localhost:4443\/storage\/v1\/b\/test-bucket\/o\/images%2Ftest-uuid%2F[a-f0-9-]+\.jpg\?alt=media$/,
+                    ),
+                ),
+            );
+        });
+
+        it('accepts HEIF files as valid image type', async () => {
+            const heifFile = await createMockFile('image/heif', 'photo.heif');
+
+            const result = await service.saveFile(heifFile, 'test-uuid');
+
+            expect(result).toEqual(
+                ok(
+                    expect.stringMatching(
+                        /^http:\/\/localhost:4443\/storage\/v1\/b\/test-bucket\/o\/images%2Ftest-uuid%2F[a-f0-9-]+\.jpg\?alt=media$/,
+                    ),
+                ),
+            );
+        });
+
+        it('converts HEIC files to JPEG with correct extension', async () => {
+            const heicFile = await createMockFile('image/heic', 'photo.heic');
+
+            await service.saveFile(heicFile, 'test-uuid');
+
+            const [storagePath] = (mockBucket.file as Mock).mock.calls[0];
+            expect(storagePath).toMatch(/\.jpg$/);
+        });
+
+        it('sets correct content type for converted HEIC files', async () => {
+            const heicFile = await createMockFile('image/heic', 'photo.heic');
+            const mockFileSave = vi.fn().mockResolvedValue(undefined);
+            const mockFileInstance = {
+                save: mockFileSave,
+                publicUrl: vi
+                    .fn()
+                    .mockReturnValue('https://example.com/test.jpg'),
+            };
+            (mockBucket.file as Mock).mockReturnValue(mockFileInstance);
+
+            await service.saveFile(heicFile, 'test-uuid');
+
+            expect(mockFileSave).toHaveBeenCalledWith(
+                expect.any(Buffer),
+                expect.objectContaining({
+                    metadata: {
+                        contentType: 'image/jpeg',
+                    },
+                    resumable: false,
+                }),
+            );
         });
     });
 
@@ -420,6 +496,38 @@ describe('GCPStorageService', () => {
             expect(compressedBuffer).toBeInstanceOf(Buffer);
             expect(compressedBuffer.length).toEqual(originalSize);
             expect(compressedBuffer.toString()).toBe(textContent);
+        });
+
+        it('converts HEIC file to JPEG format', async () => {
+            const heicFile = await createMockFile('image/heic', 'photo.heic');
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(heicFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+
+            // Verify the output is JPEG format
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('jpeg');
+        });
+
+        it('converts HEIF file to JPEG format', async () => {
+            const heifFile = await createMockFile('image/heif', 'photo.heif');
+
+            const compressedBuffer = await (
+                service as unknown as {
+                    compressFile: (file: File) => Promise<Buffer>;
+                }
+            ).compressFile(heifFile);
+
+            expect(compressedBuffer).toBeInstanceOf(Buffer);
+
+            // Verify the output is JPEG format
+            const metadata = await sharp(compressedBuffer).metadata();
+            expect(metadata.format).toBe('jpeg');
         });
 
         it('returns original buffer if compression fails', async () => {
