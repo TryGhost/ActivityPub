@@ -9,6 +9,8 @@ const ALLOWED_IMAGE_TYPES = [
     'image/jpeg',
     'image/png',
     'image/webp',
+    'image/heic',
+    'image/heif',
 ];
 
 type FileValidationError = 'file-too-large' | 'file-type-not-supported';
@@ -74,12 +76,18 @@ export class GCPStorageService {
             return validationResult;
         }
 
-        const storagePath = this.getStoragePath(file.name, accountUuid);
+        // Check if this is a HEIC/HEIF file that will be converted to JPEG
+        const format = file.type.split('/')[1];
+        const isHeicFile = format === 'heic' || format === 'heif';
+        const outputExtension = isHeicFile ? 'jpg' : undefined;
+        const outputContentType = isHeicFile ? 'image/jpeg' : file.type;
+
+        const storagePath = this.getStoragePath(file.name, accountUuid, outputExtension);
         const compressedBuffer = await this.compressFile(file);
 
         await this.bucket.file(storagePath).save(compressedBuffer, {
             metadata: {
-                contentType: file.type,
+                contentType: outputContentType,
             },
             // resumable uploads (default: true) use a session and chunked uploads.
             // Disabled it in dev/testing because resumable mode can be unreliable with GCS emulators.
@@ -97,10 +105,10 @@ export class GCPStorageService {
         return ok(fileUrl);
     }
 
-    private getStoragePath(fileName: string, accountUuid: string): string {
-        const extension = fileName.includes('.')
+    private getStoragePath(fileName: string, accountUuid: string, overrideExtension?: string): string {
+        const extension = overrideExtension || (fileName.includes('.')
             ? fileName.split('.').pop()?.toLowerCase()
-            : '';
+            : '');
         let path = `images/${accountUuid}/${uuidv4()}`;
         if (extension) {
             path = `${path}.${extension}`;
@@ -133,16 +141,18 @@ export class GCPStorageService {
         const fileBuffer = Buffer.concat(chunks);
 
         try {
-            const sharpPipeline = sharp(fileBuffer).resize({
-                width: 2000,
-                height: 2000,
-                fit: 'inside',
-                withoutEnlargement: true,
-            });
+            const sharpPipeline = sharp(fileBuffer)
+                .rotate()
+                .resize({
+                    width: 2000,
+                    height: 2000,
+                    fit: 'inside',
+                    withoutEnlargement: true,
+                });
 
             const format = file.type.split('/')[1];
 
-            if (format === 'jpeg' || format === 'jpg') {
+            if (format === 'jpeg' || format === 'jpg' || format === 'heic' || format === 'heif') {
                 return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
             }
 
