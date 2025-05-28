@@ -45,14 +45,7 @@ describe('KnexPostRepository', () => {
     });
 
     beforeEach(async () => {
-        // Clean up the database
-        await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client('reposts').truncate();
-        await client('likes').truncate();
-        await client('mentions').truncate();
-        await client('posts').truncate();
-        await client('outboxes').truncate();
-        await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+        await fixtureManager.reset();
 
         // Init dependencies
         events = new AsyncEvents();
