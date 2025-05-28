@@ -68,6 +68,7 @@ describe('AccountView', () => {
         await fixtureManager.reset();
 
         vi.restoreAllMocks();
+        await db('outboxes').truncate();
     });
 
     describe('viewById', () => {

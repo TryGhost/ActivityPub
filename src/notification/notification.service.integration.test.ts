@@ -27,6 +27,7 @@ describe('NotificationService', () => {
 
     beforeEach(async () => {
         await fixtureManager.reset();
+        await client('outboxes').truncate();
     });
 
     describe('getNotificationsData', () => {

@@ -9,7 +9,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { type MentionedAccount, Post } from './post.entity';
+import { type MentionedAccount, OutboxType, Post } from './post.entity';
 
 type ThreadPosts = {
     post: Post;
@@ -439,6 +439,7 @@ export class KnexPostRepository {
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
+            let outboxType: OutboxType = OutboxType.Original;
 
             if (isNewPost) {
                 const { id, isDuplicate } = await this.insertPost(
@@ -465,7 +466,16 @@ export class KnexPostRepository {
                             reply_count: this.db.raw('reply_count + 1'),
                         })
                         .where({ id: post.inReplyTo });
+                    outboxType = OutboxType.Reply;
                 }
+
+                // Add outbox entry for original post or reply
+                await this.insertOutboxItems(
+                    post,
+                    outboxType,
+                    [post.author.id],
+                    transaction,
+                );
 
                 if (likesToAdd.length > 0) {
                     await this.insertLikes(post, likesToAdd, transaction);
@@ -478,6 +488,14 @@ export class KnexPostRepository {
 
                     repostAccountIds = repostsToAdd.map(
                         (accountId) => accountId,
+                    );
+
+                    // Add outbox entries for reposts
+                    await this.insertOutboxItems(
+                        post,
+                        OutboxType.Repost,
+                        repostAccountIds,
+                        transaction,
                     );
                 }
 
@@ -514,6 +532,11 @@ export class KnexPostRepository {
 
                     // Delete mentions associated with the deleted post
                     await transaction('mentions')
+                        .where({ post_id: post.id })
+                        .del();
+
+                    // Delete outboxes associated with the deleted post
+                    await transaction('outboxes')
                         .where({ post_id: post.id })
                         .del();
 
@@ -591,6 +614,24 @@ export class KnexPostRepository {
                                 ),
                             })
                             .where({ id: post.id });
+                    }
+
+                    if (repostsToRemove.length > 0) {
+                        await this.removeOutboxItems(
+                            post,
+                            OutboxType.Repost,
+                            repostsToRemove,
+                            transaction,
+                        );
+                    }
+
+                    if (repostsToAdd.length > 0) {
+                        await this.insertOutboxItems(
+                            post,
+                            OutboxType.Repost,
+                            repostAccountIds,
+                            transaction,
+                        );
                     }
                 }
             }
@@ -805,6 +846,66 @@ export class KnexPostRepository {
             insertedLikesCount: count,
             accountIdsInserted: newLikeAccountIds,
         };
+    }
+
+    private async insertOutboxItems(
+        post: Post,
+        outboxType: OutboxType,
+        outboxAccountIds: number[],
+        transaction: Knex.Transaction,
+    ) {
+        try {
+            // We want to insert outbox items for internal accounts only
+            const internalAccountIds = await transaction('users')
+                .whereIn('account_id', outboxAccountIds)
+                .select('account_id');
+
+            if (internalAccountIds.length === 0) {
+                return;
+            }
+
+            const outboxItemsToInsert = internalAccountIds.map(
+                ({ account_id }) => ({
+                    account_id: account_id,
+                    post_id: post.id,
+                    post_type: post.type,
+                    outbox_type: outboxType,
+                    published_at:
+                        outboxType === OutboxType.Repost
+                            ? new Date()
+                            : post.publishedAt,
+                    author_id: post.author.id,
+                }),
+            );
+
+            await transaction('outboxes').insert(outboxItemsToInsert);
+        } catch (err) {
+            // If the item is already in the outbox, we can ignore it
+            if (
+                err instanceof Error &&
+                'code' in err &&
+                err.code === 'ER_DUP_ENTRY'
+            ) {
+                return;
+            }
+
+            throw err;
+        }
+    }
+
+    private async removeOutboxItems(
+        post: Post,
+        outboxType: OutboxType,
+        outboxAccountIds: number[],
+        transaction: Knex.Transaction,
+    ) {
+        await transaction('outboxes')
+            .where({
+                post_id: post.id,
+                outbox_type: outboxType,
+            })
+            .whereIn('account_id', outboxAccountIds)
+            .del();
     }
 
     /**

@@ -18,6 +18,7 @@ describe('ModerationService', () => {
 
     beforeEach(async () => {
         await fixtureManager.reset();
+        await client('outboxes').truncate();
     });
 
     describe('filterUsersForPost', () => {
