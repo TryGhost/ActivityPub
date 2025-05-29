@@ -261,7 +261,7 @@ export function createGetAccountPostsHandler(
                 switch (error) {
                     case 'not-internal-account':
                         logger.error(`Account is not internal for ${handle}`);
-                        return new Response(null, { status: 404 });
+                        return new Response(null, { status: 500 });
                     default:
                         return exhaustiveCheck(error);
                 }
@@ -313,9 +313,6 @@ export function createGetAccountPostsHandler(
                             }),
                             { status: 200 },
                         );
-                    case 'not-internal-account':
-                        logger.error(`Account is not internal for ${handle}`);
-                        return new Response(null, { status: 404 });
                     default:
                         return exhaustiveCheck(error);
                 }

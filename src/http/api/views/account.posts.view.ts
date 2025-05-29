@@ -7,7 +7,14 @@ import {
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { type Result, error, getValue, isError, ok } from 'core/result';
+import {
+    type Result,
+    error,
+    getError,
+    getValue,
+    isError,
+    ok,
+} from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { ContentPreparer } from 'post/content';
@@ -92,15 +99,20 @@ export class AccountPostsView {
         currentContextAccount: Account,
         limit: number,
         cursor: string | null,
-    ): Promise<Result<AccountPosts, GetPostsError | GetPostsFromOutboxError>> {
+    ): Promise<Result<AccountPosts, GetPostsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
-            return await this.getPostsFromOutbox(
+            const result = await this.getPostsFromOutbox(
                 account,
                 currentContextAccount.id,
                 limit,
                 cursor,
             );
+            if (isError(result)) {
+                throw getError(result);
+            }
+
+            return result;
         }
 
         //Otherwise, do a remote lookup to fetch the posts

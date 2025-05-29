@@ -8,7 +8,7 @@ import type {
 } from 'account/types';
 import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
-import { getValue, isError } from 'core/result';
+import { getError, getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
 import { Audience, Post, PostType } from 'post/post.entity';
 import { KnexPostRepository } from 'post/post.repository.knex';
@@ -362,6 +362,22 @@ describe('AccountPostsView', () => {
                     expect(accountPosts2.results[0].id).toBe(post1.apId.href);
                     expect(accountPosts2.nextCursor).toBeNull();
                 }
+            }
+        });
+
+        it('returns an error if the account is not internal', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const post = await fixtureManager.createPost(externalAccount);
+            const result = await viewer.getPostsFromOutbox(
+                externalAccount,
+                contextAccount.id,
+                10,
+                null,
+            );
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('not-internal-account');
             }
         });
     });
