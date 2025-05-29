@@ -51,9 +51,6 @@ jobs:
     environment: build
     runs-on: ubuntu-latest
     needs: [lint, check-yarn-lock]
-    permissions:
-      contents: read
-      packages: write
     outputs:
       migrations_docker_version: ${{ steps.migrations-docker-metadata.outputs.version }}
       activitypub_docker_version: ${{ steps.activitypub-docker-metadata-private.outputs.version }}
