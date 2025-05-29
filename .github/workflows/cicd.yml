@@ -132,9 +132,8 @@ jobs:
           load: true
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
-      # TODO: Uncomment this when PR is ready!
-      # - name: "Run Tests"
-      #   run: yarn test
+      - name: "Run Tests"
+        run: yarn test
 
       - name: "Authenticate with GCP"
         if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
