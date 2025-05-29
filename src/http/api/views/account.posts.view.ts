@@ -11,7 +11,7 @@ import { type Result, error, getValue, isError, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { ContentPreparer } from 'post/content';
-import { type Mention, PostType } from 'post/post.entity';
+import { type Mention, OutboxType, PostType } from 'post/post.entity';
 import type { PostDTO } from '../types';
 
 export type GetPostsError =
@@ -19,6 +19,8 @@ export type GetPostsError =
     | 'error-getting-outbox'
     | 'no-page-found'
     | 'not-an-actor';
+
+export type GetPostsFromOutboxError = 'not-internal-account';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;
@@ -93,14 +95,19 @@ export class AccountPostsView {
     ): Promise<Result<AccountPosts, GetPostsError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
-            return ok(
-                await this.getPostsByAccount(
-                    account.id,
-                    currentContextAccount.id,
-                    limit,
-                    cursor,
-                ),
+            const result = await this.getPostsFromOutbox(
+                account,
+                currentContextAccount.id,
+                limit,
+                cursor,
             );
+            if (isError(result)) {
+                throw new Error(
+                    'Account was not internal, after checking account was internal',
+                );
+            }
+
+            return result;
         }
 
         //Otherwise, do a remote lookup to fetch the posts
@@ -112,6 +119,11 @@ export class AccountPostsView {
         );
     }
 
+    /**
+     * Get posts by account
+     *
+     * @deprecated Use getPostsFromOutbox instead
+     */
     async getPostsByAccount(
         accountId: number,
         contextAccountId: number,
@@ -284,6 +296,118 @@ export class AccountPostsView {
             ),
             nextCursor: hasMore ? lastResult.published_date : null,
         };
+    }
+
+    async getPostsFromOutbox(
+        account: Account,
+        contextAccountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<Result<AccountPosts, GetPostsFromOutboxError>> {
+        if (!account.isInternal) {
+            return error('not-internal-account');
+        }
+
+        const query = this.db('outboxes')
+            .select(
+                // Post fields
+                'posts.id as post_id',
+                'posts.type as post_type',
+                'posts.title as post_title',
+                'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
+                'posts.content as post_content',
+                'posts.url as post_url',
+                'posts.image_url as post_image_url',
+                'posts.published_at as post_published_at',
+                'posts.like_count as post_like_count',
+                this.db.raw(`
+                    CASE
+                        WHEN likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_current_user
+                `),
+                'posts.reply_count as post_reply_count',
+                'posts.reading_time_minutes as post_reading_time_minutes',
+                'posts.attachments as post_attachments',
+                'posts.repost_count as post_repost_count',
+                this.db.raw(`
+                    CASE
+                        WHEN reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_current_user
+                `),
+                'posts.ap_id as post_ap_id',
+                // Author fields
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.avatar_url as author_avatar_url',
+                // Reposter fields
+                'reposter_account.id as reposter_id',
+                'reposter_account.name as reposter_name',
+                'reposter_account.username as reposter_username',
+                'reposter_account.url as reposter_url',
+                'reposter_account.avatar_url as reposter_avatar_url',
+                // Outbox fields
+                'outboxes.published_at as outbox_published_at',
+                'outboxes.outbox_type as outbox_type',
+            )
+            .innerJoin('posts', 'posts.id', 'outboxes.post_id')
+            .innerJoin(
+                'accounts as author_account',
+                'author_account.id',
+                'posts.author_id',
+            )
+            .leftJoin('accounts as reposter_account', function () {
+                this.on(
+                    'reposter_account.id',
+                    '=',
+                    'outboxes.account_id',
+                ).andOnVal(
+                    'outboxes.outbox_type',
+                    '=',
+                    OutboxType.Repost.toString(),
+                );
+            })
+            .leftJoin('likes', function () {
+                this.on('likes.post_id', 'posts.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .leftJoin('reposts', function () {
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .where('outboxes.account_id', account.id)
+            .whereNot('outboxes.outbox_type', OutboxType.Reply)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('outboxes.published_at', '<', cursor);
+                }
+            })
+            .orderBy('outboxes.published_at', 'desc')
+            .limit(limit + 1);
+
+        const results = await query;
+
+        const hasMore = results.length > limit;
+        const paginatedResults = results.slice(0, limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+
+        return ok({
+            results: paginatedResults.map((result: GetProfileDataResultRow) =>
+                this.mapToPostDTO(result, contextAccountId),
+            ),
+            nextCursor:
+                hasMore && lastResult ? lastResult.outbox_published_at : null,
+        });
     }
 
     async getPostsByRemoteLookUp(

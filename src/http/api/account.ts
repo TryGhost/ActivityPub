@@ -249,12 +249,24 @@ export function createGetAccountPostsHandler(
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
-            accountPosts = await accountPostsView.getPostsByAccount(
-                currentContextAccount.id,
-                currentContextAccount.id,
-                params.limit,
-                params.cursor,
-            );
+            const accountPostsResult =
+                await accountPostsView.getPostsFromOutbox(
+                    currentContextAccount,
+                    currentContextAccount.id,
+                    params.limit,
+                    params.cursor,
+                );
+            if (isError(accountPostsResult)) {
+                const error = getError(accountPostsResult);
+                switch (error) {
+                    case 'not-internal-account':
+                        logger.error(`Account is not internal for ${handle}`);
+                        return new Response(null, { status: 500 });
+                    default:
+                        return exhaustiveCheck(error);
+                }
+            }
+            accountPosts = getValue(accountPostsResult);
         } else {
             const ctx = fedifyContextFactory.getFedifyContext();
             const apId = await lookupAPIdByHandle(ctx, handle);
