@@ -20,6 +20,8 @@ export type GetPostsError =
     | 'no-page-found'
     | 'not-an-actor';
 
+export type GetPostsFromOutboxError = 'not-internal-account';
+
 interface BaseGetProfileDataResultRow {
     post_id: number;
     post_type: PostType;
@@ -90,7 +92,7 @@ export class AccountPostsView {
         currentContextAccount: Account,
         limit: number,
         cursor: string | null,
-    ): Promise<Result<AccountPosts, GetPostsError>> {
+    ): Promise<Result<AccountPosts, GetPostsError | GetPostsFromOutboxError>> {
         //If we found the account in our db and it's an internal account, do an internal lookup
         if (account?.isInternal) {
             return await this.getPostsFromOutbox(
@@ -294,9 +296,9 @@ export class AccountPostsView {
         contextAccountId: number,
         limit: number,
         cursor: string | null,
-    ): Promise<Result<AccountPosts, GetPostsError>> {
+    ): Promise<Result<AccountPosts, GetPostsFromOutboxError>> {
         if (!account.isInternal) {
-            return error('error-getting-outbox');
+            return error('not-internal-account');
         }
 
         const query = this.db('outboxes')

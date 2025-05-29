@@ -257,14 +257,14 @@ export function createGetAccountPostsHandler(
                     params.cursor,
                 );
             if (isError(accountPostsResult)) {
-                logger.error(`Error getting outbox for ${handle}`);
-                return new Response(
-                    JSON.stringify({
-                        posts: [],
-                        next: null,
-                    }),
-                    { status: 200 },
-                );
+                const error = getError(accountPostsResult);
+                switch (error) {
+                    case 'not-internal-account':
+                        logger.error(`Account is not internal for ${handle}`);
+                        return new Response(null, { status: 404 });
+                    default:
+                        return exhaustiveCheck(error);
+                }
             }
             accountPosts = getValue(accountPostsResult);
         } else {
@@ -313,6 +313,9 @@ export function createGetAccountPostsHandler(
                             }),
                             { status: 200 },
                         );
+                    case 'not-internal-account':
+                        logger.error(`Account is not internal for ${handle}`);
+                        return new Response(null, { status: 404 });
                     default:
                         return exhaustiveCheck(error);
                 }
