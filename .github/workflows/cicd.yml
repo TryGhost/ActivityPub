@@ -83,14 +83,13 @@ jobs:
 
       - name: "ActivityPub Docker metadata for public registry"
         id: activitypub-docker-metadata-public
+        if: github.ref == 'refs/heads/main'
         uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/tryghost/activitypub
           tags: |
-            ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
-            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.pull_request.number) || '' }}
-            type=raw,value=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha  }}
+            type=edge,branch=main
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -155,7 +154,7 @@ jobs:
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
       - name: "Login to GitHub Container Registry (public registry)"
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
+        if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -173,7 +172,7 @@ jobs:
           platforms: linux/amd64
 
       - name: "Push ActivityPub Docker image to public registry"
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
