@@ -179,7 +179,7 @@ jobs:
           push: true
           tags: ${{ steps.activitypub-docker-metadata-public.outputs.tags }}
           labels: ${{ steps.activitypub-docker-metadata-public.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
 
       - name: "Push Migrations Docker Image"
         if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
