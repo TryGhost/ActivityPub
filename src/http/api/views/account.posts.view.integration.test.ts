@@ -224,12 +224,10 @@ describe('AccountPostsView', () => {
     describe('getPostsFromOutbox', () => {
         let account: Account;
         let contextAccount: Account;
-        let postRepository: KnexPostRepository;
 
         beforeEach(async () => {
             [account] = await fixtureManager.createInternalAccount();
             [contextAccount] = await fixtureManager.createInternalAccount();
-            postRepository = new KnexPostRepository(db, events);
         });
 
         it('returns posts in descending outbox order', async () => {
