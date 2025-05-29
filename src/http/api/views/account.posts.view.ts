@@ -7,14 +7,7 @@ import {
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import {
-    type Result,
-    error,
-    getError,
-    getValue,
-    isError,
-    ok,
-} from 'core/result';
+import { type Result, error, getValue, isError, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { ContentPreparer } from 'post/content';
@@ -109,7 +102,9 @@ export class AccountPostsView {
                 cursor,
             );
             if (isError(result)) {
-                throw getError(result);
+                throw new Error(
+                    'Account was not internal, after checking account was internal',
+                );
             }
 
             return result;
