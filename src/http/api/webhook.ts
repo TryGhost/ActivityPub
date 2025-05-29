@@ -1,10 +1,8 @@
 import { z } from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import type { KnexAccountRepository } from '../../account/account.repository.knex';
+import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
-import { Post } from '../../post/post.entity';
-import type { KnexPostRepository } from '../../post/post.repository.knex';
 import { postToDTO } from './helpers/post';
 import { BadRequest } from './helpers/response';
 
@@ -42,10 +40,7 @@ const PostPublishedWebhookSchema = z.object({
  *
  * @param ctx App context instance
  */
-export function createPostPublishedWebhookHandler(
-    accountRepository: KnexAccountRepository,
-    postRepository: KnexPostRepository,
-) {
+export function createPostPublishedWebhookHandler(postService: PostService) {
     return async function handleWebhookPostPublished(ctx: AppContext) {
         let data: PostInput;
 
@@ -60,9 +55,12 @@ export function createPostPublishedWebhookHandler(
             return BadRequest('Could not parse payload');
         }
 
-        const account = await accountRepository.getBySite(ctx.get('site'));
+        const account = ctx.get('account');
 
-        const postResult = await Post.createArticleFromGhostPost(account, data);
+        const postResult = await postService.handleIncomingGhostPost(
+            account,
+            data,
+        );
 
         if (isError(postResult)) {
             const error = getError(postResult);
@@ -75,13 +73,16 @@ export function createPostPublishedWebhookHandler(
                     return BadRequest(
                         'Error creating post: the post content is private',
                     );
+                case 'post-already-exists':
+                    return BadRequest(
+                        'Webhook already processed for this post',
+                    );
                 default:
                     return exhaustiveCheck(error);
             }
         }
-        const post = getValue(postResult);
 
-        await postRepository.save(post);
+        const post = getValue(postResult);
 
         return new Response(JSON.stringify(postToDTO(post)), {
             headers: {

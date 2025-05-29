@@ -952,9 +952,7 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    spanWrapper(
-        createPostPublishedWebhookHandler(accountRepository, postRepository),
-    ),
+    spanWrapper(createPostPublishedWebhookHandler(postService)),
 );
 
 function requireRole(...roles: GhostRole[]) {

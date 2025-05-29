@@ -24,6 +24,8 @@ import type {
 } from 'storage/gcloud-storage/gcp-storage.service';
 import { ContentPreparer } from './content';
 import {
+    type CreatePostError,
+    type GhostPost,
     type Mention,
     Post,
     type PostAttachment,
@@ -45,6 +47,8 @@ export type RepostError =
     | GetByApIdError
     | 'already-reposted'
     | InteractionError;
+
+export type GhostPostError = CreatePostError | 'post-already-exists';
 
 export class PostService {
     constructor(
@@ -378,6 +382,32 @@ export class PostService {
         }
 
         post.addRepost(account);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async handleIncomingGhostPost(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Result<Post, GhostPostError>> {
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+
+        if (isError(postResult)) {
+            return postResult;
+        }
+
+        const post = getValue(postResult);
+
+        const existingPost = await this.postRepository.getByApId(post.apId);
+
+        if (existingPost) {
+            return error('post-already-exists');
+        }
 
         await this.postRepository.save(post);
 

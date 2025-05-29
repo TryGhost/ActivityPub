@@ -36,7 +36,7 @@ export type Metadata = {
 } & Record<string, unknown>;
 
 // TODO Deduplicate this with the webhook handler
-interface GhostPost {
+export interface GhostPost {
     title: string;
     uuid: string;
     html: string | null;
@@ -97,7 +97,7 @@ export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
     return post.audience === Audience.FollowersOnly;
 }
 
-type CreatePostError = 'private-content' | 'missing-content';
+export type CreatePostError = 'private-content' | 'missing-content';
 
 export class Post extends BaseEntity {
     public readonly uuid: string;

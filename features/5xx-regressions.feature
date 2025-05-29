@@ -17,3 +17,8 @@ Feature: We do not 5xx error for previously known regressions
     Given we are sent invalid type to the inbox
     Then we respond with a 400
 
+  Scenario: We do not throw a 5xx when we receive a second publish webhook
+    Given we are sent a publish webhook
+    When we are sent a second publish webhook for the same post
+    Then we respond with a 400
+
