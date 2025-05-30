@@ -7,7 +7,7 @@
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/app.ts --sourcemap --platform=neutral --bundle --packages=external --outfile=dist/app.js",
+    "build": "esbuild src/app.ts --sourcemap --platform=node --format=cjs --bundle --external:perf_hooks --external:ky-universal --external:sqlite3 --external:better-sqlite3 --external:mysql --external:tedious --external:pg --external:pg-query-stream --external:oracledb --external:@google-cloud/storage --outfile=dist/app.cjs",
     "build:watch": "concurrently \"yarn build --watch\" \"node --inspect=0.0.0.0:9229 --watch dist/app.js\"",
     "dev": "docker compose up activitypub nginx -d --build",
     "stop": "docker compose stop",
