@@ -37,6 +37,7 @@ import { CreateHandler } from 'activity-handlers/create.handler';
 import { FollowHandler } from 'activity-handlers/follow.handler';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
+import { asClass, asFunction, asValue, createContainer } from 'awilix';
 import { AsyncEvents } from 'core/events';
 import { get } from 'es-toolkit/compat';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
@@ -60,7 +61,7 @@ import { dispatchRejectActivity } from './activity-dispatchers/reject.dispatcher
 import { DeleteHandler } from './activity-handlers/delete.handler';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
 import { FediverseBridge } from './activitypub/fediverse-bridge';
-import { client } from './db';
+import { knex } from './db';
 import {
     acceptDispatcher,
     actorDispatcher,
@@ -131,9 +132,12 @@ import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
 
-await setupInstrumentation();
+const container = createContainer({
+    injectionMode: 'CLASSIC',
+    strict: true,
+});
 
-const logging = getLogger(['activitypub']);
+await setupInstrumentation();
 
 function toLogLevel(level: unknown): LogLevel | null {
     if (typeof level !== 'string') {
@@ -192,15 +196,25 @@ export type ContextData = {
     logger: Logger;
 };
 
-const fedifyKv = await KnexKvStore.create(client, 'key_value');
+const globalLogging = getLogger(['activitypub']);
+export const fedifyKv = await KnexKvStore.create(knex, 'key_value');
 
-const gcpStorageService = new GCPStorageService(logging);
+container.register('logging', asValue(globalLogging));
+container.register('client', asValue(knex));
+container.register('db', asValue(knex));
+container.register('fedifyKv', asValue(fedifyKv));
+container.register('globalDb', asValue(fedifyKv));
+
+container.register('events', asValue(new AsyncEvents()));
+
+container.register('flagService', asValue(new FlagService([])));
+
+container.register('storageService', asClass(GCPStorageService).singleton());
 
 try {
-    await gcpStorageService.init();
-    logging.info('GCP storage service initialised');
+    await container.resolve('storageService').init();
 } catch (err) {
-    logging.error('Failed to initialise GCP storage service {error}', {
+    globalLogging.error('Failed to initialise GCP storage service {error}', {
         error: err,
     });
     process.exit(1);
@@ -209,10 +223,10 @@ try {
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
 if (process.env.USE_MQ === 'true') {
-    logging.info('Message queue is enabled');
+    globalLogging.info('Message queue is enabled');
 
     try {
-        queue = await createMessageQueue(logging, {
+        queue = await createMessageQueue(globalLogging, {
             pubSubHost: process.env.MQ_PUBSUB_HOST,
             hostIsEmulator: !['staging', 'production'].includes(
                 process.env.NODE_ENV || '',
@@ -225,15 +239,16 @@ if (process.env.USE_MQ === 'true') {
         });
 
         queue.registerErrorListener((error) => Sentry.captureException(error));
+        container.register('queue', asValue(queue));
     } catch (err) {
-        logging.error('Failed to initialise message queue {error}', {
+        globalLogging.error('Failed to initialise message queue {error}', {
             error: err,
         });
 
         process.exit(1);
     }
 } else {
-    logging.info('Message queue is disabled');
+    globalLogging.info('Message queue is disabled');
 }
 
 export const fedify = createFederation<ContextData>({
@@ -248,6 +263,8 @@ export const fedify = createFederation<ContextData>({
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
 
+container.register('fedify', asValue(fedify));
+
 /**
  * Fedify request context with app specific context data
  *
@@ -256,78 +273,281 @@ export const fedify = createFederation<ContextData>({
 export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
-export const db = await KnexKvStore.create(client, 'key_value');
-
 if (process.env.MANUALLY_START_QUEUE === 'true') {
     fedify.startQueue({
-        db: scopeKvStore(db, ['UNUSED_HOST']),
-        globaldb: db,
-        logger: logging,
+        db: scopeKvStore(fedifyKv, ['UNUSED_HOST']),
+        globaldb: fedifyKv,
+        logger: globalLogging,
     });
 }
 
-const flagService = new FlagService([]);
+container.register(
+    'fedifyContextFactory',
+    asClass(FedifyContextFactory).singleton(),
+);
+container.register(
+    'accountRepository',
+    asClass(KnexAccountRepository).singleton(),
+);
+container.register('postRepository', asClass(KnexPostRepository).singleton());
+container.register('accountService', asClass(AccountService).singleton());
+container.register('postService', asClass(PostService).singleton());
+container.register(
+    'ghostService',
+    asValue({
+        getSiteSettings: getSiteSettings,
+    }),
+);
+container.register('siteService', asClass(SiteService).singleton());
+container.register('feedService', asClass(FeedService).singleton());
+container.register('fediverseBridge', asClass(FediverseBridge).singleton());
 
-const events = new AsyncEvents();
-const fedifyContextFactory = new FedifyContextFactory();
-
-const accountRepository = new KnexAccountRepository(client, events);
-const postRepository = new KnexPostRepository(client, events);
-
-const accountService = new AccountService(
-    client,
-    events,
-    accountRepository,
-    fedifyContextFactory,
+container.register('followersService', asClass(FollowersService).singleton());
+container.register('moderationService', asClass(ModerationService).singleton());
+container.register(
+    'notificationService',
+    asClass(NotificationService).singleton(),
+);
+container.register('feedUpdateService', asClass(FeedUpdateService).singleton());
+container.register(
+    'notificationEventService',
+    asClass(NotificationEventService).singleton(),
 );
 
-const followersService = new FollowersService(client);
+container.register('accountView', asClass(AccountView).singleton());
+container.register(
+    'accountFollowsView',
+    asClass(AccountFollowsView).singleton(),
+);
+container.register('accountPostsView', asClass(AccountPostsView).singleton());
+container.register('blocksView', asClass(BlocksView).singleton());
 
-const moderationService = new ModerationService(client);
+container.register('blockController', asClass(BlockController).singleton());
+container.register('followController', asClass(FollowController).singleton());
+container.register('likeController', asClass(LikeController).singleton());
 
-const postService = new PostService(
-    postRepository,
-    accountService,
-    fedifyContextFactory,
-    gcpStorageService,
-    moderationService,
+container.register('createHandler', asClass(CreateHandler).singleton());
+container.register('deleteHandler', asClass(DeleteHandler).singleton());
+container.register('followHandler', asClass(FollowHandler).singleton());
+container.register('deleteDispatcher', asClass(DeleteDispatcher).singleton());
+
+container.register(
+    'actorDispatcher',
+    asFunction((siteService, accountService) =>
+        actorDispatcher(siteService, accountService),
+    ).singleton(),
 );
 
-const accountView = new AccountView(client, fedifyContextFactory);
-const accountFollowsView = new AccountFollowsView(
-    client,
-    fedifyContextFactory,
-    moderationService,
+container.register(
+    'keypairDispatcher',
+    asFunction((siteService, accountService) =>
+        keypairDispatcher(siteService, accountService),
+    ).singleton(),
 );
-const accountPostsView = new AccountPostsView(client, fedifyContextFactory);
-const blocksView = new BlocksView(client);
-const siteService = new SiteService(client, accountService, {
-    getSiteSettings: getSiteSettings,
-});
-const feedService = new FeedService(client, moderationService);
-const feedUpdateService = new FeedUpdateService(events, feedService);
-feedUpdateService.init();
 
-const fediverseBridge = new FediverseBridge(
-    events,
-    fedifyContextFactory,
-    accountService,
+container.register(
+    'acceptHandler',
+    asFunction((accountService) =>
+        createAcceptHandler(accountService),
+    ).singleton(),
 );
+
+container.register(
+    'announceHandler',
+    asFunction((siteService, accountService, postService, postRepository) =>
+        createAnnounceHandler(
+            siteService,
+            accountService,
+            postService,
+            postRepository,
+        ),
+    ).singleton(),
+);
+
+container.register(
+    'likeHandler',
+    asFunction((accountService, postRepository, postService) =>
+        createLikeHandler(accountService, postRepository, postService),
+    ).singleton(),
+);
+
+container.register(
+    'undoHandler',
+    asFunction((accountService, postRepository, postService) =>
+        createUndoHandler(accountService, postRepository, postService),
+    ).singleton(),
+);
+
+container.register(
+    'followersDispatcher',
+    asFunction((siteService, accountRepository, followersService) =>
+        createFollowersDispatcher(
+            siteService,
+            accountRepository,
+            followersService,
+        ),
+    ).singleton(),
+);
+
+container.register(
+    'followersCounter',
+    asFunction((siteService, accountService) =>
+        createFollowersCounter(siteService, accountService),
+    ).singleton(),
+);
+
+container.register(
+    'followingDispatcher',
+    asFunction((siteService, accountService) =>
+        createFollowingDispatcher(siteService, accountService),
+    ).singleton(),
+);
+
+container.register(
+    'followingCounter',
+    asFunction((siteService, accountService) =>
+        createFollowingCounter(siteService, accountService),
+    ).singleton(),
+);
+
+// Register API handler factories
+container.register(
+    'getSiteDataHandler',
+    asFunction((siteService) => getSiteDataHandler(siteService)).singleton(),
+);
+
+container.register(
+    'postPublishedWebhookHandler',
+    asFunction((postService) =>
+        createPostPublishedWebhookHandler(postService),
+    ).singleton(),
+);
+
+container.register(
+    'webFingerHandler',
+    asFunction((accountRepository, siteService) =>
+        createWebFingerHandler(accountRepository, siteService),
+    ).singleton(),
+);
+
+container.register(
+    'repostActionHandler',
+    asFunction((postService) =>
+        createRepostActionHandler(postService),
+    ).singleton(),
+);
+
+container.register(
+    'derepostActionHandler',
+    asFunction((postService, postRepository) =>
+        createDerepostActionHandler(postService, postRepository),
+    ).singleton(),
+);
+
+container.register(
+    'searchHandler',
+    asFunction((accountView) => createSearchHandler(accountView)).singleton(),
+);
+
+container.register(
+    'getThreadHandler',
+    asFunction((postRepository, accountService) =>
+        createGetThreadHandler(postRepository, accountService),
+    ).singleton(),
+);
+
+container.register(
+    'getAccountHandler',
+    asFunction((accountView, accountRepository) =>
+        createGetAccountHandler(accountView, accountRepository),
+    ).singleton(),
+);
+
+container.register(
+    'updateAccountHandler',
+    asFunction((accountService) =>
+        createUpdateAccountHandler(accountService),
+    ).singleton(),
+);
+
+container.register(
+    'getAccountPostsHandler',
+    asFunction((accountRepository, accountPostsView, fedifyContextFactory) =>
+        createGetAccountPostsHandler(
+            accountRepository,
+            accountPostsView,
+            fedifyContextFactory,
+        ),
+    ).singleton(),
+);
+
+container.register(
+    'getAccountLikedPostsHandler',
+    asFunction((accountService, accountPostsView) =>
+        createGetAccountLikedPostsHandler(accountService, accountPostsView),
+    ).singleton(),
+);
+
+container.register(
+    'getAccountFollowsHandler',
+    asFunction((accountRepository, accountFollowsView, fedifyContextFactory) =>
+        createGetAccountFollowsHandler(
+            accountRepository,
+            accountFollowsView,
+            fedifyContextFactory,
+        ),
+    ).singleton(),
+);
+
+container.register(
+    'getFeedHandler',
+    asFunction(
+        (feedService, accountService) => (feedType: 'Feed' | 'Inbox') =>
+            createGetFeedHandler(feedService, accountService, feedType),
+    ).singleton(),
+);
+
+container.register(
+    'getPostHandler',
+    asFunction((postService, accountService) =>
+        createGetPostHandler(postService, accountService),
+    ).singleton(),
+);
+
+container.register(
+    'getNotificationsHandler',
+    asFunction((accountService, notificationService) =>
+        createGetNotificationsHandler(accountService, notificationService),
+    ).singleton(),
+);
+
+container.register(
+    'storageHandler',
+    asFunction((accountService, storageService) =>
+        createStorageHandler(accountService, storageService),
+    ).singleton(),
+);
+
+// Add missing factory for delete post handler
+container.register(
+    'deletePostHandler',
+    asFunction((accountRepository, postRepository, postService) =>
+        createDeletePostHandler(accountRepository, postRepository, postService),
+    ).singleton(),
+);
+
+// Initialize services that need it
+const fediverseBridge = container.resolve<FediverseBridge>('fediverseBridge');
 fediverseBridge.init();
 
-const notificationService = new NotificationService(client, moderationService);
-const notificationEventService = new NotificationEventService(
-    events,
-    notificationService,
+const feedUpdateService =
+    container.resolve<FeedUpdateService>('feedUpdateService');
+feedUpdateService.init();
+
+const notificationEventService = container.resolve<NotificationEventService>(
+    'notificationEventService',
 );
 notificationEventService.init();
-
-const blockController = new BlockController(accountService, blocksView);
-const followController = new FollowController(
-    accountService,
-    moderationService,
-);
-const likeController = new LikeController(postService, postRepository);
 
 /** Fedify */
 
@@ -346,16 +566,19 @@ function ensureCorrectContext<B, R>(
             (ctx as any).data = {};
         }
         if (!ctx.data.globaldb) {
-            ctx.data.globaldb = db;
+            ctx.data.globaldb = fedifyKv;
         }
         if (!ctx.data.logger) {
-            ctx.data.logger = logging;
+            ctx.data.logger = globalLogging;
         }
         // Ensure scoped data / objects are initialised on each execution
         // of this function - Fedify may reuse the context object across
         // multiple executions of an inbox listener
-        ctx.data.db = scopeKvStore(db, ['sites', host]);
+        ctx.data.db = scopeKvStore(fedifyKv, ['sites', host]);
 
+        const fedifyContextFactory = container.resolve<FedifyContextFactory>(
+            'fedifyContextFactory',
+        );
         return fedifyContextFactory.registerContext(ctx, () => {
             return fn(ctx, b);
         });
@@ -366,14 +589,21 @@ fedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher(
         '/.ghost/activitypub/users/{identifier}',
-        spanWrapper(actorDispatcher(siteService, accountService)),
+        spanWrapper((ctx: RequestContext<ContextData>, identifier: string) => {
+            const actorDispatcher = container.resolve('actorDispatcher');
+            return actorDispatcher(ctx, identifier);
+        }),
     )
     .mapHandle(async () => {
         return 'index'; // All identifiers are 'index'
     })
     .setKeyPairsDispatcher(
         ensureCorrectContext(
-            spanWrapper(keypairDispatcher(siteService, accountService)),
+            spanWrapper((ctx: Context<ContextData>, identifier: string) => {
+                const keypairDispatcher =
+                    container.resolve('keypairDispatcher');
+                return keypairDispatcher(ctx, identifier);
+            }),
         ),
     );
 
@@ -382,78 +612,77 @@ const inboxListener = fedify.setInboxListeners(
     '/.ghost/activitypub/inbox',
 );
 
-const createHandler = new CreateHandler(
-    postService,
-    accountService,
-    siteService,
-);
-
-const deleteHandler = new DeleteHandler(
-    postService,
-    accountService,
-    postRepository,
-);
-
-const followHandler = new FollowHandler(accountService, moderationService);
-
-const deleteDispatcher = new DeleteDispatcher();
-
 inboxListener
     .on(
         Follow,
         ensureCorrectContext(
-            spanWrapper(followHandler.handle.bind(followHandler)),
+            spanWrapper((ctx: Context<ContextData>, activity: Follow) => {
+                const followHandler =
+                    container.resolve<FollowHandler>('followHandler');
+                return followHandler.handle(ctx, activity);
+            }),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Accept,
-        ensureCorrectContext(spanWrapper(createAcceptHandler(accountService))),
+        ensureCorrectContext(
+            spanWrapper((ctx: Context<ContextData>, activity: Accept) => {
+                const acceptHandler = container.resolve('acceptHandler');
+                return acceptHandler(ctx, activity);
+            }),
+        ),
     )
     .onError(inboxErrorHandler)
     .on(
         Create,
         ensureCorrectContext(
-            spanWrapper(createHandler.handle.bind(createHandler)),
+            spanWrapper((ctx: Context<ContextData>, activity: Create) => {
+                const createHandler =
+                    container.resolve<CreateHandler>('createHandler');
+                return createHandler.handle(ctx, activity);
+            }),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Delete,
         ensureCorrectContext(
-            spanWrapper(deleteHandler.handle.bind(deleteHandler)),
+            spanWrapper((ctx: Context<ContextData>, activity: Delete) => {
+                const deleteHandler =
+                    container.resolve<DeleteHandler>('deleteHandler');
+                return deleteHandler.handle(ctx, activity);
+            }),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Announce,
         ensureCorrectContext(
-            spanWrapper(
-                createAnnounceHandler(
-                    siteService,
-                    accountService,
-                    postService,
-                    postRepository,
-                ),
-            ),
+            spanWrapper((ctx: Context<ContextData>, activity: Announce) => {
+                const announceHandler = container.resolve('announceHandler');
+                return announceHandler(ctx, activity);
+            }),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Like,
         ensureCorrectContext(
-            spanWrapper(
-                createLikeHandler(accountService, postRepository, postService),
-            ),
+            spanWrapper((ctx: Context<ContextData>, activity: Like) => {
+                const likeHandler = container.resolve('likeHandler');
+                return likeHandler(ctx, activity);
+            }),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Undo,
         ensureCorrectContext(
-            spanWrapper(
-                createUndoHandler(accountService, postRepository, postService),
-            ),
+            spanWrapper((ctx: Context<ContextData>, activity: Undo) => {
+                const undoHandler = container.resolve('undoHandler');
+                return undoHandler(ctx, activity);
+            }),
         ),
     )
     .onError(inboxErrorHandler);
@@ -461,22 +690,38 @@ inboxListener
 fedify
     .setFollowersDispatcher(
         '/.ghost/activitypub/followers/{identifier}',
-        spanWrapper(
-            createFollowersDispatcher(
-                siteService,
-                accountRepository,
-                followersService,
-            ),
-        ),
+        spanWrapper((ctx: Context<ContextData>, identifier: string) => {
+            const followersDispatcher = container.resolve(
+                'followersDispatcher',
+            );
+            return followersDispatcher(ctx, identifier);
+        }),
     )
-    .setCounter(createFollowersCounter(siteService, accountService));
+    .setCounter((ctx: RequestContext<ContextData>, identifier: string) => {
+        const followersCounter = container.resolve('followersCounter');
+        return followersCounter(ctx, identifier);
+    });
 
 fedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{identifier}',
-        spanWrapper(createFollowingDispatcher(siteService, accountService)),
+        spanWrapper(
+            (
+                ctx: RequestContext<ContextData>,
+                identifier: string,
+                cursor: string | null,
+            ) => {
+                const followingDispatcher = container.resolve(
+                    'followingDispatcher',
+                );
+                return followingDispatcher(ctx, identifier, cursor);
+            },
+        ),
     )
-    .setCounter(createFollowingCounter(siteService, accountService))
+    .setCounter((ctx: RequestContext<ContextData>, identifier: string) => {
+        const followingCounter = container.resolve('followingCounter');
+        return followingCounter(ctx, identifier);
+    })
     .setFirstCursor(followingFirstCursor);
 
 fedify
@@ -548,7 +793,13 @@ fedify.setObjectDispatcher(
 fedify.setObjectDispatcher(
     Delete,
     '/.ghost/activitypub/delete/{id}',
-    spanWrapper(deleteDispatcher.dispatch.bind(deleteDispatcher)),
+    spanWrapper(
+        (ctx: RequestContext<ContextData>, data: Record<'id', string>) => {
+            const deleteDispatcher =
+                container.resolve<DeleteDispatcher>('deleteDispatcher');
+            return deleteDispatcher.dispatch(ctx, data);
+        },
+    ),
 );
 fedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
@@ -605,7 +856,7 @@ app.use(async (ctx, next) => {
         extra['logging.googleapis.com/trace_sampled'] = sampled;
     }
 
-    ctx.set('logger', logging.with(extra));
+    ctx.set('logger', globalLogging.with(extra));
 
     return Sentry.withIsolationScope((scope) => {
         scope.addEventProcessor((event) => {
@@ -644,7 +895,7 @@ app.use(async (ctx, next) => {
 if (queue instanceof GCloudPubSubPushMessageQueue) {
     app.post(
         '/.ghost/activitypub/mq',
-        spanWrapper(createPushMessageHandler(queue, logging)),
+        spanWrapper(createPushMessageHandler(queue, globalLogging)),
     );
 }
 
@@ -705,6 +956,7 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (ctx, next) => {
+    const flagService = container.resolve('flagService');
     return flagService.runInContext(async () => {
         const enabledFlags: string[] = [];
 
@@ -834,10 +1086,10 @@ app.use(async (ctx, next) => {
         });
     }
 
-    const scopedDb = scopeKvStore(db, ['sites', host]);
+    const scopedDb = scopeKvStore(fedifyKv, ['sites', host]);
 
     ctx.set('db', scopedDb);
-    ctx.set('globaldb', db);
+    ctx.set('globaldb', fedifyKv);
 
     await next();
 });
@@ -847,7 +1099,10 @@ app.use(async (ctx, next) => {
 app.get(
     '/.ghost/activitypub/site',
     requireRole(GhostRole.Owner),
-    getSiteDataHandler(siteService),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getSiteDataHandler');
+        return handler(ctx);
+    }),
 );
 
 /**
@@ -862,6 +1117,7 @@ app.use(async (ctx, next) => {
             status: 401,
         });
     }
+    const siteService = container.resolve<SiteService>('siteService');
     const site = await siteService.getSiteByHost(host);
 
     if (!site) {
@@ -880,6 +1136,8 @@ app.use(async (ctx, next) => {
     const site = ctx.get('site');
 
     try {
+        const accountRepository =
+            container.resolve<KnexAccountRepository>('accountRepository');
         const account = await accountRepository.getBySite(ctx.get('site'));
         ctx.set('account', account);
 
@@ -905,6 +1163,9 @@ app.use(async (ctx, next) => {
         logger,
     });
 
+    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
+        'fedifyContextFactory',
+    );
     await fedifyContextFactory.registerContext(fedifyContext, next);
 });
 
@@ -952,7 +1213,10 @@ function validateWebhook() {
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
-    spanWrapper(createPostPublishedWebhookHandler(postService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('postPublishedWebhookHandler');
+        return handler(ctx);
+    }),
 );
 
 function requireRole(...roles: GhostRole[]) {
@@ -968,169 +1232,241 @@ function requireRole(...roles: GhostRole[]) {
 
 app.get(
     '/.well-known/webfinger',
-    spanWrapper(createWebFingerHandler(accountRepository, siteService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('webFingerHandler');
+        return handler(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/follow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => followController.handleFollow(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const followController =
+            container.resolve<FollowController>('followController');
+        return followController.handleFollow(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/unfollow/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => followController.handleUnfollow(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const followController =
+            container.resolve<FollowController>('followController');
+        return followController.handleUnfollow(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/like/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => likeController.handleLike(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const likeController =
+            container.resolve<LikeController>('likeController');
+        return likeController.handleLike(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/unlike/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => likeController.handleUnlike(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const likeController =
+            container.resolve<LikeController>('likeController');
+        return likeController.handleUnlike(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => handleCreateReply(ctx, postService)),
+    spanWrapper((ctx: AppContext) => {
+        const postService = container.resolve('postService');
+        return handleCreateReply(ctx, postService);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createRepostActionHandler(postService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('repostActionHandler');
+        return handler(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createDerepostActionHandler(postService, postRepository)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('derepostActionHandler');
+        return handler(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => handleCreateNote(ctx, postService)),
+    spanWrapper((ctx: AppContext) => {
+        const postService = container.resolve('postService');
+        return handleCreateNote(ctx, postService);
+    }),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createSearchHandler(accountView)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('searchHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
-    spanWrapper(createGetThreadHandler(postRepository, accountService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getThreadHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetAccountHandler(accountView, accountRepository)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getAccountHandler');
+        return handler(ctx);
+    }),
 );
 app.put(
     '/.ghost/activitypub/account',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createUpdateAccountHandler(accountService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('updateAccountHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createGetAccountPostsHandler(
-            accountRepository,
-            accountPostsView,
-            fedifyContextFactory,
-        ),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getAccountPostsHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle/liked',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createGetAccountLikedPostsHandler(accountService, accountPostsView),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getAccountLikedPostsHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createGetAccountFollowsHandler(
-            accountRepository,
-            accountFollowsView,
-            fedifyContextFactory,
-        ),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getAccountFollowsHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetFeedHandler(feedService, accountService, 'Feed')),
+    spanWrapper((ctx: AppContext) => {
+        const handlerFactory = container.resolve('getFeedHandler');
+        return handlerFactory('Feed')(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetFeedHandler(feedService, accountService, 'Inbox')),
+    spanWrapper((ctx: AppContext) => {
+        const handlerFactory = container.resolve('getFeedHandler');
+        return handlerFactory('Inbox')(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/post/:post_ap_id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createGetPostHandler(postService, accountService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getPostHandler');
+        return handler(ctx);
+    }),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createDeletePostHandler(accountRepository, postRepository, postService),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('deletePostHandler');
+        return handler(ctx);
+    }),
 );
 app.get(
     '/.ghost/activitypub/notifications',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(
-        createGetNotificationsHandler(accountService, notificationService),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getNotificationsHandler');
+        return handler(ctx);
+    }),
 );
 app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper(createStorageHandler(accountService, gcpStorageService)),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('storageHandler');
+        return handler(ctx);
+    }),
 );
 
 app.post(
     '/.ghost/activitypub/actions/block/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => blockController.handleBlock(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const blockController =
+            container.resolve<BlockController>('blockController');
+        return blockController.handleBlock(ctx);
+    }),
 );
 
 app.post(
     '/.ghost/activitypub/actions/unblock/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => blockController.handleUnblock(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const blockController =
+            container.resolve<BlockController>('blockController');
+        return blockController.handleUnblock(ctx);
+    }),
 );
 
 app.post(
     '/.ghost/activitypub/actions/block/domain/:domain',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => blockController.handleBlockDomain(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const blockController =
+            container.resolve<BlockController>('blockController');
+        return blockController.handleBlockDomain(ctx);
+    }),
 );
 
 app.post(
     '/.ghost/activitypub/actions/unblock/domain/:domain',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => blockController.handleUnblockDomain(ctx)),
+    spanWrapper((ctx: AppContext) => {
+        const blockController =
+            container.resolve<BlockController>('blockController');
+        return blockController.handleUnblockDomain(ctx);
+    }),
 );
 
 app.get(
     '/.ghost/activitypub/blocks/accounts',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) =>
-        blockController.handleGetBlockedAccounts(ctx),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const blockController =
+            container.resolve<BlockController>('blockController');
+        return blockController.handleGetBlockedAccounts(ctx);
+    }),
 );
 
 app.get(
     '/.ghost/activitypub/blocks/domains',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) =>
-        blockController.handleGetBlockedDomains(ctx),
-    ),
+    spanWrapper((ctx: AppContext) => {
+        const blockController =
+            container.resolve<BlockController>('blockController');
+        return blockController.handleGetBlockedDomains(ctx);
+    }),
 );
 /** Federation wire up */
 
@@ -1205,7 +1541,7 @@ serve(
         port: Number.parseInt(process.env.PORT || '8080'),
     },
     (info) => {
-        logging.info(
+        globalLogging.info(
             `listening on ${info.address}:${info.port}, booted in {bootTime}ms`,
             {
                 bootTime: Math.round(process.uptime() * 1000),
