@@ -1,6 +1,6 @@
 import Knex from 'knex';
 
-export const client = Knex({
+export const knex = Knex({
     client: 'mysql2',
     connection: process.env.MYSQL_SOCKET_PATH
         ? {
@@ -27,12 +27,12 @@ export const client = Knex({
 export async function getRelatedActivities(
     postUrl: string,
 ): Promise<{ id: string }[]> {
-    return client
-        .select(client.raw('JSON_EXTRACT(value, "$.id") as id'))
+    return knex
+        .select(knex.raw('JSON_EXTRACT(value, "$.id") as id'))
         .from('key_value')
         .where(function () {
-            this.where(client.raw('object_id = ?', [postUrl]))
-                .orWhere(client.raw('object = ?', [postUrl]))
-                .orWhere(client.raw('json_id = ?', [postUrl]));
+            this.where(knex.raw('object_id = ?', [postUrl]))
+                .orWhere(knex.raw('object = ?', [postUrl]))
+                .orWhere(knex.raw('json_id = ?', [postUrl]));
         }) as unknown as Promise<{ id: string }[]>;
 }

@@ -27,8 +27,8 @@ export class GCPStorageService {
     private bucketName: string;
     private emulatorHost: string | undefined;
 
-    constructor(logger: Logger) {
-        this.logger = logger;
+    constructor(logging: Logger) {
+        this.logger = logging;
         this.bucketName = process.env.GCP_BUCKET_NAME || '';
         this.emulatorHost = process.env.GCP_STORAGE_EMULATOR_HOST;
         if (!this.bucketName) {
