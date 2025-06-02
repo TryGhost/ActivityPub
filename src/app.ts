@@ -1238,9 +1238,9 @@ function requireRole(...roles: GhostRole[]) {
 
 app.get(
     '/.well-known/webfinger',
-    spanWrapper((ctx: AppContext) => {
+    spanWrapper((ctx: AppContext, next: Next) => {
         const handler = container.resolve('webFingerHandler');
-        return handler(ctx);
+        return handler(ctx, next);
     }),
 );
 app.post(
