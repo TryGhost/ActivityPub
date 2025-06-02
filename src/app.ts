@@ -730,13 +730,19 @@ function sleep(n: number) {
 
 async function getKey(jwksURL: URL, retries = 5) {
     try {
+        const cachedKey = await fedifyKv.get(['cachedJwks', jwksURL.hostname]);
+        if (cachedKey) {
+            return cachedKey;
+        }
+
         const jwksResponse = await fetch(jwksURL, {
             redirect: 'follow',
         });
 
         const jwks = await jwksResponse.json();
 
-        const key = await jose.JWK.asKey(jwks.keys[0]);
+        const key = (await jose.JWK.asKey(jwks.keys[0])).toPEM();
+        await fedifyKv.set(['cachedJwks', jwksURL.hostname], key);
 
         return key;
     } catch (err) {
@@ -790,7 +796,7 @@ app.use(async (ctx, next) => {
 
     const key = await getKey(jwksURL);
     try {
-        const claims = jwt.verify(token, key.toPEM());
+        const claims = jwt.verify(token, key);
         if (typeof claims === 'string' || typeof claims.role !== 'string') {
             return;
         }
