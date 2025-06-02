@@ -48,6 +48,7 @@ import { FollowController } from 'http/api/follow';
 import { BadRequest } from 'http/api/helpers/response';
 import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
+import { ReplyChainController } from 'http/api/reply-chain';
 import { createRepostActionHandler } from 'http/api/repost';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
@@ -454,6 +455,11 @@ container.register(
     asFunction((postRepository, accountService) =>
         createGetThreadHandler(postRepository, accountService),
     ).singleton(),
+);
+
+container.register(
+    'replyChainController',
+    asClass(ReplyChainController).singleton(),
 );
 
 container.register(
@@ -1326,6 +1332,15 @@ app.get(
         return handler(ctx);
     }),
 );
+
+app.get(
+    '/.ghost/activitypub/replies/:post_ap_id',
+    spanWrapper((ctx: AppContext) => {
+        const controller = container.resolve('replyChainController');
+        return controller.handleGetReplies(ctx);
+    }),
+);
+
 app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
