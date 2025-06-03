@@ -57,6 +57,7 @@ type PostRow = z.infer<typeof PostRowSchema>;
 
 export class ReplyChainView {
     static readonly MAX_ANCESTOR_DEPTH = 10;
+    static readonly MAX_CHILDREN_COUNT = 10;
 
     constructor(private readonly db: Knex) {}
 
@@ -209,6 +210,15 @@ export class ReplyChainView {
                 );
             });
         }
+    }
+
+    private async getChildren(contextAccountId: number, postId: number): Promise<PostRow[]> {
+        const db = this.db;
+        const selectPostRow = this.selectPostRow(contextAccountId);
+        const childrenRows = await selectPostRow(
+            db.from('posts').where('in_reply_to', postId).limit(ReplyChainView.MAX_CHILDREN_COUNT)
+        );
+        return childrenRows.map(PostRowSchema.parse);
     }
 
     async getReplyChain(accountId: number, postApId: URL) {}
