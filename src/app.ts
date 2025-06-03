@@ -847,6 +847,22 @@ app.get('/ping', (ctx) => {
     });
 });
 
+app.post('/pubsub/ghost/push', async (ctx) => {
+    let data: unknown;
+
+    try {
+        data = await ctx.req.json();
+    } catch (err) {
+        globalLogging.error('Failed to parse JSON: {err}', { err });
+
+        return new Response(null, { status: 400 });
+    }
+
+    globalLogging.info('PubSub push received\n{data}', { data });
+
+    return new Response(null, { status: 200 });
+});
+
 /** Middleware */
 
 app.use(async (ctx, next) => {
