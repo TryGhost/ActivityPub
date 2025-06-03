@@ -1327,6 +1327,7 @@ app.get(
 );
 app.get(
     '/.ghost/activitypub/thread/:post_ap_id',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
         const handler = container.resolve('getThreadHandler');
         return handler(ctx);
@@ -1335,6 +1336,7 @@ app.get(
 
 app.get(
     '/.ghost/activitypub/replies/:post_ap_id',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
         const controller = container.resolve('replyChainController');
         return controller.handleGetReplies(ctx);
