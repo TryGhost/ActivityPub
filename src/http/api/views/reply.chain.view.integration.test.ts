@@ -110,4 +110,33 @@ describe('ReplyChainView', () => {
             );
         });
     });
+
+    describe('getChildren', () => {
+        it('should return the paginated children of a post with replies chain', async () => {
+            const { post, replies, chains } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+            // @ts-expect-error Property 'getChildren' is private and only accessible within class 'ReplyChainView'
+            const children = await replyChainView.getChildren(
+                post.author.id,
+                post.id!,
+            );
+
+            const expectedResults: string[] = [];
+
+            for (let i = 0; i < ReplyChainView.MAX_CHILDREN_COUNT + 1; i++) {
+                const child = replies[i];
+                expectedResults.push(child.apId.href);
+                const chain = chains[i];
+                const expectedChain = chain
+                    .slice(0, ReplyChainView.MAX_CHILDREN_DEPTH + 1)
+                    .map((post) => post.apId.href);
+                expectedResults.push(...expectedChain);
+            }
+
+            const resultIds = children.map((c) => c.post_ap_id);
+
+            expect(resultIds).toEqual(expectedResults);
+        });
+    });
 });

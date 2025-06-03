@@ -57,6 +57,7 @@ type PostRow = z.infer<typeof PostRowSchema>;
 export class ReplyChainView {
     static readonly MAX_ANCESTOR_DEPTH = 10;
     static readonly MAX_CHILDREN_COUNT = 10;
+    static readonly MAX_CHILDREN_DEPTH = 5;
 
     constructor(private readonly db: Knex) {}
 
@@ -175,5 +176,66 @@ export class ReplyChainView {
                     );
                 });
         };
+    }
+
+    private async getChildren(
+        contextAccountId: number,
+        postId: number,
+    ): Promise<PostRow[]> {
+        const db = this.db;
+        const selectPostRow = this.selectPostRow(contextAccountId);
+        const childrenRows = await selectPostRow(
+            db
+                .withRecursive('child_ids', (qb) => {
+                    qb.select(
+                        'ranked.id',
+                        'ranked.reply_count',
+                        'ranked.in_reply_to',
+                        db.raw('0 AS depth'),
+                        'ranked.top_level_child_index',
+                    )
+                        .from(function (this: Knex.QueryBuilder) {
+                            return this.select(
+                                'posts.id',
+                                'posts.reply_count',
+                                'posts.in_reply_to',
+                                db.raw(
+                                    'ROW_NUMBER() OVER (ORDER BY published_at) AS top_level_child_index',
+                                ),
+                            )
+                                .from('posts')
+                                .orderBy('published_at', 'asc')
+                                .where('in_reply_to', postId)
+                                .limit(ReplyChainView.MAX_CHILDREN_COUNT + 1) // +1 to check for next page
+                                .as('ranked');
+                        })
+                        .unionAll(function () {
+                            this.select(
+                                'p.id',
+                                'p.reply_count',
+                                'p.in_reply_to',
+                                db.raw('ci.depth + 1'),
+                                'ci.top_level_child_index',
+                            )
+                                .from('posts as p')
+                                .join(
+                                    'child_ids as ci',
+                                    'p.in_reply_to',
+                                    'ci.id',
+                                )
+                                .where('ci.reply_count', '=', 1)
+                                .andWhere(
+                                    'ci.depth',
+                                    '<',
+                                    ReplyChainView.MAX_CHILDREN_DEPTH + 1, // +1 to check for next page
+                                );
+                        }, true);
+                })
+                .from('child_ids')
+                .orderBy('top_level_child_index', 'asc')
+                .orderBy('depth', 'asc')
+                .join('posts', 'posts.id', 'child_ids.id'),
+        );
+        return childrenRows.map(PostRowSchema.parse);
     }
 }
