@@ -100,7 +100,9 @@ export class ReplyChainView {
 
     private async getAncestors(contextAccountId: number, postApId: URL) {
         const db = this.db;
-        const ancestorRows = await db
+        const selectPostRow = this.selectPostRow(contextAccountId);
+        const ancestorRows = await selectPostRow(
+            db
             .withRecursive('ancestor_ids', (qb) => {
                 qb.select('id', 'in_reply_to', db.raw('0 AS depth'))
                     .from('posts')
@@ -121,7 +123,20 @@ export class ReplyChainView {
                             );
                     });
             })
-            .select(
+            .from('ancestor_ids')
+            .where('depth', '>', 0)
+            .orderBy('depth', 'desc')
+            .join('posts', 'posts.id', 'ancestor_ids.id')
+        );
+
+        return ancestorRows.map((row: unknown) =>
+            this.mapToPostDTO(PostRowSchema.parse(row), contextAccountId),
+        );
+    }
+
+    private selectPostRow(contextAccountId: number): (qb: Knex.QueryBuilder) => Knex.QueryBuilder {
+        return (qb) => {
+            return qb.select(
                 // Post fields
                 'posts.id as post_id',
                 'posts.type as post_type',
@@ -170,10 +185,6 @@ export class ReplyChainView {
                     END AS reposted_by_account
                 `),
             )
-            .from('ancestor_ids')
-            .where('depth', '>', 0)
-            .orderBy('depth', 'desc')
-            .join('posts', 'posts.id', 'ancestor_ids.id')
             .join(
                 'accounts as author_account',
                 'author_account.id',
@@ -195,10 +206,7 @@ export class ReplyChainView {
                     contextAccountId,
                 );
             });
-
-        return ancestorRows.map((row) =>
-            this.mapToPostDTO(PostRowSchema.parse(row), contextAccountId),
-        );
+        }
     }
 
     async getReplyChain(accountId: number, postApId: URL) {}
