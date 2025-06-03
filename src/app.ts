@@ -125,6 +125,10 @@ import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 import {
+    createIncomingMessageHandler,
+    createMessageBus,
+} from './messaging/gcloud-pubsub-push-message-bus';
+import {
     GCloudPubSubPushMessageQueue,
     createMessageQueue,
     createPushMessageHandler,
@@ -250,6 +254,31 @@ if (process.env.USE_MQ === 'true') {
     }
 } else {
     globalLogging.info('Message queue is disabled');
+}
+
+if (process.env.USE_MQ === 'true') {
+    try {
+        const messageBus = await createMessageBus({
+            pubSubHost: process.env.MQ_PUBSUB_HOST,
+            hostIsEmulator: !['staging', 'production'].includes(
+                process.env.NODE_ENV || '',
+            ),
+            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
+            topic: String(process.env.MQ_PUBSUB_GHOST_TOPIC_NAME),
+            subscription: process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME
+                ? String(process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME)
+                : undefined,
+        });
+
+        container.register('messageBus', asValue(messageBus));
+        globalLogging.info('GCloud PubSub message bus is enabled');
+    } catch (err) {
+        globalLogging.error('Failed to initialise message bus {error}', {
+            error: err,
+        });
+
+        process.exit(1);
+    }
 }
 
 export const fedify = createFederation<ContextData>({
@@ -896,21 +925,12 @@ app.use(async (ctx, next) => {
     });
 });
 
-app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
-    let data: unknown;
+const messageBus = container.resolve('messageBus');
 
-    try {
-        data = await ctx.req.json();
-    } catch (err) {
-        globalLogging.error('Failed to parse JSON: {err}', { err });
-
-        return new Response(null, { status: 400 });
-    }
-
-    globalLogging.info('PubSub push received\n{data}', { data });
-
-    return new Response(null, { status: 200 });
-});
+app.post(
+    '/.ghost/activitypub/pubsub/ghost/push',
+    spanWrapper(createIncomingMessageHandler(messageBus)),
+);
 
 // This needs to go before the middleware which loads the site
 // because this endpoint does not require the site to exist
