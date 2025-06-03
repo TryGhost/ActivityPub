@@ -42,7 +42,7 @@ describe('ReplyChainView', () => {
             );
 
             expect(ancestors).toHaveLength(ReplyChainView.MAX_ANCESTOR_DEPTH);
-            expect(ancestors[0].id).toBe(
+            expect(ancestors[0].post_ap_id).toBe(
                 allAncestors[
                     allAncestors.length - ReplyChainView.MAX_ANCESTOR_DEPTH
                 ].apId.href,
@@ -51,11 +51,11 @@ describe('ReplyChainView', () => {
             // @ts-expect-error Property 'getAncestors' is private and only accessible within class 'ReplyChainView'
             const remainingAncestors = await replyChainView.getAncestors(
                 account.id,
-                new URL(ancestors[0].id),
+                new URL(ancestors[0].post_ap_id),
             );
 
             expect(remainingAncestors).toHaveLength(4);
-            expect(remainingAncestors[0].id).toBe(allAncestors[0].apId.href);
+            expect(remainingAncestors[0].post_ap_id).toBe(allAncestors[0].apId.href);
         });
     });
 });

@@ -98,7 +98,7 @@ export class ReplyChainView {
         };
     }
 
-    private async getAncestors(contextAccountId: number, postApId: URL) {
+    private async getAncestors(contextAccountId: number, postApId: URL): Promise<PostRow[]> {
         const db = this.db;
         const selectPostRow = this.selectPostRow(contextAccountId);
         const ancestorRows = await selectPostRow(
@@ -129,9 +129,7 @@ export class ReplyChainView {
             .join('posts', 'posts.id', 'ancestor_ids.id')
         );
 
-        return ancestorRows.map((row: unknown) =>
-            this.mapToPostDTO(PostRowSchema.parse(row), contextAccountId),
-        );
+        return ancestorRows.map(PostRowSchema.parse);
     }
 
     private selectPostRow(contextAccountId: number): (qb: Knex.QueryBuilder) => Knex.QueryBuilder {
