@@ -34,6 +34,8 @@ const PostRowSchema = z.object({
     post_repost_count: z.number(),
     post_reposted_by_current_user: z.union([z.literal(0), z.literal(1)]),
     post_ap_id: z.string(),
+    post_in_reply_to: z.number().nullable(),
+    post_thread_root: z.number().nullable(),
     post_attachments: z
         .array(
             z.object({
@@ -146,6 +148,8 @@ export class ReplyChainView {
                 'posts.image_url as post_image_url',
                 'posts.published_at as post_published_at',
                 'posts.like_count as post_like_count',
+                'posts.in_reply_to as post_in_reply_to',
+                'posts.thread_root as post_thread_root',
                 this.db.raw(`
                     CASE
                         WHEN likes.account_id IS NOT NULL THEN 1
