@@ -283,7 +283,10 @@ export class ReplyChainView {
         return childRows.map(PostRowSchema.parse);
     }
 
-    public async getReplyChain(accountId: number, postApId: URL): Promise<ReplyChain> {
+    public async getReplyChain(
+        accountId: number,
+        postApId: URL,
+    ): Promise<ReplyChain> {
         const selectPostRow = this.selectPostRow(accountId);
         const exists = await selectPostRow(
             this.db
@@ -301,36 +304,46 @@ export class ReplyChainView {
         const currentPost = PostRowSchema.parse(exists);
 
         const ancestors = await this.getAncestors(accountId, postApId);
-        const childrenAndChains = await this.getChildren(accountId, currentPost.post_id);
+        const childrenAndChains = await this.getChildren(
+            accountId,
+            currentPost.post_id,
+        );
 
-        const children: { post: PostDTO, chain: PostDTO[], hasMore: boolean }[] = [];
-        childrenAndChains.forEach((post) => {
-           if (post.post_in_reply_to === currentPost.post_id) {
-               children.push({
-                post: this.mapToPostDTO(post, accountId),
-                chain: [],
-                hasMore: false,
-               });
-           } else {
-            const current = children[children.length - 1];
-            current.chain.push(this.mapToPostDTO(post, accountId));
-           }
-        });
+        const children: {
+            post: PostDTO;
+            chain: PostDTO[];
+            hasMore: boolean;
+        }[] = [];
+        for (const post of childrenAndChains) {
+            if (post.post_in_reply_to === currentPost.post_id) {
+                children.push({
+                    post: this.mapToPostDTO(post, accountId),
+                    chain: [],
+                    hasMore: false,
+                });
+            } else {
+                const current = children[children.length - 1];
+                current.chain.push(this.mapToPostDTO(post, accountId));
+            }
+        }
 
         return {
             ancestors: {
                 chain: ancestors.map(this.mapToPostDTO),
                 hasMore: ancestors[0]?.post_in_reply_to !== null,
             },
-            post: this.mapToPostDTO(
-                currentPost,
-                accountId,
-            ),
-            children: children.slice(0, ReplyChainView.MAX_CHILDREN_COUNT).map((child) => ({
-                post: child.post,
-                chain: child.chain.slice(0, ReplyChainView.MAX_CHILDREN_DEPTH),
-                hasMore: child.chain.length > ReplyChainView.MAX_CHILDREN_DEPTH,
-            })),
+            post: this.mapToPostDTO(currentPost, accountId),
+            children: children
+                .slice(0, ReplyChainView.MAX_CHILDREN_COUNT)
+                .map((child) => ({
+                    post: child.post,
+                    chain: child.chain.slice(
+                        0,
+                        ReplyChainView.MAX_CHILDREN_DEPTH,
+                    ),
+                    hasMore:
+                        child.chain.length > ReplyChainView.MAX_CHILDREN_DEPTH,
+                })),
             hasMore: children.length > ReplyChainView.MAX_CHILDREN_COUNT,
         };
     }

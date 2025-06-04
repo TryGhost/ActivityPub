@@ -29,7 +29,7 @@ async function setupPosts(fixtureManager: FixtureManager) {
     const post = posts[posts.length - 1];
 
     let repliesToCreate = ReplyChainView.MAX_CHILDREN_COUNT + 5;
-    let replies: Post[] = [];
+    const replies: Post[] = [];
     while (repliesToCreate-- > 0) {
         const reply = await fixtureManager.createPost(account, {
             inReplyTo: post,
@@ -43,7 +43,7 @@ async function setupPosts(fixtureManager: FixtureManager) {
         chains.push(chain);
         if (i % 2 === 0) {
             let replyCount = i;
-            while (replyCount --> 0) {
+            while (replyCount-- > 0) {
                 await fixtureManager.createPost(account, {
                     inReplyTo: replies[i],
                 });
@@ -51,7 +51,7 @@ async function setupPosts(fixtureManager: FixtureManager) {
         } else {
             let replyToChain = replies[i];
             let chainLength = i;
-            while (chainLength --> 0) {
+            while (chainLength-- > 0) {
                 replyToChain = await fixtureManager.createPost(account, {
                     inReplyTo: replyToChain,
                 });
@@ -94,9 +94,8 @@ describe('ReplyChainView', () => {
 
             expect(result).toHaveLength(ReplyChainView.MAX_ANCESTOR_DEPTH);
             expect(result[0].post_ap_id).toBe(
-                ancestors[
-                    ancestors.length - ReplyChainView.MAX_ANCESTOR_DEPTH
-                ].apId.href,
+                ancestors[ancestors.length - ReplyChainView.MAX_ANCESTOR_DEPTH]
+                    .apId.href,
             );
 
             // @ts-expect-error Property 'getAncestors' is private and only accessible within class 'ReplyChainView'
@@ -106,13 +105,16 @@ describe('ReplyChainView', () => {
             );
 
             expect(remainingAncestors).toHaveLength(5);
-            expect(remainingAncestors[0].post_ap_id).toBe(ancestors[0].apId.href);
+            expect(remainingAncestors[0].post_ap_id).toBe(
+                ancestors[0].apId.href,
+            );
         });
     });
 
     describe('getChildren', () => {
         it('should return the paginated children of a post with replies chain', async () => {
-            const { ancestors, post, replies, chains } = await setupPosts(fixtureManager);
+            const { ancestors, post, replies, chains } =
+                await setupPosts(fixtureManager);
 
             const replyChainView = new ReplyChainView(db);
             // @ts-expect-error Property 'getChildren' is private and only accessible within class 'ReplyChainView'
@@ -127,11 +129,13 @@ describe('ReplyChainView', () => {
                 const child = replies[i];
                 expectedResults.push(child.apId.href);
                 const chain = chains[i];
-                const expectedChain = chain.slice(0, ReplyChainView.MAX_CHILDREN_DEPTH + 1).map(post => post.apId.href);
+                const expectedChain = chain
+                    .slice(0, ReplyChainView.MAX_CHILDREN_DEPTH + 1)
+                    .map((post) => post.apId.href);
                 expectedResults.push(...expectedChain);
             }
 
-            const resultIds = children.map(c => c.post_ap_id);
+            const resultIds = children.map((c) => c.post_ap_id);
 
             expect(resultIds).toEqual(expectedResults);
         });
@@ -139,13 +143,17 @@ describe('ReplyChainView', () => {
 
     describe('getReplyChain', () => {
         it('should return the reply chain for a post', async () => {
-            const { ancestors, post, replies, chains } = await setupPosts(fixtureManager);
+            const { ancestors, post, replies, chains } =
+                await setupPosts(fixtureManager);
 
             const replyChainView = new ReplyChainView(db);
 
             // @ts-expect-error Property 'getChildren' is private and only accessible within class 'ReplyChainView'
             await replyChainView.getChildren(post.author.id, post.id!);
-            const result = await replyChainView.getReplyChain(post.author.id, post.apId);
+            const result = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+            );
 
             console.log(result);
         });
