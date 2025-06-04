@@ -225,6 +225,7 @@ export class ReplyChainView {
     private async getChildren(
         contextAccountId: number,
         postId: number,
+        cursor?: string,
     ): Promise<PostRow[]> {
         const db = this.db;
         const selectPostRow = this.selectPostRow(contextAccountId);
@@ -239,7 +240,7 @@ export class ReplyChainView {
                         'ranked.top_level_child_index',
                     )
                         .from(function (this: Knex.QueryBuilder) {
-                            return this.select(
+                            let query = this.select(
                                 'posts.id',
                                 'posts.reply_count',
                                 'posts.in_reply_to',
@@ -249,7 +250,17 @@ export class ReplyChainView {
                             )
                                 .from('posts')
                                 .orderBy('published_at', 'asc')
-                                .where('in_reply_to', postId)
+                                .where('in_reply_to', postId);
+
+                            if (cursor) {
+                                query = query.andWhere(
+                                    'posts.published_at',
+                                    '>',
+                                    cursor,
+                                );
+                            }
+
+                            return query
                                 .limit(ReplyChainView.MAX_CHILDREN_COUNT + 1) // +1 to check for next page
                                 .as('ranked');
                         })
