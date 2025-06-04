@@ -1,3 +1,4 @@
+import { unsafeUnwrap } from 'core/result';
 import type { Knex } from 'knex';
 import type { Post } from 'post/post.entity';
 import { createTestDb } from 'test/db';
@@ -137,6 +138,28 @@ describe('ReplyChainView', () => {
             const resultIds = children.map((c) => c.post_ap_id);
 
             expect(resultIds).toEqual(expectedResults);
+        });
+    });
+
+    describe('getReplyChain', () => {
+        it('should return the reply chain for a post', async () => {
+            const { post } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            expect(replyChain.ancestors.chain).toHaveLength(
+                ReplyChainView.MAX_ANCESTOR_DEPTH,
+            );
+            expect(replyChain.children).toHaveLength(
+                ReplyChainView.MAX_CHILDREN_COUNT,
+            );
         });
     });
 });

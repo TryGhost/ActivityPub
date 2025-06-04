@@ -1,3 +1,5 @@
+import { getAccountHandle } from 'account/utils';
+import { type Result, error, ok } from 'core/result';
 import type { Knex } from 'knex';
 import z from 'zod';
 import type { PostDTO } from '../types';
@@ -15,6 +17,8 @@ export type ReplyChain = {
     }[];
     next: string | null;
 };
+
+export type ReplyChainError = 'not-found';
 
 const PostRowSchema = z.object({
     post_id: z.number(),
@@ -60,6 +64,46 @@ export class ReplyChainView {
     static readonly MAX_CHILDREN_DEPTH = 5;
 
     constructor(private readonly db: Knex) {}
+
+    private mapToPostDTO(result: PostRow, contextAccountId: number): PostDTO {
+        return {
+            id: result.post_ap_id,
+            type: result.post_type,
+            title: result.post_title ?? '',
+            excerpt: result.post_excerpt ?? '',
+            summary: result.post_summary ?? null,
+            content: result.post_content ?? '',
+            url: result.post_url,
+            featureImageUrl: result.post_image_url ?? null,
+            publishedAt: result.post_published_at,
+            likeCount: result.post_like_count,
+            likedByMe: result.post_liked_by_current_user === 1,
+            replyCount: result.post_reply_count,
+            readingTimeMinutes: result.post_reading_time_minutes,
+            attachments: result.post_attachments
+                ? result.post_attachments.map((attachment) => ({
+                      type: attachment.type ?? '',
+                      mediaType: attachment.mediaType ?? '',
+                      name: attachment.name ?? '',
+                      url: attachment.url,
+                  }))
+                : [],
+            author: {
+                id: result.author_id.toString(),
+                handle: getAccountHandle(
+                    result.author_url ? new URL(result.author_url).host : '',
+                    result.author_username,
+                ),
+                name: result.author_name ?? '',
+                url: result.author_url ?? '',
+                avatarUrl: result.author_avatar_url ?? '',
+            },
+            authoredByMe: result.author_id === contextAccountId,
+            repostCount: result.post_repost_count,
+            repostedByMe: result.post_reposted_by_current_user === 1,
+            repostedBy: null,
+        };
+    }
 
     private async getAncestors(
         contextAccountId: number,
@@ -236,6 +280,77 @@ export class ReplyChainView {
                 .orderBy('depth', 'asc')
                 .join('posts', 'posts.id', 'child_ids.id'),
         );
+
         return childrenRows.map(PostRowSchema.parse);
+    }
+
+    public async getReplyChain(
+        accountId: number,
+        postApId: URL,
+    ): Promise<Result<ReplyChain, ReplyChainError>> {
+        const selectPostRow = this.selectPostRow(accountId);
+        const exists = await selectPostRow(
+            this.db
+                .from('posts')
+                .whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [
+                    postApId.href,
+                ])
+                .first(),
+        );
+
+        if (!exists) {
+            return error('not-found');
+        }
+
+        const currentPost = PostRowSchema.parse(exists);
+
+        const ancestors = await this.getAncestors(accountId, postApId);
+        const childrenAndChains = await this.getChildren(
+            accountId,
+            currentPost.post_id,
+        );
+
+        const children: {
+            post: PostDTO;
+            chain: PostDTO[];
+            next: string | null;
+        }[] = [];
+        for (const post of childrenAndChains) {
+            if (post.post_in_reply_to === currentPost.post_id) {
+                children.push({
+                    post: this.mapToPostDTO(post, accountId),
+                    chain: [],
+                    next: null,
+                });
+            } else {
+                const current = children[children.length - 1];
+                current.chain.push(this.mapToPostDTO(post, accountId));
+            }
+        }
+
+        return ok({
+            ancestors: {
+                chain: ancestors.map(this.mapToPostDTO),
+                next: ancestors[0]?.post_in_reply_to !== null ? 'TODO' : null,
+            },
+            post: this.mapToPostDTO(currentPost, accountId),
+            children: children
+                .slice(0, ReplyChainView.MAX_CHILDREN_COUNT)
+                .map((child) => ({
+                    post: child.post,
+                    chain: child.chain.slice(
+                        0,
+                        ReplyChainView.MAX_CHILDREN_DEPTH,
+                    ),
+                    next:
+                        child.chain.length > ReplyChainView.MAX_CHILDREN_DEPTH
+                            ? 'TODO'
+                            : null,
+                })),
+            next:
+                children.length > ReplyChainView.MAX_CHILDREN_COUNT
+                    ? 'TODO'
+                    : null,
+        });
     }
 }
