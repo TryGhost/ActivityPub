@@ -50,6 +50,7 @@ import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
 import { ReplyChainController } from 'http/api/reply-chain';
 import { createRepostActionHandler } from 'http/api/repost';
+import { ReplyChainView } from 'http/api/views/reply.chain.view';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -132,7 +133,6 @@ import {
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
-import { ReplyChainView } from 'http/api/views/reply.chain.view';
 
 const container = createContainer({
     injectionMode: 'CLASSIC',

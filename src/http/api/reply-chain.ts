@@ -1,5 +1,5 @@
 import type { AppContext } from '../../app';
-import { ReplyChainView } from './views/reply.chain.view';
+import type { ReplyChainView } from './views/reply.chain.view';
 
 export class ReplyChainController {
     constructor(private readonly replyChainView: ReplyChainView) {}
