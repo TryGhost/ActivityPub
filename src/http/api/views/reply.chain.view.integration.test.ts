@@ -139,6 +139,54 @@ describe('ReplyChainView', () => {
 
             expect(resultIds).toEqual(expectedResults);
         });
+
+        it('should be able to return the next page of children', async () => {
+            const { ancestors, post, replies, chains } =
+                await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            // @ts-expect-error Property 'getChildren' is private and only accessible within class 'ReplyChainView'
+            const children = await replyChainView.getChildren(
+                post.author.id,
+                post.id!,
+            );
+
+            const topLevelChildrenFromFirstPage = children.filter(
+                (c) => c.post_in_reply_to === post.id,
+            );
+            const lastChild =
+                topLevelChildrenFromFirstPage[
+                    topLevelChildrenFromFirstPage.length - 1
+                ];
+
+            const cursor = lastChild.post_published_at;
+
+            // @ts-expect-error Property 'getChildren' is private and only accessible within class 'ReplyChainView'
+            const nextChildren = await replyChainView.getChildren(
+                post.author.id,
+                post.id!,
+                cursor.toISOString(),
+            );
+
+            const topLevelChildrenFromSecondPage = nextChildren.filter(
+                (c) => c.post_in_reply_to === post.id,
+            );
+
+            expect(
+                topLevelChildrenFromFirstPage.length +
+                    topLevelChildrenFromSecondPage.length,
+            ).toBe(15);
+
+            const expectedIds = replies.map((r) => r.apId.href);
+            const resultIds = topLevelChildrenFromFirstPage
+                .map((c) => c.post_ap_id)
+                .concat(
+                    topLevelChildrenFromSecondPage.map((c) => c.post_ap_id),
+                );
+
+            expect(resultIds).toEqual(expectedIds);
+        });
     });
 
     describe('getReplyChain', () => {
