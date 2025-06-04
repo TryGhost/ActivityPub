@@ -56,6 +56,7 @@ type PostRow = z.infer<typeof PostRowSchema>;
 
 export class ReplyChainView {
     static readonly MAX_ANCESTOR_DEPTH = 10;
+    static readonly MAX_CHILDREN_COUNT = 10;
 
     constructor(private readonly db: Knex) {}
 
