@@ -50,6 +50,7 @@ import { LikeController } from 'http/api/like';
 import { handleCreateReply } from 'http/api/reply';
 import { ReplyChainController } from 'http/api/reply-chain';
 import { createRepostActionHandler } from 'http/api/repost';
+import { ReplyChainView } from 'http/api/views/reply.chain.view';
 import jwt from 'jsonwebtoken';
 import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
@@ -322,6 +323,7 @@ container.register(
 );
 container.register('accountPostsView', asClass(AccountPostsView).singleton());
 container.register('blocksView', asClass(BlocksView).singleton());
+container.register('replyChainView', asClass(ReplyChainView).singleton());
 
 container.register('blockController', asClass(BlockController).singleton());
 container.register('followController', asClass(FollowController).singleton());
