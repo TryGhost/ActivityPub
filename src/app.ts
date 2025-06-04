@@ -132,6 +132,7 @@ import {
 import { PostService } from './post/post.service';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
+import { ReplyChainView } from 'http/api/views/reply.chain.view';
 
 const container = createContainer({
     injectionMode: 'CLASSIC',
@@ -322,6 +323,7 @@ container.register(
 );
 container.register('accountPostsView', asClass(AccountPostsView).singleton());
 container.register('blocksView', asClass(BlocksView).singleton());
+container.register('replyChainView', asClass(ReplyChainView).singleton());
 
 container.register('blockController', asClass(BlockController).singleton());
 container.register('followController', asClass(FollowController).singleton());
