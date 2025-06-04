@@ -5,6 +5,69 @@ import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ReplyChainView } from './reply.chain.view';
 
+/**
+ * This will setup the database with a bunch of posts centered around a single post.
+ * The post will have an ancestor chain of MAX_ANCESTOR_DEPTH + 5 posts - to ensure pagination of ancestors
+ * The post will have MAX_CHILDREN_COUNT + 5 replies - to ensure pagination of children
+ * Each reply will have:
+ *  - If it is even indexed, it will have a number of replies equal to its index - this covers the case where a reply has no chain
+ *  - If it is odd indexed, it will have a reply chain of length equal to its index - this covers the case where a chain is paginated
+ */
+async function setupPosts(fixtureManager: FixtureManager) {
+    const [account] = await fixtureManager.createInternalAccount();
+
+    let postsToCreate = ReplyChainView.MAX_ANCESTOR_DEPTH + 6;
+    const posts: Post[] = [];
+    while (postsToCreate-- > 0) {
+        const post = await fixtureManager.createPost(account, {
+            inReplyTo: posts[posts.length - 1],
+        });
+        posts.push(post);
+    }
+
+    const ancestors = posts.slice(0, -1);
+    const post = posts[posts.length - 1];
+
+    let repliesToCreate = ReplyChainView.MAX_CHILDREN_COUNT + 5;
+    const replies: Post[] = [];
+    while (repliesToCreate-- > 0) {
+        const reply = await fixtureManager.createPost(account, {
+            inReplyTo: post,
+        });
+        replies.push(reply);
+    }
+
+    const chains: Post[][] = [];
+    for (let i = 0; i < replies.length; i++) {
+        const chain: Post[] = [];
+        chains.push(chain);
+        if (i % 2 === 0) {
+            let replyCount = i;
+            while (replyCount-- > 0) {
+                await fixtureManager.createPost(account, {
+                    inReplyTo: replies[i],
+                });
+            }
+        } else {
+            let replyToChain = replies[i];
+            let chainLength = i;
+            while (chainLength-- > 0) {
+                replyToChain = await fixtureManager.createPost(account, {
+                    inReplyTo: replyToChain,
+                });
+                chain.push(replyToChain);
+            }
+        }
+    }
+
+    return {
+        ancestors,
+        post,
+        replies,
+        chains,
+    };
+}
+
 describe('ReplyChainView', () => {
     let db: Knex;
     let fixtureManager: FixtureManager;
@@ -20,43 +83,30 @@ describe('ReplyChainView', () => {
 
     describe('getAncestors', () => {
         it('should return the paginated ancestors of a post', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-
-            let postsToCreate = ReplyChainView.MAX_ANCESTOR_DEPTH + 5;
-            const posts: Post[] = [];
-            while (postsToCreate-- > 0) {
-                const post = await fixtureManager.createPost(account, {
-                    inReplyTo: posts[posts.length - 1],
-                });
-                posts.push(post);
-            }
-
-            const allAncestors = posts.slice(0, -1);
-            const lastPost = posts[posts.length - 1];
+            const { ancestors, post } = await setupPosts(fixtureManager);
 
             const replyChainView = new ReplyChainView(db);
             // @ts-expect-error Property 'getAncestors' is private and only accessible within class 'ReplyChainView'
-            const ancestors = await replyChainView.getAncestors(
-                account.id,
-                lastPost.apId,
+            const result = await replyChainView.getAncestors(
+                post.author.id,
+                post.apId,
             );
 
-            expect(ancestors).toHaveLength(ReplyChainView.MAX_ANCESTOR_DEPTH);
-            expect(ancestors[0].post_ap_id).toBe(
-                allAncestors[
-                    allAncestors.length - ReplyChainView.MAX_ANCESTOR_DEPTH
-                ].apId.href,
+            expect(result).toHaveLength(ReplyChainView.MAX_ANCESTOR_DEPTH);
+            expect(result[0].post_ap_id).toBe(
+                ancestors[ancestors.length - ReplyChainView.MAX_ANCESTOR_DEPTH]
+                    .apId.href,
             );
 
             // @ts-expect-error Property 'getAncestors' is private and only accessible within class 'ReplyChainView'
             const remainingAncestors = await replyChainView.getAncestors(
-                account.id,
-                new URL(ancestors[0].post_ap_id),
+                post.author.id,
+                new URL(result[0].post_ap_id),
             );
 
-            expect(remainingAncestors).toHaveLength(4);
+            expect(remainingAncestors).toHaveLength(5);
             expect(remainingAncestors[0].post_ap_id).toBe(
-                allAncestors[0].apId.href,
+                ancestors[0].apId.href,
             );
         });
     });
