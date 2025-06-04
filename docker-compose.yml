@@ -109,7 +109,7 @@ services:
       - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
-      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/pubsub/ghost/push
+      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
@@ -244,7 +244,7 @@ services:
       - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
-      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/pubsub/ghost/push
+      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s

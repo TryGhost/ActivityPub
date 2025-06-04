@@ -896,6 +896,22 @@ app.use(async (ctx, next) => {
     });
 });
 
+app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
+    let data: unknown;
+
+    try {
+        data = await ctx.req.json();
+    } catch (err) {
+        globalLogging.error('Failed to parse JSON: {err}', { err });
+
+        return new Response(null, { status: 400 });
+    }
+
+    globalLogging.info('PubSub push received\n{data}', { data });
+
+    return new Response(null, { status: 200 });
+});
+
 // This needs to go before the middleware which loads the site
 // because this endpoint does not require the site to exist
 if (queue instanceof GCloudPubSubPushMessageQueue) {
