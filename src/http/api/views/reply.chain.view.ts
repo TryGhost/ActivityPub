@@ -39,9 +39,9 @@ const PostRowSchema = z.object({
     post_attachments: z
         .array(
             z.object({
-                type: z.string().nullable(),
-                mediaType: z.string().nullable(),
-                name: z.string().nullable(),
+                type: z.string().nullable().optional(),
+                mediaType: z.string().nullable().optional(),
+                name: z.string().nullable().optional(),
                 url: z.string(),
             }),
         )
