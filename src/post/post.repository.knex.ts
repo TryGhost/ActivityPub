@@ -680,6 +680,24 @@ export class KnexPostRepository {
     }
 
     /**
+     * Update the like and/or repost counts of a post
+     *
+     * @param postId ID of the post to update
+     * @param likeCount Updated number of likes (undefined if not updating)
+     * @param repostCount Updated number of reposts (undefined if not updating)
+     */
+    async updateInteractionCounts(
+        postId: number,
+        likeCount?: number,
+        repostCount?: number,
+    ) {
+        await this.db('posts').where({ id: postId }).update({
+            like_count: likeCount,
+            repost_count: repostCount,
+        });
+    }
+
+    /**
      * Insert a post into the database
      *
      * @param post Post to insert

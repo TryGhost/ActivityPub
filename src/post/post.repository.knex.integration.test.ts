@@ -1803,4 +1803,137 @@ describe('KnexPostRepository', () => {
             'No outbox entry should be created for external accounts',
         );
     });
+
+    describe('updateInteractionCounts', () => {
+        it('updates the likes count for a post', async () => {
+            const account = await getAccount('alice');
+            const postResult = await Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                custom_excerpt: null,
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+                authors: [],
+            });
+            const post = getValue(postResult as Ok<Post>) as Post;
+            await postRepository.save(post);
+
+            const likeCount = await client('posts')
+                .where({
+                    id: post.id,
+                })
+                .select('like_count')
+                .first();
+
+            assert.deepEqual(
+                likeCount,
+                { like_count: 0 },
+                'Likes count should be 0 initially',
+            );
+
+            const newLikeCount = 3;
+
+            await postRepository.updateInteractionCounts(
+                post.id!,
+                newLikeCount,
+            );
+
+            const updatedLikesCount = await client('posts')
+                .where({
+                    id: post.id,
+                })
+                .select('like_count')
+                .first();
+
+            assert.deepEqual(
+                updatedLikesCount,
+                { like_count: newLikeCount },
+                'Likes count should have been updated',
+            );
+
+            // It should not update the repost count
+            const repostCount = await client('posts')
+                .where({
+                    id: post.id,
+                })
+                .select('repost_count')
+                .first();
+
+            assert.deepEqual(
+                repostCount,
+                { repost_count: 0 },
+                'Repost count should not have been updated',
+            );
+        });
+
+        it('updates the repost count for a post', async () => {
+            const account = await getAccount('alice');
+            const postResult = await Post.createArticleFromGhostPost(account, {
+                title: 'Title',
+                uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
+                html: '<p>Hello, world!</p>',
+                excerpt: 'Hello, world!',
+                custom_excerpt: null,
+                feature_image: null,
+                url: 'https://testing.com/hello-world',
+                published_at: '2025-01-01',
+                visibility: 'public',
+                authors: [],
+            });
+            const post = getValue(postResult as Ok<Post>) as Post;
+            await postRepository.save(post);
+
+            const repostCount = await client('posts')
+                .where({
+                    id: post.id,
+                })
+                .select('repost_count')
+                .first();
+
+            assert.deepEqual(
+                repostCount,
+                { repost_count: 0 },
+                'Repost count should be 0 initially',
+            );
+
+            const newRepostCount = 5;
+
+            await postRepository.updateInteractionCounts(
+                post.id!,
+                undefined, // No like count update
+                newRepostCount,
+            );
+
+            const updatedRepostCount = await client('posts')
+                .where({
+                    id: post.id,
+                })
+                .select('repost_count')
+                .first();
+
+            assert.deepEqual(
+                updatedRepostCount,
+                { repost_count: newRepostCount },
+                'Repost count should have been updated',
+            );
+
+            // It should not update the likes count
+            const likeCount = await client('posts')
+                .where({
+                    id: post.id,
+                })
+                .select('like_count')
+                .first();
+
+            assert.deepEqual(
+                likeCount,
+                { like_count: 0 },
+                'Likes count should not have been updated',
+            );
+        });
+    });
 });
