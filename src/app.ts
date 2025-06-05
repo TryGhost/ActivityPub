@@ -230,7 +230,7 @@ if (process.env.USE_MQ === 'true') {
     const pubSubClient = await initPubSubClient({
         host: String(process.env.MQ_PUBSUB_HOST),
         isEmulator: !['staging', 'production'].includes(
-            process.env.NODE_ENV || '',
+            String(process.env.NODE_ENV),
         ),
         projectId: String(process.env.MQ_PUBSUB_PROJECT_ID),
         topics: [
