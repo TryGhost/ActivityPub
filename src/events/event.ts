@@ -2,14 +2,14 @@ export interface SerializableEvent {
     toJSON(): object;
 }
 
-export interface DeserializableEvent {
+export interface DeserializableEventConstructor {
     fromJSON(data: object): SerializableEvent;
 }
 
 export class EventSerializer {
-    private eventTypes: Record<string, DeserializableEvent> = {};
+    private eventTypes: Record<string, DeserializableEventConstructor> = {};
 
-    register(name: string, type: DeserializableEvent): void {
+    register(name: string, type: DeserializableEventConstructor): void {
         this.eventTypes[name] = type;
     }
 
