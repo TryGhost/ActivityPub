@@ -48,14 +48,22 @@ export class PubSubEvents extends AsyncEvents {
 
         if (!eventName) {
             throw new Error(
-                `Incoming message is missing attribute: "${PUBSUB_MESSAGE_ATTR_EVENT_NAME}"`,
+                `Incoming message is missing attribute [${PUBSUB_MESSAGE_ATTR_EVENT_NAME}]`,
             );
         }
 
-        let decodedData: object;
+        let decodedData: Record<string, unknown>;
 
         try {
             decodedData = JSON.parse(Buffer.from(data, 'base64').toString());
+
+            if (
+                typeof decodedData !== 'object' ||
+                decodedData === null ||
+                Array.isArray(decodedData)
+            ) {
+                throw new Error('Not a valid object');
+            }
         } catch (error) {
             throw new Error(
                 `Incoming message data could not be decoded: ${error instanceof Error ? error.message : String(error)}`,
@@ -68,9 +76,8 @@ export class PubSubEvents extends AsyncEvents {
             this.listeners(eventName).map((handler) => handler(event)),
         );
 
-        results
-            .filter((result) => result.status === 'rejected')
-            .map((result) => {
+        for (const result of results) {
+            if (result.status === 'rejected') {
                 this.logger.error(
                     'Event handler for [{event}] failed: {error}',
                     {
@@ -78,6 +85,7 @@ export class PubSubEvents extends AsyncEvents {
                         error: result.reason,
                     },
                 );
-            });
+            }
+        }
     }
 }

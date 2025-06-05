@@ -216,7 +216,7 @@ describe('PubSubEvents', () => {
         await expect(
             pubSubEvents.handleIncomingMessage(messageData, {}),
         ).rejects.toThrow(
-            `Incoming message is missing attribute: "${PUBSUB_MESSAGE_ATTR_EVENT_NAME}"`,
+            `Incoming message is missing attribute [${PUBSUB_MESSAGE_ATTR_EVENT_NAME}]`,
         );
     });
 });

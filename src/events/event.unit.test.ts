@@ -61,9 +61,7 @@ describe('EventSerializer', () => {
     });
 
     it('should throw an error when deserializing an event that has not been registered', () => {
-        const event = new TestEvent(123, '2025-05-06T09:30:00.000Z');
-
-        expect(() => serializer.deserialize('test.event', event)).toThrow(
+        expect(() => serializer.deserialize('test.event', { id: 123 })).toThrow(
             'Unknown event [test.event]',
         );
     });
