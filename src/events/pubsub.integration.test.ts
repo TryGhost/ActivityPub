@@ -1,0 +1,156 @@
+import {
+    afterAll,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vitest';
+
+import { type Message, PubSub, type Subscription } from '@google-cloud/pubsub';
+
+import { EventSerializer } from './event';
+import { PUBSUB_MESSAGE_ATTR_EVENT_NAME, PubSubEvents } from './pubsub';
+
+function encode(data: object) {
+    return Buffer.from(JSON.stringify(data)).toString('base64');
+}
+
+function decode(message: Message) {
+    return JSON.parse(message.data.toString());
+}
+
+class TestEvent {
+    constructor(private readonly id: number) {}
+
+    toJSON() {
+        return {
+            id: this.id,
+        };
+    }
+
+    static fromJSON(data: object) {
+        if (!('id' in data) || !(typeof data.id === 'number')) {
+            throw new Error('id must be a number');
+        }
+
+        return new TestEvent(data.id);
+    }
+}
+
+describe('PubSubEvents', () => {
+    let pubSubClient: PubSub;
+    let subscription: Subscription;
+    let eventSerializer: EventSerializer;
+    let pubSubEvents: PubSubEvents;
+
+    beforeAll(async () => {
+        pubSubClient = new PubSub({
+            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
+            emulatorMode: true,
+            apiEndpoint: process.env.MQ_PUBSUB_HOST,
+        });
+
+        [subscription] = await pubSubClient.createSubscription(
+            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
+            'pubsub-events-test',
+        );
+    });
+
+    afterAll(async () => {
+        await subscription.delete();
+    });
+
+    beforeEach(() => {
+        eventSerializer = new EventSerializer();
+
+        pubSubEvents = new PubSubEvents(
+            pubSubClient,
+            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
+            eventSerializer,
+        );
+    });
+
+    it('should publish an event to Pub/Sub', async () => {
+        const eventName = 'test.event';
+
+        const event = new TestEvent(123);
+
+        const messagePromise = new Promise<Message>((resolve) => {
+            subscription.on('message', (message) => {
+                message.ack();
+
+                resolve(message);
+            });
+        });
+
+        await pubSubEvents.emitAsync(eventName, event);
+
+        const receivedMessage = await messagePromise;
+
+        expect(decode(receivedMessage)).toEqual(event.toJSON());
+
+        expect(receivedMessage.attributes).toEqual({
+            [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+        });
+    });
+
+    it('should handle an incoming message', async () => {
+        const eventName = 'test.event';
+
+        eventSerializer.register(eventName, TestEvent);
+
+        const event = new TestEvent(123);
+
+        const messageData = encode(event.toJSON());
+        const messageAttributes = {
+            [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+        };
+
+        const handler1 = vi.fn().mockResolvedValue(true);
+        const handler2 = vi.fn().mockResolvedValue(true);
+
+        pubSubEvents.on(eventName, handler1);
+        pubSubEvents.on(eventName, handler2);
+
+        await pubSubEvents.handleIncomingMessage(
+            messageData,
+            messageAttributes,
+        );
+
+        expect(handler1).toHaveBeenCalledWith(event);
+        expect(handler2).toHaveBeenCalledWith(event);
+    });
+
+    it('should throw an error if the message data cannot be decoded', async () => {
+        const eventName = 'test.event';
+
+        eventSerializer.register(eventName, TestEvent);
+
+        const messageData = 'invalid';
+        const messageAttributes = {
+            [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+        };
+
+        await expect(
+            pubSubEvents.handleIncomingMessage(messageData, messageAttributes),
+        ).rejects.toThrow('Incoming message data could not be decoded');
+    });
+
+    it('should throw an error if the required attributes are missing', async () => {
+        const eventName = 'test.event';
+
+        eventSerializer.register(eventName, TestEvent);
+
+        const messageData = encode({
+            id: 123,
+        });
+
+        await expect(
+            pubSubEvents.handleIncomingMessage(messageData, {}),
+        ).rejects.toThrow(
+            `Incoming message is missing attribute: "${PUBSUB_MESSAGE_ATTR_EVENT_NAME}"`,
+        );
+    });
+});
