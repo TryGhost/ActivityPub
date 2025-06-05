@@ -1,9 +1,9 @@
 export interface SerializableEvent {
-    toJSON(): object;
+    toJSON(): Record<string, unknown>;
 }
 
 export interface DeserializableEventConstructor {
-    fromJSON(data: object): SerializableEvent;
+    fromJSON(data: Record<string, unknown>): SerializableEvent;
 }
 
 export class EventSerializer {
@@ -13,11 +13,14 @@ export class EventSerializer {
         this.eventTypes[name] = type;
     }
 
-    serialize(event: SerializableEvent): object {
+    serialize(event: SerializableEvent): Record<string, unknown> {
         return event.toJSON();
     }
 
-    deserialize(name: string, data: object): SerializableEvent {
+    deserialize(
+        name: string,
+        data: Record<string, unknown>,
+    ): SerializableEvent {
         const eventType = this.eventTypes[name];
 
         if (!eventType) {
