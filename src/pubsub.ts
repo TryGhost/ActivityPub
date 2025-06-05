@@ -27,25 +27,6 @@ export function getFullTopic(projectId: string, topic: string) {
     return `projects/${projectId}/topics/${topic}`;
 }
 
-async function checkTopicExists(pubSubClient: PubSub, topic: string) {
-    const fullTopic = getFullTopic(pubSubClient.projectId, topic);
-
-    const [topics] = await pubSubClient.getTopics();
-
-    return topics.some(({ name }) => name === fullTopic);
-}
-
-async function checkSubscriptionExists(
-    pubSubClient: PubSub,
-    subscription: string,
-) {
-    const fullSubscription = `projects/${pubSubClient.projectId}/subscriptions/${subscription}`;
-
-    const [subscriptions] = await pubSubClient.getSubscriptions();
-
-    return subscriptions.some(({ name }) => name === fullSubscription);
-}
-
 export async function initPubSubClient({
     host,
     isEmulator,
@@ -60,16 +41,24 @@ export async function initPubSubClient({
         projectId,
     });
 
-    // Check that the provided topics exists
+    // Check that the provided topics exist
+    const [existingTopics] = await pubSubClient.getTopics();
+
     for (const topic of topics) {
-        if (!(await checkTopicExists(pubSubClient, topic))) {
+        const fullTopic = getFullTopic(pubSubClient.projectId, topic);
+
+        if (!existingTopics.some((t) => t.name === fullTopic)) {
             throw new Error(`Topic [${topic}] does not exist`);
         }
     }
 
     // Check that the provided subscriptions exist
+    const [existingSubscriptions] = await pubSubClient.getSubscriptions();
+
     for (const subscription of subscriptions) {
-        if (!(await checkSubscriptionExists(pubSubClient, subscription))) {
+        const fullSubscription = `projects/${pubSubClient.projectId}/subscriptions/${subscription}`;
+
+        if (!existingSubscriptions.some((s) => s.name === fullSubscription)) {
             throw new Error(`Subscription [${subscription}] does not exist`);
         }
     }
