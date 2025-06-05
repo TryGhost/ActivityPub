@@ -1,5 +1,6 @@
 import {
     afterAll,
+    afterEach,
     beforeAll,
     beforeEach,
     describe,
@@ -58,10 +59,6 @@ describe('PubSubEvents', () => {
             process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
             'pubsub-events-test',
         );
-
-        logger = {
-            error: vi.fn(),
-        } as unknown as Logger;
     });
 
     afterAll(async () => {
@@ -71,12 +68,20 @@ describe('PubSubEvents', () => {
     beforeEach(() => {
         eventSerializer = new EventSerializer();
 
+        logger = {
+            error: vi.fn(),
+        } as unknown as Logger;
+
         pubSubEvents = new PubSubEvents(
             pubSubClient,
             process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
             eventSerializer,
             logger,
         );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('should publish an event to Pub/Sub', async () => {
@@ -92,7 +97,9 @@ describe('PubSubEvents', () => {
             });
         });
 
-        await pubSubEvents.emitAsync(eventName, event);
+        const result = await pubSubEvents.emitAsync(eventName, event);
+
+        expect(result).toBe(true);
 
         const receivedMessage = await messagePromise;
 
@@ -101,6 +108,22 @@ describe('PubSubEvents', () => {
         expect(receivedMessage.attributes).toEqual({
             [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
         });
+    });
+
+    it('should fail gracefully if the event cannot be published', async () => {
+        const eventName = 'test.event';
+
+        const event = new TestEvent(123);
+
+        vi.spyOn(pubSubClient, 'topic').mockRejectedValue(
+            new Error('test error'),
+        );
+
+        const result = await pubSubEvents.emitAsync(eventName, event);
+
+        expect(result).toBe(false);
+
+        expect(logger.error).toHaveBeenCalledTimes(1);
     });
 
     it('should handle an incoming message', async () => {

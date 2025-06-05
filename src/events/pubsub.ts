@@ -17,14 +17,27 @@ export class PubSubEvents extends AsyncEvents {
     }
 
     async emitAsync(name: string, event: SerializableEvent) {
-        await this.pubSubClient.topic(this.topic).publishMessage({
-            json: this.serializer.serialize(event),
-            attributes: {
-                [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: name,
-            },
-        });
+        try {
+            await this.pubSubClient.topic(this.topic).publishMessage({
+                json: this.serializer.serialize(event),
+                attributes: {
+                    [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: name,
+                },
+            });
 
-        return true;
+            return true;
+        } catch (error) {
+            this.logger.error(
+                'Failed to publish event [{event}] to Pub/Sub: {error}',
+                {
+                    event: name,
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                },
+            );
+
+            return false;
+        }
     }
 
     async handleIncomingMessage(
