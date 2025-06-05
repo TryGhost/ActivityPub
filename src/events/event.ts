@@ -21,7 +21,7 @@ export class EventSerializer {
         const eventType = this.eventTypes[name];
 
         if (!eventType) {
-            throw new Error(`Unknown event: ${name}`);
+            throw new Error(`Unknown event [${name}]`);
         }
 
         return eventType.fromJSON(data);

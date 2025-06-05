@@ -64,7 +64,7 @@ describe('EventSerializer', () => {
         const event = new TestEvent(123, '2025-05-06T09:30:00.000Z');
 
         expect(() => serializer.deserialize('test.event', event)).toThrow(
-            'Unknown event: test.event',
+            'Unknown event [test.event]',
         );
     });
 });
