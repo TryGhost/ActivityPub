@@ -34,34 +34,46 @@ export async function initPubSubClient({
     topics,
     subscriptions,
 }: InitClientConfig) {
-    // Initialise the Pub/Sub client
-    const pubSubClient = new PubSub({
-        apiEndpoint: host,
-        emulatorMode: isEmulator,
-        projectId,
-    });
+    try {
+        // Initialise the Pub/Sub client
+        const pubSubClient = new PubSub({
+            apiEndpoint: host,
+            emulatorMode: isEmulator,
+            projectId,
+        });
 
-    // Check that the provided topics exist
-    const [existingTopics] = await pubSubClient.getTopics();
+        // Check that the provided topics exist
+        const [existingTopics] = await pubSubClient.getTopics();
 
-    for (const topic of topics) {
-        const fullTopic = getFullTopic(pubSubClient.projectId, topic);
+        for (const topic of topics) {
+            const fullTopic = getFullTopic(pubSubClient.projectId, topic);
 
-        if (!existingTopics.some((t) => t.name === fullTopic)) {
-            throw new Error(`Topic [${topic}] does not exist`);
+            if (!existingTopics.some((t) => t.name === fullTopic)) {
+                throw new Error(`Topic [${topic}] does not exist`);
+            }
         }
-    }
 
-    // Check that the provided subscriptions exist
-    const [existingSubscriptions] = await pubSubClient.getSubscriptions();
+        // Check that the provided subscriptions exist
+        const [existingSubscriptions] = await pubSubClient.getSubscriptions();
 
-    for (const subscription of subscriptions) {
-        const fullSubscription = `projects/${pubSubClient.projectId}/subscriptions/${subscription}`;
+        for (const subscription of subscriptions) {
+            const fullSubscription = `projects/${pubSubClient.projectId}/subscriptions/${subscription}`;
 
-        if (!existingSubscriptions.some((s) => s.name === fullSubscription)) {
-            throw new Error(`Subscription [${subscription}] does not exist`);
+            if (
+                !existingSubscriptions.some((s) => s.name === fullSubscription)
+            ) {
+                throw new Error(
+                    `Subscription [${subscription}] does not exist`,
+                );
+            }
         }
-    }
 
-    return pubSubClient;
+        return pubSubClient;
+    } catch (error) {
+        throw new Error(
+            `Failed to initialise Pub/Sub client: ${
+                error instanceof Error ? error.message : String(error)
+            }`,
+        );
+    }
 }
