@@ -19,7 +19,7 @@ export function createIncomingPubSubMessageHandler(events: PubSubEvents) {
 
             if (!payload.message.attributes[PUBSUB_MESSAGE_ATTR_EVENT_NAME]) {
                 throw new Error(
-                    `"${PUBSUB_MESSAGE_ATTR_EVENT_NAME}" missing from payload`,
+                    `[${PUBSUB_MESSAGE_ATTR_EVENT_NAME}] missing from payload`,
                 );
             }
         } catch (error) {
