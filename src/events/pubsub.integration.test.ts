@@ -9,6 +9,7 @@ import {
 } from 'vitest';
 
 import { type Message, PubSub, type Subscription } from '@google-cloud/pubsub';
+import type { Logger } from '@logtape/logtape';
 
 import { EventSerializer } from './event';
 import { PUBSUB_MESSAGE_ATTR_EVENT_NAME, PubSubEvents } from './pubsub';
@@ -44,6 +45,7 @@ describe('PubSubEvents', () => {
     let subscription: Subscription;
     let eventSerializer: EventSerializer;
     let pubSubEvents: PubSubEvents;
+    let logger: Logger;
 
     beforeAll(async () => {
         pubSubClient = new PubSub({
@@ -56,6 +58,10 @@ describe('PubSubEvents', () => {
             process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
             'pubsub-events-test',
         );
+
+        logger = {
+            error: vi.fn(),
+        } as unknown as Logger;
     });
 
     afterAll(async () => {
@@ -69,6 +75,7 @@ describe('PubSubEvents', () => {
             pubSubClient,
             process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
             eventSerializer,
+            logger,
         );
     });
 
@@ -121,6 +128,42 @@ describe('PubSubEvents', () => {
 
         expect(handler1).toHaveBeenCalledWith(event);
         expect(handler2).toHaveBeenCalledWith(event);
+    });
+
+    it('should gracefully handle an incoming message', async () => {
+        const eventName = 'test.event';
+
+        eventSerializer.register(eventName, TestEvent);
+
+        const event = new TestEvent(123);
+
+        const messageData = encode(event.toJSON());
+        const messageAttributes = {
+            [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+        };
+
+        const handler1 = vi
+            .fn()
+            .mockRejectedValue(new Error('Handler 1 error'));
+        const handler2 = vi.fn().mockResolvedValue(true);
+        const handler3 = vi
+            .fn()
+            .mockRejectedValue(new Error('Handler 3 error'));
+
+        pubSubEvents.on(eventName, handler1);
+        pubSubEvents.on(eventName, handler2);
+        pubSubEvents.on(eventName, handler3);
+
+        await pubSubEvents.handleIncomingMessage(
+            messageData,
+            messageAttributes,
+        );
+
+        expect(handler1).toHaveBeenCalledWith(event);
+        expect(handler2).toHaveBeenCalledWith(event);
+        expect(handler3).toHaveBeenCalledWith(event);
+
+        expect(logger.error).toHaveBeenCalledTimes(2);
     });
 
     it('should throw an error if the message data cannot be decoded', async () => {

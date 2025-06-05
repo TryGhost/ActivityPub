@@ -1,4 +1,5 @@
 import type { PubSub } from '@google-cloud/pubsub';
+import type { Logger } from '@logtape/logtape';
 
 import { AsyncEvents } from 'core/events';
 import type { EventSerializer, SerializableEvent } from './event';
@@ -10,6 +11,7 @@ export class PubSubEvents extends AsyncEvents {
         private readonly pubSubClient: PubSub,
         private readonly topic: string,
         private readonly serializer: EventSerializer,
+        private readonly logger: Logger,
     ) {
         super();
     }
@@ -49,8 +51,20 @@ export class PubSubEvents extends AsyncEvents {
 
         const event = this.serializer.deserialize(eventName, decodedData);
 
-        await Promise.all(
+        const results = await Promise.allSettled(
             this.listeners(eventName).map((handler) => handler(event)),
         );
+
+        results
+            .filter((result) => result.status === 'rejected')
+            .map((result) => {
+                this.logger.error(
+                    'Event handler for [{event}] failed: {error}',
+                    {
+                        event: eventName,
+                        error: result.reason,
+                    },
+                );
+            });
     }
 }
