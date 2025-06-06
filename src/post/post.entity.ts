@@ -125,8 +125,8 @@ export class Post extends BaseEntity {
         public readonly imageUrl: URL | null,
         public readonly publishedAt: Date,
         public readonly metadata: Metadata | null = null,
-        public readonly likeCount = 0,
-        public readonly repostCount = 0,
+        public likeCount = 0,
+        public repostCount = 0,
         public readonly replyCount = 0,
         public readonly inReplyTo: number | null = null,
         public readonly threadRoot: number | null = null,
@@ -245,6 +245,26 @@ export class Post extends BaseEntity {
 
     addMention(account: Account) {
         this.mentions.push(account);
+    }
+
+    setLikeCount(count: number) {
+        if (this.author.isInternal) {
+            throw new Error(
+                'setLikeCount() can only be used for external posts. Use addLike() for internal posts instead.',
+            );
+        }
+
+        this.likeCount = count;
+    }
+
+    setRepostCount(count: number) {
+        if (this.author.isInternal) {
+            throw new Error(
+                'setRepostCount() can only be used for external posts. Use addRepost() for internal posts instead.',
+            );
+        }
+
+        this.repostCount = count;
     }
 
     static async createArticleFromGhostPost(
