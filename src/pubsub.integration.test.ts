@@ -1,21 +1,49 @@
-import { describe, expect, it } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PubSub } from '@google-cloud/pubsub';
 
 import { getFullTopic, initPubSubClient } from './pubsub';
 
-const PROJECT_ID = String(process.env.MQ_PUBSUB_PROJECT_ID);
-const HOST = String(process.env.MQ_PUBSUB_HOST);
-const TOPICS = [
-    String(process.env.MQ_PUBSUB_TOPIC_NAME),
-    String(process.env.MQ_PUBSUB_GHOST_TOPIC_NAME),
-].filter(Boolean);
-const SUBSCRIPTIONS = [
-    String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME),
-    String(process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME),
-].filter(Boolean);
+vi.mock('@google-cloud/pubsub', () => ({
+    PubSub: vi.fn(),
+}));
+
+const PROJECT_ID = 'test-project';
+const HOST = 'test-host';
+const TOPICS = ['test-topic-1', 'test-topic-2'];
+const SUBSCRIPTIONS = ['test-subscription-1', 'test-subscription-2'];
 
 describe('initPubSubClient', () => {
+    let mockPubSubClient: Partial<PubSub>;
+
+    beforeEach(() => {
+        mockPubSubClient = {
+            projectId: PROJECT_ID,
+            getTopics: vi.fn().mockResolvedValue([
+                [
+                    {
+                        name: `projects/${PROJECT_ID}/topics/${TOPICS[0]}`,
+                    },
+                    {
+                        name: `projects/${PROJECT_ID}/topics/${TOPICS[1]}`,
+                    },
+                ],
+            ]),
+            getSubscriptions: vi.fn().mockResolvedValue([
+                [
+                    {
+                        name: `projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTIONS[0]}`,
+                    },
+                    {
+                        name: `projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTIONS[1]}`,
+                    },
+                ],
+            ]),
+        };
+
+        (PubSub as unknown as Mock).mockImplementation(() => mockPubSubClient);
+    });
+
     it('should return a configured Pub/Sub client', async () => {
         const pubSubClient = await initPubSubClient({
             projectId: PROJECT_ID,
@@ -25,7 +53,13 @@ describe('initPubSubClient', () => {
             subscriptions: SUBSCRIPTIONS,
         });
 
-        expect(pubSubClient).toBeInstanceOf(PubSub);
+        expect(PubSub).toHaveBeenCalledWith({
+            apiEndpoint: HOST,
+            emulatorMode: true,
+            projectId: PROJECT_ID,
+        });
+
+        expect(pubSubClient).toBe(mockPubSubClient);
     });
 
     it('should throw an error if a topic does not exist', async () => {
