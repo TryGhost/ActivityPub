@@ -1,6 +1,7 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
 import { parse } from 'node-html-parser';
+import urlRegex from 'url-regex';
 import { HANDLE_REGEX } from '../constants';
 import { isEqual } from '../helpers/uri';
 import type { Mention } from './post.entity';
@@ -158,7 +159,13 @@ export class ContentPreparer {
     }
 
     private addMentions(content: string, mentions: Mention[]) {
-        let preparedContent = content;
+        // Protect URLs by replacing them with placeholders
+        const urls: string[] = [];
+        let preparedContent = content.replace(urlRegex(), (url) => {
+            urls.push(url);
+            return `__URL_${urls.length - 1}__`;
+        });
+
         for (const mention of mentions) {
             const mentionRegex = new RegExp(
                 mention.name.replace(/\./g, '\\.'), // Escape the dot (.) character
@@ -169,7 +176,12 @@ export class ContentPreparer {
                 `<a href="${mention.href}" data-profile="${mention.name}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
             );
         }
-        return preparedContent;
+
+        // Restore URLs
+        return preparedContent.replace(
+            /__URL_(\d+)__/g,
+            (_, index) => urls[Number.parseInt(index)],
+        );
     }
 
     /**
