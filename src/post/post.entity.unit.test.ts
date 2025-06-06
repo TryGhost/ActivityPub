@@ -380,6 +380,7 @@ describe('Post', () => {
             expect(note.content).toBe('<p>Email me at support@ghost.org</p>');
         });
     });
+
     describe('createNote', () => {
         it('errors if the account is external', () => {
             const account = externalAccount();
@@ -772,6 +773,22 @@ describe('Post', () => {
         expect(post.metadata).toEqual({
             ghostAuthors: [],
         });
+    });
+
+    it('should indicate if the post is created by an internal account', () => {
+        const post = Post.createFromData(internalAccount(), {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        expect(post.isInternal).toBe(true);
+
+        const post2 = Post.createFromData(externalAccount(), {
+            type: PostType.Note,
+            content: 'Hello, world!',
+            apId: new URL('https://example.com/post'),
+        });
+        expect(post2.isInternal).toBe(false);
     });
 
     describe('post excerpt', () => {

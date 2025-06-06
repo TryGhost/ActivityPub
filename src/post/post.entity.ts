@@ -163,6 +163,10 @@ export class Post extends BaseEntity {
         }
     }
 
+    get isInternal() {
+        return this.author.isInternal;
+    }
+
     delete(account: Account) {
         if (account.uuid !== this.author.uuid) {
             throw new Error(
