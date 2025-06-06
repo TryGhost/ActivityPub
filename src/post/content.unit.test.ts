@@ -274,6 +274,45 @@ describe('ContentPreparer', () => {
                 );
             });
 
+            it('should not convert mentions to hyperlinks if they are part of a link', () => {
+                const content =
+                    'Hello @user@example.xyz and https://example.xyz/@user@example.xyz';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    extractLinks: true,
+                    addMentions: [
+                        {
+                            name: '@user@example.xyz',
+                            href: new URL('https://example.xyz/@user'),
+                            account: account,
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    'Hello <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a> and <a href="https://example.xyz/@user@example.xyz">https://example.xyz/@user@example.xyz</a>',
+                );
+            });
+
+            it('should not convert mentions to hyperlinks if they are part of a link', () => {
+                const content =
+                    '<p>Hello @user@example.xyz and https://example.xyz/@user@example.xyz</p>';
+                const result = preparer.prepare(content, {
+                    ...allOptionsDisabled,
+                    addMentions: [
+                        {
+                            name: '@user@example.xyz',
+                            href: new URL('https://example.xyz/@user'),
+                            account: account,
+                        },
+                    ],
+                });
+
+                expect(result).toEqual(
+                    '<p>Hello <a href="https://example.xyz/@user" data-profile="@user@example.xyz" rel="nofollow noopener noreferrer">@user@example.xyz</a> and https://example.xyz/@user@example.xyz</p>',
+                );
+            });
+
             it('should handle multiple mentions in the same content', () => {
                 const content =
                     'Hello @user@example.xyz and @newUser@example.co.uk!';
