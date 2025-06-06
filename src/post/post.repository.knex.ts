@@ -433,6 +433,8 @@ export class KnexPostRepository {
         const transaction = await this.db.transaction();
 
         try {
+            const newLikeCount = post.getNewLikeCount();
+            const newRepostCount = post.getNewRepostCount();
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             const mentionsToAdd = post.mentions;
@@ -543,7 +545,13 @@ export class KnexPostRepository {
                     wasDeleted = true;
                 }
             } else {
-                if (likesToAdd.length > 0 || likesToRemove.length > 0) {
+                if (newLikeCount !== null) {
+                    await transaction('posts')
+                        .update({
+                            like_count: newLikeCount,
+                        })
+                        .where({ id: post.id });
+                } else if (likesToAdd.length > 0 || likesToRemove.length > 0) {
                     const { insertedLikesCount, accountIdsInserted } =
                         likesToAdd.length > 0
                             ? await this.insertLikesIgnoringDuplicates(
@@ -580,7 +588,16 @@ export class KnexPostRepository {
                     }
                 }
 
-                if (repostsToAdd.length > 0 || repostsToRemove.length > 0) {
+                if (newRepostCount !== null) {
+                    await transaction('posts')
+                        .update({
+                            repost_count: newRepostCount,
+                        })
+                        .where({ id: post.id });
+                } else if (
+                    repostsToAdd.length > 0 ||
+                    repostsToRemove.length > 0
+                ) {
                     const { insertedRepostsCount, accountIdsInserted } =
                         repostsToAdd.length > 0
                             ? await this.insertRepostsIgnoringDuplicates(

@@ -1000,7 +1000,7 @@ describe('Post', () => {
 
             post.setLikeCount(10);
 
-            expect(post.likeCount).toBe(10);
+            expect(post.getNewLikeCount()).toBe(10);
         });
     });
 
@@ -1043,7 +1043,7 @@ describe('Post', () => {
 
             post.setRepostCount(10);
 
-            expect(post.repostCount).toBe(10);
+            expect(post.getNewRepostCount()).toBe(10);
         });
     });
 });
