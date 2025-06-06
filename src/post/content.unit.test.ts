@@ -294,7 +294,7 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should not convert mentions to hyperlinks if they are part of a link', () => {
+            it('should not convert mentions to hyperlinks if they are part of a URL in HTML content', () => {
                 const content =
                     '<p>Hello @user@example.xyz and https://example.xyz/@user@example.xyz</p>';
                 const result = preparer.prepare(content, {
