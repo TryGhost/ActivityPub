@@ -433,7 +433,6 @@ export class KnexPostRepository {
         const transaction = await this.db.transaction();
 
         try {
-            const newLikeCount = post.getNewLikeCount();
             const newRepostCount = post.getNewRepostCount();
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
@@ -545,13 +544,7 @@ export class KnexPostRepository {
                     wasDeleted = true;
                 }
             } else {
-                if (newLikeCount !== null) {
-                    await transaction('posts')
-                        .update({
-                            like_count: newLikeCount,
-                        })
-                        .where({ id: post.id });
-                } else if (likesToAdd.length > 0 || likesToRemove.length > 0) {
+                if (likesToAdd.length > 0 || likesToRemove.length > 0) {
                     const { insertedLikesCount, accountIdsInserted } =
                         likesToAdd.length > 0
                             ? await this.insertLikesIgnoringDuplicates(
@@ -580,9 +573,27 @@ export class KnexPostRepository {
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
                             .update({
-                                like_count: transaction.raw(
-                                    `like_count + ${insertedLikesCount - removedLikesCount}`,
-                                ),
+                                like_count: post.isInternal
+                                    ? transaction.raw(
+                                          `like_count + ${insertedLikesCount - removedLikesCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's like count
+                                      // manually
+                                      post.likeCount +
+                                      (insertedLikesCount - removedLikesCount),
+                            })
+                            .where({ id: post.id });
+                    }
+                } else {
+                    // If no likes were added or removed, and the post is
+                    // external, update the like count in the database to
+                    // account for manual changes to the post's like count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                like_count: post.likeCount,
                             })
                             .where({ id: post.id });
                     }

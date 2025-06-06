@@ -433,7 +433,7 @@ export class PostService {
             return error('post-not-found');
         }
 
-        if (post.author.isInternal) {
+        if (post.isInternal) {
             return error('post-is-internal');
         }
 

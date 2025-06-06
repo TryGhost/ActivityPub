@@ -1017,7 +1017,7 @@ describe('Post', () => {
 
             post.setLikeCount(10);
 
-            expect(post.getNewLikeCount()).toBe(10);
+            expect(post.likeCount).toBe(10);
         });
     });
 
