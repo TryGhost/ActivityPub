@@ -12,6 +12,7 @@ export class ReplyChainController {
         const replyChainResult = await this.replyChainView.getReplyChain(
             account.id,
             new URL(ctx.req.param('post_ap_id')),
+            ctx.req.query('next'),
         );
 
         if (isError(replyChainResult)) {
