@@ -1,3 +1,4 @@
+import { Collection, Note, lookupObject } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -21,6 +22,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
+
+vi.mock('@fedify/fedify', async () => {
+    const actual = await vi.importActual('@fedify/fedify');
+    return {
+        ...actual,
+        lookupObject: vi.fn().mockResolvedValue(null),
+    };
+});
 
 describe('PostService', () => {
     let db: Knex;
@@ -51,7 +60,6 @@ describe('PostService', () => {
                         warn: vi.fn(),
                     },
                 },
-                lookupObject: vi.fn(),
             }),
             asyncLocalStorage: {
                 getStore: vi.fn(),
@@ -61,17 +69,22 @@ describe('PostService', () => {
         } as unknown as FedifyContextFactory;
 
         // Mock the lookup functions
-        vi.mock('lookup-helpers', () => ({
-            lookupActorProfile: vi
-                .fn()
-                .mockImplementation(async (ctx, handle) => {
-                    // Extract username and domain from handle
-                    const match = handle.match(/@?([^@]+)@(.+)/);
-                    if (!match) return error('lookup-error');
-                    const [, username, domain] = match;
-                    return ok(new URL(`https://${domain}/${username}`));
-                }),
-        }));
+        vi.mock('lookup-helpers', async () => {
+            const original = await vi.importActual('lookup-helpers');
+
+            return {
+                ...original,
+                lookupActorProfile: vi
+                    .fn()
+                    .mockImplementation(async (ctx, handle) => {
+                        // Extract username and domain from handle
+                        const match = handle.match(/@?([^@]+)@(.+)/);
+                        if (!match) return error('lookup-error');
+                        const [, username, domain] = match;
+                        return ok(new URL(`https://${domain}/${username}`));
+                    }),
+            };
+        });
 
         storageService = {
             verifyImageUrl: vi.fn().mockResolvedValue(ok(true)),
@@ -604,6 +617,109 @@ describe('PostService', () => {
                 account.id,
             );
             expect(wasReposted).toBe(false);
+        });
+    });
+
+    describe('updateInteractionCounts', () => {
+        it('returns an error if called for an internal account', async () => {
+            const [author, _site, _number] =
+                await fixtureManager.createInternalAccount();
+            const post = await fixtureManager.createPost(author);
+
+            const result = await postService.updateInteractionCounts(post.id!);
+
+            expect(isError(result)).toBe(true);
+            expect(getError(result as Err<string>)).toBe('post-is-internal');
+        });
+
+        it('returns an error if the remote object is not found', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const post = await fixtureManager.createPost(author);
+
+            const result = await postService.updateInteractionCounts(post.id!);
+
+            expect(isError(result)).toBe(true);
+            expect(getError(result as Err<string>)).toBe('upstream-error');
+        });
+
+        it('does not update interaction counts if the counts have not changed', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const post = await fixtureManager.createPost(author);
+
+            // Add 2 likes and 1 repost
+            const [likeAccount1] = await fixtureManager.createInternalAccount();
+            const [likeAccount2] = await fixtureManager.createInternalAccount();
+            const [repostAccount] =
+                await fixtureManager.createInternalAccount();
+
+            await postService.likePost(likeAccount1, post);
+            await postService.likePost(likeAccount2, post);
+            await postService.repostByApId(repostAccount, post.apId);
+
+            // Set up spies on the post methods
+            const setLikeCountSpy = vi.spyOn(post, 'setLikeCount');
+            const setRepostCountSpy = vi.spyOn(post, 'setRepostCount');
+
+            // Now try to update the interactions with the same counts
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: post.apId,
+                    likes: new Collection({
+                        totalItems: 2,
+                    }),
+                    shares: new Collection({
+                        totalItems: 1,
+                    }),
+                }),
+            );
+            const result = await postService.updateInteractionCounts(post.id!);
+
+            expect(isError(result)).toBe(false);
+            expect(setLikeCountSpy).not.toHaveBeenCalled();
+            expect(setRepostCountSpy).not.toHaveBeenCalled();
+
+            // Check that the post's like and repost counts have not changed
+            const savedPost = await postRepository.getById(post.id!);
+            expect(savedPost).not.toBeNull();
+            expect(savedPost!.likeCount).toBe(2);
+            expect(savedPost!.repostCount).toBe(1);
+        });
+
+        it('updates interaction counts if the counts have changed', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const post = await fixtureManager.createPost(author);
+
+            // Add 2 likes and 1 repost
+            const [likeAccount1] = await fixtureManager.createInternalAccount();
+            const [likeAccount2] = await fixtureManager.createInternalAccount();
+            const [repostAccount] =
+                await fixtureManager.createInternalAccount();
+
+            await postService.likePost(likeAccount1, post);
+            await postService.likePost(likeAccount2, post);
+            await postService.repostByApId(repostAccount, post.apId);
+
+            // Now update interactions counts (there is one more like and one less repost)
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: post.apId,
+                    likes: new Collection({
+                        totalItems: 3,
+                    }),
+                    shares: new Collection({
+                        totalItems: 0,
+                    }),
+                }),
+            );
+            const result = await postService.updateInteractionCounts(post.id!);
+
+            expect(isError(result)).toBe(false);
+
+            // Check that the post's like and repost counts have changed
+            const savedPost = await postRepository.getById(post.id!);
+            expect(savedPost).not.toBeNull();
+            expect(savedPost!.likeCount).toBe(3);
+            expect(savedPost!.repostCount).toBe(0);
         });
     });
 });

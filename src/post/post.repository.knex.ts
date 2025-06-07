@@ -433,6 +433,7 @@ export class KnexPostRepository {
         const transaction = await this.db.transaction();
 
         try {
+            const newRepostCount = post.getNewRepostCount();
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             const mentionsToAdd = post.mentions;
@@ -572,15 +573,42 @@ export class KnexPostRepository {
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
                             .update({
-                                like_count: transaction.raw(
-                                    `like_count + ${insertedLikesCount - removedLikesCount}`,
-                                ),
+                                like_count: post.isInternal
+                                    ? transaction.raw(
+                                          `like_count + ${insertedLikesCount - removedLikesCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's like count
+                                      // manually
+                                      post.likeCount +
+                                      (insertedLikesCount - removedLikesCount),
+                            })
+                            .where({ id: post.id });
+                    }
+                } else {
+                    // If no likes were added or removed, and the post is
+                    // external, update the like count in the database to
+                    // account for manual changes to the post's like count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                like_count: post.likeCount,
                             })
                             .where({ id: post.id });
                     }
                 }
 
-                if (repostsToAdd.length > 0 || repostsToRemove.length > 0) {
+                if (newRepostCount !== null) {
+                    await transaction('posts')
+                        .update({
+                            repost_count: newRepostCount,
+                        })
+                        .where({ id: post.id });
+                } else if (
+                    repostsToAdd.length > 0 ||
+                    repostsToRemove.length > 0
+                ) {
                     const { insertedRepostsCount, accountIdsInserted } =
                         repostsToAdd.length > 0
                             ? await this.insertRepostsIgnoringDuplicates(

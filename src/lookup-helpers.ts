@@ -1,7 +1,10 @@
 import {
     Object as APObject,
     type Actor,
+    type Article,
+    type Collection,
     type Context,
+    type Note,
     isActor,
     lookupWebFinger,
 } from '@fedify/fedify';
@@ -156,4 +159,34 @@ export async function lookupActorProfile(
         );
         return error('lookup-error');
     }
+}
+
+export async function getLikeCountFromRemote(object: Note | Article) {
+    let likesCollection: Collection | null;
+    try {
+        likesCollection = await object.getLikes();
+    } catch {
+        likesCollection = null;
+    }
+
+    if (!likesCollection) {
+        return null;
+    }
+
+    return likesCollection.totalItems ?? null;
+}
+
+export async function getRepostCountFromRemote(object: Note | Article) {
+    let sharesCollection: Collection | null;
+    try {
+        sharesCollection = await object.getShares();
+    } catch {
+        sharesCollection = null;
+    }
+
+    if (!sharesCollection) {
+        return null;
+    }
+
+    return sharesCollection.totalItems ?? null;
 }
