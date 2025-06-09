@@ -1,9 +1,9 @@
 import type { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
-
 import { AsyncEvents } from 'core/events';
 import type { EventSerializer, SerializableEvent } from './event';
 
+export const PUBSUB_MESSAGE_ATTR_EVENT_HOST = 'event_host';
 export const PUBSUB_MESSAGE_ATTR_EVENT_NAME = 'event_name';
 
 export class PubSubEvents extends AsyncEvents {
@@ -16,12 +16,13 @@ export class PubSubEvents extends AsyncEvents {
         super();
     }
 
-    async emitAsync(name: string, event: SerializableEvent) {
+    async emitAsync(name: string, event: SerializableEvent, host: string) {
         try {
             await this.pubSubClient.topic(this.topic).publishMessage({
                 json: this.serializer.serialize(event),
                 attributes: {
                     [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: name,
+                    [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: host,
                 },
             });
 
@@ -44,6 +45,14 @@ export class PubSubEvents extends AsyncEvents {
         data: string,
         attributes: Record<string, string>,
     ) {
+        const eventHost = attributes[PUBSUB_MESSAGE_ATTR_EVENT_HOST];
+
+        if (!eventHost) {
+            throw new Error(
+                `Incoming message is missing attribute [${PUBSUB_MESSAGE_ATTR_EVENT_HOST}]`,
+            );
+        }
+
         const eventName = attributes[PUBSUB_MESSAGE_ATTR_EVENT_NAME];
 
         if (!eventName) {
@@ -79,9 +88,10 @@ export class PubSubEvents extends AsyncEvents {
         for (const result of results) {
             if (result.status === 'rejected') {
                 this.logger.error(
-                    'Event handler for [{event}] failed: {error}',
+                    'Event handler for [{event}] on host [{host}] failed: {error}',
                     {
                         event: eventName,
+                        host: eventHost,
                         error: result.reason,
                     },
                 );

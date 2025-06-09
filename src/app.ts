@@ -40,6 +40,9 @@ import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatch
 import { asClass, asFunction, asValue, createContainer } from 'awilix';
 import { AsyncEvents } from 'core/events';
 import { get } from 'es-toolkit/compat';
+import { EventSerializer } from 'events/event';
+import { PubSubEvents } from 'events/pubsub';
+import { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { BlockController } from 'http/api/block';
@@ -209,6 +212,11 @@ container.register('events', asValue(new AsyncEvents()));
 
 container.register('flagService', asValue(new FlagService([])));
 
+container.register(
+    'fedifyContextFactory',
+    asClass(FedifyContextFactory).singleton(),
+);
+
 container.register('storageService', asClass(GCPStorageService).singleton());
 
 try {
@@ -234,8 +242,14 @@ if (process.env.USE_MQ === 'true') {
     if (!process.env.MQ_PUBSUB_TOPIC_NAME) {
         throw new Error('MQ_PUBSUB_TOPIC_NAME is not set');
     }
+    if (!process.env.MQ_PUBSUB_GHOST_TOPIC_NAME) {
+        throw new Error('MQ_PUBSUB_GHOST_TOPIC_NAME is not set');
+    }
     if (!process.env.MQ_PUBSUB_SUBSCRIPTION_NAME) {
         throw new Error('MQ_PUBSUB_SUBSCRIPTION_NAME is not set');
+    }
+    if (!process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME) {
+        throw new Error('MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME is not set');
     }
 
     const pubSubClient = await initPubSubClient({
@@ -244,8 +258,14 @@ if (process.env.USE_MQ === 'true') {
             process.env.NODE_ENV || '',
         ),
         projectId: process.env.MQ_PUBSUB_PROJECT_ID,
-        topics: [process.env.MQ_PUBSUB_TOPIC_NAME],
-        subscriptions: [process.env.MQ_PUBSUB_SUBSCRIPTION_NAME],
+        topics: [
+            process.env.MQ_PUBSUB_TOPIC_NAME,
+            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME,
+        ],
+        subscriptions: [
+            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
+            process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME,
+        ],
     });
 
     try {
@@ -261,6 +281,18 @@ if (process.env.USE_MQ === 'true') {
         queue.registerErrorListener((error) => Sentry.captureException(error));
 
         container.register('queue', asValue(queue));
+
+        container.register(
+            'pubSubEvents',
+            asValue(
+                new PubSubEvents(
+                    pubSubClient,
+                    process.env.MQ_PUBSUB_GHOST_TOPIC_NAME,
+                    new EventSerializer(),
+                    globalLogging,
+                ),
+            ),
+        );
     } catch (err) {
         globalLogging.error('Failed to initialise message queue {error}', {
             error: err,
@@ -301,10 +333,6 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
     });
 }
 
-container.register(
-    'fedifyContextFactory',
-    asClass(FedifyContextFactory).singleton(),
-);
 container.register(
     'accountRepository',
     asClass(KnexAccountRepository).singleton(),
@@ -585,7 +613,6 @@ function ensureCorrectContext<B, R>(
     fn: (ctx: Context<ContextData>, b: B) => Promise<R>,
 ) {
     return async (ctx: Context<ContextData>, b: B) => {
-        const host = ctx.host;
         if (!ctx.data) {
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -912,19 +939,21 @@ app.use(async (ctx, next) => {
 });
 
 app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
-    let data: unknown;
+    const pubSubEvents = container.resolve('pubSubEvents');
+    const fedifyContextFactory = container.resolve('fedifyContextFactory');
 
-    try {
-        data = await ctx.req.json();
-    } catch (err) {
-        globalLogging.error('Failed to parse JSON: {err}', { err });
-
-        return new Response(null, { status: 400 });
-    }
-
-    globalLogging.info('PubSub push received\n{data}', { data });
-
-    return new Response(null, { status: 200 });
+    return spanWrapper(
+        createIncomingPubSubMessageHandler(
+            pubSubEvents,
+            fedify,
+            fedifyContextFactory,
+            {
+                globaldb: fedifyKv,
+                logger: globalLogging,
+            },
+            globalLogging,
+        ),
+    )(ctx);
 });
 
 // This needs to go before the middleware which loads the site

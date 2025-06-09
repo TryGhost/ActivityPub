@@ -1,7 +1,17 @@
+import type { Federation } from '@fedify/fedify';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-import { PUBSUB_MESSAGE_ATTR_EVENT_NAME, type PubSubEvents } from './pubsub';
+import type { Logger } from '@logtape/logtape';
+import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { ContextData } from 'app';
+import { createFedifyCtxForHost } from 'helpers/fedify';
+
+import {
+    PUBSUB_MESSAGE_ATTR_EVENT_HOST,
+    PUBSUB_MESSAGE_ATTR_EVENT_NAME,
+    type PubSubEvents,
+} from './pubsub';
 
 const IncomingMessagePayloadSchema = z.object({
     message: z.object({
@@ -10,8 +20,15 @@ const IncomingMessagePayloadSchema = z.object({
     }),
 });
 
-export function createIncomingPubSubMessageHandler(events: PubSubEvents) {
+export function createIncomingPubSubMessageHandler(
+    events: PubSubEvents,
+    fedify: Federation<ContextData>,
+    fedifyContextFactory: FedifyContextFactory,
+    newCtxData: ContextData,
+    logger: Logger,
+) {
     return async function handleIncomingPubSubMessage(ctx: Context) {
+        // Validate the incoming message
         let payload: z.infer<typeof IncomingMessagePayloadSchema>;
 
         try {
@@ -22,16 +39,47 @@ export function createIncomingPubSubMessageHandler(events: PubSubEvents) {
                     `[${PUBSUB_MESSAGE_ATTR_EVENT_NAME}] missing from payload`,
                 );
             }
+
+            if (!payload.message.attributes[PUBSUB_MESSAGE_ATTR_EVENT_HOST]) {
+                throw new Error(
+                    `[${PUBSUB_MESSAGE_ATTR_EVENT_HOST}] missing from payload`,
+                );
+            }
         } catch (error) {
             return new Response(null, { status: 400 });
         }
 
-        return events
-            .handleIncomingMessage(
-                payload.message.data,
-                payload.message.attributes,
-            )
-            .then(() => new Response(null, { status: 200 }))
-            .catch(() => new Response(null, { status: 500 }));
+        try {
+            // Construct a new Fedify context that is specific to the event host.
+            // We do this as we cannot infer the host from the request context
+            // for pubsub push message requests due to the request coming from
+            // the pubsub service.
+            const hostFedifyCtx = createFedifyCtxForHost(
+                fedify,
+                payload.message.attributes[PUBSUB_MESSAGE_ATTR_EVENT_HOST],
+                newCtxData,
+            );
+
+            // Register the newly constructed Fedify context and execute the
+            // event handlers within this context
+            await fedifyContextFactory.registerContext(
+                hostFedifyCtx,
+                async () => {
+                    await events.handleIncomingMessage(
+                        payload.message.data,
+                        payload.message.attributes,
+                    );
+                },
+            );
+
+            return new Response(null, { status: 200 });
+        } catch (error) {
+            logger.error('Failed to handle incoming Pub/Sub message: {error}', {
+                error,
+                message: payload.message,
+            });
+
+            return new Response(null, { status: 500 });
+        }
     };
 }

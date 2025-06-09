@@ -36,7 +36,7 @@ describe('EventSerializer', () => {
     });
 
     it('should serialize an event', () => {
-        serializer.register('test.event', TestEvent);
+        serializer.register('foo', TestEvent);
 
         const event = new TestEvent(123, '2025-05-06T09:30:00.000Z');
 
@@ -49,20 +49,20 @@ describe('EventSerializer', () => {
     });
 
     it('should deserialize an event', () => {
-        serializer.register('test.event', TestEvent);
+        serializer.register('foo', TestEvent);
 
         const event = new TestEvent(123, '2025-05-06T09:30:00.000Z');
 
         const serialized = serializer.serialize(event);
 
-        const deserialized = serializer.deserialize('test.event', serialized);
+        const deserialized = serializer.deserialize('foo', serialized);
 
         expect(deserialized).toEqual(event);
     });
 
     it('should throw an error when deserializing an event that has not been registered', () => {
-        expect(() => serializer.deserialize('test.event', { id: 123 })).toThrow(
-            'Unknown event [test.event]',
+        expect(() => serializer.deserialize('foo', { id: 123 })).toThrow(
+            'Unknown event [foo]',
         );
     });
 });

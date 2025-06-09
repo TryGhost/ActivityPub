@@ -13,7 +13,11 @@ import { type Message, PubSub, type Subscription } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 
 import { EventSerializer } from './event';
-import { PUBSUB_MESSAGE_ATTR_EVENT_NAME, PubSubEvents } from './pubsub';
+import {
+    PUBSUB_MESSAGE_ATTR_EVENT_HOST,
+    PUBSUB_MESSAGE_ATTR_EVENT_NAME,
+    PubSubEvents,
+} from './pubsub';
 
 function encode(data: object) {
     return Buffer.from(JSON.stringify(data)).toString('base64');
@@ -49,6 +53,18 @@ describe('PubSubEvents', () => {
     let logger: Logger;
 
     beforeAll(async () => {
+        if (!process.env.MQ_PUBSUB_HOST) {
+            throw new Error('MQ_PUBSUB_HOST is not set');
+        }
+
+        if (!process.env.MQ_PUBSUB_PROJECT_ID) {
+            throw new Error('MQ_PUBSUB_PROJECT_ID is not set');
+        }
+
+        if (!process.env.MQ_PUBSUB_GHOST_TOPIC_NAME) {
+            throw new Error('MQ_PUBSUB_GHOST_TOPIC_NAME is not set');
+        }
+
         pubSubClient = new PubSub({
             projectId: process.env.MQ_PUBSUB_PROJECT_ID,
             emulatorMode: true,
@@ -56,7 +72,7 @@ describe('PubSubEvents', () => {
         });
 
         [subscription] = await pubSubClient.createSubscription(
-            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME!,
+            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME,
             'pubsub-events-test',
         );
     });
@@ -85,9 +101,9 @@ describe('PubSubEvents', () => {
     });
 
     it('should publish an event to Pub/Sub', async () => {
-        const eventName = 'test.event';
-
+        const eventName = 'foo';
         const event = new TestEvent(123);
+        const host = 'example.com';
 
         const messagePromise = new Promise<Message>((resolve) => {
             subscription.on('message', (message) => {
@@ -97,7 +113,7 @@ describe('PubSubEvents', () => {
             });
         });
 
-        const result = await pubSubEvents.emitAsync(eventName, event);
+        const result = await pubSubEvents.emitAsync(eventName, event, host);
 
         expect(result).toBe(true);
 
@@ -107,19 +123,20 @@ describe('PubSubEvents', () => {
 
         expect(receivedMessage.attributes).toEqual({
             [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+            [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: host,
         });
     });
 
     it('should fail gracefully if the event cannot be published', async () => {
-        const eventName = 'test.event';
-
+        const eventName = 'foo';
         const event = new TestEvent(123);
+        const host = 'example.com';
 
         vi.spyOn(pubSubClient, 'topic').mockRejectedValue(
             new Error('test error'),
         );
 
-        const result = await pubSubEvents.emitAsync(eventName, event);
+        const result = await pubSubEvents.emitAsync(eventName, event, host);
 
         expect(result).toBe(false);
 
@@ -127,15 +144,17 @@ describe('PubSubEvents', () => {
     });
 
     it('should handle an incoming message', async () => {
-        const eventName = 'test.event';
+        const eventName = 'foo';
 
         eventSerializer.register(eventName, TestEvent);
 
+        const host = 'example.com';
         const event = new TestEvent(123);
 
         const messageData = encode(event.toJSON());
         const messageAttributes = {
             [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+            [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: host,
         };
 
         const handler1 = vi.fn().mockResolvedValue(true);
@@ -154,15 +173,17 @@ describe('PubSubEvents', () => {
     });
 
     it('should gracefully handle an incoming message', async () => {
-        const eventName = 'test.event';
+        const eventName = 'foo';
 
         eventSerializer.register(eventName, TestEvent);
 
+        const host = 'example.com';
         const event = new TestEvent(123);
 
         const messageData = encode(event.toJSON());
         const messageAttributes = {
             [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+            [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: host,
         };
 
         const handler1 = vi
@@ -190,13 +211,14 @@ describe('PubSubEvents', () => {
     });
 
     it('should throw an error if the message data cannot be decoded', async () => {
-        const eventName = 'test.event';
+        const eventName = 'foo';
 
         eventSerializer.register(eventName, TestEvent);
 
         const messageData = 'invalid';
         const messageAttributes = {
             [PUBSUB_MESSAGE_ATTR_EVENT_NAME]: eventName,
+            [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: 'example.com',
         };
 
         await expect(
@@ -205,7 +227,7 @@ describe('PubSubEvents', () => {
     });
 
     it('should throw an error if the required attributes are missing', async () => {
-        const eventName = 'test.event';
+        const eventName = 'foo';
 
         eventSerializer.register(eventName, TestEvent);
 
@@ -215,6 +237,14 @@ describe('PubSubEvents', () => {
 
         await expect(
             pubSubEvents.handleIncomingMessage(messageData, {}),
+        ).rejects.toThrow(
+            `Incoming message is missing attribute [${PUBSUB_MESSAGE_ATTR_EVENT_HOST}]`,
+        );
+
+        await expect(
+            pubSubEvents.handleIncomingMessage(messageData, {
+                [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: 'example.com',
+            }),
         ).rejects.toThrow(
             `Incoming message is missing attribute [${PUBSUB_MESSAGE_ATTR_EVENT_NAME}]`,
         );
