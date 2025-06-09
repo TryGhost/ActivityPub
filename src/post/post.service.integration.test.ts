@@ -674,7 +674,9 @@ describe('PostService', () => {
                     }),
                 }),
             );
-            const result = await postService.updateInteractionCounts(updatedPost!);
+            const result = await postService.updateInteractionCounts(
+                updatedPost!,
+            );
 
             expect(isError(result)).toBe(false);
             expect(setLikeCountSpy).not.toHaveBeenCalled();
@@ -715,7 +717,9 @@ describe('PostService', () => {
                     }),
                 }),
             );
-            const result = await postService.updateInteractionCounts(updatedPost!);
+            const result = await postService.updateInteractionCounts(
+                updatedPost!,
+            );
 
             expect(isError(result)).toBe(false);
 
