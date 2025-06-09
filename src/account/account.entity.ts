@@ -148,7 +148,7 @@ export class AccountEntity implements Account {
         const get = <K extends keyof P>(prop: K): P[K] =>
             params[prop] === undefined ? this[prop] : params[prop];
 
-        return AccountEntity.create(
+        const account = AccountEntity.create(
             {
                 ...this,
                 username: get('username'),
@@ -157,8 +157,22 @@ export class AccountEntity implements Account {
                 avatarUrl: get('avatarUrl'),
                 bannerImageUrl: get('bannerImageUrl'),
             },
-            this.events.concat(new AccountUpdatedEvent(this)),
+            this.events,
         );
+
+        if (
+            account.username !== this.username ||
+            account.name !== this.name ||
+            account.bio !== this.bio ||
+            account.avatarUrl !== this.avatarUrl ||
+            account.bannerImageUrl !== this.bannerImageUrl
+        ) {
+            account.events = account.events.concat(
+                new AccountUpdatedEvent(account),
+            );
+        }
+
+        return account;
     }
 
     unblock(account: Account): Account {
