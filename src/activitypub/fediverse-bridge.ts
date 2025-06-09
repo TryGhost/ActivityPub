@@ -1,5 +1,6 @@
 import type EventEmitter from 'node:events';
 import {
+    type Activity,
     Article,
     Create,
     Delete,
@@ -14,6 +15,7 @@ import {
 import { Temporal } from '@js-temporal/polyfill';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountUpdatedEvent } from 'account/account-updated.event';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
@@ -44,6 +46,39 @@ export class FediverseBridge {
         this.events.on(
             AccountBlockedEvent.getName(),
             this.handleAccountBlockedEvent.bind(this),
+        );
+    }
+
+    private async sendActivityToInbox(
+        account: Account,
+        recipient: Account,
+        activity: Activity,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: account.username },
+            {
+                id: recipient.apId,
+                inboxId: recipient.apInbox,
+            },
+            activity,
+        );
+    }
+
+    private async sendActivityToFollowers(
+        account: Account,
+        activity: Activity,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: account.username },
+            'followers',
+            activity,
+            {
+                preferSharedInbox: true,
+            },
         );
     }
 
@@ -138,16 +173,7 @@ export class FediverseBridge {
             await fedifyObject.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                username: post.author.username,
-            },
-            'followers',
-            createActivity,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(post.author, createActivity);
     }
 
     private async handlePostDeleted(event: PostDeletedEvent) {
@@ -169,16 +195,7 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                username: post.author.username,
-            },
-            'followers',
-            deleteActivity,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(post.author, deleteActivity);
     }
 
     private async handleAccountUpdatedEvent(event: AccountUpdatedEvent) {
@@ -199,16 +216,7 @@ export class FediverseBridge {
 
         await ctx.data.globaldb.set([update.id!.href], await update.toJsonLd());
 
-        await ctx.sendActivity(
-            {
-                username: account.username,
-            },
-            'followers',
-            update,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(account, update);
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
@@ -241,13 +249,6 @@ export class FediverseBridge {
 
         await ctx.data.globaldb.set([reject.id!.href], await reject.toJsonLd());
 
-        await ctx.sendActivity(
-            { username: blockerAccount.username },
-            {
-                id: blockedAccount.apId,
-                inboxId: blockedAccount.apInbox,
-            },
-            reject,
-        );
+        await this.sendActivityToInbox(blockerAccount, blockedAccount, reject);
     }
 }
