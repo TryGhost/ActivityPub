@@ -610,18 +610,6 @@ export class AccountService {
                 : null,
         };
 
-        if (
-            account.name === profileData.name &&
-            account.bio === profileData.bio &&
-            account.username === profileData.username &&
-            account.avatarUrl?.toString() ===
-                profileData.avatarUrl?.toString() &&
-            account.bannerImageUrl?.toString() ===
-                profileData.bannerImageUrl?.toString()
-        ) {
-            return;
-        }
-
         const updated = account.updateProfile(profileData);
 
         await this.accountRepository.save(updated);

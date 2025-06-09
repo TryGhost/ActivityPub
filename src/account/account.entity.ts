@@ -164,8 +164,8 @@ export class AccountEntity implements Account {
             account.username !== this.username ||
             account.name !== this.name ||
             account.bio !== this.bio ||
-            account.avatarUrl !== this.avatarUrl ||
-            account.bannerImageUrl !== this.bannerImageUrl
+            account.avatarUrl?.href !== this.avatarUrl?.href ||
+            account.bannerImageUrl?.href !== this.bannerImageUrl?.href
         ) {
             account.events = account.events.concat(
                 new AccountUpdatedEvent(account),
