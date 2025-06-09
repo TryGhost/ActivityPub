@@ -134,6 +134,7 @@ export class Post extends BaseEntity {
         public readonly attachments: PostAttachment[] = [],
         apId: URL | null = null,
         _deleted = false,
+        public readonly updatedAt: Date | null = null,
     ) {
         super(id);
         if (uuid === null) {
