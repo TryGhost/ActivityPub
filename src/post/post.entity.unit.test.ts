@@ -1060,7 +1060,7 @@ describe('Post', () => {
 
             post.setRepostCount(10);
 
-            expect(post.getNewRepostCount()).toBe(10);
+            expect(post.repostCount).toBe(10);
         });
     });
 });

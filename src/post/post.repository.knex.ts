@@ -433,7 +433,6 @@ export class KnexPostRepository {
         const transaction = await this.db.transaction();
 
         try {
-            const newRepostCount = post.getNewRepostCount();
             const { likesToAdd, likesToRemove } = post.getChangedLikes();
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             const mentionsToAdd = post.mentions;
@@ -599,16 +598,7 @@ export class KnexPostRepository {
                     }
                 }
 
-                if (newRepostCount !== null) {
-                    await transaction('posts')
-                        .update({
-                            repost_count: newRepostCount,
-                        })
-                        .where({ id: post.id });
-                } else if (
-                    repostsToAdd.length > 0 ||
-                    repostsToRemove.length > 0
-                ) {
+                if (repostsToAdd.length > 0 || repostsToRemove.length > 0) {
                     const { insertedRepostsCount, accountIdsInserted } =
                         repostsToAdd.length > 0
                             ? await this.insertRepostsIgnoringDuplicates(
@@ -637,9 +627,16 @@ export class KnexPostRepository {
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
                         await transaction('posts')
                             .update({
-                                repost_count: transaction.raw(
-                                    `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
-                                ),
+                                repost_count: post.isInternal
+                                    ? transaction.raw(
+                                          `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's repost count manually
+                                      post.repostCount +
+                                      insertedRepostsCount -
+                                      removedRepostsCount,
                             })
                             .where({ id: post.id });
                     }
@@ -660,6 +657,17 @@ export class KnexPostRepository {
                             repostAccountIds,
                             transaction,
                         );
+                    }
+                } else {
+                    // If no reposts were added or removed, and the post is
+                    // external, update the repost count in the database to
+                    // account for manual changes to the post's repost count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                repost_count: post.repostCount,
+                            })
+                            .where({ id: post.id });
                     }
                 }
             }

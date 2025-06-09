@@ -108,7 +108,6 @@ export class Post extends BaseEntity {
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
-    private newRepostCount: number | null = null;
     public readonly content: string | null;
     public readonly mentions: MentionedAccount[] = [];
 
@@ -127,7 +126,7 @@ export class Post extends BaseEntity {
         public readonly publishedAt: Date,
         public readonly metadata: Metadata | null = null,
         private _likeCount = 0,
-        public readonly repostCount = 0,
+        private _repostCount = 0,
         public readonly replyCount = 0,
         public readonly inReplyTo: number | null = null,
         public readonly threadRoot: number | null = null,
@@ -266,6 +265,10 @@ export class Post extends BaseEntity {
         this._likeCount = count;
     }
 
+    get repostCount() {
+        return this._repostCount;
+    }
+
     setRepostCount(count: number) {
         if (this.author.isInternal) {
             throw new Error(
@@ -273,11 +276,7 @@ export class Post extends BaseEntity {
             );
         }
 
-        this.newRepostCount = count;
-    }
-
-    getNewRepostCount() {
-        return this.newRepostCount;
+        this._repostCount = count;
     }
 
     static async createArticleFromGhostPost(
