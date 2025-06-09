@@ -16,7 +16,11 @@ import {
     isError,
     ok,
 } from 'core/result';
-import { lookupActorProfile } from 'lookup-helpers';
+import {
+    getLikeCountFromRemote,
+    getRepostCountFromRemote,
+    lookupActorProfile,
+} from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import type {
     GCPStorageService,
@@ -49,6 +53,12 @@ export type RepostError =
     | InteractionError;
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
+
+export type UpdateInteractionCountsError =
+    | 'post-not-found'
+    | 'post-is-internal'
+    | 'upstream-error'
+    | 'not-a-post';
 
 export class PostService {
     constructor(
@@ -128,10 +138,10 @@ export class PostService {
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
-
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
+
         const foundObject = await lookupObject(id, { documentLoader });
 
         // If foundObject is null - we could not find anything for this URL
@@ -411,6 +421,57 @@ export class PostService {
 
         await this.postRepository.save(post);
 
+        return ok(post);
+    }
+
+    async updateInteractionCounts(
+        postId: number,
+    ): Promise<Result<Post, UpdateInteractionCountsError>> {
+        const post = await this.postRepository.getById(postId);
+
+        if (!post) {
+            return error('post-not-found');
+        }
+
+        if (post.isInternal) {
+            return error('post-is-internal');
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+        const documentLoader = await context.getDocumentLoader({
+            identifier: 'index',
+        });
+        const object = await lookupObject(post.apId, { documentLoader });
+
+        if (object === null) {
+            return error('upstream-error');
+        }
+
+        if (!(object instanceof Note) && !(object instanceof Article)) {
+            return error('not-a-post');
+        }
+
+        const likeCount = await getLikeCountFromRemote(object);
+        const repostCount = await getRepostCountFromRemote(object);
+
+        const shouldUpdateLikeCount =
+            likeCount !== null && likeCount !== post.likeCount;
+        const shouldUpdateRepostCount =
+            repostCount !== null && repostCount !== post.repostCount;
+
+        if (!shouldUpdateLikeCount && !shouldUpdateRepostCount) {
+            return ok(post);
+        }
+
+        if (shouldUpdateLikeCount) {
+            post.setLikeCount(likeCount);
+        }
+
+        if (shouldUpdateRepostCount) {
+            post.setRepostCount(repostCount);
+        }
+
+        await this.postRepository.save(post);
         return ok(post);
     }
 }

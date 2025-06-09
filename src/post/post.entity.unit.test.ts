@@ -380,6 +380,7 @@ describe('Post', () => {
             expect(note.content).toBe('<p>Email me at support@ghost.org</p>');
         });
     });
+
     describe('createNote', () => {
         it('errors if the account is external', () => {
             const account = externalAccount();
@@ -774,6 +775,22 @@ describe('Post', () => {
         });
     });
 
+    it('should indicate if the post is created by an internal account', () => {
+        const post = Post.createFromData(internalAccount(), {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        expect(post.isInternal).toBe(true);
+
+        const post2 = Post.createFromData(externalAccount(), {
+            type: PostType.Note,
+            content: 'Hello, world!',
+            apId: new URL('https://example.com/post'),
+        });
+        expect(post2.isInternal).toBe(false);
+    });
+
     describe('post excerpt', () => {
         describe('when the post is public', () => {
             it('should not re-generate excerpt', async () => {
@@ -958,6 +975,92 @@ describe('Post', () => {
             expect(result.content).toBe(
                 `<p>This is a test note with a mention <a href="${extAccount.url}" data-profile="@${extAccount.username}@${extAccount.apId.hostname}" rel="nofollow noopener noreferrer">@foobar@foobar.com</a></p>`,
             );
+        });
+    });
+
+    describe('setLikeCount', () => {
+        it('should throw an error if the post is internal', async () => {
+            const author = internalAccount();
+            const ghostPost = {
+                uuid: '550e8400-e29b-41d4-a716-446655440000',
+                title: 'Title of my post',
+                html: '<p> This is such a great post </p>',
+                excerpt: 'This is such a great...',
+                custom_excerpt: null,
+                feature_image: 'https://ghost.org/feature-image.jpeg',
+                published_at: '2020-01-01',
+                url: 'https://ghost.org/post',
+                visibility: 'public',
+                authors: [],
+            };
+
+            const postResult = await Post.createArticleFromGhostPost(
+                author,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
+
+            expect(() => post.setLikeCount(10)).toThrow(
+                'setLikeCount() can only be used for external posts. Use addLike() for internal posts instead.',
+            );
+        });
+
+        it('should set the like count for an external post', async () => {
+            const author = externalAccount();
+            const apId = new URL('https://example.com/post');
+
+            const post = Post.createFromData(author, {
+                type: PostType.Note,
+                content: 'This is a test note',
+                apId,
+            });
+
+            post.setLikeCount(10);
+
+            expect(post.likeCount).toBe(10);
+        });
+    });
+
+    describe('setRepostCount', () => {
+        it('should throw an error if the post is internal', async () => {
+            const account = internalAccount();
+            const ghostPost = {
+                uuid: '550e8400-e29b-41d4-a716-446655440000',
+                title: 'Title of my post',
+                html: '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><!--members-only--><p>This is private content</p>',
+                excerpt: 'Welcome!\n\nThis is private content',
+                custom_excerpt: null,
+                feature_image: 'https://ghost.org/feature-image.jpeg',
+                published_at: '2020-01-01',
+                url: 'https://ghost.org/post',
+                visibility: 'members',
+                authors: [],
+            };
+
+            const postResult = await Post.createArticleFromGhostPost(
+                account,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
+
+            expect(() => post.setRepostCount(10)).toThrow(
+                'setRepostCount() can only be used for external posts. Use addRepost() for internal posts instead.',
+            );
+        });
+
+        it('should set the repost count for an external post', async () => {
+            const author = externalAccount();
+            const apId = new URL('https://example.com/post');
+
+            const post = Post.createFromData(author, {
+                type: PostType.Note,
+                content: 'This is a test note',
+                apId,
+            });
+
+            post.setRepostCount(10);
+
+            expect(post.repostCount).toBe(10);
         });
     });
 });

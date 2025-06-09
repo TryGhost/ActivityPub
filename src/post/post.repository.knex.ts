@@ -572,9 +572,27 @@ export class KnexPostRepository {
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
                             .update({
-                                like_count: transaction.raw(
-                                    `like_count + ${insertedLikesCount - removedLikesCount}`,
-                                ),
+                                like_count: post.isInternal
+                                    ? transaction.raw(
+                                          `like_count + ${insertedLikesCount - removedLikesCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's like count
+                                      // manually
+                                      post.likeCount +
+                                      (insertedLikesCount - removedLikesCount),
+                            })
+                            .where({ id: post.id });
+                    }
+                } else {
+                    // If no likes were added or removed, and the post is
+                    // external, update the like count in the database to
+                    // account for manual changes to the post's like count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                like_count: post.likeCount,
                             })
                             .where({ id: post.id });
                     }
@@ -609,9 +627,16 @@ export class KnexPostRepository {
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
                         await transaction('posts')
                             .update({
-                                repost_count: transaction.raw(
-                                    `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
-                                ),
+                                repost_count: post.isInternal
+                                    ? transaction.raw(
+                                          `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's repost count manually
+                                      post.repostCount +
+                                      insertedRepostsCount -
+                                      removedRepostsCount,
                             })
                             .where({ id: post.id });
                     }
@@ -632,6 +657,17 @@ export class KnexPostRepository {
                             repostAccountIds,
                             transaction,
                         );
+                    }
+                } else {
+                    // If no reposts were added or removed, and the post is
+                    // external, update the repost count in the database to
+                    // account for manual changes to the post's repost count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                repost_count: post.repostCount,
+                            })
+                            .where({ id: post.id });
                     }
                 }
             }
