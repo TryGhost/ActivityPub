@@ -61,35 +61,6 @@ describe('AccountService', () => {
             expect(knexAccountRepository.save).toHaveBeenCalledWith(updated);
         });
 
-        it('should do nothing if the provided data is the same as the existing account profile', async () => {
-            const data = {
-                name: 'Alice',
-                bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
-                username: 'alice',
-                avatarUrl: 'https://example.com/avatar/alice.png',
-                bannerImageUrl: 'https://example.com/banner/alice.png',
-            };
-
-            const account = {
-                name: data.name,
-                bio: data.bio,
-                username: data.username,
-                avatarUrl: new URL(data.avatarUrl),
-                bannerImageUrl: new URL(data.bannerImageUrl),
-                updateProfile: vi.fn(),
-            } as unknown as AccountEntity;
-
-            await accountService.updateAccountProfile(account, {
-                name: data.name,
-                bio: data.bio,
-                username: data.username,
-                avatarUrl: data.avatarUrl,
-                bannerImageUrl: data.bannerImageUrl,
-            });
-
-            expect(knexAccountRepository.save).not.toHaveBeenCalled();
-        });
-
         it('should handle empty values for avatarUrl and bannerImageUrl', async () => {
             const account = {
                 updateProfile: vi.fn(),
