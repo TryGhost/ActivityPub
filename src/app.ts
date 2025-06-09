@@ -227,19 +227,38 @@ let queue: GCloudPubSubPushMessageQueue | undefined;
 if (process.env.USE_MQ === 'true') {
     globalLogging.info('Message queue is enabled');
 
+    if (!process.env.MQ_PUBSUB_HOST) {
+        throw new Error('MQ_PUBSUB_HOST is not set');
+    }
+    if (!process.env.MQ_PUBSUB_PROJECT_ID) {
+        throw new Error('MQ_PUBSUB_PROJECT_ID is not set');
+    }
+    if (!process.env.MQ_PUBSUB_TOPIC_NAME) {
+        throw new Error('MQ_PUBSUB_TOPIC_NAME is not set');
+    }
+    if (!process.env.MQ_PUBSUB_GHOST_TOPIC_NAME) {
+        throw new Error('MQ_PUBSUB_GHOST_TOPIC_NAME is not set');
+    }
+    if (!process.env.MQ_PUBSUB_SUBSCRIPTION_NAME) {
+        throw new Error('MQ_PUBSUB_SUBSCRIPTION_NAME is not set');
+    }
+    if (!process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME) {
+        throw new Error('MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME is not set');
+    }
+
     const pubSubClient = await initPubSubClient({
-        host: String(process.env.MQ_PUBSUB_HOST),
+        host: process.env.MQ_PUBSUB_HOST,
         isEmulator: !['staging', 'production'].includes(
-            String(process.env.NODE_ENV),
+            process.env.NODE_ENV || '',
         ),
-        projectId: String(process.env.MQ_PUBSUB_PROJECT_ID),
+        projectId: process.env.MQ_PUBSUB_PROJECT_ID,
         topics: [
-            String(process.env.MQ_PUBSUB_TOPIC_NAME),
-            String(process.env.MQ_PUBSUB_GHOST_TOPIC_NAME),
+            process.env.MQ_PUBSUB_TOPIC_NAME,
+            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME,
         ],
         subscriptions: [
-            String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME),
-            String(process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME),
+            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
+            process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME,
         ],
     });
 
@@ -249,7 +268,7 @@ if (process.env.USE_MQ === 'true') {
             pubSubClient,
             getFullTopic(
                 pubSubClient.projectId,
-                String(process.env.MQ_PUBSUB_TOPIC_NAME),
+                process.env.MQ_PUBSUB_TOPIC_NAME,
             ),
         );
 
