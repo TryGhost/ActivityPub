@@ -106,7 +106,12 @@ export class FollowHandler {
                 following: accountToFollow.apId,
             });
 
-            await this.sendReject(ctx, follow, parsed.handle, sender);
+            await this.sendReject(
+                ctx,
+                follow,
+                accountToFollow.username,
+                sender,
+            );
 
             return;
         }
@@ -117,7 +122,7 @@ export class FollowHandler {
             accountToFollow,
         );
 
-        await this.sendAccept(ctx, follow, parsed.identifier, sender);
+        await this.sendAccept(ctx, follow, accountToFollow.username, sender);
     }
 
     private async persistActivity(
@@ -139,8 +144,8 @@ export class FollowHandler {
     private async sendAccept(
         ctx: Context<ContextData>,
         follow: Follow,
-        identifier: string,
-        sender: Actor,
+        username: string,
+        recipient: Actor,
     ): Promise<void> {
         const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
         const accept = new Accept({
@@ -152,14 +157,14 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([accept.id!.href], acceptJson);
 
-        await ctx.sendActivity({ identifier }, sender, accept);
+        await ctx.sendActivity({ username }, recipient, accept);
     }
 
     private async sendReject(
         ctx: Context<ContextData>,
         follow: Follow,
-        identifier: string,
-        sender: Actor,
+        username: string,
+        recipient: Actor,
     ): Promise<void> {
         const rejectId = ctx.getObjectUri(Reject, { id: uuidv4() });
         const reject = new Reject({
@@ -171,6 +176,6 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([reject.id!.href], rejectJson);
 
-        await ctx.sendActivity({ identifier }, sender, reject);
+        await ctx.sendActivity({ username }, recipient, reject);
     }
 }
