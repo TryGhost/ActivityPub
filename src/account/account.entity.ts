@@ -4,6 +4,7 @@ import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountFollowedEvent } from './account-followed.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
 import { AccountUnfollowedEvent } from './account-unfollowed.event';
+import { AccountUpdatedEvent } from './account-updated.event';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
 
@@ -142,19 +143,22 @@ export class AccountEntity implements Account {
         return new URL(`/.ghost/activitypub/${type}/${post.uuid}`, this.apId);
     }
 
-    updateProfile(params: ProfileUpdateParams) {
+    updateProfile(params: ProfileUpdateParams): Account {
         type P = ProfileUpdateParams;
         const get = <K extends keyof P>(prop: K): P[K] =>
             params[prop] === undefined ? this[prop] : params[prop];
 
-        return AccountEntity.create({
-            ...this,
-            username: get('username'),
-            name: get('name'),
-            bio: get('bio'),
-            avatarUrl: get('avatarUrl'),
-            bannerImageUrl: get('bannerImageUrl'),
-        }) as Account;
+        return AccountEntity.create(
+            {
+                ...this,
+                username: get('username'),
+                name: get('name'),
+                bio: get('bio'),
+                avatarUrl: get('avatarUrl'),
+                bannerImageUrl: get('bannerImageUrl'),
+            },
+            this.events.concat(new AccountUpdatedEvent(this)),
+        );
     }
 
     unblock(account: Account): Account {
