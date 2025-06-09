@@ -425,14 +425,8 @@ export class PostService {
     }
 
     async updateInteractionCounts(
-        postId: number,
+        post: Post,
     ): Promise<Result<Post, UpdateInteractionCountsError>> {
-        const post = await this.postRepository.getById(postId);
-
-        if (!post) {
-            return error('post-not-found');
-        }
-
         if (post.isInternal) {
             return error('post-is-internal');
         }

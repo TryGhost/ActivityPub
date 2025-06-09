@@ -626,7 +626,7 @@ describe('PostService', () => {
                 await fixtureManager.createInternalAccount();
             const post = await fixtureManager.createPost(author);
 
-            const result = await postService.updateInteractionCounts(post.id!);
+            const result = await postService.updateInteractionCounts(post);
 
             expect(isError(result)).toBe(true);
             expect(getError(result as Err<string>)).toBe('post-is-internal');
@@ -636,7 +636,7 @@ describe('PostService', () => {
             const author = await fixtureManager.createExternalAccount();
             const post = await fixtureManager.createPost(author);
 
-            const result = await postService.updateInteractionCounts(post.id!);
+            const result = await postService.updateInteractionCounts(post);
 
             expect(isError(result)).toBe(true);
             expect(getError(result as Err<string>)).toBe('upstream-error');
@@ -656,6 +656,8 @@ describe('PostService', () => {
             await postService.likePost(likeAccount2, post);
             await postService.repostByApId(repostAccount, post.apId);
 
+            const updatedPost = await postRepository.getById(post.id!);
+
             // Set up spies on the post methods
             const setLikeCountSpy = vi.spyOn(post, 'setLikeCount');
             const setRepostCountSpy = vi.spyOn(post, 'setRepostCount');
@@ -672,7 +674,7 @@ describe('PostService', () => {
                     }),
                 }),
             );
-            const result = await postService.updateInteractionCounts(post.id!);
+            const result = await postService.updateInteractionCounts(updatedPost!);
 
             expect(isError(result)).toBe(false);
             expect(setLikeCountSpy).not.toHaveBeenCalled();
@@ -699,6 +701,8 @@ describe('PostService', () => {
             await postService.likePost(likeAccount2, post);
             await postService.repostByApId(repostAccount, post.apId);
 
+            const updatedPost = await postRepository.getById(post.id!);
+
             // Now update interactions counts (there is one more like and one less repost)
             vi.mocked(lookupObject).mockResolvedValue(
                 new Note({
@@ -711,7 +715,7 @@ describe('PostService', () => {
                     }),
                 }),
             );
-            const result = await postService.updateInteractionCounts(post.id!);
+            const result = await postService.updateInteractionCounts(updatedPost!);
 
             expect(isError(result)).toBe(false);
 
