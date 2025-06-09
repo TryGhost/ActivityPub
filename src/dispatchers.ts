@@ -74,16 +74,41 @@ export const keypairDispatcher = (
         ctx: Context<ContextData>,
         identifier: string,
     ) {
+        ctx.data.logger.info(
+            'Keypair Dispatcher for identifier {identifier} on host {host}',
+            {
+                identifier,
+                host: ctx.host,
+            },
+        );
+
         const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return [];
+        if (site === null) {
+            ctx.data.logger.error('Site not found for host {host}', {
+                host: ctx.host,
+            });
+            return [];
+        }
 
         const account = await accountService.getDefaultAccountForSite(site);
 
         if (!account.ap_public_key) {
+            ctx.data.logger.error(
+                'Account public key not found for account {accountId}',
+                {
+                    accountId: account.id,
+                },
+            );
             return [];
         }
 
         if (!account.ap_private_key) {
+            ctx.data.logger.error(
+                'Account private key not found for account {accountId}',
+                {
+                    accountId: account.id,
+                },
+            );
             return [];
         }
 
@@ -101,7 +126,10 @@ export const keypairDispatcher = (
                 },
             ];
         } catch (err) {
-            ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
+            ctx.data.logger.error('Could not parse keypair for {identifier}', {
+                identifier,
+                error: err,
+            });
             return [];
         }
     };

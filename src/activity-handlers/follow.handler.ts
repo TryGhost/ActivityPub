@@ -18,30 +18,49 @@ export class FollowHandler {
     ) {}
 
     async handle(ctx: Context<ContextData>, follow: Follow) {
-        ctx.data.logger.info('Handling Follow');
+        ctx.data.logger.info(
+            'Handling Follow on {host} with id {id} and objectId {objectId}',
+            {
+                host: ctx.host,
+                id: follow.id,
+                objectId: follow.objectId,
+            },
+        );
 
         // Validate activity data
         if (!follow.id) {
-            ctx.data.logger.info('Follow missing id, exit early');
+            ctx.data.logger.error('Follow missing id');
             return;
         }
 
         if (!follow.objectId) {
-            ctx.data.logger.info('Follow missing objectId, exit early');
+            ctx.data.logger.error('Follow missing objectId', {
+                apId: follow.id.href,
+            });
             return;
         }
 
         const parsed = ctx.parseUri(follow.objectId);
         if (parsed?.type !== 'actor') {
-            ctx.data.logger.info('Follow object is not an actor, exit early');
+            ctx.data.logger.error('Follow object is not an actor', {
+                apId: follow.id.href,
+            });
             return;
         }
 
         const sender = await follow.getActor(ctx);
         if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Follow sender missing, exit early');
+            ctx.data.logger.error('Follow sender missing', {
+                apId: follow.id.href,
+            });
             return;
         }
+
+        ctx.data.logger.info(`Handling Follow ${follow.id}`, {
+            apId: follow.id.href,
+            follower: sender.id.href,
+            following: follow.objectId.href,
+        });
 
         // Persist the activity and sender in the db
         await this.persistActivity(ctx, follow, sender);
@@ -52,7 +71,11 @@ export class FollowHandler {
             follow.objectId,
         );
         if (isError(accountToFollowResult)) {
-            ctx.data.logger.info('Account to follow not found, exit early');
+            ctx.data.logger.error('Follow account to follow not found', {
+                apId: follow.id.href,
+                follower: sender.id.href,
+                following: follow.objectId.href,
+            });
             return;
         }
         const accountToFollow = getValue(accountToFollowResult);
@@ -61,7 +84,11 @@ export class FollowHandler {
             sender.id,
         );
         if (isError(followerAccountResult)) {
-            ctx.data.logger.info('Follower account not found, exit early');
+            ctx.data.logger.error('Follow follower account not found', {
+                apId: follow.id.href,
+                follower: sender.id.href,
+                following: follow.objectId.href,
+            });
             return;
         }
         const followerAccount = getValue(followerAccountResult);
@@ -73,9 +100,11 @@ export class FollowHandler {
             );
 
         if (!isFollowAllowed) {
-            ctx.data.logger.info(
-                `${followerAccount.apId} is not allowed to follow ${accountToFollow.apId}, sending reject`,
-            );
+            ctx.data.logger.error('Follow not allowed', {
+                apId: follow.id.href,
+                follower: followerAccount.apId,
+                following: accountToFollow.apId,
+            });
 
             await this.sendReject(ctx, follow, parsed.handle, sender);
 
