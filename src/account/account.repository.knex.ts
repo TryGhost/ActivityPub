@@ -7,7 +7,6 @@ import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountFollowedEvent } from './account-followed.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
 import { AccountUnfollowedEvent } from './account-unfollowed.event';
-import { AccountUpdatedEvent } from './account-updated.event';
 import { type Account, AccountEntity } from './account.entity';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
@@ -150,11 +149,6 @@ export class KnexAccountRepository {
         for (const event of events) {
             await this.events.emitAsync(event.getName(), event);
         }
-
-        await this.events.emitAsync(
-            AccountUpdatedEvent.getName(),
-            new AccountUpdatedEvent(account),
-        );
     }
 
     /**
