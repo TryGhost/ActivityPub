@@ -44,7 +44,6 @@ export async function handleCreateReply(
     }
 
     const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
         globaldb: ctx.get('globaldb'),
         logger,
     });
