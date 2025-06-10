@@ -357,7 +357,7 @@ export class ReplyChainView {
         return ok({
             ancestors: {
                 chain: ancestors.map(this.mapToPostDTO),
-                hasMore: ancestors[0]?.post_in_reply_to !== null,
+                hasMore: !!ancestors[0]?.post_in_reply_to,
             },
             post: this.mapToPostDTO(currentPost, accountId),
             children,

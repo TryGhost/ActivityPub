@@ -209,5 +209,227 @@ describe('ReplyChainView', () => {
                 ReplyChainView.MAX_CHILDREN_COUNT,
             );
         });
+
+        it('should correctly set hasMore for ancestors when there are more ancestors', async () => {
+            const { ancestors, post } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // We created MAX_ANCESTOR_DEPTH + 5 ancestors, but only MAX_ANCESTOR_DEPTH are returned
+            expect(replyChain.ancestors.chain).toHaveLength(
+                ReplyChainView.MAX_ANCESTOR_DEPTH,
+            );
+            expect(replyChain.ancestors.hasMore).toBe(true);
+
+            // Verify the ancestors are in the correct order (oldest to newest)
+            const expectedAncestorIds = ancestors
+                .slice(-ReplyChainView.MAX_ANCESTOR_DEPTH)
+                .map((a) => a.apId.href);
+            const actualAncestorIds = replyChain.ancestors.chain.map(
+                (a) => a.id,
+            );
+            expect(actualAncestorIds).toEqual(expectedAncestorIds);
+        });
+
+        it('should correctly set hasMore for ancestors when there are no more ancestors', async () => {
+            const { ancestors } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            // Get the reply chain for the oldest ancestor (which has no parent)
+            const oldestAncestor = ancestors[0];
+            const replyChainResult = await replyChainView.getReplyChain(
+                oldestAncestor.author.id,
+                oldestAncestor.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            expect(replyChain.ancestors.chain).toHaveLength(0);
+            expect(replyChain.ancestors.hasMore).toBe(false);
+        });
+
+        it('should correctly set hasMore for children chains', async () => {
+            const { post, replies, chains } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Check children with different chain lengths
+            for (let i = 0; i < replyChain.children.length; i++) {
+                const child = replyChain.children[i];
+                const expectedReply = replies[i];
+                const expectedChain = chains[i];
+
+                expect(child.post.id).toBe(expectedReply.apId.href);
+
+                if (i % 2 === 0) {
+                    // Even indexed replies have no chain
+                    expect(child.chain).toHaveLength(0);
+                    expect(child.hasMore).toBe(false);
+                } else {
+                    // Odd indexed replies have a chain of length equal to their index
+                    const expectedChainLength = Math.min(
+                        i,
+                        ReplyChainView.MAX_CHILDREN_DEPTH,
+                    );
+                    expect(child.chain).toHaveLength(expectedChainLength);
+
+                    // hasMore should be true if the chain is longer than MAX_CHILDREN_DEPTH
+                    expect(child.hasMore).toBe(
+                        i > ReplyChainView.MAX_CHILDREN_DEPTH,
+                    );
+
+                    // Verify the chain posts are correct
+                    const actualChainIds = child.chain.map((c) => c.id);
+                    const expectedChainIds = expectedChain
+                        .slice(0, expectedChainLength)
+                        .map((c) => c.apId.href);
+                    expect(actualChainIds).toEqual(expectedChainIds);
+                }
+            }
+        });
+
+        it('should correctly set next cursor when there are more children', async () => {
+            const { post, replies } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // We created MAX_CHILDREN_COUNT + 5 children, so there should be a next cursor
+            expect(replyChain.next).not.toBeNull();
+            expect(replyChain.next).toBe(
+                replyChain.children[
+                    replyChain.children.length - 1
+                ].post.publishedAt.toISOString(),
+            );
+        });
+
+        it('should correctly paginate through all children', async () => {
+            const { post, replies } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            // Get first page
+            const firstPageResult = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+            );
+            const firstPage = unsafeUnwrap(firstPageResult);
+
+            expect(firstPage.children).toHaveLength(
+                ReplyChainView.MAX_CHILDREN_COUNT,
+            );
+            expect(firstPage.next).not.toBeNull();
+
+            // Get second page
+            const secondPageResult = await replyChainView.getReplyChain(
+                post.author.id,
+                post.apId,
+                firstPage.next!,
+            );
+            const secondPage = unsafeUnwrap(secondPageResult);
+
+            // Should have the remaining 5 children
+            expect(secondPage.children).toHaveLength(5);
+            expect(secondPage.next).toBeNull();
+
+            // Verify all children are accounted for
+            const allChildrenIds = [
+                ...firstPage.children.map((c) => c.post.id),
+                ...secondPage.children.map((c) => c.post.id),
+            ];
+            const expectedChildrenIds = replies.map((r) => r.apId.href);
+            expect(allChildrenIds).toEqual(expectedChildrenIds);
+
+            // Verify ancestors are the same in both pages
+            expect(secondPage.ancestors.chain).toEqual(
+                firstPage.ancestors.chain,
+            );
+            expect(secondPage.ancestors.hasMore).toBe(
+                firstPage.ancestors.hasMore,
+            );
+        });
+
+        it('should handle posts with no children', async () => {
+            const { chains } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            // Get a post from deep in a chain that has no children
+            const leafPost = chains[1][chains[1].length - 1];
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                leafPost.author.id,
+                leafPost.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            expect(replyChain.children).toHaveLength(0);
+            expect(replyChain.next).toBeNull();
+            expect(replyChain.ancestors.chain.length).toBeGreaterThan(0);
+            expect(replyChain.ancestors.hasMore).toBe(true);
+        });
+
+        it('should handle posts in the middle of a chain', async () => {
+            const { replies, chains } = await setupPosts(fixtureManager);
+
+            const replyChainView = new ReplyChainView(db);
+
+            // Get a post from the middle of a chain (chain index 7, post 3 in the chain)
+            const middlePost = chains[7][2];
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                middlePost.author.id,
+                middlePost.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Should have ancestors up to MAX_ANCESTOR_DEPTH
+            expect(replyChain.ancestors.chain.length).toBeGreaterThan(0);
+            expect(replyChain.ancestors.hasMore).toBe(true);
+
+            // Should have exactly one child (the next post in the chain)
+            expect(replyChain.children).toHaveLength(1);
+            expect(replyChain.children[0].post.id).toBe(chains[7][3].apId.href);
+
+            // The child should have its own chain
+            expect(replyChain.children[0].chain.length).toBeGreaterThan(0);
+            expect(replyChain.children[0].hasMore).toBe(false); // Chain 7 has 7 posts, post 3 has 3 more in chain
+        });
+
+        it('should return not-found error for non-existent post', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const replyChainView = new ReplyChainView(db);
+
+            const replyChainResult = await replyChainView.getReplyChain(
+                account.id,
+                new URL('https://example.com/non-existent-post'),
+            );
+
+            expect(replyChainResult).toEqual(['not-found', null]);
+        });
     });
 });
