@@ -20,7 +20,6 @@ export class LikeController {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -152,7 +151,6 @@ export class LikeController {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });

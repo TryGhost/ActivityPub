@@ -124,7 +124,6 @@ import { BlocksView } from './http/api/views/blocks.view';
 import { createWebFingerHandler } from './http/handler/webfinger';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
-import { scopeKvStore } from './kv-helpers';
 import {
     GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
@@ -193,7 +192,6 @@ await configure({
 });
 
 export type ContextData = {
-    db: KvStore;
     globaldb: KvStore;
     logger: Logger;
 };
@@ -298,7 +296,6 @@ export type FedifyContext = Context<ContextData>;
 
 if (process.env.MANUALLY_START_QUEUE === 'true') {
     fedify.startQueue({
-        db: scopeKvStore(fedifyKv, ['UNUSED_HOST']),
         globaldb: fedifyKv,
         logger: globalLogging,
     });
@@ -600,10 +597,6 @@ function ensureCorrectContext<B, R>(
         if (!ctx.data.logger) {
             ctx.data.logger = globalLogging;
         }
-        // Ensure scoped data / objects are initialised on each execution
-        // of this function - Fedify may reuse the context object across
-        // multiple executions of an inbox listener
-        ctx.data.db = scopeKvStore(fedifyKv, ['sites', host]);
 
         const fedifyContextFactory = container.resolve<FedifyContextFactory>(
             'fedifyContextFactory',
@@ -847,7 +840,6 @@ enum GhostRole {
 }
 
 export type HonoContextVariables = {
-    db: KvStore;
     globaldb: KvStore;
     logger: Logger;
     role: GhostRole;
@@ -1137,9 +1129,6 @@ app.use(async (ctx, next) => {
         });
     }
 
-    const scopedDb = scopeKvStore(fedifyKv, ['sites', host]);
-
-    ctx.set('db', scopedDb);
     ctx.set('globaldb', fedifyKv);
 
     await next();
@@ -1204,12 +1193,10 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (ctx, next) => {
-    const db = ctx.get('db');
     const globaldb = ctx.get('globaldb');
     const logger = ctx.get('logger');
 
     const fedifyContext = fedify.createContext(ctx.req.raw as Request, {
-        db,
         globaldb,
         logger,
     });
@@ -1556,7 +1543,6 @@ app.use(
             ctx: HonoContext<{ Variables: HonoContextVariables }>,
         ): ContextData => {
             return {
-                db: ctx.get('db'),
                 globaldb: ctx.get('globaldb'),
                 logger: ctx.get('logger'),
             };

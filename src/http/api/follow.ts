@@ -18,7 +18,6 @@ export class FollowController {
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -121,7 +120,6 @@ export class FollowController {
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });

@@ -17,7 +17,6 @@ export function createRepostActionHandler(postService: PostService) {
         }
 
         const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
