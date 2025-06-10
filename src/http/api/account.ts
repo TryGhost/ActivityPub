@@ -4,7 +4,7 @@ import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
-import { lookupAPIdByHandle } from 'lookup-helpers';
+import { lookupActorProfile } from 'lookup-helpers';
 import { z } from 'zod';
 import type { AccountDTO } from './types';
 import type {
@@ -128,13 +128,18 @@ export function createGetAccountFollowsHandler(
             );
         } else {
             const ctx = fedifyContextFactory.getFedifyContext();
-            const apId = await lookupAPIdByHandle(ctx, handle);
+            const lookupResult = await lookupActorProfile(ctx, handle);
 
-            if (!apId) {
-                return new Response(null, { status: 400 });
+            if (isError(lookupResult)) {
+                ctx.data.logger.error(
+                    `Failed to lookup apId for handle: ${handle}, error: ${getError(lookupResult)}`,
+                );
+                return new Response(null, { status: 404 });
             }
 
-            const account = await accountRepository.getByApId(new URL(apId));
+            const apId = getValue(lookupResult);
+
+            const account = await accountRepository.getByApId(apId);
 
             if (account?.isInternal) {
                 accountFollows = await accountFollowsView.getFollowsByAccount(
@@ -146,7 +151,7 @@ export function createGetAccountFollowsHandler(
             } else {
                 const result =
                     await accountFollowsView.getFollowsByRemoteLookUp(
-                        new URL(apId),
+                        apId,
                         next || '',
                         type,
                         siteDefaultAccount,
@@ -269,18 +274,21 @@ export function createGetAccountPostsHandler(
             accountPosts = getValue(accountPostsResult);
         } else {
             const ctx = fedifyContextFactory.getFedifyContext();
-            const apId = await lookupAPIdByHandle(ctx, handle);
+            const lookupResult = await lookupActorProfile(ctx, handle);
 
-            if (!apId) {
-                return new Response(`AP ID not found for handle: ${handle}`, {
-                    status: 400,
-                });
+            if (isError(lookupResult)) {
+                ctx.data.logger.error(
+                    `Failed to lookup apId for handle: ${handle}, error: ${getError(lookupResult)}`,
+                );
+                return new Response(null, { status: 404 });
             }
 
-            const account = await accountRepository.getByApId(new URL(apId));
+            const apId = getValue(lookupResult);
+
+            const account = await accountRepository.getByApId(apId);
 
             const result = await accountPostsView.getPostsByApId(
-                new URL(apId),
+                apId,
                 account,
                 currentContextAccount,
                 params.limit,
