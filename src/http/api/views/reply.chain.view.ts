@@ -116,7 +116,9 @@ export class ReplyChainView {
                 .withRecursive('ancestor_ids', (qb) => {
                     qb.select('id', 'in_reply_to', db.raw('0 AS depth'))
                         .from('posts')
-                        .where('ap_id', postApId.href)
+                        .whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [
+                            postApId.href,
+                        ])
                         .unionAll(function () {
                             this.select(
                                 'p.id',
