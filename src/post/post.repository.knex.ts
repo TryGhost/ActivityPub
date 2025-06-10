@@ -52,6 +52,7 @@ export class KnexPostRepository {
                 'posts.thread_root',
                 'posts.deleted_at',
                 'posts.metadata',
+                'posts.updated_at',
                 'accounts.id as author_id',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
@@ -131,6 +132,7 @@ export class KnexPostRepository {
             attachments,
             new URL(row.ap_id),
             row.deleted_at !== null,
+            row.updated_at ? new Date(row.updated_at) : null,
         );
 
         if (post.id) {
@@ -288,6 +290,7 @@ export class KnexPostRepository {
                 'posts.in_reply_to',
                 'posts.thread_root',
                 'posts.deleted_at',
+                'posts.updated_at',
                 // Author account fields
                 'accounts.id as author_id',
                 'accounts.username',
@@ -395,6 +398,7 @@ export class KnexPostRepository {
                 attachments,
                 new URL(row.ap_id),
                 row.deleted_at !== null,
+                row.updated_at ? new Date(row.updated_at) : null,
             );
 
             if (post.id) {
