@@ -1,10 +1,14 @@
-import type { PubSub, Topic } from '@google-cloud/pubsub';
+import { PubSub, type Topic } from '@google-cloud/pubsub';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GCloudPubSubPushMessageQueue, createPushMessageHandler } from './mq';
+import {
+    GCloudPubSubPushMessageQueue,
+    createMessageQueue,
+    createPushMessageHandler,
+} from './mq';
 
 vi.mock('@google-cloud/pubsub', () => ({
     PubSub: vi.fn(),
@@ -375,5 +379,119 @@ describe('handlePushMessage', () => {
         const result = await handlePushMessage(ctx);
 
         expect(result.status).toBe(500);
+    });
+});
+
+describe('createMessageQueue', () => {
+    const PROJECT_ID = 'test_project';
+    const TOPIC = 'test_topic';
+    const SUBSCRIPTION = 'test_subscription';
+
+    let mockLogger: Logger;
+
+    beforeEach(() => {
+        mockLogger = {
+            info: vi.fn(),
+            error: vi.fn(),
+        } as unknown as Logger;
+
+        (PubSub as unknown as Mock).mockImplementation(() => ({
+            projectId: PROJECT_ID,
+            getTopics: vi.fn().mockResolvedValue([
+                [
+                    {
+                        name: `projects/${PROJECT_ID}/topics/${TOPIC}`,
+                    },
+                ],
+            ]),
+            getSubscriptions: vi.fn().mockResolvedValue([
+                [
+                    {
+                        name: `projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION}`,
+                    },
+                ],
+            ]),
+        }));
+    });
+
+    it('should create a message queue', async () => {
+        const mq = await createMessageQueue(mockLogger, {
+            topic: TOPIC,
+            subscription: SUBSCRIPTION,
+        });
+
+        expect(mq).toBeInstanceOf(GCloudPubSubPushMessageQueue);
+
+        expect(PubSub).toHaveBeenCalledWith({});
+    });
+
+    it('should create a message queue with a pubsub client that is initialised with a custom host', async () => {
+        await createMessageQueue(mockLogger, {
+            pubSubHost: 'https://foo.bar.baz',
+            topic: TOPIC,
+            subscription: SUBSCRIPTION,
+        });
+
+        expect(PubSub).toHaveBeenCalledWith({
+            apiEndpoint: 'https://foo.bar.baz',
+        });
+    });
+
+    it('should create a message queue with a pubsub client that will utilise an emulator', async () => {
+        await createMessageQueue(mockLogger, {
+            hostIsEmulator: true,
+            topic: TOPIC,
+            subscription: SUBSCRIPTION,
+        });
+
+        expect(PubSub).toHaveBeenCalledWith({
+            emulatorMode: true,
+        });
+    });
+
+    it('should create a message queue with a pubsub client that is initialised with a project ID', async () => {
+        await createMessageQueue(mockLogger, {
+            projectId: PROJECT_ID,
+            topic: TOPIC,
+            subscription: SUBSCRIPTION,
+        });
+
+        expect(PubSub).toHaveBeenCalledWith({
+            projectId: PROJECT_ID,
+        });
+    });
+
+    it('should throw an error if the topic does not exist', async () => {
+        (PubSub as unknown as Mock).mockImplementation(() => ({
+            getTopics: vi.fn().mockResolvedValue([[]]),
+        }));
+
+        await expect(
+            createMessageQueue(mockLogger, {
+                topic: TOPIC,
+                subscription: SUBSCRIPTION,
+            }),
+        ).rejects.toThrow(`Topic [${TOPIC}] does not exist`);
+    });
+
+    it('should throw an error if the subscription does not exist', async () => {
+        (PubSub as unknown as Mock).mockImplementation(() => ({
+            projectId: PROJECT_ID,
+            getTopics: vi.fn().mockResolvedValue([
+                [
+                    {
+                        name: `projects/${PROJECT_ID}/topics/${TOPIC}`,
+                    },
+                ],
+            ]),
+            getSubscriptions: vi.fn().mockResolvedValue([[]]),
+        }));
+
+        await expect(
+            createMessageQueue(mockLogger, {
+                topic: TOPIC,
+                subscription: SUBSCRIPTION,
+            }),
+        ).rejects.toThrow(`Subscription [${SUBSCRIPTION}] does not exist`);
     });
 });

@@ -22,7 +22,7 @@ until curl -f http://${HOST}; do
     sleep 1
 done
 
-# Create the Fedify topic via REST API
+# Create the topic via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${FEDIFY_TOPIC_NAME} | grep -q "200"; then
     echo "Topic created: ${FEDIFY_TOPIC_NAME}"
 else
@@ -30,7 +30,7 @@ else
     exit 1
 fi
 
-# Create the Fedify (push) subscription via REST API
+# Create the (push) subscription via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${FEDIFY_SUBSCRIPTION_NAME} \
     -H "Content-Type: application/json" \
     -d '{
@@ -45,7 +45,7 @@ else
     exit 1
 fi
 
-# Create the Ghost topic via REST API
+# Create the topic via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${GHOST_TOPIC_NAME} | grep -q "200"; then
     echo "Topic created: ${GHOST_TOPIC_NAME}"
 else
@@ -53,7 +53,7 @@ else
     exit 1
 fi
 
-# Create the Ghost (push) subscription via REST API
+# Create the (push) subscription via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${GHOST_SUBSCRIPTION_NAME} \
     -H "Content-Type: application/json" \
     -d '{

@@ -3,7 +3,7 @@ import type {
     MessageQueueEnqueueOptions,
     MessageQueueListenOptions,
 } from '@fedify/fedify';
-import type { PubSub } from '@google-cloud/pubsub';
+import { type ClientConfig, PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 import { z } from 'zod';
@@ -32,6 +32,26 @@ interface Message {
      * Additional metadata about the message
      */
     attributes: Record<string, string>;
+}
+
+/**
+ * Get the full name of a Pub/Sub topic
+ *
+ * @param projectId ID of the Pub/Sub project
+ * @param topic Name of the topic
+ */
+function getFullTopic(projectId: string, topic: string) {
+    return `projects/${projectId}/topics/${topic}`;
+}
+
+/**
+ * Get the full name of a Pub/Sub subscription
+ *
+ * @param projectId ID of the Pub/Sub project
+ * @param subscription Name of the subscription
+ */
+function getFullSubscription(projectId: string, subscription: string) {
+    return `projects/${projectId}/subscriptions/${subscription}`;
 }
 
 /**
@@ -282,4 +302,89 @@ export function createPushMessageHandler(
             .then(() => new Response(null, { status: 200 }))
             .catch(() => new Response(null, { status: 500 }));
     };
+}
+
+export type CreateMessageQueueConfig = {
+    /**
+     * Hostname of the Pub/Sub API endpoint. If not provided, the the Pub/Sub
+     * client will attempt to automatically determine the endpoint
+     */
+    pubSubHost?: string;
+    /**
+     * Indicates that a Pub/Sub emulator is being used. If not provided, the
+     * Pub/Sub client will automatically determine whether an emulator is being
+     * used or not
+     */
+    hostIsEmulator?: boolean;
+    /**
+     * ID of the Pub/Sub project. If not provided, the Pub/Sub client will
+     * attempt to automatically determine the project ID
+     */
+    projectId?: string;
+    /**
+     * Name of the Pub/Sub topic to publish messages to
+     */
+    topic: string;
+    /**
+     * Name of the Pub/Sub subscription that will push messages will be recieved from
+     */
+    subscription?: string;
+};
+
+/**
+ * Create a configured message queue
+ *
+ * @param logger Logger instance
+ * @param config Configuration for the message queue
+ */
+export async function createMessageQueue(
+    logger: Logger,
+    {
+        pubSubHost,
+        hostIsEmulator,
+        projectId,
+        topic,
+        subscription,
+    }: CreateMessageQueueConfig,
+) {
+    // Initialise the Pub/Sub client
+    const pubsubClientConfig: Partial<ClientConfig> = {};
+
+    if (pubSubHost !== undefined) {
+        pubsubClientConfig.apiEndpoint = pubSubHost;
+    }
+
+    if (hostIsEmulator !== undefined) {
+        pubsubClientConfig.emulatorMode = hostIsEmulator;
+    }
+
+    if (projectId !== undefined) {
+        pubsubClientConfig.projectId = projectId;
+    }
+
+    const pubSubClient = new PubSub(pubsubClientConfig);
+
+    // Check that the topic exists
+    const fullTopic = getFullTopic(pubSubClient.projectId, topic);
+    const [topics] = await pubSubClient.getTopics();
+
+    if (!topics.some(({ name }) => name === fullTopic)) {
+        throw new Error(`Topic [${topic}] does not exist`);
+    }
+
+    // Check that the subscription exists
+    if (subscription !== undefined) {
+        const fullSubscription = getFullSubscription(
+            pubSubClient.projectId,
+            subscription,
+        );
+        const [subscriptions] = await pubSubClient.getSubscriptions();
+
+        if (!subscriptions.some(({ name }) => name === fullSubscription)) {
+            throw new Error(`Subscription [${subscription}] does not exist`);
+        }
+    }
+
+    // Return a message queue instance
+    return new GCloudPubSubPushMessageQueue(logger, pubSubClient, fullTopic);
 }

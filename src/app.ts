@@ -127,10 +127,10 @@ import { KnexKvStore } from './knex.kvstore';
 import { scopeKvStore } from './kv-helpers';
 import {
     GCloudPubSubPushMessageQueue,
+    createMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
 import { PostService } from './post/post.service';
-import { getFullTopic, initPubSubClient } from './pubsub';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
 
@@ -227,53 +227,20 @@ let queue: GCloudPubSubPushMessageQueue | undefined;
 if (process.env.USE_MQ === 'true') {
     globalLogging.info('Message queue is enabled');
 
-    if (!process.env.MQ_PUBSUB_HOST) {
-        throw new Error('MQ_PUBSUB_HOST is not set');
-    }
-    if (!process.env.MQ_PUBSUB_PROJECT_ID) {
-        throw new Error('MQ_PUBSUB_PROJECT_ID is not set');
-    }
-    if (!process.env.MQ_PUBSUB_TOPIC_NAME) {
-        throw new Error('MQ_PUBSUB_TOPIC_NAME is not set');
-    }
-    if (!process.env.MQ_PUBSUB_GHOST_TOPIC_NAME) {
-        throw new Error('MQ_PUBSUB_GHOST_TOPIC_NAME is not set');
-    }
-    if (!process.env.MQ_PUBSUB_SUBSCRIPTION_NAME) {
-        throw new Error('MQ_PUBSUB_SUBSCRIPTION_NAME is not set');
-    }
-    if (!process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME) {
-        throw new Error('MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME is not set');
-    }
-
-    const pubSubClient = await initPubSubClient({
-        host: process.env.MQ_PUBSUB_HOST,
-        isEmulator: !['staging', 'production'].includes(
-            process.env.NODE_ENV || '',
-        ),
-        projectId: process.env.MQ_PUBSUB_PROJECT_ID,
-        topics: [
-            process.env.MQ_PUBSUB_TOPIC_NAME,
-            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME,
-        ],
-        subscriptions: [
-            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
-            process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME,
-        ],
-    });
-
     try {
-        queue = new GCloudPubSubPushMessageQueue(
-            globalLogging,
-            pubSubClient,
-            getFullTopic(
-                pubSubClient.projectId,
-                process.env.MQ_PUBSUB_TOPIC_NAME,
+        queue = await createMessageQueue(globalLogging, {
+            pubSubHost: process.env.MQ_PUBSUB_HOST,
+            hostIsEmulator: !['staging', 'production'].includes(
+                process.env.NODE_ENV || '',
             ),
-        );
+            projectId: process.env.MQ_PUBSUB_PROJECT_ID,
+            topic: String(process.env.MQ_PUBSUB_TOPIC_NAME),
+            subscription: process.env.MQ_PUBSUB_SUBSCRIPTION_NAME
+                ? String(process.env.MQ_PUBSUB_SUBSCRIPTION_NAME)
+                : undefined,
+        });
 
         queue.registerErrorListener((error) => Sentry.captureException(error));
-
         container.register('queue', asValue(queue));
     } catch (err) {
         globalLogging.error('Failed to initialise message queue {error}', {
