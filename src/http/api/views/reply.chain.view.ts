@@ -7,13 +7,13 @@ import type { PostDTO } from '../types';
 export type ReplyChain = {
     ancestors: {
         chain: PostDTO[];
-        next: string | null;
+        hasMore: boolean;
     };
     post: PostDTO;
     children: {
         post: PostDTO;
         chain: PostDTO[];
-        next: string | null;
+        hasMore: boolean;
     }[];
     next: string | null;
 };
@@ -351,16 +351,13 @@ export class ReplyChainView {
             .map((child) => ({
                 post: child.post,
                 chain: child.chain.slice(0, ReplyChainView.MAX_CHILDREN_DEPTH),
-                next:
-                    child.chain.length > ReplyChainView.MAX_CHILDREN_DEPTH
-                        ? 'TODO'
-                        : null,
+                hasMore: child.chain.length > ReplyChainView.MAX_CHILDREN_DEPTH,
             }));
 
         return ok({
             ancestors: {
                 chain: ancestors.map(this.mapToPostDTO),
-                next: ancestors[0]?.post_in_reply_to !== null ? 'TODO' : null,
+                hasMore: ancestors[0]?.post_in_reply_to !== null,
             },
             post: this.mapToPostDTO(currentPost, accountId),
             children,
