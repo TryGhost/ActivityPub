@@ -5,7 +5,7 @@ import type { AccountService } from 'account/account.service';
 import { mapActorToExternalAccountData } from 'account/utils';
 import { type AppContext, fedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { lookupAPIdByHandle, lookupActor, lookupObject } from 'lookup-helpers';
+import { lookupActor, lookupActorProfile, lookupObject } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
@@ -24,14 +24,19 @@ export class FollowController {
         const followerAccount = ctx.get('account');
 
         // Retrieve the AP ID of the account to follow
-        const accountToFollowApId = await lookupAPIdByHandle(apCtx, handle);
+        const lookupResult = await lookupActorProfile(apCtx, handle);
 
-        if (!accountToFollowApId) {
+        if (isError(lookupResult)) {
+            ctx.get('logger').error(
+                `Failed to lookup apId for handle: ${handle}, error: ${getError(lookupResult)}`,
+            );
             return NotFound('Remote account could not be found');
         }
 
+        const accountToFollowApId = getValue(lookupResult);
+
         // We cannot follow ourselves
-        if (accountToFollowApId === followerAccount.apId.toString()) {
+        if (accountToFollowApId.href === followerAccount.apId.href) {
             return BadRequest('Cannot follow yourself');
         }
 
