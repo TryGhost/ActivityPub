@@ -31,6 +31,10 @@ describe('PostInteractionCountsService', () => {
     });
 
     describe('updateInteractionCounts', () => {
+        const MINUTE = 60 * 1000;
+        const HOUR = 60 * MINUTE;
+        const DAY = 24 * HOUR;
+
         it('skips updating interaction counts if post is not found and logs an error', async () => {
             const postId = 999;
             vi.mocked(mockPostRepository.getById).mockResolvedValue(null);
@@ -48,8 +52,9 @@ describe('PostInteractionCountsService', () => {
 
         it('logs an error if updating interaction counts fails', async () => {
             const postId = 1;
-            const publishedAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
-            const updatedAt = new Date(Date.now() - 15 * 60 * 1000);
+            const now = Date.now();
+            const publishedAt = new Date(now - 2 * HOUR);
+            const updatedAt = new Date(now - 15 * MINUTE);
             const post = {
                 id: postId,
                 publishedAt,
@@ -71,8 +76,8 @@ describe('PostInteractionCountsService', () => {
 
         it('does not update a post published less than 6 hours ago more than once every 10 minutes', async () => {
             const postId = 1;
-            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-            const publishedAt = twoHoursAgo;
+            const now = Date.now();
+            const publishedAt = new Date(now - 2 * HOUR);
 
             // First call with updatedAt null - should update
             let post = {
@@ -100,7 +105,7 @@ describe('PostInteractionCountsService', () => {
             vi.clearAllMocks();
 
             // Second call with updatedAt 5 minutes ago - should skip
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            const fiveMinutesAgo = new Date(now - 5 * MINUTE);
             post = {
                 id: postId,
                 publishedAt,
@@ -122,14 +127,15 @@ describe('PostInteractionCountsService', () => {
 
         it('does not update a post published between 6-24 hours ago more than once every 2 hours', async () => {
             const postId = 1;
-            const publishedAt = new Date(Date.now() - 12 * 60 * 60 * 1000); // 12 hours ago
+            const now = Date.now();
+            const publishedAt = new Date(now - 12 * HOUR);
 
             // First call with updatedAt more than 2 hours ago - should update
-            const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+            let updatedAt = new Date(now - 3 * HOUR);
             let post = {
                 id: postId,
                 publishedAt,
-                updatedAt: threeHoursAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
@@ -151,11 +157,11 @@ describe('PostInteractionCountsService', () => {
             vi.clearAllMocks();
 
             // Second call with updatedAt 1 hour ago - should skip
-            const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
+            updatedAt = new Date(now - 1 * HOUR);
             post = {
                 id: postId,
                 publishedAt,
-                updatedAt: oneHourAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
@@ -173,14 +179,15 @@ describe('PostInteractionCountsService', () => {
 
         it('does not update a post published between 1-7 days ago more than once every 6 hours', async () => {
             const postId = 1;
-            const publishedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
+            const now = Date.now();
+            const publishedAt = new Date(now - 3 * DAY);
 
             // First call with updatedAt more than 6 hours ago - should update
-            const sevenHoursAgo = new Date(Date.now() - 7 * 60 * 60 * 1000);
+            let updatedAt = new Date(now - 7 * HOUR);
             let post = {
                 id: postId,
                 publishedAt,
-                updatedAt: sevenHoursAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
@@ -202,11 +209,12 @@ describe('PostInteractionCountsService', () => {
             vi.clearAllMocks();
 
             // Second call with updatedAt 4 hours ago - should skip
-            const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+            updatedAt = new Date(now - 4 * HOUR);
+
             post = {
                 id: postId,
                 publishedAt,
-                updatedAt: fourHoursAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
@@ -224,16 +232,15 @@ describe('PostInteractionCountsService', () => {
 
         it('does not update a post published more than 7 days ago more than once a day', async () => {
             const postId = 1;
-            const publishedAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
+            const now = Date.now();
+            const publishedAt = new Date(now - 10 * DAY);
 
             // First call with updatedAt more than 24 hours ago - should update
-            const twentyFiveHoursAgo = new Date(
-                Date.now() - 25 * 60 * 60 * 1000,
-            );
+            let updatedAt = new Date(now - 25 * HOUR);
             let post = {
                 id: postId,
                 publishedAt,
-                updatedAt: twentyFiveHoursAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
@@ -255,11 +262,11 @@ describe('PostInteractionCountsService', () => {
             vi.clearAllMocks();
 
             // Second call with updatedAt 12 hours ago - should skip
-            const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+            updatedAt = new Date(now - 12 * HOUR);
             post = {
                 id: postId,
                 publishedAt,
-                updatedAt: twelveHoursAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);

@@ -53,9 +53,9 @@ export class PostInteractionCountsService {
     }
 
     /**
-     * Computes whether the post is due an update of like/repost counts.
+     * Computes whether the post is due an update of like/repost counts,
+     * based on the following rules:
      *
-     * @table
      * | Post published       | Refresh interaction counts       |
      * |----------------------|----------------------------------|
      * | < 6 hours ago        | At most once every 10 minutes    |
@@ -73,26 +73,31 @@ export class PostInteractionCountsService {
             lastUpdate = publishedAt;
         }
 
-        const timeSinceLastUpdate = new Date().getTime() - lastUpdate.getTime();
-        const timeSincePublished = new Date().getTime() - publishedAt.getTime();
+        const now = new Date().getTime();
+        const timeSinceLastUpdate = now - lastUpdate.getTime();
+        const timeSincePublished = now - publishedAt.getTime();
 
-        const sixHours = 6 * 60 * 60 * 1000;
-        const tenMinutes = 10 * 60 * 1000;
-        if (timeSincePublished < sixHours) {
-            return timeSinceLastUpdate > tenMinutes;
+        const MINUTE = 60 * 1000;
+        const HOUR = 60 * MINUTE;
+        const DAY = 24 * HOUR;
+        const WEEK = 7 * DAY;
+
+        const TEN_MINUTES = 10 * MINUTE;
+        const TWO_HOURS = 2 * HOUR;
+        const SIX_HOURS = 6 * HOUR;
+
+        if (timeSincePublished < SIX_HOURS) {
+            return timeSinceLastUpdate > TEN_MINUTES;
         }
 
-        const oneDay = 24 * 60 * 60 * 1000;
-        const twoHours = 2 * 60 * 60 * 1000;
-        if (timeSincePublished < oneDay) {
-            return timeSinceLastUpdate > twoHours;
+        if (timeSincePublished < DAY) {
+            return timeSinceLastUpdate > TWO_HOURS;
         }
 
-        const oneWeek = 7 * 24 * 60 * 60 * 1000;
-        if (timeSincePublished < oneWeek) {
-            return timeSinceLastUpdate > sixHours;
+        if (timeSincePublished < WEEK) {
+            return timeSinceLastUpdate > SIX_HOURS;
         }
 
-        return timeSinceLastUpdate > oneDay;
+        return timeSinceLastUpdate > DAY;
     }
 }
