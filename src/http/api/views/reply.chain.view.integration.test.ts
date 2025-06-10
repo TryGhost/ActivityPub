@@ -190,51 +190,6 @@ describe('ReplyChainView', () => {
         });
     });
 
-    describe('getReplyChainContinuation', () => {
-        it('should return the reply chain continuation for a post', async () => {
-            const { post, chains } = await setupPosts(fixtureManager);
-
-            const replyChainView = new ReplyChainView(db);
-
-            // @ts-expect-error Property 'getChildren' is private and only accessible within class 'ReplyChainView'
-            const children = await replyChainView.getChildren(
-                post.author.id,
-                post.id!,
-            );
-
-            const retrievedChains: PostRow[][] = [];
-            for (const child of children) {
-                if (child.post_in_reply_to === post.id) {
-                    retrievedChains.push([]);
-                } else {
-                    const lastChain =
-                        retrievedChains[retrievedChains.length - 1];
-                    lastChain.push(child);
-                }
-            }
-
-            // Minus 2 because we want the last chain with stuff in
-            const chainToTestIndex = retrievedChains.length - 2;
-
-            const chainToTest = retrievedChains[chainToTestIndex];
-
-            // We expect that we haven't got the full chain
-            assert(chainToTest.length < chains[chainToTestIndex].length);
-
-            // @ts-expect-error Property 'getReplyChainContinuation' is private and only accessible within class 'ReplyChainView'
-            const continuation = await replyChainView.getReplyChainContinuation(
-                post.author.id,
-                chainToTest[chainToTest.length - 1].post_id,
-            );
-
-            const fullRetrievedChain = chainToTest.concat(continuation);
-            const actualIds = fullRetrievedChain.map((p) => p.post_id);
-            const expectedIds = chains[chainToTestIndex].map((p) => p.id);
-
-            expect(actualIds).toEqual(expectedIds);
-        });
-    });
-
     describe('getReplyChain', () => {
         it('should return the reply chain for a post', async () => {
             const { post } = await setupPosts(fixtureManager);

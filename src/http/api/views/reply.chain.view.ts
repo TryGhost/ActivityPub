@@ -297,55 +297,6 @@ export class ReplyChainView {
         return childrenRows.map(PostRowSchema.parse);
     }
 
-    private async getReplyChainContinuation(
-        contextAccountId: number,
-        chainRootId: number,
-    ): Promise<PostRow[]> {
-        const db = this.db;
-        const selectPostRow = this.selectPostRow(contextAccountId);
-
-        const chainRows = await selectPostRow(
-            db
-                .withRecursive('chain_ids', (qb) => {
-                    qb.select(
-                        'id',
-                        'reply_count',
-                        'in_reply_to',
-                        db.raw('0 AS depth'),
-                    )
-                        .from('posts')
-                        .where('id', chainRootId)
-                        .andWhere('reply_count', '=', 1)
-                        .unionAll(function () {
-                            this.select(
-                                'p.id',
-                                'p.reply_count',
-                                'p.in_reply_to',
-                                db.raw('ci.depth + 1'),
-                            )
-                                .from('posts as p')
-                                .join(
-                                    'chain_ids as ci',
-                                    'p.in_reply_to',
-                                    'ci.id',
-                                )
-                                .where('ci.reply_count', '=', 1)
-                                .andWhere(
-                                    'ci.depth',
-                                    '<',
-                                    ReplyChainView.MAX_CHILDREN_DEPTH + 2,
-                                );
-                        });
-                })
-                .from('chain_ids')
-                .where('depth', '>', 0)
-                .orderBy('depth', 'asc')
-                .join('posts', 'posts.id', 'chain_ids.id'),
-        );
-
-        return chainRows.map(PostRowSchema.parse);
-    }
-
     public async getReplyChain(
         accountId: number,
         postApId: URL,
