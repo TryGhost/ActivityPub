@@ -236,14 +236,8 @@ if (process.env.USE_MQ === 'true') {
     if (!process.env.MQ_PUBSUB_TOPIC_NAME) {
         throw new Error('MQ_PUBSUB_TOPIC_NAME is not set');
     }
-    if (!process.env.MQ_PUBSUB_GHOST_TOPIC_NAME) {
-        throw new Error('MQ_PUBSUB_GHOST_TOPIC_NAME is not set');
-    }
     if (!process.env.MQ_PUBSUB_SUBSCRIPTION_NAME) {
         throw new Error('MQ_PUBSUB_SUBSCRIPTION_NAME is not set');
-    }
-    if (!process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME) {
-        throw new Error('MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME is not set');
     }
 
     const pubSubClient = await initPubSubClient({
@@ -252,14 +246,8 @@ if (process.env.USE_MQ === 'true') {
             process.env.NODE_ENV || '',
         ),
         projectId: process.env.MQ_PUBSUB_PROJECT_ID,
-        topics: [
-            process.env.MQ_PUBSUB_TOPIC_NAME,
-            process.env.MQ_PUBSUB_GHOST_TOPIC_NAME,
-        ],
-        subscriptions: [
-            process.env.MQ_PUBSUB_SUBSCRIPTION_NAME,
-            process.env.MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME,
-        ],
+        topics: [process.env.MQ_PUBSUB_TOPIC_NAME],
+        subscriptions: [process.env.MQ_PUBSUB_SUBSCRIPTION_NAME],
     });
 
     try {
