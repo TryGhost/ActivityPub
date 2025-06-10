@@ -105,11 +105,11 @@ describe('PostInteractionCountsService', () => {
             vi.clearAllMocks();
 
             // Second call with updatedAt 5 minutes ago - should skip
-            const fiveMinutesAgo = new Date(now - 5 * MINUTE);
+            const updatedAt = new Date(now - 5 * MINUTE);
             post = {
                 id: postId,
                 publishedAt,
-                updatedAt: fiveMinutesAgo,
+                updatedAt,
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
