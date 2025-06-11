@@ -1,5 +1,6 @@
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { NotificationService } from 'notification/notification.service';
 import type { AppContext } from '../../app';
 import type { NotificationDTO } from './types';
@@ -109,6 +110,47 @@ export function createGetNotificationsHandler(
             JSON.stringify({
                 notifications,
                 next: nextCursor ? String(nextCursor) : null,
+            }),
+            {
+                status: 200,
+            },
+        );
+    };
+}
+
+export function createGetUnreadNotificationsCountHandler(
+    accountService: AccountService,
+    notificationService: NotificationService,
+) {
+    /**
+     * Handle a request for a user's unread notifications count
+     *
+     * @param ctx App context instance
+     */
+    return async function handleGetUnreadNotificationsCount(ctx: AppContext) {
+        const account = await accountService.getDefaultAccountForSite(
+            ctx.get('site'),
+        );
+
+        const unreadNotificationsCountResult =
+            await notificationService.getUnreadNotificationsCount(account.id);
+
+        if (isError(unreadNotificationsCountResult)) {
+            const error = getError(unreadNotificationsCountResult);
+            switch (error) {
+                case 'not-internal-account':
+                    ctx.get('logger').error(
+                        `User not found for account ${account.id}`,
+                    );
+                    return new Response(null, { status: 500 });
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        return new Response(
+            JSON.stringify({
+                count: getValue(unreadNotificationsCountResult),
             }),
             {
                 status: 200,

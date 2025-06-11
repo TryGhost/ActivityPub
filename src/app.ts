@@ -114,6 +114,7 @@ import {
     createGetNotificationsHandler,
     createGetPostHandler,
     createGetThreadHandler,
+    createGetUnreadNotificationsCountHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
     createStorageHandler,
@@ -546,6 +547,16 @@ container.register(
     'getNotificationsHandler',
     asFunction((accountService, notificationService) =>
         createGetNotificationsHandler(accountService, notificationService),
+    ).singleton(),
+);
+
+container.register(
+    'getUnreadNotificationsCountHandler',
+    asFunction((accountService, notificationService) =>
+        createGetUnreadNotificationsCountHandler(
+            accountService,
+            notificationService,
+        ),
     ).singleton(),
 );
 
@@ -1457,6 +1468,14 @@ app.get(
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
         const handler = container.resolve('getNotificationsHandler');
+        return handler(ctx);
+    }),
+);
+app.get(
+    '/.ghost/activitypub/notifications/unread/count',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => {
+        const handler = container.resolve('getUnreadNotificationsCountHandler');
         return handler(ctx);
     }),
 );
