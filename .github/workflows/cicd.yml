@@ -469,6 +469,13 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   deploy-production:
     if: github.ref == 'refs/heads/main'
     name: (production) Deploy
@@ -611,3 +618,10 @@ jobs:
           context: jobs/cleanup-expired-key-value-records
           push: true
           tags: ${{ steps.cleanup-meta.outputs.tags }}
+
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
