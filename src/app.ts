@@ -225,27 +225,12 @@ let queue: GCloudPubSubPushMessageQueue | undefined;
 if (process.env.USE_MQ === 'true') {
     globalLogging.info('Message queue is enabled');
 
-    if (!process.env.MQ_PUBSUB_HOST) {
-        throw new Error('MQ_PUBSUB_HOST is not set');
-    }
-    if (!process.env.MQ_PUBSUB_PROJECT_ID) {
-        throw new Error('MQ_PUBSUB_PROJECT_ID is not set');
-    }
-    if (!process.env.MQ_PUBSUB_TOPIC_NAME) {
-        throw new Error('MQ_PUBSUB_TOPIC_NAME is not set');
-    }
-    if (!process.env.MQ_PUBSUB_SUBSCRIPTION_NAME) {
-        throw new Error('MQ_PUBSUB_SUBSCRIPTION_NAME is not set');
-    }
-
-    const pubSubClient = await initPubSubClient({
-        host: process.env.MQ_PUBSUB_HOST,
+    const pubSubClient = initPubSubClient({
+        host: process.env.MQ_PUBSUB_HOST || 'unknown_pubsub_host',
         isEmulator: !['staging', 'production'].includes(
-            process.env.NODE_ENV || '',
+            process.env.NODE_ENV || 'unknown_node_env',
         ),
-        projectId: process.env.MQ_PUBSUB_PROJECT_ID,
-        topics: [process.env.MQ_PUBSUB_TOPIC_NAME],
-        subscriptions: [process.env.MQ_PUBSUB_SUBSCRIPTION_NAME],
+        projectId: process.env.MQ_PUBSUB_PROJECT_ID || 'unknown_project_id',
     });
 
     try {
@@ -254,7 +239,7 @@ if (process.env.USE_MQ === 'true') {
             pubSubClient,
             getFullTopic(
                 pubSubClient.projectId,
-                process.env.MQ_PUBSUB_TOPIC_NAME,
+                process.env.MQ_PUBSUB_TOPIC_NAME || 'unknown_pubsub_topic_name',
             ),
         );
 
