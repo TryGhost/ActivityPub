@@ -946,17 +946,13 @@ app.use(async (ctx, next) => {
 
 container.register(
     'pubSubMessageHandler',
-    asFunction(
-        (pubSubEvents, fedify, fedifyContextFactory, logging, fedifyKv) => {
-            return createIncomingPubSubMessageHandler(
-                pubSubEvents,
-                fedify,
-                fedifyContextFactory,
-                fedifyKv,
-                logging,
-            );
-        },
-    ).singleton(),
+    asFunction((pubSubEvents, fedify, fedifyContextFactory) => {
+        return createIncomingPubSubMessageHandler(
+            pubSubEvents,
+            fedify,
+            fedifyContextFactory,
+        );
+    }).singleton(),
 );
 
 app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
