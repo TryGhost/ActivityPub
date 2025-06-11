@@ -1,6 +1,8 @@
 import type { Logger } from '@logtape/logtape';
 import { error, ok } from 'core/result';
+import type { PubSubEvents } from 'events/pubsub';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PostInteractionCountUpdateRequestedEvent } from './post-interaction-count-update-requested.event';
 import { PostInteractionCountsService } from './post-interaction-counts.service';
 import type { Post } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
@@ -11,6 +13,7 @@ describe('PostInteractionCountsService', () => {
     let mockPostService: PostService;
     let mockPostRepository: KnexPostRepository;
     let mockLogger: Logger;
+    let mockPubSubEvents: PubSubEvents;
 
     beforeEach(() => {
         mockPostService = {
@@ -23,11 +26,63 @@ describe('PostInteractionCountsService', () => {
             info: vi.fn(),
             error: vi.fn(),
         } as unknown as Logger;
+        mockPubSubEvents = {
+            on: vi.fn(),
+            emitAsync: vi.fn(),
+        } as unknown as PubSubEvents;
         service = new PostInteractionCountsService(
             mockPostService,
             mockPostRepository,
             mockLogger,
+            mockPubSubEvents,
         );
+    });
+
+    describe('init', () => {
+        it('should register an event listener for: PostInteractionCountUpdateRequestedEvent', async () => {
+            const updateInteractionCountsSpy = vi
+                .spyOn(service, 'updateInteractionCounts')
+                .mockResolvedValue(undefined);
+
+            service.init();
+
+            expect(mockPubSubEvents.on).toHaveBeenCalledWith(
+                PostInteractionCountUpdateRequestedEvent.getName(),
+                expect.any(Function),
+            );
+
+            const handler = vi.mocked(mockPubSubEvents.on).mock.calls[0][1];
+
+            await handler(
+                new PostInteractionCountUpdateRequestedEvent([1, 2, 3]),
+            );
+
+            expect(updateInteractionCountsSpy).toHaveBeenCalledWith([1, 2, 3]);
+        });
+    });
+
+    describe('requestInteractionCountsUpdate', () => {
+        it('should publish a PostInteractionCountUpdateRequestedEvent', async () => {
+            await service.requestInteractionCountsUpdate(
+                'example.com',
+                [1, 2, 3],
+            );
+
+            expect(mockPubSubEvents.emitAsync).toHaveBeenCalledWith(
+                PostInteractionCountUpdateRequestedEvent.getName(),
+                expect.any(PostInteractionCountUpdateRequestedEvent),
+                'example.com',
+            );
+
+            const event = vi.mocked(mockPubSubEvents.emitAsync).mock
+                .calls[0][1];
+
+            expect(
+                (
+                    event as PostInteractionCountUpdateRequestedEvent
+                ).getPostIds(),
+            ).toEqual([1, 2, 3]);
+        });
     });
 
     describe('updateInteractionCounts', () => {

@@ -1,5 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { getError, isError } from 'core/result';
+import type { PubSubEvents } from 'events/pubsub';
+import { PostInteractionCountUpdateRequestedEvent } from './post-interaction-count-update-requested.event';
 import type { KnexPostRepository } from './post.repository.knex';
 import type { PostService } from './post.service';
 
@@ -7,8 +9,34 @@ export class PostInteractionCountsService {
     constructor(
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
-        private logger: Logger,
+        private readonly logging: Logger,
+        private readonly pubSubEvents: PubSubEvents,
     ) {}
+
+    /**
+     * Setup required event listeners for the service
+     */
+    init() {
+        this.pubSubEvents.on(
+            PostInteractionCountUpdateRequestedEvent.getName(),
+            async (event: PostInteractionCountUpdateRequestedEvent) =>
+                await this.updateInteractionCounts(event.getPostIds()),
+        );
+    }
+
+    /**
+     * Request an update of the interaction counts for the given post IDs
+     *
+     * @param {string} host - The host of the site requesting the update
+     * @param {number[]} postIds - The IDs of the posts to update
+     */
+    async requestInteractionCountsUpdate(host: string, postIds: number[]) {
+        await this.pubSubEvents.emitAsync(
+            PostInteractionCountUpdateRequestedEvent.getName(),
+            new PostInteractionCountUpdateRequestedEvent(postIds),
+            host,
+        );
+    }
 
     /**
      * Updates the interaction counts for the given post IDs, if the update is due.
@@ -20,7 +48,7 @@ export class PostInteractionCountsService {
             const post = await this.postRepository.getById(postId);
 
             if (!post) {
-                this.logger.error(
+                this.logging.error(
                     'Post with ID {postId} not found when updating interaction counts - Skipping',
                     { postId },
                 );
@@ -28,7 +56,7 @@ export class PostInteractionCountsService {
             }
 
             if (!this.isUpdateDue(post.publishedAt, post.updatedAt)) {
-                this.logger.info(
+                this.logging.info(
                     'Post with ID {postId} is not due for an update of interaction counts - Skipping',
                     { postId },
                 );
@@ -38,14 +66,14 @@ export class PostInteractionCountsService {
             const result = await this.postService.updateInteractionCounts(post);
 
             if (isError(result)) {
-                this.logger.error(
+                this.logging.error(
                     'Error updating interaction counts for post with ID {postId}: {error}',
                     { postId, error: getError(result) },
                 );
                 continue;
             }
 
-            this.logger.info(
+            this.logging.info(
                 'Successfully updated interaction counts for post with ID {postId}',
                 { postId },
             );
