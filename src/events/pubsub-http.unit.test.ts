@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Federation } from '@fedify/fedify';
+import type { Federation, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 
@@ -32,7 +32,7 @@ describe('handleIncomingPubSubMessage', () => {
                 return await fn();
             }),
         } as unknown as FedifyContextFactory;
-        const ctxData = {} as unknown as ContextData;
+        const fedifyKv = {} as unknown as KvStore;
         const logger = {
             error: vi.fn(),
         } as unknown as Logger;
@@ -41,7 +41,7 @@ describe('handleIncomingPubSubMessage', () => {
             pubSubEvents,
             fedify,
             fedifyContextFactory,
-            ctxData,
+            fedifyKv,
             logger,
         );
     });

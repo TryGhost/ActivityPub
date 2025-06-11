@@ -1,4 +1,4 @@
-import type { Federation } from '@fedify/fedify';
+import type { Federation, KvStore } from '@fedify/fedify';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
@@ -24,7 +24,7 @@ export function createIncomingPubSubMessageHandler(
     events: PubSubEvents,
     fedify: Federation<ContextData>,
     fedifyContextFactory: FedifyContextFactory,
-    newCtxData: ContextData,
+    fedifyKv: KvStore,
     logger: Logger,
 ) {
     return async function handleIncomingPubSubMessage(
@@ -59,7 +59,10 @@ export function createIncomingPubSubMessageHandler(
             const hostFedifyCtx = createFedifyCtxForHost(
                 fedify,
                 payload.message.attributes[PUBSUB_MESSAGE_ATTR_EVENT_HOST],
-                newCtxData,
+                {
+                    globaldb: fedifyKv,
+                    logger,
+                },
             );
 
             // Register the newly constructed Fedify context and execute the

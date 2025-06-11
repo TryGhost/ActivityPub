@@ -946,10 +946,7 @@ container.register(
                 pubSubEvents,
                 fedify,
                 fedifyContextFactory,
-                {
-                    globaldb: fedifyKv,
-                    logger: logging,
-                },
+                fedifyKv,
                 logging,
             );
         },
