@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { Announce, PUBLIC_COLLECTION } from '@fedify/fedify';
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import type { PostService } from 'post/post.service';
@@ -16,7 +16,7 @@ export function createRepostActionHandler(postService: PostService) {
             return BadRequest('Could not parse id as URL');
         }
 
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });

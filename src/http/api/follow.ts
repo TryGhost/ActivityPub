@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from 'account/account.service';
 import { mapActorToExternalAccountData } from 'account/utils';
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { lookupActor, lookupActorProfile, lookupObject } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
@@ -17,7 +17,7 @@ export class FollowController {
 
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -124,7 +124,7 @@ export class FollowController {
 
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });

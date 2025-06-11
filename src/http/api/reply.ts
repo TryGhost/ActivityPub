@@ -10,7 +10,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { getValue } from 'core/result';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
@@ -43,7 +43,7 @@ export async function handleCreateReply(
         );
     }
 
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
+    const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
         globaldb: ctx.get('globaldb'),
         logger,
     });
