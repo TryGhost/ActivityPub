@@ -18,6 +18,27 @@ function encode(data: object) {
     return Buffer.from(JSON.stringify(data)).toString('base64');
 }
 
+function createContext(payload: object) {
+    return {
+        req: {
+            json: vi.fn().mockResolvedValue(payload),
+        },
+        get: vi.fn().mockImplementation((key) => {
+            if (key === 'globaldb') {
+                return {} as unknown as KvStore;
+            }
+
+            if (key === 'logger') {
+                return {
+                    error: vi.fn(),
+                } as unknown as Logger;
+            }
+
+            return null;
+        }),
+    } as unknown as Context;
+}
+
 describe('handleIncomingPubSubMessage', () => {
     let pubSubEvents: PubSubEvents;
     let handler: ReturnType<typeof createIncomingPubSubMessageHandler>;
@@ -32,17 +53,11 @@ describe('handleIncomingPubSubMessage', () => {
                 return await fn();
             }),
         } as unknown as FedifyContextFactory;
-        const fedifyKv = {} as unknown as KvStore;
-        const logger = {
-            error: vi.fn(),
-        } as unknown as Logger;
 
         handler = createIncomingPubSubMessageHandler(
             pubSubEvents,
             fedify,
             fedifyContextFactory,
-            fedifyKv,
-            logger,
         );
     });
 
@@ -59,11 +74,7 @@ describe('handleIncomingPubSubMessage', () => {
             },
         };
 
-        const response = await handler({
-            req: {
-                json: vi.fn().mockResolvedValue(payload),
-            },
-        } as unknown as Context);
+        const response = await handler(createContext(payload));
 
         expect(response.status).toBe(200);
     });
@@ -90,11 +101,7 @@ describe('handleIncomingPubSubMessage', () => {
             },
         };
 
-        const response = await handler({
-            req: {
-                json: vi.fn().mockResolvedValue(payload),
-            },
-        } as unknown as Context);
+        const response = await handler(createContext(payload));
 
         expect(response.status).toBe(400);
     });
@@ -109,11 +116,7 @@ describe('handleIncomingPubSubMessage', () => {
             },
         };
 
-        const response = await handler({
-            req: {
-                json: vi.fn().mockResolvedValue(payload),
-            },
-        } as unknown as Context);
+        const response = await handler(createContext(payload));
 
         expect(response.status).toBe(400);
     });
@@ -135,11 +138,7 @@ describe('handleIncomingPubSubMessage', () => {
             },
         };
 
-        const response = await handler({
-            req: {
-                json: vi.fn().mockResolvedValue(payload),
-            },
-        } as unknown as Context);
+        const response = await handler(createContext(payload));
 
         expect(response.status).toBe(500);
     });

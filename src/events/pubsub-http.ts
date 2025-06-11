@@ -1,8 +1,7 @@
-import type { Federation, KvStore } from '@fedify/fedify';
+import type { Federation } from '@fedify/fedify';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-import type { Logger } from '@logtape/logtape';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { ContextData } from 'app';
 import { createFedifyCtxForHost } from 'helpers/fedify';
@@ -24,8 +23,6 @@ export function createIncomingPubSubMessageHandler(
     events: PubSubEvents,
     fedify: Federation<ContextData>,
     fedifyContextFactory: FedifyContextFactory,
-    fedifyKv: KvStore,
-    logger: Logger,
 ) {
     return async function handleIncomingPubSubMessage(
         ctx: Context,
@@ -60,8 +57,8 @@ export function createIncomingPubSubMessageHandler(
                 fedify,
                 payload.message.attributes[PUBSUB_MESSAGE_ATTR_EVENT_HOST],
                 {
-                    globaldb: fedifyKv,
-                    logger,
+                    globaldb: ctx.get('globaldb'),
+                    logger: ctx.get('logger'),
                 },
             );
 
@@ -79,10 +76,13 @@ export function createIncomingPubSubMessageHandler(
 
             return new Response(null, { status: 200 });
         } catch (error) {
-            logger.error('Failed to handle incoming Pub/Sub message: {error}', {
-                error,
-                message: payload.message,
-            });
+            ctx.get('logger').error(
+                'Failed to handle incoming Pub/Sub message: {error}',
+                {
+                    error,
+                    message: payload.message,
+                },
+            );
 
             return new Response(null, { status: 500 });
         }

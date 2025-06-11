@@ -938,6 +938,12 @@ app.use(async (ctx, next) => {
     });
 });
 
+app.use(async (ctx, next) => {
+    ctx.set('globaldb', globalFedifyKv);
+
+    return next();
+});
+
 container.register(
     'pubSubMessageHandler',
     asFunction(
@@ -1166,9 +1172,6 @@ app.use(async (ctx, next) => {
             status: 401,
         });
     }
-
-    ctx.set('globaldb', globalFedifyKv);
-
     await next();
 });
 
