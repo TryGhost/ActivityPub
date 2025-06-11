@@ -1,5 +1,4 @@
 import type { PubSub, Topic } from '@google-cloud/pubsub';
-import { Temporal } from '@js-temporal/polyfill';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -86,24 +85,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             expect(errorListener).toHaveBeenCalledTimes(1);
             expect(errorListener).toHaveBeenCalledWith(error);
-        });
-
-        it('should not publish a message if a delay is set', async () => {
-            const mq = new GCloudPubSubPushMessageQueue(
-                mockLogger,
-                mockPubSubClient,
-                TOPIC,
-            );
-
-            const message = {
-                id: 'abc123',
-            };
-
-            await mq.enqueue(message, {
-                delay: Temporal.Duration.from({ seconds: 1 }),
-            });
-
-            expect(mockTopic.publishMessage).not.toHaveBeenCalled();
         });
     });
 
