@@ -6,3 +6,19 @@ Feature: Notifications
   Scenario: Requests for notifications with limit over 100 are rejected
     When an authenticated request is made to "/.ghost/activitypub/notifications?limit=200"
     Then the request is rejected with a 400
+
+  Scenario: Requests for unread notifications count
+    Given an Actor "Person(Alice)"
+    And an Actor "Person(Bob)"
+    And we publish an article
+    And "Bob" likes our article
+    And the like is in our notifications
+    And "Alice" likes our article
+    And the like is in our notifications
+    And "Bob" sends us a reply to our article
+    And the reply is in our notifications
+    And "Alice" sends us a reply to our article
+    And the reply is in our notifications
+    When an authenticated request is made to "/.ghost/activitypub/notifications/unread/count"
+    Then the request is accepted with a 200
+    And the unread notifications count is 4
