@@ -200,13 +200,13 @@ export type ContextData = {
 };
 
 const globalLogging = getLogger(['activitypub']);
-export const fedifyKv = await KnexKvStore.create(knex, 'key_value');
+export const globalFedifyKv = await KnexKvStore.create(knex, 'key_value');
 
 container.register('logging', asValue(globalLogging));
 container.register('client', asValue(knex));
 container.register('db', asValue(knex));
-container.register('fedifyKv', asValue(fedifyKv));
-container.register('globalDb', asValue(fedifyKv));
+container.register('fedifyKv', asValue(globalFedifyKv));
+container.register('globalDb', asValue(globalFedifyKv));
 
 container.register('events', asValue(new AsyncEvents()));
 
@@ -304,8 +304,8 @@ if (process.env.USE_MQ === 'true') {
     globalLogging.info('Message queue is disabled');
 }
 
-export const fedify = createFederation<ContextData>({
-    kv: fedifyKv,
+export const globalFedify = createFederation<ContextData>({
+    kv: globalFedifyKv,
     queue,
     manuallyStartQueue: process.env.MANUALLY_START_QUEUE === 'true',
     skipSignatureVerification:
@@ -316,7 +316,7 @@ export const fedify = createFederation<ContextData>({
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
 });
 
-container.register('fedify', asValue(fedify));
+container.register('fedify', asValue(globalFedify));
 
 /**
  * Fedify request context with app specific context data
@@ -327,8 +327,8 @@ export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
 if (process.env.MANUALLY_START_QUEUE === 'true') {
-    fedify.startQueue({
-        globaldb: fedifyKv,
+    globalFedify.startQueue({
+        globaldb: globalFedifyKv,
         logger: globalLogging,
     });
 }
@@ -619,7 +619,7 @@ function ensureCorrectContext<B, R>(
             (ctx as any).data = {};
         }
         if (!ctx.data.globaldb) {
-            ctx.data.globaldb = fedifyKv;
+            ctx.data.globaldb = globalFedifyKv;
         }
         if (!ctx.data.logger) {
             ctx.data.logger = globalLogging;
@@ -634,7 +634,7 @@ function ensureCorrectContext<B, R>(
     };
 }
 
-fedify
+globalFedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher(
         '/.ghost/activitypub/users/{identifier}',
@@ -656,7 +656,7 @@ fedify
         ),
     );
 
-const inboxListener = fedify.setInboxListeners(
+const inboxListener = globalFedify.setInboxListeners(
     '/.ghost/activitypub/inbox/{identifier}',
     '/.ghost/activitypub/inbox',
 );
@@ -736,7 +736,7 @@ inboxListener
     )
     .onError(inboxErrorHandler);
 
-fedify
+globalFedify
     .setFollowersDispatcher(
         '/.ghost/activitypub/followers/{identifier}',
         spanWrapper((ctx: Context<ContextData>, identifier: string) => {
@@ -751,7 +751,7 @@ fedify
         return followersCounter(ctx, identifier);
     });
 
-fedify
+globalFedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{identifier}',
         spanWrapper(
@@ -773,7 +773,7 @@ fedify
     })
     .setFirstCursor(followingFirstCursor);
 
-fedify
+globalFedify
     .setOutboxDispatcher(
         '/.ghost/activitypub/outbox/{identifier}',
         spanWrapper(outboxDispatcher),
@@ -781,7 +781,7 @@ fedify
     .setCounter(outboxCounter)
     .setFirstCursor(outboxFirstCursor);
 
-fedify
+globalFedify
     .setLikedDispatcher(
         '/.ghost/activitypub/liked/{identifier}',
         spanWrapper(likedDispatcher),
@@ -789,57 +789,57 @@ fedify
     .setCounter(likedCounter)
     .setFirstCursor(likedFirstCursor);
 
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Article,
     '/.ghost/activitypub/article/{id}',
     spanWrapper(articleDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Note,
     '/.ghost/activitypub/note/{id}',
     spanWrapper(noteDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Follow,
     '/.ghost/activitypub/follow/{id}',
     spanWrapper(followDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Accept,
     '/.ghost/activitypub/accept/{id}',
     spanWrapper(acceptDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Reject,
     '/.ghost/activitypub/reject/{id}',
     spanWrapper(dispatchRejectActivity),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Create,
     '/.ghost/activitypub/create/{id}',
     spanWrapper(createDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Update,
     '/.ghost/activitypub/update/{id}',
     spanWrapper(updateDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Like,
     '/.ghost/activitypub/like/{id}',
     spanWrapper(likeDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Undo,
     '/.ghost/activitypub/undo/{id}',
     spanWrapper(undoDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Announce,
     '/.ghost/activitypub/announce/{id}',
     spanWrapper(announceDispatcher),
 );
-fedify.setObjectDispatcher(
+globalFedify.setObjectDispatcher(
     Delete,
     '/.ghost/activitypub/delete/{id}',
     spanWrapper(
@@ -850,7 +850,7 @@ fedify.setObjectDispatcher(
         },
     ),
 );
-fedify.setNodeInfoDispatcher(
+globalFedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
     spanWrapper(nodeInfoDispatcher),
 );
@@ -938,22 +938,31 @@ app.use(async (ctx, next) => {
     });
 });
 
-app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
-    const pubSubEvents = container.resolve('pubSubEvents');
-    const fedifyContextFactory = container.resolve('fedifyContextFactory');
+container.register(
+    'pubSubMessageHandler',
+    asFunction(
+        (pubSubEvents, fedify, fedifyContextFactory, logging, fedifyKv) => {
+            return createIncomingPubSubMessageHandler(
+                pubSubEvents,
+                fedify,
+                fedifyContextFactory,
+                {
+                    globaldb: fedifyKv,
+                    logger: logging,
+                },
+                logging,
+            );
+        },
+    ).singleton(),
+);
 
-    return spanWrapper(
-        createIncomingPubSubMessageHandler(
-            pubSubEvents,
-            fedify,
-            fedifyContextFactory,
-            {
-                globaldb: fedifyKv,
-                logger: globalLogging,
-            },
-            globalLogging,
-        ),
-    )(ctx);
+app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
+    const handler = spanWrapper(
+        container.resolve<
+            ReturnType<typeof createIncomingPubSubMessageHandler>
+        >('pubSubMessageHandler'),
+    );
+    return handler(ctx);
 });
 
 // This needs to go before the middleware which loads the site
@@ -1048,7 +1057,10 @@ function sleep(n: number) {
 
 async function getKey(jwksURL: URL, retries = 5) {
     try {
-        const cachedKey = await fedifyKv.get(['cachedJwks', jwksURL.hostname]);
+        const cachedKey = await globalFedifyKv.get([
+            'cachedJwks',
+            jwksURL.hostname,
+        ]);
         if (cachedKey) {
             return cachedKey;
         }
@@ -1060,7 +1072,7 @@ async function getKey(jwksURL: URL, retries = 5) {
         const jwks = await jwksResponse.json();
 
         const key = (await jose.JWK.asKey(jwks.keys[0])).toPEM();
-        await fedifyKv.set(['cachedJwks', jwksURL.hostname], key);
+        await globalFedifyKv.set(['cachedJwks', jwksURL.hostname], key);
 
         return key;
     } catch (err) {
@@ -1158,7 +1170,7 @@ app.use(async (ctx, next) => {
         });
     }
 
-    ctx.set('globaldb', fedifyKv);
+    ctx.set('globaldb', globalFedifyKv);
 
     await next();
 });
@@ -1225,7 +1237,7 @@ app.use(async (ctx, next) => {
     const globaldb = ctx.get('globaldb');
     const logger = ctx.get('logger');
 
-    const fedifyContext = fedify.createContext(ctx.req.raw as Request, {
+    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
         globaldb,
         logger,
     });
@@ -1567,7 +1579,7 @@ app.get(
 
 app.use(
     federation(
-        fedify,
+        globalFedify,
         (
             ctx: HonoContext<{ Variables: HonoContextVariables }>,
         ): ContextData => {

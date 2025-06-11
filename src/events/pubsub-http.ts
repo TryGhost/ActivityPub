@@ -27,7 +27,9 @@ export function createIncomingPubSubMessageHandler(
     newCtxData: ContextData,
     logger: Logger,
 ) {
-    return async function handleIncomingPubSubMessage(ctx: Context) {
+    return async function handleIncomingPubSubMessage(
+        ctx: Context,
+    ): Promise<Response> {
         // Validate the incoming message
         let payload: z.infer<typeof IncomingMessagePayloadSchema>;
 
