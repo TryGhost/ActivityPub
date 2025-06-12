@@ -60,6 +60,7 @@ import { ModerationService } from 'moderation/moderation.service';
 import jose from 'node-jose';
 import { NotificationEventService } from 'notification/notification-event.service';
 import { NotificationService } from 'notification/notification.service';
+import { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
@@ -131,6 +132,7 @@ import {
     GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
+import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interaction-counts-update-requested.event';
 import { PostService } from './post/post.service';
 import { getFullTopic, initPubSubClient } from './pubsub';
 import { type Site, SiteService } from './site/site.service';
@@ -210,7 +212,10 @@ container.register('globalDb', asValue(globalFedifyKv));
 
 container.register('events', asValue(new AsyncEvents()));
 
-container.register('flagService', asValue(new FlagService([])));
+container.register(
+    'flagService',
+    asValue(new FlagService(['post_interaction_counts_update'])),
+);
 
 container.register(
     'fedifyContextFactory',
@@ -227,6 +232,13 @@ try {
     });
     process.exit(1);
 }
+
+const eventSerializer = new EventSerializer();
+
+eventSerializer.register(
+    PostInteractionCountsUpdateRequestedEvent.getName(),
+    PostInteractionCountsUpdateRequestedEvent,
+);
 
 let queue: GCloudPubSubPushMessageQueue | undefined;
 
@@ -260,9 +272,12 @@ if (process.env.USE_MQ === 'true') {
             asValue(
                 new PubSubEvents(
                     pubSubClient,
-                    process.env.MQ_PUBSUB_GHOST_TOPIC_NAME ||
-                        'unknown_pubsub_ghost_topic_name',
-                    new EventSerializer(),
+                    getFullTopic(
+                        pubSubClient.projectId,
+                        process.env.MQ_PUBSUB_GHOST_TOPIC_NAME ||
+                            'unknown_pubsub_ghost_topic_name',
+                    ),
+                    eventSerializer,
                     globalLogging,
                 ),
             ),
@@ -314,6 +329,10 @@ container.register(
 container.register('postRepository', asClass(KnexPostRepository).singleton());
 container.register('accountService', asClass(AccountService).singleton());
 container.register('postService', asClass(PostService).singleton());
+container.register(
+    'postInteractionCountsService',
+    asClass(PostInteractionCountsService).singleton(),
+);
 container.register(
     'ghostService',
     asValue({
@@ -530,8 +549,20 @@ container.register(
 container.register(
     'getFeedHandler',
     asFunction(
-        (feedService, accountService) => (feedType: 'Feed' | 'Inbox') =>
-            createGetFeedHandler(feedService, accountService, feedType),
+        (
+            feedService,
+            accountService,
+            postInteractionCountsService,
+            flagService,
+        ) =>
+            (feedType: 'Feed' | 'Inbox') =>
+                createGetFeedHandler(
+                    feedService,
+                    accountService,
+                    postInteractionCountsService,
+                    flagService,
+                    feedType,
+                ),
     ).singleton(),
 );
 
@@ -574,6 +605,12 @@ const notificationEventService = container.resolve<NotificationEventService>(
     'notificationEventService',
 );
 notificationEventService.init();
+
+const globalPostInteractionCountsService =
+    container.resolve<PostInteractionCountsService>(
+        'postInteractionCountsService',
+    );
+globalPostInteractionCountsService.init();
 
 /** Fedify */
 

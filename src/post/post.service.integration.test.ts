@@ -620,13 +620,13 @@ describe('PostService', () => {
         });
     });
 
-    describe('updateInteractionCounts', () => {
+    describe('update', () => {
         it('returns an error if called for an internal account', async () => {
             const [author, _site, _number] =
                 await fixtureManager.createInternalAccount();
             const post = await fixtureManager.createPost(author);
 
-            const result = await postService.updateInteractionCounts(post);
+            const result = await postService.update(post);
 
             expect(isError(result)).toBe(true);
             expect(getError(result as Err<string>)).toBe('post-is-internal');
@@ -636,7 +636,7 @@ describe('PostService', () => {
             const author = await fixtureManager.createExternalAccount();
             const post = await fixtureManager.createPost(author);
 
-            const result = await postService.updateInteractionCounts(post);
+            const result = await postService.update(post);
 
             expect(isError(result)).toBe(true);
             expect(getError(result as Err<string>)).toBe('upstream-error');
@@ -674,9 +674,7 @@ describe('PostService', () => {
                     }),
                 }),
             );
-            const result = await postService.updateInteractionCounts(
-                updatedPost!,
-            );
+            const result = await postService.update(updatedPost!);
 
             expect(isError(result)).toBe(false);
             expect(setLikeCountSpy).not.toHaveBeenCalled();
@@ -717,9 +715,7 @@ describe('PostService', () => {
                     }),
                 }),
             );
-            const result = await postService.updateInteractionCounts(
-                updatedPost!,
-            );
+            const result = await postService.update(updatedPost!);
 
             expect(isError(result)).toBe(false);
 
