@@ -6,6 +6,7 @@ import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { Account as AccountEntity } from 'account/account.entity';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
+import { NotificationsReadEvent } from 'account/notifications-read-event';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostLikedEvent } from 'post/post-liked.event';
@@ -30,6 +31,7 @@ describe('NotificationEventService', () => {
             removeBlockedDomainNotifications: vi.fn(),
             createMentionNotification: vi.fn(),
             removePostNotifications: vi.fn(),
+            readAllNotifications: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -212,6 +214,21 @@ describe('NotificationEventService', () => {
                 postWithMention,
                 postWithMention.mentions[1].id,
             );
+        });
+    });
+
+    describe('handling a notifications read event', () => {
+        it('should read all notifications', () => {
+            const account = { id: 123 };
+
+            events.emit(
+                NotificationsReadEvent.getName(),
+                new NotificationsReadEvent(account.id),
+            );
+
+            expect(
+                notificationService.readAllNotifications,
+            ).toHaveBeenCalledWith(account.id);
         });
     });
 });

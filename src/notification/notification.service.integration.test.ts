@@ -1107,4 +1107,112 @@ describe('NotificationService', () => {
             expect(remainingNotifications[0].post_id).toBe(otherPost.id);
         });
     });
+
+    describe('readAllNotifications', () => {
+        it('should mark all notifications as read', async () => {
+            const [[aliceAccount, , aliceUserId], [bobAccount, ,]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
+
+            // Create multiple unread notifications
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Repost,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Mention,
+                ),
+            ]);
+
+            // Create one read notification to ensure it stays read
+            await fixtureManager.createNotification(
+                aliceAccount,
+                bobAccount,
+                NotificationType.Follow,
+            );
+            await client('notifications')
+                .where('user_id', aliceUserId)
+                .update({ read: true });
+
+            await notificationService.readAllNotifications(aliceAccount.id);
+
+            const notifications = await client('notifications')
+                .where('user_id', aliceUserId)
+                .select('*');
+
+            expect(notifications).toHaveLength(4);
+            expect(notifications.every((n) => n.read)).toBe(true);
+        });
+
+        it('should do nothing if user is not found for account', async () => {
+            const bobAccount = await fixtureManager.createExternalAccount();
+            const [aliceAccount] = await fixtureManager.createInternalAccount();
+
+            // Create some unread notifications
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            await notificationService.readAllNotifications(bobAccount.id);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(2);
+            expect(notifications.every((n) => n.read)).toBe(false);
+        });
+
+        it('should only mark notifications for the specified user as read', async () => {
+            const [[aliceAccount, , aliceUserId], [bobAccount, , bobUserId]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
+
+            // Create unread notifications for both users
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    bobAccount,
+                    aliceAccount,
+                    NotificationType.Like,
+                ),
+            ]);
+
+            await notificationService.readAllNotifications(aliceAccount.id);
+
+            const aliceNotifications = await client('notifications')
+                .where('user_id', aliceUserId)
+                .select('*');
+            const bobNotifications = await client('notifications')
+                .where('user_id', bobUserId)
+                .select('*');
+
+            expect(aliceNotifications.every((n) => n.read)).toBe(true);
+            expect(bobNotifications.every((n) => n.read)).toBe(false);
+        });
+    });
 });

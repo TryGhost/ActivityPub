@@ -9,6 +9,7 @@ import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
+import { NotificationsReadEvent } from './notifications-read-event';
 
 describe('AccountEntity', () => {
     it('Uses the apId if the url is missing', () => {
@@ -721,6 +722,34 @@ describe('AccountEntity', () => {
 
             expect(AccountEntity.pullEvents(updated)).toStrictEqual([
                 new AccountUnfollowedEvent(accountToUnfollow.id, account.id),
+            ]);
+        });
+    });
+
+    describe('readAllNotifications', () => {
+        it('should read all notifications', () => {
+            const draft = AccountEntity.draft({
+                isInternal: true,
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const result = account.readAllNotifications();
+            const events = AccountEntity.pullEvents(result);
+            expect(events).toStrictEqual([
+                new NotificationsReadEvent(account.id),
             ]);
         });
     });
