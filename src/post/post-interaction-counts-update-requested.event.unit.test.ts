@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
 
 describe('PostInteractionCountsUpdateRequestedEvent', () => {

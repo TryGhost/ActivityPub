@@ -1,4 +1,5 @@
 import type { Logger } from '@logtape/logtape';
+
 import { getError, isError } from 'core/result';
 import type { PubSubEvents } from 'events/pubsub';
 import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';

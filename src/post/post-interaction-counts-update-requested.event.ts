@@ -10,7 +10,7 @@ export class PostInteractionCountsUpdateRequestedEvent
     }
 
     static getName(): string {
-        return 'posts.interaction-count-update-requested';
+        return 'post.interaction-counts-update-requested';
     }
 
     toJSON(): Record<string, unknown> {
