@@ -10,7 +10,6 @@ import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { type Account, AccountEntity } from './account.entity';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
-import { NotificationsReadEvent } from './notifications-read-event';
 
 interface AccountRow {
     id: number;
@@ -143,20 +142,6 @@ export class KnexAccountRepository {
                             following_id: event.getAccountId(),
                         })
                         .delete();
-                } else if (event instanceof NotificationsReadEvent) {
-                    const user = await transaction('users')
-                        .where('account_id', event.getAccountId())
-                        .select('id')
-                        .first();
-
-                    if (user) {
-                        await transaction('notifications')
-                            .where('user_id', user.id)
-                            .andWhere('read', false)
-                            .update({
-                                read: true,
-                            });
-                    }
                 }
             }
         });
