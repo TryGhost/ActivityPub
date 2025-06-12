@@ -50,6 +50,7 @@ import { createDerepostActionHandler } from 'http/api/derepost';
 import { FollowController } from 'http/api/follow';
 import { BadRequest } from 'http/api/helpers/response';
 import { LikeController } from 'http/api/like';
+import { NotificationController } from 'http/api/notification';
 import { handleCreateReply } from 'http/api/reply';
 import { ReplyChainController } from 'http/api/reply-chain';
 import { createRepostActionHandler } from 'http/api/repost';
@@ -111,7 +112,6 @@ import {
     createGetAccountLikedPostsHandler,
     createGetAccountPostsHandler,
     createGetFeedHandler,
-    createGetNotificationsHandler,
     createGetPostHandler,
     createGetThreadHandler,
     createPostPublishedWebhookHandler,
@@ -543,10 +543,8 @@ container.register(
 );
 
 container.register(
-    'getNotificationsHandler',
-    asFunction((accountService, notificationService) =>
-        createGetNotificationsHandler(accountService, notificationService),
-    ).singleton(),
+    'notificationController',
+    asClass(NotificationController).singleton(),
 );
 
 container.register(
@@ -1456,8 +1454,16 @@ app.get(
     '/.ghost/activitypub/notifications',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getNotificationsHandler');
-        return handler(ctx);
+        const controller = container.resolve('notificationController');
+        return controller.handleGetNotifications(ctx);
+    }),
+);
+app.get(
+    '/.ghost/activitypub/notifications/unread/count',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => {
+        const controller = container.resolve('notificationController');
+        return controller.handleGetUnreadNotificationsCount(ctx);
     }),
 );
 app.post(
