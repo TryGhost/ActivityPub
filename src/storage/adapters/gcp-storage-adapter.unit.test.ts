@@ -1,6 +1,5 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
-import { ok } from 'core/result';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GCPStorageAdapter } from './gcp-storage-adapter';
 
@@ -55,10 +54,10 @@ describe('GCPStorageAdapter', () => {
             );
         });
 
-        it('initializes the adapter if the bucket exists', () => {
+        it('initializes the adapter if the bucket exists', async () => {
             const adapter = new GCPStorageAdapter('test-bucket');
 
-            expect(adapter.init()).resolves.not.toThrow();
+            await expect(adapter.init()).resolves.not.toThrow();
         });
     });
 
@@ -69,12 +68,8 @@ describe('GCPStorageAdapter', () => {
                 file,
                 'images/test-uuid/test.png',
             );
-            expect(result).toEqual(
-                ok(
-                    expect.stringMatching(
-                        'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png',
-                    ),
-                ),
+            expect(result).toBe(
+                'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png',
             );
             expect(mockBucket.file).toHaveBeenCalled();
         });

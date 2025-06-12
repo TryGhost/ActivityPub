@@ -1,6 +1,5 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
-import { type Result, ok } from 'core/result';
-import type { FileStorageError, StorageAdapter } from './storage-adapter';
+import type { StorageAdapter } from './storage-adapter';
 
 export class GCPStorageAdapter implements StorageAdapter {
     private storage: Storage;
@@ -44,10 +43,7 @@ export class GCPStorageAdapter implements StorageAdapter {
         }
     }
 
-    async save(
-        file: File,
-        path: string,
-    ): Promise<Result<string, FileStorageError>> {
+    async save(file: File, path: string): Promise<string> {
         await this.bucket.file(path).save(file.stream(), {
             metadata: {
                 contentType: file.type,
@@ -65,6 +61,6 @@ export class GCPStorageAdapter implements StorageAdapter {
             ? `${this.emulatorHost.replace('fake-gcs', 'localhost')}/storage/v1/b/${this.bucketName}/o/${encodeURIComponent(path)}?alt=media`
             : this.bucket.file(path).publicUrl();
 
-        return ok(fileUrl);
+        return fileUrl;
     }
 }
