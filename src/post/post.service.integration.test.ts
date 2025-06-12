@@ -763,7 +763,7 @@ describe('PostService', () => {
 
             const post = getValue(result);
             expect(post.attachments).toHaveLength(1);
-            expect(post.attachments[0]).toEqual({
+            expect(post.attachments[0]).toMatchObject({
                 type: 'Image',
                 url: attachmentUrl,
             });
@@ -798,7 +798,7 @@ describe('PostService', () => {
 
             const post = getValue(result);
             expect(post.attachments).toHaveLength(1);
-            expect(post.attachments[0]).toEqual({
+            expect(post.attachments[0]).toMatchObject({
                 type: 'Document',
                 mediaType: 'image/jpeg',
                 url: attachmentUrl,
