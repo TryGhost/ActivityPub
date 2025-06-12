@@ -16,3 +16,15 @@ Feature: Notifications
     And "Bob" sends us a reply to our article
     And "Alice" sends us a reply to our article
     Then the unread notifications count is 4
+
+  Scenario: Reset unread notifications count
+    Given an Actor "Person(Alice)"
+    And an Actor "Person(Bob)"
+    And we publish an article
+    And "Bob" likes our article
+    And "Alice" likes our article
+    And "Bob" sends us a reply to our article
+    And "Alice" sends us a reply to our article
+    And the unread notifications count is 4
+    When we reset unread notifications count
+    Then the unread notifications count is 0
