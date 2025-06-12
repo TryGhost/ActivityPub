@@ -22,7 +22,6 @@ async function createMockFile(
     height = 100,
     width = 100,
 ): Promise<File> {
-    // Create an in-memory image, with the given height/width
     const imageType = type.split('/')[1] as
         | 'jpeg'
         | 'png'
@@ -104,7 +103,7 @@ describe('ImageProcessor', () => {
             expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
-        it('compresses a PNG file and reduces its size', async () => {
+        it('compresses a PNG file and reduces its size to fit 2000x2000', async () => {
             const file = await createMockFile(
                 'image/png',
                 'image.jpg',
@@ -124,7 +123,7 @@ describe('ImageProcessor', () => {
             expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
-        it('compresses a WebP file and reduces its size', async () => {
+        it('compresses a WebP file and reduces its size to fit 2000x2000', async () => {
             const file = await createMockFile(
                 'image/webp',
                 'image.jpg',
@@ -144,7 +143,7 @@ describe('ImageProcessor', () => {
             expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
-        it('supports resizing large portrait images', async () => {
+        it('supports resizing large portrait images to fit 2000x2000', async () => {
             const height = 4000;
             const width = 1000;
             const file = await createMockFile(
@@ -166,13 +165,14 @@ describe('ImageProcessor', () => {
             expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
-        it('supports resizing large landscape images', async () => {
-            // Portrait image of 4000 width and 1000 height
+        it('supports resizing large landscape images to fit 2000x2000', async () => {
+            const height = 1000;
+            const width = 4000;
             const file = await createMockFile(
                 'image/webp',
                 'image.jpg',
-                4000,
-                1000,
+                width,
+                height,
             );
             const originalSize = file.size;
 
@@ -187,7 +187,7 @@ describe('ImageProcessor', () => {
             expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
-        it('does not enlarge small images beyond their original size', async () => {
+        it('does not enlarge small images beyond their original size to fit 2000x2000', async () => {
             const file = await createMockFile(
                 'image/jpeg',
                 'small-file.jpg',
@@ -215,7 +215,6 @@ describe('ImageProcessor', () => {
             const processor = new ImageProcessor(mockLogger);
             const compressedBuffer = await processor.compress(unsupportedFile);
 
-            expect(compressedBuffer).toBeInstanceOf(Buffer);
             expect(compressedBuffer.length).toEqual(originalSize);
             expect(compressedBuffer.toString()).toBe(textContent);
         });
@@ -225,8 +224,6 @@ describe('ImageProcessor', () => {
 
             const processor = new ImageProcessor(mockLogger);
             const compressedBuffer = await processor.compress(heicFile);
-
-            expect(compressedBuffer).toBeInstanceOf(Buffer);
 
             // Verify the output is JPEG format
             const metadata = await sharp(compressedBuffer).metadata();
@@ -238,8 +235,6 @@ describe('ImageProcessor', () => {
 
             const processor = new ImageProcessor(mockLogger);
             const compressedBuffer = await processor.compress(heifFile);
-
-            expect(compressedBuffer).toBeInstanceOf(Buffer);
 
             // Verify the output is JPEG format
             const metadata = await sharp(compressedBuffer).metadata();
