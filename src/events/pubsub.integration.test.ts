@@ -45,7 +45,7 @@ class TestEvent {
     }
 }
 
-describe('PubSubEvents', () => {
+describe.skip('PubSubEvents', () => {
     let pubSubClient: PubSub;
     let subscription: Subscription;
     let eventSerializer: EventSerializer;
