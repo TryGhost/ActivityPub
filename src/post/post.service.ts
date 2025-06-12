@@ -55,11 +55,13 @@ export type RepostError =
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
 
+export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
 export type UpdateInteractionCountsError =
     | 'post-not-found'
     | 'post-is-internal'
     | 'upstream-error'
-    | 'not-a-post';
+    | 'not-a-post'
+    | typeof INTERACTION_COUNTS_NOT_FOUND;
 
 export class PostService {
     constructor(
@@ -432,7 +434,7 @@ export class PostService {
         return ok(post);
     }
 
-    async update(
+    async updateInteractionCounts(
         post: Post,
     ): Promise<Result<Post, UpdateInteractionCountsError>> {
         if (post.isInternal) {
@@ -455,6 +457,10 @@ export class PostService {
 
         const likeCount = await getLikeCountFromRemote(object);
         const repostCount = await getRepostCountFromRemote(object);
+
+        if (likeCount === null && repostCount === null) {
+            return error(INTERACTION_COUNTS_NOT_FOUND);
+        }
 
         const shouldUpdateLikeCount =
             likeCount !== null && likeCount !== post.likeCount;

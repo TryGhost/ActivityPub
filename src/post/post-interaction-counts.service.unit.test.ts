@@ -6,7 +6,7 @@ import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-co
 import { PostInteractionCountsService } from './post-interaction-counts.service';
 import type { Post } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
-import type { PostService } from './post.service';
+import { INTERACTION_COUNTS_NOT_FOUND, type PostService } from './post.service';
 
 describe('PostInteractionCountsService', () => {
     let service: PostInteractionCountsService;
@@ -17,7 +17,7 @@ describe('PostInteractionCountsService', () => {
 
     beforeEach(() => {
         mockPostService = {
-            update: vi.fn(),
+            updateInteractionCounts: vi.fn(),
         } as unknown as PostService;
         mockPostRepository = {
             getById: vi.fn(),
@@ -93,9 +93,36 @@ describe('PostInteractionCountsService', () => {
 
             await service.update([postId]);
 
-            expect(mockPostService.update).not.toHaveBeenCalled();
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).not.toHaveBeenCalled();
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Post with ID {postId} not found when updating interaction counts - Skipping',
+                { postId },
+            );
+        });
+
+        it('logs an info message if interaction counts are not found on remote post', async () => {
+            const postId = 1;
+            const now = Date.now();
+            const publishedAt = new Date(now - 2 * HOUR);
+            const updatedAt = new Date(now - 15 * MINUTE);
+            const post = {
+                id: postId,
+                publishedAt,
+                updatedAt,
+            } as Post;
+
+            vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
+
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(error(INTERACTION_COUNTS_NOT_FOUND));
+
+            await service.update([postId]);
+
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Post with ID {postId} does not expose interaction counts - Skipping',
                 { postId },
             );
         });
@@ -112,9 +139,9 @@ describe('PostInteractionCountsService', () => {
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
-            vi.mocked(mockPostService.update).mockResolvedValue(
-                error('upstream-error'),
-            );
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(error('upstream-error'));
 
             await service.update([postId]);
 
@@ -137,11 +164,15 @@ describe('PostInteractionCountsService', () => {
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
-            vi.mocked(mockPostService.update).mockResolvedValue(ok(post));
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(ok(post));
 
             await service.update([postId]);
 
-            expect(mockPostService.update).toHaveBeenCalledWith(post);
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).toHaveBeenCalledWith(post);
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Successfully updated interaction counts for post with ID {postId}',
                 { postId },
@@ -162,7 +193,9 @@ describe('PostInteractionCountsService', () => {
 
             await service.update([postId]);
 
-            expect(mockPostService.update).not.toHaveBeenCalled();
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).not.toHaveBeenCalled();
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Post with ID {postId} is not due for an update of interaction counts - Skipping',
                 { postId },
@@ -183,11 +216,15 @@ describe('PostInteractionCountsService', () => {
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
-            vi.mocked(mockPostService.update).mockResolvedValue(ok(post));
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(ok(post));
 
             await service.update([postId]);
 
-            expect(mockPostService.update).toHaveBeenCalledWith(post);
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).toHaveBeenCalledWith(post);
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Successfully updated interaction counts for post with ID {postId}',
                 { postId },
@@ -208,7 +245,9 @@ describe('PostInteractionCountsService', () => {
 
             await service.update([postId]);
 
-            expect(mockPostService.update).not.toHaveBeenCalled();
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).not.toHaveBeenCalled();
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Post with ID {postId} is not due for an update of interaction counts - Skipping',
                 { postId },
@@ -229,11 +268,15 @@ describe('PostInteractionCountsService', () => {
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
-            vi.mocked(mockPostService.update).mockResolvedValue(ok(post));
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(ok(post));
 
             await service.update([postId]);
 
-            expect(mockPostService.update).toHaveBeenCalledWith(post);
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).toHaveBeenCalledWith(post);
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Successfully updated interaction counts for post with ID {postId}',
                 { postId },
@@ -255,7 +298,9 @@ describe('PostInteractionCountsService', () => {
 
             await service.update([postId]);
 
-            expect(mockPostService.update).not.toHaveBeenCalled();
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).not.toHaveBeenCalled();
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Post with ID {postId} is not due for an update of interaction counts - Skipping',
                 { postId },
@@ -276,11 +321,15 @@ describe('PostInteractionCountsService', () => {
             } as Post;
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
-            vi.mocked(mockPostService.update).mockResolvedValue(ok(post));
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(ok(post));
 
             await service.update([postId]);
 
-            expect(mockPostService.update).toHaveBeenCalledWith(post);
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).toHaveBeenCalledWith(post);
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Successfully updated interaction counts for post with ID {postId}',
                 { postId },
@@ -301,7 +350,9 @@ describe('PostInteractionCountsService', () => {
 
             await service.update([postId]);
 
-            expect(mockPostService.update).not.toHaveBeenCalled();
+            expect(
+                mockPostService.updateInteractionCounts,
+            ).not.toHaveBeenCalled();
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Post with ID {postId} is not due for an update of interaction counts - Skipping',
                 { postId },
