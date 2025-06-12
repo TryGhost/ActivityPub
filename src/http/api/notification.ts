@@ -21,21 +21,13 @@ const postTypeMap: Record<number, 'article' | 'note'> = {
     1: 'article',
 };
 
-/**
- * Create a handler for a request for a user's notifications
- *
- * @param accountService Account service instance
- */
-export function createGetNotificationsHandler(
-    accountService: AccountService,
-    notificationService: NotificationService,
-) {
-    /**
-     * Handle a request for a user's notifications
-     *
-     * @param ctx App context instance
-     */
-    return async function handleGetNotifications(ctx: AppContext) {
+export class NotificationController {
+    constructor(
+        private readonly accountService: AccountService,
+        private readonly notificationService: NotificationService,
+    ) {}
+
+    async handleGetNotifications(ctx: AppContext) {
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
@@ -50,12 +42,12 @@ export function createGetNotificationsHandler(
             });
         }
 
-        const account = await accountService.getDefaultAccountForSite(
+        const account = await this.accountService.getDefaultAccountForSite(
             ctx.get('site'),
         );
 
         const { results, nextCursor } =
-            await notificationService.getNotificationsData({
+            await this.notificationService.getNotificationsData({
                 accountId: account.id,
                 limit,
                 cursor,
@@ -115,32 +107,22 @@ export function createGetNotificationsHandler(
                 status: 200,
             },
         );
-    };
-}
+    }
 
-export function createGetUnreadNotificationsCountHandler(
-    accountService: AccountService,
-    notificationService: NotificationService,
-) {
-    /**
-     * Handle a request for a user's unread notifications count
-     *
-     * @param ctx App context instance
-     */
-    return async function handleGetUnreadNotificationsCount(ctx: AppContext) {
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
+    async handleGetUnreadNotificationsCount(ctx: AppContext) {
+        const account = ctx.get('account');
 
         const unreadNotificationsCountResult =
-            await notificationService.getUnreadNotificationsCount(account.id);
+            await this.notificationService.getUnreadNotificationsCount(
+                account.id,
+            );
 
         if (isError(unreadNotificationsCountResult)) {
             const error = getError(unreadNotificationsCountResult);
             switch (error) {
                 case 'not-internal-account':
                     ctx.get('logger').error(
-                        `User not found for account ${account.id}`,
+                        `Cannot get notifications count for external account ${account.id}`,
                     );
                     return new Response(null, { status: 500 });
                 default:
@@ -156,5 +138,5 @@ export function createGetUnreadNotificationsCountHandler(
                 status: 200,
             },
         );
-    };
+    }
 }
