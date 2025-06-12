@@ -48,7 +48,7 @@ describe('Feed API', () => {
             },
         } as unknown as AccountService;
         postInteractionCountsService = {
-            requestInteractionCountsUpdate: vi.fn(),
+            requestUpdate: vi.fn(),
         } as unknown as PostInteractionCountsService;
         feedService = {} as FeedService;
     });
@@ -303,7 +303,7 @@ describe('Feed API', () => {
             await handler(ctx);
 
             expect(
-                postInteractionCountsService.requestInteractionCountsUpdate,
+                postInteractionCountsService.requestUpdate,
             ).toHaveBeenCalledWith(site.host, [789, 790]);
         });
     });

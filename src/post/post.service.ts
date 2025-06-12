@@ -432,7 +432,7 @@ export class PostService {
         return ok(post);
     }
 
-    async updateInteractionCounts(
+    async update(
         post: Post,
     ): Promise<Result<Post, UpdateInteractionCountsError>> {
         if (post.isInternal) {

@@ -20,7 +20,7 @@ export class PostInteractionCountsService {
         this.pubSubEvents.on(
             PostInteractionCountUpdateRequestedEvent.getName(),
             async (event: PostInteractionCountUpdateRequestedEvent) =>
-                await this.updateInteractionCounts(event.getPostIds()),
+                await this.update(event.getPostIds()),
         );
     }
 
@@ -30,7 +30,7 @@ export class PostInteractionCountsService {
      * @param {string} host - The host of the site requesting the update
      * @param {number[]} postIds - The IDs of the posts to update
      */
-    async requestInteractionCountsUpdate(host: string, postIds: number[]) {
+    async requestUpdate(host: string, postIds: number[]) {
         await this.pubSubEvents.emitAsync(
             PostInteractionCountUpdateRequestedEvent.getName(),
             new PostInteractionCountUpdateRequestedEvent(postIds),
@@ -43,7 +43,7 @@ export class PostInteractionCountsService {
      *
      * @param {number[]} postIds - The IDs of the posts to update
      */
-    async updateInteractionCounts(postIds: number[]) {
+    async update(postIds: number[]) {
         for (const postId of postIds) {
             const post = await this.postRepository.getById(postId);
 
@@ -63,7 +63,7 @@ export class PostInteractionCountsService {
                 continue;
             }
 
-            const result = await this.postService.updateInteractionCounts(post);
+            const result = await this.postService.update(post);
 
             if (isError(result)) {
                 this.logging.error(

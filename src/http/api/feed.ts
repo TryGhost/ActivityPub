@@ -117,7 +117,7 @@ export function createGetFeedHandler(
         // Request an update of the interaction counts for the posts in the
         // feed - We do not await this as we do not want to increase the
         // response time of the request
-        postInteractionCountsService.requestInteractionCountsUpdate(
+        postInteractionCountsService.requestUpdate(
             ctx.get('site').host,
             results.map((post) => post.post_id),
         );
