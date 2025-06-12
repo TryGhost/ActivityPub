@@ -359,9 +359,7 @@ export function createGetAccountLikedPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
+        const account = ctx.get('account');
 
         if (!account) {
             return new Response(null, { status: 404 });

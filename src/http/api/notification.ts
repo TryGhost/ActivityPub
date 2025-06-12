@@ -42,9 +42,7 @@ export class NotificationController {
             });
         }
 
-        const account = await this.accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
+        const account = ctx.get('account');
 
         const { results, nextCursor } =
             await this.notificationService.getNotificationsData({
