@@ -93,11 +93,14 @@ describe('ImageProcessor', () => {
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
-            expect(compressedBuffer.length).toBeLessThan(originalSize);
+            expect(compressedFile.size).toBeLessThan(originalSize);
+            expect(compressedFile.name).toBe('image.jpg');
+            expect(compressedFile.type).toBe('image/jpeg');
 
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('jpeg');
             expect(metadata.width).toBeLessThanOrEqual(2000);
             expect(metadata.height).toBeLessThanOrEqual(2000);
@@ -106,18 +109,21 @@ describe('ImageProcessor', () => {
         it('compresses a PNG file and reduces its size to fit 2000x2000', async () => {
             const file = await createMockFile(
                 'image/png',
-                'image.jpg',
+                'image.png',
                 3000,
                 3000,
             );
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
-            expect(compressedBuffer.length).toBeLessThan(originalSize);
+            expect(compressedFile.size).toBeLessThan(originalSize);
+            expect(compressedFile.name).toBe('image.png');
+            expect(compressedFile.type).toBe('image/png');
 
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('png');
             expect(metadata.width).toBeLessThanOrEqual(2000);
             expect(metadata.height).toBeLessThanOrEqual(2000);
@@ -126,18 +132,21 @@ describe('ImageProcessor', () => {
         it('compresses a WebP file and reduces its size to fit 2000x2000', async () => {
             const file = await createMockFile(
                 'image/webp',
-                'image.jpg',
+                'image.webp',
                 3000,
                 3000,
             );
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
-            expect(compressedBuffer.length).toBeLessThan(originalSize);
+            expect(compressedFile.size).toBeLessThan(originalSize);
+            expect(compressedFile.name).toBe('image.webp');
+            expect(compressedFile.type).toBe('image/webp');
 
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('webp');
             expect(metadata.width).toBeLessThanOrEqual(2000);
             expect(metadata.height).toBeLessThanOrEqual(2000);
@@ -148,18 +157,19 @@ describe('ImageProcessor', () => {
             const width = 1000;
             const file = await createMockFile(
                 'image/webp',
-                'image.jpg',
+                'portrait.webp',
                 width,
                 height,
             );
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
-            expect(compressedBuffer.length).toBeLessThan(originalSize);
+            expect(compressedFile.size).toBeLessThan(originalSize);
 
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('webp');
             expect(metadata.width).toBeLessThanOrEqual(2000);
             expect(metadata.height).toBeLessThanOrEqual(2000);
@@ -170,18 +180,19 @@ describe('ImageProcessor', () => {
             const width = 4000;
             const file = await createMockFile(
                 'image/webp',
-                'image.jpg',
+                'landscape.webp',
                 width,
                 height,
             );
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
-            expect(compressedBuffer.length).toBeLessThan(originalSize);
+            expect(compressedFile.size).toBeLessThan(originalSize);
 
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('webp');
             expect(metadata.width).toBeLessThanOrEqual(2000);
             expect(metadata.height).toBeLessThanOrEqual(2000);
@@ -196,16 +207,17 @@ describe('ImageProcessor', () => {
             );
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
 
             expect(metadata.width).toEqual(600);
             expect(metadata.height).toEqual(400);
             expect(metadata.format).toBe('jpeg');
         });
 
-        it('returns original buffer for unsupported types', async () => {
+        it('returns original file for unsupported types', async () => {
             const textContent = 'hello world';
             const unsupportedFile = new File([textContent], 'test.txt', {
                 type: 'text/plain',
@@ -213,20 +225,28 @@ describe('ImageProcessor', () => {
             const originalSize = unsupportedFile.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(unsupportedFile);
+            const compressedFile = await processor.compress(unsupportedFile);
 
-            expect(compressedBuffer.length).toEqual(originalSize);
-            expect(compressedBuffer.toString()).toBe(textContent);
+            expect(compressedFile.size).toEqual(originalSize);
+            expect(compressedFile.name).toBe('test.txt');
+            expect(compressedFile.type).toBe('text/plain');
+
+            const text = await compressedFile.text();
+            expect(text).toBe(textContent);
         });
 
         it('converts HEIC file to JPEG format', async () => {
             const heicFile = await createMockFile('image/heic', 'photo.heic');
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(heicFile);
+            const compressedFile = await processor.compress(heicFile);
+
+            expect(compressedFile.name).toBe('photo.heic');
+            expect(compressedFile.type).toBe('image/heic');
 
             // Verify the output is JPEG format
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('jpeg');
         });
 
@@ -234,21 +254,24 @@ describe('ImageProcessor', () => {
             const heifFile = await createMockFile('image/heif', 'photo.heif');
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(heifFile);
+            const compressedFile = await processor.compress(heifFile);
+
+            expect(compressedFile.name).toBe('photo.heif');
+            expect(compressedFile.type).toBe('image/heif');
 
             // Verify the output is JPEG format
-            const metadata = await sharp(compressedBuffer).metadata();
+            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('jpeg');
         });
 
-        it('returns original buffer if compression fails', async () => {
+        it('returns original file if compression fails', async () => {
             const file = await createMockFile(
                 'image/jpeg',
                 'my-img.jpg',
                 1000,
                 1000,
             );
-            const originalSize = file.size;
 
             const sharpSpy = vi
                 .spyOn(sharp.prototype, 'toBuffer')
@@ -257,12 +280,14 @@ describe('ImageProcessor', () => {
                 });
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedBuffer = await processor.compress(file);
+            const compressedFile = await processor.compress(file);
 
             sharpSpy.mockRestore();
 
-            expect(compressedBuffer).toBeInstanceOf(Buffer);
-            expect(compressedBuffer.length).toEqual(originalSize);
+            expect(compressedFile).toBeInstanceOf(File);
+            expect(compressedFile).toBe(file);
+            expect(compressedFile.name).toBe('my-img.jpg');
+            expect(compressedFile.type).toBe('image/jpeg');
         });
     });
 });

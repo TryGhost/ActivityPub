@@ -79,7 +79,10 @@ export class GCPStorageService {
             accountUuid,
             outputExtension,
         );
-        const compressedBuffer = await fileProcessor.compress(file);
+        const compressedFile = await fileProcessor.compress(file);
+        const compressedBuffer = Buffer.from(
+            await compressedFile.arrayBuffer(),
+        );
 
         await this.bucket.file(storagePath).save(compressedBuffer, {
             metadata: {

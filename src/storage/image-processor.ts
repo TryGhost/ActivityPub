@@ -28,19 +28,19 @@ export class ImageProcessor {
         return ok(true);
     }
 
-    async compress(file: File): Promise<Buffer> {
-        const chunks: Buffer[] = [];
-
-        for await (const chunk of file.stream()) {
-            if (Buffer.isBuffer(chunk)) {
-                chunks.push(chunk);
-            } else {
-                chunks.push(Buffer.from(chunk));
-            }
-        }
-        const fileBuffer = Buffer.concat(chunks);
-
+    async compress(file: File): Promise<File> {
         try {
+            const chunks: Buffer[] = [];
+
+            for await (const chunk of file.stream()) {
+                if (Buffer.isBuffer(chunk)) {
+                    chunks.push(chunk);
+                } else {
+                    chunks.push(Buffer.from(chunk));
+                }
+            }
+            const fileBuffer = Buffer.concat(chunks);
+
             const sharpPipeline = sharp(fileBuffer).rotate().resize({
                 width: 2000,
                 height: 2000,
@@ -49,6 +49,7 @@ export class ImageProcessor {
             });
 
             const format = file.type.split('/')[1];
+            let compressedBuffer: Buffer;
 
             if (
                 format === 'jpeg' ||
@@ -56,18 +57,22 @@ export class ImageProcessor {
                 format === 'heic' ||
                 format === 'heif'
             ) {
-                return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
+                compressedBuffer = await sharpPipeline
+                    .jpeg({ quality: 75 })
+                    .toBuffer();
+            } else if (format === 'png') {
+                compressedBuffer = await sharpPipeline
+                    .png({ compressionLevel: 9 })
+                    .toBuffer();
+            } else if (format === 'webp') {
+                compressedBuffer = await sharpPipeline
+                    .webp({ quality: 75 })
+                    .toBuffer();
+            } else {
+                compressedBuffer = fileBuffer;
             }
 
-            if (format === 'png') {
-                return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
-            }
-
-            if (format === 'webp') {
-                return sharpPipeline.webp({ quality: 75 }).toBuffer();
-            }
-
-            return fileBuffer;
+            return new File([compressedBuffer], file.name, { type: file.type });
         } catch (error) {
             this.logging.error(
                 'Image compression failed, keeping original file',
@@ -77,7 +82,9 @@ export class ImageProcessor {
                     fileType: file.type,
                 },
             );
-            return fileBuffer;
+            return file;
+        } finally {
+            file.stream().cancel();
         }
     }
 }
