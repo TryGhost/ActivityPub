@@ -1,17 +1,8 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { type Result, error, isError, ok } from 'core/result';
-import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
-
-const ALLOWED_IMAGE_TYPES = [
-    'image/jpg',
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/heic',
-    'image/heif',
-];
+import { ImageProcessor } from '../image-processor';
 
 type FileValidationError = 'file-too-large' | 'file-type-not-supported';
 export type ImageVerificationError =
@@ -71,7 +62,8 @@ export class GCPStorageService {
         file: File,
         accountUuid: string,
     ): Promise<Result<string, FileValidationError>> {
-        const validationResult = this.validateFile(file);
+        const fileProcessor = new ImageProcessor(this.logger);
+        const validationResult = fileProcessor.validate(file);
         if (isError(validationResult)) {
             return validationResult;
         }
@@ -87,7 +79,7 @@ export class GCPStorageService {
             accountUuid,
             outputExtension,
         );
-        const compressedBuffer = await this.compressFile(file);
+        const compressedBuffer = await fileProcessor.compress(file);
 
         await this.bucket.file(storagePath).save(compressedBuffer, {
             metadata: {
@@ -124,71 +116,6 @@ export class GCPStorageService {
             path = `${path}.${extension}`;
         }
         return path;
-    }
-
-    private validateFile(file: File): Result<boolean, FileValidationError> {
-        if (file.size > 5 * 1024 * 1024) {
-            return error('file-too-large');
-        }
-
-        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-            return error('file-type-not-supported');
-        }
-
-        return ok(true);
-    }
-
-    private async compressFile(file: File): Promise<Buffer> {
-        const chunks: Buffer[] = [];
-
-        for await (const chunk of file.stream()) {
-            if (Buffer.isBuffer(chunk)) {
-                chunks.push(chunk);
-            } else {
-                chunks.push(Buffer.from(chunk));
-            }
-        }
-        const fileBuffer = Buffer.concat(chunks);
-
-        try {
-            const sharpPipeline = sharp(fileBuffer).rotate().resize({
-                width: 2000,
-                height: 2000,
-                fit: 'inside',
-                withoutEnlargement: true,
-            });
-
-            const format = file.type.split('/')[1];
-
-            if (
-                format === 'jpeg' ||
-                format === 'jpg' ||
-                format === 'heic' ||
-                format === 'heif'
-            ) {
-                return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
-            }
-
-            if (format === 'png') {
-                return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
-            }
-
-            if (format === 'webp') {
-                return sharpPipeline.webp({ quality: 75 }).toBuffer();
-            }
-
-            return fileBuffer;
-        } catch (error) {
-            this.logger.error(
-                'Image compression failed, keeping original file',
-                {
-                    error,
-                    fileName: file.name,
-                    fileType: file.type,
-                },
-            );
-            return fileBuffer;
-        }
     }
 
     async verifyImageUrl(
