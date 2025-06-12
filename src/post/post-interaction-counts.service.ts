@@ -4,7 +4,7 @@ import { getError, isError } from 'core/result';
 import type { PubSubEvents } from 'events/pubsub';
 import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
 import type { KnexPostRepository } from './post.repository.knex';
-import type { PostService } from './post.service';
+import { INTERACTION_COUNTS_NOT_FOUND, type PostService } from './post.service';
 
 export class PostInteractionCountsService {
     constructor(
@@ -56,27 +56,38 @@ export class PostInteractionCountsService {
                 continue;
             }
 
+            const postApId = post.apId;
             if (!this.isUpdateDue(post.publishedAt, post.updatedAt)) {
                 this.logging.info(
                     'Post with ID {postId} is not due for an update of interaction counts - Skipping',
-                    { postId },
+                    { postId, postApId },
                 );
                 continue;
             }
 
-            const result = await this.postService.update(post);
+            const result = await this.postService.updateInteractionCounts(post);
 
             if (isError(result)) {
-                this.logging.error(
-                    'Error updating interaction counts for post with ID {postId}: {error}',
-                    { postId, error: getError(result) },
-                );
+                const error = getError(result);
+
+                if (error === INTERACTION_COUNTS_NOT_FOUND) {
+                    this.logging.info(
+                        'Post with ID {postId} does not expose interaction counts - Skipping',
+                        { postId, postApId },
+                    );
+                } else {
+                    this.logging.error(
+                        'Error updating interaction counts for post with ID {postId}: {error}',
+                        { postId, postApId, error },
+                    );
+                }
+
                 continue;
             }
 
             this.logging.info(
                 'Successfully updated interaction counts for post with ID {postId}',
-                { postId },
+                { postId, postApId },
             );
         }
     }
