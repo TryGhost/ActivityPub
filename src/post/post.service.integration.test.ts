@@ -1,4 +1,11 @@
-import { Collection, Note, lookupObject } from '@fedify/fedify';
+import {
+    Collection,
+    Document,
+    Image,
+    Note,
+    lookupObject,
+} from '@fedify/fedify';
+import { Temporal } from '@js-temporal/polyfill';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -724,6 +731,78 @@ describe('PostService', () => {
             expect(savedPost).not.toBeNull();
             expect(savedPost!.likeCount).toBe(3);
             expect(savedPost!.repostCount).toBe(0);
+        });
+    });
+
+    describe('getByApId', () => {
+        it('should handle attachments correctly for incoming posts with Image type attachment', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const attachmentUrl = new URL('https://example.com/image.jpg');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: new URL('https://example.com/post/1'),
+                    content: 'Test post with attachment',
+                    attachments: [
+                        new Image({
+                            url: attachmentUrl,
+                        }),
+                    ],
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(
+                new URL('https://example.com/post/1'),
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toHaveLength(1);
+            expect(post.attachments[0]).toEqual({
+                type: 'Image',
+                url: attachmentUrl,
+            });
+        });
+
+        it('should handle attachments correctly for incoming posts with Document type attachment', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const attachmentUrl = new URL('https://example.com/image.jpg');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: new URL('https://example.com/post/1'),
+                    content: 'Test post with attachment',
+                    attachments: [
+                        new Document({
+                            url: attachmentUrl,
+                            mediaType: 'image/jpeg',
+                        }),
+                    ],
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(
+                new URL('https://example.com/post/1'),
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toHaveLength(1);
+            expect(post.attachments[0]).toEqual({
+                type: 'Document',
+                mediaType: 'image/jpeg',
+                url: attachmentUrl,
+            });
         });
     });
 });
