@@ -87,11 +87,12 @@ export class PostService {
                     ? attachment
                     : [attachment].filter((a) => a !== undefined);
                 for (const a of attachmentList) {
+                    const attachmentJson = await a.toJsonLd();
                     postAttachments.push({
-                        type: a.type,
-                        mediaType: a.mediaType,
-                        name: a.name,
-                        url: a.url,
+                        type: attachmentJson.type,
+                        mediaType: attachmentJson.mediaType,
+                        name: attachmentJson.name,
+                        url: new URL(attachmentJson.url),
                     });
                 }
             }
