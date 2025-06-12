@@ -1503,6 +1503,14 @@ app.get(
         return controller.handleGetUnreadNotificationsCount(ctx);
     }),
 );
+app.put(
+    '/.ghost/activitypub/notifications/unread/reset',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => {
+        const controller = container.resolve('notificationController');
+        return controller.handleResetUnreadNotificationsCount(ctx);
+    }),
+);
 app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),

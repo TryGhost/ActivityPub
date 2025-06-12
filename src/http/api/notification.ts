@@ -139,4 +139,14 @@ export class NotificationController {
             },
         );
     }
+
+    async handleResetUnreadNotificationsCount(ctx: AppContext) {
+        const account = ctx.get('account');
+
+        await this.accountService.resetUnreadNotificationsCount(account);
+
+        return new Response(null, {
+            status: 200,
+        });
+    }
 }

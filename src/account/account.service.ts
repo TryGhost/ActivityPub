@@ -686,4 +686,10 @@ export class AccountService {
 
         await this.accountRepository.save(updated);
     }
+
+    async resetUnreadNotificationsCount(account: Account) {
+        const updated = account.resetUnreadNotificationsCount();
+
+        await this.accountRepository.save(updated);
+    }
 }
