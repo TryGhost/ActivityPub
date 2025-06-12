@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PostInteractionCountUpdateRequestedEvent } from './post-interaction-count-update-requested.event';
+import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
 
-describe('PostInteractionCountUpdateRequestedEvent', () => {
+describe('PostInteractionCountsUpdateRequestedEvent', () => {
     it('should be serializable', () => {
-        const event = new PostInteractionCountUpdateRequestedEvent([1, 2, 3]);
+        const event = new PostInteractionCountsUpdateRequestedEvent([1, 2, 3]);
 
         expect(event.toJSON()).toEqual({
             postIds: [1, 2, 3],
@@ -11,7 +11,7 @@ describe('PostInteractionCountUpdateRequestedEvent', () => {
     });
 
     it('should be deserializable', () => {
-        const event = PostInteractionCountUpdateRequestedEvent.fromJSON({
+        const event = PostInteractionCountsUpdateRequestedEvent.fromJSON({
             postIds: [1, 2, 3],
         });
 
@@ -20,7 +20,7 @@ describe('PostInteractionCountUpdateRequestedEvent', () => {
 
     it('should throw an error if postIds is not an array', () => {
         expect(() =>
-            PostInteractionCountUpdateRequestedEvent.fromJSON({
+            PostInteractionCountsUpdateRequestedEvent.fromJSON({
                 postIds: 'not an array',
             }),
         ).toThrow('postIds must be an array');
@@ -28,7 +28,7 @@ describe('PostInteractionCountUpdateRequestedEvent', () => {
 
     it('should throw an error if postIds is not an array of numbers', () => {
         expect(() =>
-            PostInteractionCountUpdateRequestedEvent.fromJSON({
+            PostInteractionCountsUpdateRequestedEvent.fromJSON({
                 postIds: [1, 'not a number'],
             }),
         ).toThrow('postIds must be an array of numbers');

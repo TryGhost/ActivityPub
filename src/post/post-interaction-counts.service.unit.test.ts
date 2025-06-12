@@ -2,7 +2,7 @@ import type { Logger } from '@logtape/logtape';
 import { error, ok } from 'core/result';
 import type { PubSubEvents } from 'events/pubsub';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PostInteractionCountUpdateRequestedEvent } from './post-interaction-count-update-requested.event';
+import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
 import { PostInteractionCountsService } from './post-interaction-counts.service';
 import type { Post } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
@@ -39,7 +39,7 @@ describe('PostInteractionCountsService', () => {
     });
 
     describe('init', () => {
-        it('should register an event listener for: PostInteractionCountUpdateRequestedEvent', async () => {
+        it('should register an event listener for: PostInteractionCountsUpdateRequestedEvent', async () => {
             const updateSpy = vi
                 .spyOn(service, 'update')
                 .mockResolvedValue(undefined);
@@ -47,14 +47,14 @@ describe('PostInteractionCountsService', () => {
             service.init();
 
             expect(mockPubSubEvents.on).toHaveBeenCalledWith(
-                PostInteractionCountUpdateRequestedEvent.getName(),
+                PostInteractionCountsUpdateRequestedEvent.getName(),
                 expect.any(Function),
             );
 
             const handler = vi.mocked(mockPubSubEvents.on).mock.calls[0][1];
 
             await handler(
-                new PostInteractionCountUpdateRequestedEvent([1, 2, 3]),
+                new PostInteractionCountsUpdateRequestedEvent([1, 2, 3]),
             );
 
             expect(updateSpy).toHaveBeenCalledWith([1, 2, 3]);
@@ -62,12 +62,12 @@ describe('PostInteractionCountsService', () => {
     });
 
     describe('requestUpdate', () => {
-        it('should publish a PostInteractionCountUpdateRequestedEvent', async () => {
+        it('should publish a PostInteractionCountsUpdateRequestedEvent', async () => {
             await service.requestUpdate('example.com', [1, 2, 3]);
 
             expect(mockPubSubEvents.emitAsync).toHaveBeenCalledWith(
-                PostInteractionCountUpdateRequestedEvent.getName(),
-                expect.any(PostInteractionCountUpdateRequestedEvent),
+                PostInteractionCountsUpdateRequestedEvent.getName(),
+                expect.any(PostInteractionCountsUpdateRequestedEvent),
                 'example.com',
             );
 
@@ -76,7 +76,7 @@ describe('PostInteractionCountsService', () => {
 
             expect(
                 (
-                    event as PostInteractionCountUpdateRequestedEvent
+                    event as PostInteractionCountsUpdateRequestedEvent
                 ).getPostIds(),
             ).toEqual([1, 2, 3]);
         });

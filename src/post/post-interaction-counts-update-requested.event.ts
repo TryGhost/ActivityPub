@@ -1,6 +1,6 @@
 import type { SerializableEvent } from 'events/event';
 
-export class PostInteractionCountUpdateRequestedEvent
+export class PostInteractionCountsUpdateRequestedEvent
     implements SerializableEvent
 {
     constructor(private readonly postIds: number[]) {}
@@ -21,7 +21,7 @@ export class PostInteractionCountUpdateRequestedEvent
 
     static fromJSON(
         data: Record<string, unknown>,
-    ): PostInteractionCountUpdateRequestedEvent {
+    ): PostInteractionCountsUpdateRequestedEvent {
         if (!('postIds' in data) || !Array.isArray(data.postIds)) {
             throw new Error('postIds must be an array');
         }
@@ -32,6 +32,6 @@ export class PostInteractionCountUpdateRequestedEvent
             }
         }
 
-        return new PostInteractionCountUpdateRequestedEvent(data.postIds);
+        return new PostInteractionCountsUpdateRequestedEvent(data.postIds);
     }
 }

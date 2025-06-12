@@ -132,7 +132,7 @@ import {
     GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
-import { PostInteractionCountUpdateRequestedEvent } from './post/post-interaction-count-update-requested.event';
+import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interaction-counts-update-requested.event';
 import { PostService } from './post/post.service';
 import { getFullTopic, initPubSubClient } from './pubsub';
 import { type Site, SiteService } from './site/site.service';
@@ -233,8 +233,8 @@ try {
 const eventSerializer = new EventSerializer();
 
 eventSerializer.register(
-    PostInteractionCountUpdateRequestedEvent.getName(),
-    PostInteractionCountUpdateRequestedEvent,
+    PostInteractionCountsUpdateRequestedEvent.getName(),
+    PostInteractionCountsUpdateRequestedEvent,
 );
 
 let queue: GCloudPubSubPushMessageQueue | undefined;

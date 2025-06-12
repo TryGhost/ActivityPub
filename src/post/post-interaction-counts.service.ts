@@ -1,7 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { getError, isError } from 'core/result';
 import type { PubSubEvents } from 'events/pubsub';
-import { PostInteractionCountUpdateRequestedEvent } from './post-interaction-count-update-requested.event';
+import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
 import type { KnexPostRepository } from './post.repository.knex';
 import type { PostService } from './post.service';
 
@@ -18,8 +18,8 @@ export class PostInteractionCountsService {
      */
     init() {
         this.pubSubEvents.on(
-            PostInteractionCountUpdateRequestedEvent.getName(),
-            async (event: PostInteractionCountUpdateRequestedEvent) =>
+            PostInteractionCountsUpdateRequestedEvent.getName(),
+            async (event: PostInteractionCountsUpdateRequestedEvent) =>
                 await this.update(event.getPostIds()),
         );
     }
@@ -32,8 +32,8 @@ export class PostInteractionCountsService {
      */
     async requestUpdate(host: string, postIds: number[]) {
         await this.pubSubEvents.emitAsync(
-            PostInteractionCountUpdateRequestedEvent.getName(),
-            new PostInteractionCountUpdateRequestedEvent(postIds),
+            PostInteractionCountsUpdateRequestedEvent.getName(),
+            new PostInteractionCountsUpdateRequestedEvent(postIds),
             host,
         );
     }
