@@ -1,4 +1,4 @@
-export class NotificationReadEvent {
+export class NotificationsReadEvent {
     constructor(private readonly accountId: number) {}
 
     getAccountId(): number {

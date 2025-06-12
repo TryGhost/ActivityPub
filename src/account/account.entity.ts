@@ -7,7 +7,7 @@ import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
-import { NotificationReadEvent } from './notifications-read-event';
+import { NotificationsReadEvent } from './notifications-read-event';
 
 export interface Account {
     readonly id: number;
@@ -234,7 +234,7 @@ export class AccountEntity implements Account {
     resetUnreadNotificationsCount(): Account {
         return AccountEntity.create(
             this,
-            this.events.concat(new NotificationReadEvent(this.id)),
+            this.events.concat(new NotificationsReadEvent(this.id)),
         );
     }
 }
