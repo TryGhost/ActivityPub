@@ -28,7 +28,7 @@ export interface Account {
     unblockDomain(domain: URL): Account;
     follow(account: Account): Account;
     unfollow(account: Account): Account;
-    resetUnreadNotificationsCount(): Account;
+    readAllNotifications(): Account;
     /**
      * Returns a new Account instance which needs to be saved.
      */
@@ -231,7 +231,7 @@ export class AccountEntity implements Account {
         );
     }
 
-    resetUnreadNotificationsCount(): Account {
+    readAllNotifications(): Account {
         return AccountEntity.create(
             this,
             this.events.concat(new NotificationsReadEvent(this.id)),
