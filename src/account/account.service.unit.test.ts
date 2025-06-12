@@ -150,4 +150,27 @@ describe('AccountService', () => {
             );
         });
     });
+
+    describe('readAllNotifications', () => {
+        it('should read all notifications', async () => {
+            const account = {
+                id: 1,
+                readAllNotifications: vi.fn(),
+            } as unknown as AccountEntity;
+            const updatedAccount = {
+                id: 1,
+            } as unknown as AccountEntity;
+
+            vi.mocked(account.readAllNotifications).mockImplementation(
+                () => updatedAccount,
+            );
+
+            await accountService.readAllNotifications(account);
+
+            expect(account.readAllNotifications).toHaveBeenCalled();
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
+    });
 });

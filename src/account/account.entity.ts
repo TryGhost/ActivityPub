@@ -7,6 +7,7 @@ import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
+import { NotificationsReadEvent } from './notifications-read-event';
 
 export interface Account {
     readonly id: number;
@@ -27,6 +28,7 @@ export interface Account {
     unblockDomain(domain: URL): Account;
     follow(account: Account): Account;
     unfollow(account: Account): Account;
+    readAllNotifications(): Account;
     /**
      * Returns a new Account instance which needs to be saved.
      */
@@ -226,6 +228,13 @@ export class AccountEntity implements Account {
         return AccountEntity.create(
             this,
             this.events.concat(new AccountUnfollowedEvent(account.id, this.id)),
+        );
+    }
+
+    readAllNotifications(): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(new NotificationsReadEvent(this.id)),
         );
     }
 }

@@ -686,4 +686,10 @@ export class AccountService {
 
         await this.accountRepository.save(updated);
     }
+
+    async readAllNotifications(account: Account) {
+        const updated = account.readAllNotifications();
+
+        await this.accountRepository.save(updated);
+    }
 }

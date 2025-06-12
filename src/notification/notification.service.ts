@@ -471,4 +471,23 @@ export class NotificationService {
 
         return ok(Number(result[0].count));
     }
+
+    async readAllNotifications(accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If the requested account no longer exists or is external, don't read all notifications
+            return;
+        }
+
+        await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('read', false)
+            .update({
+                read: true,
+            });
+    }
 }
