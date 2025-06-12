@@ -212,7 +212,10 @@ container.register('globalDb', asValue(globalFedifyKv));
 
 container.register('events', asValue(new AsyncEvents()));
 
-container.register('flagService', asValue(new FlagService([])));
+container.register(
+    'flagService',
+    asValue(new FlagService(['post_interaction_counts_update'])),
+);
 
 container.register(
     'fedifyContextFactory',
@@ -546,12 +549,18 @@ container.register(
 container.register(
     'getFeedHandler',
     asFunction(
-        (feedService, accountService, postInteractionCountsService) =>
+        (
+            feedService,
+            accountService,
+            postInteractionCountsService,
+            flagService,
+        ) =>
             (feedType: 'Feed' | 'Inbox') =>
                 createGetFeedHandler(
                     feedService,
                     accountService,
                     postInteractionCountsService,
+                    flagService,
                     feedType,
                 ),
     ).singleton(),

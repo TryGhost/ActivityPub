@@ -4,6 +4,7 @@ import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import type { FeedService } from 'feed/feed.service';
+import type { FlagService } from 'flag/flag.service';
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { PostType } from 'post/post.entity';
 import type { Site } from 'site/site.service';
@@ -13,6 +14,7 @@ describe('Feed API', () => {
     let feedService: FeedService;
     let accountService: AccountService;
     let postInteractionCountsService: PostInteractionCountsService;
+    let flagService: FlagService;
     let site: Site;
     let account: AccountEntity;
 
@@ -50,6 +52,9 @@ describe('Feed API', () => {
         postInteractionCountsService = {
             requestUpdate: vi.fn(),
         } as unknown as PostInteractionCountsService;
+        flagService = {
+            isEnabled: vi.fn().mockReturnValue(true),
+        } as unknown as FlagService;
         feedService = {} as FeedService;
     });
 
@@ -78,6 +83,7 @@ describe('Feed API', () => {
                 feedService,
                 accountService,
                 postInteractionCountsService,
+                flagService,
                 'Inbox',
             );
 
@@ -205,6 +211,7 @@ describe('Feed API', () => {
                 feedService,
                 accountService,
                 postInteractionCountsService,
+                flagService,
                 'Inbox',
             );
 
