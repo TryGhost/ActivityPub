@@ -9,7 +9,7 @@ import { createImageUploadHandler } from './image-upload';
 describe('Image Upload API', () => {
     let accountService: AccountService;
     let imageStorageService: ImageStorageService;
-    let mockLogger: { error: Mock; info: Mock };
+    let mockLogger: { error: Mock };
     const getMockContext = (): Context =>
         ({
             get: (key: string) => {
@@ -30,7 +30,7 @@ describe('Image Upload API', () => {
         }) as unknown as Context;
 
     beforeEach(() => {
-        mockLogger = { error: vi.fn(), info: vi.fn() };
+        mockLogger = { error: vi.fn() };
         accountService = {
             getAccountForSite: vi.fn().mockResolvedValue({
                 uuid: 'test-uuid',
