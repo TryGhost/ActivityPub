@@ -19,7 +19,7 @@ export class ImageStorageService {
             file.type.includes('heic') || file.type.includes('heif');
         const extension = isHeicFile ? 'jpg' : file.type.split('/')[1];
 
-        return `/images/${accountUUID}/${uuidv4()}.${extension}`;
+        return `images/${accountUUID}/${uuidv4()}.${extension}`;
     }
 
     async save(
