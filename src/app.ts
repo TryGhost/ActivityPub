@@ -247,15 +247,6 @@ container.register(
     }).singleton(),
 );
 
-try {
-    await container.resolve('storageAdapter').init();
-} catch (err) {
-    globalLogging.error('Failed to initialise storage adapter {error}', {
-        error: err,
-    });
-    process.exit(1);
-}
-
 container.register('imageProcessor', asClass(ImageProcessor).singleton());
 
 container.register(

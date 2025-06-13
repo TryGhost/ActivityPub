@@ -32,17 +32,6 @@ export class GCPStorageAdapter implements StorageAdapter {
         }
     }
 
-    async init(): Promise<void> {
-        try {
-            const [exists] = await this.bucket.exists();
-            if (!exists) {
-                throw new Error(`Bucket [${this.bucketName}] does not exist`);
-            }
-        } catch (err) {
-            throw new Error(`Failed to verify GCP bucket ${err}`);
-        }
-    }
-
     async save(file: File, path: string): Promise<string> {
         await this.bucket.file(path).save(file.stream(), {
             metadata: {

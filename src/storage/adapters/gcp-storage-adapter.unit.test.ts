@@ -45,22 +45,6 @@ describe('GCPStorageAdapter', () => {
         adapter = new GCPStorageAdapter('test-bucket');
     });
 
-    describe('.init()', () => {
-        it('throws an error if the bucket does not exist', async () => {
-            (mockBucket.exists as Mock).mockResolvedValue([false]);
-
-            await expect(adapter.init()).rejects.toThrow(
-                'Bucket [test-bucket] does not exist',
-            );
-        });
-
-        it('initializes the adapter if the bucket exists', async () => {
-            const adapter = new GCPStorageAdapter('test-bucket');
-
-            await expect(adapter.init()).resolves.not.toThrow();
-        });
-    });
-
     describe('.save()', () => {
         it('saves a file and returns a URL', async () => {
             const file = new File([], 'test.png', { type: 'image/png' });
