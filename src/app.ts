@@ -138,7 +138,6 @@ import { PostService } from './post/post.service';
 import { getFullTopic, initPubSubClient } from './pubsub';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageAdapter } from './storage/adapters/gcp-storage-adapter';
-import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
 import { ImageProcessor } from './storage/image-processor';
 
 const container = createContainer({
@@ -224,17 +223,6 @@ container.register(
     'fedifyContextFactory',
     asClass(FedifyContextFactory).singleton(),
 );
-
-container.register('storageService', asClass(GCPStorageService).singleton());
-
-try {
-    await container.resolve('storageService').init();
-} catch (err) {
-    globalLogging.error('Failed to initialise GCP storage service {error}', {
-        error: err,
-    });
-    process.exit(1);
-}
 
 container.register(
     'storageAdapter',

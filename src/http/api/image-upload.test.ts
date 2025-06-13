@@ -1,13 +1,14 @@
 import type { AccountService } from 'account/account.service';
 import { error, ok } from 'core/result';
 import type { Context } from 'hono';
-import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createStorageHandler } from './storage';
+import type { ImageStorageService } from 'storage/image-storage.service';
 
-describe('Storage API', () => {
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createImageUploadHandler } from './image-upload';
+
+describe('Image Upload API', () => {
     let accountService: AccountService;
-    let storageService: GCPStorageService;
+    let imageStorageService: ImageStorageService;
     let mockLogger: { error: Mock };
     const getMockContext = (): Context =>
         ({
@@ -36,16 +37,20 @@ describe('Storage API', () => {
             }),
         } as unknown as AccountService;
 
-        storageService = {
-            saveFile: vi
+        imageStorageService = {
+            storagePath: vi
                 .fn()
-                .mockResolvedValue(ok('https://example.com/test.png')),
-        } as unknown as GCPStorageService;
+                .mockReturnValue('https://example.com/test.png'),
+            save: vi.fn().mockResolvedValue(ok('https://example.com/test.png')),
+        } as unknown as ImageStorageService;
     });
 
     it('returns 400 if no file is provided', async () => {
         const ctx = getMockContext();
-        const handler = createStorageHandler(accountService, storageService);
+        const handler = createImageUploadHandler(
+            accountService,
+            imageStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
@@ -58,7 +63,10 @@ describe('Storage API', () => {
         formData.append('file', 'not-a-file');
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createStorageHandler(accountService, storageService);
+        const handler = createImageUploadHandler(
+            accountService,
+            imageStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(400);
@@ -74,11 +82,14 @@ describe('Storage API', () => {
         );
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        (storageService.saveFile as Mock).mockResolvedValue(
+        (imageStorageService.save as Mock).mockResolvedValue(
             error('file-too-large'),
         );
 
-        const handler = createStorageHandler(accountService, storageService);
+        const handler = createImageUploadHandler(
+            accountService,
+            imageStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(413);
@@ -97,11 +108,14 @@ describe('Storage API', () => {
         );
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        (storageService.saveFile as Mock).mockResolvedValue(
+        (imageStorageService.save as Mock).mockResolvedValue(
             error('file-type-not-supported'),
         );
 
-        const handler = createStorageHandler(accountService, storageService);
+        const handler = createImageUploadHandler(
+            accountService,
+            imageStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(415);
@@ -123,9 +137,12 @@ describe('Storage API', () => {
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
         const expectedUrl = 'https://example.com/test.png';
-        (storageService.saveFile as Mock).mockResolvedValue(ok(expectedUrl));
+        (imageStorageService.save as Mock).mockResolvedValue(ok(expectedUrl));
 
-        const handler = createStorageHandler(accountService, storageService);
+        const handler = createImageUploadHandler(
+            accountService,
+            imageStorageService,
+        );
         const response = await handler(ctx);
 
         expect(response.status).toBe(200);
