@@ -40,7 +40,7 @@ describe('Image Storage Service - GCP Storage Integration', () => {
 
             const result = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(result)).toBe(false);
@@ -71,7 +71,7 @@ describe('Image Storage Service - GCP Storage Integration', () => {
 
             const result = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(result)).toBe(true);
@@ -88,7 +88,7 @@ describe('Image Storage Service - GCP Storage Integration', () => {
 
             const result = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(result)).toBe(true);
@@ -107,7 +107,7 @@ describe('Image Storage Service - GCP Storage Integration', () => {
 
             const saveResult = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(saveResult)).toBe(false);

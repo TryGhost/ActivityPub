@@ -17,9 +17,10 @@ export function createImageUploadHandler(
         }
 
         const account = await accountService.getAccountForSite(ctx.get('site'));
-        const path = imageStorageService.storagePath(file, account.uuid);
-
-        const result = await imageStorageService.save(file, path);
+        const result = await imageStorageService.save(
+            file,
+            `images/${account.uuid}/`,
+        );
 
         if (isError(result)) {
             const error = getError(result);

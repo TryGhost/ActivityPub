@@ -50,13 +50,10 @@ export class ImageProcessor {
 
             const format = file.type.split('/')[1];
             let compressedBuffer: Buffer;
+            let targetType = file.type;
+            let targetName = file.name;
 
-            if (
-                format === 'jpeg' ||
-                format === 'jpg' ||
-                format === 'heic' ||
-                format === 'heif'
-            ) {
+            if (format === 'jpeg' || format === 'jpg') {
                 compressedBuffer = await sharpPipeline
                     .jpeg({ quality: 75 })
                     .toBuffer();
@@ -68,11 +65,19 @@ export class ImageProcessor {
                 compressedBuffer = await sharpPipeline
                     .webp({ quality: 75 })
                     .toBuffer();
+            } else if (format === 'heic' || format === 'heif') {
+                compressedBuffer = await sharpPipeline
+                    .jpeg({ quality: 75 })
+                    .toBuffer();
+                targetType = 'image/jpeg';
+                targetName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
             } else {
                 compressedBuffer = fileBuffer;
             }
 
-            return new File([compressedBuffer], file.name, { type: file.type });
+            return new File([compressedBuffer], targetName, {
+                type: targetType,
+            });
         } catch (error) {
             this.logging.error(
                 'Image compression failed, keeping original file',

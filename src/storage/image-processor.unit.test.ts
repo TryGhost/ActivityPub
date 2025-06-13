@@ -241,8 +241,8 @@ describe('ImageProcessor', () => {
             const processor = new ImageProcessor(mockLogger);
             const compressedFile = await processor.compress(heicFile);
 
-            expect(compressedFile.name).toBe('photo.heic');
-            expect(compressedFile.type).toBe('image/heic');
+            expect(compressedFile.name).toBe('photo.jpg');
+            expect(compressedFile.type).toBe('image/jpeg');
 
             // Verify the output is JPEG format
             const buffer = Buffer.from(await compressedFile.arrayBuffer());
@@ -256,8 +256,8 @@ describe('ImageProcessor', () => {
             const processor = new ImageProcessor(mockLogger);
             const compressedFile = await processor.compress(heifFile);
 
-            expect(compressedFile.name).toBe('photo.heif');
-            expect(compressedFile.type).toBe('image/heif');
+            expect(compressedFile.name).toBe('photo.jpg');
+            expect(compressedFile.type).toBe('image/jpeg');
 
             // Verify the output is JPEG format
             const buffer = Buffer.from(await compressedFile.arrayBuffer());

@@ -38,9 +38,6 @@ describe('Image Upload API', () => {
         } as unknown as AccountService;
 
         imageStorageService = {
-            storagePath: vi
-                .fn()
-                .mockReturnValue('https://example.com/test.png'),
             save: vi.fn().mockResolvedValue(ok('https://example.com/test.png')),
         } as unknown as ImageStorageService;
     });

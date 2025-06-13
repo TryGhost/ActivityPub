@@ -13,18 +13,9 @@ export class ImageStorageService {
         private readonly imageProcessor: ImageProcessor,
     ) {}
 
-    storagePath(file: File, accountUUID: string): string {
-        // HEIC/HEIF files are converted to JPEG format
-        const isHeicFile =
-            file.type.includes('heic') || file.type.includes('heif');
-        const extension = isHeicFile ? 'jpg' : file.type.split('/')[1];
-
-        return `images/${accountUUID}/${uuidv4()}.${extension}`;
-    }
-
     async save(
         file: File,
-        path: string,
+        pathPrefix?: string,
     ): Promise<Result<string, ValidationError | StorageError>> {
         const validationResult = this.imageProcessor.validate(file);
         if (isError(validationResult)) {
@@ -32,6 +23,11 @@ export class ImageStorageService {
         }
 
         const compressed = await this.imageProcessor.compress(file);
+        const uniqueFileName = `${uuidv4()}.${compressed.type.split('/')[1]}`;
+
+        const path = pathPrefix
+            ? `${pathPrefix.replace(/^\/+|\/+$/g, '')}/${uniqueFileName}`
+            : uniqueFileName;
 
         const savingResult = await this.storageAdapter.save(compressed, path);
         if (isError(savingResult)) {
