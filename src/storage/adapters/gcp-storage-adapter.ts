@@ -1,7 +1,11 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { type Result, error, ok } from 'core/result';
-import type { StorageAdapter, StorageError } from './storage-adapter';
+import type {
+    StorageAdapter,
+    StorageError,
+    VerificationError,
+} from './storage-adapter';
 
 export class GCPStorageAdapter implements StorageAdapter {
     private storage: Storage;
@@ -66,5 +70,52 @@ export class GCPStorageAdapter implements StorageAdapter {
             });
             return error('error-saving-file');
         }
+    }
+
+    async verifyFileUrl(url: URL): Promise<Result<boolean, VerificationError>> {
+        // Check if we're using the GCS emulator and verify the URL matches the emulator's base URL pattern
+        if (this.emulatorHost) {
+            let emulatorUrl: URL;
+            try {
+                emulatorUrl = new URL(
+                    this.emulatorHost.replace('fake-gcs', 'localhost'),
+                );
+            } catch (err) {
+                console.log('err', err);
+                return error('invalid-url');
+            }
+
+            if (url.host !== emulatorUrl.host) {
+                return error('invalid-url');
+            }
+
+            return ok(true);
+        }
+
+        // Verify if the URL matches the standard Google Cloud Storage public URL pattern for our bucket
+        if (url.host !== 'storage.googleapis.com') {
+            return error('invalid-url');
+        }
+
+        // Extract the file path from the URL by removing the bucket prefix
+        let filePath = url.pathname.split(`/${this.bucketName}/`)[1];
+        if (!filePath) {
+            return error('invalid-file-path');
+        }
+
+        // URL-decode the filePath to handle any special characters
+        filePath = decodeURIComponent(filePath);
+
+        // Verify that the file actually exists in our bucket
+        try {
+            const [exists] = await this.bucket.file(filePath).exists();
+            if (!exists) {
+                return error('file-not-found');
+            }
+        } catch (err) {
+            return error('file-not-found');
+        }
+
+        return ok(true);
     }
 }

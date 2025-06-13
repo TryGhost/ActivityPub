@@ -1,6 +1,6 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
-import { getValue, isError } from 'core/result';
+import { error, getValue, isError, ok } from 'core/result';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GCPStorageAdapter } from './gcp-storage-adapter';
 
@@ -61,6 +61,78 @@ describe('GCPStorageAdapter', () => {
                     'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png',
                 );
             }
+        });
+    });
+
+    describe('.verifyFileUrl()', () => {
+        describe('in emulator mode', () => {
+            beforeEach(() => {
+                const emulatorHost = 'http://fake-gcs:4443';
+                adapter = new GCPStorageAdapter(
+                    'test-bucket',
+                    mockLogger,
+                    emulatorHost,
+                );
+            });
+
+            it('handles valid emulator URL verification', async () => {
+                const validUrl =
+                    'http://localhost:4443/storage/v1/b/test-bucket/o/images/test-uuid/test.png?alt=media';
+                const result = await adapter.verifyFileUrl(new URL(validUrl));
+                expect(result).toEqual(ok(true));
+            });
+
+            it('handles malformed emulator URL verification', async () => {
+                const invalidUrl = 'http://invalid-domain/test.png';
+                const result = await adapter.verifyFileUrl(new URL(invalidUrl));
+                expect(result).toEqual(error('invalid-url'));
+            });
+        });
+
+        describe('in production mode', () => {
+            let mockFile: { exists: Mock };
+
+            beforeEach(() => {
+                mockFile = {
+                    exists: vi.fn().mockResolvedValue([true]),
+                };
+
+                (mockBucket.file as Mock).mockReturnValue(mockFile);
+            });
+
+            it('handles valid GCS URL verification when file exists', async () => {
+                const validUrl =
+                    'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
+                const result = await adapter.verifyFileUrl(new URL(validUrl));
+
+                expect(mockBucket.file).toHaveBeenCalledWith(
+                    'images/test-uuid/test.png',
+                );
+                expect(mockFile.exists).toHaveBeenCalled();
+                expect(result).toEqual(ok(true));
+            });
+
+            it('handles non-existent file verification', async () => {
+                mockFile.exists = vi.fn().mockResolvedValue([false]);
+                const validUrl =
+                    'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png';
+                const result = await adapter.verifyFileUrl(new URL(validUrl));
+                expect(result).toEqual(error('file-not-found'));
+            });
+
+            it('handles wrong bucket URL verification', async () => {
+                const invalidUrl =
+                    'https://wronghost.com/test-bucket/images/test-uuid/test.png';
+                const result = await adapter.verifyFileUrl(new URL(invalidUrl));
+                expect(result).toEqual(error('invalid-url'));
+            });
+
+            it('handles malformed GCS URL verification', async () => {
+                const invalidUrl =
+                    'https://storage.googleapis.com/test-bucket/';
+                const result = await adapter.verifyFileUrl(new URL(invalidUrl));
+                expect(result).toEqual(error('invalid-file-path'));
+            });
         });
     });
 });

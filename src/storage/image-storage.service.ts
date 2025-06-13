@@ -1,7 +1,10 @@
 import { type Result, getValue, isError, ok } from 'core/result';
 import { v4 as uuidv4 } from 'uuid';
-import type { StorageAdapter } from './adapters/storage-adapter';
-import type { StorageError } from './adapters/storage-adapter';
+import type {
+    StorageAdapter,
+    StorageError,
+    VerificationError,
+} from './adapters/storage-adapter';
 import type { ImageProcessor, ValidationError } from './image-processor';
 
 export class ImageStorageService {
@@ -37,5 +40,9 @@ export class ImageStorageService {
 
         const fileUrl = getValue(savingResult);
         return ok(fileUrl);
+    }
+
+    async verifyFileUrl(url: URL): Promise<Result<boolean, VerificationError>> {
+        return this.storageAdapter.verifyFileUrl(url);
     }
 }
