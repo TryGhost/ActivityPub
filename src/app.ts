@@ -256,17 +256,11 @@ try {
     process.exit(1);
 }
 
-container.register(
-    'imageProcessor',
-    asFunction((logging) => new ImageProcessor(logging)).singleton(),
-);
+container.register('imageProcessor', asClass(ImageProcessor).singleton());
 
 container.register(
     'imageStorageService',
-    asFunction(
-        (storageAdapter, imageProcessor) =>
-            new ImageStorageService(storageAdapter, imageProcessor),
-    ).singleton(),
+    asClass(ImageStorageService).singleton(),
 );
 
 const eventSerializer = new EventSerializer();
