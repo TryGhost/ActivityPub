@@ -9,6 +9,8 @@ export function createImageUploadHandler(
 ) {
     return async function handleImageUpload(ctx: Context) {
         const logger = ctx.get('logger');
+        logger.info('handleImageUpload called');
+
         const formData = await ctx.req.formData();
         const file = formData.get('file');
 
