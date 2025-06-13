@@ -3,7 +3,9 @@ import path from 'node:path';
 import { getError, getValue, isError } from 'core/result';
 import { File as NodeFile } from 'fetch-blob/file.js';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { GCPStorageService } from './gcp-storage.service';
+import { GCPStorageAdapter } from './adapters/gcp-storage-adapter';
+import { ImageProcessor } from './image-processor';
+import { ImageStorageService } from './image-storage.service';
 
 const logger = {
     info: console.log,
@@ -11,27 +13,34 @@ const logger = {
     warn: console.warn,
 } as unknown as import('@logtape/logtape').Logger;
 
-const TEST_IMAGE_PATH = path.join(__dirname, 'assets/dog.jpg');
+const TEST_IMAGE_PATH = path.join(__dirname, './__fixtures__/dog.jpg');
 const TEST_ACCOUNT_UUID = 'integration-tests';
 
-describe('GCPStorageService Integration', () => {
-    let service: GCPStorageService;
+describe('Image Storage Service - GCP Storage Integration', () => {
+    let adapter: GCPStorageAdapter;
+    let service: ImageStorageService;
+    let imageProcessor: ImageProcessor;
 
     beforeAll(async () => {
-        service = new GCPStorageService(logger);
-        await service.init();
+        adapter = new GCPStorageAdapter(
+            process.env.GCP_BUCKET_NAME || '',
+            logger,
+            process.env.GCP_STORAGE_EMULATOR_HOST || '',
+        );
+        imageProcessor = new ImageProcessor(logger);
+        service = new ImageStorageService(adapter, imageProcessor);
     });
 
-    describe('saveFile', () => {
+    describe('.save()', () => {
         it('should save an image file to the bucket and return a valid URL', async () => {
             const buffer = readFileSync(TEST_IMAGE_PATH);
             const file = new NodeFile([buffer], 'dog.jpg', {
                 type: 'image/jpeg',
             });
 
-            const result = await service.saveFile(
+            const result = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(result)).toBe(false);
@@ -60,9 +69,9 @@ describe('GCPStorageService Integration', () => {
                 type: 'image/jpeg',
             });
 
-            const result = await service.saveFile(
+            const result = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(result)).toBe(true);
@@ -77,9 +86,9 @@ describe('GCPStorageService Integration', () => {
                 type: 'image/gif',
             });
 
-            const result = await service.saveFile(
+            const result = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(result)).toBe(true);
@@ -89,22 +98,22 @@ describe('GCPStorageService Integration', () => {
         });
     });
 
-    describe('verifyImageUrl', () => {
+    describe('.verifyFileUrl()', () => {
         it('should verify a valid image URL', async () => {
             const buffer = readFileSync(TEST_IMAGE_PATH);
             const file = new NodeFile([buffer], 'dog.jpg', {
                 type: 'image/jpeg',
             });
 
-            const saveResult = await service.saveFile(
+            const saveResult = await service.save(
                 file as unknown as File,
-                TEST_ACCOUNT_UUID,
+                `images/${TEST_ACCOUNT_UUID}/`,
             );
 
             expect(isError(saveResult)).toBe(false);
             if (!isError(saveResult)) {
                 const url = new URL(getValue(saveResult));
-                const verifyResult = await service.verifyImageUrl(url);
+                const verifyResult = await service.verifyFileUrl(url);
                 expect(isError(verifyResult)).toBe(false);
                 if (!isError(verifyResult)) {
                     expect(getValue(verifyResult)).toBe(true);
@@ -114,7 +123,7 @@ describe('GCPStorageService Integration', () => {
 
         it('should reject invalid URLs', async () => {
             const invalidUrl = new URL('https://example.com/invalid.jpg');
-            const result = await service.verifyImageUrl(invalidUrl);
+            const result = await service.verifyFileUrl(invalidUrl);
 
             expect(isError(result)).toBe(true);
             if (isError(result)) {
@@ -126,7 +135,7 @@ describe('GCPStorageService Integration', () => {
             const invalidPathUrl = new URL(
                 'https://storage.googleapis.com/activitypub/invalid/path.jpg',
             );
-            const result = await service.verifyImageUrl(invalidPathUrl);
+            const result = await service.verifyFileUrl(invalidPathUrl);
 
             expect(isError(result)).toBe(true);
             if (isError(result)) {
@@ -140,7 +149,7 @@ describe('GCPStorageService Integration', () => {
             const nonExistentUrl = new URL(
                 `https://storage.googleapis.com/${process.env.GCP_BUCKET_NAME}/images/nonexistent.jpg`,
             );
-            const result = await service.verifyImageUrl(nonExistentUrl);
+            const result = await service.verifyFileUrl(nonExistentUrl);
 
             expect(isError(result)).toBe(true);
             if (isError(result)) {

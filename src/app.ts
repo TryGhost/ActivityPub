@@ -62,6 +62,7 @@ import { NotificationEventService } from 'notification/notification-event.servic
 import { NotificationService } from 'notification/notification.service';
 import { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { KnexPostRepository } from 'post/post.repository.knex';
+import { ImageStorageService } from 'storage/image-storage.service';
 import { behindProxy } from 'x-forwarded-fetch';
 import { AccountService } from './account/account.service';
 import { dispatchRejectActivity } from './activity-dispatchers/reject.dispatcher';
@@ -115,9 +116,9 @@ import {
     createGetFeedHandler,
     createGetPostHandler,
     createGetThreadHandler,
+    createImageUploadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
-    createStorageHandler,
     createUpdateAccountHandler,
     handleCreateNote,
 } from './http/api';
@@ -136,7 +137,8 @@ import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interacti
 import { PostService } from './post/post.service';
 import { getFullTopic, initPubSubClient } from './pubsub';
 import { type Site, SiteService } from './site/site.service';
-import { GCPStorageService } from './storage/gcloud-storage/gcp-storage.service';
+import { GCPStorageAdapter } from './storage/adapters/gcp-storage-adapter';
+import { ImageProcessor } from './storage/image-processor';
 
 const container = createContainer({
     injectionMode: 'CLASSIC',
@@ -222,16 +224,24 @@ container.register(
     asClass(FedifyContextFactory).singleton(),
 );
 
-container.register('storageService', asClass(GCPStorageService).singleton());
+container.register(
+    'storageAdapter',
+    asFunction(() => {
+        const bucketName = process.env.GCP_BUCKET_NAME || '';
+        return new GCPStorageAdapter(
+            bucketName,
+            globalLogging,
+            process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
+        );
+    }).singleton(),
+);
 
-try {
-    await container.resolve('storageService').init();
-} catch (err) {
-    globalLogging.error('Failed to initialise GCP storage service {error}', {
-        error: err,
-    });
-    process.exit(1);
-}
+container.register('imageProcessor', asClass(ImageProcessor).singleton());
+
+container.register(
+    'imageStorageService',
+    asClass(ImageStorageService).singleton(),
+);
 
 const eventSerializer = new EventSerializer();
 
@@ -579,10 +589,8 @@ container.register(
 );
 
 container.register(
-    'storageHandler',
-    asFunction((accountService, storageService) =>
-        createStorageHandler(accountService, storageService),
-    ).singleton(),
+    'imageUploadHandler',
+    asFunction(createImageUploadHandler).singleton(),
 );
 
 // Add missing factory for delete post handler
@@ -1515,7 +1523,7 @@ app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('storageHandler');
+        const handler = container.resolve('imageUploadHandler');
         return handler(ctx);
     }),
 );

@@ -22,7 +22,7 @@ import {
 } from 'core/result';
 import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
-import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
+import type { ImageStorageService } from 'storage/image-storage.service';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -44,7 +44,7 @@ describe('PostService', () => {
     let accountRepository: KnexAccountRepository;
     let fixtureManager: FixtureManager;
     let mockFedifyContextFactory: FedifyContextFactory;
-    let storageService: GCPStorageService;
+    let imageStorageService: ImageStorageService;
     let moderationService: ModerationService;
     let postService: PostService;
     let accountService: AccountService;
@@ -93,9 +93,9 @@ describe('PostService', () => {
             };
         });
 
-        storageService = {
-            verifyImageUrl: vi.fn().mockResolvedValue(ok(true)),
-        } as unknown as GCPStorageService;
+        imageStorageService = {
+            verifyFileUrl: vi.fn().mockResolvedValue(ok(true)),
+        } as unknown as ImageStorageService;
 
         moderationService = new ModerationService(db);
 
@@ -110,7 +110,7 @@ describe('PostService', () => {
             postRepository,
             accountService,
             mockFedifyContextFactory,
-            storageService,
+            imageStorageService,
             moderationService,
         );
 
@@ -242,10 +242,10 @@ describe('PostService', () => {
 
         it('should return error when image verification fails', async () => {
             const failingStorageService = {
-                verifyImageUrl: vi
+                verifyFileUrl: vi
                     .fn()
                     .mockResolvedValue(createError('invalid-url')),
-            } as unknown as GCPStorageService;
+            } as unknown as ImageStorageService;
 
             const serviceWithFailingStorage = new PostService(
                 postRepository,

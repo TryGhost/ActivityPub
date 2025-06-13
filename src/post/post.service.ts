@@ -23,10 +23,8 @@ import {
     lookupActorProfile,
 } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
-import type {
-    GCPStorageService,
-    ImageVerificationError,
-} from 'storage/gcloud-storage/gcp-storage.service';
+import type { VerificationError } from 'storage/adapters/storage-adapter';
+import type { ImageStorageService } from 'storage/image-storage.service';
 import { ContentPreparer } from './content';
 import {
     type CreatePostError,
@@ -68,7 +66,7 @@ export class PostService {
         private readonly postRepository: KnexPostRepository,
         private readonly accountService: AccountService,
         private readonly fedifyContextFactory: FedifyContextFactory,
-        private readonly storageService: GCPStorageService,
+        private readonly imageStorageService: ImageStorageService,
         private readonly moderationService: ModerationService,
     ) {}
 
@@ -290,9 +288,9 @@ export class PostService {
         account: Account,
         content: string,
         image?: URL,
-    ): Promise<Result<Post, ImageVerificationError>> {
+    ): Promise<Result<Post, VerificationError>> {
         if (image) {
-            const result = await this.storageService.verifyImageUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(image);
             if (isError(result)) {
                 return result;
             }
@@ -313,10 +311,10 @@ export class PostService {
         inReplyToId: URL,
         image?: URL,
     ): Promise<
-        Result<Post, ImageVerificationError | GetByApIdError | InteractionError>
+        Result<Post, VerificationError | GetByApIdError | InteractionError>
     > {
         if (image) {
-            const result = await this.storageService.verifyImageUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(image);
             if (isError(result)) {
                 return result;
             }

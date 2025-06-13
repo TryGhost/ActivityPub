@@ -2,7 +2,7 @@ import type { Logger } from '@logtape/logtape';
 import { type Result, error, ok } from 'core/result';
 import sharp from 'sharp';
 
-export type FileValidationError = 'file-too-large' | 'file-type-not-supported';
+export type ValidationError = 'file-too-large' | 'file-type-not-supported';
 
 const ALLOWED_IMAGE_TYPES = [
     'image/jpg',
@@ -16,7 +16,7 @@ const ALLOWED_IMAGE_TYPES = [
 export class ImageProcessor {
     constructor(private readonly logging: Logger) {}
 
-    validate(file: File): Result<boolean, FileValidationError> {
+    validate(file: File): Result<boolean, ValidationError> {
         if (file.size > 5 * 1024 * 1024) {
             return error('file-too-large');
         }
@@ -28,19 +28,19 @@ export class ImageProcessor {
         return ok(true);
     }
 
-    async compress(file: File): Promise<Buffer> {
-        const chunks: Buffer[] = [];
-
-        for await (const chunk of file.stream()) {
-            if (Buffer.isBuffer(chunk)) {
-                chunks.push(chunk);
-            } else {
-                chunks.push(Buffer.from(chunk));
-            }
-        }
-        const fileBuffer = Buffer.concat(chunks);
-
+    async compress(file: File): Promise<File> {
         try {
+            const chunks: Buffer[] = [];
+
+            for await (const chunk of file.stream()) {
+                if (Buffer.isBuffer(chunk)) {
+                    chunks.push(chunk);
+                } else {
+                    chunks.push(Buffer.from(chunk));
+                }
+            }
+            const fileBuffer = Buffer.concat(chunks);
+
             const sharpPipeline = sharp(fileBuffer).rotate().resize({
                 width: 2000,
                 height: 2000,
@@ -49,25 +49,35 @@ export class ImageProcessor {
             });
 
             const format = file.type.split('/')[1];
+            let compressedBuffer: Buffer;
+            let targetType = file.type;
+            let targetName = file.name;
 
-            if (
-                format === 'jpeg' ||
-                format === 'jpg' ||
-                format === 'heic' ||
-                format === 'heif'
-            ) {
-                return sharpPipeline.jpeg({ quality: 75 }).toBuffer();
+            if (format === 'jpeg' || format === 'jpg') {
+                compressedBuffer = await sharpPipeline
+                    .jpeg({ quality: 75 })
+                    .toBuffer();
+            } else if (format === 'png') {
+                compressedBuffer = await sharpPipeline
+                    .png({ compressionLevel: 9 })
+                    .toBuffer();
+            } else if (format === 'webp') {
+                compressedBuffer = await sharpPipeline
+                    .webp({ quality: 75 })
+                    .toBuffer();
+            } else if (format === 'heic' || format === 'heif') {
+                compressedBuffer = await sharpPipeline
+                    .jpeg({ quality: 75 })
+                    .toBuffer();
+                targetType = 'image/jpeg';
+                targetName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+            } else {
+                compressedBuffer = fileBuffer;
             }
 
-            if (format === 'png') {
-                return sharpPipeline.png({ compressionLevel: 9 }).toBuffer();
-            }
-
-            if (format === 'webp') {
-                return sharpPipeline.webp({ quality: 75 }).toBuffer();
-            }
-
-            return fileBuffer;
+            return new File([compressedBuffer], targetName, {
+                type: targetType,
+            });
         } catch (error) {
             this.logging.error(
                 'Image compression failed, keeping original file',
@@ -77,7 +87,9 @@ export class ImageProcessor {
                     fileType: file.type,
                 },
             );
-            return fileBuffer;
+            return file;
+        } finally {
+            file.stream().cancel();
         }
     }
 }
