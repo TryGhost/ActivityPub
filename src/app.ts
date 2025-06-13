@@ -590,9 +590,7 @@ container.register(
 
 container.register(
     'imageUploadHandler',
-    asFunction((accountService, imageStorageService) =>
-        createImageUploadHandler(accountService, imageStorageService),
-    ).singleton(),
+    asFunction(createImageUploadHandler).singleton(),
 );
 
 // Add missing factory for delete post handler
