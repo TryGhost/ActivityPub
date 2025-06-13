@@ -12,7 +12,7 @@
     "@fedify/fedify": "^1.6.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "22.15.31",
     "tsx": "^4.0.0"
   }
 }
