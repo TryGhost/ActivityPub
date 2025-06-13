@@ -44,7 +44,8 @@ export class GCPStorageAdapter implements StorageAdapter {
         path: string,
     ): Promise<Result<string, StorageError>> {
         try {
-            await this.bucket.file(path).save(file.stream(), {
+            const arrayBuffer = await file.arrayBuffer();
+            await this.bucket.file(path).save(Buffer.from(arrayBuffer), {
                 metadata: {
                     contentType: file.type,
                 },
