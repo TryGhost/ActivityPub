@@ -226,6 +226,24 @@ export class AccountService {
                     if (!existingAccount) {
                         throw error;
                     }
+
+                    // Ensure a user row exists linking this site to the account.
+                    // This is relevant for cases where a user is migrating between
+                    // Ghost servers.
+                    const existingUser = await tx('users')
+                        .where({
+                            account_id: existingAccount.id,
+                            site_id: site.id,
+                        })
+                        .first();
+
+                    if (!existingUser) {
+                        await tx('users').insert({
+                            account_id: existingAccount.id,
+                            site_id: site.id,
+                        });
+                    }
+
                     return existingAccount;
                 }
                 throw error;
