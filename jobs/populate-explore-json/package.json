@@ -10,10 +10,10 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.729.0",
     "@fedify/fedify": "^1.6.0",
-    "tsx": "^4.0.0"
+    "tsx": "^4.20.2"
   },
   "devDependencies": {
     "@types/node": "22.15.31",
-    "tsx": "^4.0.0"
+    "tsx": "^4.20.2"
   }
 }
