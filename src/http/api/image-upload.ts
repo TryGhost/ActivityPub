@@ -2,7 +2,6 @@ import type { AccountService } from 'account/account.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { Context } from 'hono';
 import type { ImageStorageService } from 'storage/image-storage.service';
-import { v4 as uuidv4 } from 'uuid';
 
 export function createImageUploadHandler(
     accountService: AccountService,
@@ -18,10 +17,7 @@ export function createImageUploadHandler(
         }
 
         const account = await accountService.getAccountForSite(ctx.get('site'));
-        const isHeicFile =
-            file.type.includes('heic') || file.type.includes('heif');
-        const extension = isHeicFile ? 'jpg' : file.type.split('/')[1];
-        const path = `/images/${account.uuid}/${uuidv4()}.${extension}`;
+        const path = imageStorageService.storagePath(file, account.uuid);
 
         const result = await imageStorageService.save(file, path);
 

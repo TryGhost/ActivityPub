@@ -1,4 +1,5 @@
 import { type Result, getValue, isError, ok } from 'core/result';
+import { v4 as uuidv4 } from 'uuid';
 import type { StorageAdapter } from './adapters/storage-adapter';
 import type { StorageError } from './adapters/storage-adapter';
 import type { ImageProcessor, ValidationError } from './image-processor';
@@ -8,6 +9,15 @@ export class ImageStorageService {
         private readonly storageAdapter: StorageAdapter,
         private readonly imageProcessor: ImageProcessor,
     ) {}
+
+    storagePath(file: File, accountUUID: string): string {
+        // HEIC/HEIF files are converted to JPEG format
+        const isHeicFile =
+            file.type.includes('heic') || file.type.includes('heif');
+        const extension = isHeicFile ? 'jpg' : file.type.split('/')[1];
+
+        return `/images/${accountUUID}/${uuidv4()}.${extension}`;
+    }
 
     async save(
         file: File,
