@@ -13,7 +13,7 @@ const logger = {
     warn: console.warn,
 } as unknown as import('@logtape/logtape').Logger;
 
-const TEST_IMAGE_PATH = path.join(__dirname, '../test/fixtures/dog.jpg');
+const TEST_IMAGE_PATH = path.join(__dirname, './__fixtures__/dog.jpg');
 const TEST_ACCOUNT_UUID = 'integration-tests';
 
 describe('Image Storage Service - GCP Storage Integration', () => {
