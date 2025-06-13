@@ -3,9 +3,9 @@ import path from 'node:path';
 import { getError, getValue, isError } from 'core/result';
 import { File as NodeFile } from 'fetch-blob/file.js';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { ImageStorageService } from './image-storage.service';
 import { GCPStorageAdapter } from './adapters/gcp-storage-adapter';
 import { ImageProcessor } from './image-processor';
+import { ImageStorageService } from './image-storage.service';
 
 const logger = {
     info: console.log,

@@ -23,6 +23,8 @@ import {
     lookupActorProfile,
 } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
+import type { VerificationError } from 'storage/adapters/storage-adapter';
+import type { ImageStorageService } from 'storage/image-storage.service';
 import { ContentPreparer } from './content';
 import {
     type CreatePostError,
@@ -33,8 +35,6 @@ import {
     PostType,
 } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
-import type { VerificationError } from 'storage/adapters/storage-adapter';
-import type { ImageStorageService } from 'storage/image-storage.service';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
