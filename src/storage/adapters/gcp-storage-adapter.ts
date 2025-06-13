@@ -44,7 +44,7 @@ export class GCPStorageAdapter implements StorageAdapter {
         path: string,
     ): Promise<Result<string, StorageError>> {
         this.logging.info(
-            'save in GCPStorageAdapter called with file {file} and path {path}',
+            'Save in GCPStorageAdapter called with file {file} and path {path}',
             {
                 file: file.name,
                 path,
