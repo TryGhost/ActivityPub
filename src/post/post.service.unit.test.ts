@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { ModerationService } from 'moderation/moderation.service';
-import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
 import type { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
+import type { ImageStorageService } from 'storage/image-storage.service';
 
 describe('PostService', () => {
     it('should be able to check if a post is liked by an account', async () => {
@@ -24,7 +24,7 @@ describe('PostService', () => {
             postRepository as unknown as KnexPostRepository,
             {} as AccountService,
             {} as FedifyContextFactory,
-            {} as GCPStorageService,
+            {} as ImageStorageService,
             {} as ModerationService,
         );
 
@@ -49,7 +49,7 @@ describe('PostService', () => {
             postRepository as unknown as KnexPostRepository,
             {} as AccountService,
             {} as FedifyContextFactory,
-            {} as GCPStorageService,
+            {} as ImageStorageService,
             {} as ModerationService,
         );
 
