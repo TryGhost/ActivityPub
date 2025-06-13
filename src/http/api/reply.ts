@@ -168,9 +168,12 @@ export async function handleCreateReply(
                     },
                 );
             case 'file-not-found':
-                return new Response(JSON.stringify({ error: 'Image not found in storage' }), {
-                    status: 400,
-                });
+                return new Response(
+                    JSON.stringify({ error: 'Image not found in storage' }),
+                    {
+                        status: 400,
+                    },
+                );
             case 'cannot-interact':
                 return new Response(
                     JSON.stringify({
