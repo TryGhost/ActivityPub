@@ -1,6 +1,7 @@
-import { type Result, isError, ok } from 'core/result';
+import { type Result, getValue, isError, ok } from 'core/result';
 import type { StorageAdapter } from './adapters/storage-adapter';
-import type { FileValidationError, ImageProcessor } from './image-processor';
+import type { StorageError } from './adapters/storage-adapter';
+import type { ImageProcessor, ValidationError } from './image-processor';
 
 export class ImageStorageService {
     constructor(
@@ -11,7 +12,7 @@ export class ImageStorageService {
     async save(
         file: File,
         path: string,
-    ): Promise<Result<string, FileValidationError>> {
+    ): Promise<Result<string, ValidationError | StorageError>> {
         const validationResult = this.imageProcessor.validate(file);
         if (isError(validationResult)) {
             return validationResult;
@@ -19,7 +20,12 @@ export class ImageStorageService {
 
         const compressed = await this.imageProcessor.compress(file);
 
-        const fileUrl = await this.storageAdapter.save(compressed, path);
+        const savingResult = await this.storageAdapter.save(compressed, path);
+        if (isError(savingResult)) {
+            return savingResult;
+        }
+
+        const fileUrl = getValue(savingResult);
         return ok(fileUrl);
     }
 }

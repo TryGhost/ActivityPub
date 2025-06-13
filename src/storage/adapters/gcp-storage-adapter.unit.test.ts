@@ -2,6 +2,7 @@ import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GCPStorageAdapter } from './gcp-storage-adapter';
+import { isError, getValue } from 'core/result';
 
 const mockLogger = {
     info: vi.fn(),
@@ -42,7 +43,7 @@ describe('GCPStorageAdapter', () => {
 
         (Storage as unknown as Mock).mockImplementation(() => mockStorage);
 
-        adapter = new GCPStorageAdapter('test-bucket');
+        adapter = new GCPStorageAdapter('test-bucket', mockLogger);
     });
 
     describe('.save()', () => {
@@ -52,10 +53,14 @@ describe('GCPStorageAdapter', () => {
                 file,
                 'images/test-uuid/test.png',
             );
-            expect(result).toBe(
-                'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png',
-            );
-            expect(mockBucket.file).toHaveBeenCalled();
+
+            expect(isError(result)).toBe(false);
+
+            if (!isError(result)) {
+                expect(getValue(result)).toBe(
+                    'https://storage.googleapis.com/test-bucket/images/test-uuid/test.png',
+                );
+            }
         });
     });
 });

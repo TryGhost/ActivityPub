@@ -2,7 +2,7 @@ import type { Logger } from '@logtape/logtape';
 import { type Result, error, ok } from 'core/result';
 import sharp from 'sharp';
 
-export type FileValidationError = 'file-too-large' | 'file-type-not-supported';
+export type ValidationError = 'file-too-large' | 'file-type-not-supported';
 
 const ALLOWED_IMAGE_TYPES = [
     'image/jpg',
@@ -16,7 +16,7 @@ const ALLOWED_IMAGE_TYPES = [
 export class ImageProcessor {
     constructor(private readonly logging: Logger) {}
 
-    validate(file: File): Result<boolean, FileValidationError> {
+    validate(file: File): Result<boolean, ValidationError> {
         if (file.size > 5 * 1024 * 1024) {
             return error('file-too-large');
         }

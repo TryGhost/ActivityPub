@@ -37,6 +37,11 @@ export function createImageUploadHandler(
                         `File type ${file.type} is not supported`,
                         { status: 415 },
                     );
+                case 'error-saving-file':
+                    return new Response(
+                        'Failed to save file, please try again later',
+                        { status: 500 },
+                    );
                 default:
                     exhaustiveCheck(error);
             }
