@@ -242,6 +242,7 @@ container.register(
         const bucketName = process.env.GCP_BUCKET_NAME || '';
         return new GCPStorageAdapter(
             bucketName,
+            globalLogging,
             process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
         );
     }).singleton(),
