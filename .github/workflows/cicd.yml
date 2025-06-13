@@ -321,17 +321,17 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      # - name: "Deploy Tests to Cloud Run"
-      #   if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
-      #   uses: google-github-actions/deploy-cloudrun@v2
-      #   with:
-      #     image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
-      #     region: europe-west4
-      #     job: stg-pr-${{ github.event.pull_request.number }}-tests
-      #     flags: --command="yarn" --args="_test:integration" --wait --execute-now
-      #     skip_default_labels: true
-      #     labels: |-
-      #       commit-sha=${{ github.sha }}
+      - name: "Deploy Tests to Cloud Run"
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
+          region: europe-west4
+          job: stg-pr-${{ github.event.pull_request.number }}-tests
+          flags: --command="yarn" --args="_test:integration" --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
 
       - name: "Destroy Tests databases"
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
