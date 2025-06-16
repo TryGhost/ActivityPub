@@ -1,3 +1,5 @@
+import type { FlagService } from 'flag/flag.service';
+import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
@@ -24,6 +26,8 @@ const MAX_FEED_POSTS_LIMIT = 100;
 export function createGetFeedHandler(
     feedService: FeedService,
     accountService: AccountService,
+    postInteractionCountsService: PostInteractionCountsService,
+    flagService: FlagService,
     feedType: FeedType,
 ) {
     /**
@@ -63,6 +67,7 @@ export function createGetFeedHandler(
                 type: result.post_type,
                 title: result.post_title ?? '',
                 excerpt: result.post_excerpt ?? '',
+                summary: result.post_summary ?? null,
                 content: result.post_content ?? '',
                 url: result.post_url,
                 featureImageUrl: result.post_image_url ?? null,
@@ -110,6 +115,16 @@ export function createGetFeedHandler(
                     : null,
             };
         });
+
+        // Request an update of the interaction counts for the posts in the
+        // feed - We do not await this as we do not want to increase the
+        // response time of the request
+        if (flagService.isEnabled('post_interaction_counts_update')) {
+            postInteractionCountsService.requestUpdate(
+                ctx.get('site').host,
+                results.map((post) => post.post_id),
+            );
+        }
 
         return new Response(
             JSON.stringify({

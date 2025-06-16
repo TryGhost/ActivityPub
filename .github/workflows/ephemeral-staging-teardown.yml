@@ -89,6 +89,19 @@ jobs:
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
           service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
 
+      - name: "Destroy Tests databases"
+        if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
+        env:
+          GCP_PROJECT: ghost-activitypub
+          DESTROY_PRS: ${{ steps.check-closed-prs.outputs.destroy_prs }}
+        run: |
+          for PR_NUMBER in ${DESTROY_PRS}; do
+            TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~pr_${PR_NUMBER}_test*" --format="value(name)" --project ${GCP_PROJECT})
+            for TEST_DATABASE in ${TEST_DATABASES}; do
+              gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+            done
+          done
+
       - name: "Remove route from GCP Load Balancer"
         if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
         env:

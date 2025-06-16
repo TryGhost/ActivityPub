@@ -1,16 +1,13 @@
 import type { AccountService } from 'account/account.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { Context } from 'hono';
-import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
+import type { ImageStorageService } from 'storage/image-storage.service';
 
-export function createStorageHandler(
+export function createImageUploadHandler(
     accountService: AccountService,
-    storageService: GCPStorageService,
+    imageStorageService: ImageStorageService,
 ) {
-    /**
-     * Handle an upload to GCloud Storage bucket
-     */
-    return async function handleUpload(ctx: Context) {
+    return async function handleImageUpload(ctx: Context) {
         const logger = ctx.get('logger');
         const formData = await ctx.req.formData();
         const file = formData.get('file');
@@ -20,7 +17,10 @@ export function createStorageHandler(
         }
 
         const account = await accountService.getAccountForSite(ctx.get('site'));
-        const result = await storageService.saveFile(file, account.uuid);
+        const result = await imageStorageService.save(
+            file,
+            `images/${account.uuid}/`,
+        );
 
         if (isError(result)) {
             const error = getError(result);
@@ -33,6 +33,11 @@ export function createStorageHandler(
                     return new Response(
                         `File type ${file.type} is not supported`,
                         { status: 415 },
+                    );
+                case 'error-saving-file':
+                    return new Response(
+                        'Failed to save file, please try again later',
+                        { status: 500 },
                     );
                 default:
                     exhaustiveCheck(error);

@@ -24,7 +24,7 @@ describe('FedifyActivitySender', () => {
             await sender.sendActivityToActorFollowers(mockActivity, mockActor);
 
             expect(mockFedifyCtx.sendActivity).toHaveBeenCalledWith(
-                { handle },
+                { username: 'foo' },
                 'followers',
                 mockActivity,
                 {

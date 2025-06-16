@@ -1,8 +1,12 @@
 services:
   activitypub:
     build: .
+    ports:
+      - "8080:8080"
+      - "9229:9229"
     volumes:
       - ./src:/opt/activitypub/src
+      - ./dist:/opt/activitypub/dist
     environment:
       - PORT=8080
       - MYSQL_USER=ghost
@@ -55,6 +59,15 @@ services:
       mysql:
         condition: service_healthy
 
+  cleanup-expired-key-value-records:
+    build: jobs/cleanup-expired-key-value-records
+    environment:
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+
   scripts:
     build: scripts
     depends_on:
@@ -96,7 +109,7 @@ services:
       - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
-      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/pubsub/ghost/push
+      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
@@ -107,6 +120,9 @@ services:
     networks:
       - test_network
     build: .
+    ports:
+      - "8083:8083"
+      - "9230:9229"
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
@@ -156,6 +172,15 @@ services:
     depends_on:
       mysql-testing:
         condition: service_healthy
+
+  cleanup-expired-key-value-records-testing:
+    build: jobs/cleanup-expired-key-value-records
+    environment:
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql-testing
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
 
   cucumber-tests:
     networks:
@@ -219,7 +244,7 @@ services:
       - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
-      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/pubsub/ghost/push
+      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s

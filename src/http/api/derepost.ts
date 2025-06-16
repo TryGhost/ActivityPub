@@ -1,25 +1,22 @@
 import { createHash } from 'node:crypto';
 
 import { type Actor, Announce, PUBLIC_COLLECTION, Undo } from '@fedify/fedify';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
-import { removeFromList } from 'kv-helpers';
 import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 
 export function createDerepostActionHandler(
-    accountRepository: KnexAccountRepository,
     postService: PostService,
     postRepository: KnexPostRepository,
 ) {
     return async function derepostAction(ctx: AppContext) {
+        const account = ctx.get('account');
         const id = ctx.req.param('id');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -67,7 +64,6 @@ export function createDerepostActionHandler(
             );
         }
 
-        const account = await accountRepository.getBySite(ctx.get('site'));
         const originalPostResult = await postService.getByApId(idAsUrl);
 
         if (isError(originalPostResult)) {
@@ -113,7 +109,6 @@ export function createDerepostActionHandler(
         await ctx.get('globaldb').set([undo.id!.href], undoJson);
 
         // Remove announce activity from database
-        await removeFromList(ctx.get('db'), ['reposted'], announceId.href);
         await ctx.get('globaldb').delete([announceId.href]);
 
         // Send the undo activity
@@ -126,7 +121,7 @@ export function createDerepostActionHandler(
         }
         if (attributionActor) {
             apCtx.sendActivity(
-                { handle: ACTOR_DEFAULT_HANDLE },
+                { username: account.username },
                 attributionActor,
                 undo,
                 {
@@ -135,14 +130,9 @@ export function createDerepostActionHandler(
             );
         }
 
-        apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            undo,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
+            preferSharedInbox: true,
+        });
 
         return new Response(JSON.stringify(undoJson), {
             headers: {

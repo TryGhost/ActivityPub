@@ -8,7 +8,6 @@ import {
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
 import { getValue, isError } from 'core/result';
-import { addToList } from 'kv-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -89,7 +88,7 @@ export class FollowHandler {
             accountToFollow,
         );
 
-        await this.sendAccept(ctx, follow, parsed.handle, sender);
+        await this.sendAccept(ctx, follow, parsed.identifier, sender);
     }
 
     private async persistActivity(
@@ -103,8 +102,6 @@ export class FollowHandler {
         await Promise.all([
             // Persist activity in the global db
             ctx.data.globaldb.set([follow.id!.href], followJson),
-            // Add activity to the inbox for context account
-            addToList(ctx.data.db, ['inbox'], follow.id!.href),
             // Persist or update sender in global db
             ctx.data.globaldb.set([sender.id!.href], senderJson),
         ]);
@@ -113,7 +110,7 @@ export class FollowHandler {
     private async sendAccept(
         ctx: Context<ContextData>,
         follow: Follow,
-        handle: string,
+        identifier: string,
         sender: Actor,
     ): Promise<void> {
         const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
@@ -126,13 +123,13 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([accept.id!.href], acceptJson);
 
-        await ctx.sendActivity({ handle }, sender, accept);
+        await ctx.sendActivity({ identifier }, sender, accept);
     }
 
     private async sendReject(
         ctx: Context<ContextData>,
         follow: Follow,
-        handle: string,
+        identifier: string,
         sender: Actor,
     ): Promise<void> {
         const rejectId = ctx.getObjectUri(Reject, { id: uuidv4() });
@@ -145,6 +142,6 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([reject.id!.href], rejectJson);
 
-        await ctx.sendActivity({ handle }, sender, reject);
+        await ctx.sendActivity({ identifier }, sender, reject);
     }
 }

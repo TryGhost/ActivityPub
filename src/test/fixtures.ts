@@ -208,6 +208,8 @@ export class FixtureManager {
             this.db('accounts').truncate(),
             this.db('users').truncate(),
             this.db('sites').truncate(),
+            this.db('outboxes').truncate(),
+            this.db('mentions').truncate(),
         ]);
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 1');
     }

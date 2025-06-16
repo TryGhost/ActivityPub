@@ -1,8 +1,6 @@
 import assert from 'node:assert';
 
 import { Given, Then, When } from '@cucumber/cucumber';
-
-import { waitForInboxActivity } from '../support/activitypub.js';
 import {
     createActivity,
     createActor,
@@ -225,8 +223,6 @@ async function getObjectInCollection(objectName, collectionType) {
         const itemIsString = typeof item === 'string';
         if (itemIsString) {
             id = item;
-        } else if (collectionType === 'liked') {
-            id = item.object.id;
         } else {
             id = item.id;
         }
@@ -428,39 +424,6 @@ Then(
         assert.equal(typeof property, type);
     },
 );
-
-Then('{string} is in our Inbox', async function (activityName) {
-    const activity = this.activities[activityName];
-
-    await waitForInboxActivity(activity);
-});
-
-Then(
-    '{string} is in our Inbox with Object {string}',
-    async function (activityName, objectName) {
-        const activity = this.activities[activityName];
-        const object = this.objects[objectName];
-
-        await waitForInboxActivity(activity, object);
-    },
-);
-
-Then('{string} is not in our Inbox', async function (activityName) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const activity = this.activities[activityName];
-
-    const found = inbox.items.find((item) => item.id === activity.id);
-
-    assert(!found);
-});
 
 Then(
     'a {string} activity is sent to {string}',

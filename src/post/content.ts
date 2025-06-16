@@ -1,6 +1,9 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
+import { parse } from 'node-html-parser';
+import urlRegex from 'url-regex';
 import { HANDLE_REGEX } from '../constants';
+import { isEqual } from '../helpers/uri';
 import type { Mention } from './post.entity';
 
 /**
@@ -17,7 +20,11 @@ export const PAID_CONTENT_PREVIEW_HTML = (url: URL) =>
 /**
  * Options for preparing content
  */
-interface PrepareContentOptions {
+export interface PrepareContentOptions {
+    /**
+     * Whether to remove gated content
+     */
+    removeGatedContent: boolean;
     /**
      * Whether to remove member content
      */
@@ -58,6 +65,7 @@ export class ContentPreparer {
     static prepare(
         content: string,
         options: PrepareContentOptions = {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: false,
             convertLineBreaks: false,
@@ -78,6 +86,10 @@ export class ContentPreparer {
         return ContentPreparer.instance.parseMentions(content);
     }
 
+    static updateMentions(content: string, mentions: Mention[]) {
+        return ContentPreparer.instance.updateMentions(content, mentions);
+    }
+
     /**
      * Prepare the content
      *
@@ -87,6 +99,7 @@ export class ContentPreparer {
     prepare(
         content: string,
         options: PrepareContentOptions = {
+            removeGatedContent: false,
             removeMemberContent: false,
             escapeHtml: false,
             convertLineBreaks: false,
@@ -97,6 +110,10 @@ export class ContentPreparer {
         },
     ) {
         let prepared = content;
+
+        if (options.removeGatedContent === true) {
+            prepared = this.removeGatedContent(prepared);
+        }
 
         if (options.removeMemberContent === true) {
             prepared = this.removeMemberContent(prepared);
@@ -142,7 +159,13 @@ export class ContentPreparer {
     }
 
     private addMentions(content: string, mentions: Mention[]) {
-        let preparedContent = content;
+        // Protect URLs by replacing them with placeholders
+        const urls: string[] = [];
+        let preparedContent = content.replace(urlRegex(), (url) => {
+            urls.push(url);
+            return `__URL_${urls.length - 1}__`;
+        });
+
         for (const mention of mentions) {
             const mentionRegex = new RegExp(
                 mention.name.replace(/\./g, '\\.'), // Escape the dot (.) character
@@ -150,10 +173,15 @@ export class ContentPreparer {
             );
             preparedContent = preparedContent.replace(
                 mentionRegex,
-                `<a href="${mention.href}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
+                `<a href="${mention.href}" data-profile="${mention.name}" rel="nofollow noopener noreferrer">${mention.name}</a>`,
             );
         }
-        return preparedContent;
+
+        // Restore URLs
+        return preparedContent.replace(
+            /__URL_(\d+)__/g,
+            (_, index) => urls[Number.parseInt(index)],
+        );
     }
 
     /**
@@ -205,6 +233,43 @@ export class ContentPreparer {
         const mentions =
             content.match(new RegExp(HANDLE_REGEX.source, 'g')) || [];
         return new Set(mentions);
+    }
+
+    /**
+     * Updates existing hyperlinks with data-profile attribute and rel attributes
+     */
+    private updateMentions(content: string, mentions: Mention[]) {
+        try {
+            const html = parse(content);
+            const links = html.querySelectorAll('a');
+
+            for (const mention of mentions) {
+                // Find all links that matches the mentioned account
+                for (const link of links) {
+                    const href = link.getAttribute('href');
+                    if (
+                        href &&
+                        (isEqual(mention.account.apId, href) ||
+                            isEqual(mention.account.url, href))
+                    ) {
+                        // Update the link attributes
+                        link.setAttribute(
+                            'data-profile',
+                            `@${mention.account.username}@${mention.account.apId.hostname}`,
+                        );
+                        link.setAttribute(
+                            'rel',
+                            'nofollow noopener noreferrer',
+                        );
+                    }
+                }
+            }
+
+            return html.toString();
+        } catch (error) {
+            // If anything goes wrong during parsing or processing, return the original content
+            return content;
+        }
     }
 
     /**
@@ -265,5 +330,27 @@ export class ContentPreparer {
         const memberContentIdx = content.indexOf(MEMBER_CONTENT_MARKER);
 
         return content.substring(0, memberContentIdx);
+    }
+
+    /**
+     * Remove gated content that is visible to members only, as well as gated content markers
+     *
+     * @param content Content to remove gated content from
+     * @returns {string} Content without gated content
+     */
+    private removeGatedContent(content: string) {
+        let result = content;
+
+        // Remove members-only content and markers
+        const membersOnlyContentRegex =
+            /<!--kg-gated-block:begin\s+nonMember:false[^>]*?-->([\s\S]*?)<!--kg-gated-block:end-->/g;
+        result = result.replace(membersOnlyContentRegex, '');
+
+        // Remove markers for public content but keep the content
+        const publicContentRegex =
+            /<!--kg-gated-block:begin\s+nonMember:true[^>]*?-->([\s\S]*?)<!--kg-gated-block:end-->/g;
+        result = result.replace(publicContentRegex, '$1');
+
+        return result;
     }
 }

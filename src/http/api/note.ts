@@ -44,11 +44,6 @@ export async function handleCreateNote(
             case 'file-not-found':
                 errorMessage = 'Image not found in storage';
                 break;
-            case 'gcs-error':
-                ctx.get('logger').error('GCS error verifying image URL', {
-                    url: data.imageUrl,
-                });
-                break;
             default:
                 return exhaustiveCheck(error);
         }

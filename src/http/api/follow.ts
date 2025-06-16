@@ -3,11 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from 'account/account.service';
 import { mapActorToExternalAccountData } from 'account/utils';
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { lookupAPIdByHandle, lookupActor, lookupObject } from 'lookup-helpers';
+import { lookupActor, lookupActorProfile, lookupObject } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 export class FollowController {
@@ -18,22 +17,26 @@ export class FollowController {
 
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
         const followerAccount = ctx.get('account');
 
         // Retrieve the AP ID of the account to follow
-        const accountToFollowApId = await lookupAPIdByHandle(apCtx, handle);
+        const lookupResult = await lookupActorProfile(apCtx, handle);
 
-        if (!accountToFollowApId) {
+        if (isError(lookupResult)) {
+            ctx.get('logger').error(
+                `Failed to lookup apId for handle: ${handle}, error: ${getError(lookupResult)}`,
+            );
             return NotFound('Remote account could not be found');
         }
 
+        const accountToFollowApId = getValue(lookupResult);
+
         // We cannot follow ourselves
-        if (accountToFollowApId === followerAccount.apId.toString()) {
+        if (accountToFollowApId.href === followerAccount.apId.href) {
             return BadRequest('Cannot follow yourself');
         }
 
@@ -121,8 +124,7 @@ export class FollowController {
 
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -189,7 +191,7 @@ export class FollowController {
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
         await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
+            { username: account.username },
             actorToUnfollow,
             unfollow,
         );

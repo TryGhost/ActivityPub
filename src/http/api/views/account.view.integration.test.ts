@@ -1,3 +1,5 @@
+import type { Context } from '@fedify/fedify';
+import type { ContextData } from 'app';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Knex } from 'knex';
@@ -6,7 +8,8 @@ import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
-import { lookupAPIdByHandle } from 'lookup-helpers';
+import { error, ok } from 'core/result';
+import { lookupActorProfile } from 'lookup-helpers';
 import { Audience, Post, PostType } from 'post/post.entity';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { SiteService } from 'site/site.service';
@@ -16,7 +19,7 @@ import type { AccountDTO } from '../types';
 import { AccountView } from './account.view';
 
 vi.mock('lookup-helpers', () => ({
-    lookupAPIdByHandle: vi.fn(),
+    lookupActorProfile: vi.fn(),
     lookupObject: vi.fn(),
 }));
 
@@ -26,7 +29,15 @@ describe('AccountView', () => {
     let accountService: AccountService;
     let postRepository: KnexPostRepository;
     let accountView: AccountView;
-    const fedifyContext = {};
+    const fedifyContext = {
+        data: {
+            logger: {
+                info: vi.fn(),
+                error: vi.fn(),
+                warn: vi.fn(),
+            },
+        },
+    } as unknown as Context<ContextData>;
     let fixtureManager: FixtureManager;
 
     beforeAll(async () => {
@@ -301,16 +312,16 @@ describe('AccountView', () => {
             const handle = `@${account.username}@${site.host}`;
             const expectedApId = account.apId.toString();
 
-            vi.mocked(lookupAPIdByHandle).mockImplementation(
+            vi.mocked(lookupActorProfile).mockImplementation(
                 async (_fedifyContext, _handle) => {
                     if (
                         _fedifyContext === fedifyContext &&
                         _handle === handle
                     ) {
-                        return Promise.resolve(expectedApId);
+                        return ok(new URL(expectedApId));
                     }
 
-                    return Promise.resolve(null);
+                    return error('no-links-found');
                 },
             );
 
@@ -338,7 +349,9 @@ describe('AccountView', () => {
 
             const spy = vi.spyOn(AccountView.prototype, 'viewByApId');
 
-            vi.mocked(lookupAPIdByHandle).mockResolvedValue(null);
+            vi.mocked(lookupActorProfile).mockResolvedValue(
+                error('no-links-found'),
+            );
 
             const view = await accountView.viewByHandle(
                 `@${account.username}@${site.host}`,

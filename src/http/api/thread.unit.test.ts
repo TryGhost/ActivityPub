@@ -81,6 +81,7 @@ describe('Thread API', () => {
                                 Audience.Public,
                                 'Test Post 123',
                                 'Test Post 123 Excerpt',
+                                null,
                                 'Test Post 123 Content',
                                 new URL('https://example.com/posts/123'),
                                 new URL(
@@ -106,6 +107,7 @@ describe('Thread API', () => {
                                 Audience.Public,
                                 'Test Post 456 (reply to Test Post 123)',
                                 'Test Post 456 Excerpt',
+                                null,
                                 'Test Post 456 Content',
                                 new URL('https://example.com/posts/456'),
                                 new URL(
@@ -133,6 +135,7 @@ describe('Thread API', () => {
                                 Audience.Public,
                                 'Test Post 789 (reply to Test Post 123)',
                                 'Test Post 789 Excerpt',
+                                null,
                                 'Test Post 789 Content',
                                 new URL('https://example.com/posts/789'),
                                 new URL(

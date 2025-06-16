@@ -5,6 +5,10 @@ export class AccountUpdatedEvent {
         return 'account.updated';
     }
 
+    getName(): string {
+        return 'account.updated';
+    }
+
     constructor(private readonly account: Account) {}
 
     getAccount(): Account {

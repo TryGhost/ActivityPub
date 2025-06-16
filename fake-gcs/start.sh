@@ -7,6 +7,9 @@
 mkdir -p /storage
 chmod 777 /storage
 
+# Clean up any existing metadata files
+find /storage -name "*.metadata*" -type f -delete
+
 # Start the fake-gcs server in the background
 fake-gcs-server -scheme http -port 4443 -external-url http://fake-gcs:4443 -data /storage &
 

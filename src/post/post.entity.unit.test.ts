@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { AccountEntity } from '../account/account.entity';
+import { type Ok, getValue, isError } from 'core/result';
+import { type Account, AccountEntity } from '../account/account.entity';
 import { Audience, Post, type PostData, PostType } from './post.entity';
 
 function mockAccount(id: number | null, internal: boolean) {
@@ -39,7 +40,7 @@ const internalAccount = (id: number | null = 123) => mockAccount(id, true);
 
 describe('Post', () => {
     describe('delete', () => {
-        it('Should be possible to delete posts authored by the account', () => {
+        it('Should be possible to delete posts authored by the account', async () => {
             const author = internalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -54,14 +55,18 @@ describe('Post', () => {
                 authors: [],
             };
 
-            const post = Post.createArticleFromGhostPost(author, ghostPost);
+            const postResult = await Post.createArticleFromGhostPost(
+                author,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             post.delete(author);
 
             expect(Post.isDeleted(post)).toBe(true);
         });
 
-        it('Should not be possible to delete posts from other authors', () => {
+        it('Should not be possible to delete posts from other authors', async () => {
             const author = internalAccount();
             const notAuthor = externalAccount();
             const ghostPost = {
@@ -77,7 +82,11 @@ describe('Post', () => {
                 authors: [],
             };
 
-            const post = Post.createArticleFromGhostPost(author, ghostPost);
+            const postResult = await Post.createArticleFromGhostPost(
+                author,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             expect(() => {
                 post.delete(notAuthor);
@@ -86,7 +95,7 @@ describe('Post', () => {
             expect(Post.isDeleted(post)).toBe(false);
         });
 
-        it('Should set all content to null for deleted posts', () => {
+        it('Should set all content to null for deleted posts', async () => {
             const author = internalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -106,7 +115,11 @@ describe('Post', () => {
                 ],
             };
 
-            const post = Post.createArticleFromGhostPost(author, ghostPost);
+            const postResult = await Post.createArticleFromGhostPost(
+                author,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             post.delete(author);
 
@@ -115,6 +128,7 @@ describe('Post', () => {
             expect(post.title).toBeNull();
             expect(post.content).toBeNull();
             expect(post.excerpt).toBeNull();
+            expect(post.summary).toBeNull();
             expect(post.imageUrl).toBeNull();
             expect(post.attachments).toEqual([]);
             expect(post.metadata).toBeNull();
@@ -131,6 +145,7 @@ describe('Post', () => {
                 Audience.Public,
                 'Title of my post',
                 'This is such a great...',
+                null,
                 '<p> This is such a great post </p>',
                 new URL('https://ghost.org/ap/note/123'),
                 new URL('https://ghost.org/feature-image.jpeg'),
@@ -166,6 +181,7 @@ describe('Post', () => {
             expect(post.title).toBeNull();
             expect(post.content).toBeNull();
             expect(post.excerpt).toBeNull();
+            expect(post.summary).toBeNull();
             expect(post.imageUrl).toBeNull();
             expect(post.attachments).toEqual([]);
             expect(post.metadata).toBeNull();
@@ -236,7 +252,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
+                '<p>My reply to <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
             );
             expect(note.mentions).toEqual([mentionedAccount]);
         });
@@ -272,7 +288,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My reply to <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
+                '<p>My reply to <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" data-profile="@test2@example.com" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
             );
             expect(note.mentions).toEqual([
                 mentionedAccount1,
@@ -364,6 +380,7 @@ describe('Post', () => {
             expect(note.content).toBe('<p>Email me at support@ghost.org</p>');
         });
     });
+
     describe('createNote', () => {
         it('errors if the account is external', () => {
             const account = externalAccount();
@@ -403,7 +420,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
+                '<p>My note with <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a></p>',
             );
             expect(note.mentions).toEqual([mentionedAccount]);
         });
@@ -431,7 +448,7 @@ describe('Post', () => {
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe(
-                '<p>My note with <a href="https://example.com/@test" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
+                '<p>My note with <a href="https://example.com/@test" data-profile="@test@example.com" rel="nofollow noopener noreferrer">@test@example.com</a> and <a href="https://example.com/@test2" data-profile="@test2@example.com" rel="nofollow noopener noreferrer">@test2@example.com</a></p>',
             );
             expect(note.mentions).toEqual([
                 mentionedAccount1,
@@ -498,7 +515,7 @@ describe('Post', () => {
         });
     });
 
-    it('should correctly create an article from a Ghost Post', () => {
+    it('should correctly create an article from a Ghost Post', async () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -513,13 +530,45 @@ describe('Post', () => {
             authors: [],
         };
 
-        const post = Post.createArticleFromGhostPost(account, ghostPost);
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         expect(post.uuid).toEqual(ghostPost.uuid);
         expect(post.content).toEqual(ghostPost.html);
+        expect(post.summary).toBeNull();
     });
 
-    it('should refuse to create an article from a private Ghost Post with no public content', () => {
+    it('should use custom_excerpt as summary when creating an article from a Ghost Post', async () => {
+        const account = internalAccount();
+        const ghostPost = {
+            uuid: '550e8400-e29b-41d4-a716-446655440000',
+            title: 'Title of my post',
+            html: '<p> This is such a great post </p>',
+            excerpt: 'This is such a great...',
+            custom_excerpt: 'This is my custom excerpt for the post',
+            feature_image: 'https://ghost.org/feature-image.jpeg',
+            published_at: '2020-01-01',
+            url: 'https://ghost.org/post',
+            visibility: 'public',
+            authors: [],
+        };
+
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        const post = getValue(postResult as Ok<Post>) as Post;
+
+        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.content).toEqual(ghostPost.html);
+        expect(post.excerpt).toEqual(ghostPost.excerpt);
+        expect(post.summary).toEqual(ghostPost.custom_excerpt);
+    });
+
+    it('should refuse to create an article from a private Ghost Post with no public content', async () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -534,12 +583,14 @@ describe('Post', () => {
             authors: [],
         };
 
-        expect(() =>
-            Post.createArticleFromGhostPost(account, ghostPost),
-        ).toThrow();
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        expect(isError(postResult)).toBe(true);
     });
 
-    it('should create an article with restricted content from a private Ghost Post', () => {
+    it('should create an article with restricted content from a private Ghost Post', async () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -554,7 +605,11 @@ describe('Post', () => {
             authors: [],
         };
 
-        const post = Post.createArticleFromGhostPost(account, ghostPost);
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         expect(post.uuid).toEqual(ghostPost.uuid);
         expect(post.content).toEqual(
@@ -650,7 +705,7 @@ describe('Post', () => {
         ]);
     });
 
-    it('should save ghost authors in posts metadata', () => {
+    it('should save ghost authors in posts metadata', async () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -674,7 +729,11 @@ describe('Post', () => {
             ],
         };
 
-        const post = Post.createArticleFromGhostPost(account, ghostPost);
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         expect(post.metadata).toEqual({
             ghostAuthors: [
@@ -690,7 +749,7 @@ describe('Post', () => {
         });
     });
 
-    it('should handle an empty array of ghost authors', () => {
+    it('should handle an empty array of ghost authors', async () => {
         const account = internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -705,16 +764,36 @@ describe('Post', () => {
             authors: [],
         };
 
-        const post = Post.createArticleFromGhostPost(account, ghostPost);
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         expect(post.metadata).toEqual({
             ghostAuthors: [],
         });
     });
 
+    it('should indicate if the post is created by an internal account', () => {
+        const post = Post.createFromData(internalAccount(), {
+            type: PostType.Note,
+            content: 'Hello, world!',
+        });
+
+        expect(post.isInternal).toBe(true);
+
+        const post2 = Post.createFromData(externalAccount(), {
+            type: PostType.Note,
+            content: 'Hello, world!',
+            apId: new URL('https://example.com/post'),
+        });
+        expect(post2.isInternal).toBe(false);
+    });
+
     describe('post excerpt', () => {
         describe('when the post is public', () => {
-            it('should not re-generate excerpt', () => {
+            it('should not re-generate excerpt', async () => {
                 const account = internalAccount();
                 const ghostPost = {
                     uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -729,15 +808,16 @@ describe('Post', () => {
                     authors: [],
                 };
 
-                const post = Post.createArticleFromGhostPost(
+                const postResult = await Post.createArticleFromGhostPost(
                     account,
                     ghostPost,
                 );
+                const post = getValue(postResult as Ok<Post>) as Post;
 
                 expect(post.excerpt).toEqual(ghostPost.excerpt);
             });
 
-            it('should not re-generate excerpt even if there is a paywall', () => {
+            it('should not re-generate excerpt even if there is a paywall', async () => {
                 const account = internalAccount();
                 const ghostPost = {
                     uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -752,10 +832,11 @@ describe('Post', () => {
                     authors: [],
                 };
 
-                const post = Post.createArticleFromGhostPost(
+                const postResult = await Post.createArticleFromGhostPost(
                     account,
                     ghostPost,
                 );
+                const post = getValue(postResult as Ok<Post>) as Post;
 
                 expect(post.excerpt).toEqual(ghostPost.excerpt);
             });
@@ -763,7 +844,7 @@ describe('Post', () => {
 
         describe('when the post is members-only', () => {
             describe('and there is no custom excerpt', () => {
-                it('should re-generate excerpt without the gated content and without the paid signup message', () => {
+                it('should re-generate excerpt without the gated content and without the paid signup message', async () => {
                     const account = internalAccount();
                     const ghostPost = {
                         uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -778,17 +859,18 @@ describe('Post', () => {
                         authors: [],
                     };
 
-                    const post = Post.createArticleFromGhostPost(
+                    const postResult = await Post.createArticleFromGhostPost(
                         account,
                         ghostPost,
                     );
+                    const post = getValue(postResult as Ok<Post>) as Post;
 
                     expect(post.excerpt).toEqual('Hello world!');
                 });
             });
 
             describe('and there is a custom excerpt', () => {
-                it('should not re-generate the excerpt', () => {
+                it('should not re-generate the excerpt', async () => {
                     const account = internalAccount();
                     const ghostPost = {
                         uuid: '550e8400-e29b-41d4-a716-446655440000',
@@ -803,10 +885,11 @@ describe('Post', () => {
                         authors: [],
                     };
 
-                    const post = Post.createArticleFromGhostPost(
+                    const postResult = await Post.createArticleFromGhostPost(
                         account,
                         ghostPost,
                     );
+                    const post = getValue(postResult as Ok<Post>) as Post;
 
                     expect(post.excerpt).toEqual(ghostPost.excerpt);
                 });
@@ -828,20 +911,156 @@ describe('Post', () => {
             expect(result.content).toBe('This is a test note');
         });
 
-        it('attaches mentions to the post', async () => {
+        it('creates a post with summary', async () => {
             const account = internalAccount();
-            const mentionedAccount = externalAccount();
-
             const postData = {
-                type: PostType.Note,
-                content: 'This is a test note',
-                mentions: [mentionedAccount],
+                type: PostType.Article,
+                title: 'Test Article',
+                content: 'This is a test article with a lot of content',
+                excerpt: 'This is a test article...',
+                summary: 'This is a custom summary',
             } as PostData;
 
             const result = Post.createFromData(account, postData);
 
             expect(result).toBeInstanceOf(Post);
-            expect(result.mentions).toEqual([mentionedAccount]);
+            expect(result.title).toBe('Test Article');
+            expect(result.excerpt).toBe('This is a test article...');
+            expect(result.summary).toBe('This is a custom summary');
+        });
+
+        it('attaches mentions to the post but should not modify content with no hyperlink', async () => {
+            const account = internalAccount();
+            const extAccount = externalAccount() as Account;
+            const mention = {
+                name: '@foobar@foobar.com',
+                href: extAccount.url,
+                account: extAccount,
+            };
+
+            const postData = {
+                type: PostType.Note,
+                content:
+                    '<p>This is a test note with a mention @foobar@foobar.com</p>',
+                mentions: [mention],
+            } as PostData;
+
+            const result = Post.createFromData(account, postData);
+
+            expect(result).toBeInstanceOf(Post);
+            expect(result.mentions).toEqual([extAccount]);
+            expect(result.content).toBe(
+                '<p>This is a test note with a mention @foobar@foobar.com</p>',
+            );
+        });
+
+        it('attaches mentions to the post and modify existing hyperlinks', async () => {
+            const account = internalAccount();
+            const extAccount = externalAccount() as Account;
+            const mention = {
+                name: '@foobar@foobar.com',
+                href: extAccount.url,
+                account: extAccount,
+            };
+
+            const postData = {
+                type: PostType.Note,
+                content: `<p>This is a test note with a mention <a href="${extAccount.url}">@foobar@foobar.com</a></p>`,
+                mentions: [mention],
+            } as PostData;
+
+            const result = Post.createFromData(account, postData);
+            expect(result).toBeInstanceOf(Post);
+            expect(result.mentions).toEqual([extAccount]);
+            expect(result.content).toBe(
+                `<p>This is a test note with a mention <a href="${extAccount.url}" data-profile="@${extAccount.username}@${extAccount.apId.hostname}" rel="nofollow noopener noreferrer">@foobar@foobar.com</a></p>`,
+            );
+        });
+    });
+
+    describe('setLikeCount', () => {
+        it('should throw an error if the post is internal', async () => {
+            const author = internalAccount();
+            const ghostPost = {
+                uuid: '550e8400-e29b-41d4-a716-446655440000',
+                title: 'Title of my post',
+                html: '<p> This is such a great post </p>',
+                excerpt: 'This is such a great...',
+                custom_excerpt: null,
+                feature_image: 'https://ghost.org/feature-image.jpeg',
+                published_at: '2020-01-01',
+                url: 'https://ghost.org/post',
+                visibility: 'public',
+                authors: [],
+            };
+
+            const postResult = await Post.createArticleFromGhostPost(
+                author,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
+
+            expect(() => post.setLikeCount(10)).toThrow(
+                'setLikeCount() can only be used for external posts. Use addLike() for internal posts instead.',
+            );
+        });
+
+        it('should set the like count for an external post', async () => {
+            const author = externalAccount();
+            const apId = new URL('https://example.com/post');
+
+            const post = Post.createFromData(author, {
+                type: PostType.Note,
+                content: 'This is a test note',
+                apId,
+            });
+
+            post.setLikeCount(10);
+
+            expect(post.likeCount).toBe(10);
+        });
+    });
+
+    describe('setRepostCount', () => {
+        it('should throw an error if the post is internal', async () => {
+            const account = internalAccount();
+            const ghostPost = {
+                uuid: '550e8400-e29b-41d4-a716-446655440000',
+                title: 'Title of my post',
+                html: '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><!--members-only--><p>This is private content</p>',
+                excerpt: 'Welcome!\n\nThis is private content',
+                custom_excerpt: null,
+                feature_image: 'https://ghost.org/feature-image.jpeg',
+                published_at: '2020-01-01',
+                url: 'https://ghost.org/post',
+                visibility: 'members',
+                authors: [],
+            };
+
+            const postResult = await Post.createArticleFromGhostPost(
+                account,
+                ghostPost,
+            );
+            const post = getValue(postResult as Ok<Post>) as Post;
+
+            expect(() => post.setRepostCount(10)).toThrow(
+                'setRepostCount() can only be used for external posts. Use addRepost() for internal posts instead.',
+            );
+        });
+
+        it('should set the repost count for an external post', async () => {
+            const author = externalAccount();
+            const apId = new URL('https://example.com/post');
+
+            const post = Post.createFromData(author, {
+                type: PostType.Note,
+                content: 'This is a test note',
+                apId,
+            });
+
+            post.setRepostCount(10);
+
+            expect(post.repostCount).toBe(10);
         });
     });
 });

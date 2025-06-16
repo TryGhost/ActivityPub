@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { Temporal } from '@js-temporal/polyfill';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
 import { KnexKvStore } from './knex.kvstore';
@@ -86,5 +87,30 @@ describe('KnexKvStore', () => {
         ];
 
         await Promise.all(calls);
+    });
+
+    it('Can handle storing ttl', async () => {
+        const table = 'key_value';
+        const store = await KnexKvStore.create(client, table);
+
+        await store.set(['will-expire'], 'hello', {
+            ttl: Temporal.Duration.from({ days: 1 }),
+        });
+
+        const row = await client('key_value')
+            .where({
+                key: JSON.stringify(['will-expire']),
+            })
+            .first();
+
+        expect(row.expires).not.toBeNull();
+        expect(row.expires).toBeInstanceOf(Date);
+
+        const now = new Date();
+        const diff = row.expires.getTime() - now.getTime();
+
+        const differenceFromOneDay = Math.abs(diff - 1000 * 60 * 60 * 24);
+
+        expect(differenceFromOneDay).toBeLessThan(1000);
     });
 });

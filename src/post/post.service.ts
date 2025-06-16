@@ -4,6 +4,7 @@ import {
     Note,
     lookupObject,
 } from '@fedify/fedify';
+import * as Sentry from '@sentry/node';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -16,14 +17,18 @@ import {
     isError,
     ok,
 } from 'core/result';
-import { lookupActorProfile } from 'lookup-helpers';
+import {
+    getLikeCountFromRemote,
+    getRepostCountFromRemote,
+    lookupActorProfile,
+} from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
-import type {
-    GCPStorageService,
-    ImageVerificationError,
-} from 'storage/gcloud-storage/gcp-storage.service';
+import type { VerificationError } from 'storage/adapters/storage-adapter';
+import type { ImageStorageService } from 'storage/image-storage.service';
 import { ContentPreparer } from './content';
 import {
+    type CreatePostError,
+    type GhostPost,
     type Mention,
     Post,
     type PostAttachment,
@@ -46,12 +51,22 @@ export type RepostError =
     | 'already-reposted'
     | InteractionError;
 
+export type GhostPostError = CreatePostError | 'post-already-exists';
+
+export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
+export type UpdateInteractionCountsError =
+    | 'post-not-found'
+    | 'post-is-internal'
+    | 'upstream-error'
+    | 'not-a-post'
+    | typeof INTERACTION_COUNTS_NOT_FOUND;
+
 export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
         private readonly accountService: AccountService,
         private readonly fedifyContextFactory: FedifyContextFactory,
-        private readonly storageService: GCPStorageService,
+        private readonly imageStorageService: ImageStorageService,
         private readonly moderationService: ModerationService,
     ) {}
 
@@ -72,11 +87,12 @@ export class PostService {
                     ? attachment
                     : [attachment].filter((a) => a !== undefined);
                 for (const a of attachmentList) {
+                    const attachmentJson = await a.toJsonLd();
                     postAttachments.push({
-                        type: a.type,
-                        mediaType: a.mediaType,
-                        name: a.name,
-                        url: a.url,
+                        type: attachmentJson.type,
+                        mediaType: attachmentJson.mediaType,
+                        name: attachmentJson.name,
+                        url: new URL(attachmentJson.url),
                     });
                 }
             }
@@ -86,8 +102,8 @@ export class PostService {
 
     private async getMentionedAccounts(
         object: Note | Article,
-    ): Promise<Account[]> {
-        const accounts: Account[] = [];
+    ): Promise<Mention[]> {
+        const mentions: Mention[] = [];
         for await (const tag of object.getTags()) {
             if (tag instanceof FedifyMention) {
                 if (!tag.href) {
@@ -106,11 +122,15 @@ export class PostService {
                 }
 
                 const account = getValue(accountResult);
-                accounts.push(account);
+                mentions.push({
+                    name: tag.name.toString(),
+                    href: tag.href,
+                    account,
+                });
             }
         }
 
-        return accounts;
+        return mentions;
     }
 
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
@@ -120,10 +140,10 @@ export class PostService {
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
-
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
+
         const foundObject = await lookupObject(id, { documentLoader });
 
         // If foundObject is null - we could not find anything for this URL
@@ -162,17 +182,24 @@ export class PostService {
             const found = await this.getByApId(foundObject.replyTargetId);
             if (isError(found)) {
                 const error = getError(found);
+                let errorMessage: string;
                 switch (error) {
                     case 'upstream-error':
+                        errorMessage = `Failed to fetch parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}`;
                         break;
                     case 'not-a-post':
+                        errorMessage = `Parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}, is not an instance of Note or Article`;
                         break;
                     case 'missing-author':
+                        errorMessage = `Parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}, has no author`;
                         break;
                     default: {
                         exhaustiveCheck(error);
                     }
                 }
+                const err = new Error(errorMessage);
+                Sentry.captureException(err);
+                context.data.logger.error(errorMessage);
             } else {
                 inReplyTo = getValue(found);
             }
@@ -183,6 +210,7 @@ export class PostService {
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
+            summary: foundObject.summary?.toString() ?? null,
             content: foundObject.content?.toString(),
             imageUrl: foundObject.imageId,
             publishedAt: new Date(foundObject.published?.toString() || ''),
@@ -260,9 +288,9 @@ export class PostService {
         account: Account,
         content: string,
         image?: URL,
-    ): Promise<Result<Post, ImageVerificationError>> {
+    ): Promise<Result<Post, VerificationError>> {
         if (image) {
-            const result = await this.storageService.verifyImageUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(image);
             if (isError(result)) {
                 return result;
             }
@@ -283,10 +311,10 @@ export class PostService {
         inReplyToId: URL,
         image?: URL,
     ): Promise<
-        Result<Post, ImageVerificationError | GetByApIdError | InteractionError>
+        Result<Post, VerificationError | GetByApIdError | InteractionError>
     > {
         if (image) {
-            const result = await this.storageService.verifyImageUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(image);
             if (isError(result)) {
                 return result;
             }
@@ -376,6 +404,81 @@ export class PostService {
 
         await this.postRepository.save(post);
 
+        return ok(post);
+    }
+
+    async handleIncomingGhostPost(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Result<Post, GhostPostError>> {
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+
+        if (isError(postResult)) {
+            return postResult;
+        }
+
+        const post = getValue(postResult);
+
+        const existingPost = await this.postRepository.getByApId(post.apId);
+
+        if (existingPost) {
+            return error('post-already-exists');
+        }
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async updateInteractionCounts(
+        post: Post,
+    ): Promise<Result<Post, UpdateInteractionCountsError>> {
+        if (post.isInternal) {
+            return error('post-is-internal');
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+        const documentLoader = await context.getDocumentLoader({
+            identifier: 'index',
+        });
+        const object = await lookupObject(post.apId, { documentLoader });
+
+        if (object === null) {
+            return error('upstream-error');
+        }
+
+        if (!(object instanceof Note) && !(object instanceof Article)) {
+            return error('not-a-post');
+        }
+
+        const likeCount = await getLikeCountFromRemote(object);
+        const repostCount = await getRepostCountFromRemote(object);
+
+        if (likeCount === null && repostCount === null) {
+            return error(INTERACTION_COUNTS_NOT_FOUND);
+        }
+
+        const shouldUpdateLikeCount =
+            likeCount !== null && likeCount !== post.likeCount;
+        const shouldUpdateRepostCount =
+            repostCount !== null && repostCount !== post.repostCount;
+
+        if (!shouldUpdateLikeCount && !shouldUpdateRepostCount) {
+            return ok(post);
+        }
+
+        if (shouldUpdateLikeCount) {
+            post.setLikeCount(likeCount);
+        }
+
+        if (shouldUpdateRepostCount) {
+            post.setRepostCount(repostCount);
+        }
+
+        await this.postRepository.save(post);
         return ok(post);
     }
 }

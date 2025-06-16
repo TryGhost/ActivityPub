@@ -201,9 +201,8 @@ describe('FediverseBridge', () => {
         expect(sendActivityMockCall).toBeDefined();
         expect(sendActivityMockCall!.length).toBe(3);
 
-        // Assert that the activity was sent from the correct account
         expect(sendActivityMockCall![0]).toMatchObject({
-            username: blockerAccount.username,
+            username: 'blocker',
         });
 
         // Assert that the activity was sent to the correct account
