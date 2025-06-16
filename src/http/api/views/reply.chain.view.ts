@@ -1,6 +1,7 @@
 import { getAccountHandle } from 'account/utils';
 import { type Result, error, ok } from 'core/result';
 import type { Knex } from 'knex';
+import { PostType } from 'post/post.entity';
 import z from 'zod';
 import type { PostDTO } from '../types';
 
@@ -71,7 +72,7 @@ export class ReplyChainView {
         if (result.post_deleted_at !== null) {
             return {
                 id: result.post_ap_id,
-                type: 2, // PostType.Tombstone
+                type: PostType.Tombstone,
                 title: '',
                 excerpt: '',
                 summary: null,
@@ -80,7 +81,7 @@ export class ReplyChainView {
                 featureImageUrl: null,
                 publishedAt: result.post_published_at,
                 likeCount: result.post_like_count,
-                likedByMe: result.post_liked_by_current_user === 1,
+                likedByMe: false,
                 replyCount: result.post_reply_count,
                 readingTimeMinutes: result.post_reading_time_minutes,
                 attachments: [],
@@ -98,7 +99,7 @@ export class ReplyChainView {
                 },
                 authoredByMe: result.author_id === contextAccountId,
                 repostCount: result.post_repost_count,
-                repostedByMe: result.post_reposted_by_current_user === 1,
+                repostedByMe: false,
                 repostedBy: null,
             };
         }
