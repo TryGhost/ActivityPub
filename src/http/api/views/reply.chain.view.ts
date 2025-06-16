@@ -49,6 +49,7 @@ const PostRowSchema = z.object({
             }),
         )
         .nullable(),
+    post_deleted_at: z.date().nullable(),
     author_id: z.number(),
     author_name: z.string().nullable(),
     author_username: z.string(),
@@ -66,6 +67,42 @@ export class ReplyChainView {
     constructor(private readonly db: Knex) {}
 
     private mapToPostDTO(result: PostRow, contextAccountId: number): PostDTO {
+        // If the post is deleted, return it as a tombstone
+        if (result.post_deleted_at !== null) {
+            return {
+                id: result.post_ap_id,
+                type: 2, // PostType.Tombstone
+                title: '',
+                excerpt: '',
+                summary: null,
+                content: '',
+                url: result.post_url,
+                featureImageUrl: null,
+                publishedAt: result.post_published_at,
+                likeCount: result.post_like_count,
+                likedByMe: result.post_liked_by_current_user === 1,
+                replyCount: result.post_reply_count,
+                readingTimeMinutes: result.post_reading_time_minutes,
+                attachments: [],
+                author: {
+                    id: result.author_id.toString(),
+                    handle: getAccountHandle(
+                        result.author_url
+                            ? new URL(result.author_url).host
+                            : '',
+                        result.author_username,
+                    ),
+                    name: result.author_name ?? '',
+                    url: result.author_url ?? '',
+                    avatarUrl: result.author_avatar_url ?? '',
+                },
+                authoredByMe: result.author_id === contextAccountId,
+                repostCount: result.post_repost_count,
+                repostedByMe: result.post_reposted_by_current_user === 1,
+                repostedBy: null,
+            };
+        }
+
         return {
             id: result.post_ap_id,
             type: result.post_type,
@@ -180,6 +217,7 @@ export class ReplyChainView {
                     END AS post_reposted_by_current_user
                 `),
                     'posts.ap_id as post_ap_id',
+                    'posts.deleted_at as post_deleted_at',
                     // Author fields
                     'author_account.id as author_id',
                     'author_account.name as author_name',
@@ -252,7 +290,8 @@ export class ReplyChainView {
                             )
                                 .from('posts')
                                 .orderBy('published_at', 'asc')
-                                .where('in_reply_to', postId);
+                                .where('in_reply_to', postId)
+                                .whereNull('posts.deleted_at');
 
                             if (cursor) {
                                 query = query.andWhere(
@@ -281,6 +320,7 @@ export class ReplyChainView {
                                     'ci.id',
                                 )
                                 .where('ci.reply_count', '=', 1)
+                                .whereNull('p.deleted_at')
                                 .andWhere(
                                     'ci.depth',
                                     '<',
@@ -309,6 +349,7 @@ export class ReplyChainView {
                 .whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [
                     postApId.href,
                 ])
+                .whereNull('posts.deleted_at')
                 .first(),
         );
 
@@ -356,7 +397,9 @@ export class ReplyChainView {
 
         return ok({
             ancestors: {
-                chain: ancestors.map(this.mapToPostDTO),
+                chain: ancestors.map((ancestor) =>
+                    this.mapToPostDTO(ancestor, accountId),
+                ),
                 hasMore: !!ancestors[0]?.post_in_reply_to,
             },
             post: this.mapToPostDTO(currentPost, accountId),
