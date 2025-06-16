@@ -37,7 +37,7 @@ import { CreateHandler } from 'activity-handlers/create.handler';
 import { FollowHandler } from 'activity-handlers/follow.handler';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
-import { asClass, asFunction, asValue, createContainer } from 'awilix';
+import { asClass, asFunction, asValue } from 'awilix';
 import { AsyncEvents } from 'core/events';
 import { get } from 'es-toolkit/compat';
 import { EventSerializer } from 'events/event';
@@ -69,6 +69,7 @@ import { dispatchRejectActivity } from './activity-dispatchers/reject.dispatcher
 import { DeleteHandler } from './activity-handlers/delete.handler';
 import { FedifyContextFactory } from './activitypub/fedify-context.factory';
 import { FediverseBridge } from './activitypub/fediverse-bridge';
+import { container } from './configuration/container';
 import { knex } from './db';
 import {
     acceptDispatcher,
@@ -139,11 +140,6 @@ import { getFullTopic, initPubSubClient } from './pubsub';
 import { type Site, SiteService } from './site/site.service';
 import { GCPStorageAdapter } from './storage/adapters/gcp-storage-adapter';
 import { ImageProcessor } from './storage/image-processor';
-
-const container = createContainer({
-    injectionMode: 'CLASSIC',
-    strict: true,
-});
 
 await setupInstrumentation();
 
