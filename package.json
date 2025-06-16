@@ -45,7 +45,7 @@
     "@faker-js/faker": "9.8.0",
     "@fedify/cli": "1.6.1",
     "@types/html-to-text": "9.0.4",
-    "@types/jsonwebtoken": "9.0.9",
+    "@types/jsonwebtoken": "9.0.10",
     "@types/node": "20.19.0",
     "@types/node-jose": "1.1.13",
     "@types/sanitize-html": "2.16.0",
