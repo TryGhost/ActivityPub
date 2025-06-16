@@ -8,23 +8,21 @@ Feature: Notifications
     Then the request is rejected with a 400
 
   Scenario: Requests for unread notifications count
-    Given an Actor "Person(Alice)"
-    And an Actor "Person(Bob)"
-    And we publish an article
-    And "Bob" likes our article
-    And "Alice" likes our article
-    And "Bob" sends us a reply to our article
-    And "Alice" sends us a reply to our article
+    Given we are following "Alice"
+    And we are not following "Bob"
+    When we get a like notification from "Alice"
+    And we get a like notification from "Bob"
+    And we get a reply notification from "Alice"
+    And we get a reply notification from "Bob"
     Then the unread notifications count is 4
 
   Scenario: Reset unread notifications count
-    Given an Actor "Person(Alice)"
-    And an Actor "Person(Bob)"
-    And we publish an article
-    And "Bob" likes our article
-    And "Alice" likes our article
-    And "Bob" sends us a reply to our article
-    And "Alice" sends us a reply to our article
+    Given we are following "Alice"
+    And we are not following "Bob"
+    And we get a like notification from "Alice"
+    And we get a like notification from "Bob"
+    And we get a reply notification from "Alice"
+    And we get a reply notification from "Bob"
     And the unread notifications count is 4
     When we reset unread notifications count
     Then the unread notifications count is 0
