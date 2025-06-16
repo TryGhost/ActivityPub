@@ -980,10 +980,11 @@ app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
 // This needs to go before the middleware which loads the site
 // because this endpoint does not require the site to exist
 if (queue instanceof GCloudPubSubPushMessageQueue) {
-    app.post(
-        '/.ghost/activitypub/mq',
-        spanWrapper(createPushMessageHandler(queue, globalLogging)),
+    const mqMessageHandler = spanWrapper(
+        createPushMessageHandler(queue, globalLogging),
     );
+    app.post('/.ghost/activitypub/mq', mqMessageHandler);
+    app.post('/.ghost/activitypub/pubsub/fedify/push', mqMessageHandler);
 }
 
 app.use(
