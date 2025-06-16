@@ -313,14 +313,18 @@ describe('AccountService', () => {
             const [accountId] = await db('accounts').insert(accountData);
 
             // There should be no user row for this account and site yet
-            let user = await db('users').where({ account_id: accountId, site_id: site.id }).first();
+            let user = await db('users')
+                .where({ account_id: accountId, site_id: site.id })
+                .first();
             expect(user).toBeUndefined();
 
             // Now, call createInternalAccount (should not throw, should create user row)
             await service.createInternalAccount(site, internalAccountData);
 
             // Now, there should be a user row linking the site to the account
-            user = await db('users').where({ account_id: accountId, site_id: site.id }).first();
+            user = await db('users')
+                .where({ account_id: accountId, site_id: site.id })
+                .first();
             expect(user).toBeDefined();
             expect(user.account_id).toBe(accountId);
             expect(user.site_id).toBe(site.id);
