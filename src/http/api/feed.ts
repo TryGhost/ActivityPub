@@ -1,4 +1,5 @@
-import type { FlagService } from 'flag/flag.service';
+import * as Sentry from '@sentry/node';
+
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
@@ -27,7 +28,6 @@ export function createGetFeedHandler(
     feedService: FeedService,
     accountService: AccountService,
     postInteractionCountsService: PostInteractionCountsService,
-    flagService: FlagService,
     feedType: FeedType,
 ) {
     /**
@@ -119,12 +119,19 @@ export function createGetFeedHandler(
         // Request an update of the interaction counts for the posts in the
         // feed - We do not await this as we do not want to increase the
         // response time of the request
-        if (flagService.isEnabled('post_interaction_counts_update')) {
-            postInteractionCountsService.requestUpdate(
+        postInteractionCountsService
+            .requestUpdate(
                 ctx.get('site').host,
                 results.map((post) => post.post_id),
-            );
-        }
+            )
+            .catch((error) => {
+                Sentry.captureException(error);
+
+                ctx.get('logger').error(
+                    'Error requesting update of interaction counts for posts {error}',
+                    { error },
+                );
+            });
 
         return new Response(
             JSON.stringify({

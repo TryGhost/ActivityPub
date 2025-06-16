@@ -91,10 +91,7 @@ export function registerDependencies(
 
     container.register('events', asValue(new AsyncEvents()));
 
-    container.register(
-        'flagService',
-        asValue(new FlagService(['post_interaction_counts_update'])),
-    );
+    container.register('flagService', asValue(new FlagService([])));
 
     container.register(
         'fedifyContextFactory',
@@ -392,18 +389,12 @@ export function registerDependencies(
     container.register(
         'getFeedHandler',
         asFunction(
-            (
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                flagService,
-            ) =>
+            (feedService, accountService, postInteractionCountsService) =>
                 (feedType: 'Feed' | 'Inbox') =>
                     createGetFeedHandler(
                         feedService,
                         accountService,
                         postInteractionCountsService,
-                        flagService,
                         feedType,
                     ),
         ).singleton(),
