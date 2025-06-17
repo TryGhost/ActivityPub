@@ -134,7 +134,7 @@ export function registerDependencies(
     }
 
     if (deps.globalPubSubEvents) {
-        container.register('pubSubEvents', asValue(deps.globalPubSubEvents));
+        container.register('commandBus', asValue(deps.globalPubSubEvents));
     }
 
     container.register('fedify', asValue(deps.globalFedify));
@@ -439,9 +439,9 @@ export function registerDependencies(
 
     container.register(
         'pubSubMessageHandler',
-        asFunction((pubSubEvents, fedify, fedifyContextFactory) => {
+        asFunction((commandBus, fedify, fedifyContextFactory) => {
             return createIncomingPubSubMessageHandler(
-                pubSubEvents,
+                commandBus,
                 fedify,
                 fedifyContextFactory,
             );

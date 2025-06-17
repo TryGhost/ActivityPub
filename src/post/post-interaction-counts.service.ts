@@ -11,14 +11,14 @@ export class PostInteractionCountsService {
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
         private readonly logging: Logger,
-        private readonly pubSubEvents: PubSubEvents,
+        private readonly commandBus: PubSubEvents,
     ) {}
 
     /**
      * Setup required event listeners for the service
      */
     init() {
-        this.pubSubEvents.on(
+        this.commandBus.on(
             PostInteractionCountsUpdateRequestedEvent.getName(),
             async (event: PostInteractionCountsUpdateRequestedEvent) =>
                 await this.update(event.getPostIds()),
@@ -32,7 +32,7 @@ export class PostInteractionCountsService {
      * @param {number[]} postIds - The IDs of the posts to update
      */
     async requestUpdate(host: string, postIds: number[]) {
-        await this.pubSubEvents.emitAsync(
+        await this.commandBus.emitAsync(
             PostInteractionCountsUpdateRequestedEvent.getName(),
             new PostInteractionCountsUpdateRequestedEvent(postIds),
             host,
