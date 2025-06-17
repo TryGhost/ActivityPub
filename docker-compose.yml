@@ -40,7 +40,6 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.62.0
-    container_name: activitypub-jaeger
     ports:
       - "4318:4318"
       - "16686:16686"
@@ -281,7 +280,6 @@ services:
 
   fake-gcs:
     build: fake-gcs
-    container_name: fake-gcs
     ports:
       - "4443:4443"
     environment:
