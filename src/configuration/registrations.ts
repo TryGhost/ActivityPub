@@ -113,15 +113,12 @@ export function registerDependencies(
                     new URL(process.env.LOCAL_STORAGE_HOSTING_URL || ''),
                 );
             }
-            if (process.env.GCP_BUCKET_NAME) {
-                const bucketName = process.env.GCP_BUCKET_NAME || '';
-                return new GCPStorageAdapter(
-                    bucketName,
-                    deps.globalLogging,
-                    process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
-                );
-            }
-            throw new Error('No storage adapter configured');
+            const bucketName = process.env.GCP_BUCKET_NAME || '';
+            return new GCPStorageAdapter(
+                bucketName,
+                deps.globalLogging,
+                process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
+            );
         }).singleton(),
     );
 
