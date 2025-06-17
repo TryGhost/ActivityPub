@@ -5,6 +5,7 @@ import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
 import type { PubSubEvents } from 'events/pubsub';
 import type { Knex } from 'knex';
 import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
+import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { CreateHandler } from '../activity-handlers/create.handler';
@@ -103,6 +104,15 @@ export function registerDependencies(
     container.register(
         'storageAdapter',
         asFunction(() => {
+            if (
+                process.env.LOCAL_STORAGE_PATH &&
+                process.env.LOCAL_STORAGE_HOSTING_URL
+            ) {
+                return new LocalStorageAdapter(
+                    process.env.LOCAL_STORAGE_PATH,
+                    new URL(process.env.LOCAL_STORAGE_HOSTING_URL),
+                );
+            }
             const bucketName = process.env.GCP_BUCKET_NAME || '';
             return new GCPStorageAdapter(
                 bucketName,
