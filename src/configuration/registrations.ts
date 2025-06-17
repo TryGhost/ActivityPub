@@ -135,6 +135,8 @@ export function registerDependencies(
 
     if (deps.globalPubSubEvents) {
         container.register('commandBus', asValue(deps.globalPubSubEvents));
+    } else {
+        container.register('commandBus', asValue(new AsyncEvents()));
     }
 
     container.register('fedify', asValue(deps.globalFedify));
