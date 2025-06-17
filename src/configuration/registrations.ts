@@ -5,6 +5,7 @@ import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
 import type { PubSubEvents } from 'events/pubsub';
 import type { Knex } from 'knex';
 import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
+import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { CreateHandler } from '../activity-handlers/create.handler';
@@ -103,12 +104,24 @@ export function registerDependencies(
     container.register(
         'storageAdapter',
         asFunction(() => {
-            const bucketName = process.env.GCP_BUCKET_NAME || '';
-            return new GCPStorageAdapter(
-                bucketName,
-                deps.globalLogging,
-                process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
-            );
+            if (
+                process.env.LOCAL_STORAGE_PATH &&
+                process.env.LOCAL_STORAGE_HOSTING_URL
+            ) {
+                return new LocalStorageAdapter(
+                    process.env.LOCAL_STORAGE_PATH || '',
+                    new URL(process.env.LOCAL_STORAGE_HOSTING_URL || ''),
+                );
+            }
+            if (process.env.GCP_BUCKET_NAME) {
+                const bucketName = process.env.GCP_BUCKET_NAME || '';
+                return new GCPStorageAdapter(
+                    bucketName,
+                    deps.globalLogging,
+                    process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
+                );
+            }
+            throw new Error('No storage adapter configured');
         }).singleton(),
     );
 
