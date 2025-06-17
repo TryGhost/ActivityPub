@@ -156,7 +156,7 @@ export class FediverseBridge {
         }
 
         const createActivity = new Create({
-            id: ctx.getObjectUri(Create, { id: uuidv4() }),
+            id: ctx.getObjectUri(Create, { id: post.uuid }),
             actor: post.author.apId,
             object: fedifyObject,
             to: PUBLIC_COLLECTION,

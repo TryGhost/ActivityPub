@@ -7,7 +7,6 @@ import {
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
 import { type AppContext, globalFedify } from 'app';
@@ -228,12 +227,8 @@ export async function handleCreateReply(
         ccs: cc,
     });
 
-    const createId = apCtx.getObjectUri(Create, {
-        id: uuidv4(),
-    });
-
     const create = new Create({
-        id: createId,
+        id: apCtx.getObjectUri(Create, { id: newReply.uuid }),
         actor: actor,
         object: reply,
         to: to,
