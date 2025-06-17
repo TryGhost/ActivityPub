@@ -2,7 +2,6 @@ services:
   activitypub:
     build: .
     ports:
-      - "8080:8080"
       - "9229:9229"
     volumes:
       - ./src:/opt/activitypub/src
@@ -40,10 +39,6 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.62.0
-    ports:
-      - "4318:4318"
-      - "16686:16686"
-      - "9411:9411"
     restart: always
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
@@ -96,8 +91,6 @@ services:
 
   pubsub:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
-    ports:
-      - "8085:8085"
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -119,9 +112,6 @@ services:
     networks:
       - test_network
     build: .
-    ports:
-      - "8083:8083"
-      - "9230:9229"
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
@@ -220,8 +210,6 @@ services:
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
-    ports:
-      - "3308:3306"
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
@@ -231,8 +219,6 @@ services:
     networks:
       - test_network
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
-    ports:
-      - "8086:8085"
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -274,14 +260,10 @@ services:
         aliases:
           - fake-mastodon.test
     image: wiremock/wiremock:3.10.0-1
-    ports:
-      - "8084:8080"
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:
     build: fake-gcs
-    ports:
-      - "4443:4443"
     environment:
       - GCP_BUCKET_NAME=activitypub
       - GCP_PROJECT_ID=activitypub
