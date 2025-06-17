@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Federation, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -9,6 +10,12 @@ import type { ContextData } from 'app';
 
 import type { PubSubEvents } from './pubsub';
 import { createIncomingPubSubMessageHandler } from './pubsub-http';
+
+vi.mock('@sentry/node', () => {
+    return {
+        captureException: vi.fn(),
+    };
+});
 
 vi.mock('helpers/fedify', () => ({
     createFedifyCtxForHost: vi.fn(),
@@ -139,6 +146,29 @@ describe('handleIncomingPubSubMessage', () => {
         };
 
         const response = await handler(createContext(payload));
+
+        expect(response.status).toBe(500);
+    });
+
+    it('should capture the error when the message is not handled successfully', async () => {
+        const error = new Error('Something went wrong!');
+        pubSubEvents.handleIncomingMessage = vi.fn().mockRejectedValue(error);
+
+        const payload = {
+            message: {
+                data: encode({
+                    id: 123,
+                }),
+                attributes: {
+                    event_host: 'example.com',
+                    event_name: 'foo',
+                },
+            },
+        };
+
+        const response = await handler(createContext(payload));
+
+        expect(Sentry.captureException).toHaveBeenCalledWith(error);
 
         expect(response.status).toBe(500);
     });
