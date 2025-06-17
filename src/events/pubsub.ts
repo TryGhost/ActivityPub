@@ -1,5 +1,7 @@
 import type { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
+
 import { AsyncEvents } from 'core/events';
 import type { EventSerializer, SerializableEvent } from './event';
 
@@ -28,6 +30,8 @@ export class PubSubEvents extends AsyncEvents {
 
             return true;
         } catch (error) {
+            Sentry.captureException(error);
+
             this.logger.error(
                 'Failed to publish event [{event}] to Pub/Sub: {error}',
                 {
@@ -87,6 +91,8 @@ export class PubSubEvents extends AsyncEvents {
 
         for (const result of results) {
             if (result.status === 'rejected') {
+                Sentry.captureException(result.reason);
+
                 this.logger.error(
                     'Event handler for [{event}] on host [{host}] failed: {error}',
                     {

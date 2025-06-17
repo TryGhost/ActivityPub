@@ -1,4 +1,5 @@
 import type { Federation } from '@fedify/fedify';
+import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
@@ -76,6 +77,8 @@ export function createIncomingPubSubMessageHandler(
 
             return new Response(null, { status: 200 });
         } catch (error) {
+            Sentry.captureException(error);
+
             ctx.get('logger').error(
                 'Failed to handle incoming Pub/Sub message: {error}',
                 {
