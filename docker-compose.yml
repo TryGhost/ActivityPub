@@ -126,7 +126,9 @@ services:
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
+      - test-content:/opt/activitypub/content
     environment:
+      - LOCAL_STORAGE_PATH=/opt/activitypub/content
       - PORT=8083
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
@@ -305,3 +307,6 @@ services:
 networks:
   test_network:
     driver: bridge
+
+volumes:
+  test-content:
