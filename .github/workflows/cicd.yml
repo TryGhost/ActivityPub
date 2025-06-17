@@ -306,7 +306,8 @@ jobs:
           export TF_VAR_primary_region_name=netherlands
           export TF_VAR_migrations_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:pr-${{ github.event.pull_request.number }}
           export TF_VAR_api_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
-          export TF_VAR_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_fedify_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_ghost_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
           terraform apply -auto-approve
 
       - name: "Deploy Migrations to Cloud Run"
@@ -437,6 +438,26 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
+      - name: "Deploy ActivityPub Fedify Queue to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-fedify-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Deploy ActivityPub Ghost Queue to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-ghost-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
       - name: "Deploy ActivityPub External to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -504,6 +525,26 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: prd-${{ matrix.region_name }}-activitypub-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Deploy ActivityPub Fedify Queue to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-fedify-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Deploy ActivityPub Ghost Queue to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-ghost-queue
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
