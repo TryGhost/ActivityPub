@@ -1301,6 +1301,7 @@ serve(
                 bootTime: Math.round(process.uptime() * 1000),
             },
         );
+        globalLogging.info('test');
     },
 );
 
