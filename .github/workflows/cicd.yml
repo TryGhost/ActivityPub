@@ -428,16 +428,6 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: "Deploy ActivityPub Queue to Cloud Run"
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
-          region: ${{ matrix.region }}
-          service: stg-${{ matrix.region_name }}-activitypub-queue
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
       - name: "Deploy ActivityPub Fedify Queue to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -515,16 +505,6 @@ jobs:
           region: ${{ matrix.region }}
           job: prd-${{ matrix.region_name }}-activitypub-migrations
           flags: --wait --execute-now
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: "Deploy ActivityPub Queue to Cloud Run"
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
-          region: ${{ matrix.region }}
-          service: prd-${{ matrix.region_name }}-activitypub-queue
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
