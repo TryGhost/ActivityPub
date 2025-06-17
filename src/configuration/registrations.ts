@@ -109,8 +109,8 @@ export function registerDependencies(
                 process.env.LOCAL_STORAGE_HOSTING_URL
             ) {
                 return new LocalStorageAdapter(
-                    process.env.LOCAL_STORAGE_PATH || '',
-                    new URL(process.env.LOCAL_STORAGE_HOSTING_URL || ''),
+                    process.env.LOCAL_STORAGE_PATH,
+                    new URL(process.env.LOCAL_STORAGE_HOSTING_URL),
                 );
             }
             const bucketName = process.env.GCP_BUCKET_NAME || '';
