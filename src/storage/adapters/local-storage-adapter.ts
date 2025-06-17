@@ -33,7 +33,7 @@ export class LocalStorageAdapter implements StorageAdapter {
         try {
             const buffer = Buffer.from(await file.arrayBuffer());
 
-            const fullPath = join(this.storagePath, normalize(path));
+            const fullPath = normalize(join(this.storagePath, path));
 
             if (!fullPath.startsWith(this.storagePath)) {
                 return error('error-saving-file');
