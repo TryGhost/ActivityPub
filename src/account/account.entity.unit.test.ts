@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AccountEntity } from 'account/account.entity';
 import { PostType } from 'post/post.entity';
+import { createInternalAccountDraftData } from '../test/account-entity-test-helpers';
 import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountFollowedEvent } from './account-followed.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
@@ -12,9 +13,8 @@ import { DomainUnblockedEvent } from './domain-unblocked.event';
 import { NotificationsReadEvent } from './notifications-read-event';
 
 describe('AccountEntity', () => {
-    it('Uses the apId if the url is missing', () => {
-        const draft = AccountEntity.draft({
-            isInternal: true,
+    it('Uses the apId if the url is missing', async () => {
+        const draftData = await createInternalAccountDraftData({
             host: new URL('http://foobar.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -23,6 +23,8 @@ describe('AccountEntity', () => {
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
         });
+
+        const draft = AccountEntity.draft(draftData);
 
         const account = AccountEntity.create({
             id: 1,
@@ -32,9 +34,8 @@ describe('AccountEntity', () => {
         expect(account.url).toEqual(account.apId);
     });
 
-    it('Can generate the apId', () => {
-        const draft = AccountEntity.draft({
-            isInternal: true,
+    it('Can generate the apId', async () => {
+        const draftData = await createInternalAccountDraftData({
             host: new URL('http://foobar.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -43,6 +44,8 @@ describe('AccountEntity', () => {
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
         });
+
+        const draft = AccountEntity.draft(draftData);
 
         const account = AccountEntity.create({
             id: 1,
@@ -55,9 +58,8 @@ describe('AccountEntity', () => {
         expect(account.url).toEqual(account.apId);
     });
 
-    it('Can generate the apFollowers', () => {
-        const draft = AccountEntity.draft({
-            isInternal: true,
+    it('Can generate the apFollowers', async () => {
+        const draftData = await createInternalAccountDraftData({
             host: new URL('http://foobar.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -66,6 +68,8 @@ describe('AccountEntity', () => {
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
         });
+
+        const draft = AccountEntity.draft(draftData);
 
         const account = AccountEntity.create({
             id: 1,
@@ -78,9 +82,8 @@ describe('AccountEntity', () => {
     });
 
     describe('getApIdForPost', () => {
-        it('Can get the ap id for an article', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('Can get the ap id for an article', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://foobar.com'),
                 username: 'foobar',
                 name: 'Foo Bar',
@@ -89,6 +92,8 @@ describe('AccountEntity', () => {
                 avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
                 bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -105,9 +110,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('Can get the ap id for a note', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('Can get the ap id for a note', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://foobar.com'),
                 username: 'foobar',
                 name: 'Foo Bar',
@@ -116,6 +120,8 @@ describe('AccountEntity', () => {
                 avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
                 bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -134,9 +140,8 @@ describe('AccountEntity', () => {
     });
 
     describe('updateProfile', () => {
-        it('can update name', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can update name', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -147,6 +152,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -166,9 +173,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('can update bio', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can update bio', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -179,6 +185,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -198,9 +206,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('can update username', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can update username', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -211,6 +218,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -231,9 +240,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('can update avatarUrl', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can update avatarUrl', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -244,6 +252,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -265,9 +275,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('can update bannerImageUrl', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can update bannerImageUrl', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -278,6 +287,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -301,9 +312,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('can update multiple properties at once', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can update multiple properties at once', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -314,6 +324,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -341,9 +353,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('can set values to null', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('can set values to null', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -354,6 +365,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -374,9 +387,8 @@ describe('AccountEntity', () => {
             );
         });
 
-        it('should emit AccountUpdatedEvent when data changes', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('should emit AccountUpdatedEvent when data changes', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -387,6 +399,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -402,9 +416,8 @@ describe('AccountEntity', () => {
             expect(events[0]).toBeInstanceOf(AccountUpdatedEvent);
         });
 
-        it('should not emit AccountUpdatedEvent when data is the same', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('should not emit AccountUpdatedEvent when data is the same', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -415,6 +428,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -437,9 +452,8 @@ describe('AccountEntity', () => {
     });
 
     describe('block and unblock', () => {
-        it('You cannot block yourself', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You cannot block yourself', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -450,6 +464,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -461,9 +477,8 @@ describe('AccountEntity', () => {
             expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
         });
 
-        it('You can block another account', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You can block another account', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -474,6 +489,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -492,9 +509,8 @@ describe('AccountEntity', () => {
             ]);
         });
 
-        it('You cannot unblock yourself', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You cannot unblock yourself', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -505,6 +521,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -516,9 +534,8 @@ describe('AccountEntity', () => {
             expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
         });
 
-        it('You can unblock another account', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You can unblock another account', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -529,6 +546,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -549,9 +568,8 @@ describe('AccountEntity', () => {
     });
 
     describe('blockDomain and unblockDomain', () => {
-        it('should block domain', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('should block domain', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -562,6 +580,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -581,9 +601,8 @@ describe('AccountEntity', () => {
             }
         });
 
-        it('should unblock domain', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('should unblock domain', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -594,6 +613,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -615,9 +636,8 @@ describe('AccountEntity', () => {
     });
 
     describe('follow and unfollow', () => {
-        it('You cannot follow yourself', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You cannot follow yourself', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -628,6 +648,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -639,9 +661,8 @@ describe('AccountEntity', () => {
             expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
         });
 
-        it('You can follow another account', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You can follow another account', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -652,6 +673,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -670,9 +693,8 @@ describe('AccountEntity', () => {
             ]);
         });
 
-        it('You cannot unfollow yourself', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You cannot unfollow yourself', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -683,6 +705,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -694,9 +718,8 @@ describe('AccountEntity', () => {
             expect(AccountEntity.pullEvents(updated)).toStrictEqual([]);
         });
 
-        it('You can unfollow another account', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('You can unfollow another account', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -707,6 +730,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
@@ -727,9 +752,8 @@ describe('AccountEntity', () => {
     });
 
     describe('readAllNotifications', () => {
-        it('should read all notifications', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('should read all notifications', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
                 name: 'Original Name',
@@ -740,6 +764,8 @@ describe('AccountEntity', () => {
                     'http://example.com/original-banner.png',
                 ),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const account = AccountEntity.create({
                 id: 1,
