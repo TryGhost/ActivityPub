@@ -227,6 +227,22 @@ export class AccountService {
                         throw error;
                     }
 
+                    // If the existing account doesn't have a private key, generate one
+                    // This is required for the account to sign outgoing activities after
+                    // a potential migration from a different server.
+                    if (!existingAccount.ap_private_key || existingAccount.ap_private_key === '') {
+                        const newKeyPair = await this.generateKeyPair();
+                        await tx('accounts')
+                            .where({ id: existingAccount.id })
+                            .update({
+                                ap_public_key: JSON.stringify(await exportJwk(newKeyPair.publicKey)),
+                                ap_private_key: JSON.stringify(await exportJwk(newKeyPair.privateKey))
+                            });
+
+                        existingAccount.ap_public_key = JSON.stringify(await exportJwk(newKeyPair.publicKey));
+                        existingAccount.ap_private_key = JSON.stringify(await exportJwk(newKeyPair.privateKey));
+                    }
+
                     // Ensure a user row exists linking this site to the account.
                     // This is relevant for cases where a user is migrating between
                     // Ghost servers.
