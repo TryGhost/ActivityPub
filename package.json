@@ -61,7 +61,7 @@
     "wiremock-captain": "3.6.1"
   },
   "dependencies": {
-    "@fedify/fedify": "1.5.1",
+    "@fedify/fedify": "1.7.0-dev.888",
     "@google-cloud/opentelemetry-cloud-trace-exporter": "2.4.1",
     "@google-cloud/opentelemetry-cloud-trace-propagator": "0.20.0",
     "@google-cloud/pubsub": "4.11.0",
