@@ -1803,4 +1803,124 @@ describe('KnexPostRepository', () => {
             'No outbox entry should be created for external accounts',
         );
     });
+
+    describe('Post Entity Mapping', () => {
+        it('correctly maps a post row to a post entity', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const post = await fixtureManager.createPost(account);
+
+            const retrievedPost = await postRepository.getById(post.id);
+            assert(retrievedPost, 'Post should be retrieved from database');
+
+            expect(retrievedPost.id).toBe(post.id);
+            expect(retrievedPost.uuid).toBe(post.uuid);
+            expect(retrievedPost.type).toBe(post.type);
+            expect(retrievedPost.title).toBe(post.title);
+            expect(retrievedPost.content).toBe(post.content);
+            expect(retrievedPost.excerpt).toBe(post.excerpt);
+            expect(retrievedPost.url.href).toBe(post.url.href);
+            expect(retrievedPost.imageUrl?.href).toBe(post.imageUrl?.href);
+            expect(retrievedPost.publishedAt.toISOString()).toBe(
+                post.publishedAt.toISOString(),
+            );
+            expect(retrievedPost.metadata).toEqual(post.metadata);
+            expect(retrievedPost.likeCount).toBe(0);
+            expect(retrievedPost.repostCount).toBe(0);
+            expect(retrievedPost.replyCount).toBe(0);
+            expect(retrievedPost.readingTimeMinutes).toBe(
+                post.readingTimeMinutes,
+            );
+            expect(Post.isDeleted(retrievedPost)).toBe(false);
+
+            expect(retrievedPost.author.id).toBe(account.id);
+            expect(retrievedPost.author.uuid).toBe(account.uuid);
+            expect(retrievedPost.author.username).toBe(account.username);
+            expect(retrievedPost.author.name).toBe(account.name);
+            expect(retrievedPost.author.bio).toBe(account.bio);
+            expect(retrievedPost.author.url.href).toBe(account.url.href);
+            expect(retrievedPost.author.avatarUrl?.href).toBe(
+                account.avatarUrl?.href,
+            );
+            expect(retrievedPost.author.bannerImageUrl?.href).toBe(
+                account.bannerImageUrl?.href,
+            );
+            expect(retrievedPost.author.apId.href).toBe(account.apId.href);
+            if (account.apFollowers) {
+                expect(retrievedPost.author.apFollowers?.href).toBe(
+                    account.apFollowers.href,
+                );
+            }
+            if (account.apInbox) {
+                expect(retrievedPost.author.apInbox?.href).toBe(
+                    account.apInbox.href,
+                );
+            }
+            expect(retrievedPost.author.isInternal).toBe(account.isInternal);
+
+            expect(retrievedPost.attachments).toHaveLength(0);
+            expect(retrievedPost.summary).toBe(post.summary);
+            expect(retrievedPost.audience).toBe(post.audience);
+            expect(retrievedPost.inReplyTo).toBe(post.inReplyTo);
+            expect(retrievedPost.threadRoot).toBe(post.threadRoot);
+        });
+
+        it('handles missing author UUID by generating a new one', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            await client('accounts')
+                .where({ id: account.id })
+                .update({ uuid: null });
+
+            const post = await fixtureManager.createPost(account);
+
+            const retrievedPost = await postRepository.getById(post.id);
+            assert(retrievedPost, 'Post should be retrieved from database');
+
+            // Verify that a new UUID was generated for the author
+            expect(retrievedPost.author.uuid).toBeDefined();
+            expect(retrievedPost.author.uuid).not.toBe(account.uuid);
+
+            // Verify that the UUID was saved in the database
+            const updatedAccount = await client('accounts')
+                .where({ id: account.id })
+                .select('uuid')
+                .first();
+            expect(updatedAccount.uuid).toBe(retrievedPost.author.uuid);
+        });
+
+        it('correctly maps mentions for a post', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const post = await fixtureManager.createPost(account);
+
+            const [mentionedAccount1] =
+                await fixtureManager.createInternalAccount();
+            const [mentionedAccount2] =
+                await fixtureManager.createInternalAccount();
+
+            await client('mentions').insert([
+                {
+                    post_id: post.id,
+                    account_id: mentionedAccount1.id,
+                },
+                {
+                    post_id: post.id,
+                    account_id: mentionedAccount2.id,
+                },
+            ]);
+
+            const retrievedPost = await postRepository.getById(post.id);
+            assert(retrievedPost, 'Post should be retrieved from database');
+
+            expect(retrievedPost.mentions).toHaveLength(2);
+            expect(retrievedPost.mentions[0]).toEqual({
+                id: mentionedAccount1.id,
+                apId: mentionedAccount1.apId,
+                username: mentionedAccount1.username,
+            });
+            expect(retrievedPost.mentions[1]).toEqual({
+                id: mentionedAccount2.id,
+                apId: mentionedAccount2.apId,
+                username: mentionedAccount2.username,
+            });
+        });
+    });
 });

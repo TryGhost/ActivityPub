@@ -9,13 +9,65 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { type MentionedAccount, OutboxType, Post } from './post.entity';
+import {
+    type Audience,
+    type CreatePostType,
+    type MentionedAccount,
+    type Metadata,
+    OutboxType,
+    Post,
+} from './post.entity';
 
 type ThreadPosts = {
     post: Post;
     likedByAccount: boolean;
     repostedByAccount: boolean;
 }[];
+
+interface PostRow {
+    id: number;
+    uuid: string | null;
+    type: CreatePostType;
+    audience: Audience;
+    title: string | null;
+    excerpt: string | null;
+    summary: string | null;
+    content: string | null;
+    url: string;
+    image_url: string | null;
+    published_at: Date;
+    like_count: number;
+    repost_count: number;
+    liked_by_current_user: 0 | 1;
+    reply_count: number;
+    reposted_by_current_user: 0 | 1;
+    reading_time_minutes: number;
+    attachments: {
+        type: string | null;
+        mediaType: string | null;
+        name: string | null;
+        url: string;
+    }[];
+    author_id: number;
+    ap_id: string;
+    in_reply_to: number | null;
+    thread_root: number | null;
+    deleted_at: string | null;
+    metadata: Metadata;
+    updated_at: string | null;
+    username: string;
+    author_uuid: string | null;
+    name: string | null;
+    bio: string | null;
+    avatar_url: string | null;
+    banner_image_url: string | null;
+    author_ap_id: string;
+    author_url: string | null;
+    author_ap_followers_url: string | null;
+    author_ap_inbox_url: string | null;
+    site_id: number | null;
+    site_host: string | null;
+}
 
 export class KnexPostRepository {
     constructor(
@@ -73,73 +125,7 @@ export class KnexPostRepository {
             return null;
         }
 
-        if (!row.author_uuid) {
-            row.author_uuid = randomUUID();
-            await this.db('accounts')
-                .update({ uuid: row.author_uuid })
-                .where({ id: row.author_id });
-        }
-
-        const author = AccountEntity.create({
-            id: row.author_id,
-            uuid: row.author_uuid,
-            username: row.username,
-            name: row.name,
-            bio: row.bio,
-            url: parseURL(row.author_url) || new URL(row.ap_id),
-            avatarUrl: parseURL(row.avatar_url),
-            bannerImageUrl: parseURL(row.banner_image_url),
-            apId: new URL(row.author_ap_id),
-            apFollowers: parseURL(row.ap_followers_url),
-            apInbox: parseURL(row.author_ap_inbox_url),
-            isInternal: row.site_id !== null,
-        });
-
-        // Parse attachments and convert URL strings back to URL objects
-        const attachments = row.attachments
-            ? row.attachments.map(
-                  (
-                      // TODO: Clean up the any type
-                      // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                      attachment: any,
-                  ) => ({
-                      ...attachment,
-                      url: new URL(attachment.url),
-                  }),
-              )
-            : [];
-
-        const post = new Post(
-            row.id,
-            row.uuid,
-            author,
-            row.type,
-            row.audience,
-            row.title,
-            row.excerpt,
-            row.summary,
-            row.content,
-            new URL(row.url),
-            parseURL(row.image_url),
-            new Date(row.published_at),
-            row.metadata,
-            row.like_count,
-            row.repost_count,
-            row.reply_count,
-            row.in_reply_to,
-            row.thread_root,
-            row.reading_time_minutes,
-            attachments,
-            new URL(row.ap_id),
-            row.deleted_at !== null,
-            row.updated_at ? new Date(row.updated_at) : null,
-        );
-
-        if (post.id) {
-            post.mentions.push(...(await this.getPostMentions(post.id)));
-        }
-
-        return post;
+        return this.mapRowToPostEntity(row);
     }
 
     private async getPostMentions(postId: number): Promise<MentionedAccount[]> {
@@ -340,71 +326,7 @@ export class KnexPostRepository {
         const posts = [];
 
         for (const row of thread) {
-            if (!row.author_uuid) {
-                row.author_uuid = randomUUID();
-                await this.db('accounts')
-                    .update({ uuid: row.author_uuid })
-                    .where({ id: row.author_id });
-            }
-
-            const author = AccountEntity.create({
-                id: row.author_id,
-                uuid: row.author_uuid,
-                username: row.username,
-                name: row.name,
-                bio: row.bio,
-                url: parseURL(row.author_url) || new URL(row.ap_id),
-                avatarUrl: parseURL(row.avatar_url),
-                bannerImageUrl: parseURL(row.banner_image_url),
-                apId: new URL(row.author_ap_id),
-                apFollowers: parseURL(row.ap_followers_url),
-                apInbox: parseURL(row.author_ap_inbox_url),
-                isInternal: row.site_id !== null,
-            });
-
-            const attachments = row.attachments
-                ? row.attachments.map(
-                      (
-                          // TODO: Clean up the any type
-                          // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                          attachment: any,
-                      ) => ({
-                          ...attachment,
-                          url: new URL(attachment.url),
-                      }),
-                  )
-                : [];
-
-            const post = new Post(
-                row.id,
-                row.uuid,
-                author,
-                row.type,
-                row.audience,
-                row.title,
-                row.excerpt,
-                row.summary,
-                row.content,
-                new URL(row.url),
-                parseURL(row.image_url),
-                new Date(row.published_at),
-                row.metadata,
-                row.like_count,
-                row.repost_count,
-                row.reply_count,
-                row.in_reply_to,
-                row.thread_root,
-                row.reading_time_minutes,
-                attachments,
-                new URL(row.ap_id),
-                row.deleted_at !== null,
-                row.updated_at ? new Date(row.updated_at) : null,
-            );
-
-            if (post.id) {
-                post.mentions.push(...(await this.getPostMentions(post.id)));
-            }
-
+            const post = await this.mapRowToPostEntity(row);
             posts.push({
                 post,
                 likedByAccount: row.liked_by_account === 1,
@@ -1099,5 +1021,74 @@ export class KnexPostRepository {
             .first();
 
         return result !== undefined;
+    }
+
+    private async mapRowToPostEntity(row: PostRow): Promise<Post> {
+        if (!row.author_uuid) {
+            row.author_uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: row.author_uuid })
+                .where({ id: row.author_id });
+        }
+
+        const author = AccountEntity.create({
+            id: row.author_id,
+            uuid: row.author_uuid,
+            username: row.username,
+            name: row.name,
+            bio: row.bio,
+            url: parseURL(row.author_url) || new URL(row.ap_id),
+            avatarUrl: parseURL(row.avatar_url),
+            bannerImageUrl: parseURL(row.banner_image_url),
+            apId: new URL(row.author_ap_id),
+            apFollowers: parseURL(row.author_ap_followers_url),
+            apInbox: parseURL(row.author_ap_inbox_url),
+            isInternal: row.site_id !== null,
+        });
+
+        const attachments = row.attachments
+            ? row.attachments.map(
+                  (
+                      // TODO: Clean up the any type
+                      // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+                      attachment: any,
+                  ) => ({
+                      ...attachment,
+                      url: new URL(attachment.url),
+                  }),
+              )
+            : [];
+
+        const post = new Post(
+            row.id,
+            row.uuid,
+            author,
+            row.type,
+            row.audience,
+            row.title,
+            row.excerpt,
+            row.summary,
+            row.content,
+            new URL(row.url),
+            parseURL(row.image_url),
+            new Date(row.published_at),
+            row.metadata,
+            row.like_count,
+            row.repost_count,
+            row.reply_count,
+            row.in_reply_to,
+            row.thread_root,
+            row.reading_time_minutes,
+            attachments,
+            new URL(row.ap_id),
+            row.deleted_at !== null,
+            row.updated_at ? new Date(row.updated_at) : null,
+        );
+
+        if (post.id) {
+            post.mentions.push(...(await this.getPostMentions(post.id)));
+        }
+
+        return post;
     }
 }
