@@ -1,0 +1,36 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    {
+      "Emoji": "toot:Emoji",
+      "Hashtag": "as:Hashtag",
+      "_misskey_quote": "misskey:_misskey_quote",
+      "emojiReactions": {
+        "@id": "fedibird:emojiReactions",
+        "@type": "@id",
+      },
+      "fedibird": "http://fedibird.com/ns#",
+      "misskey": "https://misskey-hub.net/ns#",
+      "quoteUri": "fedibird:quoteUri",
+      "quoteUrl": "as:quoteUrl",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+    },
+  ],
+  "attributedTo": "https://example.com/user/foo",
+  "cc": [
+    "https://example.com/user/foo/followers",
+    "https://example.com/@test",
+  ],
+  "content": "Hello! @test@example.com",
+  "id": "https://example.com/note/post-123",
+  "published": "2025-01-17T10:30:00Z",
+  "tag": {
+    "href": "https://example.com/@test",
+    "name": "@test@example.com",
+    "type": "Mention",
+  },
+  "to": "as:Public",
+  "type": "Note",
+}
