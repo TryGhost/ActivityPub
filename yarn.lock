@@ -2610,10 +2610,10 @@ hex2dec@^1.0.1:
   resolved "https://registry.yarnpkg.com/hex2dec/-/hex2dec-1.1.2.tgz#8e1ce4bef36a74f7d5723c3fb3090c2860077338"
   integrity sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==
 
-hono@4.7.11:
-  version "4.7.11"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.7.11.tgz#369819d9daca5822db7b123462c5ce20b121c640"
-  integrity sha512-rv0JMwC0KALbbmwJDEnxvQCeJh+xbS3KEWW5PC9cMJ08Ur9xgatI0HmtgYZfOdOSOeYsp5LO2cOhdI8cLEbDEQ==
+hono@4.8.0:
+  version "4.8.0"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.8.0.tgz#0dae296efd89c48541f8e6cf3516408dcccaa209"
+  integrity sha512-NoiHrqJxoe1MYXqW+/0/Q4NCizKj2Ivm4KmX8mOSBtw9UJ7KYaOGKkO7csIwO5UlZpfvVRdcgiMb0GGyjEjtcw==
 
 hosted-git-info@^7.0.0:
   version "7.0.2"
