@@ -83,6 +83,7 @@ export class FediverseBridge {
             return;
         }
 
+        // TODO: Replies are currently handled in the handler file. Move that logic here.
         if (post.type === PostType.Note && post.inReplyTo) {
             return;
         }
