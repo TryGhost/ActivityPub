@@ -318,8 +318,12 @@ describe('AccountService', () => {
                 .first();
             expect(user).toBeUndefined();
 
-            // Now, call createInternalAccount (should not throw, should create user row)
-            await service.createInternalAccount(site, internalAccountData);
+            // Call and capture the result to ensure the original account is reused
+            const returned = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+            expect(returned.id).toBe(accountId);
 
             // Now, there should be a user row linking the site to the account
             user = await db('users')
@@ -358,14 +362,18 @@ describe('AccountService', () => {
             const [accountId] = await db('accounts').insert(accountData);
 
             // Get initial account state
-            let beforeAccount = await db('accounts').where('id', accountId).first();
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
             expect(beforeAccount.ap_private_key).toBeNull();
 
             // Call createInternalAccount which should update the keypair
             await service.createInternalAccount(site, internalAccountData);
 
             // Verify the account now has a private key
-            let updatedAccount = await db('accounts').where('id', accountId).first();
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
             expect(updatedAccount.ap_private_key).not.toBeNull();
             expect(updatedAccount.ap_public_key).not.toBe('public-key');
             expect(updatedAccount.ap_private_key).toContain('key_ops');
@@ -399,8 +407,11 @@ describe('AccountService', () => {
             await db('accounts').insert(accountData);
 
             // Call createInternalAccount and verify the returned account has updated keys
-            const returnedAccount = await service.createInternalAccount(site, internalAccountData);
-            
+            const returnedAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
             expect(returnedAccount.ap_private_key).not.toBeNull();
             expect(returnedAccount.ap_public_key).not.toBe('old-public-key');
             expect(returnedAccount.ap_private_key).toContain('key_ops');
@@ -436,15 +447,22 @@ describe('AccountService', () => {
             const [accountId] = await db('accounts').insert(accountData);
 
             // Get initial account state
-            let beforeAccount = await db('accounts').where('id', accountId).first();
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
             expect(beforeAccount.ap_private_key).toBeNull();
             expect(beforeAccount.ap_public_key).toBeNull();
 
             // Call createInternalAccount which should generate both keys
-            const returnedAccount = await service.createInternalAccount(site, internalAccountData);
+            const returnedAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
 
             // Verify both keys were generated in the database
-            let updatedAccount = await db('accounts').where('id', accountId).first();
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
             expect(updatedAccount.ap_private_key).not.toBeNull();
             expect(updatedAccount.ap_public_key).not.toBeNull();
             expect(updatedAccount.ap_private_key).toContain('key_ops');
@@ -484,15 +502,22 @@ describe('AccountService', () => {
             const [accountId] = await db('accounts').insert(accountData);
 
             // Get initial account state
-            let beforeAccount = await db('accounts').where('id', accountId).first();
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
             expect(beforeAccount.ap_private_key).toBe('');
             expect(beforeAccount.ap_public_key).toBe('');
 
             // Call createInternalAccount which should treat empty strings as missing keys
-            const returnedAccount = await service.createInternalAccount(site, internalAccountData);
+            const returnedAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
 
             // Verify new keys were generated despite empty strings being present
-            let updatedAccount = await db('accounts').where('id', accountId).first();
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
             expect(updatedAccount.ap_private_key).not.toBe('');
             expect(updatedAccount.ap_public_key).not.toBe('');
             expect(updatedAccount.ap_private_key).toContain('key_ops');
