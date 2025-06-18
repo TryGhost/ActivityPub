@@ -22,9 +22,7 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
-      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
@@ -111,7 +109,7 @@ services:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
@@ -148,9 +146,7 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub-testing:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
-      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
@@ -248,7 +244,7 @@ services:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push
