@@ -13,6 +13,7 @@ import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostDerepostedEvent } from 'post/post-dereposted.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import { Audience, Post, PostType } from 'post/post.entity';
+import { createInternalAccountDraftData } from '../test/account-entity-test-helpers';
 
 describe('FeedUpdateService', () => {
     let events: EventEmitter;
@@ -21,7 +22,7 @@ describe('FeedUpdateService', () => {
 
     let account: AccountEntity;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.useFakeTimers();
 
         events = new EventEmitter();
@@ -33,8 +34,7 @@ describe('FeedUpdateService', () => {
             removeUnfollowedAccountPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
-        const draft = AccountEntity.draft({
-            isInternal: true,
+        const draftData = await createInternalAccountDraftData({
             host: new URL('https://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -43,6 +43,8 @@ describe('FeedUpdateService', () => {
             bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
             url: new URL('https://example.com/users/456'),
         });
+
+        const draft = AccountEntity.draft(draftData);
 
         account = AccountEntity.create({
             id: 456,
@@ -184,9 +186,8 @@ describe('FeedUpdateService', () => {
     });
 
     describe('handling a blocked account', () => {
-        it('should remove blocked account posts from feeds', () => {
-            const draft = AccountEntity.draft({
-                isInternal: true,
+        it('should remove blocked account posts from feeds', async () => {
+            const draftData = await createInternalAccountDraftData({
                 host: new URL('https://example.com'),
                 username: 'bazqux',
                 name: 'Baz Qux',
@@ -197,6 +198,8 @@ describe('FeedUpdateService', () => {
                 ),
                 url: new URL('https://blocked.com/users/789'),
             });
+
+            const draft = AccountEntity.draft(draftData);
 
             const blockedAccount = AccountEntity.create({
                 id: 789,

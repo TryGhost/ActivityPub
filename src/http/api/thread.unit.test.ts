@@ -6,6 +6,7 @@ import type { AppContext } from 'app';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { Site } from 'site/site.service';
+import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
 import { createGetThreadHandler } from './thread';
 
 describe('Thread API', () => {
@@ -14,7 +15,7 @@ describe('Thread API', () => {
     let account: Account;
     let postRepository: KnexPostRepository;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.setSystemTime(new Date('2025-02-27T15:40:00Z'));
 
         site = {
@@ -22,8 +23,7 @@ describe('Thread API', () => {
             host: 'example.com',
             webhook_secret: 'secret',
         };
-        const draft = AccountEntity.draft({
-            isInternal: true,
+        const draftData = await createInternalAccountDraftData({
             host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -32,6 +32,9 @@ describe('Thread API', () => {
             avatarUrl: new URL('http://example.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
         });
+
+        const draft = AccountEntity.draft(draftData);
+
         account = AccountEntity.create({
             id: 456,
             ...draft,
