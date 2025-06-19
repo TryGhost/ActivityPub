@@ -284,6 +284,249 @@ describe('AccountService', () => {
 
             expect(accountRow.domain).toBe(site.host);
         });
+
+        it('should create a user row for an existing account when migrating a site', async () => {
+            // Simulate an account that already exists (e.g., from a previous external interaction)
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: 'public-key',
+                ap_private_key: null,
+                domain: site.host,
+            };
+            // Insert the account directly (simulate external interaction)
+            const [accountId] = await db('accounts').insert(accountData);
+
+            // There should be no user row for this account and site yet
+            let user = await db('users')
+                .where({ account_id: accountId, site_id: site.id })
+                .first();
+            expect(user).toBeUndefined();
+
+            // Call and capture the result to ensure the original account is reused
+            const returned = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+            expect(returned.id).toBe(accountId);
+
+            // Now, there should be a user row linking the site to the account
+            user = await db('users')
+                .where({ account_id: accountId, site_id: site.id })
+                .first();
+            expect(user).toBeDefined();
+            expect(user.account_id).toBe(accountId);
+            expect(user.site_id).toBe(site.id);
+        });
+
+        it('should generate a keypair for an existing account without private key during site migration', async () => {
+            // Simulate an account that already exists but has no private key
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: 'public-key',
+                ap_private_key: null, // Note: no private key
+                domain: site.host,
+            };
+            // Insert the account directly
+            const [accountId] = await db('accounts').insert(accountData);
+
+            // Get initial account state
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(beforeAccount.ap_private_key).toBeNull();
+
+            // Call createInternalAccount which should update the keypair
+            await service.createInternalAccount(site, internalAccountData);
+
+            // Verify the account now has a private key
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(updatedAccount.ap_private_key).not.toBeNull();
+            expect(updatedAccount.ap_public_key).not.toBe('public-key');
+            expect(updatedAccount.ap_private_key).toContain('key_ops');
+        });
+
+        it('should return account with newly generated keys from createInternalAccount', async () => {
+            // Simulate an account that already exists but has no private key
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: 'old-public-key',
+                ap_private_key: null, // Note: no private key
+                domain: site.host,
+            };
+            // Insert the account directly
+            await db('accounts').insert(accountData);
+
+            // Call createInternalAccount and verify the returned account has updated keys
+            const returnedAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            expect(returnedAccount.ap_private_key).not.toBeNull();
+            expect(returnedAccount.ap_public_key).not.toBe('old-public-key');
+            expect(returnedAccount.ap_private_key).toContain('key_ops');
+            expect(returnedAccount.ap_public_key).toContain('key_ops');
+        });
+
+        it('should generate a keypair for an existing account without any keys during site migration', async () => {
+            // Test case where account has neither public nor private key
+            // This could happen if an account was created externally but incompletely
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: null, // No public key either
+                ap_private_key: null, // No private key
+                domain: site.host,
+            };
+            // Insert the account directly
+            const [accountId] = await db('accounts').insert(accountData);
+
+            // Get initial account state
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(beforeAccount.ap_private_key).toBeNull();
+            expect(beforeAccount.ap_public_key).toBeNull();
+
+            // Call createInternalAccount which should generate both keys
+            const returnedAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            // Verify both keys were generated in the database
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(updatedAccount.ap_private_key).not.toBeNull();
+            expect(updatedAccount.ap_public_key).not.toBeNull();
+            expect(updatedAccount.ap_private_key).toContain('key_ops');
+            expect(updatedAccount.ap_public_key).toContain('key_ops');
+
+            // Verify the returned account also has both keys
+            expect(returnedAccount.ap_private_key).not.toBeNull();
+            expect(returnedAccount.ap_public_key).not.toBeNull();
+        });
+
+        it('should handle empty string keys as missing keys during migration', async () => {
+            // Test case where keys are empty strings instead of null
+            // This prevents subtle bugs where empty strings aren't handled the same as null values
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: '', // Empty string instead of null
+                ap_private_key: '', // Empty string instead of null
+                domain: site.host,
+            };
+            // Insert the account directly
+            const [accountId] = await db('accounts').insert(accountData);
+
+            // Get initial account state
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(beforeAccount.ap_private_key).toBe('');
+            expect(beforeAccount.ap_public_key).toBe('');
+
+            // Call createInternalAccount which should treat empty strings as missing keys
+            const returnedAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            // Verify new keys were generated despite empty strings being present
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(updatedAccount.ap_private_key).not.toBe('');
+            expect(updatedAccount.ap_public_key).not.toBe('');
+            expect(updatedAccount.ap_private_key).toContain('key_ops');
+            expect(updatedAccount.ap_public_key).toContain('key_ops');
+
+            // Verify the returned account also has the new keys
+            expect(returnedAccount.ap_private_key).not.toBe('');
+            expect(returnedAccount.ap_public_key).not.toBe('');
+        });
     });
 
     describe('createExternalAccount', () => {
