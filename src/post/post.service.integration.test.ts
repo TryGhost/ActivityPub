@@ -809,4 +809,67 @@ describe('PostService', () => {
             });
         });
     });
+
+    describe('getOutboxForAccount', () => {
+        it('should return posts for an account with pagination', async () => {
+            const post1 = await fixtureManager.createPost(account);
+            const post2 = await fixtureManager.createPost(account);
+            const post3 = await fixtureManager.createPost(account);
+
+            // Get first page
+            const firstPage = await postService.getOutboxForAccount(
+                account.id,
+                '0',
+                2,
+            );
+
+            expect(firstPage).toHaveLength(2);
+            expect(firstPage[0].id).toBe(post3.id);
+            expect(firstPage[1].id).toBe(post2.id);
+
+            // Get second page
+            const secondPage = await postService.getOutboxForAccount(
+                account.id,
+                '2', // Next offset should be 2 (previous offset + page size)
+                2,
+            );
+
+            expect(secondPage).toHaveLength(1);
+            expect(secondPage[0].id).toBe(post1.id);
+        });
+
+        it('should return empty array for account with no posts', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const posts = await postService.getOutboxForAccount(
+                account.id,
+                '0',
+                10,
+            );
+
+            expect(posts).toHaveLength(0);
+        });
+    });
+
+    describe('getOutboxItemCount', () => {
+        it('should return correct count of posts for an account', async () => {
+            await Promise.all([
+                fixtureManager.createPost(account),
+                fixtureManager.createPost(account),
+                fixtureManager.createPost(account),
+            ]);
+
+            const count = await postService.getOutboxItemCount(account.id);
+
+            expect(count).toBe(3);
+        });
+
+        it('should return zero for account with no posts', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const count = await postService.getOutboxItemCount(account.id);
+
+            expect(count).toBe(0);
+        });
+    });
 });

@@ -73,8 +73,6 @@ import {
     likedFirstCursor,
     nodeInfoDispatcher,
     noteDispatcher,
-    outboxCounter,
-    outboxDispatcher,
     outboxFirstCursor,
     undoDispatcher,
     updateDispatcher,
@@ -439,9 +437,21 @@ globalFedify
 globalFedify
     .setOutboxDispatcher(
         '/.ghost/activitypub/outbox/{identifier}',
-        spanWrapper(outboxDispatcher),
+        spanWrapper(
+            (
+                ctx: RequestContext<ContextData>,
+                identifier: string,
+                cursor: string | null,
+            ) => {
+                const outboxDispatcher = container.resolve('outboxDispatcher');
+                return outboxDispatcher(ctx, identifier, cursor);
+            },
+        ),
     )
-    .setCounter(outboxCounter)
+    .setCounter((ctx: RequestContext<ContextData>) => {
+        const outboxCounter = container.resolve('outboxCounter');
+        return outboxCounter(ctx);
+    })
     .setFirstCursor(outboxFirstCursor);
 
 globalFedify

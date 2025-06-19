@@ -481,4 +481,20 @@ export class PostService {
         await this.postRepository.save(post);
         return ok(post);
     }
+
+    async getOutboxForAccount(
+        accountId: number,
+        cursor: string | null,
+        pageSize: number,
+    ): Promise<Post[]> {
+        return this.postRepository.getOutboxForAccount(
+            accountId,
+            cursor,
+            pageSize,
+        );
+    }
+
+    async getOutboxItemCount(accountId: number): Promise<number> {
+        return this.postRepository.getOutboxItemCount(accountId);
+    }
 }
