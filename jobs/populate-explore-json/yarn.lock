@@ -70,7 +70,7 @@
     "@smithy/util-utf8" "^2.0.0"
     tslib "^2.6.2"
 
-"@aws-sdk/client-s3@^3.830.0":
+"@aws-sdk/client-s3@3.832.0":
   version "3.832.0"
   resolved "https://registry.yarnpkg.com/@aws-sdk/client-s3/-/client-s3-3.832.0.tgz#c6908ebfcabcfa166fb8bdb2c23e74e4a3df1ea1"
   integrity sha512-S+md1zCe71SEuaRDuLHq4mzhYYkVxR1ENa8NwrgInfYoC4xo8/pESoR6i0ZZpcLs0Jw4EyVInWYs4GgDHW70qQ==
@@ -714,10 +714,10 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/fedify@^1.6.0":
-  version "1.6.2"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.6.2.tgz#22b4888bbac37d7fff763a0d9032b2c1cd31df31"
-  integrity sha512-1MXn91B0EqPmkk+0idTAw4fZCpYG1E/6gxs2Brn+iaIEwR4vAvQc3PqHMAKQOK8vfc9R/TBHh5myZRpkoBkVaw==
+"@fedify/fedify@1.6.1":
+  version "1.6.1"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.6.1.tgz#0fcb80fd8ac944c6187d38f9375644730aa98f84"
+  integrity sha512-KPfy4ETv96smVH52uBfM7RSuGPhUXeJfkhzH8EV0BVH2Whw3oT3UeaJMwRZ1OuVddtdGQ8lWui6tAH0cGV2YTg==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@es-toolkit/es-toolkit" "npm:es-toolkit@^1.38.0"
@@ -1528,7 +1528,7 @@ tslib@^2.6.2, tslib@^2.6.3, tslib@^2.8.1:
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.1.tgz#612efe4ed235d567e8aba5f2a5fab70280ade83f"
   integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
 
-tsx@^4.20.2:
+tsx@4.20.3:
   version "4.20.3"
   resolved "https://registry.yarnpkg.com/tsx/-/tsx-4.20.3.tgz#f913e4911d59ad177c1bcee19d1035ef8dd6e2fb"
   integrity sha512-qjbnuR9Tr+FJOMBqJCW5ehvIo/buZq7vH7qD7JziU98h6l3qGy0a/yPFjwO+y0/T7GFpNgNAvEcPPVfyT8rrPQ==
