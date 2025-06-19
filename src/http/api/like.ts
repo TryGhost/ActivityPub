@@ -1,11 +1,9 @@
 import { createHash } from 'node:crypto';
 
 import { type Actor, Like, PUBLIC_COLLECTION, Undo } from '@fedify/fedify';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
-import { addToList, removeFromList } from 'kv-helpers';
 import { lookupActor, lookupObject } from 'lookup-helpers';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
@@ -14,15 +12,14 @@ import { Forbidden } from './helpers/response';
 
 export class LikeController {
     constructor(
-        private readonly accountRepository: KnexAccountRepository,
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
     ) {}
 
     async handleLike(ctx: AppContext) {
+        const account = ctx.get('account');
         const id = ctx.req.param('id');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -48,53 +45,48 @@ export class LikeController {
             );
         }
 
-        const account = await this.accountRepository.getBySite(ctx.get('site'));
-        if (account !== null) {
-            const postResult = await this.postService.getByApId(idAsUrl);
+        const postResult = await this.postService.getByApId(idAsUrl);
 
-            if (isError(postResult)) {
-                const error = getError(postResult);
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.get('logger').info(
+                        'Upstream error fetching post for liking',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                case 'not-a-post':
+                    ctx.get('logger').info(
+                        'Resource for liking is not a post',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                case 'missing-author':
+                    ctx.get('logger').info(
+                        'Post for liking has missing author',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                default:
+                    return exhaustiveCheck(error);
+            }
+        } else {
+            const post = getValue(postResult);
+
+            const likePostResult = await this.postService.likePost(
+                account,
+                post,
+            );
+
+            if (isError(likePostResult)) {
+                const error = getError(likePostResult);
+
                 switch (error) {
-                    case 'upstream-error':
-                        ctx.get('logger').info(
-                            'Upstream error fetching post for liking',
-                            { postId: idAsUrl.href },
-                        );
-                        break;
-                    case 'not-a-post':
-                        ctx.get('logger').info(
-                            'Resource for liking is not a post',
-                            { postId: idAsUrl.href },
-                        );
-                        break;
-                    case 'missing-author':
-                        ctx.get('logger').info(
-                            'Post for liking has missing author',
-                            { postId: idAsUrl.href },
-                        );
-                        break;
+                    case 'cannot-interact':
+                        return Forbidden('Cannot interact with this account');
                     default:
                         return exhaustiveCheck(error);
-                }
-            } else {
-                const post = getValue(postResult);
-
-                const likePostResult = await this.postService.likePost(
-                    account,
-                    post,
-                );
-
-                if (isError(likePostResult)) {
-                    const error = getError(likePostResult);
-
-                    switch (error) {
-                        case 'cannot-interact':
-                            return Forbidden(
-                                'Cannot interact with this account',
-                            );
-                        default:
-                            return exhaustiveCheck(error);
-                    }
                 }
             }
         }
@@ -126,8 +118,6 @@ export class LikeController {
         const likeJson = await like.toJsonLd();
         await ctx.get('globaldb').set([like.id!.href], likeJson);
 
-        await addToList(ctx.get('db'), ['liked'], like.id!.href);
-
         let attributionActor: Actor | null = null;
         if (objectToLike.attributionId) {
             attributionActor = await lookupActor(
@@ -137,7 +127,7 @@ export class LikeController {
         }
         if (attributionActor) {
             apCtx.sendActivity(
-                { handle: ACTOR_DEFAULT_HANDLE },
+                { username: account.username },
                 attributionActor,
                 like,
                 {
@@ -146,14 +136,9 @@ export class LikeController {
             );
         }
 
-        apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            like,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        apCtx.sendActivity({ username: account.username }, 'followers', like, {
+            preferSharedInbox: true,
+        });
         return new Response(JSON.stringify(likeJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
@@ -163,9 +148,9 @@ export class LikeController {
     }
 
     async handleUnlike(ctx: AppContext) {
+        const account = ctx.get('account');
         const id = ctx.req.param('id');
-        const apCtx = fedify.createContext(ctx.req.raw as Request, {
-            db: ctx.get('db'),
+        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -211,39 +196,36 @@ export class LikeController {
             );
         }
 
-        const account = await this.accountRepository.getBySite(ctx.get('site'));
-        if (account !== null) {
-            const postResult = await this.postService.getByApId(idAsUrl);
+        const postResult = await this.postService.getByApId(idAsUrl);
 
-            if (isError(postResult)) {
-                const error = getError(postResult);
-                switch (error) {
-                    case 'upstream-error':
-                        ctx.get('logger').info(
-                            'Upstream error fetching post for unliking',
-                            { postId: idAsUrl.href },
-                        );
-                        break;
-                    case 'not-a-post':
-                        ctx.get('logger').info(
-                            'Resource for unliking is not a post',
-                            { postId: idAsUrl.href },
-                        );
-                        break;
-                    case 'missing-author':
-                        ctx.get('logger').info(
-                            'Post for unliking has missing author',
-                            { postId: idAsUrl.href },
-                        );
-                        break;
-                    default:
-                        return exhaustiveCheck(error);
-                }
-            } else {
-                const post = getValue(postResult);
-                post.removeLike(account);
-                await this.postRepository.save(post);
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.get('logger').info(
+                        'Upstream error fetching post for unliking',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                case 'not-a-post':
+                    ctx.get('logger').info(
+                        'Resource for unliking is not a post',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                case 'missing-author':
+                    ctx.get('logger').info(
+                        'Post for unliking has missing author',
+                        { postId: idAsUrl.href },
+                    );
+                    break;
+                default:
+                    return exhaustiveCheck(error);
             }
+        } else {
+            const post = getValue(postResult);
+            post.removeLike(account);
+            await this.postRepository.save(post);
         }
 
         const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
@@ -258,9 +240,8 @@ export class LikeController {
             cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
         });
         const undoJson = await undo.toJsonLd();
-        await ctx.get('globaldb').set([undo.id!.href], undoJson);
 
-        await removeFromList(ctx.get('db'), ['liked'], likeId!.href);
+        await ctx.get('globaldb').set([undo.id!.href], undoJson);
         await ctx.get('globaldb').delete([likeId!.href]);
 
         let attributionActor: Actor | null = null;
@@ -272,7 +253,7 @@ export class LikeController {
         }
         if (attributionActor) {
             apCtx.sendActivity(
-                { handle: ACTOR_DEFAULT_HANDLE },
+                { username: account.username },
                 attributionActor,
                 undo,
                 {
@@ -281,14 +262,9 @@ export class LikeController {
             );
         }
 
-        apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
-            'followers',
-            undo,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
+            preferSharedInbox: true,
+        });
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',

@@ -1,3 +1,4 @@
+import { type Result, error, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import type { ModerationService } from 'moderation/moderation.service';
@@ -56,6 +57,8 @@ export interface GetNotificationsDataResult {
     results: BaseGetNotificationsDataResultRow[];
     nextCursor: string | null;
 }
+
+type GetUnreadNotificationsCountError = 'not-internal-account';
 
 export class NotificationService {
     constructor(
@@ -447,5 +450,44 @@ export class NotificationService {
             post_id: post.id,
             event_type: NotificationType.Mention,
         });
+    }
+
+    async getUnreadNotificationsCount(
+        accountId: number,
+    ): Promise<Result<number, GetUnreadNotificationsCountError>> {
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return error('not-internal-account');
+        }
+
+        const result = await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('read', false)
+            .count('*', { as: 'count' });
+
+        return ok(Number(result[0].count));
+    }
+
+    async readAllNotifications(accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If the requested account no longer exists or is external, don't read all notifications
+            return;
+        }
+
+        await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('read', false)
+            .update({
+                read: true,
+            });
     }
 }

@@ -1,9 +1,7 @@
 import type { Context, Create } from '@fedify/fedify';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { getUserData } from 'helpers/user';
-import { addToList } from 'kv-helpers';
+import { exhaustiveCheck, getError, isError } from 'core/result';
 import type { PostService } from 'post/post.service';
 import type { SiteService } from 'site/site.service';
 
@@ -65,48 +63,5 @@ export class CreateHandler {
 
         const createJson = await create.toJsonLd();
         ctx.data.globaldb.set([create.id.href], createJson);
-
-        const object = await create.getObject();
-        const replyTarget = await object?.getReplyTarget();
-
-        if (replyTarget?.id?.href) {
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            const data = await ctx.data.globaldb.get<any>([
-                replyTarget.id.href,
-            ]);
-            let replyTargetAuthor = '';
-            if (typeof data?.attributedTo === 'string') {
-                replyTargetAuthor = data?.attributedTo;
-            } else {
-                replyTargetAuthor = data?.attributedTo?.id;
-            }
-            const inboxActor = await getUserData(ctx, 'index');
-
-            if (replyTargetAuthor === inboxActor.id.href) {
-                await addToList(ctx.data.db, ['inbox'], create.id.href);
-                return;
-            }
-        }
-
-        const site = await this.siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
-        const post = getValue(postResult);
-
-        const account = await this.accountService.getAccountForSite(site);
-
-        const isFollowing = await this.accountService.checkIfAccountIsFollowing(
-            account.id,
-            post.author.id,
-        );
-
-        if (isFollowing) {
-            await addToList(ctx.data.db, ['inbox'], create.id.href);
-            return;
-        }
     }
 }

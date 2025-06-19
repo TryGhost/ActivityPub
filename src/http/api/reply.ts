@@ -7,10 +7,9 @@ import {
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import { v4 as uuidv4 } from 'uuid';
 import z from 'zod';
 
-import { type AppContext, fedify } from 'app';
+import { type AppContext, globalFedify } from 'app';
 import { getValue } from 'core/result';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
@@ -28,6 +27,7 @@ export async function handleCreateReply(
     ctx: AppContext,
     postService: PostService,
 ) {
+    const account = ctx.get('account');
     const logger = ctx.get('logger');
     const id = ctx.req.param('id');
 
@@ -42,8 +42,7 @@ export async function handleCreateReply(
         );
     }
 
-    const apCtx = fedify.createContext(ctx.req.raw as Request, {
-        db: ctx.get('db'),
+    const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
         globaldb: ctx.get('globaldb'),
         logger,
     });
@@ -99,7 +98,7 @@ export async function handleCreateReply(
     ];
 
     const newReplyResult = await postService.createReply(
-        ctx.get('account'),
+        account,
         data.content,
         inReplyToId,
         data.imageUrl ? new URL(data.imageUrl) : undefined,
@@ -174,16 +173,6 @@ export async function handleCreateReply(
                         status: 400,
                     },
                 );
-            case 'gcs-error':
-                ctx.get('logger').error('GCS error verifying image URL', {
-                    url: data.imageUrl,
-                });
-                return new Response(
-                    JSON.stringify({ error: 'Error verifying image URL' }),
-                    {
-                        status: 400,
-                    },
-                );
             case 'cannot-interact':
                 return new Response(
                     JSON.stringify({
@@ -200,10 +189,10 @@ export async function handleCreateReply(
 
     const newReply = getValue(newReplyResult);
     const replyMentions = newReply.mentions.map(
-        (account) =>
+        (mentionedAccount) =>
             new Mention({
-                name: `@${account.username}@${account.apId.hostname}`,
-                href: account.apId,
+                name: `@${mentionedAccount.username}@${mentionedAccount.apId.hostname}`,
+                href: mentionedAccount.apId,
             }),
     );
     mentions.push(...replyMentions);
@@ -238,12 +227,8 @@ export async function handleCreateReply(
         ccs: cc,
     });
 
-    const createId = apCtx.getObjectUri(Create, {
-        id: uuidv4(),
-    });
-
     const create = new Create({
-        id: createId,
+        id: apCtx.getObjectUri(Create, { id: newReply.uuid }),
         actor: actor,
         object: reply,
         to: to,
@@ -256,7 +241,7 @@ export async function handleCreateReply(
     await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
     apCtx.sendActivity(
-        { handle: ACTOR_DEFAULT_HANDLE },
+        { username: account.username },
         attributionActor,
         create,
         {
@@ -266,7 +251,7 @@ export async function handleCreateReply(
 
     try {
         await apCtx.sendActivity(
-            { handle: ACTOR_DEFAULT_HANDLE },
+            { username: account.username },
             'followers',
             create,
             {

@@ -610,18 +610,6 @@ export class AccountService {
                 : null,
         };
 
-        if (
-            account.name === profileData.name &&
-            account.bio === profileData.bio &&
-            account.username === profileData.username &&
-            account.avatarUrl?.toString() ===
-                profileData.avatarUrl?.toString() &&
-            account.bannerImageUrl?.toString() ===
-                profileData.bannerImageUrl?.toString()
-        ) {
-            return;
-        }
-
         const updated = account.updateProfile(profileData);
 
         await this.accountRepository.save(updated);
@@ -695,6 +683,12 @@ export class AccountService {
 
     async unfollowAccount(account: Account, accountToUnfollow: Account) {
         const updated = account.unfollow(accountToUnfollow);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async readAllNotifications(account: Account) {
+        const updated = account.readAllNotifications();
 
         await this.accountRepository.save(updated);
     }

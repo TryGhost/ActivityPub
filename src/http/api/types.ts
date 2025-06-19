@@ -112,6 +112,10 @@ export interface PostDTO {
      */
     excerpt: string;
     /**
+     * Summary of the post (custom excerpt)
+     */
+    summary: string | null;
+    /**
      * Content of the post
      */
     content: string;

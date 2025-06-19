@@ -1,0 +1,36 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    {
+      "Emoji": "toot:Emoji",
+      "Hashtag": "as:Hashtag",
+      "_misskey_quote": "misskey:_misskey_quote",
+      "emojiReactions": {
+        "@id": "fedibird:emojiReactions",
+        "@type": "@id",
+      },
+      "fedibird": "http://fedibird.com/ns#",
+      "misskey": "https://misskey-hub.net/ns#",
+      "quoteUri": "fedibird:quoteUri",
+      "quoteUrl": "as:quoteUrl",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+    },
+  ],
+  "attributedTo": "https://example.com/user/foo",
+  "cc": "https://example.com/user/foo/followers",
+  "content": "Post content",
+  "id": "https://example.com/article/post-123",
+  "image": "https://example.com/img/post-123_feature.jpg",
+  "name": "Post title",
+  "preview": {
+    "content": "Post excerpt",
+    "id": "https://example.com/note/post-123",
+    "type": "Note",
+  },
+  "published": "2025-01-12T10:30:00Z",
+  "to": "as:Public",
+  "type": "Article",
+  "url": "https://example.com/post/post-123",
+}

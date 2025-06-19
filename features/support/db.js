@@ -33,6 +33,7 @@ export async function reset() {
     await db('likes').truncate();
     await db('reposts').truncate();
     await db('posts').truncate();
+    await db('outboxes').truncate();
     await db('accounts').truncate();
     await db('users').truncate();
     await db('sites').truncate();

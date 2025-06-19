@@ -1,7 +1,9 @@
 import assert from 'node:assert';
-
 import { Then, When } from '@cucumber/cucumber';
 
+import { createActivity } from '../support/fixtures.js';
+import { waitForItemInInbox } from '../support/inbox.js';
+import { waitForItemInNotifications } from '../support/notifications.js';
 import { fetchActivityPub } from '../support/request.js';
 
 When('we like the object {string}', async function (name) {
@@ -24,36 +26,60 @@ When('we unlike the object {string}', async function (name) {
     );
 });
 
-Then('the object {string} should be liked', async function (name) {
-    const response = await fetchActivityPub(
+When('{string} likes our article', async function (actorName) {
+    if (!this.articleId) {
+        throw new Error(
+            'You need to call a step which creates an article before this.',
+        );
+    }
+
+    const actor = this.actors[actorName];
+    if (!actor) {
+        throw new Error(
+            `Actor ${actorName} not found - did you forget a step?`,
+        );
+    }
+
+    const activity = await createActivity('Like', this.articleId, actor);
+    await fetchActivityPub(
         'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
         {
+            method: 'POST',
             headers: {
-                Accept: 'application/ld+json',
+                'Content-Type': 'application/ld+json',
             },
+            body: JSON.stringify(activity),
         },
     );
-    const inbox = await response.json();
-    const object = this.objects[name];
 
-    const found = inbox.items.find((item) => item.object.id === object.id);
-
-    assert(found.object.liked === true);
+    this.likeId = activity.id;
 });
 
-Then('the object {string} should not be liked', async function (name) {
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
-        },
-    );
-    const inbox = await response.json();
-    const object = this.objects[name];
+Then('the like is in our notifications', async function () {
+    if (!this.articleId) {
+        throw new Error(
+            'You need to call a step which creates an article before this',
+        );
+    }
 
-    const found = inbox.items.find((item) => item.object.id === object.id);
+    if (!this.likeId) {
+        throw new Error(
+            'You need to call a step which likes an article before this',
+        );
+    }
 
-    assert(found.object.liked !== true);
+    const found = await waitForItemInNotifications(this.articleId);
+    assert(found);
+});
+
+Then('our article is liked', async function () {
+    if (!this.articleId) {
+        throw new Error(
+            'You need to call a step which creates an article before this',
+        );
+    }
+
+    const post = await waitForItemInInbox(this.articleId);
+
+    assert(post.likeCount > 0);
 });

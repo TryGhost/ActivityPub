@@ -2,10 +2,11 @@ import { type Actor, type Collection, isActor } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { getError, getValue, isError } from 'core/result';
 import { getAttachments, getHandle } from 'helpers/activitypub/actor';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-import { lookupAPIdByHandle, lookupObject } from 'lookup-helpers';
+import { lookupActorProfile, lookupObject } from 'lookup-helpers';
 import type { AccountDTO } from '../types';
 
 /**
@@ -96,13 +97,18 @@ export class AccountView {
     ): Promise<AccountDTO | null> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
-        const apId = await lookupAPIdByHandle(ctx, handle);
+        const lookupResult = await lookupActorProfile(ctx, handle);
 
-        if (!apId) {
+        if (isError(lookupResult)) {
+            ctx.data.logger.error(
+                `Failed to lookup apId for handle: ${handle}, error: ${getError(lookupResult)}`,
+            );
             return null;
         }
 
-        return this.viewByApId(apId, context);
+        const apId = getValue(lookupResult);
+
+        return this.viewByApId(apId.href, context);
     }
 
     /**

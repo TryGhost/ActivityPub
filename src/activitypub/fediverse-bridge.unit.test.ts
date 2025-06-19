@@ -14,10 +14,6 @@ import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
 import type { UriBuilder } from './uri';
 
-vi.mock('uuid', () => ({
-    v4: vi.fn().mockReturnValue('cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4'),
-}));
-
 vi.mock('@js-temporal/polyfill', async () => {
     const original = await import('@js-temporal/polyfill');
 
@@ -201,9 +197,8 @@ describe('FediverseBridge', () => {
         expect(sendActivityMockCall).toBeDefined();
         expect(sendActivityMockCall!.length).toBe(3);
 
-        // Assert that the activity was sent from the correct account
         expect(sendActivityMockCall![0]).toMatchObject({
-            username: blockerAccount.username,
+            username: 'blocker',
         });
 
         // Assert that the activity was sent to the correct account
@@ -396,6 +391,7 @@ describe('FediverseBridge', () => {
         post.content = 'Note content';
         post.apId = new URL('https://example.com/note/post-123');
         post.mentions = [];
+        post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -440,6 +436,7 @@ describe('FediverseBridge', () => {
         post.content = 'Hello! @test@example.com';
         post.apId = new URL('https://example.com/note/post-123');
         post.mentions = [mentionedAccount];
+        post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -481,6 +478,7 @@ describe('FediverseBridge', () => {
         post.publishedAt = new Date('2025-01-12T10:30:00Z');
         post.url = new URL('https://example.com/post/post-123');
         post.apId = new URL('https://example.com/article/post-123');
+        post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);

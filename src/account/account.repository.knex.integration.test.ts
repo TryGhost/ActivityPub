@@ -3,7 +3,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import assert from 'node:assert';
 import type { Knex } from 'knex';
 
+import { exportJwk } from '@fedify/fedify';
 import { AsyncEvents } from 'core/events';
+import {
+    createExternalAccountDraftData,
+    createInternalAccountDraftData,
+} from 'test/account-entity-test-helpers';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { KnexAccountRepository } from '../account/account.repository.knex';
@@ -496,5 +501,167 @@ describe('KnexAccountRepository', () => {
                 following_id: accountNotFollowed.id,
             },
         ]);
+    });
+
+    it('Can create an external account from a draft', async () => {
+        const draftData = await createExternalAccountDraftData({
+            username: 'test',
+            name: 'Test',
+            bio: 'Test bio',
+            url: new URL('https://example.com'),
+            avatarUrl: new URL('https://example.com/avatar.png'),
+            bannerImageUrl: new URL('https://example.com/banner.png'),
+            apId: new URL('https://example.com/ap/id'),
+            apFollowers: new URL('https://example.com/ap/followers'),
+            apInbox: new URL('https://example.com/ap/inbox'),
+            apSharedInbox: new URL('https://example.com/ap/shared-inbox'),
+            apOutbox: new URL('https://example.com/ap/outbox'),
+            apFollowing: new URL('https://example.com/ap/following'),
+            apLiked: new URL('https://example.com/ap/liked'),
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        const createdAccount = await accountRepository.create(draft);
+
+        expect(createdAccount).toBeInstanceOf(AccountEntity);
+
+        expect(createdAccount.id).toBeDefined();
+        expect(createdAccount.uuid).toBeDefined();
+        expect(createdAccount.username).toBe(draft.username);
+        expect(createdAccount.name).toBe(draft.name);
+        expect(createdAccount.bio).toBe(draft.bio);
+        expect(createdAccount.url).toStrictEqual(draft.url);
+        expect(createdAccount.avatarUrl).toStrictEqual(draft.avatarUrl);
+        expect(createdAccount.bannerImageUrl).toStrictEqual(
+            draft.bannerImageUrl,
+        );
+        expect(createdAccount.apId).toStrictEqual(draft.apId);
+        expect(createdAccount.apFollowers).toStrictEqual(draft.apFollowers);
+        expect(createdAccount.apInbox).toStrictEqual(draft.apInbox);
+        expect(createdAccount.isInternal).toBe(false);
+
+        // We need to check the fetched account to make sure everything was persisted correctly
+        const fetchedAccount = await accountRepository.getById(
+            createdAccount.id,
+        );
+
+        if (!fetchedAccount) {
+            throw new Error('Account not found');
+        }
+
+        expect(fetchedAccount).toBeInstanceOf(AccountEntity);
+
+        expect(fetchedAccount.id).toBe(createdAccount.id);
+        expect(fetchedAccount.uuid).toBe(createdAccount.uuid);
+        expect(fetchedAccount.username).toBe(createdAccount.username);
+        expect(fetchedAccount.name).toBe(createdAccount.name);
+        expect(fetchedAccount.bio).toBe(createdAccount.bio);
+        expect(fetchedAccount.url).toStrictEqual(createdAccount.url);
+        expect(fetchedAccount.avatarUrl).toStrictEqual(
+            createdAccount.avatarUrl,
+        );
+        expect(fetchedAccount.bannerImageUrl).toStrictEqual(
+            createdAccount.bannerImageUrl,
+        );
+        expect(fetchedAccount.apId).toStrictEqual(createdAccount.apId);
+        expect(fetchedAccount.apFollowers).toStrictEqual(
+            createdAccount.apFollowers,
+        );
+        expect(fetchedAccount.apInbox).toStrictEqual(createdAccount.apInbox);
+        expect(fetchedAccount.isInternal).toBe(false);
+
+        const dbRow = await client('accounts')
+            .where('id', createdAccount.id)
+            .first();
+
+        expect(dbRow.ap_shared_inbox_url).toBe(draft.apSharedInbox?.href);
+        expect(dbRow.ap_outbox_url).toBe(draft.apOutbox?.href);
+        expect(dbRow.ap_following_url).toBe(draft.apFollowing?.href);
+        expect(dbRow.ap_liked_url).toBe(draft.apLiked?.href);
+        expect(dbRow.domain).toBe(draft.apId.hostname);
+        expect(JSON.parse(dbRow.ap_public_key)).toStrictEqual(
+            await exportJwk(draft.apPublicKey),
+        );
+    });
+
+    it('Can create an internal account from a draft', async () => {
+        const site = await fixtureManager.createSite();
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'test',
+            name: 'Test',
+            bio: 'Test bio',
+            url: new URL(`https://${site.host}`),
+            avatarUrl: new URL(`https://${site.host}/avatar.png`),
+            bannerImageUrl: new URL(`https://${site.host}/banner.png`),
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        const createdAccount = await accountRepository.create(draft);
+
+        expect(createdAccount).toBeInstanceOf(AccountEntity);
+
+        expect(createdAccount.id).toBeDefined();
+        expect(createdAccount.uuid).toBeDefined();
+        expect(createdAccount.username).toBe(draft.username);
+        expect(createdAccount.name).toBe(draft.name);
+        expect(createdAccount.bio).toBe(draft.bio);
+        expect(createdAccount.url).toStrictEqual(draft.url);
+        expect(createdAccount.avatarUrl).toStrictEqual(draft.avatarUrl);
+        expect(createdAccount.bannerImageUrl).toStrictEqual(
+            draft.bannerImageUrl,
+        );
+        expect(createdAccount.apId).toStrictEqual(draft.apId);
+        expect(createdAccount.apFollowers).toStrictEqual(draft.apFollowers);
+        expect(createdAccount.apInbox).toStrictEqual(draft.apInbox);
+        expect(createdAccount.isInternal).toBe(true);
+
+        // We need to check the fetched account to make sure everything was persisted correctly
+        const fetchedAccount = await accountRepository.getById(
+            createdAccount.id,
+        );
+
+        if (!fetchedAccount) {
+            throw new Error('Account not found');
+        }
+
+        expect(fetchedAccount).toBeInstanceOf(AccountEntity);
+
+        expect(fetchedAccount.id).toBe(createdAccount.id);
+        expect(fetchedAccount.uuid).toBe(createdAccount.uuid);
+        expect(fetchedAccount.username).toBe(createdAccount.username);
+        expect(fetchedAccount.name).toBe(createdAccount.name);
+        expect(fetchedAccount.bio).toBe(createdAccount.bio);
+        expect(fetchedAccount.url).toStrictEqual(createdAccount.url);
+        expect(fetchedAccount.avatarUrl).toStrictEqual(
+            createdAccount.avatarUrl,
+        );
+        expect(fetchedAccount.bannerImageUrl).toStrictEqual(
+            createdAccount.bannerImageUrl,
+        );
+        expect(fetchedAccount.apId).toStrictEqual(createdAccount.apId);
+        expect(fetchedAccount.apFollowers).toStrictEqual(
+            createdAccount.apFollowers,
+        );
+        expect(fetchedAccount.apInbox).toStrictEqual(createdAccount.apInbox);
+        expect(fetchedAccount.isInternal).toBe(true);
+
+        const dbRow = await client('accounts')
+            .where('id', createdAccount.id)
+            .first();
+
+        expect(dbRow.ap_shared_inbox_url).toBe(null);
+        expect(dbRow.ap_outbox_url).toBe(draft.apOutbox!.href);
+        expect(dbRow.ap_following_url).toBe(draft.apFollowing!.href);
+        expect(dbRow.ap_liked_url).toBe(draft.apLiked!.href);
+        expect(dbRow.domain).toBe(draft.apId.hostname);
+        expect(JSON.parse(dbRow.ap_public_key)).toStrictEqual(
+            await exportJwk(draft.apPublicKey),
+        );
+        expect(JSON.parse(dbRow.ap_private_key)).toStrictEqual(
+            await exportJwk(draft.apPrivateKey!),
+        );
     });
 });

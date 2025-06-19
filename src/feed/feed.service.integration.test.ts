@@ -113,6 +113,7 @@ describe('FeedService', () => {
         await client('accounts').truncate();
         await client('users').truncate();
         await client('sites').truncate();
+        await client('outboxes').truncate();
         await client.raw('SET FOREIGN_KEY_CHECKS = 1');
 
         // Reset test state

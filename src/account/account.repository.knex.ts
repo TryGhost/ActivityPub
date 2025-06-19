@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { exportJwk } from '@fedify/fedify';
 import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
@@ -7,8 +8,11 @@ import { AccountBlockedEvent } from './account-blocked.event';
 import { AccountFollowedEvent } from './account-followed.event';
 import { AccountUnblockedEvent } from './account-unblocked.event';
 import { AccountUnfollowedEvent } from './account-unfollowed.event';
-import { AccountUpdatedEvent } from './account-updated.event';
-import { type Account, AccountEntity } from './account.entity';
+import {
+    type Account,
+    type AccountDraft,
+    AccountEntity,
+} from './account.entity';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
 
@@ -32,6 +36,58 @@ export class KnexAccountRepository {
         private readonly db: Knex,
         private readonly events: AsyncEvents,
     ) {}
+
+    async create(draft: AccountDraft): Promise<Account> {
+        return await this.db.transaction(async (transaction) => {
+            const [accountId] = await transaction('accounts').insert({
+                uuid: draft.uuid,
+                username: draft.username,
+                name: draft.name,
+                bio: draft.bio,
+                url: draft.url.href,
+                avatar_url: draft.avatarUrl?.href ?? null,
+                banner_image_url: draft.bannerImageUrl?.href ?? null,
+                ap_id: draft.apId.href,
+                ap_followers_url: draft.apFollowers?.href ?? null,
+                ap_inbox_url: draft.apInbox?.href ?? null,
+                ap_shared_inbox_url: draft.apSharedInbox?.href ?? null,
+                ap_outbox_url: draft.apOutbox?.href ?? null,
+                ap_following_url: draft.apFollowing?.href ?? null,
+                ap_liked_url: draft.apLiked?.href ?? null,
+                ap_public_key: JSON.stringify(
+                    await exportJwk(draft.apPublicKey),
+                ),
+                ap_private_key: draft.apPrivateKey
+                    ? JSON.stringify(await exportJwk(draft.apPrivateKey))
+                    : null,
+                custom_fields: null,
+                domain: draft.apId.hostname,
+            });
+
+            if (draft.isInternal) {
+                const site = await transaction('sites')
+                    .where('host', draft.apId.hostname)
+                    .first();
+                if (!site) {
+                    throw new Error(
+                        `Site not found for host: ${draft.apId.hostname}`,
+                    );
+                }
+
+                await transaction('users').insert({
+                    account_id: accountId,
+                    site_id: site.id,
+                });
+            }
+
+            const account = AccountEntity.create({
+                id: accountId,
+                ...draft,
+            });
+
+            return account;
+        });
+    }
 
     async save(account: Account): Promise<void> {
         const events = AccountEntity.pullEvents(account);
@@ -150,11 +206,6 @@ export class KnexAccountRepository {
         for (const event of events) {
             await this.events.emitAsync(event.getName(), event);
         }
-
-        await this.events.emitAsync(
-            AccountUpdatedEvent.getName(),
-            new AccountUpdatedEvent(account),
-        );
     }
 
     /**

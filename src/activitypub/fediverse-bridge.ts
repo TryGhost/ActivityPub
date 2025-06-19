@@ -1,20 +1,17 @@
 import type EventEmitter from 'node:events';
 import {
-    Article,
-    Create,
+    type Activity,
     Delete,
-    Note as FedifyNote,
     Follow,
-    Image,
-    Mention,
     PUBLIC_COLLECTION,
     Reject,
     Update,
 } from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountUpdatedEvent } from 'account/account-updated.event';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
+import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostType } from 'post/post.entity';
@@ -47,85 +44,54 @@ export class FediverseBridge {
         );
     }
 
+    private async sendActivityToInbox(
+        account: Account,
+        recipient: Account,
+        activity: Activity,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: account.username },
+            {
+                id: recipient.apId,
+                inboxId: recipient.apInbox,
+            },
+            activity,
+        );
+    }
+
+    private async sendActivityToFollowers(
+        account: Account,
+        activity: Activity,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: account.username },
+            'followers',
+            activity,
+            {
+                preferSharedInbox: true,
+            },
+        );
+    }
+
     private async handlePostCreated(event: PostCreatedEvent) {
         const post = event.getPost();
         if (!post.author.isInternal) {
             return;
         }
-        const ctx = this.fedifyContextFactory.getFedifyContext();
-        let fedifyObject: FedifyNote | Article;
 
-        let mentions: Mention[] = [];
-        let ccs: URL[] = [];
-
-        if (post.type === PostType.Note) {
-            if (post.inReplyTo) {
-                return;
-            }
-            mentions = post.mentions.map(
-                (account) =>
-                    new Mention({
-                        name: `@${account.username}@${account.apId.hostname}`,
-                        href: account.apId,
-                    }),
-            );
-            ccs = [
-                post.author.apFollowers,
-                ...mentions.map((mention) => mention.href),
-            ].filter((url) => url !== null);
-
-            fedifyObject = new FedifyNote({
-                id: post.apId,
-                attribution: post.author.apId,
-                content: post.content,
-                summary: null,
-                published: Temporal.Now.instant(),
-                attachments: post.attachments
-                    ? post.attachments
-                          .filter((attachment) => attachment.type === 'Image')
-                          .map(
-                              (attachment) =>
-                                  new Image({
-                                      url: attachment.url,
-                                  }),
-                          )
-                    : undefined,
-                tags: mentions,
-                to: PUBLIC_COLLECTION,
-                ccs: ccs,
-            });
-        } else if (post.type === PostType.Article) {
-            const preview = new FedifyNote({
-                id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
-                content: post.excerpt,
-            });
-            ccs = post.author.apFollowers ? [post.author.apFollowers] : [];
-
-            fedifyObject = new Article({
-                id: post.apId,
-                attribution: post.author.apId,
-                name: post.title,
-                content: post.content,
-                image: post.imageUrl,
-                published: Temporal.Instant.from(
-                    post.publishedAt.toISOString(),
-                ),
-                preview,
-                url: post.url,
-                to: PUBLIC_COLLECTION,
-                ccs: ccs,
-            });
-        } else {
-            throw new Error(`Unsupported post type: ${post.type}`);
+        // TODO: Replies are currently handled in the handler file. Move that logic here.
+        if (post.type === PostType.Note && post.inReplyTo) {
+            return;
         }
 
-        const createActivity = new Create({
-            id: ctx.getObjectUri(Create, { id: uuidv4() }),
-            actor: post.author.apId,
-            object: fedifyObject,
-            to: PUBLIC_COLLECTION,
-            ccs: ccs,
-        });
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const { createActivity, fedifyObject } =
+            await buildCreateActivityAndObjectFromPost(post, ctx);
 
         await ctx.data.globaldb.set(
             [createActivity.id!.href],
@@ -137,16 +103,7 @@ export class FediverseBridge {
             await fedifyObject.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                handle: post.author.username,
-            },
-            'followers',
-            createActivity,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(post.author, createActivity);
     }
 
     private async handlePostDeleted(event: PostDeletedEvent) {
@@ -168,16 +125,7 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                handle: post.author.username,
-            },
-            'followers',
-            deleteActivity,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(post.author, deleteActivity);
     }
 
     private async handleAccountUpdatedEvent(event: AccountUpdatedEvent) {
@@ -198,16 +146,7 @@ export class FediverseBridge {
 
         await ctx.data.globaldb.set([update.id!.href], await update.toJsonLd());
 
-        await ctx.sendActivity(
-            {
-                handle: account.username,
-            },
-            'followers',
-            update,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(account, update);
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
@@ -240,13 +179,6 @@ export class FediverseBridge {
 
         await ctx.data.globaldb.set([reject.id!.href], await reject.toJsonLd());
 
-        await ctx.sendActivity(
-            { username: blockerAccount.username },
-            {
-                id: blockedAccount.apId,
-                inboxId: blockedAccount.apInbox,
-            },
-            reject,
-        );
+        await this.sendActivityToInbox(blockerAccount, blockedAccount, reject);
     }
 }

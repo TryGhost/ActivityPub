@@ -1,5 +1,5 @@
 {
-  "extends": ["github>tryghost/renovate-config:quiet"],
+  "extends": ["github>tryghost/renovate-config"],
   "packageRules": [
     {
       "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],

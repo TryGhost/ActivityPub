@@ -1,4 +1,3 @@
-import { AccountMentionedEvent } from 'account/account-mentioned.event';
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
@@ -10,13 +9,65 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { type MentionedAccount, Post } from './post.entity';
+import {
+    type Audience,
+    type CreatePostType,
+    type MentionedAccount,
+    type Metadata,
+    OutboxType,
+    Post,
+} from './post.entity';
 
 type ThreadPosts = {
     post: Post;
     likedByAccount: boolean;
     repostedByAccount: boolean;
 }[];
+
+interface PostRow {
+    id: number;
+    uuid: string | null;
+    type: CreatePostType;
+    audience: Audience;
+    title: string | null;
+    excerpt: string | null;
+    summary: string | null;
+    content: string | null;
+    url: string;
+    image_url: string | null;
+    published_at: Date;
+    like_count: number;
+    repost_count: number;
+    liked_by_current_user: 0 | 1;
+    reply_count: number;
+    reposted_by_current_user: 0 | 1;
+    reading_time_minutes: number;
+    attachments: {
+        type: string | null;
+        mediaType: string | null;
+        name: string | null;
+        url: string;
+    }[];
+    author_id: number;
+    ap_id: string;
+    in_reply_to: number | null;
+    thread_root: number | null;
+    deleted_at: string | null;
+    metadata: Metadata;
+    updated_at: string | null;
+    username: string;
+    author_uuid: string | null;
+    name: string | null;
+    bio: string | null;
+    avatar_url: string | null;
+    banner_image_url: string | null;
+    author_ap_id: string;
+    author_url: string | null;
+    author_ap_followers_url: string | null;
+    author_ap_inbox_url: string | null;
+    site_id: number | null;
+    site_host: string | null;
+}
 
 export class KnexPostRepository {
     constructor(
@@ -37,6 +88,7 @@ export class KnexPostRepository {
                 'posts.audience',
                 'posts.title',
                 'posts.excerpt',
+                'posts.summary',
                 'posts.content',
                 'posts.url',
                 'posts.image_url',
@@ -52,6 +104,7 @@ export class KnexPostRepository {
                 'posts.thread_root',
                 'posts.deleted_at',
                 'posts.metadata',
+                'posts.updated_at',
                 'accounts.id as author_id',
                 'accounts.username',
                 'accounts.uuid as author_uuid',
@@ -72,71 +125,7 @@ export class KnexPostRepository {
             return null;
         }
 
-        if (!row.author_uuid) {
-            row.author_uuid = randomUUID();
-            await this.db('accounts')
-                .update({ uuid: row.author_uuid })
-                .where({ id: row.author_id });
-        }
-
-        const author = AccountEntity.create({
-            id: row.author_id,
-            uuid: row.author_uuid,
-            username: row.username,
-            name: row.name,
-            bio: row.bio,
-            url: parseURL(row.author_url) || new URL(row.ap_id),
-            avatarUrl: parseURL(row.avatar_url),
-            bannerImageUrl: parseURL(row.banner_image_url),
-            apId: new URL(row.author_ap_id),
-            apFollowers: parseURL(row.ap_followers_url),
-            apInbox: parseURL(row.author_ap_inbox_url),
-            isInternal: row.site_id !== null,
-        });
-
-        // Parse attachments and convert URL strings back to URL objects
-        const attachments = row.attachments
-            ? row.attachments.map(
-                  (
-                      // TODO: Clean up the any type
-                      // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                      attachment: any,
-                  ) => ({
-                      ...attachment,
-                      url: new URL(attachment.url),
-                  }),
-              )
-            : [];
-
-        const post = new Post(
-            row.id,
-            row.uuid,
-            author,
-            row.type,
-            row.audience,
-            row.title,
-            row.excerpt,
-            row.content,
-            new URL(row.url),
-            parseURL(row.image_url),
-            new Date(row.published_at),
-            row.metadata,
-            row.like_count,
-            row.repost_count,
-            row.reply_count,
-            row.in_reply_to,
-            row.thread_root,
-            row.reading_time_minutes,
-            attachments,
-            new URL(row.ap_id),
-            row.deleted_at !== null,
-        );
-
-        if (post.id) {
-            post.mentions.push(...(await this.getPostMentions(post.id)));
-        }
-
-        return post;
+        return this.mapRowToPostEntity(row);
     }
 
     private async getPostMentions(postId: number): Promise<MentionedAccount[]> {
@@ -272,6 +261,7 @@ export class KnexPostRepository {
                 'posts.audience',
                 'posts.title',
                 'posts.excerpt',
+                'posts.summary',
                 'posts.content',
                 'posts.url',
                 'posts.image_url',
@@ -286,6 +276,7 @@ export class KnexPostRepository {
                 'posts.in_reply_to',
                 'posts.thread_root',
                 'posts.deleted_at',
+                'posts.updated_at',
                 // Author account fields
                 'accounts.id as author_id',
                 'accounts.username',
@@ -335,69 +326,7 @@ export class KnexPostRepository {
         const posts = [];
 
         for (const row of thread) {
-            if (!row.author_uuid) {
-                row.author_uuid = randomUUID();
-                await this.db('accounts')
-                    .update({ uuid: row.author_uuid })
-                    .where({ id: row.author_id });
-            }
-
-            const author = AccountEntity.create({
-                id: row.author_id,
-                uuid: row.author_uuid,
-                username: row.username,
-                name: row.name,
-                bio: row.bio,
-                url: parseURL(row.author_url) || new URL(row.ap_id),
-                avatarUrl: parseURL(row.avatar_url),
-                bannerImageUrl: parseURL(row.banner_image_url),
-                apId: new URL(row.author_ap_id),
-                apFollowers: parseURL(row.ap_followers_url),
-                apInbox: parseURL(row.author_ap_inbox_url),
-                isInternal: row.site_id !== null,
-            });
-
-            const attachments = row.attachments
-                ? row.attachments.map(
-                      (
-                          // TODO: Clean up the any type
-                          // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-                          attachment: any,
-                      ) => ({
-                          ...attachment,
-                          url: new URL(attachment.url),
-                      }),
-                  )
-                : [];
-
-            const post = new Post(
-                row.id,
-                row.uuid,
-                author,
-                row.type,
-                row.audience,
-                row.title,
-                row.excerpt,
-                row.content,
-                new URL(row.url),
-                parseURL(row.image_url),
-                new Date(row.published_at),
-                row.metadata,
-                row.like_count,
-                row.repost_count,
-                row.reply_count,
-                row.in_reply_to,
-                row.thread_root,
-                row.reading_time_minutes,
-                attachments,
-                new URL(row.ap_id),
-                row.deleted_at !== null,
-            );
-
-            if (post.id) {
-                post.mentions.push(...(await this.getPostMentions(post.id)));
-            }
-
+            const post = await this.mapRowToPostEntity(row);
             posts.push({
                 post,
                 likedByAccount: row.liked_by_account === 1,
@@ -435,8 +364,8 @@ export class KnexPostRepository {
             const mentionsToAdd = post.mentions;
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
-            let mentionedAccountIds: number[] = [];
             let wasDeleted = false;
+            let outboxType: OutboxType = OutboxType.Original;
 
             if (isNewPost) {
                 const { id, isDuplicate } = await this.insertPost(
@@ -463,7 +392,16 @@ export class KnexPostRepository {
                             reply_count: this.db.raw('reply_count + 1'),
                         })
                         .where({ id: post.inReplyTo });
+                    outboxType = OutboxType.Reply;
                 }
+
+                // Add outbox entry for original post or reply
+                await this.insertOutboxItems(
+                    post,
+                    outboxType,
+                    [post.author.id],
+                    transaction,
+                );
 
                 if (likesToAdd.length > 0) {
                     await this.insertLikes(post, likesToAdd, transaction);
@@ -477,14 +415,18 @@ export class KnexPostRepository {
                     repostAccountIds = repostsToAdd.map(
                         (accountId) => accountId,
                     );
+
+                    // Add outbox entries for reposts
+                    await this.insertOutboxItems(
+                        post,
+                        OutboxType.Repost,
+                        repostAccountIds,
+                        transaction,
+                    );
                 }
 
                 if (mentionsToAdd.length > 0) {
                     await this.insertMentions(post, mentionsToAdd, transaction);
-
-                    mentionedAccountIds = mentionsToAdd.map(
-                        (mentionedAccount) => mentionedAccount.id,
-                    );
                 }
             } else if (isDeletedPost) {
                 const existingRow = await transaction('posts')
@@ -516,6 +458,11 @@ export class KnexPostRepository {
 
                     // Delete mentions associated with the deleted post
                     await transaction('mentions')
+                        .where({ post_id: post.id })
+                        .del();
+
+                    // Delete outboxes associated with the deleted post
+                    await transaction('outboxes')
                         .where({ post_id: post.id })
                         .del();
 
@@ -551,9 +498,27 @@ export class KnexPostRepository {
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
                             .update({
-                                like_count: transaction.raw(
-                                    `like_count + ${insertedLikesCount - removedLikesCount}`,
-                                ),
+                                like_count: post.isInternal
+                                    ? transaction.raw(
+                                          `like_count + ${insertedLikesCount - removedLikesCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's like count
+                                      // manually
+                                      post.likeCount +
+                                      (insertedLikesCount - removedLikesCount),
+                            })
+                            .where({ id: post.id });
+                    }
+                } else {
+                    // If no likes were added or removed, and the post is
+                    // external, update the like count in the database to
+                    // account for manual changes to the post's like count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                like_count: post.likeCount,
                             })
                             .where({ id: post.id });
                     }
@@ -588,9 +553,45 @@ export class KnexPostRepository {
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
                         await transaction('posts')
                             .update({
-                                repost_count: transaction.raw(
-                                    `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
-                                ),
+                                repost_count: post.isInternal
+                                    ? transaction.raw(
+                                          `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
+                                      )
+                                    : // If the post is external, we need to
+                                      // account for any changes that were
+                                      // made to the post's repost count manually
+                                      post.repostCount +
+                                      insertedRepostsCount -
+                                      removedRepostsCount,
+                            })
+                            .where({ id: post.id });
+                    }
+
+                    if (repostsToRemove.length > 0) {
+                        await this.removeOutboxItems(
+                            post,
+                            OutboxType.Repost,
+                            repostsToRemove,
+                            transaction,
+                        );
+                    }
+
+                    if (repostsToAdd.length > 0) {
+                        await this.insertOutboxItems(
+                            post,
+                            OutboxType.Repost,
+                            repostAccountIds,
+                            transaction,
+                        );
+                    }
+                } else {
+                    // If no reposts were added or removed, and the post is
+                    // external, update the repost count in the database to
+                    // account for manual changes to the post's repost count
+                    if (!post.isInternal) {
+                        await transaction('posts')
+                            .update({
+                                repost_count: post.repostCount,
                             })
                             .where({ id: post.id });
                     }
@@ -624,13 +625,6 @@ export class KnexPostRepository {
                 await this.events.emitAsync(
                     PostRepostedEvent.getName(),
                     new PostRepostedEvent(post, accountId),
-                );
-            }
-
-            for (const accountId of mentionedAccountIds) {
-                await this.events.emitAsync(
-                    AccountMentionedEvent.getName(),
-                    new AccountMentionedEvent(post, accountId),
                 );
             }
 
@@ -671,6 +665,7 @@ export class KnexPostRepository {
                 author_id: post.author.id,
                 title: post.title,
                 excerpt: post.excerpt,
+                summary: post.summary,
                 content: post.content,
                 url: post.url?.href,
                 image_url: post.imageUrl?.href,
@@ -815,6 +810,66 @@ export class KnexPostRepository {
         };
     }
 
+    private async insertOutboxItems(
+        post: Post,
+        outboxType: OutboxType,
+        outboxAccountIds: number[],
+        transaction: Knex.Transaction,
+    ) {
+        try {
+            // We want to insert outbox items for internal accounts only
+            const internalAccountIds = await transaction('users')
+                .whereIn('account_id', outboxAccountIds)
+                .select('account_id');
+
+            if (internalAccountIds.length === 0) {
+                return;
+            }
+
+            const outboxItemsToInsert = internalAccountIds.map(
+                ({ account_id }) => ({
+                    account_id: account_id,
+                    post_id: post.id,
+                    post_type: post.type,
+                    outbox_type: outboxType,
+                    published_at:
+                        outboxType === OutboxType.Repost
+                            ? new Date()
+                            : post.publishedAt,
+                    author_id: post.author.id,
+                }),
+            );
+
+            await transaction('outboxes').insert(outboxItemsToInsert);
+        } catch (err) {
+            // If the item is already in the outbox, we can ignore it
+            if (
+                err instanceof Error &&
+                'code' in err &&
+                err.code === 'ER_DUP_ENTRY'
+            ) {
+                return;
+            }
+
+            throw err;
+        }
+    }
+
+    private async removeOutboxItems(
+        post: Post,
+        outboxType: OutboxType,
+        outboxAccountIds: number[],
+        transaction: Knex.Transaction,
+    ) {
+        await transaction('outboxes')
+            .where({
+                post_id: post.id,
+                outbox_type: outboxType,
+            })
+            .whereIn('account_id', outboxAccountIds)
+            .del();
+    }
+
     /**
      * Insert reposts of a post into the database
      *
@@ -916,7 +971,7 @@ export class KnexPostRepository {
      * Insert mentions of a post into the database
      *
      * @param post Post to insert mentions for
-     * @param mentionedAccountIds Account IDs to insert mentions for
+     * @param mentionedAccounts Mentioned accounts to insert
      * @param transaction Database transaction to use
      */
     private async insertMentions(
@@ -966,5 +1021,74 @@ export class KnexPostRepository {
             .first();
 
         return result !== undefined;
+    }
+
+    private async mapRowToPostEntity(row: PostRow): Promise<Post> {
+        if (!row.author_uuid) {
+            row.author_uuid = randomUUID();
+            await this.db('accounts')
+                .update({ uuid: row.author_uuid })
+                .where({ id: row.author_id });
+        }
+
+        const author = AccountEntity.create({
+            id: row.author_id,
+            uuid: row.author_uuid,
+            username: row.username,
+            name: row.name,
+            bio: row.bio,
+            url: parseURL(row.author_url) || new URL(row.ap_id),
+            avatarUrl: parseURL(row.avatar_url),
+            bannerImageUrl: parseURL(row.banner_image_url),
+            apId: new URL(row.author_ap_id),
+            apFollowers: parseURL(row.author_ap_followers_url),
+            apInbox: parseURL(row.author_ap_inbox_url),
+            isInternal: row.site_id !== null,
+        });
+
+        const attachments = row.attachments
+            ? row.attachments.map(
+                  (
+                      // TODO: Clean up the any type
+                      // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+                      attachment: any,
+                  ) => ({
+                      ...attachment,
+                      url: new URL(attachment.url),
+                  }),
+              )
+            : [];
+
+        const post = new Post(
+            row.id,
+            row.uuid,
+            author,
+            row.type,
+            row.audience,
+            row.title,
+            row.excerpt,
+            row.summary,
+            row.content,
+            new URL(row.url),
+            parseURL(row.image_url),
+            new Date(row.published_at),
+            row.metadata,
+            row.like_count,
+            row.repost_count,
+            row.reply_count,
+            row.in_reply_to,
+            row.thread_root,
+            row.reading_time_minutes,
+            attachments,
+            new URL(row.ap_id),
+            row.deleted_at !== null,
+            row.updated_at ? new Date(row.updated_at) : null,
+        );
+
+        if (post.id) {
+            post.mentions.push(...(await this.getPostMentions(post.id)));
+        }
+
+        return post;
     }
 }
