@@ -69,6 +69,11 @@ interface PostRow {
     site_host: string | null;
 }
 
+export interface Outbox {
+    posts: Post[];
+    nextCursor: string | null;
+}
+
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
@@ -1090,5 +1095,96 @@ export class KnexPostRepository {
         }
 
         return post;
+    }
+
+    async getOutboxForAccount(
+        accountId: number,
+        cursor: string | null,
+        pageSize: number,
+    ): Promise<Outbox> {
+        const rows = await this.db('outboxes')
+            .select(
+                'posts.id',
+                'posts.uuid',
+                'posts.type',
+                'posts.audience',
+                'posts.title',
+                'posts.excerpt',
+                'posts.summary',
+                'posts.content',
+                'posts.url',
+                'posts.image_url',
+                'posts.published_at',
+                'posts.like_count',
+                'posts.repost_count',
+                'posts.reply_count',
+                'posts.reading_time_minutes',
+                'posts.attachments',
+                'posts.author_id',
+                'posts.ap_id',
+                'posts.in_reply_to',
+                'posts.thread_root',
+                'posts.deleted_at',
+                'posts.metadata',
+                'posts.updated_at',
+                'accounts.id as author_id',
+                'accounts.username',
+                'accounts.uuid as author_uuid',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id as author_ap_id',
+                'accounts.url as author_url',
+                'accounts.ap_followers_url as author_ap_followers_url',
+                'accounts.ap_inbox_url as author_ap_inbox_url',
+                'sites.id as site_id',
+                'sites.host as site_host',
+            )
+            .join('posts', 'outboxes.post_id', 'posts.id')
+            .join('accounts', 'accounts.id', 'posts.author_id')
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .leftJoin('sites', 'sites.id', 'users.site_id')
+            .where('outboxes.account_id', accountId)
+            .where('outboxes.outbox_type', OutboxType.Original)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('outboxes.published_at', '<', cursor);
+                }
+            })
+            .orderBy('outboxes.published_at', 'desc')
+            .limit(pageSize + 1);
+
+        const hasMore = rows.length > pageSize;
+        const paginatedResults = rows.slice(0, pageSize);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+        const nextCursor =
+            hasMore && lastResult
+                ? lastResult.published_at.toISOString()
+                : null;
+
+        const posts: Post[] = [];
+        for (const row of paginatedResults) {
+            const post = await this.mapRowToPostEntity(row);
+            posts.push(post);
+        }
+
+        return {
+            posts,
+            nextCursor,
+        };
+    }
+
+    async getOutboxItemCount(accountId: number): Promise<number> {
+        const result = await this.db('outboxes')
+            .where('account_id', accountId)
+            .where('outbox_type', OutboxType.Original)
+            .count('*', { as: 'count' });
+
+        if (!result[0].count) {
+            return 0;
+        }
+
+        return Number(result[0].count);
     }
 }
