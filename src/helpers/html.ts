@@ -91,7 +91,7 @@ export function sanitizeHtml(content: string): string {
             'path',
             'audio',
             'video',
-            'center'
+            'center',
         ],
         allowedClasses: {
             '*': false,
