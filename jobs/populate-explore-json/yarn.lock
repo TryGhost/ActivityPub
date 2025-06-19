@@ -715,9 +715,9 @@
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
 "@fedify/fedify@^1.6.0":
-  version "1.6.1"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.6.1.tgz#0fcb80fd8ac944c6187d38f9375644730aa98f84"
-  integrity sha512-KPfy4ETv96smVH52uBfM7RSuGPhUXeJfkhzH8EV0BVH2Whw3oT3UeaJMwRZ1OuVddtdGQ8lWui6tAH0cGV2YTg==
+  version "1.6.2"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.6.2.tgz#22b4888bbac37d7fff763a0d9032b2c1cd31df31"
+  integrity sha512-1MXn91B0EqPmkk+0idTAw4fZCpYG1E/6gxs2Brn+iaIEwR4vAvQc3PqHMAKQOK8vfc9R/TBHh5myZRpkoBkVaw==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@es-toolkit/es-toolkit" "npm:es-toolkit@^1.38.0"
