@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Account } from 'account/account.entity';
+import { type Account, AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { Site } from 'site/site.service';
+import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
 import { createGetThreadHandler } from './thread';
 
 describe('Thread API', () => {
@@ -14,7 +15,7 @@ describe('Thread API', () => {
     let account: Account;
     let postRepository: KnexPostRepository;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.setSystemTime(new Date('2025-02-27T15:40:00Z'));
 
         site = {
@@ -22,18 +23,21 @@ describe('Thread API', () => {
             host: 'example.com',
             webhook_secret: 'secret',
         };
-        account = Account.createFromData({
-            id: 456,
-            uuid: 'f4ec91bd-56b7-406f-a174-91495df6e6c',
+        const draftData = await createInternalAccountDraftData({
+            host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
-            bio: 'Just a foo bar',
-            avatarUrl: new URL('https://example.com/avatars/foobar.png'),
-            bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
-            site,
-            apId: new URL('https://example.com/users/456'),
-            url: new URL('https://example.com/users/456'),
-            apFollowers: new URL('https://example.com/followers/456'),
+            bio: 'Just a foobar',
+            url: null,
+            avatarUrl: new URL('http://example.com/avatar/foobar.png'),
+            bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        account = AccountEntity.create({
+            id: 456,
+            ...draft,
         });
         accountService = {
             getDefaultAccountForSite: async (_site: Site) => {
@@ -80,12 +84,16 @@ describe('Thread API', () => {
                                 Audience.Public,
                                 'Test Post 123',
                                 'Test Post 123 Excerpt',
+                                null,
                                 'Test Post 123 Content',
                                 new URL('https://example.com/posts/123'),
                                 new URL(
                                     'https://example.com/images/post-123.jpg',
                                 ),
                                 new Date(),
+                                {
+                                    ghostAuthors: [],
+                                },
                                 0,
                                 0,
                                 2,
@@ -102,12 +110,16 @@ describe('Thread API', () => {
                                 Audience.Public,
                                 'Test Post 456 (reply to Test Post 123)',
                                 'Test Post 456 Excerpt',
+                                null,
                                 'Test Post 456 Content',
                                 new URL('https://example.com/posts/456'),
                                 new URL(
                                     'https://example.com/images/post-456.jpg',
                                 ),
                                 new Date(),
+                                {
+                                    ghostAuthors: [],
+                                },
                                 0,
                                 0,
                                 0,
@@ -126,12 +138,16 @@ describe('Thread API', () => {
                                 Audience.Public,
                                 'Test Post 789 (reply to Test Post 123)',
                                 'Test Post 789 Excerpt',
+                                null,
                                 'Test Post 789 Content',
                                 new URL('https://example.com/posts/789'),
                                 new URL(
                                     'https://example.com/images/post-789.jpg',
                                 ),
                                 new Date(),
+                                {
+                                    ghostAuthors: [],
+                                },
                                 0,
                                 0,
                                 0,

@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
+import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
-import type { Account } from 'account/types';
+import type { Account as AccountEntity } from 'account/account.entity';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
+import { NotificationsReadEvent } from 'account/notifications-read-event';
 import { PostCreatedEvent } from 'post/post-created.event';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostLikedEvent } from 'post/post-liked.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import type { Post } from 'post/post.entity';
@@ -23,6 +27,11 @@ describe('NotificationEventService', () => {
             createLikeNotification: vi.fn(),
             createRepostNotification: vi.fn(),
             createReplyNotification: vi.fn(),
+            removeBlockedAccountNotifications: vi.fn(),
+            removeBlockedDomainNotifications: vi.fn(),
+            createMentionNotification: vi.fn(),
+            removePostNotifications: vi.fn(),
+            readAllNotifications: vi.fn(),
         } as unknown as NotificationService;
 
         notificationEventService = new NotificationEventService(
@@ -39,15 +48,12 @@ describe('NotificationEventService', () => {
 
             events.emit(
                 AccountFollowedEvent.getName(),
-                new AccountFollowedEvent(
-                    account as Account,
-                    followerAccount as Account,
-                ),
+                new AccountFollowedEvent(account.id, followerAccount.id),
             );
 
             expect(
                 notificationService.createFollowNotification,
-            ).toHaveBeenCalledWith(account, followerAccount);
+            ).toHaveBeenCalledWith(account.id, followerAccount.id);
         });
     });
 
@@ -111,6 +117,118 @@ describe('NotificationEventService', () => {
             expect(
                 notificationService.createReplyNotification,
             ).toHaveBeenCalledWith(post);
+        });
+    });
+
+    describe('handling a post deleted event', () => {
+        it('should remove notifications for the deleted post', () => {
+            const post = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+            } as Post;
+            const deletedById = 456;
+
+            events.emit(
+                PostDeletedEvent.getName(),
+                new PostDeletedEvent(post as Post, deletedById),
+            );
+
+            expect(
+                notificationService.removePostNotifications,
+            ).toHaveBeenCalledWith(post);
+        });
+    });
+
+    describe('handling an account blocked event', () => {
+        it('should remove notifications from the blocked account', () => {
+            const blockedAccount = { id: 123 } as AccountEntity;
+            const blockerAccount = { id: 456 } as AccountEntity;
+
+            events.emit(
+                AccountBlockedEvent.getName(),
+                new AccountBlockedEvent(blockedAccount.id, blockerAccount.id),
+            );
+
+            expect(
+                notificationService.removeBlockedAccountNotifications,
+            ).toHaveBeenCalledWith(blockerAccount.id, blockedAccount.id);
+        });
+    });
+
+    describe('handling a domain blocked event', () => {
+        it('should remove notifications from accounts from the blocked domain', () => {
+            const blockedDomain = new URL('https://example.com');
+            const blockerAccount = { id: 456 } as AccountEntity;
+
+            events.emit(
+                DomainBlockedEvent.getName(),
+                new DomainBlockedEvent(blockedDomain, blockerAccount.id),
+            );
+
+            expect(
+                notificationService.removeBlockedDomainNotifications,
+            ).toHaveBeenCalledWith(blockerAccount.id, blockedDomain);
+        });
+    });
+
+    describe('handling a mention created event', () => {
+        it('should create a mention notification', async () => {
+            const postWithMention = {
+                id: 123,
+                author: {
+                    id: 456,
+                },
+                content: 'Hello @bob@coolsite.com',
+                mentions: [
+                    {
+                        id: 788,
+                        apId: new URL('https://example.com/@bob'),
+                        username: 'bob',
+                    },
+                    {
+                        id: 789,
+                        apId: new URL('https://example.com/@alice'),
+                        username: 'alice',
+                    },
+                ],
+            } as unknown as Post;
+
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(postWithMention),
+            );
+
+            await new Promise(process.nextTick);
+
+            expect(
+                notificationService.createMentionNotification,
+            ).toHaveBeenCalledWith(
+                postWithMention,
+                postWithMention.mentions[0].id,
+            );
+            expect(
+                notificationService.createMentionNotification,
+            ).toHaveBeenCalledWith(
+                postWithMention,
+                postWithMention.mentions[1].id,
+            );
+        });
+    });
+
+    describe('handling a notifications read event', () => {
+        it('should read all notifications', () => {
+            const account = { id: 123 };
+
+            events.emit(
+                NotificationsReadEvent.getName(),
+                new NotificationsReadEvent(account.id),
+            );
+
+            expect(
+                notificationService.readAllNotifications,
+            ).toHaveBeenCalledWith(account.id);
         });
     });
 });

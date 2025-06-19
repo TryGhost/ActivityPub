@@ -1,12 +1,14 @@
-import { lookupWebFinger } from '@fedify/fedify';
+import { type Context, lookupWebFinger } from '@fedify/fedify';
+import type { ContextData } from 'app';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { lookupAPIdByHandle } from './lookup-helpers';
+import { error, ok } from './core/result';
+import { lookupActorProfile } from './lookup-helpers';
 
 vi.mock('@fedify/fedify', () => ({
     lookupWebFinger: vi.fn(),
 }));
 
-describe('lookupAPIdByHandle', () => {
+describe('lookupActorProfile', () => {
     const mockCtx = {
         data: {
             logger: {
@@ -35,33 +37,35 @@ describe('lookupAPIdByHandle', () => {
             lookupWebFinger as unknown as ReturnType<typeof vi.fn>
         ).mockResolvedValue(mockWebFingerResponse);
 
-        const result = await lookupAPIdByHandle(
-            mockCtx as any,
+        const result = await lookupActorProfile(
+            mockCtx as unknown as Context<ContextData>,
             '@user@example.com',
         );
 
-        expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com');
-        expect(result).toBe('https://example.com/actor');
+        expect(lookupWebFinger).toHaveBeenCalledWith('acct:user@example.com', {
+            allowPrivateAddress: true,
+        });
+        expect(result).toEqual(ok(new URL('https://example.com/actor')));
     });
 
-    it('should return null when WebFinger response has no links', async () => {
+    it('should return no-links-found error when WebFinger response has no links', async () => {
         const mockWebFingerResponse = {
-            links: [],
+            links: null,
         };
 
         (
             lookupWebFinger as unknown as ReturnType<typeof vi.fn>
         ).mockResolvedValue(mockWebFingerResponse);
 
-        const result = await lookupAPIdByHandle(
-            mockCtx as any,
+        const result = await lookupActorProfile(
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
-        expect(result).toBeNull();
+        expect(result).toEqual(error('no-links-found'));
     });
 
-    it('should return null when WebFinger response has no self link', async () => {
+    it('should return no-self-link error when WebFinger response has no self link', async () => {
         const mockWebFingerResponse = {
             links: [
                 {
@@ -76,25 +80,25 @@ describe('lookupAPIdByHandle', () => {
             lookupWebFinger as unknown as ReturnType<typeof vi.fn>
         ).mockResolvedValue(mockWebFingerResponse);
 
-        const result = await lookupAPIdByHandle(
-            mockCtx as any,
+        const result = await lookupActorProfile(
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
-        expect(result).toBeNull();
+        expect(result).toEqual(error('no-self-link'));
     });
 
-    it('should return null when WebFinger lookup fails', async () => {
+    it('should return lookup-error when WebFinger lookup fails', async () => {
         (
             lookupWebFinger as unknown as ReturnType<typeof vi.fn>
         ).mockRejectedValue(new Error('WebFinger lookup failed'));
 
-        const result = await lookupAPIdByHandle(
-            mockCtx as any,
+        const result = await lookupActorProfile(
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
-        expect(result).toBeNull();
+        expect(result).toEqual(error('lookup-error'));
     });
 
     it('should handle WebFinger response with multiple links and return self link', async () => {
@@ -117,11 +121,11 @@ describe('lookupAPIdByHandle', () => {
             lookupWebFinger as unknown as ReturnType<typeof vi.fn>
         ).mockResolvedValue(mockWebFingerResponse);
 
-        const result = await lookupAPIdByHandle(
-            mockCtx as any,
+        const result = await lookupActorProfile(
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
-        expect(result).toBe('https://example.com/actor');
+        expect(result).toEqual(ok(new URL('https://example.com/actor')));
     });
 });

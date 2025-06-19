@@ -1,0 +1,1 @@
+DROP INDEX idx_notifications_user_id_read on notifications;

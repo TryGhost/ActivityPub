@@ -1,7 +1,7 @@
-import type { Knex } from 'knex';
-
-import type { Account } from 'account/types';
+import { type Result, error, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
+import type { Knex } from 'knex';
+import type { ModerationService } from 'moderation/moderation.service';
 import type { Post } from 'post/post.entity';
 
 export enum NotificationType {
@@ -9,6 +9,7 @@ export enum NotificationType {
     Reply = 2,
     Repost = 3,
     Follow = 4,
+    Mention = 5,
 }
 
 export interface GetNotificationsDataOptions {
@@ -40,6 +41,11 @@ interface BaseGetNotificationsDataResultRow {
     post_title: string;
     post_content: string;
     post_url: string;
+    post_like_count: number;
+    post_liked_by_user: 0 | 1;
+    post_reply_count: number;
+    post_repost_count: number;
+    post_reposted_by_user: 0 | 1;
     in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
@@ -52,11 +58,13 @@ export interface GetNotificationsDataResult {
     nextCursor: string | null;
 }
 
+type GetUnreadNotificationsCountError = 'not-internal-account';
+
 export class NotificationService {
-    /**
-     * @param db Database client
-     */
-    constructor(private readonly db: Knex) {}
+    constructor(
+        private readonly db: Knex,
+        private readonly moderationService: ModerationService,
+    ) {}
 
     /**
      * Get data for a notifications based on the provided options
@@ -93,6 +101,21 @@ export class NotificationService {
                 'post.title as post_title',
                 'post.content as post_content',
                 'post.url as post_url',
+                'post.like_count as post_like_count',
+                this.db.raw(`
+                    CASE
+                        WHEN post_likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_user
+                `),
+                'post.reply_count as post_reply_count',
+                'post.repost_count as post_repost_count',
+                this.db.raw(`
+                    CASE
+                        WHEN post_reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_user
+                `),
                 // In reply to post fields
                 'in_reply_to_post.ap_id as in_reply_to_post_ap_id',
                 'in_reply_to_post.type as in_reply_to_post_type',
@@ -111,6 +134,20 @@ export class NotificationService {
                 'in_reply_to_post.id',
                 'notifications.in_reply_to_post_id',
             )
+            .leftJoin('likes as post_likes', function () {
+                this.onVal(
+                    'post_likes.account_id',
+                    '=',
+                    options.accountId.toString(),
+                ).andOn('post_likes.post_id', 'post.id');
+            })
+            .leftJoin('reposts as post_reposts', function () {
+                this.onVal(
+                    'post_reposts.account_id',
+                    '=',
+                    options.accountId.toString(),
+                ).andOn('post_reposts.post_id', 'post.id');
+            })
             .where('notifications.user_id', user.id)
             .modify((query) => {
                 if (options.cursor) {
@@ -142,15 +179,12 @@ export class NotificationService {
         };
     }
 
-    /**
-     * Create a notification for an account being followed
-     *
-     * @param account The account that is being followed
-     * @param followerAccount The account that is following
-     */
-    async createFollowNotification(account: Account, followerAccount: Account) {
+    async createFollowNotification(
+        accountId: number,
+        followerAccountId: number,
+    ) {
         const user = await this.db('users')
-            .where('account_id', account.id)
+            .where('account_id', accountId)
             .select('id')
             .first();
 
@@ -161,9 +195,19 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                followerAccountId,
+                accountId,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
-            account_id: followerAccount.id,
+            account_id: followerAccountId,
             event_type: NotificationType.Follow,
         });
     }
@@ -190,6 +234,16 @@ export class NotificationService {
             // If this like was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
+            return;
+        }
+
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                accountId,
+                post.author.id,
+            );
+
+        if (!notificationAllowed) {
             return;
         }
 
@@ -222,6 +276,16 @@ export class NotificationService {
             // If this repost was for a post by an internal account that no longer
             // exists, or an external account, we can't create a notification for
             // it as there is not a corresponding user record in the database
+            return;
+        }
+
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                accountId,
+                post.author.id,
+            );
+
+        if (!notificationAllowed) {
             return;
         }
 
@@ -271,6 +335,16 @@ export class NotificationService {
             return;
         }
 
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                post.author.id,
+                inReplyToPost.author_id,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: post.author.id,
@@ -278,5 +352,142 @@ export class NotificationService {
             in_reply_to_post_id: inReplyToPost.id,
             event_type: NotificationType.Reply,
         });
+    }
+
+    async removeBlockedAccountNotifications(
+        blockerAccountId: number,
+        blockedAccountId: number,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', blockerAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If this block was for an internal account that doesn't exist,
+            // or an external account, we can't remove notifications for it as
+            // there is not a corresponding user record in the database
+            return;
+        }
+
+        await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('account_id', blockedAccountId)
+            .delete();
+    }
+
+    async removePostNotifications(post: Post) {
+        await this.db('notifications')
+            .where('post_id', post.id)
+            .orWhere('in_reply_to_post_id', post.id)
+            .delete();
+    }
+
+    async removeBlockedDomainNotifications(blockerId: number, domain: URL) {
+        const user = await this.db('users')
+            .where('account_id', blockerId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If this block was for an internal account that doesn't exist,
+            // or an external account, we can't remove notifications for it as
+            // there is not a corresponding user record in the database
+            return;
+        }
+
+        await this.db('notifications')
+            .join('accounts', 'notifications.account_id', 'accounts.id')
+            .where('notifications.user_id', user.id)
+            .andWhereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
+                domain.host,
+            ])
+            .delete();
+    }
+
+    async createMentionNotification(post: Post, accountId: number) {
+        if (post.author.id === accountId) {
+            // Do not create a notification if author mentioned themselves (lol)
+            return;
+        }
+
+        if (post.inReplyTo) {
+            // Do not create a notification if the post is a reply to Bob and also mentions Bob
+            const inReplyToPost = await this.db('posts')
+                .where('id', post.inReplyTo)
+                .select('id', 'author_id')
+                .first();
+
+            if (inReplyToPost.author_id === accountId) {
+                return;
+            }
+        }
+
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If the mention is for an account that no longer exists or is external,
+            // don't create a notification
+            return;
+        }
+
+        const notificationAllowed =
+            await this.moderationService.canInteractWithAccount(
+                post.author.id,
+                accountId,
+            );
+
+        if (!notificationAllowed) {
+            return;
+        }
+
+        await this.db('notifications').insert({
+            user_id: user.id,
+            account_id: post.author.id,
+            post_id: post.id,
+            event_type: NotificationType.Mention,
+        });
+    }
+
+    async getUnreadNotificationsCount(
+        accountId: number,
+    ): Promise<Result<number, GetUnreadNotificationsCountError>> {
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return error('not-internal-account');
+        }
+
+        const result = await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('read', false)
+            .count('*', { as: 'count' });
+
+        return ok(Number(result[0].count));
+    }
+
+    async readAllNotifications(accountId: number) {
+        const user = await this.db('users')
+            .where('account_id', accountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            // If the requested account no longer exists or is external, don't read all notifications
+            return;
+        }
+
+        await this.db('notifications')
+            .where('user_id', user.id)
+            .andWhere('read', false)
+            .update({
+                read: true,
+            });
     }
 }

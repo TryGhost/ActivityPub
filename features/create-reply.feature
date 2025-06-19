@@ -6,7 +6,6 @@ Feature: Creating a reply
     And a "Note" Object "Article" by "Alice"
     And a "Create(Article)" Activity "Create" by "Alice"
     And "Alice" sends "Create" to the Inbox
-    And "Create" is in our Inbox
 
   Scenario: Reply content is validated against being empty
     When we attempt to reply to "Article" with no content
@@ -25,7 +24,7 @@ Feature: Creating a reply
       """
       This is a great article!
       """
-    Then "Reply" is in our Outbox
+    Then Activity with object "Reply" is sent to all followers
     And "Reply" has the content "<p>This is a great article!</p>"
 
   Scenario: Created reply contains newlines
@@ -34,7 +33,7 @@ Feature: Creating a reply
       Hello
       World
       """
-    Then "Reply" is in our Outbox
+    Then Activity with object "Reply" is sent to all followers
     And "Reply" has the content "<p>Hello<br />World</p>"
 
   Scenario: Created reply has user provided HTML escaped
@@ -42,7 +41,7 @@ Feature: Creating a reply
       """
       This is a great article!<script>alert("Hello, world!");</script>
       """
-    Then "Reply" is in our Outbox
+    Then Activity with object "Reply" is sent to all followers
     And "Reply" has the content "<p>This is a great article!&lt;script&gt;alert(\"Hello, world!\");&lt;/script&gt;</p>"
 
   Scenario: Created reply is sent to followers
@@ -52,3 +51,19 @@ Feature: Creating a reply
       """
     Then Activity "Reply" is sent to "Alice"
     And Activity "Reply" is sent to "Bob"
+
+  Scenario: Creating a reply with an image URL
+    When we reply "Reply" to "Article" with imageUrl "http://localhost:4443/image.jpg" and content
+      """
+      This is a great article!
+      """
+    Then Activity with object "Reply" is sent to all followers
+    And "Reply" has the content "<p>This is a great article!</p>"
+    And note "Reply" has the image URL "http://localhost:4443/image.jpg"
+
+  Scenario: Creating a reply with an invalid image URL
+    When we reply "Reply" to "Article" with imageUrl "not-a-url" and content
+      """
+      This is a great article!
+      """
+    Then the request is rejected with a 400

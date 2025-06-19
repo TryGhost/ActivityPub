@@ -1,6 +1,6 @@
 import Knex from 'knex';
 
-export const client = Knex({
+export const knex = Knex({
     client: 'mysql2',
     connection: process.env.MYSQL_SOCKET_PATH
         ? {
@@ -20,83 +20,19 @@ export const client = Knex({
           },
     pool: {
         min: 1,
-        max: 50,
+        max: 200,
     },
 });
-
-interface ActivityJsonLd {
-    [key: string]: any;
-}
-
-/**
- * @deprecated Do not use this function. Instead, resolve the post via the
- * post repository and use the `replyCount` property
- */
-export async function getActivityChildrenCount(activity: ActivityJsonLd) {
-    const objectId = activity.object.id;
-
-    const result = await client
-        .count('* as count')
-        .from('key_value')
-        .where(function () {
-            // If inReplyTo is a string
-            this.where(
-                client.raw(
-                    `JSON_EXTRACT(value, "$.object.inReplyTo") = "${objectId}"`,
-                ),
-            );
-
-            // If inReplyTo is an object
-            this.orWhere(
-                client.raw(
-                    `JSON_EXTRACT(value, "$.object.inReplyTo.id") = "${objectId}"`,
-                ),
-            );
-        })
-        .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Create"`));
-
-    return result[0].count;
-}
-
-/**
- * @deprecated Do not use this function. Instead, resolve the post via the
- * post repository and use the `repostCount` property
- */
-export async function getRepostCount(activity: ActivityJsonLd) {
-    const objectId = activity.object.id;
-
-    const result = await client
-        .count('* as count')
-        .from('key_value')
-        .where(function () {
-            this.where(
-                client.raw(
-                    `JSON_EXTRACT(value, "$.object.id") = "${objectId}"`,
-                ),
-            );
-        })
-        .andWhere(client.raw(`JSON_EXTRACT(value, "$.type") = "Announce"`));
-
-    return result[0].count;
-}
 
 export async function getRelatedActivities(
     postUrl: string,
 ): Promise<{ id: string }[]> {
-    return client
-        .select(client.raw('JSON_EXTRACT(value, "$.id") as id'))
+    return knex
+        .select(knex.raw('JSON_EXTRACT(value, "$.id") as id'))
         .from('key_value')
         .where(function () {
-            this.where(
-                client.raw('JSON_EXTRACT(value, "$.object.id") = ?', [postUrl]),
-            )
-                .orWhere(
-                    client.raw('JSON_EXTRACT(value, "$.object") = ?', [
-                        postUrl,
-                    ]),
-                )
-                .orWhere(
-                    client.raw('JSON_EXTRACT(value, "$.id") = ?', [postUrl]),
-                );
+            this.where(knex.raw('object_id = ?', [postUrl]))
+                .orWhere(knex.raw('object = ?', [postUrl]))
+                .orWhere(knex.raw('json_id = ?', [postUrl]));
         }) as unknown as Promise<{ id: string }[]>;
 }

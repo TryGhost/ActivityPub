@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { client } from './db';
+import { knex } from './db';
 
 describe('Knex Configuration', () => {
     it('should use UTC timezone in connection config', () => {
-        expect(client.client.config.connection).toMatchObject({
+        expect(knex.client.config.connection).toMatchObject({
             timezone: '+00:00',
         });
     });
 
     it('should have correct pool settings', () => {
-        expect(client.client.pool).toMatchObject({
+        expect(knex.client.pool).toMatchObject({
             min: 1,
-            max: 50,
+            max: 200,
         });
     });
 });

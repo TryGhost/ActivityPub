@@ -100,7 +100,15 @@ export function sanitizeHtml(content: string): string {
             '*': ['id', 'class', 'title', 'lang', 'dir', 'tabindex', 'style'],
 
             // Specific HTML elements
-            a: ['href', 'target', 'rel', 'download', 'hreflang', 'type'],
+            a: [
+                'href',
+                'target',
+                'rel',
+                'download',
+                'hreflang',
+                'type',
+                'data-profile',
+            ],
             img: [
                 'src',
                 'srcset',
@@ -209,18 +217,4 @@ export function sanitizeHtml(content: string): string {
         allowedScriptHostnames: ['platform.twitter.com'],
         allowVulnerableTags: true,
     });
-}
-
-export function escapeHtml(content: string): string {
-    const escapes: Record<string, string> = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#x27;',
-        '/': '&#x2F;',
-        '`': '&#x60;',
-    };
-
-    return content.replace(/[&<>"'`/]/g, (char) => escapes[char]);
 }

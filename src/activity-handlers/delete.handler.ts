@@ -2,11 +2,10 @@ import type { Actor, Context, Delete } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
-import type { Post } from 'post/post.entity';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { getRelatedActivities } from '../db';
-import { removeFromList } from '../kv-helpers';
 
 export class DeleteHandler {
     constructor(
@@ -59,20 +58,23 @@ export class DeleteHandler {
             return;
         }
 
-        let post: Post | null = null;
+        const postResult = await this.postService.getByApId(
+            deleteActivity.objectId,
+        );
 
-        try {
-            post = await this.postService.getByApId(deleteActivity.objectId);
-        } catch (error) {
-            ctx.data.logger.error('Error fetching post', { error });
-            return;
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                case 'missing-author':
+                case 'not-a-post':
+                    return;
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
 
-        if (post === null) {
-            ctx.data.logger.info('Post not found, exit early');
-            return;
-        }
-
+        const post = getValue(postResult);
         post.delete(senderAccount);
         await this.postRepository.save(post);
 
@@ -86,11 +88,6 @@ export class DeleteHandler {
             const activityId = activity.id;
 
             await ctx.data.globaldb.delete([activityId]);
-
-            await removeFromList(ctx.data.db, ['inbox'], activityId);
-            await removeFromList(ctx.data.db, ['outbox'], activityId);
-            await removeFromList(ctx.data.db, ['liked'], activityId);
-            await removeFromList(ctx.data.db, ['reposted'], activityId);
         }
     }
 }

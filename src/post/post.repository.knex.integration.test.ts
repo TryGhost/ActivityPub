@@ -1,11 +1,14 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import { AsyncEvents } from 'core/events';
+import { type Ok, getValue } from 'core/result';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
 import type { Knex } from 'knex';
+import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
@@ -16,7 +19,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Audience, Post, PostType } from './post.entity';
+import { Audience, OutboxType, Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 describe('KnexPostRepository', () => {
@@ -27,6 +30,7 @@ describe('KnexPostRepository', () => {
     let siteService: SiteService;
     let postRepository: KnexPostRepository;
     let client: Knex;
+    let fixtureManager: FixtureManager;
 
     const getAccount = async (host: string) => {
         const site = await siteService.initialiseSiteForHost(host);
@@ -37,15 +41,11 @@ describe('KnexPostRepository', () => {
 
     beforeAll(async () => {
         client = await createTestDb();
+        fixtureManager = createFixtureManager(client);
     });
 
     beforeEach(async () => {
-        // Clean up the database
-        await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client('reposts').truncate();
-        await client('likes').truncate();
-        await client('posts').truncate();
-        await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+        await fixtureManager.reset();
 
         // Init dependencies
         events = new AsyncEvents();
@@ -70,7 +70,8 @@ describe('KnexPostRepository', () => {
             },
         });
         postRepository = new KnexPostRepository(client, events);
-        const feedService = new FeedService(client);
+        const moderationService = new ModerationService(client);
+        const feedService = new FeedService(client, moderationService);
         const feedUpdateService = new FeedUpdateService(events, feedService);
         feedUpdateService.init();
     });
@@ -79,7 +80,7 @@ describe('KnexPostRepository', () => {
         it('Waits for the post to be added to feeds before returning', async () => {
             const site = await siteService.initialiseSiteForHost('testing.com');
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -89,7 +90,9 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -106,7 +109,7 @@ describe('KnexPostRepository', () => {
         it('Waits for the deleted post to be removed from feeds before returning', async () => {
             const site = await siteService.initialiseSiteForHost('testing.com');
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -116,7 +119,9 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -155,7 +160,7 @@ describe('KnexPostRepository', () => {
             const site =
                 await siteService.initialiseSiteForHost('testing-delete.com');
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -165,7 +170,9 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -201,7 +208,7 @@ describe('KnexPostRepository', () => {
                 'testing-deleted-reply.com',
             );
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: '3f1c5e84-9a2b-4d7f-8e62-1a6b9c9d4f10',
                 html: '<p>Hello, world!</p>',
@@ -211,7 +218,9 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             await postRepository.save(post);
 
@@ -276,7 +285,7 @@ describe('KnexPostRepository', () => {
             );
 
             // Create a new post
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
@@ -286,7 +295,9 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing-delete-likes.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             // Add a like from another account
             post.addLike(likerAccount);
@@ -316,7 +327,7 @@ describe('KnexPostRepository', () => {
                 'testing-new-deleted.com',
             );
             const account = await accountRepository.getBySite(site);
-            const post = Post.createArticleFromGhostPost(account, {
+            const postResult = await Post.createArticleFromGhostPost(account, {
                 title: 'Title',
                 uuid: randomUUID(),
                 html: '<p>Hello, world!</p>',
@@ -326,7 +337,9 @@ describe('KnexPostRepository', () => {
                 url: 'https://testing.com/hello-world',
                 published_at: '2025-01-01',
                 visibility: 'public',
+                authors: [],
             });
+            const post = getValue(postResult as Ok<Post>) as Post;
 
             post.delete(account);
 
@@ -347,7 +360,7 @@ describe('KnexPostRepository', () => {
         const site =
             await siteService.initialiseSiteForHost('testing-saving.com');
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -357,7 +370,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -388,10 +403,14 @@ describe('KnexPostRepository', () => {
                 Audience.Public,
                 'Some title',
                 'Some excerpt',
+                null,
                 'Some content',
                 new URL(`https://${site.host}/hello-world`),
                 new URL(`https://${site.host}/banners/hello-world.png`),
                 new Date('2025-04-03 13:56:00'),
+                {
+                    ghostAuthors: [],
+                },
                 0,
                 0,
                 0,
@@ -428,7 +447,7 @@ describe('KnexPostRepository', () => {
         );
         const account = await accountRepository.getBySite(site);
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -438,7 +457,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -455,7 +476,7 @@ describe('KnexPostRepository', () => {
         );
         const account = await accountRepository.getBySite(site);
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -465,7 +486,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
         await postRepository.save(post);
@@ -478,7 +501,7 @@ describe('KnexPostRepository', () => {
             'testing-by-apid.com',
         );
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -488,7 +511,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -496,8 +521,10 @@ describe('KnexPostRepository', () => {
 
         assert(result);
 
-        assert(result.author.uuid === account.uuid);
-        assert(result.uuid === post.uuid);
+        assert.equal(result.author.uuid, account.uuid);
+        assert.equal(result.uuid, post.uuid);
+        assert.equal(result.author.apId.href, account.apId.href);
+        assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
     it('Can get by id', async () => {
@@ -505,7 +532,7 @@ describe('KnexPostRepository', () => {
             'testing-by-apid.com',
         );
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -515,7 +542,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -523,8 +552,10 @@ describe('KnexPostRepository', () => {
 
         assert(result);
 
-        assert(result.author.uuid === account.uuid);
-        assert(result.uuid === post.uuid);
+        assert.equal(result.author.uuid, account.uuid);
+        assert.equal(result.uuid, post.uuid);
+        assert.equal(result.author.apId.href, account.apId.href);
+        assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
     it('Ensures an account associated with a post has a uuid when retrieved by apId', async () => {
@@ -544,7 +575,7 @@ describe('KnexPostRepository', () => {
             .first();
         assert(accountInDb.uuid === null, 'Account should not have a uuid');
 
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -554,7 +585,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -574,7 +607,7 @@ describe('KnexPostRepository', () => {
             'testing-deleted-tombstone.com',
         );
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -584,7 +617,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         await postRepository.save(post);
 
@@ -623,7 +658,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -633,7 +668,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addLike(accounts[0]);
         post.addLike(accounts[1]);
@@ -688,7 +725,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -698,7 +735,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addLike(accounts[1]);
 
@@ -752,7 +791,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -762,7 +801,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addRepost(accounts[1]);
         post.addRepost(accounts[2]);
@@ -814,7 +855,7 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const post = Post.createArticleFromGhostPost(accounts[0], {
+        const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -824,7 +865,9 @@ describe('KnexPostRepository', () => {
             url: 'https://testing.com/hello-world',
             published_at: '2025-01-01',
             visibility: 'public',
+            authors: [],
         });
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addRepost(accounts[1]);
 
@@ -882,17 +925,23 @@ describe('KnexPostRepository', () => {
             ].map(getAccount),
         );
 
-        const originalPost = Post.createArticleFromGhostPost(accounts[0], {
-            title: 'Original Post',
-            uuid: randomUUID(),
-            html: '<p>Original content</p>',
-            excerpt: 'Original content',
-            custom_excerpt: null,
-            feature_image: null,
-            url: 'https://testing.com/original-post',
-            published_at: '2025-01-01',
-            visibility: 'public',
-        });
+        const originalPostResult = await Post.createArticleFromGhostPost(
+            accounts[0],
+            {
+                title: 'Original Post',
+                uuid: randomUUID(),
+                html: '<p>Original content</p>',
+                excerpt: 'Original content',
+                custom_excerpt: null,
+                feature_image: null,
+                url: 'https://testing.com/original-post',
+                published_at: '2025-01-01',
+                visibility: 'public',
+                authors: [],
+            },
+        );
+
+        const originalPost = getValue(originalPostResult as Ok<Post>) as Post;
 
         await postRepository.save(originalPost);
 
@@ -994,8 +1043,9 @@ describe('KnexPostRepository', () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-is-liked-by-account.com',
         );
+
         const account = await accountRepository.getBySite(site);
-        const post = Post.createArticleFromGhostPost(account, {
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -1005,7 +1055,10 @@ describe('KnexPostRepository', () => {
             url: 'https://testing-is-liked-by-account.com/hello-world',
             published_at: '2025-04-01',
             visibility: 'public',
+            authors: [],
         });
+
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addLike(account);
 
@@ -1036,7 +1089,8 @@ describe('KnexPostRepository', () => {
         const reposterAccount = await accountRepository.getBySite(
             await siteService.initialiseSiteForHost('reposter-site.com'),
         );
-        const post = Post.createArticleFromGhostPost(account, {
+
+        const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
             uuid: randomUUID(),
             html: '<p>Hello, world!</p>',
@@ -1046,7 +1100,10 @@ describe('KnexPostRepository', () => {
             url: 'https://testing-is-reposted-by-account.com/hello-world',
             published_at: '2025-04-01',
             visibility: 'public',
+            authors: [],
         });
+
+        const post = getValue(postResult as Ok<Post>) as Post;
 
         post.addRepost(reposterAccount);
 
@@ -1067,5 +1124,803 @@ describe('KnexPostRepository', () => {
         );
 
         assert(isReposted, 'Post should be reposted by reposter account');
+    });
+
+    it('Includes mentions when getting a post by ID', async () => {
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-1.com',
+                'testing-mentions-2.com',
+                'testing-mentions-3.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(
+            accounts[0],
+            'Hello, @index@testing-mentions-2.com and @index@testing-mentions-3.com!',
+        );
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const fetchedPost = await postRepository.getById(post.id);
+
+        assert(fetchedPost, 'Post should be fetched from DB');
+        assert.equal(
+            fetchedPost.mentions.length,
+            2,
+            'Post should have 2 mentions',
+        );
+
+        // Check that both mentions exist
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[1].id),
+            'Post should mention second account',
+        );
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[2].id),
+            'Post should mention third account',
+        );
+    });
+
+    it('Includes mentions when getting a post by AP ID', async () => {
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-1.com',
+                'testing-mentions-2.com',
+                'testing-mentions-3.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(
+            accounts[0],
+            'Hello, @index@testing-mentions-2.com and @index@testing-mentions-3.com!',
+        );
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const fetchedPost = await postRepository.getByApId(post.apId);
+
+        assert(fetchedPost, 'Post should be fetched from DB');
+        assert.equal(
+            fetchedPost.mentions.length,
+            2,
+            'Post should have 2 mentions',
+        );
+
+        // Check that both mentions exist
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[1].id),
+            'Post should mention second account',
+        );
+        assert(
+            fetchedPost.mentions.some((m) => m.id === accounts[2].id),
+            'Post should mention third account',
+        );
+    });
+
+    it('Includes mentions when getting a thread of posts', async () => {
+        const accounts = await Promise.all(
+            [
+                'testing-thread-mentions-1.com',
+                'testing-thread-mentions-2.com',
+                'testing-thread-mentions-3.com',
+            ].map(getAccount),
+        );
+
+        const originalPost = Post.createNote(
+            accounts[0],
+            'Post mentioning @index@testing-thread-mentions-2.com',
+        );
+        originalPost.addMention(accounts[1]);
+        await postRepository.save(originalPost);
+
+        const reply = Post.createFromData(accounts[1], {
+            type: PostType.Note,
+            content: 'Reply mentioning @index@testing-thread-mentions-3.com',
+            inReplyTo: originalPost,
+        });
+        reply.addMention(accounts[2]);
+        await postRepository.save(reply);
+
+        const thread = await postRepository.getThreadByApId(
+            originalPost.apId.href,
+            accounts[0].id,
+        );
+
+        assert(thread.length === 2, 'Thread should contain 2 posts');
+
+        // Checking post mentions
+        assert.equal(
+            thread[0].post.mentions.length,
+            1,
+            'Original post should have 1 mention',
+        );
+        assert.equal(
+            thread[0].post.mentions[0].id,
+            accounts[1].id,
+            'Original post mention should match second account',
+        );
+
+        // Checking reply mentions
+        assert.equal(
+            thread[1].post.mentions.length,
+            1,
+            'Reply should have 1 mention',
+        );
+        assert.equal(
+            thread[1].post.mentions[0].id,
+            accounts[2].id,
+            'Reply mention should match third account',
+        );
+    });
+
+    it('Can save and retrieve a Post with metadata', async () => {
+        const site = await siteService.initialiseSiteForHost(
+            'testing-metadata.com',
+        );
+        const account = await accountRepository.getBySite(site);
+
+        const postResult = await Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            uuid: randomUUID(),
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            custom_excerpt: null,
+            feature_image: null,
+            url: 'https://testing-is-reposted-by-account.com/hello-world',
+            published_at: '2025-04-01',
+            visibility: 'public',
+            authors: [
+                {
+                    name: 'Author 1',
+                    profile_image: null,
+                },
+            ],
+        });
+
+        const post = getValue(postResult as Ok<Post>) as Post;
+        await postRepository.save(post);
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'Post should be saved in the DB');
+        assert.deepStrictEqual(
+            rowInDb.metadata,
+            {
+                ghostAuthors: [
+                    {
+                        name: 'Author 1',
+                        profile_image: null,
+                    },
+                ],
+            },
+            'Metadata should match',
+        );
+    });
+
+    it('Handles mentions of a new post', async () => {
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
+        const accounts = await Promise.all(
+            [
+                'testing-mentions-one.com',
+                'testing-mentions-two.com',
+                'testing-mentions-three.com',
+            ].map(getAccount),
+        );
+
+        const post = Post.createNote(
+            accounts[0],
+            'Hello, @index@testing-mentions-two.com and @index@testing-mentions-three.com!',
+        );
+
+        post.addMention(accounts[1]);
+        post.addMention(accounts[2]);
+
+        await postRepository.save(post);
+
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'A row should have been saved in the DB');
+
+        const mentionsInDb = await client('mentions')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+
+        assert.equal(
+            mentionsInDb.length,
+            2,
+            'There should be 2 mentions in the DB',
+        );
+
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(1); // 1 post created
+        expect(eventsEmitSpy).nthCalledWith(
+            1,
+            PostCreatedEvent.getName(),
+            new PostCreatedEvent(post),
+        );
+    });
+
+    it('Adds Article to outbox', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const post = await fixtureManager.createPost(account, {
+            type: PostType.Article,
+        });
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: post.id,
+                outbox_type: OutboxType.Original,
+            })
+            .select('*')
+            .first();
+
+        assert(outboxEntry, 'An outbox entry should have been created');
+        assert.equal(
+            outboxEntry.post_type,
+            PostType.Article,
+            'Post type should be Article',
+        );
+        assert.equal(
+            outboxEntry.author_id,
+            account.id,
+            'Author ID should match',
+        );
+        assert.equal(
+            outboxEntry.account_id,
+            account.id,
+            'Outbox account ID should match account ID of the post author',
+        );
+    });
+
+    it('Adds Note to outbox', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const post = await fixtureManager.createPost(account);
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: post.id,
+                outbox_type: OutboxType.Original,
+            })
+            .select('*')
+            .first();
+
+        assert(outboxEntry, 'An outbox entry should have been created');
+        assert.equal(
+            outboxEntry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            outboxEntry.author_id,
+            account.id,
+            'Author ID should match',
+        );
+        assert.equal(
+            outboxEntry.account_id,
+            account.id,
+            'Outbox account ID should match account ID of the post author',
+        );
+    });
+
+    it('Adds Reply to outbox', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [replyAccount] = await fixtureManager.createInternalAccount();
+
+        const originalPost = await fixtureManager.createPost(account);
+
+        const reply = await fixtureManager.createReply(
+            replyAccount,
+            originalPost,
+        );
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: reply.id,
+                outbox_type: OutboxType.Reply,
+            })
+            .select('*')
+            .first();
+
+        assert(outboxEntry, 'An outbox entry should have been created');
+        assert.equal(
+            outboxEntry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            outboxEntry.author_id,
+            replyAccount.id,
+            'Author ID should match reply account',
+        );
+        assert.equal(
+            outboxEntry.account_id,
+            replyAccount.id,
+            'Outbox account ID should match account ID of the reply author',
+        );
+    });
+
+    it('Adds outbox entries for reposts', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter1] = await fixtureManager.createInternalAccount();
+        const [reposter2] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+
+        post.addRepost(reposter1);
+        post.addRepost(reposter2);
+        await postRepository.save(post);
+
+        // Check all outbox entries
+        const outboxEntries = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*')
+            .orderBy('outbox_type');
+
+        assert.equal(outboxEntries.length, 3, 'Should have 3 outbox entries');
+
+        const originalEntry = outboxEntries.find(
+            (entry) => entry.outbox_type === OutboxType.Original,
+        );
+        assert(originalEntry, 'Should have original post entry');
+        assert.equal(
+            originalEntry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            originalEntry.author_id,
+            account.id,
+            'Author ID should match original author',
+        );
+
+        // Verify repost entries
+        const repostEntries = outboxEntries.filter(
+            (entry) => entry.outbox_type === OutboxType.Repost,
+        );
+        assert.equal(repostEntries.length, 2, 'Should have 2 repost entries');
+
+        const reposter1Entry = repostEntries.find(
+            (entry) => entry.account_id === reposter1.id,
+        );
+        assert(reposter1Entry, 'Should have entry for reposter 1');
+        assert.equal(
+            reposter1Entry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            reposter1Entry.author_id,
+            account.id,
+            "Author ID should be original author's account ID",
+        );
+
+        const reposter2Entry = repostEntries.find(
+            (entry) => entry.account_id === reposter2.id,
+        );
+        assert(reposter2Entry, 'Should have entry for reposter 2');
+        assert.equal(
+            reposter2Entry.post_type,
+            PostType.Note,
+            'Post type should be Note',
+        );
+        assert.equal(
+            reposter2Entry.author_id,
+            account.id,
+            "Author ID should be original author's account ID",
+        );
+    });
+
+    it('Updates outbox entries when adding and removing reposts', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter1] = await fixtureManager.createInternalAccount();
+        const [reposter2] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+
+        const initialOutboxEntries = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            initialOutboxEntries.length,
+            1,
+            'Should have 1 outbox entry initially (original post)',
+        );
+        assert.equal(
+            initialOutboxEntries[0].outbox_type,
+            OutboxType.Original,
+            'Initial entry should be of type Original',
+        );
+
+        // Add two reposts
+        post.addRepost(reposter1);
+        post.addRepost(reposter2);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterReposts = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterReposts.length,
+            3,
+            'Should have 3 outbox entries after adding reposts (1 original + 2 reposts)',
+        );
+
+        // Remove one repost
+        post.removeRepost(reposter1);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterRemove = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterRemove.length,
+            2,
+            'Should have 2 outbox entries after removing one repost (1 original + 1 repost)',
+        );
+
+        const remainingRepostEntries = outboxEntriesAfterRemove.filter(
+            (entry) => entry.outbox_type === OutboxType.Repost,
+        );
+        assert.equal(
+            remainingRepostEntries.length,
+            1,
+            'Should have 1 repost entry remaining',
+        );
+        assert.equal(
+            remainingRepostEntries[0].account_id,
+            reposter2.id,
+            'Remaining repost entry should be for reposter 2',
+        );
+    });
+
+    it('Deletes original post and repost outbox entries when a post is deleted', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter1] = await fixtureManager.createInternalAccount();
+        const [reposter2] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+        post.addRepost(reposter1);
+        post.addRepost(reposter2);
+        await postRepository.save(post);
+
+        const outboxEntriesBeforeDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesBeforeDelete.length,
+            3,
+            'Should have 3 outbox entries before deletion (1 for original post + 2 for reposts)',
+        );
+
+        // Delete the post
+        post.delete(account);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterDelete.length,
+            0,
+            'Should have no outbox entries after deletion',
+        );
+    });
+
+    it('Preserves reply outbox entries when original post is deleted', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+
+        const post = await fixtureManager.createPost(account);
+
+        const reply = await fixtureManager.createReply(account, post);
+
+        const outboxEntriesBeforeDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .orWhere({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesBeforeDelete.length,
+            2,
+            'Should have 2 outbox entries before deletion (1 for original post, 1 for reply)',
+        );
+
+        // Delete the original post
+        post.delete(account);
+        await postRepository.save(post);
+
+        const outboxEntriesAfterDelete = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .orWhere({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxEntriesAfterDelete.length,
+            1,
+            'Should have 1 outbox entry after deletion (only the reply entry should remain)',
+        );
+
+        const remainingEntry = outboxEntriesAfterDelete[0];
+        assert.equal(
+            remainingEntry.post_id,
+            reply.id,
+            'The remaining entry should be for the reply post',
+        );
+        assert.equal(
+            remainingEntry.outbox_type,
+            OutboxType.Reply,
+            'The remaining entry should be a reply type',
+        );
+    });
+
+    it('Handles reposting a reply and its deletion', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const [reposter] = await fixtureManager.createInternalAccount();
+
+        const originalPost = await fixtureManager.createPost(account);
+
+        const originalPostOutbox = await client('outboxes')
+            .where({
+                post_id: originalPost.id,
+            })
+            .select('*');
+        assert.equal(
+            originalPostOutbox.length,
+            1,
+            'Should have 1 outbox entry for original post',
+        );
+        assert.equal(
+            originalPostOutbox[0].outbox_type,
+            OutboxType.Original,
+            'Original post should have Original outbox type',
+        );
+
+        const reply = await fixtureManager.createReply(account, originalPost);
+
+        const replyOutbox = await client('outboxes')
+            .where({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            replyOutbox.length,
+            1,
+            'Should have 1 outbox entry for reply',
+        );
+        assert.equal(
+            replyOutbox[0].outbox_type,
+            OutboxType.Reply,
+            'Reply should have Reply outbox type',
+        );
+
+        // Add repost to the reply
+        reply.addRepost(reposter);
+        await postRepository.save(reply);
+
+        const outboxAfterRepost = await client('outboxes')
+            .where({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxAfterRepost.length,
+            2,
+            'Should have 2 outbox entries for reply (1 reply + 1 repost)',
+        );
+
+        // Verify repost entry
+        const repostEntry = outboxAfterRepost.find(
+            (entry) => entry.outbox_type === OutboxType.Repost,
+        );
+        assert(repostEntry, 'Should have repost entry');
+        assert.equal(
+            repostEntry.account_id,
+            reposter.id,
+            'Repost entry should be for reposter',
+        );
+        assert.equal(
+            repostEntry.author_id,
+            account.id,
+            'Repost entry should have original author ID',
+        );
+
+        // Delete the reply
+        reply.delete(account);
+        await postRepository.save(reply);
+
+        const outboxAfterDelete = await client('outboxes')
+            .where({
+                post_id: reply.id,
+            })
+            .select('*');
+        assert.equal(
+            outboxAfterDelete.length,
+            0,
+            'Should have no outbox entries for deleted reply',
+        );
+
+        const originalPostOutboxAfterDelete = await client('outboxes')
+            .where({
+                post_id: originalPost.id,
+            })
+            .select('*');
+        assert.equal(
+            originalPostOutboxAfterDelete.length,
+            1,
+            'Original post should still have its outbox entry',
+        );
+    });
+
+    it('Does not create outbox entries for external accounts', async () => {
+        const externalAccount = await fixtureManager.createExternalAccount();
+
+        const post = await fixtureManager.createPost(externalAccount);
+
+        const outboxEntry = await client('outboxes')
+            .where({
+                post_id: post.id,
+            })
+            .select('*')
+            .first();
+
+        assert(
+            !outboxEntry,
+            'No outbox entry should be created for external accounts',
+        );
+    });
+
+    describe('Post Entity Mapping', () => {
+        it('correctly maps a post row to a post entity', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const post = await fixtureManager.createPost(account);
+
+            const retrievedPost = await postRepository.getById(post.id);
+            assert(retrievedPost, 'Post should be retrieved from database');
+
+            expect(retrievedPost.id).toBe(post.id);
+            expect(retrievedPost.uuid).toBe(post.uuid);
+            expect(retrievedPost.type).toBe(post.type);
+            expect(retrievedPost.title).toBe(post.title);
+            expect(retrievedPost.content).toBe(post.content);
+            expect(retrievedPost.excerpt).toBe(post.excerpt);
+            expect(retrievedPost.url.href).toBe(post.url.href);
+            expect(retrievedPost.imageUrl?.href).toBe(post.imageUrl?.href);
+            expect(retrievedPost.publishedAt.toISOString()).toBe(
+                post.publishedAt.toISOString(),
+            );
+            expect(retrievedPost.metadata).toEqual(post.metadata);
+            expect(retrievedPost.likeCount).toBe(0);
+            expect(retrievedPost.repostCount).toBe(0);
+            expect(retrievedPost.replyCount).toBe(0);
+            expect(retrievedPost.readingTimeMinutes).toBe(
+                post.readingTimeMinutes,
+            );
+            expect(Post.isDeleted(retrievedPost)).toBe(false);
+
+            expect(retrievedPost.author.id).toBe(account.id);
+            expect(retrievedPost.author.uuid).toBe(account.uuid);
+            expect(retrievedPost.author.username).toBe(account.username);
+            expect(retrievedPost.author.name).toBe(account.name);
+            expect(retrievedPost.author.bio).toBe(account.bio);
+            expect(retrievedPost.author.url.href).toBe(account.url.href);
+            expect(retrievedPost.author.avatarUrl?.href).toBe(
+                account.avatarUrl?.href,
+            );
+            expect(retrievedPost.author.bannerImageUrl?.href).toBe(
+                account.bannerImageUrl?.href,
+            );
+            expect(retrievedPost.author.apId.href).toBe(account.apId.href);
+            if (account.apFollowers) {
+                expect(retrievedPost.author.apFollowers?.href).toBe(
+                    account.apFollowers.href,
+                );
+            }
+            if (account.apInbox) {
+                expect(retrievedPost.author.apInbox?.href).toBe(
+                    account.apInbox.href,
+                );
+            }
+            expect(retrievedPost.author.isInternal).toBe(account.isInternal);
+
+            expect(retrievedPost.attachments).toHaveLength(0);
+            expect(retrievedPost.summary).toBe(post.summary);
+            expect(retrievedPost.audience).toBe(post.audience);
+            expect(retrievedPost.inReplyTo).toBe(post.inReplyTo);
+            expect(retrievedPost.threadRoot).toBe(post.threadRoot);
+        });
+
+        it('handles missing author UUID by generating a new one', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            await client('accounts')
+                .where({ id: account.id })
+                .update({ uuid: null });
+
+            const post = await fixtureManager.createPost(account);
+
+            const retrievedPost = await postRepository.getById(post.id);
+            assert(retrievedPost, 'Post should be retrieved from database');
+
+            // Verify that a new UUID was generated for the author
+            expect(retrievedPost.author.uuid).toBeDefined();
+            expect(retrievedPost.author.uuid).not.toBe(account.uuid);
+
+            // Verify that the UUID was saved in the database
+            const updatedAccount = await client('accounts')
+                .where({ id: account.id })
+                .select('uuid')
+                .first();
+            expect(updatedAccount.uuid).toBe(retrievedPost.author.uuid);
+        });
+
+        it('correctly maps mentions for a post', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const post = await fixtureManager.createPost(account);
+
+            const [mentionedAccount1] =
+                await fixtureManager.createInternalAccount();
+            const [mentionedAccount2] =
+                await fixtureManager.createInternalAccount();
+
+            await client('mentions').insert([
+                {
+                    post_id: post.id,
+                    account_id: mentionedAccount1.id,
+                },
+                {
+                    post_id: post.id,
+                    account_id: mentionedAccount2.id,
+                },
+            ]);
+
+            const retrievedPost = await postRepository.getById(post.id);
+            assert(retrievedPost, 'Post should be retrieved from database');
+
+            expect(retrievedPost.mentions).toHaveLength(2);
+            expect(retrievedPost.mentions[0]).toEqual({
+                id: mentionedAccount1.id,
+                apId: mentionedAccount1.apId,
+                username: mentionedAccount1.username,
+            });
+            expect(retrievedPost.mentions[1]).toEqual({
+                id: mentionedAccount2.id,
+                apId: mentionedAccount2.apId,
+                username: mentionedAccount2.username,
+            });
+        });
     });
 });

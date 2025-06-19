@@ -1,22 +1,109 @@
 import type EventEmitter from 'node:events';
-import { Delete, PUBLIC_COLLECTION, Update } from '@fedify/fedify';
+import {
+    type Activity,
+    Delete,
+    Follow,
+    PUBLIC_COLLECTION,
+    Reject,
+    Update,
+} from '@fedify/fedify';
+import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { AccountUpdatedEvent } from 'account/account-updated.event';
+import type { Account } from 'account/account.entity';
+import type { AccountService } from 'account/account.service';
+import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
+import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
+import { PostType } from 'post/post.entity';
 import { v4 as uuidv4 } from 'uuid';
-import type { Account } from '../account/types';
 import type { FedifyContextFactory } from './fedify-context.factory';
 
 export class FediverseBridge {
     constructor(
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly accountService: AccountService,
     ) {}
 
     async init() {
-        this.events.on('account.updated', this.handleAccountUpdate.bind(this));
+        this.events.on(
+            AccountUpdatedEvent.getName(),
+            this.handleAccountUpdatedEvent.bind(this),
+        );
+        this.events.on(
+            PostCreatedEvent.getName(),
+            this.handlePostCreated.bind(this),
+        );
         this.events.on(
             PostDeletedEvent.getName(),
             this.handlePostDeleted.bind(this),
         );
+        this.events.on(
+            AccountBlockedEvent.getName(),
+            this.handleAccountBlockedEvent.bind(this),
+        );
+    }
+
+    private async sendActivityToInbox(
+        account: Account,
+        recipient: Account,
+        activity: Activity,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: account.username },
+            {
+                id: recipient.apId,
+                inboxId: recipient.apInbox,
+            },
+            activity,
+        );
+    }
+
+    private async sendActivityToFollowers(
+        account: Account,
+        activity: Activity,
+    ) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        await ctx.sendActivity(
+            { username: account.username },
+            'followers',
+            activity,
+            {
+                preferSharedInbox: true,
+            },
+        );
+    }
+
+    private async handlePostCreated(event: PostCreatedEvent) {
+        const post = event.getPost();
+        if (!post.author.isInternal) {
+            return;
+        }
+
+        // TODO: Replies are currently handled in the handler file. Move that logic here.
+        if (post.type === PostType.Note && post.inReplyTo) {
+            return;
+        }
+
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const { createActivity, fedifyObject } =
+            await buildCreateActivityAndObjectFromPost(post, ctx);
+
+        await ctx.data.globaldb.set(
+            [createActivity.id!.href],
+            await createActivity.toJsonLd(),
+        );
+
+        await ctx.data.globaldb.set(
+            [fedifyObject.id!.href],
+            await fedifyObject.toJsonLd(),
+        );
+
+        await this.sendActivityToFollowers(post.author, createActivity);
     }
 
     private async handlePostDeleted(event: PostDeletedEvent) {
@@ -38,40 +125,60 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            {
-                handle: post.author.username,
-            },
-            'followers',
-            deleteActivity,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        await this.sendActivityToFollowers(post.author, deleteActivity);
     }
 
-    private async handleAccountUpdate(account: Account) {
+    private async handleAccountUpdatedEvent(event: AccountUpdatedEvent) {
+        const account = event.getAccount();
+        if (!account.isInternal) {
+            return;
+        }
+
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         const update = new Update({
             id: ctx.getObjectUri(Update, { id: uuidv4() }),
-            actor: new URL(account.ap_id),
+            actor: account.apId,
             to: PUBLIC_COLLECTION,
-            object: new URL(account.ap_id),
-            cc: new URL(account.ap_followers_url),
+            object: account.apId,
+            cc: account.apFollowers,
         });
 
         await ctx.data.globaldb.set([update.id!.href], await update.toJsonLd());
 
-        await ctx.sendActivity(
-            {
-                handle: account.username,
-            },
-            'followers',
-            update,
-            {
-                preferSharedInbox: true,
-            },
+        await this.sendActivityToFollowers(account, update);
+    }
+
+    private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const blockerAccount = await this.accountService.getAccountById(
+            event.getBlockerId(),
         );
+        const blockedAccount = await this.accountService.getAccountById(
+            event.getAccountId(),
+        );
+
+        if (!blockerAccount || !blockedAccount) {
+            return;
+        }
+
+        if (blockedAccount.isInternal) {
+            return;
+        }
+
+        const reject = new Reject({
+            id: ctx.getObjectUri(Reject, { id: uuidv4() }),
+            actor: blockerAccount.apId,
+            object: new Follow({
+                id: ctx.getObjectUri(Follow, { id: uuidv4() }),
+                actor: blockedAccount.apId,
+                object: blockerAccount.apId,
+            }),
+        });
+
+        await ctx.data.globaldb.set([reject.id!.href], await reject.toJsonLd());
+
+        await this.sendActivityToInbox(blockerAccount, blockedAccount, reject);
     }
 }

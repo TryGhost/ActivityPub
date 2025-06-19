@@ -1,4 +1,4 @@
-FROM node:20.18.0-alpine
+FROM node:22.14.0-alpine
 
 WORKDIR /opt/activitypub
 
@@ -11,6 +11,7 @@ RUN yarn && \
 COPY tsconfig.json .
 
 COPY src ./src
+COPY vitest.config.ts vitest.config.ts
 
 ENV NODE_ENV=production
 RUN yarn build

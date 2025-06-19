@@ -1,19 +1,7 @@
-import {
-    type Actor,
-    Image,
-    PUBLIC_COLLECTION,
-    PropertyValue,
-    type RequestContext,
-    Update,
-} from '@fedify/fedify';
-import { v4 as uuidv4 } from 'uuid';
+import { type Actor, PropertyValue } from '@fedify/fedify';
 import type { AccountService } from '../../account/account.service';
-import type { ContextData } from '../../app';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
+import { HANDLE_REGEX } from '../../constants';
 import type { Site } from '../../site/site.service';
-import type { SiteSettings } from '../ghost';
-import { type UserData, getUserData, setUserData } from '../user';
-
 interface Attachment {
     name: string;
     value: string;
@@ -58,7 +46,7 @@ export async function getFollowingCount(actor: Actor): Promise<number> {
 }
 
 export function getHandle(actor: Actor): string {
-    const host = actor.id?.host || 'unknown';
+    const host = actor.id?.host?.replace(/^www./, '') || 'unknown';
 
     return `@${actor?.preferredUsername || 'unknown'}@${host}`;
 }
@@ -90,75 +78,5 @@ export async function isFollowedByDefaultSiteAccount(
 }
 
 export function isHandle(handle: string): boolean {
-    // In test environments, we have handles that don't match the regex. Ex: @Alice@fake-external-activitypub
-    if (
-        process.env.NODE_ENV === 'testing' &&
-        handle.endsWith('@fake-external-activitypub')
-    ) {
-        return true;
-    }
-
-    return /^@([\w.-]+)@([\w-]+\.[\w.-]+[^.])$/.test(handle);
-}
-
-export async function updateSiteActor(
-    apCtx: RequestContext<ContextData>,
-    getSiteSettings: (host: string) => Promise<SiteSettings>,
-) {
-    const settings = await getSiteSettings(apCtx.host);
-    const handle = ACTOR_DEFAULT_HANDLE;
-
-    const current = await getUserData(apCtx, handle);
-
-    if (
-        current &&
-        current.icon?.url?.toString() === settings.site.icon &&
-        current.name === settings.site.title &&
-        current.summary === settings.site.description
-    ) {
-        apCtx.data.logger.info(
-            'No site settings changed, not updating site actor',
-        );
-        return false;
-    }
-
-    const updated: UserData = {
-        ...current,
-    };
-
-    if (settings.site.icon) {
-        try {
-            updated.icon = new Image({ url: new URL(settings.site.icon) });
-        } catch (err) {
-            apCtx.data.logger.error(
-                'Could not create Image from Icon value ({icon}): {error}',
-                { icon: settings.site.icon, error: err },
-            );
-        }
-    }
-
-    updated.name = settings.site.title;
-    updated.summary = settings.site.description;
-
-    await setUserData(apCtx, updated, handle);
-
-    apCtx.data.logger.info('Site settings changed, will notify followers');
-
-    const actor = await apCtx.getActor(handle);
-
-    const update = new Update({
-        id: apCtx.getObjectUri(Update, { id: uuidv4() }),
-        actor: actor?.id,
-        to: PUBLIC_COLLECTION,
-        object: actor?.id,
-        cc: apCtx.getFollowersUri('index'),
-    });
-
-    await apCtx.data.globaldb.set([update.id!.href], await update.toJsonLd());
-
-    await apCtx.sendActivity({ handle }, 'followers', update, {
-        preferSharedInbox: true,
-    });
-
-    return true;
+    return new RegExp(`^${HANDLE_REGEX.source}$`).test(handle);
 }

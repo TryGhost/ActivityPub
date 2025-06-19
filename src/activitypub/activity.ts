@@ -28,8 +28,11 @@ export class FedifyActivitySender implements ActivitySender<Activity, Actor> {
     constructor(private readonly fedifyCtx: FedifyRequestContext) {}
 
     async sendActivityToActorFollowers(activity: Activity, actor: Actor) {
+        if (!actor.preferredUsername) {
+            throw new Error(`Actor ${actor.id} has no preferred username`);
+        }
         await this.fedifyCtx.sendActivity(
-            { handle: String(actor.preferredUsername) },
+            { username: actor.preferredUsername.toString() },
             'followers',
             activity,
             {

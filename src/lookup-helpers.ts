@@ -1,11 +1,17 @@
 import {
     Object as APObject,
     type Actor,
+    type Article,
+    type Collection,
     type Context,
+    type Note,
     isActor,
     lookupWebFinger,
 } from '@fedify/fedify';
 import type { ContextData } from './app';
+import { type Result, error, ok } from './core/result';
+
+export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
 export async function lookupActor(
     ctx: Context<ContextData>,
@@ -61,22 +67,25 @@ export async function lookupObject(
     return ctx.lookupObject(identifier, { documentLoader });
 }
 
-export async function lookupAPIdByHandle(
+export async function lookupActorProfile(
     ctx: Context<ContextData>,
     handle: string,
-): Promise<string | null> {
+): Promise<Result<URL, LookupError>> {
     try {
         // Remove leading @ if present
         const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
 
-        // Format the resource string as acct:username@domain
         const resource = `acct:${cleanHandle}`;
 
-        const webfingerData = await lookupWebFinger(resource);
+        const webfingerData = await lookupWebFinger(resource, {
+            allowPrivateAddress:
+                process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+                ['development', 'testing'].includes(process.env.NODE_ENV || ''),
+        });
 
         if (!webfingerData?.links) {
             ctx.data.logger.info('No links found in WebFinger response');
-            return null;
+            return error('no-links-found');
         }
 
         // Find the ActivityPub self link
@@ -90,15 +99,45 @@ export async function lookupAPIdByHandle(
             ctx.data.logger.info(
                 'No ActivityPub self link found in WebFinger response',
             );
-            return null;
+            return error('no-self-link');
         }
 
-        return selfLink.href;
+        return ok(new URL(selfLink.href));
     } catch (err) {
         ctx.data.logger.error(
             'Error looking up actor by handle ({handle}): {error}',
             { handle, error: err },
         );
+        return error('lookup-error');
+    }
+}
+
+export async function getLikeCountFromRemote(object: Note | Article) {
+    let likesCollection: Collection | null;
+    try {
+        likesCollection = await object.getLikes();
+    } catch {
+        likesCollection = null;
+    }
+
+    if (!likesCollection) {
         return null;
     }
+
+    return likesCollection.totalItems ?? null;
+}
+
+export async function getRepostCountFromRemote(object: Note | Article) {
+    let sharesCollection: Collection | null;
+    try {
+        sharesCollection = await object.getShares();
+    } catch {
+        sharesCollection = null;
+    }
+
+    if (!sharesCollection) {
+        return null;
+    }
+
+    return sharesCollection.totalItems ?? null;
 }

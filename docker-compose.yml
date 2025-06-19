@@ -1,8 +1,12 @@
 services:
   activitypub:
     build: .
+    ports:
+      - "9229:9229"
     volumes:
       - ./src:/opt/activitypub/src
+      - ./dist:/opt/activitypub/dist
+      - dev-content:/opt/activitypub/content
     environment:
       - PORT=8080
       - MYSQL_USER=ghost
@@ -17,10 +21,12 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
-      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
+      - GCP_BUCKET_NAME=activitypub
+      - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
+      - LOCAL_STORAGE_PATH=/opt/activitypub/content
+      # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
     command: yarn build:watch
     depends_on:
       migrate:
@@ -29,14 +35,11 @@ services:
         condition: service_healthy
       pubsub:
         condition: service_healthy
+      fake-gcs:
+        condition: service_healthy
 
   jaeger:
-    image: jaegertracing/all-in-one:1.62.0
-    container_name: activitypub-jaeger
-    ports:
-      - "4318:4318"
-      - "16686:16686"
-      - "9411:9411"
+    image: jaegertracing/all-in-one:1.70.0
     restart: always
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
@@ -51,6 +54,15 @@ services:
       mysql:
         condition: service_healthy
 
+  cleanup-expired-key-value-records:
+    build: jobs/cleanup-expired-key-value-records
+    environment:
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+
   scripts:
     build: scripts
     depends_on:
@@ -61,11 +73,13 @@ services:
     build: nginx
     ports:
       - "80:80"
+    volumes:
+      - dev-content:/content:ro
     depends_on:
       - activitypub
 
   mysql:
-    image: mysql:8.0.31
+    image: mysql:8.4.5
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -80,8 +94,6 @@ services:
 
   pubsub:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
-    ports:
-      - "8085:8085"
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -89,24 +101,26 @@ services:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
-      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/pubsub/ghost/push
+      - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
       retries: 120
       start_period: 5s
 
-  # Testing
-
   activitypub-testing:
+    networks:
+      - test_network
     build: .
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
+      - test-content:/opt/activitypub/content
     environment:
+      - LOCAL_STORAGE_PATH=/opt/activitypub/content
       - PORT=8083
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
@@ -121,15 +135,17 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub-testing:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
-      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
+      - GCP_BUCKET_NAME=activitypub
+      - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
     command: yarn build:watch
     depends_on:
       mysql-testing:
         condition: service_healthy
       pubsub-testing:
+        condition: service_healthy
+      fake-gcs:
         condition: service_healthy
     healthcheck:
       test: "if [ ! -f /tmp/health.txt ]; then (wget --spider http://0.0.0.0:8083/ping || exit 1) && touch /tmp/health.txt ; else echo \"healthcheck already executed\"; fi"
@@ -138,6 +154,8 @@ services:
       start_period: 5s
 
   migrate-testing:
+    networks:
+      - test_network
     build: migrate
     volumes:
       - ./migrate/migrations:/migrations
@@ -147,7 +165,18 @@ services:
       mysql-testing:
         condition: service_healthy
 
+  cleanup-expired-key-value-records-testing:
+    build: jobs/cleanup-expired-key-value-records
+    environment:
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql-testing
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+
   cucumber-tests:
+    networks:
+      - test_network
     build: .
     volumes:
       - ./features:/opt/activitypub/features
@@ -159,7 +188,11 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
       - NODE_ENV=testing
+      - GCP_BUCKET_NAME=activitypub
+      - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - TAGS
+      - URL_GHOST_ACTIVITY_PUB=http://fake-ghost-activitypub.test
+      - URL_EXTERNAL_ACTIVITY_PUB=http://fake-external-activitypub.test
     command: /opt/activitypub/node_modules/.bin/cucumber-js
     depends_on:
       fake-ghost-activitypub:
@@ -168,25 +201,27 @@ services:
         condition: service_started
       activitypub-testing:
         condition: service_healthy
+      fake-gcs:
+        condition: service_healthy
 
   mysql-testing:
-    image: mysql:8.0.31
+    networks:
+      - test_network
+    image: mysql:8.4.5
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
-    ports:
-      - "3308:3306"
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
       retries: 120
 
   pubsub-testing:
+    networks:
+      - test_network
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
-    ports:
-      - "8086:8085"
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -194,10 +229,10 @@ services:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
-      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/pubsub/ghost/push
+      - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push
     healthcheck:
       test: "curl -f http://localhost:8085 || exit 1"
       interval: 1s
@@ -205,17 +240,55 @@ services:
       start_period: 5s
 
   fake-ghost-activitypub:
+    networks:
+      test_network:
+        aliases:
+          - fake-ghost-activitypub.test
     image: wiremock/wiremock:3.10.0-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
+    networks:
+      test_network:
+        aliases:
+          - fake-external-activitypub.test
     image: wiremock/wiremock:3.10.0-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
+    networks:
+      test_network:
+        aliases:
+          - fake-mastodon.test
     image: wiremock/wiremock:3.10.0-1
-    ports:
-      - "8084:8080"
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
+
+  fake-gcs:
+    build: fake-gcs
+    environment:
+      - GCP_BUCKET_NAME=activitypub
+      - GCP_PROJECT_ID=activitypub
+    volumes:
+      - ./fake-gcs/storage:/storage
+    networks:
+      default:
+        aliases:
+          - fake-gcs
+      test_network:
+        aliases:
+          - fake-gcs
+    healthcheck:
+      test: "curl -f http://localhost:4443/storage/v1/b/${GCP_BUCKET_NAME}"
+      interval: 1s
+      retries: 120
+      start_period: 5s
+
+networks:
+  test_network:
+    driver: bridge
+
+volumes:
+  test-content:
+  dev-content:

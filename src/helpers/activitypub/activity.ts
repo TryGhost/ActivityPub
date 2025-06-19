@@ -1,164 +1,90 @@
-import { createHash } from 'node:crypto';
-import { Announce, type Context, type KvStore, Like } from '@fedify/fedify';
+import {
+    Article,
+    Create,
+    Note as FedifyNote,
+    Image,
+    Mention,
+    PUBLIC_COLLECTION,
+} from '@fedify/fedify';
+import { Temporal } from '@js-temporal/polyfill';
+import type { FedifyContext } from 'app';
+import { type Post, PostType } from 'post/post.entity';
 
-import type { ContextData } from '../../app';
-import { getActivityChildrenCount, getRepostCount } from '../../db';
-import { lookupActor } from '../../lookup-helpers';
-import { sanitizeHtml } from '../html';
+export async function buildCreateActivityAndObjectFromPost(
+    post: Post,
+    ctx: FedifyContext,
+): Promise<{ createActivity: Create; fedifyObject: FedifyNote | Article }> {
+    let fedifyObject: FedifyNote | Article;
+    let mentions: Mention[] = [];
+    let ccs: URL[] = [];
 
-export interface ActivityObjectAttachment {
-    type: string;
-    mediaType: string;
-    name: string;
-    url: string;
-}
+    if (post.type === PostType.Note) {
+        mentions = post.mentions.map(
+            (account) =>
+                new Mention({
+                    name: `@${account.username}@${account.apId.hostname}`,
+                    href: account.apId,
+                }),
+        );
+        ccs = [
+            post.author.apFollowers,
+            ...mentions.map((mention) => mention.href),
+        ].filter((url) => url !== null);
 
-export interface ActivityObject {
-    id: string;
-    content: string;
-    attachment?: ActivityObjectAttachment | ActivityObjectAttachment[];
-    [key: string]: any;
-}
-
-export interface Activity {
-    id: string;
-    object: string | ActivityObject;
-    [key: string]: any;
-}
-
-export async function buildActivity(
-    uri: string,
-    db: KvStore,
-    apCtx: Context<ContextData>,
-    liked: string[] = [],
-    reposted: string[] = [],
-    authored: string[] = [],
-    options: {
-        expandInReplyTo?: boolean;
-        showReplyCount?: boolean;
-        showRepostCount?: boolean;
-    } = {
-        expandInReplyTo: false,
-        showReplyCount: false,
-        showRepostCount: false,
-    },
-): Promise<Activity | null> {
-    const item = await db.get<Activity>([uri]);
-
-    // If the item is not in the db, return null as we can't build it
-    if (!item) {
-        return null;
-    }
-
-    // If the object associated with the item is a string, it's probably a URI,
-    // so we should look it up in the db. If it's not in the db, we should just
-    // leave it as is
-    if (typeof item.object === 'string') {
-        item.object = (await db.get([item.object])) ?? item.object;
-    }
-
-    // If the actor associated with the item is a string, it's probably a URI,
-    // so we should look it up
-    if (typeof item.actor === 'string') {
-        const actor = await lookupActor(apCtx, item.actor);
-
-        if (actor) {
-            const json = await actor.toJsonLd();
-
-            if (typeof json === 'object' && json !== null) {
-                item.actor = json;
-            }
-        }
-    }
-
-    // If the object associated with the item is an object with an attributedTo
-    // property, it's probably a URI, so we should look it up
-    if (
-        typeof item.object !== 'string' &&
-        typeof item.object.attributedTo === 'string'
-    ) {
-        // Shortcut the lookup if the actor is the same as the item's actor
-        if (item.actor && item.actor.id === item.object.attributedTo) {
-            item.object.attributedTo = item.actor;
-        } else {
-            const actor = await lookupActor(apCtx, item.object.attributedTo);
-
-            if (actor) {
-                const json = await actor.toJsonLd();
-
-                if (typeof json === 'object' && json !== null) {
-                    item.object.attributedTo = json;
-                }
-            }
-        }
-    }
-
-    // If the object associated with the item is an object with a content property,
-    // we should sanitize the content to prevent XSS (in case it contains HTML)
-    if (item.object && typeof item.object !== 'string' && item.object.content) {
-        item.object.content = sanitizeHtml(item.object.content);
-    }
-
-    let objectId = '';
-
-    if (typeof item.object === 'string') {
-        objectId = item.object;
-    } else if (typeof item.object.id === 'string') {
-        objectId = item.object.id;
-    }
-
-    if (objectId && liked.length > 0) {
-        const likeId = apCtx.getObjectUri(Like, {
-            id: createHash('sha256').update(objectId).digest('hex'),
+        fedifyObject = new FedifyNote({
+            id: post.apId,
+            attribution: post.author.apId,
+            content: post.content,
+            summary: post.summary,
+            published: Temporal.Now.instant(),
+            attachments: post.attachments
+                ? post.attachments
+                      .filter((attachment) => attachment.type === 'Image')
+                      .map(
+                          (attachment) =>
+                              new Image({
+                                  url: attachment.url,
+                              }),
+                      )
+                : undefined,
+            tags: mentions,
+            to: PUBLIC_COLLECTION,
+            ccs: ccs,
         });
-        if (liked.includes(likeId.href)) {
-            if (typeof item.object !== 'string') {
-                item.object.liked = true;
-            }
-        }
-    }
-
-    if (objectId && reposted.length > 0) {
-        const repostId = apCtx.getObjectUri(Announce, {
-            id: createHash('sha256').update(objectId).digest('hex'),
+    } else if (post.type === PostType.Article) {
+        const preview = new FedifyNote({
+            id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
+            content: post.excerpt,
         });
-        if (reposted.includes(repostId.href)) {
-            if (typeof item.object !== 'string') {
-                item.object.reposted = true;
-            }
-        }
+        ccs = post.author.apFollowers ? [post.author.apFollowers] : [];
+
+        fedifyObject = new Article({
+            id: post.apId,
+            attribution: post.author.apId,
+            name: post.title,
+            summary: post.summary,
+            content: post.content,
+            image: post.imageUrl,
+            published: Temporal.Instant.from(post.publishedAt.toISOString()),
+            preview,
+            url: post.url,
+            to: PUBLIC_COLLECTION,
+            ccs: ccs,
+        });
+    } else {
+        throw new Error(`Unsupported post type: ${post.type}`);
     }
 
-    if (authored.includes(item.id)) {
-        if (typeof item.object !== 'string') {
-            item.object.authored = true;
-        }
-    }
+    const createActivity = new Create({
+        id: ctx.getObjectUri(Create, { id: post.uuid }),
+        actor: post.author.apId,
+        object: fedifyObject,
+        to: PUBLIC_COLLECTION,
+        ccs: ccs,
+    });
 
-    // Expand the inReplyTo object if it is a string and we are expanding inReplyTo
-    if (
-        options.expandInReplyTo &&
-        typeof item.object !== 'string' &&
-        item.object.inReplyTo
-    ) {
-        const replyObject = await db.get([item.object.inReplyTo]);
-
-        if (replyObject) {
-            item.object.inReplyTo = replyObject;
-        }
-    }
-
-    // Add reply count and repost count to the object, if it is an object
-    // and they have been requested
-    if (typeof item.object !== 'string') {
-        if (options.showReplyCount) {
-            item.object.replyCount = await getActivityChildrenCount(item);
-        }
-        if (options.showRepostCount) {
-            item.object.repostCount = await getRepostCount(item);
-        }
-    }
-
-    // Return the built item
-    return item;
+    return {
+        createActivity,
+        fedifyObject,
+    };
 }

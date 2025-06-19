@@ -1,52 +1,68 @@
 import { z } from 'zod';
 
-import type { KnexAccountRepository } from '../../account/account.repository.knex';
-import type { AppContext } from '../../app';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { Post } from '../../post/post.entity';
-import type { KnexPostRepository } from '../../post/post.repository.knex';
-import { publishNote } from '../../publishing/helpers';
-import type { PublishResult } from '../../publishing/service';
+import type { AppContext } from 'app';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import type { PostService } from 'post/post.service';
+import { postToDTO } from './helpers/post';
 
 const NoteSchema = z.object({
     content: z.string(),
+    imageUrl: z.string().url().optional(),
 });
 
 export async function handleCreateNote(
     ctx: AppContext,
-    accountRepository: KnexAccountRepository,
-    postRepository: KnexPostRepository,
+    postService: PostService,
 ) {
     let data: z.infer<typeof NoteSchema>;
 
     try {
         data = NoteSchema.parse((await ctx.req.json()) as unknown);
     } catch (err) {
-        return new Response(JSON.stringify({}), { status: 400 });
+        return new Response(
+            JSON.stringify({ error: 'Invalid request format' }),
+            { status: 400 },
+        );
     }
 
-    // Save to posts table when a note is created
-    const account = await accountRepository.getBySite(ctx.get('site'));
-    const post = Post.createNote(account, data.content);
-    await postRepository.save(post);
+    const postResult = await postService.createNote(
+        ctx.get('account'),
+        data.content,
+        data.imageUrl ? new URL(data.imageUrl) : undefined,
+    );
 
-    let result: PublishResult | null = null;
+    if (isError(postResult)) {
+        const error = getError(postResult);
+        let errorMessage = 'Error verifying image URL';
+        switch (error) {
+            case 'invalid-url':
+                errorMessage = 'Invalid image URL format';
+                break;
+            case 'invalid-file-path':
+                errorMessage = 'Invalid image file path';
+                break;
+            case 'file-not-found':
+                errorMessage = 'Image not found in storage';
+                break;
+            default:
+                return exhaustiveCheck(error);
+        }
 
-    try {
-        result = await publishNote(ctx, {
-            content: post.content ?? '',
-            author: {
-                handle: ACTOR_DEFAULT_HANDLE,
-            },
-            apId: post.apId,
-        });
-    } catch (err) {
-        ctx.get('logger').error('Failed to publish note: {error}', {
-            error: err,
+        return new Response(JSON.stringify({ error: errorMessage }), {
+            status: 400,
         });
     }
 
-    return new Response(JSON.stringify(result ? result.activityJsonLd : {}), {
+    const post = getValue(postResult);
+
+    const postDTO = postToDTO(post, {
+        authoredByMe: true,
+        likedByMe: false,
+        repostedByMe: false,
+        repostedBy: null,
+    });
+
+    return new Response(JSON.stringify({ post: postDTO }), {
         headers: {
             'Content-Type': 'application/json',
         },

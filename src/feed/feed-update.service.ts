@@ -1,5 +1,8 @@
 import type { EventEmitter } from 'node:events';
 
+import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { AccountUnfollowedEvent } from 'account/account-unfollowed.event';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
@@ -29,6 +32,18 @@ export class FeedUpdateService {
         this.events.on(
             PostDerepostedEvent.getName(),
             this.handlePostDerepostedEvent.bind(this),
+        );
+        this.events.on(
+            AccountBlockedEvent.getName(),
+            this.handleAccountBlockedEvent.bind(this),
+        );
+        this.events.on(
+            DomainBlockedEvent.getName(),
+            this.handleDomainBlockedEvent.bind(this),
+        );
+        this.events.on(
+            AccountUnfollowedEvent.getName(),
+            this.handleAccountUnfollowedEvent.bind(this),
         );
     }
 
@@ -60,5 +75,35 @@ export class FeedUpdateService {
         const derepostedBy = event.getAccountId();
 
         await this.feedService.removePostFromFeeds(post, derepostedBy);
+    }
+
+    private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
+        const blockerId = event.getBlockerId();
+        const blockedId = event.getAccountId();
+
+        await this.feedService.removeBlockedAccountPostsFromFeed(
+            blockerId,
+            blockedId,
+        );
+    }
+
+    private async handleDomainBlockedEvent(event: DomainBlockedEvent) {
+        const blockerId = event.getBlockerId();
+        const domain = event.getDomain();
+
+        await this.feedService.removeBlockedDomainPostsFromFeed(
+            blockerId,
+            domain,
+        );
+    }
+
+    private async handleAccountUnfollowedEvent(event: AccountUnfollowedEvent) {
+        const unfollowerId = event.getUnfollowerId();
+        const accountId = event.getAccountId();
+
+        await this.feedService.removeUnfollowedAccountPostsFromFeed(
+            unfollowerId,
+            accountId,
+        );
     }
 }

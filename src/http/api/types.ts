@@ -1,14 +1,17 @@
-import type { PostType } from '../../post/post.entity';
+import type { Metadata, PostType } from '../../post/post.entity';
 
 /**
- * Account returned by the API - Anywhere an account is returned via the API,
- * it should be this shape, or a partial version of it
+ * Base account DTO that can be used across different views
  */
-export interface AccountDTO {
+export interface MinimalAccountDTO {
     /**
      * Internal ID of the account
      */
     id: string;
+    /**
+     * Internal ID of the account
+     */
+    apId: string;
     /**
      * Display name of the account
      */
@@ -18,17 +21,40 @@ export interface AccountDTO {
      */
     handle: string;
     /**
+     * URL of the avatar of the account
+     */
+    avatarUrl: string | null;
+    /**
+     * Whether the account of the current user is followed by this account
+     */
+    followedByMe: boolean;
+    /**
+     * Whether the account of the current user is blocking this account
+     */
+    blockedByMe: boolean;
+    /**
+     * Whether the account of the current user is blocking this accounts domain
+     */
+    domainBlockedByMe: boolean;
+    /**
+     * Whether the current user is following this account
+     */
+    isFollowing: boolean;
+}
+
+/**
+ * Account returned by the API - Anywhere an account is returned via the API,
+ * it should be this shape, or a partial version of it
+ */
+export interface AccountDTO extends Omit<MinimalAccountDTO, 'isFollowing'> {
+    /**
      * Bio of the account
      */
-    bio: string;
+    bio: string | null;
     /**
      * Public URL of the account
      */
-    url: string;
-    /**
-     * URL of the avatar of the account
-     */
-    avatarUrl: string;
+    url: string | null;
     /**
      * URL of the banner image of the account
      */
@@ -57,23 +83,6 @@ export interface AccountDTO {
      * Whether the account of the current user is followed by this account
      */
     followsMe: boolean;
-    /**
-     * Whether the account of the current user is following this account
-     */
-    followedByMe: boolean;
-    /**
-     * Attachments of the account
-     */
-    attachment: {
-        /**
-         * Name of the attachment
-         */
-        name: string;
-        /**
-         * Value of the attachment
-         */
-        value: string;
-    }[];
 }
 
 export type AuthorDTO = Pick<
@@ -102,6 +111,10 @@ export interface PostDTO {
      * Excerpt of the post
      */
     excerpt: string;
+    /**
+     * Summary of the post (custom excerpt)
+     */
+    summary: string | null;
     /**
      * Content of the post
      */
@@ -175,6 +188,10 @@ export interface PostDTO {
      * Account that reposted the post
      */
     repostedBy: AuthorDTO | null;
+    /**
+     * Metadata of the post, containing e.g. information about ghost authors
+     */
+    metadata?: Metadata | null;
 }
 
 /**
@@ -192,7 +209,7 @@ export interface NotificationDTO {
     /**
      * Type of the notification
      */
-    type: 'like' | 'repost' | 'reply' | 'follow';
+    type: 'like' | 'repost' | 'reply' | 'follow' | 'mention';
     /**
      * Actor of the notification
      */
@@ -201,7 +218,18 @@ export interface NotificationDTO {
      * Post (partial) associated with the notification
      */
     post:
-        | (Pick<PostDTO, 'id' | 'title' | 'content' | 'url'> & {
+        | (Pick<
+              PostDTO,
+              | 'id'
+              | 'title'
+              | 'content'
+              | 'url'
+              | 'likeCount'
+              | 'replyCount'
+              | 'repostCount'
+              | 'likedByMe'
+              | 'repostedByMe'
+          > & {
               type: 'article' | 'note';
           })
         | null;
@@ -213,4 +241,14 @@ export interface NotificationDTO {
               type: 'article' | 'note';
           })
         | null;
+}
+
+/**
+ * DTO for a blocked domain
+ */
+export interface BlockedDomainDTO {
+    /**
+     * The fully qualified URL of the blocked domain
+     */
+    url: string;
 }

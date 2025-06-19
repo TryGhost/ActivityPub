@@ -1,135 +1,74 @@
-import { Article, Note, lookupObject } from '@fedify/fedify';
+import {
+    Article,
+    Mention as FedifyMention,
+    Note,
+    lookupObject,
+} from '@fedify/fedify';
+import * as Sentry from '@sentry/node';
+import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
-import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { PostDTO } from 'http/api/types';
-import type { Knex } from 'knex';
-import { Post, type PostAttachment, PostType } from './post.entity';
+import {
+    type Result,
+    error,
+    exhaustiveCheck,
+    getError,
+    getValue,
+    isError,
+    ok,
+} from 'core/result';
+import {
+    getLikeCountFromRemote,
+    getRepostCountFromRemote,
+    lookupActorProfile,
+} from 'lookup-helpers';
+import type { ModerationService } from 'moderation/moderation.service';
+import type { VerificationError } from 'storage/adapters/storage-adapter';
+import type { ImageStorageService } from 'storage/image-storage.service';
+import { ContentPreparer } from './content';
+import {
+    type CreatePostError,
+    type GhostPost,
+    type Mention,
+    Post,
+    type PostAttachment,
+    PostType,
+} from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
 
-interface BaseGetProfileDataResultRow {
-    post_id: number;
-    post_type: PostType;
-    post_title: string | null;
-    post_excerpt: string | null;
-    post_content: string | null;
-    post_url: string;
-    post_image_url: string | null;
-    post_published_at: Date;
-    post_like_count: number;
-    post_liked_by_user: 0 | 1;
-    post_reply_count: number;
-    post_reading_time_minutes: number;
-    post_repost_count: number;
-    post_reposted_by_user: 0 | 1;
-    post_ap_id: string;
-    post_attachments: {
-        type: string | null;
-        mediaType: string | null;
-        name: string | null;
-        url: string;
-    }[];
-    author_id: number;
-    author_name: string | null;
-    author_username: string;
-    author_url: string | null;
-    author_avatar_url: string | null;
-}
+export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
-interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
-    reposter_id: number;
-    reposter_name: string | null;
-    reposter_username: string;
-    reposter_url: string | null;
-    reposter_avatar_url: string | null;
-}
+export type InteractionError = 'cannot-interact';
 
-interface GetProfileDataResultRowWithoutReposted
-    extends BaseGetProfileDataResultRow {
-    reposter_id: null;
-    reposter_name: null;
-    reposter_username: null;
-    reposter_url: null;
-    reposter_avatar_url: null;
-}
+export type GetPostsError =
+    | 'invalid-next-parameter'
+    | 'error-getting-outbox'
+    | 'no-page-found'
+    | 'not-an-actor';
 
-export type GetProfileDataResultRow =
-    | GetProfileDataResultRowReposted
-    | GetProfileDataResultRowWithoutReposted;
+export type RepostError =
+    | GetByApIdError
+    | 'already-reposted'
+    | InteractionError;
 
-export interface GetProfileDataResult {
-    results: GetProfileDataResultRow[];
-    nextCursor: string | null;
-}
+export type GhostPostError = CreatePostError | 'post-already-exists';
+
+export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
+export type UpdateInteractionCountsError =
+    | 'post-not-found'
+    | 'post-is-internal'
+    | 'upstream-error'
+    | 'not-a-post'
+    | typeof INTERACTION_COUNTS_NOT_FOUND;
 
 export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
         private readonly accountService: AccountService,
-        private readonly db: Knex,
         private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly imageStorageService: ImageStorageService,
+        private readonly moderationService: ModerationService,
     ) {}
-
-    /**
-     * Transforms a database result into a PostDTO
-     * @param result Database result row
-     * @param accountId Current account ID
-     * @returns PostDTO object
-     */
-    private mapToPostDTO(
-        result: GetProfileDataResultRow,
-        accountId: number,
-    ): PostDTO {
-        return {
-            id: result.post_ap_id,
-            type: result.post_type,
-            title: result.post_title ?? '',
-            excerpt: result.post_excerpt ?? '',
-            content: result.post_content ?? '',
-            url: result.post_url,
-            featureImageUrl: result.post_image_url ?? null,
-            publishedAt: result.post_published_at,
-            likeCount: result.post_like_count,
-            likedByMe: result.post_liked_by_user === 1,
-            replyCount: result.post_reply_count,
-            readingTimeMinutes: result.post_reading_time_minutes,
-            attachments: result.post_attachments
-                ? result.post_attachments.map((attachment) => ({
-                      type: attachment.type ?? '',
-                      mediaType: attachment.mediaType ?? '',
-                      name: attachment.name ?? '',
-                      url: attachment.url,
-                  }))
-                : [],
-            author: {
-                id: result.author_id.toString(),
-                handle: getAccountHandle(
-                    result.author_url ? new URL(result.author_url).host : '',
-                    result.author_username,
-                ),
-                name: result.author_name ?? '',
-                url: result.author_url ?? '',
-                avatarUrl: result.author_avatar_url ?? '',
-            },
-            authoredByMe: result.author_id === accountId,
-            repostCount: result.post_repost_count,
-            repostedByMe: result.post_reposted_by_user === 1,
-            repostedBy: result.reposter_id
-                ? {
-                      id: result.reposter_id.toString(),
-                      handle: getAccountHandle(
-                          result.reposter_url
-                              ? new URL(result.reposter_url).host
-                              : '',
-                          result.reposter_username,
-                      ),
-                      name: result.reposter_name ?? '',
-                      url: result.reposter_url ?? '',
-                      avatarUrl: result.reposter_avatar_url ?? '',
-                  }
-                : null,
-        };
-    }
 
     /**
      * Get the attachments for a post
@@ -148,11 +87,12 @@ export class PostService {
                     ? attachment
                     : [attachment].filter((a) => a !== undefined);
                 for (const a of attachmentList) {
+                    const attachmentJson = await a.toJsonLd();
                     postAttachments.push({
-                        type: a.type,
-                        mediaType: a.mediaType,
-                        name: a.name,
-                        url: a.url,
+                        type: attachmentJson.type,
+                        mediaType: attachmentJson.mediaType,
+                        name: attachmentJson.name,
+                        url: new URL(attachmentJson.url),
                     });
                 }
             }
@@ -160,23 +100,56 @@ export class PostService {
         return postAttachments;
     }
 
-    async getByApId(id: URL): Promise<Post | null> {
+    private async getMentionedAccounts(
+        object: Note | Article,
+    ): Promise<Mention[]> {
+        const mentions: Mention[] = [];
+        for await (const tag of object.getTags()) {
+            if (tag instanceof FedifyMention) {
+                if (!tag.href) {
+                    continue;
+                }
+
+                if (!tag.name) {
+                    continue;
+                }
+
+                const accountResult = await this.accountService.ensureByApId(
+                    tag.href,
+                );
+                if (isError(accountResult)) {
+                    continue;
+                }
+
+                const account = getValue(accountResult);
+                mentions.push({
+                    name: tag.name.toString(),
+                    href: tag.href,
+                    account,
+                });
+            }
+        }
+
+        return mentions;
+    }
+
+    async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);
         if (post) {
-            return post;
+            return ok(post);
         }
 
         const context = this.fedifyContextFactory.getFedifyContext();
-
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
+
         const foundObject = await lookupObject(id, { documentLoader });
 
         // If foundObject is null - we could not find anything for this URL
         // Error because could be upstream server issues and we want a retry
         if (foundObject === null) {
-            throw new Error(`Could not find Object ${id}`);
+            return error('upstream-error');
         }
 
         // If we do find an Object, and it's not a Note or Article
@@ -185,7 +158,7 @@ export class PostService {
             !(foundObject instanceof Note) &&
             !(foundObject instanceof Article)
         ) {
-            return null;
+            return error('not-a-post');
         }
 
         const type =
@@ -193,7 +166,7 @@ export class PostService {
 
         // We're also unable to handle objects without an author
         if (!foundObject.attributionId) {
-            return null;
+            return error('missing-author');
         }
 
         const author = await this.accountService.getByApId(
@@ -201,294 +174,311 @@ export class PostService {
         );
 
         if (author === null) {
-            return null;
+            return error('missing-author');
         }
 
         let inReplyTo = null;
         if (foundObject.replyTargetId) {
-            inReplyTo = await this.getByApId(foundObject.replyTargetId);
+            const found = await this.getByApId(foundObject.replyTargetId);
+            if (isError(found)) {
+                const error = getError(found);
+                let errorMessage: string;
+                switch (error) {
+                    case 'upstream-error':
+                        errorMessage = `Failed to fetch parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}`;
+                        break;
+                    case 'not-a-post':
+                        errorMessage = `Parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}, is not an instance of Note or Article`;
+                        break;
+                    case 'missing-author':
+                        errorMessage = `Parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}, has no author`;
+                        break;
+                    default: {
+                        exhaustiveCheck(error);
+                    }
+                }
+                const err = new Error(errorMessage);
+                Sentry.captureException(err);
+                context.data.logger.error(errorMessage);
+            } else {
+                inReplyTo = getValue(found);
+            }
         }
+
+        const mentions = await this.getMentionedAccounts(foundObject);
 
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
+            summary: foundObject.summary?.toString() ?? null,
             content: foundObject.content?.toString(),
             imageUrl: foundObject.imageId,
             publishedAt: new Date(foundObject.published?.toString() || ''),
             url: foundObject.url instanceof URL ? foundObject.url : id,
             apId: id,
             inReplyTo,
+            mentions,
             attachments: await this.getPostAttachments(foundObject),
         });
 
         await this.postRepository.save(newlyCreatedPost);
 
-        return newlyCreatedPost;
+        return ok(newlyCreatedPost);
     }
 
     /**
-     * Get posts by an account
+     * Check if a post is liked by an account
      *
-     * @param accountId ID of the account to get posts for
-     * @param limit Maximum number of posts to return
-     * @param cursor Cursor to use for pagination
+     * @param postId ID of the post to check
+     * @param accountId ID of the account to check
+     * @returns True if the post is liked by the account, false otherwise
      */
-    async getPostsByAccount(
-        accountId: number,
-        limit: number,
-        cursor: string | null,
-    ): Promise<GetProfileDataResult> {
-        const query = this.db
-            .select(
-                // Post fields
-                'posts_with_source.id as post_id',
-                'posts_with_source.type as post_type',
-                'posts_with_source.title as post_title',
-                'posts_with_source.excerpt as post_excerpt',
-                'posts_with_source.content as post_content',
-                'posts_with_source.url as post_url',
-                'posts_with_source.image_url as post_image_url',
-                'posts_with_source.published_at as post_published_at',
-                'posts_with_source.like_count as post_like_count',
-                this.db.raw(
-                    `CASE 
-                        WHEN likes.post_id IS NOT NULL THEN 1 
-                        ELSE 0 
-                    END AS post_liked_by_user`,
-                ),
-                'posts_with_source.reply_count as post_reply_count',
-                'posts_with_source.reading_time_minutes as post_reading_time_minutes',
-                'posts_with_source.attachments as post_attachments',
-                'posts_with_source.repost_count as post_repost_count',
-                this.db.raw(
-                    `CASE 
-                        WHEN user_reposts.post_id IS NOT NULL THEN 1 
-                        ELSE 0 
-                    END AS post_reposted_by_user`,
-                ),
-                'posts_with_source.ap_id as post_ap_id',
-                // Author fields (Who originally created the post)
-                'author_account.id as author_id',
-                'author_account.name as author_name',
-                'author_account.username as author_username',
-                'author_account.url as author_url',
-                'author_account.avatar_url as author_avatar_url',
-                // Reposter fields (If applicable)
-                'reposter_account.id as reposter_id',
-                'reposter_account.name as reposter_name',
-                'reposter_account.username as reposter_username',
-                'reposter_account.url as reposter_url',
-                'reposter_account.avatar_url as reposter_avatar_url',
-                // Unified `published_at` field for sorting
-                'posts_with_source.published_date',
-                'posts_with_source.deleted_at',
-                'posts_with_source.in_reply_to',
-            )
-            .from(
-                this.db
-                    .select(
-                        'posts.id',
-                        'posts.type',
-                        'posts.title',
-                        'posts.excerpt',
-                        'posts.content',
-                        'posts.url',
-                        'posts.image_url',
-                        'posts.published_at',
-                        'posts.like_count',
-                        'posts.reply_count',
-                        'posts.reading_time_minutes',
-                        'posts.attachments',
-                        'posts.repost_count',
-                        'posts.ap_id',
-                        'posts.author_id',
-                        'posts.created_at',
-                        'posts.deleted_at',
-                        'posts.in_reply_to',
-                        this.db.raw('NULL as reposter_id'),
-                        this.db.raw(`'original' as source`),
-                        this.db.raw('posts.published_at as published_date'),
-                    )
-                    .from('posts')
-                    .where('posts.author_id', accountId)
-                    .unionAll([
-                        this.db
-                            .select(
-                                'posts.id',
-                                'posts.type',
-                                'posts.title',
-                                'posts.excerpt',
-                                'posts.content',
-                                'posts.url',
-                                'posts.image_url',
-                                'posts.published_at',
-                                'posts.like_count',
-                                'posts.reply_count',
-                                'posts.reading_time_minutes',
-                                'posts.attachments',
-                                'posts.repost_count',
-                                'posts.ap_id',
-                                'posts.author_id',
-                                'reposts.created_at',
-                                'posts.deleted_at',
-                                'posts.in_reply_to',
-                                'reposts.account_id as reposter_id',
-                                this.db.raw(`'repost' as source`),
-                                this.db.raw(
-                                    'reposts.created_at as published_date',
-                                ),
-                            )
-                            .from('reposts')
-                            .innerJoin('posts', 'posts.id', 'reposts.post_id')
-                            .where('reposts.account_id', accountId),
-                    ])
-                    .orderBy('published_date', 'desc') //Apply sorting at the union level
-                    .as('posts_with_source'),
-            )
-            .innerJoin(
-                'accounts as author_account',
-                'author_account.id',
-                'posts_with_source.author_id',
-            )
-            .leftJoin(
-                'accounts as reposter_account',
-                'reposter_account.id',
-                'posts_with_source.reposter_id',
-            )
-            .leftJoin('likes', function () {
-                this.on('likes.post_id', 'posts_with_source.id').andOnVal(
-                    'likes.account_id',
-                    '=',
-                    accountId.toString(),
-                );
-            })
-            .leftJoin('reposts as user_reposts', function () {
-                this.on(
-                    'user_reposts.post_id',
-                    'posts_with_source.id',
-                ).andOnVal(
-                    'user_reposts.account_id',
-                    '=',
-                    accountId.toString(),
-                );
-            })
-            .modify((query) => {
-                if (cursor) {
-                    query.where(
-                        'posts_with_source.published_date',
-                        '<',
-                        cursor,
-                    );
-                }
-            })
-            .where('posts_with_source.deleted_at', null)
-            .where('posts_with_source.in_reply_to', null)
-            .orderBy('posts_with_source.published_date', 'desc')
-            .limit(limit + 1);
-
-        const results = await query;
-
-        const hasMore = results.length > limit;
-        const paginatedResults = results.slice(0, limit);
-        const lastResult = paginatedResults[paginatedResults.length - 1];
-
-        return {
-            results: paginatedResults.map((result: GetProfileDataResultRow) =>
-                this.mapToPostDTO(result, accountId),
-            ),
-            nextCursor: hasMore ? lastResult.published_date : null,
-        };
+    async isLikedByAccount(postId: number, accountId: number) {
+        return this.postRepository.isLikedByAccount(postId, accountId);
     }
 
     /**
-     * Get posts liked by an account
+     * Check if a post is reposted by an account
      *
-     * @param accountId ID of the account to get posts for
-     * @param limit Maximum number of posts to return
-     * @param cursor Cursor to use for pagination
+     * @param postId ID of the post to check
+     * @param accountId ID of the account to check
+     * @returns True if the post is reposted by the account, false otherwise
      */
-    async getPostsLikedByAccount(
-        accountId: number,
-        limit: number,
-        cursor: string | null,
-    ): Promise<GetProfileDataResult> {
-        const query = this.db('likes')
-            .select(
-                'likes.id as likes_id',
-                // Post fields
-                'posts.id as post_id',
-                'posts.type as post_type',
-                'posts.title as post_title',
-                'posts.excerpt as post_excerpt',
-                'posts.content as post_content',
-                'posts.url as post_url',
-                'posts.image_url as post_image_url',
-                'posts.published_at as post_published_at',
-                'posts.like_count as post_like_count',
-                this.db.raw('1 AS post_liked_by_user'), // Since we are selecting from `likes`, this is always 1
-                'posts.reply_count as post_reply_count',
-                'posts.reading_time_minutes as post_reading_time_minutes',
-                'posts.attachments as post_attachments',
-                'posts.repost_count as post_repost_count',
-                this.db.raw(
-                    `CASE
-                            WHEN reposts.post_id IS NOT NULL THEN 1
-                            ELSE 0
-                        END AS post_reposted_by_user`,
-                ),
-                'posts.ap_id as post_ap_id',
-                // Author fields
-                'author_account.id as author_id',
-                'author_account.name as author_name',
-                'author_account.username as author_username',
-                'author_account.url as author_url',
-                'author_account.avatar_url as author_avatar_url',
-                // Reposter fields
-                'reposter_account.id as reposter_id',
-                'reposter_account.name as reposter_name',
-                'reposter_account.username as reposter_username',
-                'reposter_account.url as reposter_url',
-                'reposter_account.avatar_url as reposter_avatar_url',
-            )
-            .innerJoin('posts', 'posts.id', 'likes.post_id')
-            .innerJoin(
-                'accounts as author_account',
-                'author_account.id',
-                'posts.author_id',
-            )
-            .leftJoin('reposts', function () {
-                this.on('reposts.post_id', 'posts.id').andOnVal(
-                    'reposts.account_id',
-                    '=',
-                    accountId.toString(),
+    async isRepostedByAccount(postId: number, accountId: number) {
+        return this.postRepository.isRepostedByAccount(postId, accountId);
+    }
+
+    private async getMentionsFromContent(content: string): Promise<Mention[]> {
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+        const mentions = ContentPreparer.parseMentions(content);
+        const processedMentions: Mention[] = [];
+
+        for (const mention of mentions) {
+            let account: Account | null = null;
+            const lookupResult = await lookupActorProfile(ctx, mention);
+            if (isError(lookupResult)) {
+                ctx.data.logger.info(
+                    `Failed to lookup apId for mention: ${mention}, error: ${getError(lookupResult)}`,
                 );
-            })
-            .leftJoin(
-                'accounts as reposter_account',
-                'reposter_account.id',
-                'reposts.account_id',
-            )
-            .where('likes.account_id', accountId)
-            .modify((query) => {
-                if (cursor) {
-                    query.where('likes.id', '<', cursor);
-                }
-            })
-            .where('posts.in_reply_to', null)
-            .orderBy('likes.id', 'desc')
-            .limit(limit + 1);
+                continue;
+            }
 
-        const results = await query;
+            const accountResult = await this.accountService.ensureByApId(
+                getValue(lookupResult),
+            );
+            if (isError(accountResult)) {
+                ctx.data.logger.info(
+                    `Failed to lookup account for mention: ${mention}, error: ${getError(accountResult)}`,
+                );
+                continue;
+            }
+            account = getValue(accountResult);
 
-        const hasMore = results.length > limit;
-        const paginatedResults = results.slice(0, limit);
-        const lastResult = paginatedResults[paginatedResults.length - 1];
+            processedMentions.push({
+                name: mention,
+                href: account.url,
+                account: account,
+            });
+        }
 
-        return {
-            results: paginatedResults.map((result: GetProfileDataResultRow) =>
-                this.mapToPostDTO(result, accountId),
-            ),
-            nextCursor: hasMore ? lastResult.likes_id.toString() : null,
-        };
+        return processedMentions;
+    }
+
+    async createNote(
+        account: Account,
+        content: string,
+        image?: URL,
+    ): Promise<Result<Post, VerificationError>> {
+        if (image) {
+            const result = await this.imageStorageService.verifyFileUrl(image);
+            if (isError(result)) {
+                return result;
+            }
+        }
+
+        const mentions = await this.getMentionsFromContent(content);
+
+        const post = Post.createNote(account, content, image, mentions);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async createReply(
+        account: Account,
+        content: string,
+        inReplyToId: URL,
+        image?: URL,
+    ): Promise<
+        Result<Post, VerificationError | GetByApIdError | InteractionError>
+    > {
+        if (image) {
+            const result = await this.imageStorageService.verifyFileUrl(image);
+            if (isError(result)) {
+                return result;
+            }
+        }
+
+        const mentions = await this.getMentionsFromContent(content);
+
+        const inReplyToResult = await this.getByApId(inReplyToId);
+
+        if (isError(inReplyToResult)) {
+            return inReplyToResult;
+        }
+
+        const inReplyTo = getValue(inReplyToResult);
+
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            inReplyTo.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        const post = Post.createReply(
+            account,
+            content,
+            inReplyTo,
+            image,
+            mentions,
+        );
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async likePost(
+        account: Account,
+        post: Post,
+    ): Promise<Result<Post, InteractionError>> {
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            post.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        post.addLike(account);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async repostByApId(
+        account: Account,
+        postId: URL,
+    ): Promise<Result<Post, RepostError>> {
+        const postToRepostResult = await this.getByApId(postId);
+
+        if (isError(postToRepostResult)) {
+            return postToRepostResult;
+        }
+
+        const post = getValue(postToRepostResult);
+
+        const canInteract = await this.moderationService.canInteractWithAccount(
+            account.id,
+            post.author.id,
+        );
+
+        if (!canInteract) {
+            return error('cannot-interact');
+        }
+
+        // We know this is not `null` because it just came from the DB
+        const reposted = await this.isRepostedByAccount(post.id!, account.id);
+
+        if (reposted) {
+            return error('already-reposted');
+        }
+
+        post.addRepost(account);
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async handleIncomingGhostPost(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Result<Post, GhostPostError>> {
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+
+        if (isError(postResult)) {
+            return postResult;
+        }
+
+        const post = getValue(postResult);
+
+        const existingPost = await this.postRepository.getByApId(post.apId);
+
+        if (existingPost) {
+            return error('post-already-exists');
+        }
+
+        await this.postRepository.save(post);
+
+        return ok(post);
+    }
+
+    async updateInteractionCounts(
+        post: Post,
+    ): Promise<Result<Post, UpdateInteractionCountsError>> {
+        if (post.isInternal) {
+            return error('post-is-internal');
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+        const documentLoader = await context.getDocumentLoader({
+            identifier: 'index',
+        });
+        const object = await lookupObject(post.apId, { documentLoader });
+
+        if (object === null) {
+            return error('upstream-error');
+        }
+
+        if (!(object instanceof Note) && !(object instanceof Article)) {
+            return error('not-a-post');
+        }
+
+        const likeCount = await getLikeCountFromRemote(object);
+        const repostCount = await getRepostCountFromRemote(object);
+
+        if (likeCount === null && repostCount === null) {
+            return error(INTERACTION_COUNTS_NOT_FOUND);
+        }
+
+        const shouldUpdateLikeCount =
+            likeCount !== null && likeCount !== post.likeCount;
+        const shouldUpdateRepostCount =
+            repostCount !== null && repostCount !== post.repostCount;
+
+        if (!shouldUpdateLikeCount && !shouldUpdateRepostCount) {
+            return ok(post);
+        }
+
+        if (shouldUpdateLikeCount) {
+            post.setLikeCount(likeCount);
+        }
+
+        if (shouldUpdateRepostCount) {
+            post.setRepostCount(repostCount);
+        }
+
+        await this.postRepository.save(post);
+        return ok(post);
     }
 }

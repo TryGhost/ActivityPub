@@ -1,3 +1,5 @@
+import { type Actor, type Note, isActor, lookupObject } from '@fedify/fedify';
+import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import {
     afterEach,
     beforeAll,
@@ -9,20 +11,15 @@ import {
 } from 'vitest';
 
 import { AsyncEvents } from 'core/events';
+import { getError, getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
-import type {
-    Account,
-    ExternalAccountData,
-    InternalAccountData,
-    Site,
-} from './types';
+import type { ExternalAccountData, InternalAccountData, Site } from './types';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair
@@ -35,6 +32,8 @@ vi.mock('@fedify/fedify', async () => {
     return {
         ...original,
         generateCryptoKeyPair: vi.fn().mockReturnValue(keyPair),
+        lookupObject: vi.fn(),
+        isActor: vi.fn(),
     };
 });
 
@@ -45,6 +44,38 @@ describe('AccountService', () => {
     let internalAccountData: InternalAccountData;
     let externalAccountData: ExternalAccountData;
     let db: Knex;
+
+    const mockActor = {
+        id: new URL('https://example.com/activitypub/users/testuser'),
+        type: 'Person',
+        name: 'Test User',
+        preferredUsername: 'testuser',
+        inbox: new URL('https://example.com/activitypub/inbox/testuser'),
+        outbox: new URL('https://example.com/activitypub/outbox/testuser'),
+        following: new URL(
+            'https://example.com/activitypub/following/testuser',
+        ),
+        followers: new URL(
+            'https://example.com/activitypub/followers/testuser',
+        ),
+        liked: new URL('https://example.com/activitypub/liked/testuser'),
+        getAttachments: vi.fn().mockImplementation(async function* () {}),
+        getPublicKey: vi.fn().mockResolvedValue({
+            toJsonLd: vi.fn().mockResolvedValue({
+                id: 'https://example.com/activitypub/users/testuser#main-key',
+                owner: 'https://example.com/activitypub/users/testuser',
+                publicKeyPem:
+                    '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----',
+            }),
+        }),
+        getIcon: vi.fn().mockResolvedValue(null),
+        getImage: vi.fn().mockResolvedValue(null),
+        summary: null,
+        url: new URL('https://example.com/users/testuser'),
+    };
+
+    vi.mocked(lookupObject).mockResolvedValue(mockActor as unknown as Actor);
+    vi.mocked(isActor).mockReturnValue(true);
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -88,22 +119,22 @@ describe('AccountService', () => {
             username: 'external-account',
             name: 'External Account',
             bio: 'External Account Bio',
-            avatar_url: 'https://example.com/avatars/external-account.png',
+            avatar_url: 'https://www.example.com/avatars/external-account.png',
             banner_image_url:
-                'https://example.com/banners/external-account.png',
-            url: 'https://example.com/users/external-account',
+                'https://www.example.com/banners/external-account.png',
+            url: 'https://www.example.com/users/external-account',
             custom_fields: {},
-            ap_id: 'https://example.com/activitypub/users/external-account',
+            ap_id: 'https://www.example.com/activitypub/users/external-account',
             ap_inbox_url:
-                'https://example.com/activitypub/inbox/external-account',
+                'https://www.example.com/activitypub/inbox/external-account',
             ap_outbox_url:
-                'https://example.com/activitypub/outbox/external-account',
+                'https://www.example.com/activitypub/outbox/external-account',
             ap_following_url:
-                'https://example.com/activitypub/following/external-account',
+                'https://www.example.com/activitypub/following/external-account',
             ap_followers_url:
-                'https://example.com/activitypub/followers/external-account',
+                'https://www.example.com/activitypub/followers/external-account',
             ap_liked_url:
-                'https://example.com/activitypub/liked/external-account',
+                'https://www.example.com/activitypub/liked/external-account',
             ap_shared_inbox_url: null,
             ap_public_key: '',
         };
@@ -111,7 +142,11 @@ describe('AccountService', () => {
         // Init dependencies
         events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
-        const fedifyContextFactory = new FedifyContextFactory();
+        const fedifyContextFactory = {
+            getFedifyContext: () => ({
+                getDocumentLoader: async () => ({}),
+            }),
+        } as unknown as FedifyContextFactory;
 
         // Create the service
         service = new AccountService(
@@ -176,6 +211,79 @@ describe('AccountService', () => {
             expect(dbUser.account_id).toBe(account.id);
             expect(dbUser.site_id).toBe(site.id);
         });
+
+        it('transparently handle duplicates', async () => {
+            const username = internalAccountData.username;
+
+            const normalizedHost = site.host.replace(/^www\./, '');
+            const expectedAccount = {
+                name: internalAccountData.name || normalizedHost,
+                username: username,
+                bio: internalAccountData.bio || null,
+                avatar_url: internalAccountData.avatar_url || null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_shared_inbox_url: null,
+            };
+
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            // Assert the created account was returned
+            expect(account).toMatchObject(expectedAccount);
+            expect(account.id).toBeGreaterThan(0);
+            expect(account.ap_public_key).toBeDefined();
+            expect(account.ap_public_key).toContain('key_ops');
+            expect(account.ap_private_key).toBeDefined();
+            expect(account.ap_private_key).toContain('key_ops');
+
+            // Assert the account was inserted into the database
+            const accounts = await db('accounts').select('*');
+
+            expect(accounts).toHaveLength(1);
+
+            const dbAccount = accounts[0];
+
+            expect(dbAccount).toMatchObject(expectedAccount);
+
+            // Assert the user was inserted into the database
+            const users = await db('users').select('*');
+
+            expect(users).toHaveLength(1);
+
+            const dbUser = users[0];
+
+            expect(dbUser.account_id).toBe(account.id);
+            expect(dbUser.site_id).toBe(site.id);
+
+            const secondAccount = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            expect(secondAccount).toMatchObject(account);
+        });
+
+        it('should ensure the account is created with a domain', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            const accountRow = await db('accounts')
+                .where({ id: account.id })
+                .first();
+
+            expect(accountRow.domain).toBe(site.host);
+        });
     });
 
     describe('createExternalAccount', () => {
@@ -195,6 +303,40 @@ describe('AccountService', () => {
             const dbAccount = accounts[0];
 
             expect(dbAccount).toMatchObject(externalAccountData);
+        });
+
+        it('should transparently handle duplicates', async () => {
+            const account =
+                await service.createExternalAccount(externalAccountData);
+
+            // Assert the created account was returned
+            expect(account).toMatchObject(externalAccountData);
+            expect(account.id).toBeGreaterThan(0);
+
+            // Assert the account was inserted into the database
+            const accounts = await db('accounts').select('*');
+
+            expect(accounts).toHaveLength(1);
+
+            const dbAccount = accounts[0];
+
+            expect(dbAccount).toMatchObject(externalAccountData);
+
+            const secondAccount =
+                await service.createExternalAccount(externalAccountData);
+
+            expect(secondAccount).toMatchObject(account);
+        });
+
+        it('should ensure the account is created with a domain', async () => {
+            const account =
+                await service.createExternalAccount(externalAccountData);
+
+            const accountRow = await db('accounts')
+                .where({ id: account.id })
+                .first();
+
+            expect(accountRow.domain).toBe(site.host);
         });
     });
 
@@ -306,8 +448,8 @@ describe('AccountService', () => {
             });
 
             expect(accountFollowedEvent).toBeDefined();
-            expect(accountFollowedEvent?.getAccount()).toBe(account);
-            expect(accountFollowedEvent?.getFollower()).toBe(follower);
+            expect(accountFollowedEvent?.getAccountId()).toBe(account.id);
+            expect(accountFollowedEvent?.getFollowerId()).toBe(follower.id);
         });
 
         it('should not emit an account.followed event if the follow is not recorded due to being a duplicate', async () => {
@@ -633,27 +775,82 @@ describe('AccountService', () => {
         });
     });
 
-    it('should update accounts and emit an account.updated event if they have changed', async () => {
-        const account = await service.createInternalAccount(site, {
-            ...internalAccountData,
-            username: 'account',
+    describe('ensureByApId', () => {
+        it('should create an account when it does not exist', async () => {
+            const apId = new URL(
+                'https://example.com/activitypub/users/testuser',
+            );
+
+            let account = await db('accounts').where({ ap_id: apId.href });
+            expect(account).toHaveLength(0);
+
+            const result = await service.ensureByApId(apId);
+
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const account = getValue(result);
+                expect(account.apId.href).toBe(apId.href);
+                expect(account.username).toBe('testuser');
+                expect(account.name).toBe('Test User');
+            }
+
+            account = await db('accounts').where({ ap_id: apId.href });
+            expect(account).toHaveLength(1);
         });
 
-        let accountFromEvent: Account | undefined;
+        it('should handle if account URL is passes as input ID', async () => {
+            const inputUrl = new URL('https://example.com/users/testuser');
+            const actualActorId = mockActor.id;
 
-        events.once('account.updated', (account) => {
-            accountFromEvent = account;
+            const result = await service.ensureByApId(inputUrl);
+
+            expect(lookupObject).toHaveBeenCalledWith(
+                inputUrl,
+                expect.any(Object),
+            );
+
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const account = getValue(result);
+                expect(account.apId.href).toBe(actualActorId.href);
+            }
         });
 
-        await service.updateAccount(account, {
-            name: 'A brand new name!',
+        it('should return error when actor is not found', async () => {
+            const apId = new URL(
+                'https://example.com/activitypub/users/nonexistent',
+            );
+
+            vi.mocked(lookupObject).mockResolvedValue(null);
+
+            const result = await service.ensureByApId(apId);
+
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('not-found');
+            }
         });
 
-        expect(accountFromEvent).toBeDefined();
+        it('should return error when object is not an actor', async () => {
+            const apId = new URL(
+                'https://example.com/activitypub/users/notanactor',
+            );
+            const mockObject = {
+                type: 'Note',
+                content: 'This is not an actor',
+            };
 
-        const newAccount = await service.getByInternalId(account.id);
+            vi.mocked(lookupObject).mockResolvedValue(
+                mockObject as unknown as Note,
+            );
+            vi.mocked(isActor).mockReturnValue(false);
 
-        expect(newAccount).toBeDefined();
-        expect(newAccount!.name).toBe('A brand new name!');
+            const result = await service.ensureByApId(apId);
+
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('invalid-type');
+            }
+        });
     });
 });

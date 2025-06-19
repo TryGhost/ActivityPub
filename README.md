@@ -13,7 +13,7 @@
 
 A multitenant ActivityPub server for [Ghost](https://ghost.org/), built with [Fedify](https://fedify.dev/). This service makes it possible for independent websites to publish their content directly to the Fediverse, enabling networked publishing to the open social web.
 
-This repository is being actively developed and is currently in early alpha - expect many breaking changes. It is not suitable for production use. 
+This repository is being actively developed and is currently in beta - expect many breaking changes. It is not suitable for production use.
 
 ## Subscribe to updates
 We're publishing a weekly build-log about the development of this project. Sign up on [https://activitypub.ghost.org](https://activitypub.ghost.org)
@@ -44,20 +44,23 @@ This has only been tested on macOS using [Docker for Mac](https://docs.docker.co
 
 ## Setup
 
-1. **[Install Ghost](https://ghost.org/docs/install/)**
-    - Ensure Ghost is running locally at `localhost:2368`
+1. **[Install Ghost](https://ghost.org/docs/install/)** using `Install from source` instructions
 2. **Proxy with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
     - Use `tailscale funnel 80` or `ngrok http 80` to expose your local port 80
 3. **Configure Ghost**
-    - Run `ghost config url` and set it to the URL provided by Tailscale
+    - In the Ghost monorepo, create a `config.local.json` file under `ghost/core/config.local.json`, with the following configuration:
+    ```
+    {
+        "url": <Tailscale or ngrok URL from step 2>,
+        "labs": {
+            "ActivityPub": true
+        }
+    }
+    ```
 4. **Start the ActivityPub Service**
-    - Run `yarn dev` in the root directory of this project
-5. **Open Ghost Admin**
-    - Access your Ghost instance via the URL provided by Tailscale
-6. **Enable ActivityPub Alpha**
-    - Enable the ActivityPub Alpha flag in Settings &rarr; Labs
-7. **Restart Ghost**
-    - This will do the handshake between Ghost and ActivityPub to setup webhooks and Actor data
+    - Run `yarn dev && yarn logs` in the root directory of this project
+5. **Start Ghost**
+    - Run `yarn dev` in the Ghost monorepo
 
 
 ## Code formatting + linting

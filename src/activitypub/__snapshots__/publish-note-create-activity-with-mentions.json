@@ -1,0 +1,49 @@
+{
+  "@context": [
+    "https://w3id.org/identity/v1",
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    {
+      "ChatMessage": "http://litepub.social/ns#ChatMessage",
+      "Emoji": "toot:Emoji",
+      "Hashtag": "as:Hashtag",
+      "_misskey_quote": "misskey:_misskey_quote",
+      "emojiReactions": {
+        "@id": "fedibird:emojiReactions",
+        "@type": "@id",
+      },
+      "fedibird": "http://fedibird.com/ns#",
+      "misskey": "https://misskey-hub.net/ns#",
+      "quoteUri": "fedibird:quoteUri",
+      "quoteUrl": "as:quoteUrl",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+      "votersCount": "toot:votersCount",
+    },
+  ],
+  "actor": "https://example.com/user/foo",
+  "cc": [
+    "https://example.com/user/foo/followers",
+    "https://example.com/@test",
+  ],
+  "id": "https://example.com/create/cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4",
+  "object": {
+    "attributedTo": "https://example.com/user/foo",
+    "cc": [
+      "https://example.com/user/foo/followers",
+      "https://example.com/@test",
+    ],
+    "content": "Hello! @test@example.com",
+    "id": "https://example.com/note/post-123",
+    "published": "2025-01-17T10:30:00Z",
+    "tag": {
+      "href": "https://example.com/@test",
+      "name": "@test@example.com",
+      "type": "Mention",
+    },
+    "to": "as:Public",
+    "type": "Note",
+  },
+  "to": "as:Public",
+  "type": "Create",
+}

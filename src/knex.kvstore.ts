@@ -39,23 +39,17 @@ export class KnexKvStore implements KvStore {
         };
         const values = {
             value: JSON.stringify(valueToStore),
-            expires: null,
+            expires: options?.ttl
+                ? new Date(Date.now() + options.ttl.total('milliseconds'))
+                : null,
         };
-        await this.knex.transaction(async (transaction) => {
-            const exists = await transaction(this.table).where(query).first();
-            if (!exists) {
-                await transaction(this.table).insert({
-                    ...query,
-                    ...values,
-                });
-            } else {
-                await transaction(this.table)
-                    .where(query)
-                    .update({
-                        ...values,
-                    });
-            }
-        });
+        await this.knex(this.table)
+            .insert({
+                ...query,
+                ...values,
+            })
+            .onConflict('key')
+            .merge(['value', 'expires']);
     }
 
     async delete(key: KvKey) {

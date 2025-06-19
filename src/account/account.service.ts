@@ -1,4 +1,5 @@
 import {
+    type Actor,
     exportJwk,
     generateCryptoKeyPair,
     isActor,
@@ -8,6 +9,7 @@ import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
+import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '../constants';
 import { AccountFollowedEvent } from './account-followed.event';
@@ -33,6 +35,22 @@ interface GetFollowerAccountsOptions {
     fields: (keyof AccountType)[];
 }
 
+function isDuplicateEntryError(error: unknown): boolean {
+    // Check for the specific MySQL error number for duplicate entries
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'errno' in error &&
+        error.errno === 1062
+    );
+}
+
+type RemoteAccountFetchError =
+    | 'invalid-type'
+    | 'invalid-data'
+    | 'network-failure'
+    | 'not-found';
+
 export class AccountService {
     /**
      * @param db Database client
@@ -46,6 +64,7 @@ export class AccountService {
     ) {}
 
     /**
+     * @deprecated use `ensureByApId`
      * Get an Account by the ActivityPub ID
      * If it is not found locally in our database it will be
      * remotely fetched and stored
@@ -82,6 +101,67 @@ export class AccountService {
         return this.accountRepository.getByApId(id);
     }
 
+    async ensureByApId(
+        id: URL,
+    ): Promise<Result<Account, RemoteAccountFetchError>> {
+        const account = await this.accountRepository.getByApId(id);
+        if (account) {
+            return ok(account);
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+
+        const documentLoader = await context.getDocumentLoader({
+            handle: 'index',
+        });
+
+        let actor: Actor;
+
+        try {
+            const potentialActor = await lookupObject(id, { documentLoader });
+
+            if (potentialActor === null) {
+                return error('not-found');
+            }
+
+            if (!isActor(potentialActor)) {
+                return error('invalid-type');
+            }
+
+            actor = potentialActor;
+        } catch (err) {
+            return error('network-failure');
+        }
+
+        // We need to check if the actor's id differs from the input id because:
+        // The input id might be the URL of an account (e.g., in the case of mentions).
+        // In this case, the lookup finds an actor, but the actual ActivityPub ID
+        // for the account might be different from the input id. Searching by the correct apId before creating a new account.
+        if (actor.id && actor.id.href !== id.href) {
+            return this.ensureByApId(actor.id);
+        }
+
+        let data: ExternalAccountData;
+
+        try {
+            data = await mapActorToExternalAccountData(actor);
+        } catch (err) {
+            return error('invalid-data');
+        }
+
+        await this.createExternalAccount(data);
+
+        const createdAccount = await this.accountRepository.getByApId(id);
+
+        if (!createdAccount) {
+            throw new Error(
+                `A newly created account was not found in the database for id: ${id}`,
+            );
+        }
+
+        return ok(createdAccount);
+    }
+
     /**
      * Create an internal account
      *
@@ -99,6 +179,8 @@ export class AccountService {
         const username = internalAccountData.username;
 
         const normalizedHost = site.host.replace(/^www\./, '');
+        const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+
         const accountData = {
             name: internalAccountData.name || normalizedHost,
             uuid: randomUUID(),
@@ -108,7 +190,7 @@ export class AccountService {
             banner_image_url: null,
             url: `https://${site.host}`,
             custom_fields: null,
-            ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
+            ap_id: apId,
             ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
             ap_shared_inbox_url: null,
             ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
@@ -117,24 +199,45 @@ export class AccountService {
             ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
             ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
             ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
+            domain: site.host,
         };
-        async function createAccountAndUser(tx: Knex.Transaction) {
-            const [accountId] = await tx('accounts').insert(accountData);
 
-            await tx('users').insert({
-                account_id: accountId,
-                site_id: site.id,
-            });
+        const createOrFetchAccountAndUser = async (
+            tx: Knex.Transaction | Knex,
+        ): Promise<AccountType> => {
+            try {
+                const [accountId] = await tx('accounts').insert(accountData);
 
-            return {
-                id: accountId,
-                ...accountData,
-            };
-        }
+                await tx('users').insert({
+                    account_id: accountId,
+                    site_id: site.id,
+                });
+
+                return {
+                    id: accountId,
+                    ...accountData,
+                };
+            } catch (error) {
+                if (isDuplicateEntryError(error)) {
+                    const existingAccount = await tx('accounts')
+                        .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+                        .first<AccountType>();
+
+                    if (!existingAccount) {
+                        throw error;
+                    }
+                    return existingAccount;
+                }
+                throw error;
+            }
+        };
+
         if (!transaction) {
-            return await this.db.transaction(createAccountAndUser);
+            return await this.db.transaction(async (tx) => {
+                return await createOrFetchAccountAndUser(tx);
+            });
         }
-        return await createAccountAndUser(transaction);
+        return await createOrFetchAccountAndUser(transaction);
     }
 
     /**
@@ -147,16 +250,34 @@ export class AccountService {
     async createExternalAccount(
         accountData: ExternalAccountData,
     ): Promise<AccountType> {
-        const [accountId] = await this.db('accounts').insert({
+        const dataToInsert = {
             ...accountData,
             uuid: randomUUID(),
-        });
-
-        return {
-            id: accountId,
-            ...accountData,
             ap_private_key: null,
+            domain: new URL(accountData.ap_id).host,
         };
+
+        try {
+            const [accountId] = await this.db('accounts').insert(dataToInsert);
+            return {
+                id: accountId,
+                ...dataToInsert,
+            };
+        } catch (error) {
+            if (isDuplicateEntryError(error)) {
+                const existingAccount = await this.db('accounts')
+                    .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                        accountData.ap_id,
+                    ])
+                    .first<AccountType>();
+
+                if (!existingAccount) {
+                    throw error;
+                }
+                return existingAccount;
+            }
+            throw error;
+        }
     }
 
     /**
@@ -164,6 +285,8 @@ export class AccountService {
      *
      * @param followee Account to follow
      * @param follower Following account
+     *
+     * @deprecated Use `followAccount` instead
      */
     async recordAccountFollow(
         followee: AccountType,
@@ -183,7 +306,7 @@ export class AccountService {
 
         await this.events.emitAsync(
             AccountFollowedEvent.getName(),
-            new AccountFollowedEvent(followee, follower),
+            new AccountFollowedEvent(followee.id, follower.id),
         );
     }
 
@@ -192,6 +315,8 @@ export class AccountService {
      *
      * @param following The account that is being unfollowed
      * @param follower The account that is a follower
+     *
+     * @deprecated Use `unfollowAccount` instead
      */
     async recordAccountUnfollow(
         following: AccountType,
@@ -215,7 +340,9 @@ export class AccountService {
             return null;
         }
 
-        return await this.db('accounts').where('ap_id', apId).first();
+        return await this.db('accounts')
+            .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+            .first();
     }
 
     /**
@@ -247,6 +374,10 @@ export class AccountService {
         }
 
         return account;
+    }
+
+    async getAccountForSite(site: Site): Promise<Account> {
+        return this.accountRepository.getBySite(site);
     }
 
     /**
@@ -384,16 +515,16 @@ export class AccountService {
      * @param followeeAccountId: id of the followee account
      */
     async checkIfAccountIsFollowing(
-        accountId: number | null,
-        followeeAccountId: number | null,
+        followerId: number | null,
+        followingId: number | null,
     ): Promise<boolean> {
-        if (!accountId || !followeeAccountId) {
+        if (!followerId || !followingId) {
             return false;
         }
 
         const result = await this.db('follows')
-            .where('follower_id', accountId)
-            .where('following_id', followeeAccountId)
+            .where('follower_id', followerId)
+            .where('following_id', followingId)
             .select(1)
             .first();
 
@@ -457,5 +588,108 @@ export class AccountService {
         }
 
         return newAccount;
+    }
+
+    async updateAccountProfile(
+        account: Account,
+        data: {
+            name: string;
+            bio: string;
+            username: string;
+            avatarUrl: string;
+            bannerImageUrl: string;
+        },
+    ) {
+        const profileData = {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl ? new URL(data.avatarUrl) : null,
+            bannerImageUrl: data.bannerImageUrl
+                ? new URL(data.bannerImageUrl)
+                : null,
+        };
+
+        const updated = account.updateProfile(profileData);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async blockAccountByApId(
+        account: Account,
+        apId: URL,
+    ): Promise<Result<true, RemoteAccountFetchError>> {
+        const accountToBlockResult = await this.ensureByApId(apId);
+
+        if (isError(accountToBlockResult)) {
+            return accountToBlockResult;
+        }
+
+        const accountToBlock = getValue(accountToBlockResult);
+
+        const updated = account.block(accountToBlock);
+
+        await this.accountRepository.save(updated);
+
+        return ok(true);
+    }
+
+    async unblockAccountByApId(
+        account: Account,
+        apId: URL,
+    ): Promise<Result<true, RemoteAccountFetchError>> {
+        const accountToUnblockResult = await this.ensureByApId(apId);
+
+        if (isError(accountToUnblockResult)) {
+            return accountToUnblockResult;
+        }
+
+        const accountToUnblock = getValue(accountToUnblockResult);
+
+        const updated = account.unblock(accountToUnblock);
+
+        await this.accountRepository.save(updated);
+
+        return ok(true);
+    }
+
+    async getAccountById(id: number) {
+        return await this.accountRepository.getById(id);
+    }
+
+    async blockDomain(
+        account: Account,
+        domain: URL,
+    ): Promise<Result<true, never>> {
+        const updated = account.blockDomain(domain);
+        await this.accountRepository.save(updated);
+        return ok(true);
+    }
+
+    async unblockDomain(
+        account: Account,
+        domain: URL,
+    ): Promise<Result<true, never>> {
+        const updated = account.unblockDomain(domain);
+        await this.accountRepository.save(updated);
+        return ok(true);
+    }
+
+    async followAccount(account: Account, accountToFollow: Account) {
+        const updated = account.follow(accountToFollow);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async unfollowAccount(account: Account, accountToUnfollow: Account) {
+        const updated = account.unfollow(accountToUnfollow);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async readAllNotifications(account: Account) {
+        const updated = account.readAllNotifications();
+
+        await this.accountRepository.save(updated);
     }
 }

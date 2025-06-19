@@ -1,14 +1,10 @@
-import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 
-import type { KnexAccountRepository } from '../../account/account.repository.knex';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { Post } from '../../post/post.entity';
-import type { KnexPostRepository } from '../../post/post.repository.knex';
-import { publishPost } from '../../publishing/helpers';
-import { PostVisibility } from '../../publishing/types';
-import type { SiteService } from '../../site/site.service';
+import { postToDTO } from './helpers/post';
+import { BadRequest } from './helpers/response';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -19,7 +15,16 @@ const PostInputSchema = z.object({
     feature_image: z.string().url().nullable(),
     published_at: z.string().datetime(),
     url: z.string().url(),
-    visibility: z.nativeEnum(PostVisibility),
+    visibility: z.enum(['public', 'members', 'paid', 'tiers']),
+    authors: z
+        .array(
+            z.object({
+                name: z.string(),
+                profile_image: z.string().nullable(),
+            }),
+        )
+        .nullable()
+        .optional(),
 });
 
 type PostInput = z.infer<typeof PostInputSchema>;
@@ -35,10 +40,7 @@ const PostPublishedWebhookSchema = z.object({
  *
  * @param ctx App context instance
  */
-export function createPostPublishedWebhookHandler(
-    accountRepository: KnexAccountRepository,
-    postRepository: KnexPostRepository,
-) {
+export function createPostPublishedWebhookHandler(postService: PostService) {
     return async function handleWebhookPostPublished(ctx: AppContext) {
         let data: PostInput;
 
@@ -47,43 +49,42 @@ export function createPostPublishedWebhookHandler(
                 (await ctx.req.json()) as unknown,
             ).post.current;
         } catch (err) {
-            return new Response(JSON.stringify({}), { status: 400 });
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
         }
 
-        const account = await accountRepository.getBySite(ctx.get('site'));
+        const account = ctx.get('account');
 
-        try {
-            const post = Post.createArticleFromGhostPost(account, data);
-            await postRepository.save(post);
-        } catch (err) {
-            ctx.get('logger').error('Failed to store post: {error}', {
-                error: err,
-            });
+        const postResult = await postService.handleIncomingGhostPost(
+            account,
+            data,
+        );
+
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'missing-content':
+                    return BadRequest(
+                        'Error creating post: the post has no content',
+                    );
+                case 'private-content':
+                    return BadRequest(
+                        'Error creating post: the post content is private',
+                    );
+                case 'post-already-exists':
+                    return BadRequest(
+                        'Webhook already processed for this post',
+                    );
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
 
-        try {
-            await publishPost(ctx, {
-                id: data.uuid,
-                title: data.title,
-                content: data.html,
-                excerpt: data.excerpt,
-                featureImageUrl: data.feature_image
-                    ? new URL(data.feature_image)
-                    : null,
-                publishedAt: Temporal.Instant.from(data.published_at),
-                url: new URL(data.url),
-                author: {
-                    handle: ACTOR_DEFAULT_HANDLE,
-                },
-                visibility: data.visibility,
-            });
-        } catch (err) {
-            ctx.get('logger').error('Failed to publish post: {error}', {
-                error: err,
-            });
-        }
+        const post = getValue(postResult);
 
-        return new Response(JSON.stringify({}), {
+        return new Response(JSON.stringify(postToDTO(post)), {
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -91,26 +92,3 @@ export function createPostPublishedWebhookHandler(
         });
     };
 }
-
-/**
- * Handle a site.changed webhook
- *
- * @param ctx App context instance
- */
-export const handleWebhookSiteChanged = (siteService: SiteService) =>
-    async function handleWebhookSiteChanged(ctx: AppContext) {
-        try {
-            await siteService.refreshSiteDataForHost(ctx.get('site').host);
-        } catch (err) {
-            ctx.get('logger').error('Site changed webhook failed: {error}', {
-                error: err,
-            });
-        }
-
-        return new Response(JSON.stringify({}), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 200,
-        });
-    };

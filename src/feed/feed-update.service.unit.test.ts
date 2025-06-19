@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
-import { Account } from 'account/account.entity';
+import { AccountBlockedEvent } from 'account/account-blocked.event';
+import { AccountUnfollowedEvent } from 'account/account-unfollowed.event';
+import { AccountEntity } from 'account/account.entity';
+import { DomainBlockedEvent } from 'account/domain-blocked.event';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
@@ -10,40 +13,42 @@ import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostDerepostedEvent } from 'post/post-dereposted.event';
 import { PostRepostedEvent } from 'post/post-reposted.event';
 import { Audience, Post, PostType } from 'post/post.entity';
+import { createInternalAccountDraftData } from '../test/account-entity-test-helpers';
 
 describe('FeedUpdateService', () => {
     let events: EventEmitter;
     let feedService: FeedService;
     let feedUpdateService: FeedUpdateService;
 
-    let account: Account;
+    let account: AccountEntity;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.useFakeTimers();
 
         events = new EventEmitter();
         feedService = {
             addPostToFeeds: vi.fn(),
             removePostFromFeeds: vi.fn(),
+            removeBlockedAccountPostsFromFeed: vi.fn(),
+            removeBlockedDomainPostsFromFeed: vi.fn(),
+            removeUnfollowedAccountPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
-        const site = {
-            id: 123,
-            host: 'example.com',
-            webhook_secret: 'secret',
-        };
-        account = Account.createFromData({
-            id: 456,
-            uuid: '9ea8fcd3-ec80-4b97-b95c-e3d227ccbd01',
+        const draftData = await createInternalAccountDraftData({
+            host: new URL('https://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
             bio: 'Just a foo bar',
             avatarUrl: new URL('https://example.com/avatars/foobar.png'),
             bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
-            site,
-            apId: new URL('https://example.com/users/456'),
             url: new URL('https://example.com/users/456'),
-            apFollowers: new URL('https://example.com/followers/456'),
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        account = AccountEntity.create({
+            id: 456,
+            ...draft,
         });
 
         feedUpdateService = new FeedUpdateService(events, feedService);
@@ -177,6 +182,70 @@ describe('FeedUpdateService', () => {
                 post,
                 derepostedById,
             );
+        });
+    });
+
+    describe('handling a blocked account', () => {
+        it('should remove blocked account posts from feeds', async () => {
+            const draftData = await createInternalAccountDraftData({
+                host: new URL('https://example.com'),
+                username: 'bazqux',
+                name: 'Baz Qux',
+                bio: 'Just a baz qux',
+                avatarUrl: new URL('https://blocked.com/avatars/bazqux.png'),
+                bannerImageUrl: new URL(
+                    'https://blocked.com/banners/bazqux.png',
+                ),
+                url: new URL('https://blocked.com/users/789'),
+            });
+
+            const draft = AccountEntity.draft(draftData);
+
+            const blockedAccount = AccountEntity.create({
+                id: 789,
+                ...draft,
+            });
+
+            events.emit(
+                AccountBlockedEvent.getName(),
+                new AccountBlockedEvent(blockedAccount.id, account.id),
+            );
+
+            expect(
+                feedService.removeBlockedAccountPostsFromFeed,
+            ).toHaveBeenCalledWith(account.id, blockedAccount.id);
+        });
+    });
+
+    describe('handling a blocked domain', () => {
+        it('should remove blocked domain posts from feeds', () => {
+            const blockedDomain = new URL('https://blocked.com');
+            const blockerAccount = { id: 456 } as AccountEntity;
+
+            events.emit(
+                DomainBlockedEvent.getName(),
+                new DomainBlockedEvent(blockedDomain, blockerAccount.id),
+            );
+
+            expect(
+                feedService.removeBlockedDomainPostsFromFeed,
+            ).toHaveBeenCalledWith(blockerAccount.id, blockedDomain);
+        });
+    });
+
+    describe('handling an unfollowed account', () => {
+        it("should remove an unfollowed account's posts from the feed of the unfollower", () => {
+            const unfollower = { id: 456 } as AccountEntity;
+            const account = { id: 789 } as AccountEntity;
+
+            events.emit(
+                AccountUnfollowedEvent.getName(),
+                new AccountUnfollowedEvent(account.id, unfollower.id),
+            );
+
+            expect(
+                feedService.removeUnfollowedAccountPostsFromFeed,
+            ).toHaveBeenCalledWith(unfollower.id, account.id);
         });
     });
 });

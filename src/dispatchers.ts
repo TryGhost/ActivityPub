@@ -1,6 +1,5 @@
 import {
     Accept,
-    Activity,
     Announce,
     Article,
     type Context,
@@ -21,14 +20,10 @@ import {
 import * as Sentry from '@sentry/node';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { FollowersService } from 'activitypub/followers.service';
-import { v4 as uuidv4 } from 'uuid';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { AccountService } from './account/account.service';
-import { mapActorToExternalAccountData } from './account/utils';
-import { type ContextData, fedify } from './app';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
+import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
-import { getUserData } from './helpers/user';
-import { addToList } from './kv-helpers';
 import { lookupActor, lookupObject } from './lookup-helpers';
 import type { KnexPostRepository } from './post/post.repository.knex';
 import type { PostService } from './post/post.service';
@@ -40,9 +35,8 @@ export const actorDispatcher = (
 ) =>
     async function actorDispatcher(
         ctx: RequestContext<ContextData>,
-        handle: string,
+        identifier: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return null;
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return null;
 
@@ -64,7 +58,7 @@ export const actorDispatcher = (
             followers: new URL(account.ap_followers_url),
             liked: new URL(account.ap_liked_url),
             url: new URL(account.url || account.ap_id),
-            publicKeys: (await ctx.getActorKeyPairs(handle)).map(
+            publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
         });
@@ -78,9 +72,8 @@ export const keypairDispatcher = (
 ) =>
     async function keypairDispatcher(
         ctx: Context<ContextData>,
-        handle: string,
+        identifier: string,
     ) {
-        if (handle !== ACTOR_DEFAULT_HANDLE) return [];
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 
@@ -108,81 +101,10 @@ export const keypairDispatcher = (
                 },
             ];
         } catch (err) {
-            ctx.data.logger.warn(`Could not parse keypair for ${handle}`);
+            ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
             return [];
         }
     };
-
-export function createFollowHandler(accountService: AccountService) {
-    return async function handleFollow(
-        ctx: Context<ContextData>,
-        follow: Follow,
-    ) {
-        ctx.data.logger.info('Handling Follow');
-        if (!follow.id) {
-            return;
-        }
-        const parsed = ctx.parseUri(follow.objectId);
-        if (parsed?.type !== 'actor') {
-            // TODO Log
-            return;
-        }
-        const sender = await follow.getActor(ctx);
-        if (sender === null || sender.id === null) {
-            return;
-        }
-
-        // Add follow activity to inbox
-        const followJson = await follow.toJsonLd();
-
-        ctx.data.globaldb.set([follow.id.href], followJson);
-        await addToList(ctx.data.db, ['inbox'], follow.id.href);
-
-        // Record follower in followers list
-        const senderJson = await sender.toJsonLd();
-
-        // Store or update sender in global db
-        ctx.data.globaldb.set([sender.id.href], senderJson);
-
-        // Record the account of the sender as well as the follow
-        const followeeAccount = await accountService.getAccountByApId(
-            follow.objectId?.href ?? '',
-        );
-        if (followeeAccount) {
-            let followerAccount = await accountService.getAccountByApId(
-                sender.id.href,
-            );
-
-            if (!followerAccount) {
-                ctx.data.logger.info(
-                    `Follower account "${sender.id.href}" not found, creating`,
-                );
-
-                followerAccount = await accountService.createExternalAccount(
-                    await mapActorToExternalAccountData(sender),
-                );
-            }
-
-            await accountService.recordAccountFollow(
-                followeeAccount,
-                followerAccount,
-            );
-        }
-
-        // Send accept activity to sender
-        const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
-        const accept = new Accept({
-            id: acceptId,
-            actor: follow.objectId,
-            object: follow,
-        });
-        const acceptJson = await accept.toJsonLd();
-
-        await ctx.data.globaldb.set([accept.id!.href], acceptJson);
-
-        await ctx.sendActivity({ handle: parsed.handle }, sender, accept);
-    };
-}
 
 export function createAcceptHandler(accountService: AccountService) {
     return async function handleAccept(
@@ -210,37 +132,37 @@ export function createAcceptHandler(accountService: AccountService) {
             return;
         }
 
+        const recipient = await object.getActor();
+        if (recipient === null || recipient.id === null) {
+            ctx.data.logger.info('Recipient missing, exit early');
+            return;
+        }
+
         const senderJson = await sender.toJsonLd();
         const acceptJson = await accept.toJsonLd();
         ctx.data.globaldb.set([accept.id.href], acceptJson);
         ctx.data.globaldb.set([sender.id.href], senderJson);
-        await addToList(ctx.data.db, ['inbox'], accept.id.href);
 
         // Record the account of the sender as well as the follow
-        const recipient = await (object as Activity).getActor();
-        const followerAccount = await accountService.getAccountByApId(
-            recipient?.id?.href ?? '',
+        const followerAccountResult = await accountService.ensureByApId(
+            recipient.id,
         );
-        if (followerAccount) {
-            let followeeAccount = await accountService.getAccountByApId(
-                sender.id.href,
-            );
-
-            if (!followeeAccount) {
-                ctx.data.logger.info(
-                    `Accepting account "${sender.id.href}" not found, creating`,
-                );
-
-                followeeAccount = await accountService.createExternalAccount(
-                    await mapActorToExternalAccountData(sender),
-                );
-            }
-
-            await accountService.recordAccountFollow(
-                followeeAccount,
-                followerAccount,
-            );
+        if (isError(followerAccountResult)) {
+            ctx.data.logger.info('Follower account not found, exit early');
+            return;
         }
+        const followerAccount = getValue(followerAccountResult);
+
+        const ensureAccountToFollowResult = await accountService.ensureByApId(
+            sender.id,
+        );
+        if (isError(ensureAccountToFollowResult)) {
+            ctx.data.logger.info('Account to follow not found, exit early');
+            return;
+        }
+        const accountToFollow = getValue(ensureAccountToFollowResult);
+
+        await accountService.followAccount(followerAccount, accountToFollow);
     };
 }
 
@@ -371,23 +293,39 @@ export async function handleAnnoucedCreate(
         return;
     }
     // This handles storing the posts in the posts table
-    const post = await postService.getByApId(create.objectId);
+    const postResult = await postService.getByApId(create.objectId);
 
-    const object = await create.getObject();
-    const replyTarget = await object?.getReplyTarget();
-
-    if (replyTarget?.id?.href) {
-        const data = await ctx.data.globaldb.get<any>([replyTarget.id.href]);
-        const replyTargetAuthor = data?.attributedTo?.id;
-        const inboxActor = await getUserData(ctx, 'index');
-
-        if (replyTargetAuthor === inboxActor.id.href) {
-            await addToList(ctx.data.db, ['inbox'], create.id.href);
-            return;
+    if (isError(postResult)) {
+        const error = getError(postResult);
+        switch (error) {
+            case 'upstream-error':
+                ctx.data.logger.info(
+                    'Upstream error fetching post for create handling',
+                    {
+                        postId: create.objectId.href,
+                    },
+                );
+                break;
+            case 'not-a-post':
+                ctx.data.logger.info(
+                    'Resource is not a post in create handling',
+                    {
+                        postId: create.objectId.href,
+                    },
+                );
+                break;
+            case 'missing-author':
+                ctx.data.logger.info(
+                    'Post has missing author in create handling',
+                    {
+                        postId: create.objectId.href,
+                    },
+                );
+                break;
+            default:
+                exhaustiveCheck(error);
         }
     }
-
-    await addToList(ctx.data.db, ['inbox'], create.id.href);
 }
 
 export const createUndoHandler = (
@@ -430,8 +368,6 @@ export const createUndoHandler = (
             await ctx.data.globaldb.set([undo.id.href], await undo.toJsonLd());
 
             await accountService.recordAccountUnfollow(unfollowing, unfollower);
-
-            await addToList(ctx.data.db, ['inbox'], undo.id.href);
         } else if (object instanceof Announce) {
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
@@ -450,14 +386,45 @@ export const createUndoHandler = (
             }
 
             if (senderAccount !== null) {
-                const originalPost = await postService.getByApId(
+                const originalPostResult = await postService.getByApId(
                     object.objectId,
                 );
 
-                if (originalPost !== null) {
-                    originalPost.removeRepost(senderAccount);
-                    await postRepository.save(originalPost);
+                if (isError(originalPostResult)) {
+                    const error = getError(originalPostResult);
+                    switch (error) {
+                        case 'upstream-error':
+                            ctx.data.logger.info(
+                                'Upstream error fetching post for undoing announce',
+                                {
+                                    postId: object.objectId.href,
+                                },
+                            );
+                            break;
+                        case 'not-a-post':
+                            ctx.data.logger.info(
+                                'Resource is not a post in undoing announce',
+                                {
+                                    postId: object.objectId.href,
+                                },
+                            );
+                            break;
+                        case 'missing-author':
+                            ctx.data.logger.info(
+                                'Post has missing author in undoing announce',
+                                {
+                                    postId: object.objectId.href,
+                                },
+                            );
+                            break;
+                        default:
+                            return exhaustiveCheck(error);
+                    }
+                    return;
                 }
+                const originalPost = getValue(originalPostResult);
+                originalPost.removeRepost(senderAccount);
+                await postRepository.save(originalPost);
             }
         }
 
@@ -476,8 +443,8 @@ export function createAnnounceHandler(
     ) {
         ctx.data.logger.info('Handling Announce');
 
-        // Validate announce
         if (!announce.id) {
+            // Validate announce
             ctx.data.logger.info('Invalid Announce - no id');
             return;
         }
@@ -525,8 +492,8 @@ export function createAnnounceHandler(
             object = await lookupObject(ctx, announce.objectId);
         }
 
-        // Validate object
         if (!existing && !object) {
+            // Validate object
             ctx.data.logger.info('Invalid Announce - could not find object');
             return;
         }
@@ -548,8 +515,8 @@ export function createAnnounceHandler(
             announceJson.object = existing;
         }
 
-        // Persist object if not already persisted
         if (!existing && object && object.id) {
+            // Persist object if not already persisted
             ctx.data.logger.info('Storing object in globalDb');
 
             const objectJson = await object.toJsonLd();
@@ -575,8 +542,6 @@ export function createAnnounceHandler(
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
-        let shouldAddToInbox = false;
-
         const site = await siteService.getSiteByHost(ctx.host);
 
         if (!site) {
@@ -588,23 +553,43 @@ export function createAnnounceHandler(
 
         if (senderAccount !== null) {
             // This will save the post if it doesn't already exist
-            const post = await postService.getByApId(announce.objectId);
+            const postResult = await postService.getByApId(announce.objectId);
 
-            if (post !== null) {
+            if (isError(postResult)) {
+                const error = getError(postResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.data.logger.info(
+                            'Upstream error fetching post for reposting',
+                            {
+                                postId: announce.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.data.logger.info(
+                            'Resource for reposting is not a post',
+                            {
+                                postId: announce.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.data.logger.info(
+                            'Post for reposting has missing author',
+                            {
+                                postId: announce.objectId.href,
+                            },
+                        );
+                        break;
+                    default:
+                        return exhaustiveCheck(error);
+                }
+            } else {
+                const post = getValue(postResult);
                 post.addRepost(senderAccount);
                 await postRepository.save(post);
             }
-        }
-
-        shouldAddToInbox = await isFollowedByDefaultSiteAccount(
-            sender,
-            site,
-            accountService,
-        );
-
-        if (shouldAddToInbox) {
-            await addToList(ctx.data.db, ['inbox'], announce.id.href);
-            return;
         }
     };
 }
@@ -635,11 +620,42 @@ export function createLikeHandler(
 
         const account = await accountService.getByApId(like.actorId);
         if (account !== null) {
-            const post = await postService.getByApId(like.objectId);
+            const postResult = await postService.getByApId(like.objectId);
 
-            if (post !== null) {
+            if (isError(postResult)) {
+                const error = getError(postResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.data.logger.info(
+                            'Upstream error fetching post for liking',
+                            {
+                                postId: like.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.data.logger.info(
+                            'Resource for liking is not a post',
+                            {
+                                postId: like.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.data.logger.info(
+                            'Post for liking has missing author',
+                            {
+                                postId: like.objectId.href,
+                            },
+                        );
+                        break;
+                    default: {
+                        return exhaustiveCheck(error);
+                    }
+                }
+            } else {
+                const post = getValue(postResult);
                 post.addLike(account);
-
                 await postRepository.save(post);
             }
         }
@@ -662,7 +678,16 @@ export function createLikeHandler(
                 'Like object not found in globalDb, performing network lookup',
             );
 
-            object = await like.getObject();
+            try {
+                object = await like.getObject();
+            } catch (err) {
+                ctx.data.logger.info(
+                    'Error performing like object network lookup',
+                    {
+                        error: err,
+                    },
+                );
+            }
         }
 
         // Validate object
@@ -688,8 +713,6 @@ export function createLikeHandler(
 
             ctx.data.globaldb.set([object.id.href], objectJson);
         }
-
-        await addToList(ctx.data.db, ['inbox'], like.id.href);
     };
 }
 
@@ -836,62 +859,14 @@ export function followingFirstCursor() {
     return '0';
 }
 
-function filterOutboxActivityUris(activityUris: string[]) {
-    // Only return Create and Announce activityUris
-    return activityUris.filter((uri) => /(create|announce)/.test(uri));
-}
-
 export async function outboxDispatcher(
     ctx: RequestContext<ContextData>,
     handle: string,
     cursor: string | null,
 ) {
-    ctx.data.logger.info('Outbox Dispatcher');
-
-    const pageSize = Number.parseInt(
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-    );
-
-    if (Number.isNaN(pageSize)) {
-        throw new Error(`Page size: ${pageSize} is not valid`);
-    }
-
-    const offset = Number.parseInt(cursor ?? '0');
-    let nextCursor: string | null = null;
-
-    const results = filterOutboxActivityUris(
-        (await ctx.data.db.get<string[]>(['outbox'])) || [],
-    ).reverse();
-
-    nextCursor =
-        results.length > offset + pageSize
-            ? (offset + pageSize).toString()
-            : null;
-
-    const slicedResults = results.slice(offset, offset + pageSize);
-
-    ctx.data.logger.info('Outbox results', { results: slicedResults });
-
-    const items: Activity[] = await Promise.all(
-        slicedResults.map(async (result) => {
-            try {
-                const thing = await ctx.data.globaldb.get([result]);
-                const activity = await Activity.fromJsonLd(thing);
-
-                return activity;
-            } catch (err) {
-                Sentry.captureException(err);
-                ctx.data.logger.error('Error getting outbox activity', {
-                    error: err,
-                });
-                return null;
-            }
-        }),
-    ).then((results) => results.filter((r): r is Activity => r !== null));
-
     return {
-        items,
-        nextCursor,
+        items: [],
+        nextCursor: null,
     };
 }
 
@@ -899,9 +874,7 @@ export async function outboxCounter(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    const results = (await ctx.data.db.get<string[]>(['outbox'])) || [];
-
-    return filterOutboxActivityUris(results).length;
+    return 0;
 }
 
 export function outboxFirstCursor() {
@@ -913,87 +886,9 @@ export async function likedDispatcher(
     handle: string,
     cursor: string | null,
 ) {
-    ctx.data.logger.info('Liked Dispatcher');
-
-    const db = ctx.data.db;
-    const globaldb = ctx.data.globaldb;
-    const logger = ctx.data.logger;
-    const apCtx = fedify.createContext(ctx.request as Request, {
-        db,
-        globaldb,
-        logger,
-    });
-
-    const pageSize = Number.parseInt(
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-    );
-
-    if (Number.isNaN(pageSize)) {
-        throw new Error(`Page size: ${pageSize} is not valid`);
-    }
-
-    const offset = Number.parseInt(cursor ?? '0');
-    let nextCursor: string | null = null;
-
-    const results = ((await db.get<string[]>(['liked'])) || []).reverse();
-
-    nextCursor =
-        results.length > offset + pageSize
-            ? (offset + pageSize).toString()
-            : null;
-
-    const slicedResults = results.slice(offset, offset + pageSize);
-
-    ctx.data.logger.info('Liked results', { results: slicedResults });
-
-    const items: Like[] = (
-        await Promise.all(
-            slicedResults.map(async (result) => {
-                try {
-                    const thing = await globaldb.get<{
-                        object:
-                            | string
-                            | {
-                                  [key: string]: any;
-                              };
-                        [key: string]: any;
-                    }>([result]);
-
-                    if (
-                        thing &&
-                        typeof thing.object !== 'string' &&
-                        typeof thing.object.attributedTo === 'string'
-                    ) {
-                        const actor = await lookupActor(
-                            apCtx,
-                            thing.object.attributedTo,
-                        );
-
-                        if (actor) {
-                            const json = await actor.toJsonLd();
-
-                            if (typeof json === 'object' && json !== null) {
-                                thing.object.attributedTo = json;
-                            }
-                        }
-                    }
-
-                    const activity = await Like.fromJsonLd(thing);
-                    return activity;
-                } catch (err) {
-                    Sentry.captureException(err);
-                    ctx.data.logger.error('Error getting liked activity', {
-                        error: err,
-                    });
-                    return null;
-                }
-            }),
-        )
-    ).filter((item): item is Like => item !== null);
-
     return {
-        items,
-        nextCursor,
+        items: [],
+        nextCursor: null,
     };
 }
 
@@ -1001,13 +896,11 @@ export async function likedCounter(
     ctx: RequestContext<ContextData>,
     handle: string,
 ) {
-    const results = (await ctx.data.db.get<string[]>(['liked'])) || [];
-
-    return results.length;
+    return 0;
 }
 
 export function likedFirstCursor() {
-    return '0';
+    return null;
 }
 
 export async function articleDispatcher(

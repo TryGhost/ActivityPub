@@ -1,34 +1,36 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
+
+import { ModerationService } from 'moderation/moderation.service';
 import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
 import { createTestDb } from 'test/db';
-
-import type { Account } from 'account/types';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { NotificationService, NotificationType } from './notification.service';
 
 describe('NotificationService', () => {
     let client: Knex;
+    let fixtureManager: FixtureManager;
+    let moderationService: ModerationService;
+    let notificationService: NotificationService;
 
     beforeAll(async () => {
         client = await createTestDb();
+        fixtureManager = createFixtureManager(client);
+        moderationService = new ModerationService(client);
+        notificationService = new NotificationService(
+            client,
+            moderationService,
+        );
     });
 
     beforeEach(async () => {
-        await client.raw('SET FOREIGN_KEY_CHECKS = 0');
-        await client('notifications').truncate();
-        await client('posts').truncate();
-        await client('accounts').truncate();
-        await client('users').truncate();
-        await client('sites').truncate();
-        await client.raw('SET FOREIGN_KEY_CHECKS = 1');
+        await fixtureManager.reset();
     });
 
     describe('getNotificationsData', () => {
         it('should get the notifications for a user', async () => {
-            const notificationService = new NotificationService(client);
-
             // Setup the user account
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
@@ -39,6 +41,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -61,18 +64,21 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [follower2AccountId] = await client('accounts').insert({
                 username: 'charlie',
                 ap_id: 'https://charlie.com/user/charlie',
                 ap_inbox_url: 'https://charlie.com/user/charlie/inbox',
+                domain: 'charlie.com',
             });
 
             const [follower3AccountId] = await client('accounts').insert({
                 username: 'dan',
                 ap_id: 'https://dan.com/user/dan',
                 ap_inbox_url: 'https://dan.com/user/dan/inbox',
+                domain: 'dan.com',
             });
 
             const [follower1ReplyPostId] = await client('posts').insert({
@@ -83,6 +89,28 @@ describe('NotificationService', () => {
                     'Nostrud incididunt pariatur non exercitation exercitation exercitation esse nulla enim consectetur qui ea.',
                 url: 'http://bob.com/post/some-reply',
                 ap_id: 'https://bob.com/post/some-reply',
+                like_count: 1,
+            });
+
+            const [follower2ReplyPostId] = await client('posts').insert({
+                author_id: follower2AccountId,
+                type: PostType.Note,
+                audience: Audience.Public,
+                content:
+                    'Nostrud incididunt pariatur non exercitation exercitation exercitation esse nulla enim consectetur qui ea.',
+                url: 'http://charlie.com/post/some-reply',
+                ap_id: 'https://charlie.com/post/some-reply',
+                repost_count: 1,
+            });
+
+            await client('likes').insert({
+                account_id: userId,
+                post_id: follower1ReplyPostId,
+            });
+
+            await client('reposts').insert({
+                account_id: userId,
+                post_id: follower2ReplyPostId,
             });
 
             // Setup the notifications
@@ -119,6 +147,14 @@ describe('NotificationService', () => {
                     event_type: 4,
                     created_at: '2025-03-20 14:00:00',
                 },
+                {
+                    user_id: userId,
+                    account_id: follower2AccountId,
+                    event_type: 3,
+                    post_id: follower2ReplyPostId,
+                    in_reply_to_post_id: userPostId,
+                    created_at: '2025-03-21 11:00:00',
+                },
             ]);
 
             const notifications =
@@ -128,15 +164,13 @@ describe('NotificationService', () => {
                     cursor: null,
                 });
 
-            expect(notifications.results).toHaveLength(4);
+            expect(notifications.results).toHaveLength(5);
             await expect(notifications.results).toMatchFileSnapshot(
                 './__snapshots__/get-notifications-data.json',
             );
         });
 
         it('should paginate the notifications', async () => {
-            const notificationService = new NotificationService(client);
-
             // Setup the user account
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
@@ -147,6 +181,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -169,18 +204,21 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [follower2AccountId] = await client('accounts').insert({
                 username: 'charlie',
                 ap_id: 'https://charlie.com/user/charlie',
                 ap_inbox_url: 'https://charlie.com/user/charlie/inbox',
+                domain: 'charlie.com',
             });
 
             const [follower3AccountId] = await client('accounts').insert({
                 username: 'dan',
                 ap_id: 'https://dan.com/user/dan',
                 ap_inbox_url: 'https://dan.com/user/dan/inbox',
+                domain: 'dan.com',
             });
 
             const [follower1ReplyPostId] = await client('posts').insert({
@@ -253,8 +291,6 @@ describe('NotificationService', () => {
         });
 
         it('should throw an error if the user associated with the account does not exist', async () => {
-            const notificationService = new NotificationService(client);
-
             await expect(
                 notificationService.getNotificationsData({
                     accountId: 123,
@@ -267,8 +303,6 @@ describe('NotificationService', () => {
 
     describe('createFollowNotification', () => {
         it('should create a follow notification', async () => {
-            const notificationService = new NotificationService(client);
-
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
                 webhook_secret: 'secret',
@@ -278,6 +312,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -289,19 +324,12 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
-            const account = {
-                id: accountId,
-            } as Account;
-
-            const followerAccount = {
-                id: followerAccountId,
-            } as Account;
-
             await notificationService.createFollowNotification(
-                account,
-                followerAccount,
+                accountId,
+                followerAccountId,
             );
 
             const notifications = await client('notifications').select('*');
@@ -313,19 +341,24 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for account', async () => {
-            const notificationService = new NotificationService(client);
+            await notificationService.createFollowNotification(999, 1);
 
-            const accountWithoutUser = {
-                id: 999,
-            } as Account;
+            const notifications = await client('notifications').select('*');
 
-            const followerAccount = {
-                id: 1,
-            } as Account;
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('should do nothing if the follower account has been blocked by the user', async () => {
+            const [[aliceAccount, ,], [bobAccount, ,]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await fixtureManager.createBlock(aliceAccount, bobAccount);
 
             await notificationService.createFollowNotification(
-                accountWithoutUser,
-                followerAccount,
+                aliceAccount.id,
+                bobAccount.id,
             );
 
             const notifications = await client('notifications').select('*');
@@ -336,8 +369,6 @@ describe('NotificationService', () => {
 
     describe('createLikeNotification', () => {
         it('should create a like notification', async () => {
-            const notificationService = new NotificationService(client);
-
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
                 webhook_secret: 'secret',
@@ -347,6 +378,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -368,6 +400,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const post = {
@@ -392,8 +425,6 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if the account liking the post is the same as the post author', async () => {
-            const notificationService = new NotificationService(client);
-
             const accountId = 123;
 
             const post = {
@@ -411,8 +442,6 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for account', async () => {
-            const notificationService = new NotificationService(client);
-
             const postWithAccountWithoutUser = {
                 author: {
                     id: 999,
@@ -428,12 +457,29 @@ describe('NotificationService', () => {
 
             expect(notifications).toHaveLength(0);
         });
+
+        it('should do nothing if the account liking the post has been blocked by the user', async () => {
+            const [[aliceAccount, ,], [bobAccount, ,]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await fixtureManager.createBlock(aliceAccount, bobAccount);
+
+            const post = await fixtureManager.createPost(aliceAccount);
+            await notificationService.createLikeNotification(
+                post,
+                bobAccount.id,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
     });
 
     describe('createRepostNotification', () => {
         it('should create a repost notification', async () => {
-            const notificationService = new NotificationService(client);
-
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
                 webhook_secret: 'secret',
@@ -443,6 +489,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -464,6 +511,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const post = {
@@ -488,8 +536,6 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if the account reposting the post is the same as the post author', async () => {
-            const notificationService = new NotificationService(client);
-
             const accountId = 123;
 
             const post = {
@@ -507,8 +553,6 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for account', async () => {
-            const notificationService = new NotificationService(client);
-
             const postWithAccountWithoutUser = {
                 author: {
                     id: 999,
@@ -524,12 +568,30 @@ describe('NotificationService', () => {
 
             expect(notifications).toHaveLength(0);
         });
+
+        it('should do nothing if the account reposting the post has been blocked by the user', async () => {
+            const [[aliceAccount, ,], [bobAccount, ,]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await fixtureManager.createBlock(aliceAccount, bobAccount);
+
+            const post = await fixtureManager.createPost(aliceAccount);
+
+            await notificationService.createRepostNotification(
+                post,
+                bobAccount.id,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
     });
 
     describe('createReplyNotification', () => {
         it('should create a reply notification', async () => {
-            const notificationService = new NotificationService(client);
-
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
                 webhook_secret: 'secret',
@@ -539,6 +601,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             const [userId] = await client('users').insert({
@@ -560,6 +623,7 @@ describe('NotificationService', () => {
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [replierPostId] = await client('posts').insert({
@@ -593,8 +657,6 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if the post is not a reply', async () => {
-            const notificationService = new NotificationService(client);
-
             const post = {
                 id: 123,
                 author: {
@@ -613,8 +675,6 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if the account replying to the post is the same as the post author', async () => {
-            const notificationService = new NotificationService(client);
-
             const [siteId] = await client('sites').insert({
                 host: 'alice.com',
                 webhook_secret: 'secret',
@@ -624,6 +684,7 @@ describe('NotificationService', () => {
                 username: 'alice',
                 ap_id: 'https://alice.com/user/alice',
                 ap_inbox_url: 'https://alice.com/user/alice/inbox',
+                domain: 'alice.com',
             });
 
             await client('users').insert({
@@ -657,8 +718,6 @@ describe('NotificationService', () => {
         });
 
         it('should throw an error if the in reply to post is not found', async () => {
-            const notificationService = new NotificationService(client);
-
             const post = {
                 id: 123,
                 author: {
@@ -673,12 +732,11 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for author of the in reply to post', async () => {
-            const notificationService = new NotificationService(client);
-
             const [externalAccountId] = await client('accounts').insert({
                 username: 'bob',
                 ap_id: 'https://bob.com/user/bob',
                 ap_inbox_url: 'https://bob.com/user/bob/inbox',
+                domain: 'bob.com',
             });
 
             const [externalAccountPostId] = await client('posts').insert({
@@ -716,6 +774,445 @@ describe('NotificationService', () => {
             const notifications = await client('notifications').select('*');
 
             expect(notifications).toHaveLength(0);
+        });
+
+        it('should do nothing if the account replying to the post has been blocked by the user', async () => {
+            const [[aliceAccount, ,], [bobAccount, ,]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await fixtureManager.createBlock(aliceAccount, bobAccount);
+
+            const post = await fixtureManager.createPost(aliceAccount, {
+                type: PostType.Article,
+            });
+
+            const reply = await fixtureManager.createReply(bobAccount, post);
+
+            await notificationService.createReplyNotification(reply);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+    });
+
+    describe('removeBlockedAccountNotifications', () => {
+        it('should remove all notifications from a blocked account', async () => {
+            // Create internal blocker account
+            const [account, site, userId] =
+                await fixtureManager.createInternalAccount(null, 'alice.com');
+
+            // Create an external account that will be blocked
+            const blockedAccount = await fixtureManager.createExternalAccount();
+
+            // Create some notifications from the blocked account
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            // Create a notification from another account to ensure it's not deleted
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await fixtureManager.createNotification(
+                account,
+                otherAccount,
+                NotificationType.Follow,
+            );
+
+            // Remove notifications from the blocked account
+            await notificationService.removeBlockedAccountNotifications(
+                account.id,
+                blockedAccount.id,
+            );
+
+            // Verify only the blocked account's notifications were removed
+            const remainingNotifications = await client('notifications')
+                .where('user_id', userId)
+                .select('*');
+
+            expect(remainingNotifications).toHaveLength(1);
+            expect(remainingNotifications[0].account_id).toBe(otherAccount.id);
+        });
+
+        it('should do nothing if user is not found for blocker account', async () => {
+            const [account] = await fixtureManager.createInternalAccount(
+                null,
+                'alice.com',
+            );
+
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            await notificationService.removeBlockedAccountNotifications(
+                999,
+                otherAccount.id,
+            );
+
+            // Verify the existing notifications were not deleted
+            const notifications = await client('notifications').select('*');
+            expect(notifications).toHaveLength(2);
+            expect(notifications[0].account_id).toBe(otherAccount.id);
+            expect(notifications[1].account_id).toBe(otherAccount.id);
+        });
+    });
+
+    describe('removeBlockedDomainNotifications', () => {
+        it('should remove all notifications from accounts from a blocked domain', async () => {
+            // Create internal blocker account
+            const [account, site, userId] =
+                await fixtureManager.createInternalAccount(null, 'alice.com');
+
+            // Create an external account that will have its domain blocked
+            const blockedAccount = await fixtureManager.createExternalAccount();
+
+            // Create some notifications from the blocked domain account
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    blockedAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            // Create a notification from another account to ensure it does not get deleted
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await fixtureManager.createNotification(
+                account,
+                otherAccount,
+                NotificationType.Follow,
+            );
+
+            // Remove notifications from the blocked domain
+            await notificationService.removeBlockedDomainNotifications(
+                account.id,
+                blockedAccount.apId,
+            );
+
+            // Verify only the blocked domain account's notifications were removed
+            const remainingNotifications = await client('notifications')
+                .where('user_id', userId)
+                .select('*');
+
+            expect(remainingNotifications).toHaveLength(1);
+            expect(remainingNotifications[0].account_id).toBe(otherAccount.id);
+        });
+
+        it('should do nothing if user is not found for blocker account', async () => {
+            const [account] = await fixtureManager.createInternalAccount(
+                null,
+                'alice.com',
+            );
+
+            const otherAccount = await fixtureManager.createExternalAccount();
+
+            await Promise.all([
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    account,
+                    otherAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            await notificationService.removeBlockedDomainNotifications(
+                999,
+                otherAccount.apId,
+            );
+
+            // Verify the existing notifications were not deleted
+            const notifications = await client('notifications').select('*');
+            expect(notifications).toHaveLength(2);
+            expect(notifications[0].account_id).toBe(otherAccount.id);
+            expect(notifications[1].account_id).toBe(otherAccount.id);
+        });
+    });
+
+    describe('createMentionNotification', () => {
+        it('should create a mention notification', async () => {
+            // Delete existing mentions
+            await client('mentions').delete();
+
+            const [aliceAccount, ,] =
+                await fixtureManager.createInternalAccount();
+            const [bobAccount, , bobUserId] =
+                await fixtureManager.createInternalAccount();
+
+            const alicePost = await fixtureManager.createPost(aliceAccount, {
+                type: PostType.Article,
+            });
+
+            await fixtureManager.createMention(bobAccount, alicePost);
+
+            await notificationService.createMentionNotification(
+                alicePost,
+                bobAccount.id,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].user_id).toBe(bobUserId);
+            expect(notifications[0].account_id).toBe(aliceAccount.id);
+            expect(notifications[0].post_id).toBe(alicePost.id);
+            expect(notifications[0].event_type).toBe(NotificationType.Mention);
+        });
+
+        it('does not create a notification if the post is a reply to the author and also mentions the author', async () => {
+            // Delete existing mentions
+            await client('mentions').delete();
+
+            const [aliceAccount, ,] =
+                await fixtureManager.createInternalAccount();
+            const [bobAccount, ,] =
+                await fixtureManager.createInternalAccount();
+
+            const bobPost = await fixtureManager.createPost(bobAccount, {
+                type: PostType.Article,
+            });
+
+            const aliceReplyToBobPost = await fixtureManager.createReply(
+                aliceAccount,
+                bobPost,
+            );
+
+            await fixtureManager.createMention(bobAccount, aliceReplyToBobPost);
+
+            await notificationService.createMentionNotification(
+                aliceReplyToBobPost,
+                bobAccount.id,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('does not create a notification if the post author is blocked', async () => {
+            // Delete existing mentions
+            await client('mentions').delete();
+
+            const [aliceAccount, ,] =
+                await fixtureManager.createInternalAccount();
+            const [bobAccount, ,] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.createBlock(bobAccount, aliceAccount);
+
+            const alicePost = await fixtureManager.createPost(aliceAccount, {
+                type: PostType.Article,
+            });
+
+            await fixtureManager.createMention(bobAccount, alicePost);
+
+            await notificationService.createMentionNotification(
+                alicePost,
+                bobAccount.id,
+            );
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(0);
+        });
+    });
+
+    describe('removePostNotifications', () => {
+        it('should remove all notifications for a given post', async () => {
+            const [[aliceAccount, ,], [bobAccount, ,]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const post = await fixtureManager.createPost(aliceAccount);
+            const replyPost = await fixtureManager.createReply(
+                bobAccount,
+                post,
+            );
+
+            // Create multiple notifications for the post
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Repost,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Mention,
+                    post.id,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Reply,
+                    replyPost.id,
+                    post.id,
+                ),
+            ]);
+
+            // Create a notification for a different post to ensure it's not affected
+            const otherPost = await fixtureManager.createPost(aliceAccount);
+            await fixtureManager.createNotification(
+                aliceAccount,
+                bobAccount,
+                NotificationType.Like,
+                otherPost.id,
+            );
+
+            await notificationService.removePostNotifications(post);
+
+            const remainingNotifications =
+                await client('notifications').select('*');
+            expect(remainingNotifications).toHaveLength(1); // One notification for the otherPost
+            expect(remainingNotifications[0].post_id).toBe(otherPost.id);
+        });
+    });
+
+    describe('readAllNotifications', () => {
+        it('should mark all notifications as read', async () => {
+            const [[aliceAccount, , aliceUserId], [bobAccount, ,]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
+
+            // Create multiple unread notifications
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Repost,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Mention,
+                ),
+            ]);
+
+            // Create one read notification to ensure it stays read
+            await fixtureManager.createNotification(
+                aliceAccount,
+                bobAccount,
+                NotificationType.Follow,
+            );
+            await client('notifications')
+                .where('user_id', aliceUserId)
+                .update({ read: true });
+
+            await notificationService.readAllNotifications(aliceAccount.id);
+
+            const notifications = await client('notifications')
+                .where('user_id', aliceUserId)
+                .select('*');
+
+            expect(notifications).toHaveLength(4);
+            expect(notifications.every((n) => n.read)).toBe(true);
+        });
+
+        it('should do nothing if user is not found for account', async () => {
+            const bobAccount = await fixtureManager.createExternalAccount();
+            const [aliceAccount] = await fixtureManager.createInternalAccount();
+
+            // Create some unread notifications
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Repost,
+                ),
+            ]);
+
+            await notificationService.readAllNotifications(bobAccount.id);
+
+            const notifications = await client('notifications').select('*');
+
+            expect(notifications).toHaveLength(2);
+            expect(notifications.every((n) => n.read)).toBe(false);
+        });
+
+        it('should only mark notifications for the specified user as read', async () => {
+            const [[aliceAccount, , aliceUserId], [bobAccount, , bobUserId]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
+
+            // Create unread notifications for both users
+            await Promise.all([
+                fixtureManager.createNotification(
+                    aliceAccount,
+                    bobAccount,
+                    NotificationType.Like,
+                ),
+                fixtureManager.createNotification(
+                    bobAccount,
+                    aliceAccount,
+                    NotificationType.Like,
+                ),
+            ]);
+
+            await notificationService.readAllNotifications(aliceAccount.id);
+
+            const aliceNotifications = await client('notifications')
+                .where('user_id', aliceUserId)
+                .select('*');
+            const bobNotifications = await client('notifications')
+                .where('user_id', bobUserId)
+                .select('*');
+
+            expect(aliceNotifications.every((n) => n.read)).toBe(true);
+            expect(bobNotifications.every((n) => n.read)).toBe(false);
         });
     });
 });

@@ -1,7 +1,7 @@
 import { chunk } from 'es-toolkit';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-
+import type { ModerationService } from 'moderation/moderation.service';
 import {
     type FollowersOnlyPost,
     type Post,
@@ -35,6 +35,7 @@ interface BaseGetFeedDataResultRow {
     post_type: PostType;
     post_title: string | null;
     post_excerpt: string | null;
+    post_summary: string | null;
     post_content: string | null;
     post_url: string;
     post_image_url: string | null;
@@ -85,10 +86,10 @@ export interface GetFeedDataResult {
 }
 
 export class FeedService {
-    /**
-     * @param db Database client
-     */
-    constructor(private readonly db: Knex) {}
+    constructor(
+        private readonly db: Knex,
+        private readonly moderationService: ModerationService,
+    ) {}
 
     /**
      * Get data for a feed based on the provided options
@@ -114,6 +115,7 @@ export class FeedService {
                 'posts.type as post_type',
                 'posts.title as post_title',
                 'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',
@@ -272,7 +274,11 @@ export class FeedService {
         }
 
         // Add the post to the feeds
-        const userIds = Array.from(targetUserIds).map(Number);
+        const userIds = await this.moderationService.filterUsersForPost(
+            Array.from(targetUserIds).map(Number),
+            post,
+            repostedBy ?? undefined,
+        );
 
         if (userIds.length === 0) {
             return [];
@@ -342,5 +348,80 @@ export class FeedService {
             .delete();
 
         return updatedFeedUserIds;
+    }
+
+    async removeBlockedAccountPostsFromFeed(
+        feedAccountId: number,
+        blockedAccountId: number,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', feedAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('feeds')
+            .where((qb) => {
+                qb.where('author_id', blockedAccountId).orWhere(
+                    'reposted_by_id',
+                    blockedAccountId,
+                );
+            })
+            .andWhere('user_id', user.id)
+            .delete();
+    }
+
+    async removeBlockedDomainPostsFromFeed(
+        feedAccountId: number,
+        blockedDomain: URL,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', feedAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('feeds')
+            .join('accounts', function () {
+                this.on('feeds.author_id', 'accounts.id').orOn(
+                    'feeds.reposted_by_id',
+                    'accounts.id',
+                );
+            })
+            .where('feeds.user_id', user.id)
+            .andWhereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
+                blockedDomain.host,
+            ])
+            .delete();
+    }
+
+    async removeUnfollowedAccountPostsFromFeed(
+        feedAccountId: number,
+        unfollowedAccountId: number,
+    ) {
+        const user = await this.db('users')
+            .where('account_id', feedAccountId)
+            .select('id')
+            .first();
+
+        if (!user) {
+            return;
+        }
+
+        await this.db('feeds')
+            .where((qb) => {
+                qb.where('author_id', unfollowedAccountId).orWhere(
+                    'reposted_by_id',
+                    unfollowedAccountId,
+                );
+            })
+            .andWhere('user_id', user.id)
+            .delete();
     }
 }
