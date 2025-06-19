@@ -1042,7 +1042,7 @@ export class KnexPostRepository {
             username: row.username,
             name: row.name,
             bio: row.bio,
-            url: parseURL(row.author_url) || new URL(row.ap_id),
+            url: parseURL(row.author_url) || new URL(row.author_ap_id),
             avatarUrl: parseURL(row.avatar_url),
             bannerImageUrl: parseURL(row.banner_image_url),
             apId: new URL(row.author_ap_id),
