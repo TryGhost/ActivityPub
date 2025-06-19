@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   jaeger:
-    image: jaegertracing/all-in-one:1.62.0
+    image: jaegertracing/all-in-one:1.70.0
     restart: always
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
