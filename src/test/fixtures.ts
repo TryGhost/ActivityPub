@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { faker } from '@faker-js/faker';
 import type { Knex } from 'knex';
 
@@ -20,6 +21,22 @@ export class FixtureManager {
         private readonly siteService: SiteService,
         private readonly postRepository: KnexPostRepository,
     ) {}
+
+    async createSite(host = faker.internet.domainName()): Promise<Site> {
+        const webhook_secret = crypto.randomBytes(32).toString('hex');
+        const [id] = await this.db
+            .insert({
+                host,
+                webhook_secret,
+            })
+            .into('sites');
+
+        return {
+            id,
+            host,
+            webhook_secret,
+        };
+    }
 
     async createInternalAccount(
         site?: Site | null,
