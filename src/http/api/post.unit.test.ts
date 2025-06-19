@@ -35,6 +35,9 @@ describe('Post API', () => {
                 if (key === 'site') {
                     return site;
                 }
+                if (key === 'account') {
+                    return account;
+                }
             },
         } as unknown as AppContext;
     }
@@ -113,9 +116,11 @@ describe('Post API', () => {
             return error('not-a-post');
         });
 
-        accountService.getDefaultAccountForSite = vi
-            .fn()
-            .mockImplementation((_site) => ({ id: 987 }));
+        ctx.get = vi.fn().mockImplementation((key) => {
+            if (key === 'account') {
+                return { id: 987 };
+            }
+        });
 
         const handler = createGetPostHandler(postService, accountService);
 
