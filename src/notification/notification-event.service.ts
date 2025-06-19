@@ -3,6 +3,7 @@ import type { EventEmitter } from 'node:events';
 import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountFollowedEvent } from 'account/account-followed.event';
 import { DomainBlockedEvent } from 'account/domain-blocked.event';
+import { NotificationsReadEvent } from 'account/notifications-read-event';
 import type { NotificationService } from 'notification/notification.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
@@ -43,6 +44,10 @@ export class NotificationEventService {
         this.events.on(
             DomainBlockedEvent.getName(),
             this.handleDomainBlockedEvent.bind(this),
+        );
+        this.events.on(
+            NotificationsReadEvent.getName(),
+            this.handleNotificationsReadEvent.bind(this),
         );
     }
 
@@ -104,5 +109,11 @@ export class NotificationEventService {
             blockerId,
             domain,
         );
+    }
+
+    private async handleNotificationsReadEvent(event: NotificationsReadEvent) {
+        const accountId = event.getAccountId();
+
+        await this.notificationService.readAllNotifications(accountId);
     }
 }

@@ -1,16 +1,19 @@
 import type { Logger } from '@logtape/logtape';
 import { error, ok } from 'core/result';
+import type { PubSubEvents } from 'events/pubsub';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
 import { PostInteractionCountsService } from './post-interaction-counts.service';
 import type { Post } from './post.entity';
 import type { KnexPostRepository } from './post.repository.knex';
-import type { PostService } from './post.service';
+import { INTERACTION_COUNTS_NOT_FOUND, type PostService } from './post.service';
 
 describe('PostInteractionCountsService', () => {
     let service: PostInteractionCountsService;
     let mockPostService: PostService;
     let mockPostRepository: KnexPostRepository;
     let mockLogger: Logger;
+    let mockPubSubEvents: PubSubEvents;
 
     beforeEach(() => {
         mockPostService = {
@@ -23,14 +26,63 @@ describe('PostInteractionCountsService', () => {
             info: vi.fn(),
             error: vi.fn(),
         } as unknown as Logger;
+        mockPubSubEvents = {
+            on: vi.fn(),
+            emitAsync: vi.fn(),
+        } as unknown as PubSubEvents;
         service = new PostInteractionCountsService(
             mockPostService,
             mockPostRepository,
             mockLogger,
+            mockPubSubEvents,
         );
     });
 
-    describe('updateInteractionCounts', () => {
+    describe('init', () => {
+        it('should register an event listener for: PostInteractionCountsUpdateRequestedEvent', async () => {
+            const updateSpy = vi
+                .spyOn(service, 'update')
+                .mockResolvedValue(undefined);
+
+            service.init();
+
+            expect(mockPubSubEvents.on).toHaveBeenCalledWith(
+                PostInteractionCountsUpdateRequestedEvent.getName(),
+                expect.any(Function),
+            );
+
+            const handler = vi.mocked(mockPubSubEvents.on).mock.calls[0][1];
+
+            await handler(
+                new PostInteractionCountsUpdateRequestedEvent([1, 2, 3]),
+            );
+
+            expect(updateSpy).toHaveBeenCalledWith([1, 2, 3]);
+        });
+    });
+
+    describe('requestUpdate', () => {
+        it('should publish a PostInteractionCountsUpdateRequestedEvent', async () => {
+            await service.requestUpdate('example.com', [1, 2, 3]);
+
+            expect(mockPubSubEvents.emitAsync).toHaveBeenCalledWith(
+                PostInteractionCountsUpdateRequestedEvent.getName(),
+                expect.any(PostInteractionCountsUpdateRequestedEvent),
+                'example.com',
+            );
+
+            const event = vi.mocked(mockPubSubEvents.emitAsync).mock
+                .calls[0][1];
+
+            expect(
+                (
+                    event as PostInteractionCountsUpdateRequestedEvent
+                ).getPostIds(),
+            ).toEqual([1, 2, 3]);
+        });
+    });
+
+    describe('update', () => {
         const MINUTE = 60 * 1000;
         const HOUR = 60 * MINUTE;
         const DAY = 24 * HOUR;
@@ -39,13 +91,38 @@ describe('PostInteractionCountsService', () => {
             const postId = 999;
             vi.mocked(mockPostRepository.getById).mockResolvedValue(null);
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
             ).not.toHaveBeenCalled();
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Post with ID {postId} not found when updating interaction counts - Skipping',
+                { postId },
+            );
+        });
+
+        it('logs an info message if interaction counts are not found on remote post', async () => {
+            const postId = 1;
+            const now = Date.now();
+            const publishedAt = new Date(now - 2 * HOUR);
+            const updatedAt = new Date(now - 15 * MINUTE);
+            const post = {
+                id: postId,
+                publishedAt,
+                updatedAt,
+            } as Post;
+
+            vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
+
+            vi.mocked(
+                mockPostService.updateInteractionCounts,
+            ).mockResolvedValue(error(INTERACTION_COUNTS_NOT_FOUND));
+
+            await service.update([postId]);
+
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Post with ID {postId} does not expose interaction counts - Skipping',
                 { postId },
             );
         });
@@ -66,7 +143,7 @@ describe('PostInteractionCountsService', () => {
                 mockPostService.updateInteractionCounts,
             ).mockResolvedValue(error('upstream-error'));
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Error updating interaction counts for post with ID {postId}: {error}',
@@ -91,7 +168,7 @@ describe('PostInteractionCountsService', () => {
                 mockPostService.updateInteractionCounts,
             ).mockResolvedValue(ok(post));
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -114,7 +191,7 @@ describe('PostInteractionCountsService', () => {
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -143,7 +220,7 @@ describe('PostInteractionCountsService', () => {
                 mockPostService.updateInteractionCounts,
             ).mockResolvedValue(ok(post));
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -166,7 +243,7 @@ describe('PostInteractionCountsService', () => {
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -195,7 +272,7 @@ describe('PostInteractionCountsService', () => {
                 mockPostService.updateInteractionCounts,
             ).mockResolvedValue(ok(post));
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -219,7 +296,7 @@ describe('PostInteractionCountsService', () => {
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -248,7 +325,7 @@ describe('PostInteractionCountsService', () => {
                 mockPostService.updateInteractionCounts,
             ).mockResolvedValue(ok(post));
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,
@@ -271,7 +348,7 @@ describe('PostInteractionCountsService', () => {
 
             vi.mocked(mockPostRepository.getById).mockResolvedValue(post);
 
-            await service.updateInteractionCounts([postId]);
+            await service.update([postId]);
 
             expect(
                 mockPostService.updateInteractionCounts,

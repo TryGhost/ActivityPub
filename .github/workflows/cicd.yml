@@ -306,7 +306,8 @@ jobs:
           export TF_VAR_primary_region_name=netherlands
           export TF_VAR_migrations_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:pr-${{ github.event.pull_request.number }}
           export TF_VAR_api_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
-          export TF_VAR_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_fedify_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_ghost_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
           terraform apply -auto-approve
 
       - name: "Deploy Migrations to Cloud Run"
@@ -317,18 +318,6 @@ jobs:
           region: europe-west4
           job: stg-pr-${{ github.event.pull_request.number }}-migrations
           flags: --wait --execute-now
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: "Deploy Tests to Cloud Run"
-        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
-          region: europe-west4
-          job: stg-pr-${{ github.event.pull_request.number }}-tests
-          flags: --command="yarn" --args="_test:integration" --wait --execute-now
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -427,24 +416,22 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: "Deploy Tests to Cloud Run"
-        if: ${{ matrix.region == 'europe-west4' }}
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.migrations_docker_version }}
-          region: ${{ matrix.region }}
-          job: stg-${{ matrix.region_name }}-activitypub-tests
-          flags: --command="yarn" --args="_test:integration" --wait --execute-now
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: "Deploy ActivityPub Queue to Cloud Run"
+      - name: "Deploy ActivityPub Fedify Queue to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
-          service: stg-${{ matrix.region_name }}-activitypub-queue
+          service: stg-${{ matrix.region_name }}-activitypub-fedify-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Deploy ActivityPub Ghost Queue to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-ghost-queue
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -510,12 +497,22 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: "Deploy ActivityPub Queue to Cloud Run"
+      - name: "Deploy ActivityPub Fedify Queue to Cloud Run"
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
-          service: prd-${{ matrix.region_name }}-activitypub-queue
+          service: prd-${{ matrix.region_name }}-activitypub-fedify-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: "Deploy ActivityPub Ghost Queue to Cloud Run"
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-ghost-queue
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -618,6 +615,64 @@ jobs:
           context: jobs/cleanup-expired-key-value-records
           push: true
           tags: ${{ steps.cleanup-meta.outputs.tags }}
+
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  build-populate-explore-json-job:
+    name: Build & Push populate explore json job
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Check for changes in populate explore json job"
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            populate-explore-json:
+              - 'jobs/populate-explore-json/**'
+
+      - name: "Authenticate with GCP"
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Login to GCP Artifact Registry"
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: europe-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: "Docker metadata"
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        id: populate-explore-json-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/populate-explore-json
+          tags: |
+            type=sha
+            type=edge,branch=main
+
+      - name: "Build & Push populate explore json job image"
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: jobs/populate-explore-json
+          push: true
+          tags: ${{ steps.populate-explore-json-meta.outputs.tags }}
 
       - uses: tryghost/actions/actions/slack-build@main
         if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'

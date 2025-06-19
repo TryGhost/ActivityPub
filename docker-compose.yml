@@ -2,11 +2,11 @@ services:
   activitypub:
     build: .
     ports:
-      - "8080:8080"
       - "9229:9229"
     volumes:
       - ./src:/opt/activitypub/src
       - ./dist:/opt/activitypub/dist
+      - dev-content:/opt/activitypub/content
     environment:
       - PORT=8080
       - MYSQL_USER=ghost
@@ -21,12 +21,12 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
-      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
+      - LOCAL_STORAGE_PATH=/opt/activitypub/content
+      # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
     command: yarn build:watch
     depends_on:
       migrate:
@@ -39,12 +39,7 @@ services:
         condition: service_healthy
 
   jaeger:
-    image: jaegertracing/all-in-one:1.62.0
-    container_name: activitypub-jaeger
-    ports:
-      - "4318:4318"
-      - "16686:16686"
-      - "9411:9411"
+    image: jaegertracing/all-in-one:1.70.0
     restart: always
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
@@ -78,11 +73,13 @@ services:
     build: nginx
     ports:
       - "80:80"
+    volumes:
+      - dev-content:/content:ro
     depends_on:
       - activitypub
 
   mysql:
-    image: mysql:8.0.31
+    image: mysql:8.4.5
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -97,8 +94,6 @@ services:
 
   pubsub:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
-    ports:
-      - "8085:8085"
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -106,7 +101,7 @@ services:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/mq
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
@@ -120,13 +115,12 @@ services:
     networks:
       - test_network
     build: .
-    ports:
-      - "8083:8083"
-      - "9230:9229"
     volumes:
       - ./src:/opt/activitypub/src
       - ./vitest.config.ts:/opt/activitypub/vitest.config.ts
+      - test-content:/opt/activitypub/content
     environment:
+      - LOCAL_STORAGE_PATH=/opt/activitypub/content
       - PORT=8083
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
@@ -141,9 +135,7 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub-testing:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
-      - MQ_PUBSUB_SUBSCRIPTION_NAME=fedify-subscription
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
-      - MQ_PUBSUB_GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
@@ -215,14 +207,12 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.0.31
+    image: mysql:8.4.5
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=activitypub
-    ports:
-      - "3308:3306"
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
       interval: 1s
@@ -232,8 +222,6 @@ services:
     networks:
       - test_network
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
-    ports:
-      - "8086:8085"
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -241,7 +229,7 @@ services:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/mq
+      - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push
@@ -275,15 +263,10 @@ services:
         aliases:
           - fake-mastodon.test
     image: wiremock/wiremock:3.13.1-1
-    ports:
-      - "8084:8080"
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:
     build: fake-gcs
-    container_name: fake-gcs
-    ports:
-      - "4443:4443"
     environment:
       - GCP_BUCKET_NAME=activitypub
       - GCP_PROJECT_ID=activitypub
@@ -305,3 +288,7 @@ services:
 networks:
   test_network:
     driver: bridge
+
+volumes:
+  test-content:
+  dev-content:

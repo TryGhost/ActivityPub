@@ -1,47 +1,40 @@
 import { describe, expect, it } from 'vitest';
 
 import { type Ok, getValue, isError } from 'core/result';
-import { type Account, AccountEntity } from '../account/account.entity';
+import {
+    createTestExternalAccount,
+    createTestInternalAccount,
+} from '../test/account-entity-test-helpers';
 import { Audience, Post, type PostData, PostType } from './post.entity';
 
-function mockAccount(id: number | null, internal: boolean) {
-    const draft = internal
-        ? AccountEntity.draft({
-              isInternal: true,
-              host: new URL('http://foobar.com'),
-              username: 'foobar',
-              name: 'Foo Bar',
-              bio: 'Just a foobar',
-              url: null,
-              avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
-              bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
-          })
-        : AccountEntity.draft({
-              isInternal: false,
-              username: 'foobar',
-              name: 'Foo Bar',
-              bio: 'Just a foobar',
-              url: null,
-              avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
-              bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
-              apFollowers: new URL(`https://foobar.com/followers/${id}`),
-              apInbox: new URL(`https://foobar.com/inbox/${id}`),
-              apId: new URL(`https://foobar.com/user/${id}`),
-          });
-
-    return AccountEntity.create({
-        id: id || 1,
-        ...draft,
+const externalAccount = async (id: number | null = 456) =>
+    createTestExternalAccount(id || 456, {
+        username: 'foobar',
+        name: 'Foo Bar',
+        bio: 'Just a foobar',
+        url: null,
+        avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
+        bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+        apFollowers: new URL(`https://foobar.com/followers/${id || 456}`),
+        apInbox: new URL(`https://foobar.com/inbox/${id || 456}`),
+        apId: new URL(`https://foobar.com/user/${id || 456}`),
     });
-}
 
-const externalAccount = (id: number | null = 456) => mockAccount(id, false);
-const internalAccount = (id: number | null = 123) => mockAccount(id, true);
+const internalAccount = async (id: number | null = 123) =>
+    createTestInternalAccount(id || 123, {
+        host: new URL('http://foobar.com'),
+        username: 'foobar',
+        name: 'Foo Bar',
+        bio: 'Just a foobar',
+        url: null,
+        avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
+        bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+    });
 
 describe('Post', () => {
     describe('delete', () => {
         it('Should be possible to delete posts authored by the account', async () => {
-            const author = internalAccount();
+            const author = await internalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
                 title: 'Title of my post',
@@ -67,8 +60,8 @@ describe('Post', () => {
         });
 
         it('Should not be possible to delete posts from other authors', async () => {
-            const author = internalAccount();
-            const notAuthor = externalAccount();
+            const author = await internalAccount();
+            const notAuthor = await externalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
                 title: 'Title of my post',
@@ -96,7 +89,7 @@ describe('Post', () => {
         });
 
         it('Should set all content to null for deleted posts', async () => {
-            const author = internalAccount();
+            const author = await internalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
                 title: 'Title of my post',
@@ -134,8 +127,8 @@ describe('Post', () => {
             expect(post.metadata).toBeNull();
         });
 
-        it('Should set all content to null for already deleted posts', () => {
-            const author = internalAccount();
+        it('Should set all content to null for already deleted posts', async () => {
+            const author = await internalAccount();
 
             const post = new Post(
                 1,
@@ -189,9 +182,12 @@ describe('Post', () => {
     });
 
     describe('createReply', () => {
-        it('errors if the account is external', () => {
-            const account = externalAccount();
-            const inReplyTo = Post.createNote(internalAccount(), 'Parent');
+        it('errors if the account is external', async () => {
+            const account = await externalAccount();
+            const inReplyTo = Post.createNote(
+                await internalAccount(),
+                'Parent',
+            );
             const content = 'My first note';
 
             expect(() =>
@@ -201,8 +197,8 @@ describe('Post', () => {
             );
         });
 
-        it('errors if the post does not have an id', () => {
-            const account = internalAccount();
+        it('errors if the post does not have an id', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             const content = 'My first note';
 
@@ -213,8 +209,8 @@ describe('Post', () => {
             );
         });
 
-        it('creates a note with html content', () => {
-            const account = internalAccount();
+        it('creates a note with html content', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -228,12 +224,12 @@ describe('Post', () => {
             expect(note.content).toBe('<p>My first note</p>');
         });
 
-        it('creates a reply with mentions', () => {
-            const account = internalAccount();
+        it('creates a reply with mentions', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             (inReplyTo as unknown as { id: string }).id = 'fake-id';
             const content = 'My reply to @test@example.com';
-            const mentionedAccount = externalAccount(789);
+            const mentionedAccount = await externalAccount(789);
             const mentions = [
                 {
                     name: '@test@example.com',
@@ -257,14 +253,14 @@ describe('Post', () => {
             expect(note.mentions).toEqual([mentionedAccount]);
         });
 
-        it('creates a reply with multiple mentions', () => {
-            const account = internalAccount();
+        it('creates a reply with multiple mentions', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             (inReplyTo as unknown as { id: string }).id = 'fake-id';
             const content =
                 'My reply to @test@example.com and @test2@example.com';
-            const mentionedAccount1 = externalAccount(789);
-            const mentionedAccount2 = externalAccount(790);
+            const mentionedAccount1 = await externalAccount(789);
+            const mentionedAccount2 = await externalAccount(790);
             const mentions = [
                 {
                     name: '@test@example.com',
@@ -296,8 +292,8 @@ describe('Post', () => {
             ]);
         });
 
-        it('creates a note with line breaks', () => {
-            const account = internalAccount();
+        it('creates a note with line breaks', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -313,8 +309,8 @@ describe('Post', () => {
             expect(note.content).toBe('<p>My<br />first<br />note</p>');
         });
 
-        it('creates a note with escaped html', () => {
-            const account = internalAccount();
+        it('creates a note with escaped html', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -330,8 +326,8 @@ describe('Post', () => {
             );
         });
 
-        it('creates a note with links', () => {
-            const account = internalAccount();
+        it('creates a note with links', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -347,8 +343,8 @@ describe('Post', () => {
             );
         });
 
-        it('does not convert handles to mailto', () => {
-            const account = internalAccount();
+        it('does not convert handles to mailto', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -365,8 +361,8 @@ describe('Post', () => {
             );
         });
 
-        it('does not convert emails to mailto', () => {
-            const account = internalAccount();
+        it('does not convert emails to mailto', async () => {
+            const account = await internalAccount();
             const inReplyTo = Post.createNote(account, 'Parent');
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -382,8 +378,8 @@ describe('Post', () => {
     });
 
     describe('createNote', () => {
-        it('errors if the account is external', () => {
-            const account = externalAccount();
+        it('errors if the account is external', async () => {
+            const account = await externalAccount();
             const content = 'My first note';
 
             expect(() =>
@@ -393,8 +389,8 @@ describe('Post', () => {
             );
         });
 
-        it('creates a note with html content', () => {
-            const account = internalAccount();
+        it('creates a note with html content', async () => {
+            const account = await internalAccount();
             const content = 'My first note';
 
             const note = Post.createNote(account, content);
@@ -404,10 +400,10 @@ describe('Post', () => {
             expect(note.content).toBe('<p>My first note</p>');
         });
 
-        it('creates a note with mentions', () => {
-            const account = internalAccount();
+        it('creates a note with mentions', async () => {
+            const account = await internalAccount();
             const content = 'My note with @test@example.com';
-            const mentionedAccount = externalAccount(789);
+            const mentionedAccount = await externalAccount(789);
             const mentions = [
                 {
                     name: '@test@example.com',
@@ -425,12 +421,12 @@ describe('Post', () => {
             expect(note.mentions).toEqual([mentionedAccount]);
         });
 
-        it('creates a note with multiple mentions', () => {
-            const account = internalAccount();
+        it('creates a note with multiple mentions', async () => {
+            const account = await internalAccount();
             const content =
                 'My note with @test@example.com and @test2@example.com';
-            const mentionedAccount1 = externalAccount(789);
-            const mentionedAccount2 = externalAccount(790);
+            const mentionedAccount1 = await externalAccount(789);
+            const mentionedAccount2 = await externalAccount(790);
             const mentions = [
                 {
                     name: '@test@example.com',
@@ -456,8 +452,8 @@ describe('Post', () => {
             ]);
         });
 
-        it('creates a note with an image URL', () => {
-            const account = internalAccount();
+        it('creates a note with an image URL', async () => {
+            const account = await internalAccount();
             const content = 'My first note';
             const imageUrl = 'https://example.com/image.jpg';
 
@@ -475,8 +471,8 @@ describe('Post', () => {
             ]);
         });
 
-        it('creates a note with line breaks', () => {
-            const account = internalAccount();
+        it('creates a note with line breaks', async () => {
+            const account = await internalAccount();
             const content = `My
                             first
                             note`;
@@ -488,8 +484,8 @@ describe('Post', () => {
             expect(note.content).toBe('<p>My<br />first<br />note</p>');
         });
 
-        it('creates a note with escaped html', () => {
-            const account = internalAccount();
+        it('creates a note with escaped html', async () => {
+            const account = await internalAccount();
             const content = '<script>alert("hax")</script> Hello, world!';
 
             const note = Post.createNote(account, content);
@@ -501,8 +497,8 @@ describe('Post', () => {
             );
         });
 
-        it('creates a note with links', () => {
-            const account = internalAccount();
+        it('creates a note with links', async () => {
+            const account = await internalAccount();
             const content = 'Check out https://ghost.org it is super cool';
 
             const note = Post.createNote(account, content);
@@ -516,7 +512,7 @@ describe('Post', () => {
     });
 
     it('should correctly create an article from a Ghost Post', async () => {
-        const account = internalAccount();
+        const account = await internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
@@ -542,7 +538,7 @@ describe('Post', () => {
     });
 
     it('should use custom_excerpt as summary when creating an article from a Ghost Post', async () => {
-        const account = internalAccount();
+        const account = await internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
@@ -569,7 +565,7 @@ describe('Post', () => {
     });
 
     it('should refuse to create an article from a private Ghost Post with no public content', async () => {
-        const account = internalAccount();
+        const account = await internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
@@ -591,7 +587,7 @@ describe('Post', () => {
     });
 
     it('should create an article with restricted content from a private Ghost Post', async () => {
-        const account = internalAccount();
+        const account = await internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
@@ -617,11 +613,11 @@ describe('Post', () => {
         );
     });
 
-    it('should handle adding and removing reposts', () => {
-        const postAuthorAccount = internalAccount(456);
-        const postReposterAccount = externalAccount(789);
-        const postDereposterAccount = externalAccount(987);
-        const accidentalPostDereposterAccount = externalAccount(654);
+    it('should handle adding and removing reposts', async () => {
+        const postAuthorAccount = await internalAccount(456);
+        const postReposterAccount = await externalAccount(789);
+        const postDereposterAccount = await externalAccount(987);
+        const accidentalPostDereposterAccount = await externalAccount(654);
 
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
@@ -645,8 +641,8 @@ describe('Post', () => {
         });
     });
 
-    it('should sanitize HTML content when creating a new post', () => {
-        const author = internalAccount();
+    it('should sanitize HTML content when creating a new post', async () => {
+        const author = await internalAccount();
         const maliciousContent =
             '<p>Hello world!</p><script>alert("hax")</script>';
 
@@ -658,11 +654,11 @@ describe('Post', () => {
         expect(post.content).toEqual('<p>Hello world!</p><script></script>');
     });
 
-    it('should handle adding and removing likes', () => {
-        const postAuthorAccount = internalAccount(456);
-        const liker = externalAccount(789);
-        const unliker = externalAccount(987);
-        const accidentalUnliker = externalAccount(654);
+    it('should handle adding and removing likes', async () => {
+        const postAuthorAccount = await internalAccount(456);
+        const liker = await externalAccount(789);
+        const unliker = await externalAccount(987);
+        const accidentalUnliker = await externalAccount(654);
 
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
@@ -683,11 +679,11 @@ describe('Post', () => {
         });
     });
 
-    it('should handle adding mentions', () => {
-        const postAuthorAccount = internalAccount(456);
-        const mentionedAccount1 = externalAccount(789);
-        const mentionedAccount2 = externalAccount(987);
-        const mentionedAccount3 = externalAccount(654);
+    it('should handle adding mentions', async () => {
+        const postAuthorAccount = await internalAccount(456);
+        const mentionedAccount1 = await externalAccount(789);
+        const mentionedAccount2 = await externalAccount(987);
+        const mentionedAccount3 = await externalAccount(654);
 
         const post = Post.createFromData(postAuthorAccount, {
             type: PostType.Note,
@@ -706,7 +702,7 @@ describe('Post', () => {
     });
 
     it('should save ghost authors in posts metadata', async () => {
-        const account = internalAccount();
+        const account = await internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
@@ -750,7 +746,7 @@ describe('Post', () => {
     });
 
     it('should handle an empty array of ghost authors', async () => {
-        const account = internalAccount();
+        const account = await internalAccount();
         const ghostPost = {
             uuid: '550e8400-e29b-41d4-a716-446655440000',
             title: 'Title of my post',
@@ -775,15 +771,15 @@ describe('Post', () => {
         });
     });
 
-    it('should indicate if the post is created by an internal account', () => {
-        const post = Post.createFromData(internalAccount(), {
+    it('should indicate if the post is created by an internal account', async () => {
+        const post = Post.createFromData(await internalAccount(), {
             type: PostType.Note,
             content: 'Hello, world!',
         });
 
         expect(post.isInternal).toBe(true);
 
-        const post2 = Post.createFromData(externalAccount(), {
+        const post2 = Post.createFromData(await externalAccount(), {
             type: PostType.Note,
             content: 'Hello, world!',
             apId: new URL('https://example.com/post'),
@@ -794,7 +790,7 @@ describe('Post', () => {
     describe('post excerpt', () => {
         describe('when the post is public', () => {
             it('should not re-generate excerpt', async () => {
-                const account = internalAccount();
+                const account = await internalAccount();
                 const ghostPost = {
                     uuid: '550e8400-e29b-41d4-a716-446655440000',
                     title: 'Title of my post',
@@ -818,7 +814,7 @@ describe('Post', () => {
             });
 
             it('should not re-generate excerpt even if there is a paywall', async () => {
-                const account = internalAccount();
+                const account = await internalAccount();
                 const ghostPost = {
                     uuid: '550e8400-e29b-41d4-a716-446655440000',
                     title: 'Title of my post',
@@ -845,7 +841,7 @@ describe('Post', () => {
         describe('when the post is members-only', () => {
             describe('and there is no custom excerpt', () => {
                 it('should re-generate excerpt without the gated content and without the paid signup message', async () => {
-                    const account = internalAccount();
+                    const account = await internalAccount();
                     const ghostPost = {
                         uuid: '550e8400-e29b-41d4-a716-446655440000',
                         title: 'Title of my post',
@@ -871,7 +867,7 @@ describe('Post', () => {
 
             describe('and there is a custom excerpt', () => {
                 it('should not re-generate the excerpt', async () => {
-                    const account = internalAccount();
+                    const account = await internalAccount();
                     const ghostPost = {
                         uuid: '550e8400-e29b-41d4-a716-446655440000',
                         title: 'Title of my post',
@@ -899,7 +895,7 @@ describe('Post', () => {
 
     describe('createFromData', () => {
         it('creates a post of type note', async () => {
-            const account = internalAccount();
+            const account = await internalAccount();
             const postData = {
                 type: PostType.Note,
                 content: 'This is a test note',
@@ -912,7 +908,7 @@ describe('Post', () => {
         });
 
         it('creates a post with summary', async () => {
-            const account = internalAccount();
+            const account = await internalAccount();
             const postData = {
                 type: PostType.Article,
                 title: 'Test Article',
@@ -930,8 +926,8 @@ describe('Post', () => {
         });
 
         it('attaches mentions to the post but should not modify content with no hyperlink', async () => {
-            const account = internalAccount();
-            const extAccount = externalAccount() as Account;
+            const account = await internalAccount();
+            const extAccount = await externalAccount();
             const mention = {
                 name: '@foobar@foobar.com',
                 href: extAccount.url,
@@ -955,8 +951,8 @@ describe('Post', () => {
         });
 
         it('attaches mentions to the post and modify existing hyperlinks', async () => {
-            const account = internalAccount();
-            const extAccount = externalAccount() as Account;
+            const account = await internalAccount();
+            const extAccount = await externalAccount();
             const mention = {
                 name: '@foobar@foobar.com',
                 href: extAccount.url,
@@ -980,7 +976,7 @@ describe('Post', () => {
 
     describe('setLikeCount', () => {
         it('should throw an error if the post is internal', async () => {
-            const author = internalAccount();
+            const author = await internalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
                 title: 'Title of my post',
@@ -1006,7 +1002,7 @@ describe('Post', () => {
         });
 
         it('should set the like count for an external post', async () => {
-            const author = externalAccount();
+            const author = await externalAccount();
             const apId = new URL('https://example.com/post');
 
             const post = Post.createFromData(author, {
@@ -1023,7 +1019,7 @@ describe('Post', () => {
 
     describe('setRepostCount', () => {
         it('should throw an error if the post is internal', async () => {
-            const account = internalAccount();
+            const account = await internalAccount();
             const ghostPost = {
                 uuid: '550e8400-e29b-41d4-a716-446655440000',
                 title: 'Title of my post',
@@ -1049,7 +1045,7 @@ describe('Post', () => {
         });
 
         it('should set the repost count for an external post', async () => {
-            const author = externalAccount();
+            const author = await externalAccount();
             const apId = new URL('https://example.com/post');
 
             const post = Post.createFromData(author, {

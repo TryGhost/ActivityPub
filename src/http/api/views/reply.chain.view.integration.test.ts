@@ -431,5 +431,252 @@ describe('ReplyChainView', () => {
 
             expect(replyChainResult).toEqual(['not-found', null]);
         });
+
+        it('should return deleted posts as tombstones in ancestors', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            // Create a chain of posts
+            const post1 = await fixtureManager.createPost(account);
+            const post2 = await fixtureManager.createPost(account, {
+                inReplyTo: post1,
+            });
+            const post3 = await fixtureManager.createPost(account, {
+                inReplyTo: post2,
+            });
+            const post4 = await fixtureManager.createPost(account, {
+                inReplyTo: post3,
+            });
+
+            // Delete post2
+            await db('posts')
+                .where({ id: post2.id })
+                .update({ deleted_at: new Date() });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                account.id,
+                post4.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Should include all ancestors, with deleted post as tombstone
+            const ancestorIds = replyChain.ancestors.chain.map((a) => a.id);
+            expect(ancestorIds).toContain(post1.apId.href);
+            expect(ancestorIds).toContain(post2.apId.href);
+            expect(ancestorIds).toContain(post3.apId.href);
+
+            // Find the deleted post (post2) in the ancestors
+            const deletedAncestor = replyChain.ancestors.chain.find(
+                (a) => a.id === post2.apId.href,
+            );
+
+            // Verify it's a tombstone
+            expect(deletedAncestor).toBeDefined();
+            expect(deletedAncestor!.type).toBe(2); // PostType.Tombstone
+            expect(deletedAncestor!.title).toBe('');
+            expect(deletedAncestor!.content).toBe('');
+            expect(deletedAncestor!.excerpt).toBe('');
+            expect(deletedAncestor!.summary).toBeNull();
+            expect(deletedAncestor!.featureImageUrl).toBeNull();
+            expect(deletedAncestor!.attachments).toEqual([]);
+        });
+
+        it('should not include deleted posts in children', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+            const reply1 = await fixtureManager.createPost(account, {
+                inReplyTo: post,
+            });
+            const reply2 = await fixtureManager.createPost(account, {
+                inReplyTo: post,
+            });
+            const reply3 = await fixtureManager.createPost(account, {
+                inReplyTo: post,
+            });
+
+            // Delete reply2
+            await db('posts')
+                .where({ id: reply2.id })
+                .update({ deleted_at: new Date() });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                account.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Should only include non-deleted children
+            const childIds = replyChain.children.map((c) => c.post.id);
+            expect(childIds).toContain(reply1.apId.href);
+            expect(childIds).not.toContain(reply2.apId.href);
+            expect(childIds).toContain(reply3.apId.href);
+            expect(replyChain.children).toHaveLength(2);
+        });
+
+        it('should not include deleted posts in reply chains', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+            const reply = await fixtureManager.createPost(account, {
+                inReplyTo: post,
+            });
+            const chainPost1 = await fixtureManager.createPost(account, {
+                inReplyTo: reply,
+            });
+            const chainPost2 = await fixtureManager.createPost(account, {
+                inReplyTo: chainPost1,
+            });
+            const chainPost3 = await fixtureManager.createPost(account, {
+                inReplyTo: chainPost2,
+            });
+
+            // Delete chainPost2
+            await db('posts')
+                .where({ id: chainPost2.id })
+                .update({ deleted_at: new Date() });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                account.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Should have the reply as a child
+            expect(replyChain.children).toHaveLength(1);
+            expect(replyChain.children[0].post.id).toBe(reply.apId.href);
+
+            // The chain should only include non-deleted posts
+            const chainIds = replyChain.children[0].chain.map((c) => c.id);
+            expect(chainIds).toContain(chainPost1.apId.href);
+            expect(chainIds).not.toContain(chainPost2.apId.href);
+            // chainPost3 should not be included because its parent (chainPost2) is deleted
+            expect(chainIds).not.toContain(chainPost3.apId.href);
+        });
+
+        it('should handle deleted posts at the beginning of a chain', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+            const reply = await fixtureManager.createPost(account, {
+                inReplyTo: post,
+            });
+            const chainPost1 = await fixtureManager.createPost(account, {
+                inReplyTo: reply,
+            });
+            const chainPost2 = await fixtureManager.createPost(account, {
+                inReplyTo: chainPost1,
+            });
+
+            // Delete the first post in the chain
+            await db('posts')
+                .where({ id: reply.id })
+                .update({ deleted_at: new Date() });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                account.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Should not include the deleted reply or its chain
+            const childIds = replyChain.children.map((c) => c.post.id);
+            expect(childIds).not.toContain(reply.apId.href);
+            expect(childIds).not.toContain(chainPost1.apId.href);
+            expect(childIds).not.toContain(chainPost2.apId.href);
+            expect(replyChain.children).toHaveLength(0);
+        });
+
+        it('should return not-found error when querying a deleted post', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+
+            // Delete the post
+            await db('posts')
+                .where({ id: post.id })
+                .update({ deleted_at: new Date() });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                account.id,
+                post.apId,
+            );
+
+            expect(replyChainResult).toEqual(['not-found', null]);
+        });
+
+        it('should correctly handle pagination with deleted posts', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const post = await fixtureManager.createPost(account);
+            const replies: Post[] = [];
+
+            // Create 15 replies
+            for (let i = 0; i < 15; i++) {
+                const reply = await fixtureManager.createPost(account, {
+                    inReplyTo: post,
+                });
+                replies.push(reply);
+            }
+
+            // Delete some replies (indices 2, 5, 8, 11)
+            const indicesToDelete = [2, 5, 8, 11];
+            for (const index of indicesToDelete) {
+                await db('posts')
+                    .where({ id: replies[index].id })
+                    .update({ deleted_at: new Date() });
+            }
+
+            const replyChainView = new ReplyChainView(db);
+
+            // Get first page
+            const firstPageResult = await replyChainView.getReplyChain(
+                account.id,
+                post.apId,
+            );
+            const firstPage = unsafeUnwrap(firstPageResult);
+
+            // Should have MAX_CHILDREN_COUNT non-deleted children
+            expect(firstPage.children).toHaveLength(
+                ReplyChainView.MAX_CHILDREN_COUNT,
+            );
+
+            // Verify none of the children are deleted posts
+            const firstPageIds = firstPage.children.map((c) => c.post.id);
+            for (const index of indicesToDelete) {
+                expect(firstPageIds).not.toContain(replies[index].apId.href);
+            }
+
+            // Get second page
+            const secondPageResult = await replyChainView.getReplyChain(
+                account.id,
+                post.apId,
+                firstPage.next!,
+            );
+            const secondPage = unsafeUnwrap(secondPageResult);
+
+            // Should have the remaining non-deleted children (15 - 4 deleted - 10 from first page = 1)
+            expect(secondPage.children).toHaveLength(1);
+
+            // Verify all non-deleted replies are accounted for
+            const allChildrenIds = [
+                ...firstPageIds,
+                ...secondPage.children.map((c) => c.post.id),
+            ];
+            expect(allChildrenIds).toHaveLength(11); // 15 - 4 deleted
+
+            // Verify deleted replies are not included
+            for (const index of indicesToDelete) {
+                expect(allChildrenIds).not.toContain(replies[index].apId.href);
+            }
+        });
     });
 });

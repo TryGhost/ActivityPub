@@ -7,6 +7,7 @@ import { error, ok } from 'core/result';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
+import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
 import { createGetPostHandler } from './post';
 
 describe('Post API', () => {
@@ -66,7 +67,7 @@ describe('Post API', () => {
         );
     }
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.setSystemTime(new Date('2025-03-25T14:00:00Z'));
 
         site = {
@@ -74,8 +75,7 @@ describe('Post API', () => {
             host: 'example.com',
             webhook_secret: 'secret',
         };
-        const draft = AccountEntity.draft({
-            isInternal: true,
+        const draftData = await createInternalAccountDraftData({
             host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -84,6 +84,9 @@ describe('Post API', () => {
             avatarUrl: new URL('http://example.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
         });
+
+        const draft = AccountEntity.draft(draftData);
+
         account = AccountEntity.create({
             id: 456,
             ...draft,

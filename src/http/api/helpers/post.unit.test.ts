@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { AccountEntity } from 'account/account.entity';
 import { Post, PostType } from 'post/post.entity';
+import { createInternalAccountDraftData } from '../../../test/account-entity-test-helpers';
 import { postToDTO } from './post';
 
-function createAuthor() {
-    const draft = AccountEntity.draft({
-        isInternal: true,
+async function createAuthor() {
+    const draftData = await createInternalAccountDraftData({
         host: new URL('http://foobar.com'),
         username: 'foobar',
         name: 'Foo Bar',
@@ -16,6 +16,8 @@ function createAuthor() {
         bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
     });
 
+    const draft = AccountEntity.draft(draftData);
+
     return AccountEntity.create({
         id: 123,
         ...draft,
@@ -23,8 +25,8 @@ function createAuthor() {
 }
 
 describe('postToPostDTO', () => {
-    it('Should use apIds as the id', () => {
-        const author = createAuthor();
+    it('Should use apIds as the id', async () => {
+        const author = await createAuthor();
         const post = Post.createFromData(author, {
             type: PostType.Note,
             content: 'Hello, world!',
@@ -36,8 +38,8 @@ describe('postToPostDTO', () => {
         expect(dto.author.id).toEqual(post.author.apId.href);
     });
 
-    it('Should default title, excerpt and content to empty strings', () => {
-        const author = createAuthor();
+    it('Should default title, excerpt and content to empty strings', async () => {
+        const author = await createAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Note,
@@ -50,8 +52,8 @@ describe('postToPostDTO', () => {
         expect(dto.content).toEqual('');
     });
 
-    it('should default to a metadata object with an empty ghostAuthors array', () => {
-        const author = createAuthor();
+    it('should default to a metadata object with an empty ghostAuthors array', async () => {
+        const author = await createAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Note,
@@ -63,8 +65,8 @@ describe('postToPostDTO', () => {
         expect(dto.metadata).toEqual({ ghostAuthors: [] });
     });
 
-    it('Should include summary in the DTO', () => {
-        const author = createAuthor();
+    it('Should include summary in the DTO', async () => {
+        const author = await createAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Article,
@@ -82,8 +84,8 @@ describe('postToPostDTO', () => {
         expect(dto.content).toEqual('Test content');
     });
 
-    it('Should default summary to null', () => {
-        const author = createAuthor();
+    it('Should default summary to null', async () => {
+        const author = await createAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Note,

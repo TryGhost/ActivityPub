@@ -9,8 +9,14 @@ import {
     vi,
 } from 'vitest';
 
-import { type Message, PubSub, type Subscription } from '@google-cloud/pubsub';
+import {
+    type Message,
+    PubSub,
+    type Subscription,
+    type Topic,
+} from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
 
 import { EventSerializer } from './event';
 import {
@@ -44,6 +50,12 @@ class TestEvent {
         return new TestEvent(data.id);
     }
 }
+
+vi.mock('@sentry/node', () => {
+    return {
+        captureException: vi.fn(),
+    };
+});
 
 describe('PubSubEvents', () => {
     let pubSubClient: PubSub;
@@ -94,6 +106,8 @@ describe('PubSubEvents', () => {
             eventSerializer,
             logger,
         );
+
+        vi.clearAllMocks();
     });
 
     afterEach(() => {
@@ -131,14 +145,17 @@ describe('PubSubEvents', () => {
         const eventName = 'foo';
         const event = new TestEvent(123);
         const host = 'example.com';
+        const error = new Error('test error');
 
-        vi.spyOn(pubSubClient, 'topic').mockRejectedValue(
-            new Error('test error'),
-        );
+        vi.spyOn(pubSubClient, 'topic').mockReturnValue({
+            publishMessage: vi.fn().mockRejectedValue(error),
+        } as unknown as Topic);
 
         const result = await pubSubEvents.emitAsync(eventName, event, host);
 
         expect(result).toBe(false);
+
+        expect(Sentry.captureException).toHaveBeenCalledWith(error);
 
         expect(logger.error).toHaveBeenCalledTimes(1);
     });
@@ -186,13 +203,11 @@ describe('PubSubEvents', () => {
             [PUBSUB_MESSAGE_ATTR_EVENT_HOST]: host,
         };
 
-        const handler1 = vi
-            .fn()
-            .mockRejectedValue(new Error('Handler 1 error'));
+        const handler1Error = new Error('Handler 1 error');
+        const handler1 = vi.fn().mockRejectedValue(handler1Error);
         const handler2 = vi.fn().mockResolvedValue(true);
-        const handler3 = vi
-            .fn()
-            .mockRejectedValue(new Error('Handler 3 error'));
+        const handler3Error = new Error('Handler 3 error');
+        const handler3 = vi.fn().mockRejectedValue(handler3Error);
 
         pubSubEvents.on(eventName, handler1);
         pubSubEvents.on(eventName, handler2);
@@ -203,6 +218,8 @@ describe('PubSubEvents', () => {
             messageAttributes,
         );
 
+        expect(Sentry.captureException).toHaveBeenCalledWith(handler1Error);
+        expect(Sentry.captureException).toHaveBeenCalledWith(handler3Error);
         expect(handler1).toHaveBeenCalledWith(event);
         expect(handler2).toHaveBeenCalledWith(event);
         expect(handler3).toHaveBeenCalledWith(event);

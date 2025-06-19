@@ -7,6 +7,7 @@ import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import { AccountUpdatedEvent } from './account-updated.event';
 import { DomainBlockedEvent } from './domain-blocked.event';
 import { DomainUnblockedEvent } from './domain-unblocked.event';
+import { NotificationsReadEvent } from './notifications-read-event';
 
 export interface Account {
     readonly id: number;
@@ -27,6 +28,7 @@ export interface Account {
     unblockDomain(domain: URL): Account;
     follow(account: Account): Account;
     unfollow(account: Account): Account;
+    readAllNotifications(): Account;
     /**
      * Returns a new Account instance which needs to be saved.
      */
@@ -47,7 +49,13 @@ export interface AccountDraft {
     bannerImageUrl: URL | null;
     apId: URL;
     apFollowers: URL | null;
+    apFollowing: URL | null;
     apInbox: URL | null;
+    apSharedInbox: URL | null;
+    apOutbox: URL | null;
+    apLiked: URL | null;
+    apPublicKey: CryptoKey;
+    apPrivateKey: CryptoKey | null;
     isInternal: boolean;
 }
 
@@ -110,7 +118,19 @@ export class AccountEntity implements Account {
         const apInbox = !from.isInternal
             ? from.apInbox
             : new URL('/.ghost/activitypub/inbox/index', from.host);
+        const apSharedInbox = !from.isInternal ? from.apSharedInbox : null;
+        const apOutbox = !from.isInternal
+            ? from.apOutbox
+            : new URL('/.ghost/activitypub/outbox/index', from.host);
+        const apFollowing = !from.isInternal
+            ? from.apFollowing
+            : new URL('/.ghost/activitypub/following/index', from.host);
+        const apLiked = !from.isInternal
+            ? from.apLiked
+            : new URL('/.ghost/activitypub/liked/index', from.host);
         const url = from.url || apId;
+        const apPrivateKey = !from.isInternal ? null : from.apPrivateKey;
+
         return {
             ...from,
             uuid,
@@ -118,6 +138,11 @@ export class AccountEntity implements Account {
             apId,
             apFollowers,
             apInbox,
+            apSharedInbox,
+            apOutbox,
+            apFollowing,
+            apLiked,
+            apPrivateKey,
         };
     }
 
@@ -228,6 +253,13 @@ export class AccountEntity implements Account {
             this.events.concat(new AccountUnfollowedEvent(account.id, this.id)),
         );
     }
+
+    readAllNotifications(): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(new NotificationsReadEvent(this.id)),
+        );
+    }
 }
 
 type ProfileUpdateParams = {
@@ -250,6 +282,8 @@ type InternalAccountDraftData = {
     url: URL | null;
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
+    apPublicKey: CryptoKey;
+    apPrivateKey: CryptoKey;
 };
 
 /**
@@ -266,6 +300,11 @@ type ExternalAccountDraftData = {
     apId: URL;
     apFollowers: URL | null;
     apInbox: URL | null;
+    apSharedInbox: URL | null;
+    apOutbox: URL | null;
+    apFollowing: URL | null;
+    apLiked: URL | null;
+    apPublicKey: CryptoKey;
 };
 
 type AccountDraftData = InternalAccountDraftData | ExternalAccountDraftData;

@@ -1,4 +1,11 @@
-import { Collection, Note, lookupObject } from '@fedify/fedify';
+import {
+    Collection,
+    Document,
+    Image,
+    Note,
+    lookupObject,
+} from '@fedify/fedify';
+import { Temporal } from '@js-temporal/polyfill';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -15,7 +22,7 @@ import {
 } from 'core/result';
 import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
-import type { GCPStorageService } from 'storage/gcloud-storage/gcp-storage.service';
+import type { ImageStorageService } from 'storage/image-storage.service';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,7 +44,7 @@ describe('PostService', () => {
     let accountRepository: KnexAccountRepository;
     let fixtureManager: FixtureManager;
     let mockFedifyContextFactory: FedifyContextFactory;
-    let storageService: GCPStorageService;
+    let imageStorageService: ImageStorageService;
     let moderationService: ModerationService;
     let postService: PostService;
     let accountService: AccountService;
@@ -86,9 +93,9 @@ describe('PostService', () => {
             };
         });
 
-        storageService = {
-            verifyImageUrl: vi.fn().mockResolvedValue(ok(true)),
-        } as unknown as GCPStorageService;
+        imageStorageService = {
+            verifyFileUrl: vi.fn().mockResolvedValue(ok(true)),
+        } as unknown as ImageStorageService;
 
         moderationService = new ModerationService(db);
 
@@ -103,7 +110,7 @@ describe('PostService', () => {
             postRepository,
             accountService,
             mockFedifyContextFactory,
-            storageService,
+            imageStorageService,
             moderationService,
         );
 
@@ -235,10 +242,10 @@ describe('PostService', () => {
 
         it('should return error when image verification fails', async () => {
             const failingStorageService = {
-                verifyImageUrl: vi
+                verifyFileUrl: vi
                     .fn()
                     .mockResolvedValue(createError('invalid-url')),
-            } as unknown as GCPStorageService;
+            } as unknown as ImageStorageService;
 
             const serviceWithFailingStorage = new PostService(
                 postRepository,
@@ -728,6 +735,78 @@ describe('PostService', () => {
             expect(savedPost).not.toBeNull();
             expect(savedPost!.likeCount).toBe(3);
             expect(savedPost!.repostCount).toBe(0);
+        });
+    });
+
+    describe('getByApId', () => {
+        it('should handle attachments correctly for incoming posts with Image type attachment', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const attachmentUrl = new URL('https://example.com/image.jpg');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: new URL('https://example.com/post/1'),
+                    content: 'Test post with attachment',
+                    attachments: [
+                        new Image({
+                            url: attachmentUrl,
+                        }),
+                    ],
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(
+                new URL('https://example.com/post/1'),
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toHaveLength(1);
+            expect(post.attachments[0]).toMatchObject({
+                type: 'Image',
+                url: attachmentUrl,
+            });
+        });
+
+        it('should handle attachments correctly for incoming posts with Document type attachment', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const attachmentUrl = new URL('https://example.com/image.jpg');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: new URL('https://example.com/post/1'),
+                    content: 'Test post with attachment',
+                    attachments: [
+                        new Document({
+                            url: attachmentUrl,
+                            mediaType: 'image/jpeg',
+                        }),
+                    ],
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(
+                new URL('https://example.com/post/1'),
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toHaveLength(1);
+            expect(post.attachments[0]).toMatchObject({
+                type: 'Document',
+                mediaType: 'image/jpeg',
+                url: attachmentUrl,
+            });
         });
     });
 });

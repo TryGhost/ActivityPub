@@ -23,10 +23,8 @@ import {
     lookupActorProfile,
 } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
-import type {
-    GCPStorageService,
-    ImageVerificationError,
-} from 'storage/gcloud-storage/gcp-storage.service';
+import type { VerificationError } from 'storage/adapters/storage-adapter';
+import type { ImageStorageService } from 'storage/image-storage.service';
 import { ContentPreparer } from './content';
 import {
     type CreatePostError,
@@ -55,18 +53,20 @@ export type RepostError =
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
 
+export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
 export type UpdateInteractionCountsError =
     | 'post-not-found'
     | 'post-is-internal'
     | 'upstream-error'
-    | 'not-a-post';
+    | 'not-a-post'
+    | typeof INTERACTION_COUNTS_NOT_FOUND;
 
 export class PostService {
     constructor(
         private readonly postRepository: KnexPostRepository,
         private readonly accountService: AccountService,
         private readonly fedifyContextFactory: FedifyContextFactory,
-        private readonly storageService: GCPStorageService,
+        private readonly imageStorageService: ImageStorageService,
         private readonly moderationService: ModerationService,
     ) {}
 
@@ -87,11 +87,12 @@ export class PostService {
                     ? attachment
                     : [attachment].filter((a) => a !== undefined);
                 for (const a of attachmentList) {
+                    const attachmentJson = await a.toJsonLd();
                     postAttachments.push({
-                        type: a.type,
-                        mediaType: a.mediaType,
-                        name: a.name,
-                        url: a.url,
+                        type: attachmentJson.type,
+                        mediaType: attachmentJson.mediaType,
+                        name: attachmentJson.name,
+                        url: new URL(attachmentJson.url),
                     });
                 }
             }
@@ -287,9 +288,9 @@ export class PostService {
         account: Account,
         content: string,
         image?: URL,
-    ): Promise<Result<Post, ImageVerificationError>> {
+    ): Promise<Result<Post, VerificationError>> {
         if (image) {
-            const result = await this.storageService.verifyImageUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(image);
             if (isError(result)) {
                 return result;
             }
@@ -310,10 +311,10 @@ export class PostService {
         inReplyToId: URL,
         image?: URL,
     ): Promise<
-        Result<Post, ImageVerificationError | GetByApIdError | InteractionError>
+        Result<Post, VerificationError | GetByApIdError | InteractionError>
     > {
         if (image) {
-            const result = await this.storageService.verifyImageUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(image);
             if (isError(result)) {
                 return result;
             }
@@ -455,6 +456,10 @@ export class PostService {
 
         const likeCount = await getLikeCountFromRemote(object);
         const repostCount = await getRepostCountFromRemote(object);
+
+        if (likeCount === null && repostCount === null) {
+            return error(INTERACTION_COUNTS_NOT_FOUND);
+        }
 
         const shouldUpdateLikeCount =
             likeCount !== null && likeCount !== post.likeCount;

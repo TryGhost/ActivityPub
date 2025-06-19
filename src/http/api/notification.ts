@@ -1,5 +1,6 @@
 import type { AccountService } from 'account/account.service';
 import { getAccountHandle } from 'account/utils';
+import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { NotificationService } from 'notification/notification.service';
 import type { AppContext } from '../../app';
 import type { NotificationDTO } from './types';
@@ -20,21 +21,13 @@ const postTypeMap: Record<number, 'article' | 'note'> = {
     1: 'article',
 };
 
-/**
- * Create a handler for a request for a user's notifications
- *
- * @param accountService Account service instance
- */
-export function createGetNotificationsHandler(
-    accountService: AccountService,
-    notificationService: NotificationService,
-) {
-    /**
-     * Handle a request for a user's notifications
-     *
-     * @param ctx App context instance
-     */
-    return async function handleGetNotifications(ctx: AppContext) {
+export class NotificationController {
+    constructor(
+        private readonly accountService: AccountService,
+        private readonly notificationService: NotificationService,
+    ) {}
+
+    async handleGetNotifications(ctx: AppContext) {
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
@@ -49,12 +42,10 @@ export function createGetNotificationsHandler(
             });
         }
 
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
+        const account = ctx.get('account');
 
         const { results, nextCursor } =
-            await notificationService.getNotificationsData({
+            await this.notificationService.getNotificationsData({
                 accountId: account.id,
                 limit,
                 cursor,
@@ -114,5 +105,46 @@ export function createGetNotificationsHandler(
                 status: 200,
             },
         );
-    };
+    }
+
+    async handleGetUnreadNotificationsCount(ctx: AppContext) {
+        const account = ctx.get('account');
+
+        const unreadNotificationsCountResult =
+            await this.notificationService.getUnreadNotificationsCount(
+                account.id,
+            );
+
+        if (isError(unreadNotificationsCountResult)) {
+            const error = getError(unreadNotificationsCountResult);
+            switch (error) {
+                case 'not-internal-account':
+                    ctx.get('logger').error(
+                        `Cannot get notifications count for external account ${account.id}`,
+                    );
+                    return new Response(null, { status: 500 });
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        return new Response(
+            JSON.stringify({
+                count: getValue(unreadNotificationsCountResult),
+            }),
+            {
+                status: 200,
+            },
+        );
+    }
+
+    async handleResetUnreadNotificationsCount(ctx: AppContext) {
+        const account = ctx.get('account');
+
+        await this.accountService.readAllNotifications(account);
+
+        return new Response(null, {
+            status: 200,
+        });
+    }
 }
