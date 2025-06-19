@@ -134,6 +134,7 @@ export function registerDependencies(
 
     if (deps.globalPubSubEvents) {
         container.register('commandBus', asValue(deps.globalPubSubEvents));
+        container.register('pubSubEvents', asValue(deps.globalPubSubEvents));
     } else {
         container.register('commandBus', asValue(new AsyncEvents()));
     }

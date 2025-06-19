@@ -21,7 +21,7 @@ const IncomingMessagePayloadSchema = z.object({
 });
 
 export function createIncomingPubSubMessageHandler(
-    events: PubSubEvents,
+    pubSubEvents: PubSubEvents,
     fedify: Federation<ContextData>,
     fedifyContextFactory: FedifyContextFactory,
 ) {
@@ -68,7 +68,7 @@ export function createIncomingPubSubMessageHandler(
             await fedifyContextFactory.registerContext(
                 hostFedifyCtx,
                 async () => {
-                    await events.handleIncomingMessage(
+                    await pubSubEvents.handleIncomingMessage(
                         payload.message.data,
                         payload.message.attributes,
                     );
