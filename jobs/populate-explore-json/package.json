@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.832.0",
-    "@fedify/fedify": "1.6.1",
+    "@fedify/fedify": "1.6.2",
     "tsx": "4.20.3"
   },
   "devDependencies": {
