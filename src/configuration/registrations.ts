@@ -214,35 +214,22 @@ export function registerDependencies(
 
     container.register(
         'actorDispatcher',
-        asFunction((siteService, accountService) =>
-            actorDispatcher(siteService, accountService),
-        ).singleton(),
+        asFunction(actorDispatcher).singleton(),
     );
 
     container.register(
         'keypairDispatcher',
-        asFunction((siteService, accountService) =>
-            keypairDispatcher(siteService, accountService),
-        ).singleton(),
+        asFunction(keypairDispatcher).singleton(),
     );
 
     container.register(
         'acceptHandler',
-        asFunction((accountService) =>
-            createAcceptHandler(accountService),
-        ).singleton(),
+        asFunction(createAcceptHandler).singleton(),
     );
 
     container.register(
         'announceHandler',
-        asFunction((siteService, accountService, postService, postRepository) =>
-            createAnnounceHandler(
-                siteService,
-                accountService,
-                postService,
-                postRepository,
-            ),
-        ).singleton(),
+        asFunction(createAnnounceHandler).singleton(),
     );
 
     container.register(
@@ -257,97 +244,67 @@ export function registerDependencies(
 
     container.register(
         'likeHandler',
-        asFunction((accountService, postRepository, postService) =>
-            createLikeHandler(accountService, postRepository, postService),
-        ).singleton(),
+        asFunction(createLikeHandler).singleton(),
     );
 
     container.register(
         'undoHandler',
-        asFunction((accountService, postRepository, postService) =>
-            createUndoHandler(accountService, postRepository, postService),
-        ).singleton(),
+        asFunction(createUndoHandler).singleton(),
     );
 
     container.register(
         'followersDispatcher',
-        asFunction((siteService, accountRepository, followersService) =>
-            createFollowersDispatcher(
-                siteService,
-                accountRepository,
-                followersService,
-            ),
-        ).singleton(),
+        asFunction(createFollowersDispatcher).singleton(),
     );
 
     container.register(
         'followersCounter',
-        asFunction((siteService, accountService) =>
-            createFollowersCounter(siteService, accountService),
-        ).singleton(),
+        asFunction(createFollowersCounter).singleton(),
     );
 
     container.register(
         'followingDispatcher',
-        asFunction((siteService, accountService) =>
-            createFollowingDispatcher(siteService, accountService),
-        ).singleton(),
+        asFunction(createFollowingDispatcher).singleton(),
     );
 
     container.register(
         'followingCounter',
-        asFunction((siteService, accountService) =>
-            createFollowingCounter(siteService, accountService),
-        ).singleton(),
+        asFunction(createFollowingCounter).singleton(),
     );
 
     container.register(
         'getSiteDataHandler',
-        asFunction((siteService) =>
-            getSiteDataHandler(siteService),
-        ).singleton(),
+        asFunction(getSiteDataHandler).singleton(),
     );
 
     container.register(
         'postPublishedWebhookHandler',
-        asFunction((postService) =>
-            createPostPublishedWebhookHandler(postService),
-        ).singleton(),
+        asFunction(createPostPublishedWebhookHandler).singleton(),
     );
 
     container.register(
         'webFingerHandler',
-        asFunction((accountRepository, siteService) =>
-            createWebFingerHandler(accountRepository, siteService),
-        ).singleton(),
+        asFunction(createWebFingerHandler).singleton(),
     );
 
     container.register(
         'repostActionHandler',
-        asFunction((postService) =>
-            createRepostActionHandler(postService),
-        ).singleton(),
+        asFunction(createRepostActionHandler).singleton(),
     );
 
     container.register(
         'derepostActionHandler',
-        asFunction((postService, postRepository) =>
-            createDerepostActionHandler(postService, postRepository),
-        ).singleton(),
+        asFunction(createDerepostActionHandler).singleton(),
     );
 
     container.register(
         'searchHandler',
-        asFunction((accountView) =>
-            createSearchHandler(accountView),
-        ).singleton(),
+        asFunction(createSearchHandler).singleton(),
     );
 
     container.register(
         'getThreadHandler',
-        asFunction((postRepository, accountService) =>
-            createGetThreadHandler(postRepository, accountService),
-        ).singleton(),
+        asFunction(createGetThreadHandler).singleton(),
     );
 
     container.register(
@@ -357,47 +314,27 @@ export function registerDependencies(
 
     container.register(
         'getAccountHandler',
-        asFunction((accountView, accountRepository) =>
-            createGetAccountHandler(accountView, accountRepository),
-        ).singleton(),
+        asFunction(createGetAccountHandler).singleton(),
     );
 
     container.register(
         'updateAccountHandler',
-        asFunction((accountService) =>
-            createUpdateAccountHandler(accountService),
-        ).singleton(),
+        asFunction(createUpdateAccountHandler).singleton(),
     );
 
     container.register(
         'getAccountPostsHandler',
-        asFunction(
-            (accountRepository, accountPostsView, fedifyContextFactory) =>
-                createGetAccountPostsHandler(
-                    accountRepository,
-                    accountPostsView,
-                    fedifyContextFactory,
-                ),
-        ).singleton(),
+        asFunction(createGetAccountPostsHandler).singleton(),
     );
 
     container.register(
         'getAccountLikedPostsHandler',
-        asFunction((accountService, accountPostsView) =>
-            createGetAccountLikedPostsHandler(accountService, accountPostsView),
-        ).singleton(),
+        asFunction(createGetAccountLikedPostsHandler).singleton(),
     );
 
     container.register(
         'getAccountFollowsHandler',
-        asFunction(
-            (accountRepository, accountFollowsView, fedifyContextFactory) =>
-                createGetAccountFollowsHandler(
-                    accountRepository,
-                    accountFollowsView,
-                    fedifyContextFactory,
-                ),
-        ).singleton(),
+        asFunction(createGetAccountFollowsHandler).singleton(),
     );
 
     container.register(
@@ -416,9 +353,7 @@ export function registerDependencies(
 
     container.register(
         'getPostHandler',
-        asFunction((postService, accountService) =>
-            createGetPostHandler(postService, accountService),
-        ).singleton(),
+        asFunction(createGetPostHandler).singleton(),
     );
 
     container.register(
@@ -433,23 +368,11 @@ export function registerDependencies(
 
     container.register(
         'deletePostHandler',
-        asFunction((accountRepository, postRepository, postService) =>
-            createDeletePostHandler(
-                accountRepository,
-                postRepository,
-                postService,
-            ),
-        ).singleton(),
+        asFunction(createDeletePostHandler).singleton(),
     );
 
     container.register(
         'pubSubMessageHandler',
-        asFunction((commandBus, fedify, fedifyContextFactory) => {
-            return createIncomingPubSubMessageHandler(
-                commandBus,
-                fedify,
-                fedifyContextFactory,
-            );
-        }).singleton(),
+        asFunction(createIncomingPubSubMessageHandler).singleton(),
     );
 }
