@@ -244,7 +244,7 @@ services:
       test_network:
         aliases:
           - fake-ghost-activitypub.test
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.13.1-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
@@ -254,7 +254,7 @@ services:
       test_network:
         aliases:
           - fake-external-activitypub.test
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.13.1-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
@@ -262,7 +262,7 @@ services:
       test_network:
         aliases:
           - fake-mastodon.test
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.13.1-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:
