@@ -433,7 +433,11 @@ export class AccountPostsView {
 
                 if (activity.object.tag && activity.object.type === 'Note') {
                     const mentionedAccounts: Mention[] = [];
-                    for await (const tag of activity.object.tag) {
+                    const tags = Array.isArray(activity.object.tag)
+                        ? activity.object.tag
+                        : [activity.object.tag];
+
+                    for await (const tag of tags) {
                         if (tag.type === 'Mention') {
                             const mention = await this.getMentionedAccount(
                                 new URL(tag.href),
