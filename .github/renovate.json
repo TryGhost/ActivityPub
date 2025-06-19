@@ -2,6 +2,10 @@
   "extends": ["github>tryghost/renovate-config"],
   "packageRules": [
     {
+      "matchPaths": ["cedar/**", "jobs/**"],
+      "automerge": true
+    },
+    {
       "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],
       "automerge": false
     }
