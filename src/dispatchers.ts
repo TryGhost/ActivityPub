@@ -826,7 +826,7 @@ export function createFollowersCounter(
 
         // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+            await accountService.getAccountForSite(site);
 
         return await accountService.getFollowerAccountsCount(
             siteDefaultAccount.id,
@@ -849,7 +849,7 @@ export function createFollowingCounter(
 
         // @TODO: Get account by provided handle instead of default account?
         const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+            await accountService.getAccountForSite(site);
 
         return await accountService.getFollowingAccountsCount(
             siteDefaultAccount.id,

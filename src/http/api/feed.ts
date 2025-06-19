@@ -50,9 +50,7 @@ export function createGetFeedHandler(
             });
         }
 
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
+        const account = ctx.get('account');
 
         const { results, nextCursor } = await feedService.getFeedData({
             accountId: account.id,

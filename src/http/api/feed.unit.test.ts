@@ -181,6 +181,9 @@ describe('Feed API', () => {
                 if (key === 'site') {
                     return site;
                 }
+                if (key === 'account') {
+                    return account;
+                }
                 if (key === 'logger') {
                     return {
                         error: vi.fn(),

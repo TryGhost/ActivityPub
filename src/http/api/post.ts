@@ -55,9 +55,7 @@ export function createGetPostHandler(
 
         const post = getValue(postResult);
 
-        const account = await accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
+        const account = ctx.get('account');
 
         return new Response(
             JSON.stringify(
