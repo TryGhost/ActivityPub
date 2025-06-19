@@ -83,6 +83,77 @@ describe('AccountEntity', () => {
         );
     });
 
+    describe('fromDraft', () => {
+        it('should create an AccountEntity from a draft with correct properties', async () => {
+            const draftData = await createInternalAccountDraftData({
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'A test user bio',
+                url: new URL('http://example.com/user'),
+                avatarUrl: new URL('http://example.com/avatar.png'),
+                bannerImageUrl: new URL('http://example.com/banner.png'),
+            });
+
+            const draft = AccountEntity.draft(draftData);
+            const id = 42;
+            const account = AccountEntity.fromDraft(draft, id);
+
+            expect(account).toBeInstanceOf(AccountEntity);
+            expect(account.id).toBe(id);
+            expect(account.uuid).toBe(draft.uuid);
+            expect(account.username).toBe(draft.username);
+            expect(account.name).toBe(draft.name);
+            expect(account.bio).toBe(draft.bio);
+            expect(account.url).toEqual(draft.url);
+            expect(account.avatarUrl).toEqual(draft.avatarUrl);
+            expect(account.bannerImageUrl).toEqual(draft.bannerImageUrl);
+            expect(account.apId).toEqual(draft.apId);
+            expect(account.apFollowers).toEqual(draft.apFollowers);
+            expect(account.apInbox).toEqual(draft.apInbox);
+            expect(account.isInternal).toBe(draft.isInternal);
+        });
+
+        it('should create an AccountEntity with no events', async () => {
+            const draftData = await createInternalAccountDraftData({
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'A test user bio',
+                url: new URL('http://example.com/user'),
+                avatarUrl: new URL('http://example.com/avatar.png'),
+                bannerImageUrl: new URL('http://example.com/banner.png'),
+            });
+
+            const draft = AccountEntity.draft(draftData);
+            const account = AccountEntity.fromDraft(draft, 123);
+
+            const events = AccountEntity.pullEvents(account);
+            expect(events).toHaveLength(0);
+        });
+
+        it('should handle null values correctly', async () => {
+            const draftData = await createInternalAccountDraftData({
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: null,
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+            });
+
+            const draft = AccountEntity.draft(draftData);
+            const account = AccountEntity.fromDraft(draft, 999);
+
+            expect(account.bio).toBeNull();
+            expect(account.avatarUrl).toBeNull();
+            expect(account.bannerImageUrl).toBeNull();
+            // URL should be set to apId when null
+            expect(account.url).toEqual(account.apId);
+        });
+    });
+
     describe('getApIdForPost', () => {
         it('Can get the ap id for an article', async () => {
             const draftData = await createInternalAccountDraftData({

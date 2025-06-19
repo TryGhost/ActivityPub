@@ -664,4 +664,96 @@ describe('KnexAccountRepository', () => {
             await exportJwk(draft.apPrivateKey!),
         );
     });
+
+    it('uses AccountEntity.fromDraft when creating an account', async () => {
+        const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
+
+        const site = await fixtureManager.createSite();
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'testuser',
+            name: 'Test User',
+            bio: 'Test bio',
+            url: new URL(`https://${site.host}/user`),
+            avatarUrl: new URL(`https://${site.host}/avatar.png`),
+            bannerImageUrl: new URL(`https://${site.host}/banner.png`),
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        const createdAccount = await accountRepository.create(draft);
+
+        expect(fromDraftSpy).toHaveBeenCalledWith(draft, createdAccount.id);
+        expect(fromDraftSpy).toHaveBeenCalledTimes(1);
+
+        fromDraftSpy.mockRestore();
+    });
+
+    it('emits events when creating an account with initial events', async () => {
+        const emitSpy = vi.spyOn(events, 'emitAsync');
+
+        const site = await fixtureManager.createSite();
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'eventuser',
+            name: 'Event User',
+            bio: 'User with events',
+            url: new URL(`https://${site.host}/eventuser`),
+            avatarUrl: null,
+            bannerImageUrl: null,
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        await accountRepository.create(draft);
+
+        expect(emitSpy).not.toHaveBeenCalled();
+
+        emitSpy.mockRestore();
+    });
+
+    it('properly handles events if present during account creation', async () => {
+        const emitSpy = vi.spyOn(events, 'emitAsync');
+
+        const originalFromDraft = AccountEntity.fromDraft;
+        const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
+
+        const site = await fixtureManager.createSite();
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'mockuser',
+            name: 'Mock User',
+            bio: 'User for mocking',
+            url: new URL(`https://${site.host}/mockuser`),
+            avatarUrl: null,
+            bannerImageUrl: null,
+        });
+
+        const draft = AccountEntity.draft(draftData);
+
+        class MockAccountEvent {
+            getName() {
+                return 'mock.account.event';
+            }
+        }
+
+        const mockEvent = new MockAccountEvent();
+
+        fromDraftSpy.mockImplementation((...args) => {
+            const account = originalFromDraft.call(AccountEntity, ...args);
+
+            // biome-ignore lint/suspicious/noExplicitAny: We need to mock events
+            (account as any).events = [mockEvent];
+
+            return account;
+        });
+
+        await accountRepository.create(draft);
+
+        expect(emitSpy).toHaveBeenCalledWith('mock.account.event', mockEvent);
+        expect(emitSpy).toHaveBeenCalledTimes(1);
+
+        emitSpy.mockRestore();
+        fromDraftSpy.mockRestore();
+    });
 });
