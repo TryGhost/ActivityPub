@@ -6,3 +6,4 @@ export { AccountUpdatedEvent } from './account-updated.event';
 export { DomainBlockedEvent } from './domain-blocked.event';
 export { DomainUnblockedEvent } from './domain-unblocked.event';
 export { NotificationsReadEvent } from './notifications-read-event';
+export { AccountCreatedEvent } from './account-created.event';
