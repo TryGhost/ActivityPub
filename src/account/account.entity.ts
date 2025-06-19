@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { type CreatePostType, PostType } from '../post/post.entity';
-import { AccountBlockedEvent } from './account-blocked.event';
-import { AccountFollowedEvent } from './account-followed.event';
-import { AccountUnblockedEvent } from './account-unblocked.event';
-import { AccountUnfollowedEvent } from './account-unfollowed.event';
-import { AccountUpdatedEvent } from './account-updated.event';
-import { DomainBlockedEvent } from './domain-blocked.event';
-import { DomainUnblockedEvent } from './domain-unblocked.event';
-import { NotificationsReadEvent } from './notifications-read-event';
+import {
+    AccountBlockedEvent,
+    AccountFollowedEvent,
+    AccountUnblockedEvent,
+    AccountUnfollowedEvent,
+    AccountUpdatedEvent,
+    DomainBlockedEvent,
+    DomainUnblockedEvent,
+    NotificationsReadEvent,
+} from './events';
 
 export interface Account {
     readonly id: number;

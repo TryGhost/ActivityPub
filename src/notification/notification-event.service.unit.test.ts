@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
-import { AccountBlockedEvent } from 'account/account-blocked.event';
-import { AccountFollowedEvent } from 'account/account-followed.event';
 import type { Account as AccountEntity } from 'account/account.entity';
-import { DomainBlockedEvent } from 'account/domain-blocked.event';
-import { NotificationsReadEvent } from 'account/notifications-read-event';
+import {
+    AccountBlockedEvent,
+    AccountFollowedEvent,
+    DomainBlockedEvent,
+    NotificationsReadEvent,
+} from 'account/events';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { PostLikedEvent } from 'post/post-liked.event';

@@ -12,9 +12,9 @@ import type { AsyncEvents } from 'core/events';
 import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '../constants';
-import { AccountFollowedEvent } from './account-followed.event';
 import type { Account } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
+import { AccountFollowedEvent } from './events/account-followed.event';
 import type {
     Account as AccountType,
     ExternalAccountData,

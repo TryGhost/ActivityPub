@@ -13,8 +13,8 @@ import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import type { Site } from '../site/site.service';
-import { AccountUpdatedEvent } from './account-updated.event';
 import { AccountEntity } from './account.entity';
+import { AccountUpdatedEvent } from './events/account-updated.event';
 
 describe('KnexAccountRepository', () => {
     let client: Knex;
