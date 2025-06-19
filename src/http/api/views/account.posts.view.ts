@@ -437,15 +437,18 @@ export class AccountPostsView {
                         ? activity.object.tag
                         : [activity.object.tag];
 
-                    for await (const tag of tags) {
-                        if (tag.type === 'Mention') {
-                            const mention = await this.getMentionedAccount(
-                                new URL(tag.href),
-                                tag.name,
-                            );
-                            if (!isError(mention)) {
-                                mentionedAccounts.push(getValue(mention));
-                            }
+                    const mentions = tags.filter(
+                        (tag) => tag.type === 'Mention',
+                    );
+
+                    for (const mention of mentions) {
+                        const account = await this.getMentionedAccount(
+                            new URL(mention.href),
+                            mention.name,
+                        );
+
+                        if (!isError(account)) {
+                            mentionedAccounts.push(getValue(account));
                         }
                     }
                     activity.object.content = ContentPreparer.updateMentions(
