@@ -25,6 +25,8 @@ import {
     createFollowingCounter,
     createFollowingDispatcher,
     createLikeHandler,
+    createOutboxCounter,
+    createOutboxDispatcher,
     createUndoHandler,
     keypairDispatcher,
 } from '../dispatchers';
@@ -241,6 +243,16 @@ export function registerDependencies(
                 postRepository,
             ),
         ).singleton(),
+    );
+
+    container.register(
+        'outboxDispatcher',
+        asFunction(createOutboxDispatcher).singleton(),
+    );
+
+    container.register(
+        'outboxCounter',
+        asFunction(createOutboxCounter).singleton(),
     );
 
     container.register(

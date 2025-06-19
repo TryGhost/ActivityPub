@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   jaeger:
-    image: jaegertracing/all-in-one:1.62.0
+    image: jaegertracing/all-in-one:1.70.0
     restart: always
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
@@ -79,7 +79,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.0.31
+    image: mysql:8.4.5
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -207,7 +207,7 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.0.31
+    image: mysql:8.4.5
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -244,7 +244,7 @@ services:
       test_network:
         aliases:
           - fake-ghost-activitypub.test
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.13.1-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
@@ -254,7 +254,7 @@ services:
       test_network:
         aliases:
           - fake-external-activitypub.test
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.13.1-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
@@ -262,7 +262,7 @@ services:
       test_network:
         aliases:
           - fake-mastodon.test
-    image: wiremock/wiremock:3.10.0-1
+    image: wiremock/wiremock:3.13.1-1
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:

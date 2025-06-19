@@ -21,6 +21,8 @@ import * as Sentry from '@sentry/node';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { FollowersService } from 'activitypub/followers.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
+import type { Post } from 'post/post.entity';
 import type { AccountService } from './account/account.service';
 import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
@@ -859,26 +861,69 @@ export function followingFirstCursor() {
     return '0';
 }
 
-export async function outboxDispatcher(
-    ctx: RequestContext<ContextData>,
-    handle: string,
-    cursor: string | null,
+export function createOutboxDispatcher(
+    accountService: AccountService,
+    postService: PostService,
+    siteService: SiteService,
 ) {
-    return {
-        items: [],
-        nextCursor: null,
+    return async function outboxDispatcher(
+        ctx: RequestContext<ContextData>,
+        handle: string,
+        cursor: string | null,
+    ) {
+        ctx.data.logger.info('Outbox Dispatcher');
+
+        const pageSize = Number.parseInt(
+            process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '20',
+        );
+
+        const host = ctx.request.headers.get('host')!;
+        const site = await siteService.getSiteByHost(host);
+        if (!site) {
+            throw new Error(`Site not found for host: ${host}`);
+        }
+
+        const siteDefaultAccount = await accountService.getAccountForSite(site);
+
+        const outbox = await postService.getOutboxForAccount(
+            siteDefaultAccount.id,
+            cursor,
+            pageSize,
+        );
+        const outboxItems = await Promise.all(
+            outbox.posts.map(async (post: Post) => {
+                const { createActivity } =
+                    await buildCreateActivityAndObjectFromPost(post, ctx);
+                return createActivity;
+            }),
+        );
+
+        return {
+            items: outboxItems,
+            nextCursor: outbox.nextCursor,
+        };
     };
 }
 
-export async function outboxCounter(
-    ctx: RequestContext<ContextData>,
-    handle: string,
+export function createOutboxCounter(
+    siteService: SiteService,
+    accountService: AccountService,
+    postService: PostService,
 ) {
-    return 0;
+    return async function countOutboxItems(ctx: RequestContext<ContextData>) {
+        const site = await siteService.getSiteByHost(ctx.host);
+        if (!site) {
+            throw new Error(`Site not found for host: ${ctx.host}`);
+        }
+
+        const siteDefaultAccount = await accountService.getAccountForSite(site);
+
+        return await postService.getOutboxItemCount(siteDefaultAccount.id);
+    };
 }
 
 export function outboxFirstCursor() {
-    return '0';
+    return new Date().toISOString();
 }
 
 export async function likedDispatcher(
