@@ -883,8 +883,7 @@ export function createOutboxDispatcher(
             throw new Error(`Site not found for host: ${host}`);
         }
 
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const siteDefaultAccount = await accountService.getAccountForSite(site);
 
         const outbox = await postService.getOutboxForAccount(
             siteDefaultAccount.id,
@@ -893,8 +892,9 @@ export function createOutboxDispatcher(
         );
         const outboxItems = await Promise.all(
             outbox.map(async (post: Post) => {
-                return (await buildCreateActivityAndObjectFromPost(post, ctx))
-                    .createActivity;
+                const { createActivity } =
+                    await buildCreateActivityAndObjectFromPost(post, ctx);
+                return createActivity;
             }),
         );
 
@@ -925,8 +925,7 @@ export function createOutboxCounter(
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const siteDefaultAccount = await accountService.getAccountForSite(site);
 
         return await postService.getOutboxItemCount(siteDefaultAccount.id);
     };

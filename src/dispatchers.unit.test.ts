@@ -32,7 +32,7 @@ describe('dispatchers', () => {
     } as unknown as PostService;
 
     const mockAccountService = {
-        getDefaultAccountForSite: vi.fn(),
+        getAccountForSite: vi.fn(),
     } as unknown as AccountService;
 
     const mockSiteService = {
@@ -96,9 +96,9 @@ describe('dispatchers', () => {
         vi.clearAllMocks();
         process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
         vi.mocked(mockSiteService.getSiteByHost).mockResolvedValue(mockSite);
-        vi.mocked(
-            mockAccountService.getDefaultAccountForSite,
-        ).mockResolvedValue(mockAccount);
+        vi.mocked(mockAccountService.getAccountForSite).mockResolvedValue(
+            mockAccount,
+        );
         vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue([
             mockPost,
         ]);
@@ -144,9 +144,9 @@ describe('dispatchers', () => {
             expect(mockSiteService.getSiteByHost).toHaveBeenCalledWith(
                 'example.com',
             );
-            expect(
-                mockAccountService.getDefaultAccountForSite,
-            ).toHaveBeenCalledWith(mockSite);
+            expect(mockAccountService.getAccountForSite).toHaveBeenCalledWith(
+                mockSite,
+            );
             expect(mockPostService.getOutboxForAccount).toHaveBeenCalledWith(
                 1,
                 '0',
@@ -231,9 +231,9 @@ describe('dispatchers', () => {
             expect(mockSiteService.getSiteByHost).toHaveBeenCalledWith(
                 'example.com',
             );
-            expect(
-                mockAccountService.getDefaultAccountForSite,
-            ).toHaveBeenCalledWith(mockSite);
+            expect(mockAccountService.getAccountForSite).toHaveBeenCalledWith(
+                mockSite,
+            );
             expect(mockPostService.getOutboxItemCount).toHaveBeenCalledWith(1);
             expect(result).toBe(5);
         });
