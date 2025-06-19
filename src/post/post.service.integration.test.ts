@@ -819,35 +819,38 @@ describe('PostService', () => {
             // Get first page
             const firstPage = await postService.getOutboxForAccount(
                 account.id,
-                '0',
+                new Date().toISOString(),
                 2,
             );
 
-            expect(firstPage).toHaveLength(2);
-            expect(firstPage[0].id).toBe(post3.id);
-            expect(firstPage[1].id).toBe(post2.id);
+            expect(firstPage.posts).toHaveLength(2);
+            expect(firstPage.posts[0].id).toBe(post3.id);
+            expect(firstPage.posts[1].id).toBe(post2.id);
+            expect(firstPage.nextCursor).toBeTruthy();
 
             // Get second page
             const secondPage = await postService.getOutboxForAccount(
                 account.id,
-                '2', // Next offset should be 2 (previous offset + page size)
+                firstPage.nextCursor,
                 2,
             );
 
-            expect(secondPage).toHaveLength(1);
-            expect(secondPage[0].id).toBe(post1.id);
+            expect(secondPage.posts).toHaveLength(1);
+            expect(secondPage.posts[0].id).toBe(post1.id);
+            expect(secondPage.nextCursor).toBeNull();
         });
 
         it('should return empty array for account with no posts', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 
-            const posts = await postService.getOutboxForAccount(
+            const outbox = await postService.getOutboxForAccount(
                 account.id,
-                '0',
+                new Date().toISOString(),
                 10,
             );
 
-            expect(posts).toHaveLength(0);
+            expect(outbox.posts).toHaveLength(0);
+            expect(outbox.nextCursor).toBeNull();
         });
     });
 

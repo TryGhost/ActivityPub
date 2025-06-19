@@ -34,7 +34,7 @@ import {
     type PostAttachment,
     PostType,
 } from './post.entity';
-import type { KnexPostRepository } from './post.repository.knex';
+import type { KnexPostRepository, Outbox } from './post.repository.knex';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
@@ -486,7 +486,7 @@ export class PostService {
         accountId: number,
         cursor: string | null,
         pageSize: number,
-    ): Promise<Post[]> {
+    ): Promise<Outbox> {
         return this.postRepository.getOutboxForAccount(
             accountId,
             cursor,

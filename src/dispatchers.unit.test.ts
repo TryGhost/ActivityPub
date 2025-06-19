@@ -10,7 +10,6 @@ import type { ContextData } from 'app';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountEntity } from './account/account.entity';
 import type { AccountService } from './account/account.service';
-import type { Account } from './account/types';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
 import { Post, PostType } from './post/post.entity';
 import type { PostService } from './post/post.service';
@@ -24,7 +23,7 @@ vi.mock('./app', () => ({
 
 describe('dispatchers', () => {
     let mockPost: Post;
-    let mockAccount: Account;
+    let mockAccount: AccountEntity;
     let mockSite: Site;
     const mockPostService = {
         getOutboxForAccount: vi.fn(),
@@ -55,26 +54,16 @@ describe('dispatchers', () => {
         host: 'example.com',
     } as unknown as RequestContext<ContextData>;
 
+    const cursor = new Date().toISOString();
+
     beforeEach(async () => {
         mockAccount = {
             id: 1,
             username: 'testuser',
-            name: 'Test User',
-            bio: 'Test bio',
-            url: null,
-            avatar_url: 'http://example.com/avatar.jpg',
-            banner_image_url: null,
-            ap_id: 'https://example.com/user/testuser',
-            ap_inbox_url: 'https://example.com/user/testuser/inbox',
-            ap_shared_inbox_url: null,
-            ap_outbox_url: 'https://example.com/user/testuser/outbox',
-            ap_following_url: 'https://example.com/user/testuser/following',
-            ap_followers_url: 'https://example.com/user/testuser/followers',
-            ap_liked_url: 'https://example.com/user/testuser/liked',
-            ap_public_key: 'mock-public-key',
-            ap_private_key: null,
-            custom_fields: null,
-        };
+            apId: new URL('https://example.com/user/testuser'),
+            apInbox: new URL('https://example.com/user/testuser/inbox'),
+            isInternal: true,
+        } as AccountEntity;
 
         mockSite = {
             id: 1,
@@ -82,16 +71,13 @@ describe('dispatchers', () => {
             webhook_secret: 'test-secret',
         } as unknown as Site;
 
-        mockPost = Post.createFromData(
-            mockAccount as unknown as AccountEntity,
-            {
-                type: PostType.Article,
-                title: 'Test Post',
-                content: 'Test Content',
-                apId: new URL('https://example.com/post/123'),
-                url: new URL('https://example.com/post/123'),
-            },
-        );
+        mockPost = Post.createFromData(mockAccount, {
+            type: PostType.Article,
+            title: 'Test Post',
+            content: 'Test Content',
+            apId: new URL('https://example.com/post/123'),
+            url: new URL('https://example.com/post/123'),
+        });
 
         vi.clearAllMocks();
         process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
@@ -99,9 +85,10 @@ describe('dispatchers', () => {
         vi.mocked(mockAccountService.getAccountForSite).mockResolvedValue(
             mockAccount,
         );
-        vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue([
-            mockPost,
-        ]);
+        vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
+            posts: [mockPost],
+            nextCursor: null,
+        });
         vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(5);
     });
 
@@ -133,13 +120,18 @@ describe('dispatchers', () => {
 
     describe('outboxDispatcher', () => {
         it('returns outbox items with pagination', async () => {
+            const nextCursor = new Date().toISOString();
+            vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
+                posts: [mockPost, mockPost],
+                nextCursor: nextCursor,
+            });
             const outboxDispatcher = createOutboxDispatcher(
                 mockAccountService,
                 mockPostService,
                 mockSiteService,
             );
 
-            const result = await outboxDispatcher(ctx, 'test-handle', '0');
+            const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
             expect(mockSiteService.getSiteByHost).toHaveBeenCalledWith(
                 'example.com',
@@ -149,12 +141,11 @@ describe('dispatchers', () => {
             );
             expect(mockPostService.getOutboxForAccount).toHaveBeenCalledWith(
                 1,
-                '0',
+                cursor,
                 2,
             );
-            expect(mockPostService.getOutboxItemCount).toHaveBeenCalledWith(1);
             expect(result.items).toBeDefined();
-            expect(result.nextCursor).toBe('2');
+            expect(result.nextCursor).toBe(nextCursor);
         });
 
         it('returns null nextCursor when no more items', async () => {
@@ -165,7 +156,7 @@ describe('dispatchers', () => {
                 mockSiteService,
             );
 
-            const result = await outboxDispatcher(ctx, 'test-handle', '0');
+            const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
             expect(result.nextCursor).toBeNull();
         });
@@ -184,9 +175,10 @@ describe('dispatchers', () => {
         });
 
         it('handles empty outbox correctly', async () => {
-            vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue(
-                [],
-            );
+            vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
+                posts: [],
+                nextCursor: null,
+            });
             vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(0);
             const outboxDispatcher = createOutboxDispatcher(
                 mockAccountService,
@@ -194,7 +186,7 @@ describe('dispatchers', () => {
                 mockSiteService,
             );
 
-            const result = await outboxDispatcher(ctx, 'test-handle', '0');
+            const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
             expect(result.items).toEqual([]);
             expect(result.nextCursor).toBeNull();
@@ -208,11 +200,11 @@ describe('dispatchers', () => {
                 mockSiteService,
             );
 
-            await outboxDispatcher(ctx, 'test-handle', '0');
+            await outboxDispatcher(ctx, 'test-handle', cursor);
 
             expect(mockPostService.getOutboxForAccount).toHaveBeenCalledWith(
                 1,
-                '0',
+                cursor,
                 5,
             );
         });

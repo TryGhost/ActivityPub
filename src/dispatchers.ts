@@ -891,25 +891,16 @@ export function createOutboxDispatcher(
             pageSize,
         );
         const outboxItems = await Promise.all(
-            outbox.map(async (post: Post) => {
+            outbox.posts.map(async (post: Post) => {
                 const { createActivity } =
                     await buildCreateActivityAndObjectFromPost(post, ctx);
                 return createActivity;
             }),
         );
 
-        const totalOutboxItems = await postService.getOutboxItemCount(
-            siteDefaultAccount.id,
-        );
-        const offset = Number.parseInt(cursor ?? '0');
-        const nextCursor =
-            totalOutboxItems > offset + pageSize
-                ? (offset + pageSize).toString()
-                : null;
-
         return {
             items: outboxItems,
-            nextCursor,
+            nextCursor: outbox.nextCursor,
         };
     };
 }
@@ -932,7 +923,7 @@ export function createOutboxCounter(
 }
 
 export function outboxFirstCursor() {
-    return '0';
+    return new Date().toISOString();
 }
 
 export async function likedDispatcher(

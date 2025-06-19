@@ -69,6 +69,11 @@ interface PostRow {
     site_host: string | null;
 }
 
+export interface Outbox {
+    posts: Post[];
+    nextCursor: string | null;
+}
+
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
@@ -1096,7 +1101,7 @@ export class KnexPostRepository {
         accountId: number,
         cursor: string | null,
         pageSize: number,
-    ): Promise<Post[]> {
+    ): Promise<Outbox> {
         const rows = await this.db('outboxes')
             .select(
                 'posts.id',
@@ -1142,17 +1147,32 @@ export class KnexPostRepository {
             .leftJoin('sites', 'sites.id', 'users.site_id')
             .where('outboxes.account_id', accountId)
             .where('outboxes.outbox_type', OutboxType.Original)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('outboxes.published_at', '<', cursor);
+                }
+            })
             .orderBy('outboxes.published_at', 'desc')
-            .limit(pageSize)
-            .offset(cursor ? Number.parseInt(cursor) : 0);
+            .limit(pageSize + 1);
+
+        const hasMore = rows.length > pageSize;
+        const paginatedResults = rows.slice(0, pageSize);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+        const nextCursor =
+            hasMore && lastResult
+                ? lastResult.published_at.toISOString()
+                : null;
 
         const posts: Post[] = [];
-        for (const row of rows) {
+        for (const row of paginatedResults) {
             const post = await this.mapRowToPostEntity(row);
             posts.push(post);
         }
 
-        return posts;
+        return {
+            posts,
+            nextCursor,
+        };
     }
 
     async getOutboxItemCount(accountId: number): Promise<number> {
