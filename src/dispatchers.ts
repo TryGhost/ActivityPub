@@ -57,6 +57,11 @@ export const actorDispatcher = (
                       url: new URL(account.avatar_url),
                   })
                 : null,
+            image: account.banner_image_url
+                ? new Image({
+                      url: new URL(account.banner_image_url),
+                  })
+                : null,
             inbox: new URL(account.ap_inbox_url),
             outbox: new URL(account.ap_outbox_url),
             following: new URL(account.ap_following_url),
