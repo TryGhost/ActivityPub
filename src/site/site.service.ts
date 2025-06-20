@@ -21,15 +21,18 @@ export class SiteService {
         private ghostService: IGhostService,
     ) {}
 
-    private async createSite(host: string, conn: Knex): Promise<Site> {
-        const rows = await conn.select('*').from('sites').where({ host });
+    private async createSite(host: string): Promise<Site> {
+        const rows = await this.client
+            .select('*')
+            .from('sites')
+            .where({ host });
 
         if (rows && rows.length !== 0) {
             throw new Error(`Site already exists for ${host}`);
         }
 
         const webhook_secret = crypto.randomBytes(32).toString('hex');
-        const [id] = await conn
+        const [id] = await this.client
             .insert({
                 host,
                 webhook_secret,
@@ -43,11 +46,8 @@ export class SiteService {
         };
     }
 
-    public async getSiteByHost(
-        host: string,
-        conn: Knex = this.client,
-    ): Promise<Site | null> {
-        const rows = await conn.select('*').from('sites').where({
+    public async getSiteByHost(host: string): Promise<Site | null> {
+        const rows = await this.client.select('*').from('sites').where({
             host,
         });
 
@@ -67,17 +67,25 @@ export class SiteService {
     }
 
     public async initialiseSiteForHost(host: string): Promise<Site> {
-        return await this.client.transaction(async (tx) => {
-            const existingSite = await this.getSiteByHost(host, tx);
-            if (existingSite !== null) {
-                return existingSite;
-            }
+        const existingSite = await this.getSiteByHost(host);
 
-            const newSite = await this.createSite(host, tx);
+        let site: Site;
+        if (existingSite === null) {
+            site = await this.createSite(host);
+        } else {
+            site = existingSite;
+        }
 
-            const settings = await this.ghostService.getSiteSettings(
-                newSite.host,
-            );
+        const existingAccount =
+            (existingSite &&
+                (await this.client('accounts')
+                    .join('users', 'accounts.id', 'users.account_id')
+                    .where('users.site_id', site.id)
+                    .first())) ||
+            null;
+
+        if (existingAccount === null) {
+            const settings = await this.ghostService.getSiteSettings(site.host);
 
             const internalAccountData: InternalAccountData = {
                 username: 'index',
@@ -87,12 +95,11 @@ export class SiteService {
             };
 
             await this.accountService.createInternalAccount(
-                newSite,
+                site,
                 internalAccountData,
-                tx,
             );
+        }
 
-            return newSite;
-        });
+        return site;
     }
 }
