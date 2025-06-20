@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import {
+    Announce,
     Article,
     Create,
     Note as FedifyNote,
@@ -7,6 +9,7 @@ import {
     PUBLIC_COLLECTION,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Account } from 'account/account.entity';
 import type { FedifyContext } from 'app';
 import { type Post, PostType } from 'post/post.entity';
 
@@ -87,4 +90,24 @@ export async function buildCreateActivityAndObjectFromPost(
         createActivity,
         fedifyObject,
     };
+}
+
+export async function buildAnnounceActivityForPost(
+    account: Account,
+    post: Post,
+    ctx: FedifyContext,
+): Promise<Announce> {
+    const announceId = ctx.getObjectUri(Announce, {
+        id: createHash('sha256').update(post.apId.href).digest('hex'),
+    });
+
+    const announce = new Announce({
+        id: announceId,
+        actor: account.apId,
+        object: post.apId,
+        to: PUBLIC_COLLECTION,
+        cc: account.apFollowers,
+    });
+
+    return announce;
 }

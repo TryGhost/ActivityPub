@@ -1,9 +1,7 @@
-import { createHash } from 'node:crypto';
-
-import { Announce, PUBLIC_COLLECTION } from '@fedify/fedify';
 import { type AppContext, globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
+import { buildAnnounceActivityForPost } from 'helpers/activitypub/activity';
 import type { PostService } from 'post/post.service';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
@@ -44,17 +42,11 @@ export function createRepostActionHandler(postService: PostService) {
 
         const post = getValue(postResult);
 
-        const announceId = apCtx.getObjectUri(Announce, {
-            id: createHash('sha256').update(post.apId.href).digest('hex'),
-        });
-
-        const announce = new Announce({
-            id: announceId,
-            actor: account.apId,
-            object: post.apId,
-            to: PUBLIC_COLLECTION,
-            cc: account.apFollowers,
-        });
+        const announce = await buildAnnounceActivityForPost(
+            account,
+            post,
+            apCtx,
+        );
 
         const announceJson = await announce.toJsonLd();
 
