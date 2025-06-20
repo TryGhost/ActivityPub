@@ -21,7 +21,10 @@ import * as Sentry from '@sentry/node';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { FollowersService } from 'activitypub/followers.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
+import {
+    buildAnnounceActivityForPost,
+    buildCreateActivityAndObjectFromPost,
+} from 'helpers/activitypub/activity';
 import type { Post } from 'post/post.entity';
 import type { AccountService } from './account/account.service';
 import type { ContextData } from './app';
@@ -890,9 +893,17 @@ export function createOutboxDispatcher(
         );
         const outboxItems = await Promise.all(
             outbox.posts.map(async (post: Post) => {
-                const { createActivity } =
-                    await buildCreateActivityAndObjectFromPost(post, ctx);
-                return createActivity;
+                if (post.author.id === siteDefaultAccount.id) {
+                    const { createActivity } =
+                        await buildCreateActivityAndObjectFromPost(post, ctx);
+                    return createActivity;
+                }
+                const announceActivity = await buildAnnounceActivityForPost(
+                    siteDefaultAccount,
+                    post,
+                    ctx,
+                );
+                return announceActivity;
             }),
         );
 

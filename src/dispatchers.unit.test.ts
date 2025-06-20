@@ -1,4 +1,10 @@
-import type { RequestContext } from '@fedify/fedify';
+import type {
+    Announce,
+    Article,
+    Create,
+    Note,
+    RequestContext,
+} from '@fedify/fedify';
 import {
     createOutboxCounter,
     createOutboxDispatcher,
@@ -7,6 +13,10 @@ import {
 } from './dispatchers';
 
 import type { ContextData } from 'app';
+import {
+    buildAnnounceActivityForPost,
+    buildCreateActivityAndObjectFromPost,
+} from 'helpers/activitypub/activity';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountEntity } from './account/account.entity';
 import type { AccountService } from './account/account.service';
@@ -21,10 +31,17 @@ vi.mock('./app', () => ({
     },
 }));
 
+vi.mock('helpers/activitypub/activity', () => ({
+    buildCreateActivityAndObjectFromPost: vi.fn(),
+    buildAnnounceActivityForPost: vi.fn(),
+}));
+
 describe('dispatchers', () => {
     let mockPost: Post;
     let mockAccount: AccountEntity;
     let mockSite: Site;
+    let mockCreateActivity: Create;
+    let mockAnnounceActivity: Announce;
     const mockPostService = {
         getOutboxForAccount: vi.fn(),
         getOutboxItemCount: vi.fn(),
@@ -90,6 +107,23 @@ describe('dispatchers', () => {
             nextCursor: null,
         });
         vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(5);
+
+        mockCreateActivity = {
+            id: new URL('https://example.com/create/123'),
+            type: 'Create',
+        } as unknown as Create;
+        mockAnnounceActivity = {
+            id: new URL('https://example.com/announce/123'),
+            type: 'Announce',
+        } as unknown as Announce;
+
+        vi.mocked(buildCreateActivityAndObjectFromPost).mockResolvedValue({
+            createActivity: mockCreateActivity,
+            fedifyObject: {} as unknown as Note | Article,
+        });
+        vi.mocked(buildAnnounceActivityForPost).mockResolvedValue(
+            mockAnnounceActivity,
+        );
     });
 
     describe('likedDispatcher', () => {
@@ -206,6 +240,81 @@ describe('dispatchers', () => {
                 1,
                 cursor,
                 5,
+            );
+        });
+
+        it('returns create activity when post author is the site default account', async () => {
+            const author = Post.createFromData(mockAccount, {
+                type: PostType.Article,
+                title: 'Test Post by Same Author',
+                content: 'Test Content',
+                apId: new URL('https://example.com/post/456'),
+                url: new URL('https://example.com/post/456'),
+            });
+
+            vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
+                posts: [author],
+                nextCursor: null,
+            });
+
+            const outboxDispatcher = createOutboxDispatcher(
+                mockAccountService,
+                mockPostService,
+                mockSiteService,
+            );
+
+            const result = await outboxDispatcher(ctx, 'test-handle', cursor);
+
+            expect(result.items).toHaveLength(1);
+            expect(result.items[0]).toBe(mockCreateActivity);
+            expect(buildCreateActivityAndObjectFromPost).toHaveBeenCalledWith(
+                author,
+                ctx,
+            );
+        });
+
+        it('returns announce activity when post author is different from site default account', async () => {
+            const differentAuthor = {
+                id: 2,
+                username: 'differentuser',
+                apId: new URL('https://example.com/user/differentuser'),
+                apInbox: new URL(
+                    'https://example.com/user/differentuser/inbox',
+                ),
+                isInternal: false,
+            } as AccountEntity;
+
+            // Create a post where the author is different from the site default account
+            const postWithDifferentAuthor = Post.createFromData(
+                differentAuthor,
+                {
+                    type: PostType.Article,
+                    title: 'Test Post by Different Author',
+                    content: 'Test Content',
+                    apId: new URL('https://example.com/post/789'),
+                    url: new URL('https://example.com/post/789'),
+                },
+            );
+
+            vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
+                posts: [postWithDifferentAuthor],
+                nextCursor: null,
+            });
+
+            const outboxDispatcher = createOutboxDispatcher(
+                mockAccountService,
+                mockPostService,
+                mockSiteService,
+            );
+
+            const result = await outboxDispatcher(ctx, 'test-handle', cursor);
+
+            expect(result.items).toHaveLength(1);
+            expect(result.items[0]).toBe(mockAnnounceActivity);
+            expect(buildAnnounceActivityForPost).toHaveBeenCalledWith(
+                mockAccount,
+                postWithDifferentAuthor,
+                ctx,
             );
         });
     });

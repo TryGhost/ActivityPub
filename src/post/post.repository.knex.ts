@@ -1146,7 +1146,7 @@ export class KnexPostRepository {
             .leftJoin('users', 'users.account_id', 'accounts.id')
             .leftJoin('sites', 'sites.id', 'users.site_id')
             .where('outboxes.account_id', accountId)
-            .where('outboxes.outbox_type', OutboxType.Original)
+            .whereNot('outboxes.outbox_type', OutboxType.Reply) // Replies are not included in the outbox, only original posts and reposts
             .modify((query) => {
                 if (cursor) {
                     query.where('outboxes.published_at', '<', cursor);
@@ -1178,7 +1178,7 @@ export class KnexPostRepository {
     async getOutboxItemCount(accountId: number): Promise<number> {
         const result = await this.db('outboxes')
             .where('account_id', accountId)
-            .where('outbox_type', OutboxType.Original)
+            .whereNot('outboxes.outbox_type', OutboxType.Reply) // Replies are not included in the outbox, only original posts and reposts
             .count('*', { as: 'count' });
 
         if (!result[0].count) {
