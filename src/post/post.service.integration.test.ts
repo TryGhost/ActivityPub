@@ -26,7 +26,7 @@ import type { ImageStorageService } from 'storage/image-storage.service';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Post, PostType } from './post.entity';
+import { OutboxType, Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
 
@@ -811,9 +811,18 @@ describe('PostService', () => {
     });
 
     describe('getOutboxForAccount', () => {
-        it('should return posts for an account with pagination', async () => {
+        it('should return posts and reposts for an account with pagination', async () => {
+            //Original Post 1
             const post1 = await fixtureManager.createPost(account);
-            const post2 = await fixtureManager.createPost(account);
+
+            //Post Reposted by account
+            const [authorAccount2] =
+                await fixtureManager.createInternalAccount();
+            const post2 = await fixtureManager.createPost(authorAccount2);
+            post2.addRepost(account);
+            await postRepository.save(post2);
+
+            //Original Post 2
             const post3 = await fixtureManager.createPost(account);
 
             // Get first page
@@ -823,9 +832,11 @@ describe('PostService', () => {
                 2,
             );
 
-            expect(firstPage.posts).toHaveLength(2);
-            expect(firstPage.posts[0].id).toBe(post3.id);
-            expect(firstPage.posts[1].id).toBe(post2.id);
+            expect(firstPage.items).toHaveLength(2);
+            expect(firstPage.items[0].post.id).toBe(post3.id);
+            expect(firstPage.items[0].type).toBe(OutboxType.Original);
+            expect(firstPage.items[1].post.id).toBe(post2.id);
+            expect(firstPage.items[1].type).toBe(OutboxType.Repost);
             expect(firstPage.nextCursor).toBeTruthy();
 
             // Get second page
@@ -835,8 +846,9 @@ describe('PostService', () => {
                 2,
             );
 
-            expect(secondPage.posts).toHaveLength(1);
-            expect(secondPage.posts[0].id).toBe(post1.id);
+            expect(secondPage.items).toHaveLength(1);
+            expect(secondPage.items[0].post.id).toBe(post1.id);
+            expect(secondPage.items[0].type).toBe(OutboxType.Original);
             expect(secondPage.nextCursor).toBeNull();
         });
 
@@ -849,7 +861,7 @@ describe('PostService', () => {
                 10,
             );
 
-            expect(outbox.posts).toHaveLength(0);
+            expect(outbox.items).toHaveLength(0);
             expect(outbox.nextCursor).toBeNull();
         });
     });

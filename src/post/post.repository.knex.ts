@@ -70,7 +70,10 @@ interface PostRow {
 }
 
 export interface Outbox {
-    posts: Post[];
+    items: {
+        post: Post;
+        type: OutboxType;
+    }[];
     nextCursor: string | null;
 }
 
@@ -1140,13 +1143,14 @@ export class KnexPostRepository {
                 'accounts.ap_inbox_url as author_ap_inbox_url',
                 'sites.id as site_id',
                 'sites.host as site_host',
+                'outboxes.outbox_type',
             )
             .join('posts', 'outboxes.post_id', 'posts.id')
             .join('accounts', 'accounts.id', 'posts.author_id')
             .leftJoin('users', 'users.account_id', 'accounts.id')
             .leftJoin('sites', 'sites.id', 'users.site_id')
             .where('outboxes.account_id', accountId)
-            .where('outboxes.outbox_type', OutboxType.Original)
+            .whereNot('outboxes.outbox_type', OutboxType.Reply) // Replies are not included in the outbox, only original posts and reposts
             .modify((query) => {
                 if (cursor) {
                     query.where('outboxes.published_at', '<', cursor);
@@ -1163,14 +1167,20 @@ export class KnexPostRepository {
                 ? lastResult.published_at.toISOString()
                 : null;
 
-        const posts: Post[] = [];
+        const outboxItems: {
+            post: Post;
+            type: OutboxType;
+        }[] = [];
         for (const row of paginatedResults) {
             const post = await this.mapRowToPostEntity(row);
-            posts.push(post);
+            outboxItems.push({
+                post,
+                type: row.outbox_type as OutboxType,
+            });
         }
 
         return {
-            posts,
+            items: outboxItems,
             nextCursor,
         };
     }
@@ -1178,7 +1188,7 @@ export class KnexPostRepository {
     async getOutboxItemCount(accountId: number): Promise<number> {
         const result = await this.db('outboxes')
             .where('account_id', accountId)
-            .where('outbox_type', OutboxType.Original)
+            .whereNot('outboxes.outbox_type', OutboxType.Reply) // Replies are not included in the outbox, only original posts and reposts
             .count('*', { as: 'count' });
 
         if (!result[0].count) {
