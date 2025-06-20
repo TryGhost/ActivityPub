@@ -82,10 +82,13 @@ export class KnexAccountRepository {
                 });
             }
 
-            const account = AccountEntity.create({
-                id: accountId,
-                ...draft,
-            });
+            const account = AccountEntity.fromDraft(draft, accountId);
+
+            const events = AccountEntity.pullEvents(account);
+
+            for (const event of events) {
+                await this.events.emitAsync(event.getName(), event);
+            }
 
             return account;
         });

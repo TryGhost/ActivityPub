@@ -109,6 +109,25 @@ export class AccountEntity implements Account {
         );
     }
 
+    static fromDraft(draft: AccountDraft, id: number): AccountEntity {
+        const events: AccountEvent[] = [];
+        return new AccountEntity(
+            id,
+            draft.uuid,
+            draft.username,
+            draft.name,
+            draft.bio,
+            draft.url,
+            draft.avatarUrl,
+            draft.bannerImageUrl,
+            draft.apId,
+            draft.apFollowers,
+            draft.apInbox,
+            draft.isInternal,
+            events,
+        );
+    }
+
     static draft(from: AccountDraftData): AccountDraft {
         const uuid = randomUUID();
         const apId = !from.isInternal
