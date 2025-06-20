@@ -1,6 +1,18 @@
 {
-  "extends": ["github>tryghost/renovate-config"],
+  "extends": [
+    "github>tryghost/renovate-config",
+    // Pin Docker image digests for reproducible builds
+    // See: https://docs.renovatebot.com/presets-docker/#dockerpindigests
+    "docker:pinDigests",
+    // Disable major version updates for Docker images
+    // See: https://docs.renovatebot.com/presets-docker/#dockerdisablemajor
+    "docker:disableMajor"
+  ],
   "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "automerge": true
+    },
     {
       "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],
       "automerge": false
