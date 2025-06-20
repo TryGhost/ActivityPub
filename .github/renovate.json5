@@ -2,6 +2,23 @@
   "extends": ["github>tryghost/renovate-config"],
   "packageRules": [
     {
+      // Override the base config to automerge minor and patch updates regardless of version
+      // This overrides the ">= 1.0.0" restriction from the shared config
+      "matchCurrentVersion": "/.*/",  // Match any version
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepTypes": [
+        "devDependencies",
+        "dependencies",
+        "optionalDependencies"
+      ],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
       "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],
       "automerge": false
     }
