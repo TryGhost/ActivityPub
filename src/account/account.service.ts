@@ -334,8 +334,8 @@ export class AccountService {
      * @deprecated Use `followAccount` instead
      */
     async recordAccountFollow(
-        followee: AccountType,
-        follower: AccountType,
+        followee: { id: Account['id'] },
+        follower: { id: Account['id'] },
     ): Promise<void> {
         const [insertCount] = await this.db('follows')
             .insert({
@@ -364,8 +364,8 @@ export class AccountService {
      * @deprecated Use `unfollowAccount` instead
      */
     async recordAccountUnfollow(
-        following: AccountType,
-        follower: AccountType,
+        following: { id: Account['id'] },
+        follower: { id: Account['id'] },
     ): Promise<void> {
         await this.db('follows')
             .where({
@@ -434,7 +434,7 @@ export class AccountService {
      * @param options Options for the query
      */
     async getFollowingAccounts(
-        account: AccountType,
+        account: { id: Account['id'] },
         options: GetFollowingAccountsOptions, // @TODO: Make this optional
     ): Promise<AccountType[]> {
         return await this.db('follows')
@@ -518,7 +518,7 @@ export class AccountService {
      * @param options Options for the query
      */
     async getFollowerAccounts(
-        account: AccountType,
+        account: { id: Account['id'] },
         options: GetFollowerAccountsOptions, // @TODO: Make this optional
     ): Promise<AccountType[]> {
         return await this.db('follows')
