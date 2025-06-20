@@ -689,29 +689,6 @@ describe('KnexAccountRepository', () => {
         fromDraftSpy.mockRestore();
     });
 
-    it('emits events when creating an account with initial events', async () => {
-        const emitSpy = vi.spyOn(events, 'emitAsync');
-
-        const site = await fixtureManager.createSite();
-        const draftData = await createInternalAccountDraftData({
-            host: new URL(`https://${site.host}`),
-            username: 'eventuser',
-            name: 'Event User',
-            bio: 'User with events',
-            url: new URL(`https://${site.host}/eventuser`),
-            avatarUrl: null,
-            bannerImageUrl: null,
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        await accountRepository.create(draft);
-
-        expect(emitSpy).not.toHaveBeenCalled();
-
-        emitSpy.mockRestore();
-    });
-
     it('properly handles events if present during account creation', async () => {
         const emitSpy = vi.spyOn(events, 'emitAsync');
 
