@@ -25,7 +25,7 @@ import {
     buildAnnounceActivityForPost,
     buildCreateActivityAndObjectFromPost,
 } from 'helpers/activitypub/activity';
-import type { Post } from 'post/post.entity';
+import { OutboxType, type Post } from 'post/post.entity';
 import type { AccountService } from './account/account.service';
 import type { ContextData } from './app';
 import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
@@ -892,15 +892,18 @@ export function createOutboxDispatcher(
             pageSize,
         );
         const outboxItems = await Promise.all(
-            outbox.posts.map(async (post: Post) => {
-                if (post.author.id === siteDefaultAccount.id) {
+            outbox.items.map(async (item: { post: Post; type: OutboxType }) => {
+                if (item.type === OutboxType.Original) {
                     const { createActivity } =
-                        await buildCreateActivityAndObjectFromPost(post, ctx);
+                        await buildCreateActivityAndObjectFromPost(
+                            item.post,
+                            ctx,
+                        );
                     return createActivity;
                 }
                 const announceActivity = await buildAnnounceActivityForPost(
                     siteDefaultAccount,
-                    post,
+                    item.post,
                     ctx,
                 );
                 return announceActivity;

@@ -21,7 +21,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountEntity } from './account/account.entity';
 import type { AccountService } from './account/account.service';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { Post, PostType } from './post/post.entity';
+import { OutboxType, Post, PostType } from './post/post.entity';
 import type { PostService } from './post/post.service';
 import type { Site, SiteService } from './site/site.service';
 
@@ -103,7 +103,7 @@ describe('dispatchers', () => {
             mockAccount,
         );
         vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
-            posts: [mockPost],
+            items: [{ post: mockPost, type: OutboxType.Original }],
             nextCursor: null,
         });
         vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(5);
@@ -156,7 +156,10 @@ describe('dispatchers', () => {
         it('returns outbox items with pagination', async () => {
             const nextCursor = new Date().toISOString();
             vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
-                posts: [mockPost, mockPost],
+                items: [
+                    { post: mockPost, type: OutboxType.Original },
+                    { post: mockPost, type: OutboxType.Original },
+                ],
                 nextCursor: nextCursor,
             });
             const outboxDispatcher = createOutboxDispatcher(
@@ -210,7 +213,7 @@ describe('dispatchers', () => {
 
         it('handles empty outbox correctly', async () => {
             vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
-                posts: [],
+                items: [],
                 nextCursor: null,
             });
             vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(0);
@@ -243,7 +246,7 @@ describe('dispatchers', () => {
             );
         });
 
-        it('returns create activity when post author is the site default account', async () => {
+        it('returns create activity for original posts', async () => {
             const author = Post.createFromData(mockAccount, {
                 type: PostType.Article,
                 title: 'Test Post by Same Author',
@@ -253,7 +256,7 @@ describe('dispatchers', () => {
             });
 
             vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
-                posts: [author],
+                items: [{ post: author, type: OutboxType.Original }],
                 nextCursor: null,
             });
 
@@ -273,7 +276,7 @@ describe('dispatchers', () => {
             );
         });
 
-        it('returns announce activity when post author is different from site default account', async () => {
+        it('returns announce activity for reposts', async () => {
             const differentAuthor = {
                 id: 2,
                 username: 'differentuser',
@@ -297,7 +300,9 @@ describe('dispatchers', () => {
             );
 
             vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
-                posts: [postWithDifferentAuthor],
+                items: [
+                    { post: postWithDifferentAuthor, type: OutboxType.Repost },
+                ],
                 nextCursor: null,
             });
 
