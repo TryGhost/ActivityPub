@@ -4,17 +4,19 @@ import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { parseURL } from '../core/url';
 import type { Site } from '../site/site.service';
-import { AccountBlockedEvent } from './account-blocked.event';
-import { AccountFollowedEvent } from './account-followed.event';
-import { AccountUnblockedEvent } from './account-unblocked.event';
-import { AccountUnfollowedEvent } from './account-unfollowed.event';
 import {
     type Account,
     type AccountDraft,
     AccountEntity,
 } from './account.entity';
-import { DomainBlockedEvent } from './domain-blocked.event';
-import { DomainUnblockedEvent } from './domain-unblocked.event';
+import {
+    AccountBlockedEvent,
+    AccountFollowedEvent,
+    AccountUnblockedEvent,
+    AccountUnfollowedEvent,
+    DomainBlockedEvent,
+    DomainUnblockedEvent,
+} from './events';
 
 interface AccountRow {
     id: number;

@@ -1,9 +1,11 @@
 import type { EventEmitter } from 'node:events';
 
-import { AccountBlockedEvent } from 'account/account-blocked.event';
-import { AccountFollowedEvent } from 'account/account-followed.event';
-import { DomainBlockedEvent } from 'account/domain-blocked.event';
-import { NotificationsReadEvent } from 'account/notifications-read-event';
+import {
+    AccountBlockedEvent,
+    AccountFollowedEvent,
+    DomainBlockedEvent,
+    NotificationsReadEvent,
+} from 'account/events';
 import type { NotificationService } from 'notification/notification.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';

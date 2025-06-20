@@ -1,4 +1,4 @@
-import type { Account } from './account.entity';
+import type { Account } from '../account.entity';
 
 export class AccountUpdatedEvent {
     static getName(): string {

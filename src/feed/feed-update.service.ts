@@ -1,8 +1,10 @@
 import type { EventEmitter } from 'node:events';
 
-import { AccountBlockedEvent } from 'account/account-blocked.event';
-import { AccountUnfollowedEvent } from 'account/account-unfollowed.event';
-import { DomainBlockedEvent } from 'account/domain-blocked.event';
+import {
+    AccountBlockedEvent,
+    AccountUnfollowedEvent,
+    DomainBlockedEvent,
+} from 'account/events';
 import type { FeedService } from 'feed/feed.service';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';

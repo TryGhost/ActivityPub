@@ -16,9 +16,9 @@ import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { AP_BASE_PATH } from '../constants';
-import { AccountFollowedEvent } from './account-followed.event';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
+import { AccountFollowedEvent } from './events/account-followed.event';
 import type { ExternalAccountData, InternalAccountData, Site } from './types';
 
 vi.mock('@fedify/fedify', async () => {

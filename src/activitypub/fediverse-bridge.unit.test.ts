@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EventEmitter from 'node:events';
 import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
 
-import { AccountBlockedEvent } from 'account/account-blocked.event';
 import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
+import { AccountBlockedEvent } from 'account/events';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import { Post, PostType } from 'post/post.entity';

@@ -3,14 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { AccountEntity } from 'account/account.entity';
 import { PostType } from 'post/post.entity';
 import { createInternalAccountDraftData } from '../test/account-entity-test-helpers';
-import { AccountBlockedEvent } from './account-blocked.event';
-import { AccountFollowedEvent } from './account-followed.event';
-import { AccountUnblockedEvent } from './account-unblocked.event';
-import { AccountUnfollowedEvent } from './account-unfollowed.event';
-import { AccountUpdatedEvent } from './account-updated.event';
-import { DomainBlockedEvent } from './domain-blocked.event';
-import { DomainUnblockedEvent } from './domain-unblocked.event';
-import { NotificationsReadEvent } from './notifications-read-event';
+import {
+    AccountBlockedEvent,
+    AccountFollowedEvent,
+    AccountUnblockedEvent,
+    AccountUnfollowedEvent,
+    AccountUpdatedEvent,
+    DomainBlockedEvent,
+    DomainUnblockedEvent,
+    NotificationsReadEvent,
+} from './events';
 
 describe('AccountEntity', () => {
     it('Uses the apId if the url is missing', async () => {

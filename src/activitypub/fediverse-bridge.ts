@@ -7,10 +7,9 @@ import {
     Reject,
     Update,
 } from '@fedify/fedify';
-import { AccountBlockedEvent } from 'account/account-blocked.event';
-import { AccountUpdatedEvent } from 'account/account-updated.event';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
+import { AccountBlockedEvent, AccountUpdatedEvent } from 'account/events';
 import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
