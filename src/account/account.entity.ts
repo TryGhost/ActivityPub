@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { type CreatePostType, PostType } from '../post/post.entity';
 import {
     AccountBlockedEvent,
+    AccountCreatedEvent,
     AccountFollowedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
@@ -110,7 +111,7 @@ export class AccountEntity implements Account {
     }
 
     static fromDraft(draft: AccountDraft, id: number): AccountEntity {
-        const events: AccountEvent[] = [];
+        const events: AccountEvent[] = [new AccountCreatedEvent(id)];
         return new AccountEntity(
             id,
             draft.uuid,

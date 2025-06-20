@@ -14,6 +14,7 @@ import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import type { Site } from '../site/site.service';
 import { AccountEntity } from './account.entity';
+import { AccountCreatedEvent } from './events';
 import { AccountUpdatedEvent } from './events/account-updated.event';
 
 describe('KnexAccountRepository', () => {
@@ -689,10 +690,9 @@ describe('KnexAccountRepository', () => {
         fromDraftSpy.mockRestore();
     });
 
-    it('properly handles events if present during account creation', async () => {
+    it('Handles events when creating an account', async () => {
         const emitSpy = vi.spyOn(events, 'emitAsync');
 
-        const originalFromDraft = AccountEntity.fromDraft;
         const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
 
         const site = await fixtureManager.createSite();
@@ -708,26 +708,12 @@ describe('KnexAccountRepository', () => {
 
         const draft = AccountEntity.draft(draftData);
 
-        class MockAccountEvent {
-            getName() {
-                return 'mock.account.event';
-            }
-        }
-
-        const mockEvent = new MockAccountEvent();
-
-        fromDraftSpy.mockImplementation((...args) => {
-            const account = originalFromDraft.call(AccountEntity, ...args);
-
-            // biome-ignore lint/suspicious/noExplicitAny: We need to mock events
-            (account as any).events = [mockEvent];
-
-            return account;
-        });
-
         await accountRepository.create(draft);
 
-        expect(emitSpy).toHaveBeenCalledWith('mock.account.event', mockEvent);
+        expect(emitSpy).toHaveBeenCalledWith(
+            AccountCreatedEvent.getName(),
+            expect.any(AccountCreatedEvent),
+        );
         expect(emitSpy).toHaveBeenCalledTimes(1);
 
         emitSpy.mockRestore();

@@ -5,6 +5,7 @@ import { PostType } from 'post/post.entity';
 import { createInternalAccountDraftData } from '../test/account-entity-test-helpers';
 import {
     AccountBlockedEvent,
+    AccountCreatedEvent,
     AccountFollowedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
@@ -129,7 +130,8 @@ describe('AccountEntity', () => {
             const account = AccountEntity.fromDraft(draft, 123);
 
             const events = AccountEntity.pullEvents(account);
-            expect(events).toHaveLength(0);
+            expect(events).toHaveLength(1);
+            expect(events[0]).toBeInstanceOf(AccountCreatedEvent);
         });
 
         it('should handle null values correctly', async () => {
