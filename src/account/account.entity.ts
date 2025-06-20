@@ -110,6 +110,7 @@ export class AccountEntity implements Account {
     }
 
     static fromDraft(draft: AccountDraft, id: number): AccountEntity {
+        const events: AccountEvent[] = [];
         return new AccountEntity(
             id,
             draft.uuid,
@@ -123,7 +124,7 @@ export class AccountEntity implements Account {
             draft.apFollowers,
             draft.apInbox,
             draft.isInternal,
-            [],
+            events,
         );
     }
 
