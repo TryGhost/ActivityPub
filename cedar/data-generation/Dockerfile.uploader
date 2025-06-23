@@ -1,6 +1,0 @@
-FROM google/cloud-sdk:slim@sha256:6f3ad8041a196ba93a3f95f6c1affc6b1a18d68b574bb54c6facfeb086bd8045
-
-COPY data-upload.sh .
-
-CMD ["/bin/bash", "data-upload.sh"]
-
