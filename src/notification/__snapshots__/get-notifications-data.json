@@ -1,6 +1,7 @@
 [
   {
     "actor_avatar_url": null,
+    "actor_followed_by_user": 0,
     "actor_id": 3,
     "actor_name": null,
     "actor_url": null,
@@ -26,6 +27,7 @@
   },
   {
     "actor_avatar_url": null,
+    "actor_followed_by_user": 0,
     "actor_id": 4,
     "actor_name": null,
     "actor_url": null,
@@ -51,6 +53,7 @@
   },
   {
     "actor_avatar_url": null,
+    "actor_followed_by_user": 0,
     "actor_id": 2,
     "actor_name": null,
     "actor_url": null,
@@ -76,6 +79,7 @@
   },
   {
     "actor_avatar_url": null,
+    "actor_followed_by_user": 0,
     "actor_id": 3,
     "actor_name": null,
     "actor_url": null,
@@ -101,6 +105,7 @@
   },
   {
     "actor_avatar_url": null,
+    "actor_followed_by_user": 0,
     "actor_id": 2,
     "actor_name": null,
     "actor_url": null,

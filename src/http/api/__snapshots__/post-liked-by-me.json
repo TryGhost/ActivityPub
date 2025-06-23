@@ -2,6 +2,7 @@
   "attachments": [],
   "author": {
     "avatarUrl": "http://example.com/avatar/foobar.png",
+    "followedByMe": false,
     "handle": "@foobar@example.com",
     "id": "http://example.com/.ghost/activitypub/users/index",
     "name": "Foo Bar",
