@@ -1,5 +1,9 @@
 {
   "extends": ["github>tryghost/renovate-config"],
+  // Automerge only on Monday, Tuesday and Wednesday, during common working hours (08:00 - 16:00 UTC)
+  // Rationale: merging to main ships to production, so we want to avoid automerging when no engineer is online
+  // Note: this doesn't restrict when the PRs are opened by Renovate, only when they are merged
+  "automergeSchedule": ["* 8-15 * * 1,2,3"],
   "packageRules": [
     {
       "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],
