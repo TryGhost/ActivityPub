@@ -20,6 +20,11 @@
     {
       "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],
       "automerge": false
+    },
+    {
+      // Exclude dependencies in jobs that don't have automated tests
+      "matchPaths": ["jobs/populate-explore-json/**", "jobs/cleanup-expired-key-value-records/**"],
+      "enabled": false
     }
   ]
 }
