@@ -36,6 +36,7 @@ interface BaseGetNotificationsDataResultRow {
     actor_username: string;
     actor_url: string;
     actor_avatar_url: string;
+    actor_followed_by_user: 0 | 1;
     post_ap_id: string;
     post_type: string;
     post_title: string;
@@ -95,6 +96,12 @@ export class NotificationService {
                 'actor_account.username as actor_username',
                 'actor_account.url as actor_url',
                 'actor_account.avatar_url as actor_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_actor.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS actor_followed_by_user
+                `),
                 // Post fields
                 'post.ap_id as post_ap_id',
                 'post.type as post_type',
@@ -147,6 +154,16 @@ export class NotificationService {
                     '=',
                     options.accountId.toString(),
                 ).andOn('post_reposts.post_id', 'post.id');
+            })
+            .leftJoin('follows as follows_actor', function () {
+                this.onVal(
+                    'follows_actor.following_id',
+                    'actor_account.id',
+                ).andOnVal(
+                    'follows_actor.follower_id',
+                    '=',
+                    options.accountId.toString(),
+                );
             })
             .where('notifications.user_id', user.id)
             .modify((query) => {

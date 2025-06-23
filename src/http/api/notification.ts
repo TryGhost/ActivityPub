@@ -67,6 +67,7 @@ export class NotificationController {
                         result.actor_username,
                     ),
                     avatarUrl: result.actor_avatar_url,
+                    followedByMe: result.actor_followed_by_user === 1,
                 },
                 post: result.post_ap_id
                     ? {

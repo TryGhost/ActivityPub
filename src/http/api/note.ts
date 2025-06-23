@@ -60,6 +60,8 @@ export async function handleCreateNote(
         likedByMe: false,
         repostedByMe: false,
         repostedBy: null,
+        followingAuthor: false,
+        followingReposter: false,
     });
 
     return new Response(JSON.stringify({ post: postDTO }), {

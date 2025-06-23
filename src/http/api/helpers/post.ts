@@ -4,13 +4,17 @@ import { getAccountHandle } from '../../../account/utils';
 
 import type { AuthorDTO, PostDTO } from '../types';
 
-function accountToAuthorDTO(account: Account): AuthorDTO {
+function accountToAuthorDTO(
+    account: Account,
+    followedByMe: boolean,
+): AuthorDTO {
     return {
         id: account.apId.href,
         name: account.name || '',
         handle: getAccountHandle(new URL(account.apId).host, account.username),
         avatarUrl: account.avatarUrl?.href || '',
         url: account.url.href,
+        followedByMe,
     };
 }
 
@@ -21,11 +25,15 @@ export function postToDTO(
         likedByMe: boolean;
         repostedByMe: boolean;
         repostedBy: Account | null;
+        followingAuthor: boolean;
+        followingReposter: boolean;
     } = {
         authoredByMe: false,
         likedByMe: false,
         repostedByMe: false,
         repostedBy: null,
+        followingAuthor: false,
+        followingReposter: false,
     },
 ): PostDTO {
     return {
@@ -50,12 +58,12 @@ export function postToDTO(
                 url: attachment.url.href,
             };
         }),
-        author: accountToAuthorDTO(post.author),
+        author: accountToAuthorDTO(post.author, meta.followingAuthor),
         authoredByMe: meta.authoredByMe,
         repostCount: post.repostCount,
         repostedByMe: meta.repostedByMe,
         repostedBy: meta.repostedBy
-            ? accountToAuthorDTO(meta.repostedBy)
+            ? accountToAuthorDTO(meta.repostedBy, meta.followingReposter)
             : null,
         metadata: post.metadata ?? {
             ghostAuthors: [],
