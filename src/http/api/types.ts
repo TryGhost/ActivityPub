@@ -87,7 +87,7 @@ export interface AccountDTO extends Omit<MinimalAccountDTO, 'isFollowing'> {
 
 export type AuthorDTO = Pick<
     AccountDTO,
-    'id' | 'handle' | 'avatarUrl' | 'name' | 'url'
+    'id' | 'handle' | 'avatarUrl' | 'name' | 'url' | 'followedByMe'
 >;
 
 /**
