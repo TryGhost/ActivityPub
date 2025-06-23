@@ -93,6 +93,7 @@ export function createGetFeedHandler(
                     name: result.author_name ?? '',
                     url: result.author_url ?? '',
                     avatarUrl: result.author_avatar_url ?? '',
+                    followedByMe: result.author_followed_by_user === 1,
                 },
                 authoredByMe: result.author_id === account.id,
                 repostCount: result.post_repost_count,
@@ -109,6 +110,7 @@ export function createGetFeedHandler(
                           name: result.reposter_name ?? '',
                           url: result.reposter_url ?? '',
                           avatarUrl: result.reposter_avatar_url ?? '',
+                          followedByMe: result.reposter_followed_by_user === 1,
                       }
                     : null,
             };
