@@ -50,6 +50,7 @@ interface BaseGetProfileDataResultRow {
     author_username: string;
     author_url: string | null;
     author_avatar_url: string | null;
+    author_followed_by_current_user: 0 | 1;
 }
 
 interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
@@ -58,6 +59,7 @@ interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
     reposter_username: string;
     reposter_url: string | null;
     reposter_avatar_url: string | null;
+    reposter_followed_by_current_user: 0 | 1;
 }
 
 interface GetProfileDataResultRowWithoutReposted
@@ -67,6 +69,7 @@ interface GetProfileDataResultRowWithoutReposted
     reposter_username: null;
     reposter_url: null;
     reposter_avatar_url: null;
+    reposter_followed_by_current_user: 0;
 }
 
 export type GetProfileDataResultRow =
@@ -165,12 +168,24 @@ export class AccountPostsView {
                 'author_account.username as author_username',
                 'author_account.url as author_url',
                 'author_account.avatar_url as author_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_author.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_followed_by_current_user
+                `),
                 // Reposter fields
                 'reposter_account.id as reposter_id',
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_reposter.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS reposter_followed_by_current_user
+                `),
                 // Outbox fields
                 'outboxes.published_at as outbox_published_at',
                 'outboxes.outbox_type as outbox_type',
@@ -190,6 +205,26 @@ export class AccountPostsView {
                     'outboxes.outbox_type',
                     '=',
                     OutboxType.Repost.toString(),
+                );
+            })
+            .leftJoin('follows as follows_author', function () {
+                this.on(
+                    'follows_author.following_id',
+                    'author_account.id',
+                ).andOnVal(
+                    'follows_author.follower_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_reposter', function () {
+                this.on(
+                    'follows_reposter.following_id',
+                    'reposter_account.id',
+                ).andOnVal(
+                    'follows_reposter.follower_id',
+                    '=',
+                    contextAccountId.toString(),
                 );
             })
             .leftJoin('likes', function () {
@@ -508,12 +543,19 @@ export class AccountPostsView {
                 'author_account.username as author_username',
                 'author_account.url as author_url',
                 'author_account.avatar_url as author_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_author.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_followed_by_current_user
+                `),
                 // Reposter fields
                 'reposter_account.id as reposter_id',
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
+                this.db.raw('0 as reposter_followed_by_current_user'),
             )
             .innerJoin('posts', 'posts.id', 'likes.post_id')
             .innerJoin(
@@ -533,6 +575,16 @@ export class AccountPostsView {
                 'reposter_account.id',
                 'reposts.account_id',
             )
+            .leftJoin('follows as follows_author', function () {
+                this.on(
+                    'follows_author.following_id',
+                    'author_account.id',
+                ).andOnVal(
+                    'follows_author.follower_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
             .where('likes.account_id', accountId)
             .modify((query) => {
                 if (cursor) {
@@ -598,6 +650,7 @@ export class AccountPostsView {
                 name: result.author_name ?? '',
                 url: result.author_url ?? '',
                 avatarUrl: result.author_avatar_url ?? '',
+                followedByMe: result.author_followed_by_current_user === 1,
             },
             authoredByMe: result.author_id === contextAccountId,
             repostCount: result.post_repost_count,
@@ -614,6 +667,8 @@ export class AccountPostsView {
                       name: result.reposter_name ?? '',
                       url: result.reposter_url ?? '',
                       avatarUrl: result.reposter_avatar_url ?? '',
+                      followedByMe:
+                          result.reposter_followed_by_current_user === 1,
                   }
                 : null,
         };
@@ -650,6 +705,7 @@ export class AccountPostsView {
                 name: attributedTo.name || '',
                 url: attributedTo.id,
                 avatarUrl: attributedTo.icon?.url || '',
+                followedByMe: false,
             },
             authoredByMe: object.authored || false,
             repostCount: object.repostCount || 0,
@@ -665,6 +721,7 @@ export class AccountPostsView {
                           name: actor.name || '',
                           url: actor.id,
                           avatarUrl: actor.icon?.url || '',
+                          followedByMe: false,
                       }
                     : null,
         };

@@ -381,4 +381,150 @@ describe('AccountPostsView', () => {
             }
         });
     });
+
+    describe('followedByMe flag', () => {
+        describe('getPostsFromOutbox (database flow)', () => {
+            it('should correctly set followedByMe flag for post authors', async () => {
+                const [viewingAccount] =
+                    await fixtureManager.createInternalAccount();
+                const [followedAuthor] =
+                    await fixtureManager.createInternalAccount();
+                const [unfollowedAuthor] =
+                    await fixtureManager.createInternalAccount();
+
+                // Set up follow relationship
+                await fixtureManager.createFollow(
+                    viewingAccount,
+                    followedAuthor,
+                );
+
+                // Create posts
+                const followedAuthorPost =
+                    await fixtureManager.createPost(followedAuthor);
+                const unfollowedAuthorPost =
+                    await fixtureManager.createPost(unfollowedAuthor);
+
+                // Get posts from followed author's outbox
+                const followedResult = await viewer.getPostsFromOutbox(
+                    followedAuthor,
+                    viewingAccount.id,
+                    10,
+                    null,
+                );
+
+                expect(isError(followedResult)).toBe(false);
+                if (!isError(followedResult)) {
+                    const posts = getValue(followedResult);
+                    expect(posts.results).toHaveLength(1);
+                    expect(posts.results[0].author.followedByMe).toBe(true);
+                }
+
+                // Get posts from unfollowed author's outbox
+                const unfollowedResult = await viewer.getPostsFromOutbox(
+                    unfollowedAuthor,
+                    viewingAccount.id,
+                    10,
+                    null,
+                );
+
+                expect(isError(unfollowedResult)).toBe(false);
+                if (!isError(unfollowedResult)) {
+                    const posts = getValue(unfollowedResult);
+                    expect(posts.results).toHaveLength(1);
+                    expect(posts.results[0].author.followedByMe).toBe(false);
+                }
+            });
+
+            it('should correctly set followedByMe flag for reposters', async () => {
+                const [viewingAccount] =
+                    await fixtureManager.createInternalAccount();
+                const [postAuthor] =
+                    await fixtureManager.createInternalAccount();
+                const [followedReposter] =
+                    await fixtureManager.createInternalAccount();
+                const [unfollowedReposter] =
+                    await fixtureManager.createInternalAccount();
+
+                // Set up follow relationships
+                await fixtureManager.createFollow(
+                    viewingAccount,
+                    followedReposter,
+                );
+                await fixtureManager.createFollow(viewingAccount, postAuthor);
+
+                // Create original post
+                const originalPost =
+                    await fixtureManager.createPost(postAuthor);
+
+                // Add reposts
+                originalPost.addRepost(followedReposter);
+                await postRepository.save(originalPost);
+
+                originalPost.addRepost(unfollowedReposter);
+                await postRepository.save(originalPost);
+
+                // Get posts from followed reposter's outbox
+                const followedResult = await viewer.getPostsFromOutbox(
+                    followedReposter,
+                    viewingAccount.id,
+                    10,
+                    null,
+                );
+
+                expect(isError(followedResult)).toBe(false);
+                if (!isError(followedResult)) {
+                    const posts = getValue(followedResult);
+                    expect(posts.results).toHaveLength(1);
+                    expect(posts.results[0].author.followedByMe).toBe(true); // Original author is followed
+                    expect(posts.results[0].repostedBy).toBeDefined();
+                    expect(posts.results[0].repostedBy!.followedByMe).toBe(
+                        true,
+                    ); // Reposter is followed
+                }
+
+                // Get posts from unfollowed reposter's outbox
+                const unfollowedResult = await viewer.getPostsFromOutbox(
+                    unfollowedReposter,
+                    viewingAccount.id,
+                    10,
+                    null,
+                );
+
+                expect(isError(unfollowedResult)).toBe(false);
+                if (!isError(unfollowedResult)) {
+                    const posts = getValue(unfollowedResult);
+                    expect(posts.results).toHaveLength(1);
+                    expect(posts.results[0].author.followedByMe).toBe(true); // Original author is still followed
+                    expect(posts.results[0].repostedBy).toBeDefined();
+                    expect(posts.results[0].repostedBy!.followedByMe).toBe(
+                        false,
+                    ); // Reposter is not followed
+                }
+            });
+
+            it('should handle followedByMe flag when viewing own posts', async () => {
+                const [viewingAccount] =
+                    await fixtureManager.createInternalAccount();
+
+                // Create own post
+                const ownPost = await fixtureManager.createPost(viewingAccount);
+
+                // Get own posts
+                const result = await viewer.getPostsFromOutbox(
+                    viewingAccount,
+                    viewingAccount.id,
+                    10,
+                    null,
+                );
+
+                expect(isError(result)).toBe(false);
+                if (!isError(result)) {
+                    const posts = getValue(result);
+                    expect(posts.results).toHaveLength(1);
+                    expect(posts.results[0].author.followedByMe).toBe(false); // Users don't follow themselves
+                    expect(posts.results[0].authoredByMe).toBe(true);
+                }
+            });
+        });
+    });
 });
