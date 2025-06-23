@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   minio:
-    image: minio/minio:latest
+    image: minio/minio:latest@sha256:a616cd8f37758b0296db62cc9e6af05a074e844cc7b5c0a0e62176d73828d440
     container_name: populate-explore-minio
     ports:
       - "9000:9000"
@@ -21,7 +21,7 @@ services:
 
   # Create bucket on MinIO startup
   minio-setup:
-    image: minio/mc:latest
+    image: minio/mc:latest@sha256:09f93f534cde415d192bb6084dd0e0ddd1715fb602f8a922ad121fd2bf0f8b44
     depends_on:
       minio:
         condition: service_healthy

@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   jaeger:
-    image: jaegertracing/all-in-one:1.70.0
+    image: jaegertracing/all-in-one:1.70.0@sha256:c73bec5e6220b91eeda2574ec6aabbb8232f531e6b0bd11819f53548eefa6424
     restart: always
     environment:
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
@@ -79,7 +79,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.4.5
+    image: mysql:8.4.5@sha256:a458cd83af2654878d5468ff01443c8378f375b707645b597c7c75202eaad541
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -93,7 +93,7 @@ services:
       retries: 120
 
   pubsub:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators@sha256:38606e0ec8b892ff2be6fb7238c6b98e7b0b69f60ed433fa2b196bdf4646caf9
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -207,7 +207,7 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.4.5
+    image: mysql:8.4.5@sha256:a458cd83af2654878d5468ff01443c8378f375b707645b597c7c75202eaad541
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -221,7 +221,7 @@ services:
   pubsub-testing:
     networks:
       - test_network
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators@sha256:38606e0ec8b892ff2be6fb7238c6b98e7b0b69f60ed433fa2b196bdf4646caf9
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
       - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
@@ -244,7 +244,7 @@ services:
       test_network:
         aliases:
           - fake-ghost-activitypub.test
-    image: wiremock/wiremock:3.13.1-1
+    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
       - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
@@ -254,7 +254,7 @@ services:
       test_network:
         aliases:
           - fake-external-activitypub.test
-    image: wiremock/wiremock:3.13.1-1
+    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
   fake-mastodon:
@@ -262,7 +262,7 @@ services:
       test_network:
         aliases:
           - fake-mastodon.test
-    image: wiremock/wiremock:3.13.1-1
+    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:
