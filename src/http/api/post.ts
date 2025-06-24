@@ -76,6 +76,12 @@ export function createGetPostHandler(
                               )
                             : false,
                     repostedBy: null,
+                    followingAuthor:
+                        await accountService.checkIfAccountIsFollowing(
+                            account.id,
+                            post.author.id,
+                        ),
+                    followingReposter: false,
                 }),
             ),
             { status: 200 },

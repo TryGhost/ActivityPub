@@ -265,6 +265,254 @@ describe('FeedService', () => {
                 },
             ]);
         });
+
+        it('should correctly set followedByMe flag for authors', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create test accounts
+            const userAccount = await createInternalAccount(
+                'follower-test-user.com',
+            );
+            const followedAccount = await createInternalAccount(
+                'follower-test-followed.com',
+            );
+            const unfollowedAccount = await createInternalAccount(
+                'follower-test-unfollowed.com',
+            );
+
+            // User follows followedAccount but NOT unfollowedAccount
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Create a post from followedAccount
+            const followedAccountPost = await createPost(followedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(followedAccountPost);
+
+            // Create a post from unfollowedAccount
+            const unfollowedAccountPost = await createPost(unfollowedAccount, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-02T10:00:00Z'),
+            });
+            await postRepository.save(unfollowedAccountPost);
+
+            // followedAccount reposts the unfollowedAccount's post
+            unfollowedAccountPost.addRepost(followedAccount);
+            await postRepository.save(unfollowedAccountPost);
+
+            // Add posts to feeds
+            await feedService.addPostToFeeds(followedAccountPost as PublicPost);
+            await feedService.addPostToFeeds(
+                unfollowedAccountPost as PublicPost,
+            );
+            await feedService.addPostToFeeds(
+                unfollowedAccountPost as PublicPost,
+                followedAccount.id,
+            );
+
+            // Get feed and verify followedByMe flags
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            // Should have 2 items: the repost and the original post from followedAccount
+            expect(feed.results).toHaveLength(2);
+
+            // Find the reposted post (unfollowedAccount's post reposted by followedAccount)
+            const repostedPost = feed.results.find(
+                (post) =>
+                    post.post_id === unfollowedAccountPost.id &&
+                    post.reposter_id === followedAccount.id,
+            );
+            expect(repostedPost).toBeDefined();
+            expect(repostedPost!.author_id).toBe(unfollowedAccount.id);
+            expect(repostedPost!.author_followed_by_user).toBe(0); // User does NOT follow unfollowedAccount
+
+            // Find the original post from followedAccount
+            const originalPost = feed.results.find(
+                (post) =>
+                    post.post_id === followedAccountPost.id &&
+                    post.reposter_id === null,
+            );
+            expect(originalPost).toBeDefined();
+            expect(originalPost!.author_id).toBe(followedAccount.id);
+            expect(originalPost!.author_followed_by_user).toBe(1); // User DOES follow followedAccount
+        });
+
+        it('should correctly set followedByMe flag for reposters', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create test accounts
+            const userAccount = await createInternalAccount(
+                'reposter-test-user.com',
+            );
+            const followedReposter = await createInternalAccount(
+                'reposter-test-followed.com',
+            );
+            const unfollowedReposter = await createInternalAccount(
+                'reposter-test-unfollowed.com',
+            );
+            const postAuthor = await createInternalAccount(
+                'reposter-test-author.com',
+            );
+
+            // User follows followedReposter and postAuthor but NOT unfollowedReposter
+            await accountService.recordAccountFollow(
+                followedReposter as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+            await accountService.recordAccountFollow(
+                postAuthor as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+
+            // Create a post from postAuthor
+            const originalPost = await createPost(postAuthor, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(originalPost);
+
+            // Both followedReposter and unfollowedReposter repost the original post
+            originalPost.addRepost(followedReposter);
+            await postRepository.save(originalPost);
+
+            originalPost.addRepost(unfollowedReposter);
+            await postRepository.save(originalPost);
+
+            // Add posts to feeds
+            await feedService.addPostToFeeds(originalPost as PublicPost);
+            await feedService.addPostToFeeds(
+                originalPost as PublicPost,
+                followedReposter.id,
+            );
+            await feedService.addPostToFeeds(
+                originalPost as PublicPost,
+                unfollowedReposter.id,
+            );
+
+            // Get feed and verify followedByMe flags for reposters
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            // Should have 2 items: the repost from followedReposter and the original post
+            // (repost from unfollowedReposter should not appear in feed)
+            expect(feed.results).toHaveLength(2);
+
+            // Find the repost from followedReposter
+            const repostByFollowed = feed.results.find(
+                (post) =>
+                    post.post_id === originalPost.id &&
+                    post.reposter_id === followedReposter.id,
+            );
+            expect(repostByFollowed).toBeDefined();
+            expect(repostByFollowed!.author_id).toBe(postAuthor.id);
+            expect(repostByFollowed!.author_followed_by_user).toBe(1); // User follows the original author
+            expect(repostByFollowed!.reposter_id).toBe(followedReposter.id);
+            expect(repostByFollowed!.reposter_followed_by_user).toBe(1); // User follows the reposter
+
+            // Find the original post
+            const originalPostInFeed = feed.results.find(
+                (post) =>
+                    post.post_id === originalPost.id &&
+                    post.reposter_id === null,
+            );
+            expect(originalPostInFeed).toBeDefined();
+            expect(originalPostInFeed!.author_id).toBe(postAuthor.id);
+            expect(originalPostInFeed!.author_followed_by_user).toBe(1); // User follows the author
+            expect(originalPostInFeed!.reposter_id).toBeNull();
+            expect(originalPostInFeed!.reposter_followed_by_user).toBe(0); // No reposter, so 0
+        });
+
+        it('should correctly set followedByMe flag for unfollowed reposters', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create test accounts
+            const userAccount = await createInternalAccount(
+                'unfollowed-reposter-user.com',
+            );
+            const unfollowedReposter = await createInternalAccount(
+                'unfollowed-reposter.com',
+            );
+            const followedAccount = await createInternalAccount(
+                'unfollowed-reposter-followed.com',
+            );
+            const postAuthor = await createInternalAccount(
+                'unfollowed-reposter-author.com',
+            );
+
+            // User follows followedAccount who follows unfollowedReposter
+            // User does NOT follow unfollowedReposter or postAuthor
+            await accountService.recordAccountFollow(
+                followedAccount as unknown as AccountType,
+                userAccount as unknown as AccountType,
+            );
+            await accountService.recordAccountFollow(
+                unfollowedReposter as unknown as AccountType,
+                followedAccount as unknown as AccountType,
+            );
+
+            // Create a post from postAuthor
+            const originalPost = await createPost(postAuthor, {
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(originalPost);
+
+            // unfollowedReposter reposts the original post
+            originalPost.addRepost(unfollowedReposter);
+            await postRepository.save(originalPost);
+
+            // followedAccount also reposts it
+            originalPost.addRepost(followedAccount);
+            await postRepository.save(originalPost);
+
+            // Add posts to feeds
+            await feedService.addPostToFeeds(originalPost as PublicPost);
+            await feedService.addPostToFeeds(
+                originalPost as PublicPost,
+                unfollowedReposter.id,
+            );
+            await feedService.addPostToFeeds(
+                originalPost as PublicPost,
+                followedAccount.id,
+            );
+
+            // Get feed and verify followedByMe flags
+            const feed = await feedService.getFeedData({
+                accountId: userAccount.id!,
+                feedType: 'Inbox',
+                limit: 10,
+                cursor: null,
+            });
+
+            // Should only have the repost from followedAccount
+            // (unfollowedReposter's repost should not appear in feed)
+            expect(feed.results).toHaveLength(1);
+
+            // Find the repost from followedAccount
+            const repostByFollowed = feed.results.find(
+                (post) =>
+                    post.post_id === originalPost.id &&
+                    post.reposter_id === followedAccount.id,
+            );
+            expect(repostByFollowed).toBeDefined();
+            expect(repostByFollowed!.author_id).toBe(postAuthor.id);
+            expect(repostByFollowed!.author_followed_by_user).toBe(0); // User does NOT follow the original author
+            expect(repostByFollowed!.reposter_id).toBe(followedAccount.id);
+            expect(repostByFollowed!.reposter_followed_by_user).toBe(1); // User DOES follow the reposter
+        });
     });
 
     describe('addPostToFeeds', () => {

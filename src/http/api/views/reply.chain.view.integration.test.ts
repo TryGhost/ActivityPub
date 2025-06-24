@@ -679,4 +679,177 @@ describe('ReplyChainView', () => {
             }
         });
     });
+
+    describe('followedByMe flag', () => {
+        it('should correctly set followedByMe flag for authors in reply chain', async () => {
+            // Create multiple accounts - viewing user, followed authors, and unfollowed authors
+            const [viewingUser] = await fixtureManager.createInternalAccount();
+            const [followedAuthor1] =
+                await fixtureManager.createInternalAccount();
+            const [followedAuthor2] =
+                await fixtureManager.createInternalAccount();
+            const [unfollowedAuthor1] =
+                await fixtureManager.createInternalAccount();
+            const [unfollowedAuthor2] =
+                await fixtureManager.createInternalAccount();
+
+            // Set up follow relationships - viewingUser follows followedAuthor1 and followedAuthor2
+            await fixtureManager.createFollow(viewingUser, followedAuthor1);
+            await fixtureManager.createFollow(viewingUser, followedAuthor2);
+
+            // Create a reply chain with mixed authors:
+            // unfollowedAuthor1 -> followedAuthor1 -> unfollowedAuthor2 -> followedAuthor2 -> viewingUser
+            const post1 = await fixtureManager.createPost(unfollowedAuthor1);
+            const post2 = await fixtureManager.createPost(followedAuthor1, {
+                inReplyTo: post1,
+            });
+            const post3 = await fixtureManager.createPost(unfollowedAuthor2, {
+                inReplyTo: post2,
+            });
+            const post4 = await fixtureManager.createPost(followedAuthor2, {
+                inReplyTo: post3,
+            });
+            const post5 = await fixtureManager.createPost(viewingUser, {
+                inReplyTo: post4,
+            });
+
+            // Create some child replies with mixed authors
+            const child1 = await fixtureManager.createPost(followedAuthor1, {
+                inReplyTo: post5,
+            });
+            const child2 = await fixtureManager.createPost(unfollowedAuthor1, {
+                inReplyTo: post5,
+            });
+            const childChain1 = await fixtureManager.createPost(
+                unfollowedAuthor2,
+                {
+                    inReplyTo: child1,
+                },
+            );
+            const childChain2 = await fixtureManager.createPost(
+                followedAuthor2,
+                {
+                    inReplyTo: childChain1,
+                },
+            );
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                viewingUser.id,
+                post5.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Verify ancestors have correct followedByMe flags
+            expect(replyChain.ancestors.chain).toHaveLength(4);
+
+            // post1 by unfollowedAuthor1 - should be false
+            const ancestor1 = replyChain.ancestors.chain.find(
+                (a) => a.id === post1.apId.href,
+            );
+            expect(ancestor1).toBeDefined();
+            expect(ancestor1!.author.followedByMe).toBe(false);
+
+            // post2 by followedAuthor1 - should be true
+            const ancestor2 = replyChain.ancestors.chain.find(
+                (a) => a.id === post2.apId.href,
+            );
+            expect(ancestor2).toBeDefined();
+            expect(ancestor2!.author.followedByMe).toBe(true);
+
+            // post3 by unfollowedAuthor2 - should be false
+            const ancestor3 = replyChain.ancestors.chain.find(
+                (a) => a.id === post3.apId.href,
+            );
+            expect(ancestor3).toBeDefined();
+            expect(ancestor3!.author.followedByMe).toBe(false);
+
+            // post4 by followedAuthor2 - should be true
+            const ancestor4 = replyChain.ancestors.chain.find(
+                (a) => a.id === post4.apId.href,
+            );
+            expect(ancestor4).toBeDefined();
+            expect(ancestor4!.author.followedByMe).toBe(true);
+
+            // Verify the current post (by viewingUser) has correct flag
+            expect(replyChain.post.author.followedByMe).toBe(false); // Users don't follow themselves
+
+            // Verify children have correct followedByMe flags
+            expect(replyChain.children).toHaveLength(2);
+
+            // child1 by followedAuthor1 - should be true
+            const childPost1 = replyChain.children.find(
+                (c) => c.post.id === child1.apId.href,
+            );
+            expect(childPost1).toBeDefined();
+            expect(childPost1!.post.author.followedByMe).toBe(true);
+
+            // child2 by unfollowedAuthor1 - should be false
+            const childPost2 = replyChain.children.find(
+                (c) => c.post.id === child2.apId.href,
+            );
+            expect(childPost2).toBeDefined();
+            expect(childPost2!.post.author.followedByMe).toBe(false);
+
+            // Verify chain posts have correct followedByMe flags
+            expect(childPost1!.chain).toHaveLength(2);
+
+            // childChain1 by unfollowedAuthor2 - should be false
+            const chainPost1 = childPost1!.chain.find(
+                (c) => c.id === childChain1.apId.href,
+            );
+            expect(chainPost1).toBeDefined();
+            expect(chainPost1!.author.followedByMe).toBe(false);
+
+            // childChain2 by followedAuthor2 - should be true
+            const chainPost2 = childPost1!.chain.find(
+                (c) => c.id === childChain2.apId.href,
+            );
+            expect(chainPost2).toBeDefined();
+            expect(chainPost2!.author.followedByMe).toBe(true);
+        });
+
+        it('should handle followedByMe flag for deleted posts (tombstones)', async () => {
+            const [viewingUser] = await fixtureManager.createInternalAccount();
+            const [followedAuthor] =
+                await fixtureManager.createInternalAccount();
+            const [unfollowedAuthor] =
+                await fixtureManager.createInternalAccount();
+
+            // Set up follow relationship
+            await fixtureManager.createFollow(viewingUser, followedAuthor);
+
+            // Create posts
+            const post1 = await fixtureManager.createPost(followedAuthor);
+            const post2 = await fixtureManager.createPost(unfollowedAuthor, {
+                inReplyTo: post1,
+            });
+            const post3 = await fixtureManager.createPost(viewingUser, {
+                inReplyTo: post2,
+            });
+
+            // Delete post2 (by unfollowedAuthor)
+            await db('posts')
+                .where({ id: post2.id })
+                .update({ deleted_at: new Date() });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                viewingUser.id,
+                post3.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            // Find the tombstone in ancestors
+            const tombstone = replyChain.ancestors.chain.find(
+                (a) => a.type === 2,
+            ); // PostType.Tombstone
+            expect(tombstone).toBeDefined();
+
+            // Tombstones should always have followedByMe as false
+            expect(tombstone!.author.followedByMe).toBe(false);
+        });
+    });
 });

@@ -113,6 +113,11 @@ describe('NotificationService', () => {
                 post_id: follower2ReplyPostId,
             });
 
+            await client('follows').insert({
+                follower_id: userId,
+                following_id: follower1AccountId,
+            });
+
             // Setup the notifications
             await client('notifications').insert([
                 // follower 1 likes user post

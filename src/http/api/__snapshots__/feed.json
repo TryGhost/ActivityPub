@@ -18,6 +18,7 @@
       ],
       "author": {
         "avatarUrl": "",
+        "followedByMe": false,
         "handle": "@foobar@example.com",
         "id": "987",
         "name": "Foo Bar",
@@ -45,6 +46,7 @@
       "attachments": [],
       "author": {
         "avatarUrl": "",
+        "followedByMe": false,
         "handle": "@foobar@example.com",
         "id": "987",
         "name": "Foo Bar",
@@ -63,6 +65,7 @@
       "repostCount": 3,
       "repostedBy": {
         "avatarUrl": "https://example.com/images/bazqux.png",
+        "followedByMe": false,
         "handle": "@bazqux@example.com",
         "id": "654",
         "name": "Baz Qux",

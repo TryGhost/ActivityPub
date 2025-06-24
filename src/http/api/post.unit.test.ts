@@ -99,7 +99,9 @@ describe('Post API', () => {
             isLikedByAccount: vi.fn().mockResolvedValue(false),
             isRepostedByAccount: vi.fn().mockResolvedValue(false),
         } as unknown as PostService;
-        accountService = {} as AccountService;
+        accountService = {
+            checkIfAccountIsFollowing: vi.fn().mockResolvedValue(false),
+        } as unknown as AccountService;
     });
 
     it('should return a post', async () => {

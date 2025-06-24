@@ -33,6 +33,8 @@ export function createGetThreadHandler(
                 likedByMe: likedByAccount,
                 repostedByMe: repostedByAccount,
                 repostedBy: null,
+                followingAuthor: false,
+                followingReposter: false,
             });
         });
 

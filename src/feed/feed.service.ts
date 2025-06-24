@@ -58,6 +58,7 @@ interface BaseGetFeedDataResultRow {
     author_username: string;
     author_url: string | null;
     author_avatar_url: string | null;
+    author_followed_by_user: 0 | 1;
 }
 
 interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
@@ -66,6 +67,7 @@ interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
     reposter_username: string;
     reposter_url: string | null;
     reposter_avatar_url: string | null;
+    reposter_followed_by_user: 0 | 1;
 }
 
 interface GetFeedDataResultRowWithoutReposted extends BaseGetFeedDataResultRow {
@@ -74,6 +76,7 @@ interface GetFeedDataResultRowWithoutReposted extends BaseGetFeedDataResultRow {
     reposter_username: null;
     reposter_url: null;
     reposter_avatar_url: null;
+    reposter_followed_by_user: 0;
 }
 
 export type GetFeedDataResultRow =
@@ -144,12 +147,24 @@ export class FeedService {
                 'author_account.username as author_username',
                 'author_account.url as author_url',
                 'author_account.avatar_url as author_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_author.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_followed_by_user
+                `),
                 // Reposter fields
                 'reposter_account.id as reposter_id',
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
                 'reposter_account.avatar_url as reposter_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_reposter.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS reposter_followed_by_user
+                `),
                 // Feed fields
                 'feeds.published_at as feed_published_at',
             )
@@ -174,6 +189,26 @@ export class FeedService {
             .leftJoin('reposts', function () {
                 this.on('reposts.post_id', 'posts.id').andOnVal(
                     'reposts.account_id',
+                    '=',
+                    options.accountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_author', function () {
+                this.on(
+                    'follows_author.following_id',
+                    'author_account.id',
+                ).andOnVal(
+                    'follows_author.follower_id',
+                    '=',
+                    options.accountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_reposter', function () {
+                this.on(
+                    'follows_reposter.following_id',
+                    'reposter_account.id',
+                ).andOnVal(
+                    'follows_reposter.follower_id',
                     '=',
                     options.accountId.toString(),
                 );

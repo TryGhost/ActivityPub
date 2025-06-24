@@ -56,6 +56,7 @@ const PostRowSchema = z.object({
     author_username: z.string(),
     author_url: z.string().nullable(),
     author_avatar_url: z.string().nullable(),
+    author_followed_by_user: z.union([z.literal(0), z.literal(1)]),
 });
 
 export type PostRow = z.infer<typeof PostRowSchema>;
@@ -96,6 +97,7 @@ export class ReplyChainView {
                     name: result.author_name ?? '',
                     url: result.author_url ?? '',
                     avatarUrl: result.author_avatar_url ?? '',
+                    followedByMe: false,
                 },
                 authoredByMe: result.author_id === contextAccountId,
                 repostCount: result.post_repost_count,
@@ -135,6 +137,7 @@ export class ReplyChainView {
                 name: result.author_name ?? '',
                 url: result.author_url ?? '',
                 avatarUrl: result.author_avatar_url ?? '',
+                followedByMe: result.author_followed_by_user === 1,
             },
             authoredByMe: result.author_id === contextAccountId,
             repostCount: result.post_repost_count,
@@ -225,6 +228,12 @@ export class ReplyChainView {
                     'author_account.username as author_username',
                     'author_account.url as author_url',
                     'author_account.avatar_url as author_avatar_url',
+                    this.db.raw(`
+                    CASE
+                        WHEN follows_author.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_followed_by_user
+                `),
                     // Account metadata fields
                     this.db.raw(`
                     CASE
@@ -244,6 +253,16 @@ export class ReplyChainView {
                     'author_account.id',
                     'posts.author_id',
                 )
+                .leftJoin('follows as follows_author', function () {
+                    this.on(
+                        'follows_author.following_id',
+                        'author_account.id',
+                    ).andOnVal(
+                        'follows_author.follower_id',
+                        '=',
+                        contextAccountId,
+                    );
+                })
                 .leftJoin('users', 'users.account_id', 'author_account.id')
                 .leftJoin('sites', 'sites.id', 'users.site_id')
                 .leftJoin('likes', function () {

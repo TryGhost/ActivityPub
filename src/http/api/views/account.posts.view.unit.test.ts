@@ -300,6 +300,7 @@ describe('Account Posts View', () => {
                     name: 'Test User',
                     url: 'https://example.com/users/1',
                     avatarUrl: 'https://example.com/avatar.jpg',
+                    followedByMe: false,
                 },
                 authoredByMe: true,
                 repostCount: 0,
@@ -363,6 +364,7 @@ describe('Account Posts View', () => {
                     name: 'Original Author',
                     url: 'https://example.com/users/1',
                     avatarUrl: 'https://example.com/avatar1.jpg',
+                    followedByMe: false,
                 },
                 authoredByMe: false,
                 repostCount: 1,
@@ -373,6 +375,7 @@ describe('Account Posts View', () => {
                     name: 'Reposter',
                     url: 'https://example.com/users/2',
                     avatarUrl: 'https://example.com/avatar2.jpg',
+                    followedByMe: false,
                 },
             });
         });
