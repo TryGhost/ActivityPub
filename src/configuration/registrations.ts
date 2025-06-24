@@ -44,7 +44,6 @@ import {
     createGetAccountPostsHandler,
     createGetFeedHandler,
     createGetPostHandler,
-    createGetThreadHandler,
     createImageUploadHandler,
     createPostPublishedWebhookHandler,
     createSearchHandler,
@@ -301,11 +300,6 @@ export function registerDependencies(
     container.register(
         'searchHandler',
         asFunction(createSearchHandler).singleton(),
-    );
-
-    container.register(
-        'getThreadHandler',
-        asFunction(createGetThreadHandler).singleton(),
     );
 
     container.register(
