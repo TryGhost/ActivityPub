@@ -84,9 +84,10 @@ export class FixtureManager {
         return [_account, _site, user.id];
     }
 
-    async createExternalAccount() {
+    async createExternalAccount(
+        url = faker.internet.url({ appendSlash: true }),
+    ) {
         const username = faker.internet.username().replace('.', '_');
-        const url = faker.internet.url({ appendSlash: true });
 
         const createdAccount = await this.accountService.createExternalAccount({
             username,

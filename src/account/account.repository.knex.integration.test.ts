@@ -380,15 +380,12 @@ describe('KnexAccountRepository', () => {
         );
 
         // Create Bob from the domain to be blocked
-        const [bobAccount, bobSite] =
-            await fixtureManager.createInternalAccount(
-                null,
-                'blocked-domain.com',
-            );
+        const bobAccount = await fixtureManager.createExternalAccount();
 
         // Create Charlie using the same site as Bob
-        const [charlieAccount] =
-            await fixtureManager.createInternalAccount(bobSite);
+        const charlieAccount = await fixtureManager.createExternalAccount(
+            bobAccount.url.href,
+        );
 
         // Create follow relationships:
         // 1. Alice follows Bob (will be removed when domain is blocked)
@@ -402,7 +399,7 @@ describe('KnexAccountRepository', () => {
         expect(followsBefore).toHaveLength(3);
 
         // Alice blocks the domain blocked-domain.com
-        const blockedDomain = new URL('https://blocked-domain.com');
+        const blockedDomain = bobAccount.url;
         const aliceWithDomainBlock = aliceAccount.blockDomain(blockedDomain);
 
         // Save the domain block
@@ -412,7 +409,7 @@ describe('KnexAccountRepository', () => {
         const domainBlocks = await client('domain_blocks').select('*');
         expect(domainBlocks).toHaveLength(1);
         expect(domainBlocks[0].blocker_id).toBe(aliceAccount.id);
-        expect(domainBlocks[0].domain).toBe('blocked-domain.com');
+        expect(domainBlocks[0].domain).toBe(blockedDomain.hostname);
 
         // Verify all follow relationships with accounts from the blocked domain have been removed
         const followsAfter = await client('follows').select('*');
