@@ -387,12 +387,13 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles attempting to insert multiple posts with the same apId', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const site = await siteService.initialiseSiteForHost(
             'testing-saving-multiple-posts-same-ap-id.com',
         );
         const account = await accountRepository.getBySite(site);
         const postApId = new URL(`https://${site.host}/hello-world`);
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const getPost = () => {
             return new Post(
@@ -441,11 +442,12 @@ describe('KnexPostRepository', () => {
     });
 
     it('Emits a PostCreatedEvent when a Post is saved', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const site = await siteService.initialiseSiteForHost(
             'testing-post-created-event.com',
         );
         const account = await accountRepository.getBySite(site);
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
@@ -470,11 +472,12 @@ describe('KnexPostRepository', () => {
     });
 
     it('Does not emit a PostCreatedEvent when a Post is updated', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const site = await siteService.initialiseSiteForHost(
             'testing-post-update.com',
         );
         const account = await accountRepository.getBySite(site);
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const postResult = await Post.createArticleFromGhostPost(account, {
             title: 'Title',
@@ -648,8 +651,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles likes of a new post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
-
         const accounts = await Promise.all(
             [
                 'testing-likes-one.com',
@@ -657,6 +658,8 @@ describe('KnexPostRepository', () => {
                 'testing-likes-three.com',
             ].map(getAccount),
         );
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
@@ -715,8 +718,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles likes and unlikes of an existing post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
-
         const accounts = await Promise.all(
             [
                 'testing-unlikes-one.com',
@@ -724,6 +725,8 @@ describe('KnexPostRepository', () => {
                 'testing-unlikes-three.com',
             ].map(getAccount),
         );
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
@@ -782,7 +785,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles reposts of a new post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const accounts = await Promise.all(
             [
                 'testing-reposts-one.com',
@@ -790,6 +792,8 @@ describe('KnexPostRepository', () => {
                 'testing-reposts-three.com',
             ].map(getAccount),
         );
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
@@ -846,7 +850,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles reposts and dereposts of an existing post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
         const accounts = await Promise.all(
             [
                 'testing-derepost-one.com',
@@ -854,6 +857,8 @@ describe('KnexPostRepository', () => {
                 'testing-derepost-three.com',
             ].map(getAccount),
         );
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const postResult = await Post.createArticleFromGhostPost(accounts[0], {
             title: 'Title',
@@ -1309,8 +1314,6 @@ describe('KnexPostRepository', () => {
     });
 
     it('Handles mentions of a new post', async () => {
-        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
-
         const accounts = await Promise.all(
             [
                 'testing-mentions-one.com',
@@ -1318,6 +1321,8 @@ describe('KnexPostRepository', () => {
                 'testing-mentions-three.com',
             ].map(getAccount),
         );
+
+        const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
 
         const post = Post.createNote(
             accounts[0],
