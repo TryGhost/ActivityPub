@@ -163,7 +163,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Login to GCP Artifact Registry (private registry)"
         if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
@@ -290,7 +290,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Terraform init"
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
@@ -383,7 +383,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Destroy Tests databases"
         if: ${{ matrix.region == 'europe-west4' }}
