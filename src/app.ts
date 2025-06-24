@@ -77,6 +77,7 @@ import {
     undoDispatcher,
     updateDispatcher,
 } from './dispatchers';
+import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
@@ -263,6 +264,11 @@ const globalPostInteractionCountsService =
         'postInteractionCountsService',
     );
 globalPostInteractionCountsService.init();
+
+const ghostExploreService = container.resolve<GhostExploreService>(
+    'ghostExploreService',
+);
+ghostExploreService.init();
 
 /** Fedify */
 
