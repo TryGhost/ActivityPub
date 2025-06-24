@@ -76,23 +76,17 @@ describe('AccountPostsView', () => {
 
         viewer = new AccountPostsView(db, fedifyContextFactory);
 
-        account = await accountService.createInternalAccount(site, {
-            ...internalAccountData,
-            username: 'accountToCheck',
-            name: 'Account To Check',
-        });
+        const [accountEntityTemp] =
+            await fixtureManager.createInternalAccount();
+        accountEntity = accountEntityTemp;
+        account = await db('accounts').where({ id: accountEntity.id }).first();
 
-        accountEntity = await accountRepository.getByApId(
-            new URL(account.ap_id),
-        );
-
-        defaultAccount = await accountService.createInternalAccount(site, {
-            ...internalAccountData,
-            username: 'default',
-        });
-        siteDefaultAccount = await accountRepository.getByApId(
-            new URL(defaultAccount.ap_id),
-        );
+        const [siteDefaultAccountTemp] =
+            await fixtureManager.createInternalAccount();
+        siteDefaultAccount = siteDefaultAccountTemp;
+        defaultAccount = await db('accounts')
+            .where({ id: siteDefaultAccount.id })
+            .first();
     });
 
     describe('getPostsByHandle', () => {
@@ -133,7 +127,7 @@ describe('AccountPostsView', () => {
                 url: 'https://example.com/post/1',
                 author: {
                     id: String(accountEntity.id),
-                    handle: `@${accountEntity.username}@${site.host}`,
+                    handle: `@${accountEntity.username}@${accountEntity.url.host}`,
                     name: accountEntity.name,
                 },
                 authoredByMe: false,

@@ -249,9 +249,9 @@ export function createFixtureManager(
     const siteService = new SiteService(db, accountService, {
         getSiteSettings: async (host) => ({
             site: {
-                description: faker.lorem.sentence(),
-                title: faker.lorem.sentence(),
-                icon: `https://${host}/avatar/${faker.string.uuid()}.jpg`,
+                description: 'Balbus clibanus bestia suppellex acies armarium.',
+                title: 'Umerus casso venia bestia stultus colligo sonitus cohors.',
+                icon: `https://${host}/avatar/c4863565-3533-43fa-9991-19c5160a4da2.jpg`,
             },
         }),
     });
