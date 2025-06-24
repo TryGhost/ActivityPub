@@ -77,7 +77,7 @@ describe('GCPStorageAdapter', () => {
 
             it('handles valid emulator URL verification', async () => {
                 const validUrl =
-                    'http://localhost:4443/storage/v1/b/test-bucket/o/images/test-uuid/test.png?alt=media';
+                    'http://fake-gcs:4443/.ghost/activitypub/gcs/images/test-uuid/test.png';
                 const result = await adapter.verifyFileUrl(new URL(validUrl));
                 expect(result).toEqual(ok(true));
             });

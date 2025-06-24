@@ -116,6 +116,7 @@ export function registerDependencies(
                 bucketName,
                 deps.globalLogging,
                 process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
+                process.env.GCS_LOCAL_STORAGE_HOSTING_URL ?? undefined,
             );
         }).singleton(),
     );

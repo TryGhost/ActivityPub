@@ -15,6 +15,7 @@ export class GCPStorageAdapter implements StorageAdapter {
         private readonly bucketName: string,
         private readonly logging: Logger,
         private readonly emulatorHost?: string,
+        private readonly gcsLocalStorageHostingUrl?: string,
     ) {
         if (this.emulatorHost) {
             this.storage = new Storage({
@@ -58,9 +59,18 @@ export class GCPStorageAdapter implements StorageAdapter {
             // When using the GCS emulator, we need to construct a custom URL since the emulator runs on localhost
             // and doesn't support the standard publicUrl() method. In production, we use the bucket's publicUrl() method
             // which generates a proper Google Cloud Storage URL.
-            const fileUrl = this.emulatorHost
-                ? `${this.emulatorHost.replace('fake-gcs', 'localhost')}/storage/v1/b/${this.bucketName}/o/${encodeURIComponent(path)}?alt=media`
-                : this.bucket.file(path).publicUrl();
+            let fileUrl: string;
+            if (this.emulatorHost) {
+                if (!this.gcsLocalStorageHostingUrl) {
+                    this.logging.error(
+                        'GCS_LOCAL_STORAGE_HOSTING_URL is not set for local environment',
+                    );
+                    return error('error-saving-file');
+                }
+                fileUrl = `${this.gcsLocalStorageHostingUrl}/${path}`;
+            } else {
+                fileUrl = this.bucket.file(path).publicUrl();
+            }
 
             return ok(fileUrl);
         } catch (err) {
@@ -74,19 +84,9 @@ export class GCPStorageAdapter implements StorageAdapter {
     }
 
     async verifyFileUrl(url: URL): Promise<Result<boolean, VerificationError>> {
-        // Check if we're using the GCS emulator and verify the URL matches the emulator's base URL pattern
+        // Check if we're using the GCS emulator and verify the URL matches the nginx proxy path pattern
         if (this.emulatorHost) {
-            let emulatorUrl: URL;
-            try {
-                emulatorUrl = new URL(
-                    this.emulatorHost.replace('fake-gcs', 'localhost'),
-                );
-            } catch (err) {
-                console.log('err', err);
-                return error('invalid-url');
-            }
-
-            if (url.host !== emulatorUrl.host) {
+            if (!url.pathname.startsWith('/.ghost/activitypub/gcs/')) {
                 return error('invalid-url');
             }
 

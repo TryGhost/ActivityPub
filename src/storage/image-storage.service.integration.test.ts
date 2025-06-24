@@ -26,6 +26,7 @@ describe('Image Storage Service - GCP Storage Integration', () => {
             process.env.GCP_BUCKET_NAME || '',
             logger,
             process.env.GCP_STORAGE_EMULATOR_HOST || '',
+            process.env.GCS_LOCAL_STORAGE_HOSTING_URL || '',
         );
         imageProcessor = new ImageProcessor(logger);
         service = new ImageStorageService(adapter, imageProcessor);
@@ -51,10 +52,7 @@ describe('Image Storage Service - GCP Storage Integration', () => {
                 expect(url).toContain(TEST_ACCOUNT_UUID);
 
                 if (process.env.GCP_STORAGE_EMULATOR_HOST) {
-                    expect(url).toContain(
-                        'localhost:4443/storage/v1/b/activitypub/o/',
-                    );
-                    expect(url).toContain('?alt=media');
+                    expect(url).toContain('/.ghost/activitypub/gcs/images/');
                 } else {
                     const res = await fetch(url);
                     expect(res.status).toBe(200);
