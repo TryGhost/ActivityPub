@@ -156,7 +156,7 @@ export class NotificationService {
                 ).andOn('post_reposts.post_id', 'post.id');
             })
             .leftJoin('follows as follows_actor', function () {
-                this.onVal(
+                this.on(
                     'follows_actor.following_id',
                     'actor_account.id',
                 ).andOnVal(
