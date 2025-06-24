@@ -401,7 +401,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Deploy Migrations to Cloud Run"
         if: ${{ matrix.region == 'europe-west4' }}
@@ -472,7 +472,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: prd-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Deploy Migrations to Cloud Run"
         if: ${{ matrix.region == 'europe-west4' }}
@@ -533,7 +533,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Destroy Tests databases"
         env:
@@ -567,7 +567,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Login to GCP Artifact Registry"
         if: steps.changes.outputs.cleanup == 'true'
@@ -625,7 +625,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Login to GCP Artifact Registry"
         if: steps.changes.outputs.populate-explore-json == 'true'
