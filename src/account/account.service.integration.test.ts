@@ -15,6 +15,7 @@ import { getError, getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
+import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { AP_BASE_PATH } from '../constants';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';
@@ -44,6 +45,7 @@ describe('AccountService', () => {
     let internalAccountData: InternalAccountData;
     let externalAccountData: ExternalAccountData;
     let db: Knex;
+    let fixtureManager: FixtureManager;
 
     const mockActor = {
         id: new URL('https://example.com/activitypub/users/testuser'),
@@ -79,6 +81,7 @@ describe('AccountService', () => {
 
     beforeAll(async () => {
         db = await createTestDb();
+        fixtureManager = createFixtureManager(db);
     });
 
     afterEach(() => {
@@ -87,6 +90,8 @@ describe('AccountService', () => {
 
     beforeEach(async () => {
         vi.useRealTimers();
+
+        await fixtureManager.reset();
 
         // Clean up the database
         await db.raw('SET FOREIGN_KEY_CHECKS = 0');
@@ -585,14 +590,10 @@ describe('AccountService', () => {
 
     describe('recordAccountUnfollow', () => {
         it('should record an account being unfollowed', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower',
-            });
+            const [[account], [follower]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(account, follower);
 
@@ -616,14 +617,10 @@ describe('AccountService', () => {
 
     describe('recordAccountFollow', () => {
         it('should record an account being followed', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower',
-            });
+            const [[account], [follower]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(account, follower);
 
@@ -639,14 +636,10 @@ describe('AccountService', () => {
         });
 
         it('should not record duplicate follows', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower',
-            });
+            const [[account], [follower]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(account, follower);
 
@@ -675,14 +668,10 @@ describe('AccountService', () => {
                 accountFollowedEvent = event;
             });
 
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower',
-            });
+            const [[account], [follower]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(account, follower);
 
@@ -704,14 +693,10 @@ describe('AccountService', () => {
                 eventCount++;
             });
 
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower',
-            });
+            const [[account], [follower]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(account, follower);
             await service.recordAccountFollow(account, follower);
@@ -791,22 +776,13 @@ describe('AccountService', () => {
 
     describe('getFollowingAccounts', () => {
         it('should retrieve the accounts that an account follows', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const following1 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'following1',
-            });
-            const following2 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'following2',
-            });
-            const following3 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'following3',
-            });
+            const [[account], [following1], [following2], [following3]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
 
             await service.recordAccountFollow(following1, account);
             await service.recordAccountFollow(following2, account);
@@ -867,18 +843,11 @@ describe('AccountService', () => {
 
     describe('getFollowingAccountsCount', () => {
         it('should retrieve the number of accounts that an account follows', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const following1 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'following1',
-            });
-            const following2 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'following2',
-            });
+            const [[account], [following1], [following2]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(following1, account);
             await service.recordAccountFollow(following2, account);
@@ -891,22 +860,13 @@ describe('AccountService', () => {
 
     describe('getFollowerAccounts', () => {
         it('should retrieve the accounts that are following an account', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower1 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower1',
-            });
-            const follower2 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower2',
-            });
-            const follower3 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower3',
-            });
+            const [[account], [follower1], [follower2], [follower3]] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                ]);
 
             await service.recordAccountFollow(account, follower1);
             await service.recordAccountFollow(account, follower2);
@@ -963,18 +923,11 @@ describe('AccountService', () => {
 
     describe('getFollowerAccountsCount', () => {
         it('should retrieve the number of accounts that are following an account', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const follower1 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower1',
-            });
-            const follower2 = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'follower2',
-            });
+            const [[account], [follower1], [follower2]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(account, follower1);
             await service.recordAccountFollow(account, follower2);
@@ -987,18 +940,11 @@ describe('AccountService', () => {
 
     describe('checkIfAccountIsFollowing', () => {
         it('should check if an account is following another account', async () => {
-            const account = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'account',
-            });
-            const followee = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'followee',
-            });
-            const nonFollowee = await service.createInternalAccount(site, {
-                ...internalAccountData,
-                username: 'non-followee',
-            });
+            const [[account], [followee], [nonFollowee]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
 
             await service.recordAccountFollow(followee, account);
 

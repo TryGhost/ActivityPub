@@ -83,8 +83,10 @@ describe('AccountView', () => {
 
     describe('viewById', () => {
         it('should be able to view an internal account by its ID', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount(
+                null,
+                'eggs.food',
+            );
 
             const view = await accountView.viewById(account.id!);
 
@@ -97,29 +99,7 @@ describe('AccountView', () => {
         });
 
         it('should not be able to view an external account by its ID', async () => {
-            const account = await accountService.createExternalAccount({
-                username: 'external-account',
-                name: 'External Account',
-                bio: 'External Account Bio',
-                avatar_url: 'https://example.com/avatars/external-account.png',
-                banner_image_url:
-                    'https://example.com/banners/external-account.png',
-                url: 'https://example.com/users/external-account',
-                custom_fields: {},
-                ap_id: 'https://example.com/activitypub/users/external-account',
-                ap_inbox_url:
-                    'https://example.com/activitypub/inbox/external-account',
-                ap_outbox_url:
-                    'https://example.com/activitypub/outbox/external-account',
-                ap_following_url:
-                    'https://example.com/activitypub/following/external-account',
-                ap_followers_url:
-                    'https://example.com/activitypub/followers/external-account',
-                ap_liked_url:
-                    'https://example.com/activitypub/liked/external-account',
-                ap_shared_inbox_url: null,
-                ap_public_key: '',
-            });
+            const account = await fixtureManager.createExternalAccount();
 
             const view = await accountView.viewById(account.id!);
 
@@ -127,8 +107,7 @@ describe('AccountView', () => {
         });
 
         it('should include the number of posts for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount();
 
             await postRepository.save(
                 Post.createFromData(account, {
@@ -144,8 +123,7 @@ describe('AccountView', () => {
         });
 
         it('should include the number of liked posts for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount();
 
             const post = Post.createFromData(account, {
                 type: PostType.Article,
@@ -161,8 +139,7 @@ describe('AccountView', () => {
         });
 
         it('should include the number of reposts in the posts count for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount();
 
             const post = Post.createFromData(account, {
                 type: PostType.Article,
@@ -178,21 +155,10 @@ describe('AccountView', () => {
         });
 
         it('should include the number of followers for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const site2 = await siteService.initialiseSiteForHost('site-2.com');
-            const site2Account = await accountService.getAccountForSite(site2);
-            const site2AccountAsType = await accountService.getByInternalId(
-                site2Account.id!,
-            );
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [site2Account] = await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                siteAccountAsType!,
-                site2AccountAsType!,
-            );
+            await fixtureManager.createFollow(site2Account, siteAccount);
 
             const view = await accountView.viewById(siteAccount.id!);
 
@@ -203,21 +169,10 @@ describe('AccountView', () => {
         });
 
         it('should include the number of following for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const site2Account =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const site2AccountAsType = await accountService.getByInternalId(
-                site2Account.id!,
-            );
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [site2Account] = await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                site2AccountAsType!,
-                siteAccountAsType!,
-            );
+            await fixtureManager.createFollow(siteAccount, site2Account);
 
             const view = await accountView.viewById(siteAccount.id!);
 
@@ -228,22 +183,11 @@ describe('AccountView', () => {
         });
 
         it('should include the follow status for the request user', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const requestUserSite =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const requestUserAccount =
-                await accountService.getAccountForSite(requestUserSite);
-            const requestUserAccountAsType =
-                await accountService.getByInternalId(requestUserAccount.id!);
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [requestUserAccount] =
+                await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                requestUserAccountAsType!,
-                siteAccountAsType!,
-            );
+            await fixtureManager.createFollow(siteAccount, requestUserAccount);
 
             const view = await accountView.viewById(siteAccount.id!, {
                 requestUserAccount: requestUserAccount!,
@@ -257,22 +201,11 @@ describe('AccountView', () => {
         });
 
         it('should include the following status for the request user', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const requestUserSite =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const requestUserAccount =
-                await accountService.getAccountForSite(requestUserSite);
-            const requestUserAccountAsType =
-                await accountService.getByInternalId(requestUserAccount.id!);
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [requestUserAccount] =
+                await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                siteAccountAsType!,
-                requestUserAccountAsType!,
-            );
+            await fixtureManager.createFollow(requestUserAccount, siteAccount);
 
             const view = await accountView.viewById(siteAccount.id!, {
                 requestUserAccount: requestUserAccount!,
@@ -306,8 +239,8 @@ describe('AccountView', () => {
 
     describe('viewByHandle', () => {
         it('should be able to view an account by its handle', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
             const handle = `@${account.username}@${site.host}`;
             const expectedApId = account.apId.toString();
@@ -344,8 +277,8 @@ describe('AccountView', () => {
         });
 
         it('should return null if the AP ID cannot be resolved for the handle', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account, site] =
+                await fixtureManager.createInternalAccount();
 
             const spy = vi.spyOn(AccountView.prototype, 'viewByApId');
 
@@ -365,8 +298,10 @@ describe('AccountView', () => {
 
     describe('viewByApId', () => {
         it('should be able to view an internal account by its AP ID', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount(
+                null,
+                'billy-elliot.dance',
+            );
 
             const view = await accountView.viewByApId(account.apId.toString());
 
@@ -379,8 +314,7 @@ describe('AccountView', () => {
         });
 
         it('should include the number of posts for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount();
 
             await postRepository.save(
                 Post.createFromData(account, {
@@ -396,8 +330,7 @@ describe('AccountView', () => {
         });
 
         it('should include the number of liked posts for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount();
 
             const post = Post.createFromData(account, {
                 type: PostType.Article,
@@ -413,8 +346,7 @@ describe('AccountView', () => {
         });
 
         it('should include the number of reposts in the posts count for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('example.com');
-            const account = await accountService.getAccountForSite(site);
+            const [account] = await fixtureManager.createInternalAccount();
 
             const post = Post.createFromData(account, {
                 type: PostType.Article,
@@ -430,21 +362,10 @@ describe('AccountView', () => {
         });
 
         it('should include the number of followers for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const site2Account =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const site2AccountAsType = await accountService.getByInternalId(
-                site2Account.id!,
-            );
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [site2Account] = await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                siteAccountAsType!,
-                site2AccountAsType!,
-            );
+            await fixtureManager.createFollow(site2Account, siteAccount);
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
@@ -457,21 +378,10 @@ describe('AccountView', () => {
         });
 
         it('should include the number of following for the account', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const site2Account =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const site2AccountAsType = await accountService.getByInternalId(
-                site2Account.id!,
-            );
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [site2Account] = await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                site2AccountAsType!,
-                siteAccountAsType!,
-            );
+            await fixtureManager.createFollow(siteAccount, site2Account);
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
@@ -484,28 +394,15 @@ describe('AccountView', () => {
         });
 
         it('should include the follow status for the request user', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const requestUserSite =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const requestUserAccount =
-                await accountService.getAccountForSite(requestUserSite);
-            const requestUserAccountAsType =
-                await accountService.getByInternalId(requestUserAccount.id!);
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [requestUserAccount] =
+                await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                requestUserAccountAsType!,
-                siteAccountAsType!,
-            );
+            await fixtureManager.createFollow(siteAccount, requestUserAccount);
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
-                {
-                    requestUserAccount: requestUserAccount!,
-                },
+                { requestUserAccount: requestUserAccount! },
             );
 
             expect(view).not.toBeNull();
@@ -516,28 +413,15 @@ describe('AccountView', () => {
         });
 
         it('should include the following status for the request user', async () => {
-            const site = await siteService.initialiseSiteForHost('site-1.com');
-            const siteAccount = await accountService.getAccountForSite(site);
-            const siteAccountAsType = await accountService.getByInternalId(
-                siteAccount.id!,
-            );
-            const requestUserSite =
-                await siteService.initialiseSiteForHost('site-2.com');
-            const requestUserAccount =
-                await accountService.getAccountForSite(requestUserSite);
-            const requestUserAccountAsType =
-                await accountService.getByInternalId(requestUserAccount.id!);
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [requestUserAccount] =
+                await fixtureManager.createInternalAccount();
 
-            await accountService.recordAccountFollow(
-                siteAccountAsType!,
-                requestUserAccountAsType!,
-            );
+            await fixtureManager.createFollow(requestUserAccount, siteAccount);
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
-                {
-                    requestUserAccount: requestUserAccount!,
-                },
+                { requestUserAccount: requestUserAccount! },
             );
 
             expect(view).not.toBeNull();
@@ -557,15 +441,21 @@ describe('AccountView', () => {
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
-                {
-                    requestUserAccount: requestUserAccount!,
-                },
+                { requestUserAccount: requestUserAccount! },
             );
 
             expect(view).not.toBeNull();
             expect(view!.id).toBe(siteAccount.id);
 
             expect(view!.blockedByMe).toBe(true);
+        });
+
+        it('should be able to view an external account by its AP ID', async () => {
+            const account = await fixtureManager.createExternalAccount();
+
+            const view = await accountView.viewByApId(account.apId.toString());
+
+            expect(view).toBeNull();
         });
     });
 });
