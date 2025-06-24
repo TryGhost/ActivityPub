@@ -284,13 +284,14 @@ describe('ModerationService', () => {
         });
 
         it('should prevent interaction when the domain is blocked', async () => {
-            const [[aliceAccount], [bobAccount, bobSite]] = await Promise.all([
+            const [[aliceAccount], bobAccount] = await Promise.all([
                 fixtureManager.createInternalAccount(),
-                fixtureManager.createInternalAccount(null, 'blocked.com'),
+                fixtureManager.createExternalAccount(),
             ]);
 
-            const [charlieAccount] =
-                await fixtureManager.createInternalAccount(bobSite);
+            const charlieAccount = await fixtureManager.createExternalAccount(
+                bobAccount.url.href,
+            );
 
             await fixtureManager.createDomainBlock(
                 aliceAccount,
