@@ -493,8 +493,9 @@ export class AccountPostsView {
 
                 // Check if current user follows the post author
                 let authorFollowedByMe = currentUserFollowsProfileAccount;
+                activity.actor.followedByMe = currentUserFollowsProfileAccount;
 
-                if (activity.type !== 'Announce') {
+                if (activity.type === 'Announce') {
                     const authorAccount = await this.getAccountByApId(
                         new URL(activity.object.attributedTo.id),
                     );
