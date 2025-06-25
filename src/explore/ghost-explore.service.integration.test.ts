@@ -2,7 +2,9 @@ import type { Logger } from '@logtape/logtape';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import { AccountCreatedEvent } from 'account/events';
+import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
+import { error, ok } from 'core/result';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
@@ -49,9 +51,20 @@ describe('GhostExploreService', () => {
     let events: AsyncEvents;
     let accountRepository: KnexAccountRepository;
     let accountService: AccountService;
+    let fedifyContextFactory: FedifyContextFactory;
     let logger: Logger;
     let db: Knex;
     let fixtureManager: FixtureManager;
+    let mockFedifyContext: {
+        getObjectUri: ReturnType<typeof vi.fn>;
+        sendActivity: ReturnType<typeof vi.fn>;
+        data: {
+            globaldb: {
+                set: ReturnType<typeof vi.fn>;
+            };
+        };
+    };
+    let mockSendActivity: ReturnType<typeof vi.fn>;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -74,8 +87,27 @@ describe('GhostExploreService', () => {
 
         // Mock AccountService
         accountService = {
-            followAccount: vi.fn().mockResolvedValue(undefined),
+            ensureByApId: vi.fn(),
         } as unknown as AccountService;
+
+        // Mock FedifyContext
+        mockSendActivity = vi.fn().mockResolvedValue(undefined);
+        mockFedifyContext = {
+            getObjectUri: vi
+                .fn()
+                .mockReturnValue(new URL('https://example.com/follow/123')),
+            sendActivity: mockSendActivity,
+            data: {
+                globaldb: {
+                    set: vi.fn(),
+                },
+            },
+        };
+
+        // Mock FedifyContextFactory
+        fedifyContextFactory = {
+            getFedifyContext: vi.fn().mockReturnValue(mockFedifyContext),
+        } as unknown as FedifyContextFactory;
 
         // Create the service
         service = new GhostExploreService(
@@ -83,6 +115,7 @@ describe('GhostExploreService', () => {
             accountRepository,
             accountService,
             logger,
+            fedifyContextFactory,
         );
     });
 
@@ -111,24 +144,34 @@ describe('GhostExploreService', () => {
                 fixtureManager,
             );
 
+            // Mock ensureByApId to return the Ghost Explore account
+            vi.mocked(accountService.ensureByApId).mockResolvedValue(
+                ok(ghostExploreAccount),
+            );
+
             // Create internal account
             const [internalAccount] =
                 await fixtureManager.createInternalAccount();
 
             await service.followGhostExplore(internalAccount.id);
 
-            expect(accountService.followAccount).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    id: internalAccount.id,
-                    isInternal: true,
-                }),
-                expect.objectContaining({
-                    id: ghostExploreAccount.id,
-                    apId: expect.objectContaining({
-                        href: 'https://mastodon.social/users/ghostexplore',
-                    }),
-                }),
+            // Verify ensureByApId was called with correct URL
+            expect(accountService.ensureByApId).toHaveBeenCalledWith(
+                new URL('https://mastodon.social/users/ghostexplore'),
             );
+
+            // Verify follow activity was sent
+            expect(mockSendActivity).toHaveBeenCalledWith(
+                { username: internalAccount.username },
+                {
+                    id: ghostExploreAccount.apId,
+                    inboxId: ghostExploreAccount.apInbox,
+                },
+                expect.any(Object), // The Follow activity object
+            );
+
+            // Verify globaldb.set was called
+            expect(mockFedifyContext.data.globaldb.set).toHaveBeenCalled();
 
             expect(logger.info).toHaveBeenCalledWith(
                 'Following Ghost Explore account for new account {apId}',
@@ -147,7 +190,8 @@ describe('GhostExploreService', () => {
 
             await service.followGhostExplore(externalAccount.id);
 
-            expect(accountService.followAccount).not.toHaveBeenCalled();
+            expect(accountService.ensureByApId).not.toHaveBeenCalled();
+            expect(mockSendActivity).not.toHaveBeenCalled();
             expect(logger.debug).toHaveBeenCalledWith(
                 'Not following Ghost Explore account for non-internal account {apId}',
                 expect.objectContaining({
@@ -161,7 +205,8 @@ describe('GhostExploreService', () => {
 
             await service.followGhostExplore(nonExistentId);
 
-            expect(accountService.followAccount).not.toHaveBeenCalled();
+            expect(accountService.ensureByApId).not.toHaveBeenCalled();
+            expect(mockSendActivity).not.toHaveBeenCalled();
             expect(logger.error).toHaveBeenCalledWith(
                 'Could not find account {id} for account created event',
                 expect.objectContaining({
@@ -171,20 +216,33 @@ describe('GhostExploreService', () => {
         });
 
         it('should log error when Ghost Explore account is not found', async () => {
+            // Mock ensureByApId to return an error
+            vi.mocked(accountService.ensureByApId).mockResolvedValue(
+                error('not-found' as const),
+            );
+
             // Create internal account but no Ghost Explore account
             const [internalAccount] =
                 await fixtureManager.createInternalAccount();
 
             await service.followGhostExplore(internalAccount.id);
 
-            expect(accountService.followAccount).not.toHaveBeenCalled();
+            expect(mockSendActivity).not.toHaveBeenCalled();
             expect(logger.error).toHaveBeenCalledWith(
                 'Ghost Explore account not found',
             );
         });
 
         it('should handle AccountCreatedEvent', async () => {
-            await createGhostExploreAccount(db, fixtureManager);
+            const ghostExploreAccount = await createGhostExploreAccount(
+                db,
+                fixtureManager,
+            );
+
+            // Mock ensureByApId to return the Ghost Explore account
+            vi.mocked(accountService.ensureByApId).mockResolvedValue(
+                ok(ghostExploreAccount),
+            );
 
             // Create internal account
             const [internalAccount] =
@@ -195,7 +253,8 @@ describe('GhostExploreService', () => {
             const event = new AccountCreatedEvent(internalAccount.id);
             await events.emitAsync(AccountCreatedEvent.getName(), event);
 
-            expect(accountService.followAccount).toHaveBeenCalled();
+            expect(accountService.ensureByApId).toHaveBeenCalled();
+            expect(mockSendActivity).toHaveBeenCalled();
         });
     });
 });

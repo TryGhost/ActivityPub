@@ -839,6 +839,20 @@ app.use(async (ctx, next) => {
     await next();
 });
 
+app.use(async (ctx, next) => {
+    const globaldb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
+
+    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
+        globaldb,
+        logger,
+    });
+
+    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
+        'fedifyContextFactory',
+    );
+    await fedifyContextFactory.registerContext(fedifyContext, next);
+});
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
@@ -895,21 +909,6 @@ app.use(async (ctx, next) => {
             status: 401,
         });
     }
-});
-
-app.use(async (ctx, next) => {
-    const globaldb = ctx.get('globaldb');
-    const logger = ctx.get('logger');
-
-    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
-        globaldb,
-        logger,
-    });
-
-    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
-        'fedifyContextFactory',
-    );
-    await fedifyContextFactory.registerContext(fedifyContext, next);
 });
 
 /** Custom API routes */
