@@ -200,54 +200,61 @@ export class AccountService {
 
             throw new Error(`Account ${account.id} not found`);
         } catch (error) {
-            if (isDuplicateEntryError(error)) {
-                const existingAccount = await this.accountRepository.getByApId(
-                    draft.apId,
+            if (!isDuplicateEntryError(error)) {
+                throw error;
+            }
+
+            const existingAccount = await this.accountRepository.getByApId(
+                draft.apId,
+            );
+
+            if (!existingAccount) {
+                throw new Error(
+                    `Got duplicate entry error for account but account ${draft.apId} not found`,
                 );
+            }
 
-                if (!existingAccount) {
-                    throw error;
-                }
-
-                if (existingAccount.isInternal) {
-                    const returnVal = await this.getByInternalId(
-                        existingAccount.id,
-                    );
-                    if (returnVal) {
-                        return returnVal;
-                    }
-                    throw new Error(`Account ${existingAccount.id} not found`);
-                }
-
-                // If the existing account doesn't have a private key, generate one
-                // This is required for the account to sign outgoing activities after
-                // a potential migration from a different server.
-                const newKeyPair = await this.generateKeyPair();
-                await this.db('accounts')
-                    .where({ id: existingAccount.id })
-                    .update({
-                        ap_public_key: JSON.stringify(
-                            await exportJwk(newKeyPair.publicKey),
-                        ),
-                        ap_private_key: JSON.stringify(
-                            await exportJwk(newKeyPair.privateKey),
-                        ),
-                    });
-
-                await this.db('users').insert({
-                    account_id: existingAccount.id,
-                    site_id: site.id,
-                });
-
+            if (existingAccount.isInternal) {
                 const returnVal = await this.getByInternalId(
                     existingAccount.id,
                 );
                 if (returnVal) {
                     return returnVal;
                 }
-                throw new Error(`Account ${existingAccount.id} not found`);
+                throw new Error(
+                    `Got duplicate entry for internal account but account ${existingAccount.id} not found`,
+                );
             }
-            throw error;
+
+            // If the existing account isn't internal, generate a private key
+            // This is required for the account to sign outgoing activities after
+            // a potential migration from a different server.
+            const newKeyPair = await this.generateKeyPair();
+            await this.db('accounts')
+                .where({ id: existingAccount.id })
+                .update({
+                    ap_public_key: JSON.stringify(
+                        await exportJwk(newKeyPair.publicKey),
+                    ),
+                    ap_private_key: JSON.stringify(
+                        await exportJwk(newKeyPair.privateKey),
+                    ),
+                });
+
+            await this.db('users').insert({
+                account_id: existingAccount.id,
+                site_id: site.id,
+            });
+
+            const returnVal = await this.getByInternalId(existingAccount.id);
+
+            if (returnVal) {
+                return returnVal;
+            }
+
+            throw new Error(
+                `Got duplicate entry error for external account but account ${existingAccount.id} not found`,
+            );
         }
     }
 
