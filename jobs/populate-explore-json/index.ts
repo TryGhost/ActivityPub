@@ -2,6 +2,7 @@ import { promisify } from 'node:util';
 import { gzip } from 'node:zlib';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
+    Object as APObject,
     type Actor,
     type Collection,
     isActor,
@@ -100,10 +101,22 @@ async function fetchActor(
 }
 
 // Fetch actor directly from URL
-async function fetchActorFromUrl(url: string): Promise<Actor | null> {
+async function fetchActorFromUrl(
+    url: string,
+    retries = 0,
+): Promise<Actor | null> {
+    if (retries > 4) {
+        console.error(
+            `Failed to fetch actor from ${url} after ${retries} retries`,
+        );
+        return null;
+    }
+
+    let object: unknown;
+
     try {
-        const object = await fetchWithTimeout(
-            lookupObject(url),
+        object = await fetchWithTimeout(
+            fetch(url).then((res) => res.json()),
             config.requestTimeout,
             `Actor lookup for ${url}`,
         );
@@ -113,15 +126,18 @@ async function fetchActorFromUrl(url: string): Promise<Actor | null> {
             return null;
         }
 
-        if (!isActor(object)) {
+        const actor = await APObject.fromJsonLd(object);
+
+        if (!isActor(actor)) {
             console.error(`Object is not an actor: ${url}`, object);
             return null;
         }
 
-        return object;
+        return object as Actor;
     } catch (error) {
-        console.error(`Failed to fetch actor from ${url}:`, error);
-        return null;
+        console.error(`Failed to fetch actor from ${url}:`, error, object);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return fetchActorFromUrl(url, retries + 1);
     }
 }
 
