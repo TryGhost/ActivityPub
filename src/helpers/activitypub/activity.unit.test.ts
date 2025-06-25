@@ -163,7 +163,7 @@ describe('Build activity', () => {
                 {
                     type: 'Image',
                     mediaType: 'image/jpeg',
-                    name: 'test.jpg',
+                    name: 'alt text for image',
                     url: new URL('https://example.com/images/test.jpg'),
                 },
             ];

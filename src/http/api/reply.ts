@@ -233,6 +233,7 @@ export async function handleCreateReply(
                       (attachment) =>
                           new Image({
                               url: attachment.url,
+                              name: attachment.name,
                           }),
                   )
             : undefined,

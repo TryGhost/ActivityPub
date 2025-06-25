@@ -26,6 +26,7 @@
   "id": "https://example.com/create/cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4",
   "object": {
     "attachment": {
+      "name": "alt text for image",
       "type": "Image",
       "url": "https://example.com/images/test.jpg",
     },
