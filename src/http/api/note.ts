@@ -7,6 +7,12 @@ import { postToDTO } from './helpers/post';
 
 const NoteSchema = z.object({
     content: z.string(),
+    image: z
+        .object({
+            url: z.string().url().optional(),
+            altText: z.string().optional(),
+        })
+        .optional(),
     imageUrl: z.string().url().optional(),
 });
 
@@ -25,10 +31,21 @@ export async function handleCreateNote(
         );
     }
 
+    let imageUrl: URL | undefined;
+
+    if (data.imageUrl) {
+        imageUrl = new URL(data.imageUrl);
+    } else if (data.image?.url) {
+        imageUrl = new URL(data.image.url);
+    }
+
+    const altText = data.image?.altText ?? undefined;
+
     const postResult = await postService.createNote(
         ctx.get('account'),
         data.content,
-        data.imageUrl ? new URL(data.imageUrl) : undefined,
+        imageUrl,
+        altText,
     );
 
     if (isError(postResult)) {

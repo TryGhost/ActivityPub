@@ -288,6 +288,7 @@ export class PostService {
         account: Account,
         content: string,
         image?: URL,
+        altText?: string,
     ): Promise<Result<Post, VerificationError>> {
         if (image) {
             const result = await this.imageStorageService.verifyFileUrl(image);
@@ -298,7 +299,13 @@ export class PostService {
 
         const mentions = await this.getMentionsFromContent(content);
 
-        const post = Post.createNote(account, content, image, mentions);
+        const post = Post.createNote(
+            account,
+            content,
+            image,
+            mentions,
+            altText,
+        );
 
         await this.postRepository.save(post);
 
@@ -310,6 +317,7 @@ export class PostService {
         content: string,
         inReplyToId: URL,
         image?: URL,
+        altText?: string,
     ): Promise<
         Result<Post, VerificationError | GetByApIdError | InteractionError>
     > {
@@ -345,6 +353,7 @@ export class PostService {
             inReplyTo,
             image,
             mentions,
+            altText,
         );
 
         await this.postRepository.save(post);

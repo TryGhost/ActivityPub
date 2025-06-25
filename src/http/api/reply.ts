@@ -20,6 +20,12 @@ import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 
 const ReplyActionSchema = z.object({
     content: z.string(),
+    image: z
+        .object({
+            url: z.string().url().optional(),
+            altText: z.string().optional(),
+        })
+        .optional(),
     imageUrl: z.string().url().optional(),
 });
 
@@ -97,11 +103,22 @@ export async function handleCreateReply(
         }),
     ];
 
+    let imageUrl: URL | undefined;
+
+    if (data.imageUrl) {
+        imageUrl = new URL(data.imageUrl);
+    } else if (data.image?.url) {
+        imageUrl = new URL(data.image.url);
+    }
+
+    const altText = data.image?.altText ?? undefined;
+
     const newReplyResult = await postService.createReply(
         account,
         data.content,
         inReplyToId,
-        data.imageUrl ? new URL(data.imageUrl) : undefined,
+        imageUrl,
+        altText,
     );
 
     if (isError(newReplyResult)) {

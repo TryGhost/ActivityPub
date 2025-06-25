@@ -412,6 +412,7 @@ export class Post extends BaseEntity {
         noteContent: string,
         imageUrl?: URL,
         mentions: Mention[] = [],
+        altText?: string,
     ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
@@ -433,7 +434,7 @@ export class Post extends BaseEntity {
                   {
                       type: 'Image',
                       mediaType: null,
-                      name: null,
+                      name: altText ?? null,
                       url: imageUrl,
                   },
               ]
@@ -478,6 +479,7 @@ export class Post extends BaseEntity {
         inReplyTo: Post,
         imageUrl?: URL,
         mentions: Mention[] = [],
+        altText?: string,
     ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
@@ -506,7 +508,7 @@ export class Post extends BaseEntity {
                   {
                       type: 'Image',
                       mediaType: null,
-                      name: null,
+                      name: altText ?? null,
                       url: imageUrl,
                   },
               ]
