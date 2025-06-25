@@ -10,9 +10,9 @@ import type { Knex } from 'knex';
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
 import { type Result, error, getValue, isError, ok } from 'core/result';
+import { parseURL } from 'core/url';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { AP_BASE_PATH } from '../constants';
-import type { Account } from './account.entity';
+import { type Account, AccountEntity } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
 import { AccountFollowedEvent } from './events/account-followed.event';
 import type {
@@ -173,116 +173,89 @@ export class AccountService {
     async createInternalAccount(
         site: Site,
         internalAccountData: InternalAccountData,
-        transaction?: Knex.Transaction,
     ): Promise<AccountType> {
         const keyPair = await this.generateKeyPair();
-        const username = internalAccountData.username;
 
         const normalizedHost = site.host.replace(/^www\./, '');
-        const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
 
-        const accountData = {
+        const draft = AccountEntity.draft({
+            isInternal: true,
+            host: new URL(`https://${site.host}`),
+            username: internalAccountData.username,
             name: internalAccountData.name || normalizedHost,
-            uuid: randomUUID(),
-            username: username,
             bio: internalAccountData.bio || null,
-            avatar_url: internalAccountData.avatar_url || null,
-            banner_image_url: null,
-            url: `https://${site.host}`,
-            custom_fields: null,
-            ap_id: apId,
-            ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
-            ap_shared_inbox_url: null,
-            ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
-            ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
-            ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
-            ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
-            ap_public_key: JSON.stringify(await exportJwk(keyPair.publicKey)),
-            ap_private_key: JSON.stringify(await exportJwk(keyPair.privateKey)),
-            domain: site.host,
-        };
+            url: new URL(`https://${site.host}`),
+            avatarUrl: parseURL(internalAccountData.avatar_url),
+            bannerImageUrl: null,
+            apPublicKey: keyPair.publicKey,
+            apPrivateKey: keyPair.privateKey,
+        });
 
-        const createOrFetchAccountAndUser = async (
-            tx: Knex.Transaction | Knex,
-        ): Promise<AccountType> => {
-            try {
-                const [accountId] = await tx('accounts').insert(accountData);
+        try {
+            const account = await this.accountRepository.create(draft);
+            const returnVal = await this.getByInternalId(account.id);
+            if (returnVal) {
+                return returnVal;
+            }
 
-                await tx('users').insert({
-                    account_id: accountId,
-                    site_id: site.id,
-                });
-
-                return {
-                    id: accountId,
-                    ...accountData,
-                };
-            } catch (error) {
-                if (isDuplicateEntryError(error)) {
-                    const existingAccount = await tx('accounts')
-                        .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
-                        .first<AccountType>();
-
-                    if (!existingAccount) {
-                        throw error;
-                    }
-
-                    // If the existing account doesn't have a private key, generate one
-                    // This is required for the account to sign outgoing activities after
-                    // a potential migration from a different server.
-                    if (
-                        !existingAccount.ap_private_key ||
-                        existingAccount.ap_private_key === ''
-                    ) {
-                        const newKeyPair = await this.generateKeyPair();
-                        await tx('accounts')
-                            .where({ id: existingAccount.id })
-                            .update({
-                                ap_public_key: JSON.stringify(
-                                    await exportJwk(newKeyPair.publicKey),
-                                ),
-                                ap_private_key: JSON.stringify(
-                                    await exportJwk(newKeyPair.privateKey),
-                                ),
-                            });
-
-                        existingAccount.ap_public_key = JSON.stringify(
-                            await exportJwk(newKeyPair.publicKey),
-                        );
-                        existingAccount.ap_private_key = JSON.stringify(
-                            await exportJwk(newKeyPair.privateKey),
-                        );
-                    }
-
-                    // Ensure a user row exists linking this site to the account.
-                    // This is relevant for cases where a user is migrating between
-                    // Ghost servers.
-                    const existingUser = await tx('users')
-                        .where({
-                            account_id: existingAccount.id,
-                            site_id: site.id,
-                        })
-                        .first();
-
-                    if (!existingUser) {
-                        await tx('users').insert({
-                            account_id: existingAccount.id,
-                            site_id: site.id,
-                        });
-                    }
-
-                    return existingAccount;
-                }
+            throw new Error(`Account ${account.id} not found`);
+        } catch (error) {
+            if (!isDuplicateEntryError(error)) {
                 throw error;
             }
-        };
 
-        if (!transaction) {
-            return await this.db.transaction(async (tx) => {
-                return await createOrFetchAccountAndUser(tx);
+            const existingAccount = await this.accountRepository.getByApId(
+                draft.apId,
+            );
+
+            if (!existingAccount) {
+                throw new Error(
+                    `Got duplicate entry error for account but account ${draft.apId} not found`,
+                );
+            }
+
+            if (existingAccount.isInternal) {
+                const returnVal = await this.getByInternalId(
+                    existingAccount.id,
+                );
+                if (returnVal) {
+                    return returnVal;
+                }
+                throw new Error(
+                    `Got duplicate entry for internal account but account ${existingAccount.id} not found`,
+                );
+            }
+
+            // If the existing account isn't internal, generate a private key
+            // This is required for the account to sign outgoing activities after
+            // a potential migration from a different server.
+            const newKeyPair = await this.generateKeyPair();
+            await this.db('accounts')
+                .where({ id: existingAccount.id })
+                .update({
+                    ap_public_key: JSON.stringify(
+                        await exportJwk(newKeyPair.publicKey),
+                    ),
+                    ap_private_key: JSON.stringify(
+                        await exportJwk(newKeyPair.privateKey),
+                    ),
+                });
+
+            await this.db('users').insert({
+                account_id: existingAccount.id,
+                site_id: site.id,
             });
+
+            const returnVal = await this.getByInternalId(existingAccount.id);
+
+            if (returnVal) {
+                return returnVal;
+            }
+
+            throw new Error(
+                `Got duplicate entry error for external account but account ${existingAccount.id} not found`,
+            );
         }
-        return await createOrFetchAccountAndUser(transaction);
     }
 
     /**

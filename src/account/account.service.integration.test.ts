@@ -118,7 +118,7 @@ describe('AccountService', () => {
             username: 'index',
             name: 'Test Site Title',
             bio: 'Test Site Description',
-            avatar_url: 'Test Site Icon',
+            avatar_url: 'https://www.example.com/avatars/internal-account.png',
         };
         externalAccountData = {
             username: 'external-account',
@@ -173,7 +173,7 @@ describe('AccountService', () => {
                 username: username,
                 bio: internalAccountData.bio || null,
                 avatar_url: internalAccountData.avatar_url || null,
-                url: `https://${site.host}`,
+                url: `https://${site.host}/`,
                 custom_fields: null,
                 ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
                 ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
@@ -226,7 +226,7 @@ describe('AccountService', () => {
                 username: username,
                 bio: internalAccountData.bio || null,
                 avatar_url: internalAccountData.avatar_url || null,
-                url: `https://${site.host}`,
+                url: `https://${site.host}/`,
                 custom_fields: null,
                 ap_id: `https://${site.host}${AP_BASE_PATH}/users/${username}`,
                 ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
@@ -740,9 +740,14 @@ describe('AccountService', () => {
                 ...internalAccountData,
                 username: 'account1',
             });
-            await service.createInternalAccount(site, {
+            const otherSite = await fixtureManager.createSite();
+            await service.createInternalAccount(otherSite, {
                 ...internalAccountData,
                 username: 'account2',
+            });
+
+            await db('users').where({ site_id: otherSite.id }).update({
+                site_id: site.id,
             });
 
             await expect(
