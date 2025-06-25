@@ -108,7 +108,17 @@ async function fetchActorFromUrl(url: string): Promise<Actor | null> {
             `Actor lookup for ${url}`,
         );
 
-        return object && isActor(object) ? object : null;
+        if (!object) {
+            console.error(`Object not found: ${url}`);
+            return null;
+        }
+
+        if (!isActor(object)) {
+            console.error(`Object is not an actor: ${url}`, object);
+            return null;
+        }
+
+        return object;
     } catch (error) {
         console.error(`Failed to fetch actor from ${url}:`, error);
         return null;
