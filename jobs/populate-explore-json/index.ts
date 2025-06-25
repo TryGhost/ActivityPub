@@ -133,7 +133,7 @@ async function fetchActorFromUrl(
             return null;
         }
 
-        return object as Actor;
+        return actor as Actor;
     } catch (error) {
         console.error(`Failed to fetch actor from ${url}:`, error, object);
         await new Promise((resolve) => setTimeout(resolve, 1000));
