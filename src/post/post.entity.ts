@@ -62,6 +62,11 @@ export interface Mention {
     account: Account;
 }
 
+export interface ImageAttachment {
+    url: URL;
+    altText?: string;
+}
+
 export type MentionedAccount = Pick<Account, 'id' | 'apId' | 'username'>;
 
 export interface PostData {
@@ -410,9 +415,8 @@ export class Post extends BaseEntity {
     static createNote(
         account: Account,
         noteContent: string,
-        imageUrl?: URL,
+        image?: ImageAttachment,
         mentions: Mention[] = [],
-        altText?: string,
     ): Post {
         if (!account.isInternal) {
             throw new Error('createNote is for use with internal accounts');
@@ -429,13 +433,13 @@ export class Post extends BaseEntity {
             addMentions: mentions,
         });
 
-        const postAttachment = imageUrl
+        const postAttachment = image
             ? [
                   {
                       type: 'Image',
                       mediaType: null,
-                      name: altText ?? null,
-                      url: imageUrl,
+                      name: image.altText ?? null,
+                      url: image.url,
                   },
               ]
             : [];
@@ -477,9 +481,8 @@ export class Post extends BaseEntity {
         account: Account,
         replyContent: string,
         inReplyTo: Post,
-        imageUrl?: URL,
+        image?: ImageAttachment,
         mentions: Mention[] = [],
-        altText?: string,
     ): Post {
         if (!account.isInternal) {
             throw new Error('createReply is for use with internal accounts');
@@ -503,13 +506,13 @@ export class Post extends BaseEntity {
             addMentions: mentions,
         });
 
-        const postAttachment = imageUrl
+        const postAttachment = image
             ? [
                   {
                       type: 'Image',
                       mediaType: null,
-                      name: altText ?? null,
-                      url: imageUrl,
+                      name: image.altText ?? null,
+                      url: image.url,
                   },
               ]
             : [];

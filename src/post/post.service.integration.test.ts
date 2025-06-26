@@ -219,11 +219,9 @@ describe('PostService', () => {
             const content = 'This is a test note with an image';
             const imageUrl = new URL('https://example.com/image.jpg');
 
-            const result = await postService.createNote(
-                account,
-                content,
-                imageUrl,
-            );
+            const result = await postService.createNote(account, content, {
+                url: imageUrl,
+            });
 
             if (isError(result)) {
                 throw new Error('Result should not be an error');
@@ -235,6 +233,30 @@ describe('PostService', () => {
                     type: 'Image',
                     mediaType: null,
                     name: null,
+                    url: new URL(imageUrl),
+                },
+            ]);
+        });
+
+        it('should handle image URLs and alt text correctly', async () => {
+            const content = 'This is a test note with an image';
+            const imageUrl = new URL('https://example.com/image.jpg');
+
+            const result = await postService.createNote(account, content, {
+                url: imageUrl,
+                altText: 'Image alt text',
+            });
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toEqual([
+                {
+                    type: 'Image',
+                    mediaType: null,
+                    name: 'Image alt text',
                     url: new URL(imageUrl),
                 },
             ]);
@@ -256,12 +278,13 @@ describe('PostService', () => {
             );
 
             const content = 'This is a test note';
-            const imageUrl = new URL('https://example.com/bad-image.jpg');
 
             const result = await serviceWithFailingStorage.createNote(
                 account,
                 content,
-                imageUrl,
+                {
+                    url: new URL('https://example.com/bad-image.jpg'),
+                },
             );
 
             expect(isError(result)).toBe(true);
