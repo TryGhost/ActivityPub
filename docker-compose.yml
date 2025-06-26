@@ -81,7 +81,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.4.5@sha256:a458cd83af2654878d5468ff01443c8378f375b707645b597c7c75202eaad541
+    image: mysql:8.4.5@sha256:9d43fc79508d3d3341221a8ec281835f848821d596022b286474ff810974513b
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -211,7 +211,7 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.4.5@sha256:a458cd83af2654878d5468ff01443c8378f375b707645b597c7c75202eaad541
+    image: mysql:8.4.5@sha256:9d43fc79508d3d3341221a8ec281835f848821d596022b286474ff810974513b
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
