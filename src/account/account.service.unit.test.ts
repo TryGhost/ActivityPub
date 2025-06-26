@@ -21,6 +21,7 @@ describe('AccountService', () => {
         knexAccountRepository = {
             save: vi.fn(),
             getById: vi.fn(),
+            getByApId: vi.fn(),
         } as unknown as KnexAccountRepository;
         fedifyContextFactory = {} as FedifyContextFactory;
         generateKeyPair = vi.fn();
@@ -80,6 +81,69 @@ describe('AccountService', () => {
                 username: 'alice',
                 avatarUrl: null,
                 bannerImageUrl: null,
+            });
+        });
+    });
+
+    describe('updateAccountByApId', () => {
+        it('should update the account with the provided data', async () => {
+            const updated = {} as unknown as AccountEntity;
+            const account = {
+                updateProfile: vi.fn().mockReturnValue(updated),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockImplementation(() =>
+                Promise.resolve(account),
+            );
+
+            const data = {
+                name: 'Alice',
+                bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
+                username: 'alice',
+                avatarUrl: 'https://example.com/avatar/alice.png',
+                bannerImageUrl: 'https://example.com/banner/alice.png',
+                url: 'https://example.com/url/alice',
+            };
+
+            await accountService.updateAccountByApId(account.apId, data);
+
+            expect(account.updateProfile).toHaveBeenCalledWith({
+                name: data.name,
+                bio: data.bio,
+                username: data.username,
+                avatarUrl: new URL(data.avatarUrl),
+                bannerImageUrl: new URL(data.bannerImageUrl),
+                url: new URL(data.url),
+            });
+
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(updated);
+        });
+
+        it('should handle empty values for avatarUrl, bannerImageUrl, and url', async () => {
+            const account = {
+                updateProfile: vi.fn(),
+            } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByApId).mockImplementation(() =>
+                Promise.resolve(account),
+            );
+
+            await accountService.updateAccountByApId(account.apId, {
+                name: 'Alice',
+                bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
+                username: 'alice',
+                avatarUrl: '',
+                bannerImageUrl: '',
+                url: '',
+            });
+
+            expect(account.updateProfile).toHaveBeenCalledWith({
+                name: 'Alice',
+                bio: 'Eiusmod in cillum elit sit cupidatat reprehenderit ad quis qui consequat officia elit.',
+                username: 'alice',
+                avatarUrl: null,
+                bannerImageUrl: null,
+                url: null,
             });
         });
     });

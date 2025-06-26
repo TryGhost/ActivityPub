@@ -1,5 +1,6 @@
 import type { Federation, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
+import { UpdateHandler } from 'activity-handlers/update.handler';
 import type { ContextData } from 'app';
 import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
 import type { PubSubEvents } from 'events/pubsub';
@@ -214,6 +215,7 @@ export function registerDependencies(
     container.register('createHandler', asClass(CreateHandler).singleton());
     container.register('deleteHandler', asClass(DeleteHandler).singleton());
     container.register('followHandler', asClass(FollowHandler).singleton());
+    container.register('updateHandler', asClass(UpdateHandler).singleton());
     container.register(
         'deleteDispatcher',
         asClass(DeleteDispatcher).singleton(),

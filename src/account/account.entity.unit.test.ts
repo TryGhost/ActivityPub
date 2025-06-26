@@ -387,6 +387,42 @@ describe('AccountEntity', () => {
             );
         });
 
+        it('can update url', async () => {
+            const draftData = await createInternalAccountDraftData({
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Original Name',
+                bio: 'Original Bio',
+                url: new URL('http://example.com/url'),
+                avatarUrl: new URL('http://example.com/original-avatar.png'),
+                bannerImageUrl: new URL(
+                    'http://example.com/original-banner.png',
+                ),
+            });
+
+            const draft = AccountEntity.draft(draftData);
+
+            const account = AccountEntity.create({
+                id: 1,
+                ...draft,
+            });
+
+            const updated = account.updateProfile({
+                url: new URL('http://example.com/updated-url'),
+            });
+
+            expect(updated.name).toBe('Original Name');
+            expect(updated.bio).toBe('Original Bio');
+            expect(updated.username).toBe('testuser');
+            expect(updated.avatarUrl?.href).toBe(
+                'http://example.com/original-avatar.png',
+            );
+            expect(updated.bannerImageUrl?.href).toBe(
+                'http://example.com/original-banner.png',
+            );
+            expect(updated.url?.href).toBe('http://example.com/updated-url');
+        });
+
         it('can update multiple properties at once', async () => {
             const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
@@ -415,6 +451,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/updated-banner.png',
                 ),
+                url: new URL('http://example.com/updated-url'),
             });
 
             expect(updated.name).toBe('Updated Name');
@@ -426,6 +463,7 @@ describe('AccountEntity', () => {
             expect(updated.bannerImageUrl?.href).toBe(
                 'http://example.com/updated-banner.png',
             );
+            expect(updated.url?.href).toBe('http://example.com/updated-url');
         });
 
         it('can set values to null', async () => {

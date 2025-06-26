@@ -203,6 +203,7 @@ export class AccountEntity implements Account {
                 bio: get('bio'),
                 avatarUrl: get('avatarUrl'),
                 bannerImageUrl: get('bannerImageUrl'),
+                url: get('url'),
             },
             this.events,
         );
@@ -212,7 +213,8 @@ export class AccountEntity implements Account {
             account.name !== this.name ||
             account.bio !== this.bio ||
             account.avatarUrl?.href !== this.avatarUrl?.href ||
-            account.bannerImageUrl?.href !== this.bannerImageUrl?.href
+            account.bannerImageUrl?.href !== this.bannerImageUrl?.href ||
+            account.url?.href !== this.url?.href
         ) {
             account.events = account.events.concat(
                 new AccountUpdatedEvent(account),
@@ -290,6 +292,7 @@ type ProfileUpdateParams = {
     username?: string;
     avatarUrl?: URL | null;
     bannerImageUrl?: URL | null;
+    url?: URL | null;
 };
 
 /**

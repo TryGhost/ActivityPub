@@ -35,6 +35,7 @@ import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { CreateHandler } from 'activity-handlers/create.handler';
 import type { FollowHandler } from 'activity-handlers/follow.handler';
+import type { UpdateHandler } from 'activity-handlers/update.handler';
 import type { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { get } from 'es-toolkit/compat';
 import { EventSerializer } from 'events/event';
@@ -398,6 +399,17 @@ inboxListener
             spanWrapper((ctx: Context<ContextData>, activity: Undo) => {
                 const undoHandler = container.resolve('undoHandler');
                 return undoHandler(ctx, activity);
+            }),
+        ),
+    )
+    .onError(inboxErrorHandler)
+    .on(
+        Update,
+        ensureCorrectContext(
+            spanWrapper((ctx: Context<ContextData>, activity: Update) => {
+                const updateHandler =
+                    container.resolve<UpdateHandler>('updateHandler');
+                return updateHandler.handle(ctx, activity);
             }),
         ),
     )
