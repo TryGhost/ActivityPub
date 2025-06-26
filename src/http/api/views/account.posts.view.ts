@@ -119,6 +119,7 @@ export class AccountPostsView {
             currentContextAccount.apId,
             apId,
             cursor,
+            account,
         );
     }
 
@@ -271,6 +272,7 @@ export class AccountPostsView {
         currentContextAccountApId: URL,
         apId: URL,
         cursor: string | null,
+        account?: Account | null,
     ): Promise<Result<AccountPosts, GetPostsError>> {
         const context = this.fedifyContextFactory.getFedifyContext();
 
@@ -294,6 +296,16 @@ export class AccountPostsView {
         };
 
         let page: CollectionPage | null = null;
+
+        // Check if current user follows the account whose posts we're viewing
+        const currentUserFollowsProfileAccount = account
+            ? !!(await this.db('follows')
+                  .where({
+                      follower_id: currentContextAccountId,
+                      following_id: account.id,
+                  })
+                  .first())
+            : false;
 
         try {
             if (cursor) {
@@ -339,6 +351,13 @@ export class AccountPostsView {
                 }
 
                 const object = await item.getObject();
+                if (!object) {
+                    continue;
+                }
+                const attributedTo = await object.getAttribution();
+                if (!attributedTo) {
+                    continue;
+                }
 
                 const activityObject = (await item.toJsonLd({
                     format: 'compact',
@@ -376,6 +395,7 @@ export class AccountPostsView {
                             preferredUsername: string;
                             name?: string;
                             icon?: { url?: string };
+                            followedByMe?: boolean;
                         };
                         authored?: boolean;
                         repostCount?: number;
@@ -392,6 +412,7 @@ export class AccountPostsView {
                         preferredUsername: string;
                         name?: string;
                         icon?: { url?: string };
+                        followedByMe?: boolean;
                     };
                 };
 
@@ -449,6 +470,10 @@ export class AccountPostsView {
                         activity.object.attributedTo,
                         { documentLoader },
                     );
+                    activity.object.attributedTo = {
+                        id: activity.object.attributedTo,
+                        preferredUsername: '',
+                    };
                     if (isActor(attributedTo)) {
                         const attributedToJson = await attributedTo.toJsonLd({
                             format: 'compact',
@@ -465,6 +490,31 @@ export class AccountPostsView {
                         continue;
                     }
                 }
+
+                // Check if current user follows the post author
+                let authorFollowedByMe = currentUserFollowsProfileAccount;
+                activity.actor.followedByMe = currentUserFollowsProfileAccount;
+
+                if (activity.type === 'Announce') {
+                    const authorAccount = await this.getAccountByApId(
+                        new URL(activity.object.attributedTo.id),
+                    );
+
+                    if (authorAccount) {
+                        const followsAuthor = await this.db('follows')
+                            .where({
+                                follower_id: currentContextAccountId,
+                                following_id: authorAccount.id,
+                            })
+                            .first();
+
+                        authorFollowedByMe = !!followsAuthor;
+                    } else {
+                        authorFollowedByMe = false;
+                    }
+                }
+
+                activity.object.attributedTo.followedByMe = authorFollowedByMe;
 
                 if (activity.object.tag && activity.object.type === 'Note') {
                     const mentionedAccounts: Mention[] = [];
@@ -705,7 +755,7 @@ export class AccountPostsView {
                 name: attributedTo.name || '',
                 url: attributedTo.id,
                 avatarUrl: attributedTo.icon?.url || '',
-                followedByMe: false,
+                followedByMe: attributedTo.followedByMe || false,
             },
             authoredByMe: object.authored || false,
             repostCount: object.repostCount || 0,
@@ -721,7 +771,7 @@ export class AccountPostsView {
                           name: actor.name || '',
                           url: actor.id,
                           avatarUrl: actor.icon?.url || '',
-                          followedByMe: false,
+                          followedByMe: actor.followedByMe || false,
                       }
                     : null,
         };
