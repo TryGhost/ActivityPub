@@ -31,6 +31,7 @@ import {
     keypairDispatcher,
 } from '../dispatchers';
 import { createIncomingPubSubMessageHandler } from '../events/pubsub-http';
+import { GhostExploreService } from '../explore/ghost-explore.service';
 import { FeedUpdateService } from '../feed/feed-update.service';
 import { FeedService } from '../feed/feed.service';
 import { FlagService } from '../flag/flag.service';
@@ -85,6 +86,7 @@ export function registerDependencies(
     },
 ) {
     container.register('logging', asValue(deps.globalLogging));
+    container.register('logger', asValue(deps.globalLogging));
     container.register('client', asValue(deps.knex));
     container.register('db', asValue(deps.knex));
     container.register('fedifyKv', asValue(deps.globalFedifyKv));
@@ -184,6 +186,10 @@ export function registerDependencies(
     container.register(
         'notificationEventService',
         asClass(NotificationEventService).singleton(),
+    );
+    container.register(
+        'ghostExploreService',
+        asClass(GhostExploreService).singleton(),
     );
 
     container.register('accountView', asClass(AccountView).singleton());

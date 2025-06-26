@@ -40,7 +40,7 @@ export class KnexAccountRepository {
     ) {}
 
     async create(draft: AccountDraft): Promise<Account> {
-        return await this.db.transaction(async (transaction) => {
+        const account = await this.db.transaction(async (transaction) => {
             const [accountId] = await transaction('accounts').insert({
                 uuid: draft.uuid,
                 username: draft.username,
@@ -84,14 +84,16 @@ export class KnexAccountRepository {
 
             const account = AccountEntity.fromDraft(draft, accountId);
 
-            const events = AccountEntity.pullEvents(account);
-
-            for (const event of events) {
-                await this.events.emitAsync(event.getName(), event);
-            }
-
             return account;
         });
+
+        const events = AccountEntity.pullEvents(account);
+
+        for (const event of events) {
+            await this.events.emitAsync(event.getName(), event);
+        }
+
+        return account;
     }
 
     async save(account: Account): Promise<void> {
