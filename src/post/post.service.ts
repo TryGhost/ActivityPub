@@ -29,6 +29,7 @@ import { ContentPreparer } from './content';
 import {
     type CreatePostError,
     type GhostPost,
+    type ImageAttachment,
     type Mention,
     Post,
     type PostAttachment,
@@ -287,10 +288,12 @@ export class PostService {
     async createNote(
         account: Account,
         content: string,
-        image?: URL,
+        image?: ImageAttachment,
     ): Promise<Result<Post, VerificationError>> {
         if (image) {
-            const result = await this.imageStorageService.verifyFileUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(
+                image.url,
+            );
             if (isError(result)) {
                 return result;
             }
@@ -309,12 +312,14 @@ export class PostService {
         account: Account,
         content: string,
         inReplyToId: URL,
-        image?: URL,
+        image?: ImageAttachment,
     ): Promise<
         Result<Post, VerificationError | GetByApIdError | InteractionError>
     > {
         if (image) {
-            const result = await this.imageStorageService.verifyFileUrl(image);
+            const result = await this.imageStorageService.verifyFileUrl(
+                image.url,
+            );
             if (isError(result)) {
                 return result;
             }

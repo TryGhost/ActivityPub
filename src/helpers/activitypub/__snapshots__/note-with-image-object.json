@@ -19,6 +19,7 @@
     },
   ],
   "attachment": {
+    "name": "alt text for image",
     "type": "Image",
     "url": "https://example.com/images/test.jpg",
   },

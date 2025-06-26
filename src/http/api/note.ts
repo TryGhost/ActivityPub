@@ -2,11 +2,18 @@ import { z } from 'zod';
 
 import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import type { ImageAttachment } from 'post/post.entity';
 import type { PostService } from 'post/post.service';
 import { postToDTO } from './helpers/post';
 
 const NoteSchema = z.object({
     content: z.string(),
+    image: z
+        .object({
+            url: z.string().url(),
+            altText: z.string().optional(),
+        })
+        .optional(),
     imageUrl: z.string().url().optional(),
 });
 
@@ -25,10 +32,25 @@ export async function handleCreateNote(
         );
     }
 
+    let imageUrl: URL | undefined;
+
+    if (data.imageUrl) {
+        imageUrl = new URL(data.imageUrl);
+    } else if (data.image) {
+        imageUrl = new URL(data.image.url);
+    }
+
+    const image: ImageAttachment | undefined = imageUrl
+        ? {
+              url: imageUrl,
+              altText: data.image?.altText ?? undefined,
+          }
+        : undefined;
+
     const postResult = await postService.createNote(
         ctx.get('account'),
         data.content,
-        data.imageUrl ? new URL(data.imageUrl) : undefined,
+        image,
     );
 
     if (isError(postResult)) {

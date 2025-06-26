@@ -58,3 +58,19 @@ Feature: Creating a note
       Hello, world!
       """
     Then the request is rejected with a 400
+
+  Scenario: Creating a note with an image
+    Given we are followed by "Alice"
+    When we create a note "Note" with an image
+    Then Activity with object "Note" is sent to all followers
+    And the "Note" is in our feed and has an image
+
+  Scenario: Creating a note with an image and alt text
+    Given we are followed by "Alice"
+    When we create a note "Note" with an image and alt text
+    Then Activity with object "Note" is sent to all followers
+    And the "Note" is in our feed and has an image and alt text
+
+  Scenario: Creating a note with an invalid image URL
+    When we create a note "Note" with an invalid image url
+    Then the note is not created

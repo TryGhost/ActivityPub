@@ -457,7 +457,10 @@ describe('Post', () => {
             const content = 'My first note';
             const imageUrl = 'https://example.com/image.jpg';
 
-            const note = Post.createNote(account, content, new URL(imageUrl));
+            const note = Post.createNote(account, content, {
+                url: new URL(imageUrl),
+                altText: 'Image alt text',
+            });
 
             expect(note.type).toBe(PostType.Note);
             expect(note.content).toBe('<p>My first note</p>');
@@ -465,7 +468,7 @@ describe('Post', () => {
                 {
                     type: 'Image',
                     mediaType: null,
-                    name: null,
+                    name: 'Image alt text',
                     url: new URL(imageUrl),
                 },
             ]);

@@ -47,6 +47,7 @@ export async function buildCreateActivityAndObjectFromPost(
                           (attachment) =>
                               new Image({
                                   url: attachment.url,
+                                  name: attachment.name,
                               }),
                       )
                 : undefined,

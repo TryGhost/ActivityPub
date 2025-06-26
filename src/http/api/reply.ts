@@ -15,11 +15,18 @@ import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import { getHandle } from 'helpers/activitypub/actor';
 import { lookupActor, lookupObject } from 'lookup-helpers';
+import type { ImageAttachment } from 'post/post.entity';
 import type { PostService } from 'post/post.service';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 
 const ReplyActionSchema = z.object({
     content: z.string(),
+    image: z
+        .object({
+            url: z.string().url(),
+            altText: z.string().optional(),
+        })
+        .optional(),
     imageUrl: z.string().url().optional(),
 });
 
@@ -97,11 +104,26 @@ export async function handleCreateReply(
         }),
     ];
 
+    let imageUrl: URL | undefined;
+
+    if (data.imageUrl) {
+        imageUrl = new URL(data.imageUrl);
+    } else if (data.image) {
+        imageUrl = new URL(data.image.url);
+    }
+
+    const image: ImageAttachment | undefined = imageUrl
+        ? {
+              url: imageUrl,
+              altText: data.image?.altText ?? undefined,
+          }
+        : undefined;
+
     const newReplyResult = await postService.createReply(
         account,
         data.content,
         inReplyToId,
-        data.imageUrl ? new URL(data.imageUrl) : undefined,
+        image,
     );
 
     if (isError(newReplyResult)) {
@@ -216,6 +238,7 @@ export async function handleCreateReply(
                       (attachment) =>
                           new Image({
                               url: attachment.url,
+                              name: attachment.name,
                           }),
                   )
             : undefined,

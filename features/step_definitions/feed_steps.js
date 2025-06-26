@@ -57,6 +57,29 @@ Then(
     },
 );
 
+Then('the {string} is in our feed and has an image', async function (noteName) {
+    const note = this.objects[noteName];
+
+    const found = await waitForAPObjectInFeed(note.id);
+    assert(found);
+    assert.equal(found.attachments[0].type, 'Image');
+    assert(found.attachments[0].url);
+    assert(!found.attachments[0].name);
+});
+
+Then(
+    'the {string} is in our feed and has an image and alt text',
+    async function (noteName) {
+        const note = this.objects[noteName];
+
+        const found = await waitForAPObjectInFeed(note.id);
+        assert(found);
+        assert.equal(found.attachments[0].type, 'Image');
+        assert(found.attachments[0].url);
+        assert(found.attachments[0].name);
+    },
+);
+
 Then('the note {string} is not in our feed', async function (noteName) {
     const note = this.objects[noteName];
 
