@@ -146,10 +146,15 @@ async function getCollectionCount(
     }
 }
 
+function getHandle(actor: Actor): string {
+    const hostname = new URL(actor.id?.href || '').hostname;
+    return `@${actor.preferredUsername}@${hostname.replace(/^www./, '')}`;
+}
+
 // Convert Actor to AccountDTO
 async function actorToAccountDTO(actor: Actor): Promise<AccountDTO> {
     const actorId = actor.id?.href || '';
-    const handle = `@${actor.preferredUsername}@${new URL(actorId).hostname}`;
+    const handle = getHandle(actor);
 
     const [icon, image] = await Promise.all([
         actor.getIcon(),
