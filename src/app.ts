@@ -219,6 +219,7 @@ export const globalFedify = createFederation<ContextData>({
     allowPrivateAddress:
         process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
         ['development', 'testing'].includes(process.env.NODE_ENV || ''),
+    firstKnock: 'draft-cavage-http-signatures-12',
 });
 
 // Register all dependencies
