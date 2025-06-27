@@ -633,6 +633,41 @@ export class AccountService {
         await this.accountRepository.save(updated);
     }
 
+    async updateAccountByApId(
+        apId: URL,
+        data: {
+            name: string | null;
+            bio: string | null;
+            username: string;
+            avatarUrl: string | null;
+            bannerImageUrl: string | null;
+            url: string | null;
+        },
+    ): Promise<Result<true, 'account-not-found'>> {
+        const profileData = {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl ? new URL(data.avatarUrl) : null,
+            bannerImageUrl: data.bannerImageUrl
+                ? new URL(data.bannerImageUrl)
+                : null,
+            url: data.url ? new URL(data.url) : null,
+        };
+
+        const account = await this.accountRepository.getByApId(apId);
+
+        if (!account) {
+            return error('account-not-found');
+        }
+
+        const updated = account.updateProfile(profileData);
+
+        await this.accountRepository.save(updated);
+
+        return ok(true);
+    }
+
     async blockAccountByApId(
         account: Account,
         apId: URL,
