@@ -55,6 +55,7 @@ interface PostRow {
     bio: string | null;
     avatar_url: string | null;
     banner_image_url: string | null;
+    custom_fields: Record<string, string> | null;
     author_ap_id: string;
     author_url: string | null;
     author_ap_followers_url: string | null;
@@ -114,6 +115,7 @@ export class KnexPostRepository {
                 'accounts.bio',
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
+                'accounts.custom_fields',
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
@@ -859,6 +861,7 @@ export class KnexPostRepository {
             url: parseURL(row.author_url) || new URL(row.author_ap_id),
             avatarUrl: parseURL(row.avatar_url),
             bannerImageUrl: parseURL(row.banner_image_url),
+            customFields: row.custom_fields,
             apId: new URL(row.author_ap_id),
             apFollowers: parseURL(row.author_ap_followers_url),
             apInbox: parseURL(row.author_ap_inbox_url),
@@ -948,6 +951,7 @@ export class KnexPostRepository {
                 'accounts.bio',
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
+                'accounts.custom_fields',
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',

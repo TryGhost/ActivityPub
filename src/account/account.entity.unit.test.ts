@@ -25,6 +25,7 @@ describe('AccountEntity', () => {
             url: null,
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+            customFields: null,
         });
 
         const draft = AccountEntity.draft(draftData);
@@ -46,6 +47,9 @@ describe('AccountEntity', () => {
             url: null,
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+            customFields: {
+                foo: 'bar',
+            },
         });
 
         const draft = AccountEntity.draft(draftData);
@@ -70,6 +74,7 @@ describe('AccountEntity', () => {
             url: null,
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+            customFields: null,
         });
 
         const draft = AccountEntity.draft(draftData);
@@ -94,6 +99,7 @@ describe('AccountEntity', () => {
                 url: new URL('http://example.com/user'),
                 avatarUrl: new URL('http://example.com/avatar.png'),
                 bannerImageUrl: new URL('http://example.com/banner.png'),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -124,6 +130,7 @@ describe('AccountEntity', () => {
                 url: new URL('http://example.com/user'),
                 avatarUrl: new URL('http://example.com/avatar.png'),
                 bannerImageUrl: new URL('http://example.com/banner.png'),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -143,6 +150,7 @@ describe('AccountEntity', () => {
                 url: null,
                 avatarUrl: null,
                 bannerImageUrl: null,
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -166,6 +174,7 @@ describe('AccountEntity', () => {
                 url: null,
                 avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
                 bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -194,6 +203,7 @@ describe('AccountEntity', () => {
                 url: null,
                 avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
                 bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -226,6 +236,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -259,6 +270,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -292,6 +304,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -326,6 +339,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -361,6 +375,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -398,6 +413,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -434,6 +450,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -452,6 +469,9 @@ describe('AccountEntity', () => {
                     'http://example.com/updated-banner.png',
                 ),
                 url: new URL('http://example.com/updated-url'),
+                customFields: {
+                    foo: 'bar',
+                },
             });
 
             expect(updated.name).toBe('Updated Name');
@@ -464,6 +484,9 @@ describe('AccountEntity', () => {
                 'http://example.com/updated-banner.png',
             );
             expect(updated.url?.href).toBe('http://example.com/updated-url');
+            expect(updated.customFields).toEqual({
+                foo: 'bar',
+            });
         });
 
         it('can set values to null', async () => {
@@ -477,6 +500,9 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: {
+                    foo: 'bar',
+                },
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -489,6 +515,7 @@ describe('AccountEntity', () => {
             const updated = account.updateProfile({
                 bio: null,
                 avatarUrl: null,
+                customFields: null,
             });
 
             expect(updated.name).toBe('Original Name');
@@ -498,6 +525,7 @@ describe('AccountEntity', () => {
             expect(updated.bannerImageUrl?.href).toBe(
                 'http://example.com/original-banner.png',
             );
+            expect(updated.customFields).toBeNull();
         });
 
         it('should emit AccountUpdatedEvent when data changes', async () => {
@@ -511,6 +539,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -540,6 +569,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -576,6 +606,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -601,6 +632,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -633,6 +665,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -658,6 +691,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -692,6 +726,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -725,6 +760,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -760,6 +796,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -785,6 +822,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -817,6 +855,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -842,6 +881,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
@@ -876,6 +916,7 @@ describe('AccountEntity', () => {
                 bannerImageUrl: new URL(
                     'http://example.com/original-banner.png',
                 ),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);

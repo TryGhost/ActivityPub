@@ -103,6 +103,9 @@ describe('AccountService', () => {
                 avatarUrl: 'https://example.com/avatar/alice.png',
                 bannerImageUrl: 'https://example.com/banner/alice.png',
                 url: 'https://example.com/url/alice',
+                customFields: {
+                    foo: 'bar',
+                },
             };
 
             await accountService.updateAccountByApId(account.apId, data);
@@ -114,12 +117,13 @@ describe('AccountService', () => {
                 avatarUrl: new URL(data.avatarUrl),
                 bannerImageUrl: new URL(data.bannerImageUrl),
                 url: new URL(data.url),
+                customFields: data.customFields,
             });
 
             expect(knexAccountRepository.save).toHaveBeenCalledWith(updated);
         });
 
-        it('should handle empty values for avatarUrl, bannerImageUrl, and url', async () => {
+        it('should handle empty values for avatarUrl, bannerImageUrl, url, and customFields', async () => {
             const account = {
                 updateProfile: vi.fn(),
             } as unknown as AccountEntity;
@@ -135,6 +139,7 @@ describe('AccountService', () => {
                 avatarUrl: '',
                 bannerImageUrl: '',
                 url: '',
+                customFields: null,
             });
 
             expect(account.updateProfile).toHaveBeenCalledWith({
@@ -144,6 +149,7 @@ describe('AccountService', () => {
                 avatarUrl: null,
                 bannerImageUrl: null,
                 url: null,
+                customFields: null,
             });
         });
     });

@@ -140,6 +140,7 @@ describe('Feed API', () => {
             url: null,
             avatarUrl: new URL('http://example.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
+            customFields: null,
         });
 
         const draft = AccountEntity.draft(draftData);

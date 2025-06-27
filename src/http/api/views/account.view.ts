@@ -70,9 +70,7 @@ export class AccountView {
             url: accountData.url,
             avatarUrl: accountData.avatar_url || '',
             bannerImageUrl: accountData.banner_image_url || '',
-            customFields: accountData.custom_fields
-                ? JSON.parse(accountData.custom_fields)
-                : {},
+            customFields: accountData.custom_fields || {},
             postCount: accountData.post_count + accountData.repost_count,
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,
@@ -161,9 +159,7 @@ export class AccountView {
             url: accountData.url,
             avatarUrl: accountData.avatar_url || '',
             bannerImageUrl: accountData.banner_image_url || '',
-            customFields: accountData.custom_fields
-                ? JSON.parse(accountData.custom_fields)
-                : {},
+            customFields: accountData.custom_fields || {},
             postCount: accountData.post_count + accountData.repost_count,
             likedCount: accountData.like_count,
             followingCount: accountData.following_count,

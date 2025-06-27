@@ -44,6 +44,7 @@ describe('FeedUpdateService', () => {
             avatarUrl: new URL('https://example.com/avatars/foobar.png'),
             bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
             url: new URL('https://example.com/users/456'),
+            customFields: null,
         });
 
         const draft = AccountEntity.draft(draftData);
@@ -199,6 +200,7 @@ describe('FeedUpdateService', () => {
                     'https://blocked.com/banners/bazqux.png',
                 ),
                 url: new URL('https://blocked.com/users/789'),
+                customFields: null,
             });
 
             const draft = AccountEntity.draft(draftData);
