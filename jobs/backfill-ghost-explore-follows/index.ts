@@ -148,6 +148,73 @@ async function checkAccountAccessible(
     logger: Logger,
 ): Promise<boolean> {
     try {
+        // If the AP ID contains www, also check the non-www version
+        // This is because WebFinger lookups use the domain without www
+        const apUrl = new URL(account.ap_id.href);
+        if (apUrl.hostname.startsWith('www.')) {
+            const nonWwwHostname = apUrl.hostname.replace(/^www\./, '');
+
+            logger.info('Checking non-www WebFinger domain for {apId}', {
+                apId: account.ap_id.href,
+                webfingerDomain: nonWwwHostname,
+            });
+
+            try {
+                // Check if WebFinger endpoint is accessible on non-www domain
+                // We allow redirects here - we just need to ensure no SSL errors
+                const webfingerUrl = `https://${nonWwwHostname}/.well-known/webfinger?resource=acct:${account.username}@${nonWwwHostname}`;
+                const webfingerResponse = await fetch(webfingerUrl, {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/jrd+json,application/json',
+                    },
+                    signal: AbortSignal.timeout(5000), // 5 second timeout for WebFinger
+                    redirect: 'follow', // Allow redirects for WebFinger
+                });
+
+                // Check if we got a successful response (after following any redirects)
+                if (!webfingerResponse.ok) {
+                    logger.warn(
+                        'WebFinger check failed for non-www domain {domain}: HTTP {status}',
+                        {
+                            domain: nonWwwHostname,
+                            apId: account.ap_id.href,
+                            status: webfingerResponse.status,
+                        },
+                    );
+                    return false;
+                }
+
+                logger.info(
+                    'WebFinger check succeeded for non-www domain {domain}',
+                    {
+                        domain: nonWwwHostname,
+                        status: webfingerResponse.status,
+                    },
+                );
+            } catch (webfingerError) {
+                const errorMessage =
+                    webfingerError instanceof Error
+                        ? webfingerError.message
+                        : String(webfingerError);
+                const isSSLError =
+                    errorMessage.toLowerCase().includes('ssl') ||
+                    errorMessage.toLowerCase().includes('certificate') ||
+                    errorMessage.toLowerCase().includes('tls');
+
+                logger.warn(
+                    'WebFinger check failed for non-www domain {domain}: {errorMessage}',
+                    {
+                        domain: nonWwwHostname,
+                        apId: account.ap_id.href,
+                        errorMessage,
+                        isSSLError,
+                    },
+                );
+                return false;
+            }
+        }
+
         const response = await fetch(account.ap_id.href, {
             method: 'GET',
             headers: {
