@@ -64,6 +64,22 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
 
+  backfill-ghost-explore-follows:
+    build: jobs/backfill-ghost-explore-follows
+    environment:
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+      - BATCH_SIZE=10
+      - MAX_CONCURRENT=5
+      - GHOST_EXPLORE_AP_ID=https://mastodon.social/users/testingshtuff
+      - REQUEST_TIMEOUT_MS=30000
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   scripts:
     build: scripts
     depends_on:

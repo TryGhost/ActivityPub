@@ -659,3 +659,61 @@ jobs:
           status: ${{ job.status }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  build-backfill-ghost-explore-follows-job:
+    name: Build & Push backfill ghost explore follows job
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Check for changes in backfill ghost explore follows job"
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backfill-ghost-explore-follows:
+              - 'jobs/backfill-ghost-explore-follows/**'
+
+      - name: "Authenticate with GCP"
+        if: steps.changes.outputs.backfill-ghost-explore-follows == 'true'
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Login to GCP Artifact Registry"
+        if: steps.changes.outputs.backfill-ghost-explore-follows == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: europe-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: "Docker metadata"
+        if: steps.changes.outputs.backfill-ghost-explore-follows == 'true'
+        id: backfill-ghost-explore-follows-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/backfill-ghost-explore-follows
+          tags: |
+            type=sha
+            type=edge,branch=main
+
+      - name: "Build & Push backfill ghost explore follows job image"
+        if: steps.changes.outputs.backfill-ghost-explore-follows == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: jobs/backfill-ghost-explore-follows
+          push: true
+          tags: ${{ steps.backfill-ghost-explore-follows-meta.outputs.tags }}
+
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
