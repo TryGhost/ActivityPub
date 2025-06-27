@@ -26,6 +26,8 @@ const config = {
         process.env.GHOST_EXPLORE_AP_ID ||
         'https://mastodon.social/users/ghostexplore',
     requestTimeout: Number.parseInt(process.env.REQUEST_TIMEOUT_MS || '30000'),
+    concurrentDelay: Number.parseInt(process.env.CONCURRENT_DELAY_MS || '100'),
+    batchDelay: Number.parseInt(process.env.BATCH_DELAY_MS || '1000'),
 };
 
 // Configure logging
@@ -295,7 +297,9 @@ async function processAccountsInBatches(
         const promises = batch.map((account, index) =>
             (async () => {
                 // Add slight delay between concurrent requests
-                await new Promise((r) => setTimeout(r, index * 100));
+                await new Promise((r) =>
+                    setTimeout(r, index * config.concurrentDelay),
+                );
 
                 try {
                     await sendFollowActivity(account, ghostExplore, logger);
@@ -320,7 +324,9 @@ async function processAccountsInBatches(
 
         // Add delay between batches to avoid overwhelming the server
         if (i + config.batchSize < accounts.length) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) =>
+                setTimeout(resolve, config.batchDelay),
+            );
         }
     }
 
