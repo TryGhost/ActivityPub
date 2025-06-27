@@ -14,6 +14,7 @@ async function createAuthor() {
         url: null,
         avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
         bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+        customFields: null,
     });
 
     const draft = AccountEntity.draft(draftData);

@@ -509,6 +509,7 @@ describe('KnexAccountRepository', () => {
             url: new URL('https://example.com'),
             avatarUrl: new URL('https://example.com/avatar.png'),
             bannerImageUrl: new URL('https://example.com/banner.png'),
+            customFields: { foo: 'bar' },
             apId: new URL('https://example.com/ap/id'),
             apFollowers: new URL('https://example.com/ap/followers'),
             apInbox: new URL('https://example.com/ap/inbox'),
@@ -534,6 +535,7 @@ describe('KnexAccountRepository', () => {
         expect(createdAccount.bannerImageUrl).toStrictEqual(
             draft.bannerImageUrl,
         );
+        expect(createdAccount.customFields).toStrictEqual(draft.customFields);
         expect(createdAccount.apId).toStrictEqual(draft.apId);
         expect(createdAccount.apFollowers).toStrictEqual(draft.apFollowers);
         expect(createdAccount.apInbox).toStrictEqual(draft.apInbox);
@@ -561,6 +563,9 @@ describe('KnexAccountRepository', () => {
         );
         expect(fetchedAccount.bannerImageUrl).toStrictEqual(
             createdAccount.bannerImageUrl,
+        );
+        expect(fetchedAccount.customFields).toStrictEqual(
+            createdAccount.customFields,
         );
         expect(fetchedAccount.apId).toStrictEqual(createdAccount.apId);
         expect(fetchedAccount.apFollowers).toStrictEqual(
@@ -593,6 +598,9 @@ describe('KnexAccountRepository', () => {
             url: new URL(`https://${site.host}`),
             avatarUrl: new URL(`https://${site.host}/avatar.png`),
             bannerImageUrl: new URL(`https://${site.host}/banner.png`),
+            customFields: {
+                foo: 'bar',
+            },
         });
 
         const draft = AccountEntity.draft(draftData);
@@ -611,6 +619,7 @@ describe('KnexAccountRepository', () => {
         expect(createdAccount.bannerImageUrl).toStrictEqual(
             draft.bannerImageUrl,
         );
+        expect(createdAccount.customFields).toStrictEqual(draft.customFields);
         expect(createdAccount.apId).toStrictEqual(draft.apId);
         expect(createdAccount.apFollowers).toStrictEqual(draft.apFollowers);
         expect(createdAccount.apInbox).toStrictEqual(draft.apInbox);
@@ -638,6 +647,9 @@ describe('KnexAccountRepository', () => {
         );
         expect(fetchedAccount.bannerImageUrl).toStrictEqual(
             createdAccount.bannerImageUrl,
+        );
+        expect(fetchedAccount.customFields).toStrictEqual(
+            createdAccount.customFields,
         );
         expect(fetchedAccount.apId).toStrictEqual(createdAccount.apId);
         expect(fetchedAccount.apFollowers).toStrictEqual(
@@ -675,6 +687,9 @@ describe('KnexAccountRepository', () => {
             url: new URL(`https://${site.host}/user`),
             avatarUrl: new URL(`https://${site.host}/avatar.png`),
             bannerImageUrl: new URL(`https://${site.host}/banner.png`),
+            customFields: {
+                foo: 'bar',
+            },
         });
 
         const draft = AccountEntity.draft(draftData);
@@ -701,6 +716,7 @@ describe('KnexAccountRepository', () => {
             url: new URL(`https://${site.host}/mockuser`),
             avatarUrl: null,
             bannerImageUrl: null,
+            customFields: null,
         });
 
         const draft = AccountEntity.draft(draftData);

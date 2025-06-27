@@ -9,6 +9,7 @@ export async function createInternalAccountDraftData(overrides: {
     url: URL | null;
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
+    customFields: Record<string, string> | null;
 }) {
     const keyPair = await generateTestCryptoKeyPair();
 
@@ -21,6 +22,7 @@ export async function createInternalAccountDraftData(overrides: {
         url: overrides.url,
         avatarUrl: overrides.avatarUrl,
         bannerImageUrl: overrides.bannerImageUrl,
+        customFields: overrides.customFields,
         apPublicKey: keyPair.publicKey,
         apPrivateKey: keyPair.privateKey,
     };
@@ -33,6 +35,7 @@ export async function createExternalAccountDraftData(overrides: {
     url: URL | null;
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
+    customFields: Record<string, string> | null;
     apId: URL;
     apFollowers: URL | null;
     apInbox: URL | null;
@@ -51,6 +54,7 @@ export async function createExternalAccountDraftData(overrides: {
         url: overrides.url,
         avatarUrl: overrides.avatarUrl,
         bannerImageUrl: overrides.bannerImageUrl,
+        customFields: overrides.customFields,
         apId: overrides.apId,
         apFollowers: overrides.apFollowers,
         apInbox: overrides.apInbox,
@@ -73,6 +77,7 @@ export async function createTestInternalAccount(
         url: URL | null;
         avatarUrl: URL | null;
         bannerImageUrl: URL | null;
+        customFields: Record<string, string> | null;
     },
 ) {
     const draftData = await createInternalAccountDraftData(overrides);
@@ -93,6 +98,7 @@ export async function createTestExternalAccount(
         url: URL | null;
         avatarUrl: URL | null;
         bannerImageUrl: URL | null;
+        customFields: Record<string, string> | null;
         apId: URL;
         apFollowers: URL | null;
         apInbox: URL | null;

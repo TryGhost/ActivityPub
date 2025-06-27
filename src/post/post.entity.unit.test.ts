@@ -15,6 +15,9 @@ const externalAccount = async (id: number | null = 456) =>
         url: null,
         avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
         bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+        customFields: {
+            foo: 'bar',
+        },
         apFollowers: new URL(`https://foobar.com/followers/${id || 456}`),
         apInbox: new URL(`https://foobar.com/inbox/${id || 456}`),
         apId: new URL(`https://foobar.com/user/${id || 456}`),
@@ -29,6 +32,9 @@ const internalAccount = async (id: number | null = 123) =>
         url: null,
         avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
         bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
+        customFields: {
+            foo: 'bar',
+        },
     });
 
 describe('Post', () => {

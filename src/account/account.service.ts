@@ -187,6 +187,7 @@ export class AccountService {
             url: new URL(`https://${site.host}`),
             avatarUrl: parseURL(internalAccountData.avatar_url),
             bannerImageUrl: null,
+            customFields: null,
             apPublicKey: keyPair.publicKey,
             apPrivateKey: keyPair.privateKey,
         });
@@ -570,7 +571,7 @@ export class AccountService {
             avatar_url: row.avatar_url,
             banner_image_url: row.banner_image_url,
             url: row.url,
-            custom_fields: JSON.parse(row.custom_fields),
+            custom_fields: row.custom_fields,
             ap_id: row.ap_id,
             ap_inbox_url: row.ap_inbox_url,
             ap_shared_inbox_url: row.ap_shared_inbox_url,
@@ -642,6 +643,7 @@ export class AccountService {
             avatarUrl: string | null;
             bannerImageUrl: string | null;
             url: string | null;
+            customFields: Record<string, string> | null;
         },
     ): Promise<Result<true, 'account-not-found'>> {
         const profileData = {
@@ -653,6 +655,7 @@ export class AccountService {
                 ? new URL(data.bannerImageUrl)
                 : null,
             url: data.url ? new URL(data.url) : null,
+            customFields: data.customFields,
         };
 
         const account = await this.accountRepository.getByApId(apId);

@@ -25,6 +25,7 @@ export interface Account {
     readonly apFollowers: URL | null;
     readonly apInbox: URL | null;
     readonly isInternal: boolean;
+    readonly customFields: Record<string, string> | null;
     unblock(account: Account): Account;
     block(account: Account): Account;
     blockDomain(domain: URL): Account;
@@ -51,6 +52,7 @@ export interface AccountDraft {
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
     apId: URL;
+    customFields: Record<string, string> | null;
     apFollowers: URL | null;
     apFollowing: URL | null;
     apInbox: URL | null;
@@ -80,6 +82,7 @@ export class AccountEntity implements Account {
         public readonly apFollowers: URL | null,
         public readonly apInbox: URL | null,
         public readonly isInternal: boolean,
+        public readonly customFields: Record<string, string> | null,
         private events: AccountEvent[],
     ) {}
 
@@ -106,6 +109,7 @@ export class AccountEntity implements Account {
             data.apFollowers,
             data.apInbox,
             data.isInternal,
+            data.customFields,
             events,
         );
     }
@@ -125,6 +129,7 @@ export class AccountEntity implements Account {
             draft.apFollowers,
             draft.apInbox,
             draft.isInternal,
+            draft.customFields,
             events,
         );
     }
@@ -204,6 +209,7 @@ export class AccountEntity implements Account {
                 avatarUrl: get('avatarUrl'),
                 bannerImageUrl: get('bannerImageUrl'),
                 url: get('url'),
+                customFields: get('customFields'),
             },
             this.events,
         );
@@ -214,7 +220,8 @@ export class AccountEntity implements Account {
             account.bio !== this.bio ||
             account.avatarUrl?.href !== this.avatarUrl?.href ||
             account.bannerImageUrl?.href !== this.bannerImageUrl?.href ||
-            account.url?.href !== this.url?.href
+            account.url?.href !== this.url?.href ||
+            account.customFields !== this.customFields
         ) {
             account.events = account.events.concat(
                 new AccountUpdatedEvent(account),
@@ -293,6 +300,7 @@ type ProfileUpdateParams = {
     avatarUrl?: URL | null;
     bannerImageUrl?: URL | null;
     url?: URL | null;
+    customFields?: Record<string, string> | null;
 };
 
 /**
@@ -307,6 +315,7 @@ type InternalAccountDraftData = {
     url: URL | null;
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
+    customFields: Record<string, string> | null;
     apPublicKey: CryptoKey;
     apPrivateKey: CryptoKey;
 };
@@ -322,6 +331,7 @@ type ExternalAccountDraftData = {
     url: URL | null;
     avatarUrl: URL | null;
     bannerImageUrl: URL | null;
+    customFields: Record<string, string> | null;
     apId: URL;
     apFollowers: URL | null;
     apInbox: URL | null;

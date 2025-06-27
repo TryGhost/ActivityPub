@@ -30,6 +30,7 @@ interface AccountRow {
     ap_id: string;
     ap_followers_url: string | null;
     ap_inbox_url: string | null;
+    custom_fields: Record<string, string> | null;
     site_id: number | null;
 }
 
@@ -62,7 +63,9 @@ export class KnexAccountRepository {
                 ap_private_key: draft.apPrivateKey
                     ? JSON.stringify(await exportJwk(draft.apPrivateKey))
                     : null,
-                custom_fields: null,
+                custom_fields: draft.customFields
+                    ? JSON.stringify(draft.customFields)
+                    : null,
                 domain: draft.apId.hostname,
             });
 
@@ -106,6 +109,9 @@ export class KnexAccountRepository {
                     username: account.username,
                     avatar_url: account.avatarUrl?.href ?? null,
                     banner_image_url: account.bannerImageUrl?.href ?? null,
+                    custom_fields: account.customFields
+                        ? JSON.stringify(account.customFields)
+                        : null,
                 })
                 .where({ id: account.id });
 
@@ -247,6 +253,7 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.custom_fields',
             )
             .first();
 
@@ -273,6 +280,7 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.custom_fields',
                 'users.site_id',
             )
             .first();
@@ -297,6 +305,7 @@ export class KnexAccountRepository {
                 'accounts.url',
                 'accounts.avatar_url',
                 'accounts.banner_image_url',
+                'accounts.custom_fields',
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
@@ -332,6 +341,7 @@ export class KnexAccountRepository {
             apFollowers: parseURL(row.ap_followers_url),
             apInbox: parseURL(row.ap_inbox_url),
             isInternal: row.site_id !== null,
+            customFields: row.custom_fields,
         });
     }
 }

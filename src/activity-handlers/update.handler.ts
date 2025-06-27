@@ -39,6 +39,7 @@ export class UpdateHandler {
                 avatarUrl: accountData.avatar_url,
                 bannerImageUrl: accountData.banner_image_url,
                 url: accountData.url,
+                customFields: accountData.custom_fields,
             },
         );
 
