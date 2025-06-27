@@ -25,7 +25,6 @@ describe('AccountEntity', () => {
             url: null,
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
-
             customFields: null,
         });
 
@@ -48,7 +47,6 @@ describe('AccountEntity', () => {
             url: null,
             avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
-
             customFields: {
                 foo: 'bar',
             },
