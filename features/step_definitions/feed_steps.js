@@ -1,23 +1,8 @@
 import assert from 'node:assert';
 
-import { Then, When } from '@cucumber/cucumber';
+import { Then } from '@cucumber/cucumber';
 
 import { waitForAPObjectInFeed } from '../support/feed.js';
-import { fetchActivityPub } from '../support/request.js';
-
-When('we request the feed with the next cursor', async function () {
-    const responseJson = await this.response.clone().json();
-    const nextCursor = responseJson.next;
-
-    this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/feed/index?next=${encodeURIComponent(nextCursor)}`,
-        {
-            headers: {
-                Accept: 'application/json',
-            },
-        },
-    );
-});
 
 Then(
     'the {string} in the feed has content {string}',

@@ -18,7 +18,7 @@ When('we repost the object {string}', async function (name) {
 
 Then('the object {string} should be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -38,7 +38,7 @@ Then(
     'the object {string} should have a repost count of {int}',
     async function (name, repostCount) {
         const response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
             {
                 headers: {
                     Accept: 'application/ld+json',
@@ -67,7 +67,7 @@ When('we undo the repost of the object {string}', async function (name) {
 
 Then('the object {string} should not be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
         {
             headers: {
                 Accept: 'application/ld+json',

@@ -11,13 +11,13 @@ Feature: Delete(Note)
 
   Scenario: We receive a Delete(Note) activity from someone we follow
     Given a "Delete(AliceNote)" Activity "DeleteNote" by "Alice"
-    When an authenticated request is made to "/.ghost/activitypub/feed"
+    When an authenticated request is made to "/.ghost/activitypub/feed/notes"
     Then the request is accepted
     And "AliceNote" is not in the feed
 
   Scenario: We receive a Delete(Note) activity from someone who didn't create the post
     Given a "Delete(AliceNote)" Activity "DeleteNote" by "Bob"
-    When an authenticated request is made to "/.ghost/activitypub/feed"
+    When an authenticated request is made to "/.ghost/activitypub/feed/notes"
     Then the request is accepted
     And "AliceNote" is not in the feed
 
