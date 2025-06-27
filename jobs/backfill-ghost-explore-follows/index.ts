@@ -154,8 +154,24 @@ async function checkAccountAccessible(
                 Accept: 'application/activity+json,application/ld+json',
             },
             signal: AbortSignal.timeout(10000), // 10 second timeout for pre-check
+            redirect: 'manual', // Don't follow redirects automatically
         });
 
+        // Check for redirects (which Mastodon doesn't handle well)
+        if (response.status >= 300 && response.status < 400) {
+            const location = response.headers.get('location');
+            logger.warn(
+                'Account check failed: Redirect detected for {apId} to {location}',
+                {
+                    apId: account.ap_id.href,
+                    location: location || 'unknown',
+                    status: response.status,
+                },
+            );
+            return false;
+        }
+
+        // Check for non-success status codes
         if (!response.ok) {
             logger.warn(
                 'Account check failed: HTTP {status} {statusText} for {apId}',
@@ -163,6 +179,68 @@ async function checkAccountAccessible(
                     apId: account.ap_id.href,
                     status: response.status,
                     statusText: response.statusText,
+                },
+            );
+            return false;
+        }
+
+        // Verify content type is ActivityPub
+        const contentType = response.headers.get('content-type');
+        if (
+            !contentType ||
+            (!contentType.includes('application/activity+json') &&
+                !contentType.includes('application/ld+json') &&
+                !contentType.includes('application/json'))
+        ) {
+            logger.warn(
+                'Account check failed: Invalid content-type {contentType} for {apId}',
+                {
+                    apId: account.ap_id.href,
+                    contentType: contentType || 'none',
+                },
+            );
+            return false;
+        }
+
+        // Try to parse the response to ensure it's valid JSON
+        try {
+            const body = await response.text();
+            const data = JSON.parse(body);
+
+            // Basic ActivityPub validation - check for required fields
+            if (!data.id || !data.type || !data.inbox) {
+                logger.warn(
+                    'Account check failed: Invalid ActivityPub object for {apId} (missing required fields)',
+                    {
+                        apId: account.ap_id.href,
+                        hasId: !!data.id,
+                        hasType: !!data.type,
+                        hasInbox: !!data.inbox,
+                    },
+                );
+                return false;
+            }
+
+            // Check if the returned ID matches what we expected (no redirect shenanigans)
+            if (data.id !== account.ap_id.href) {
+                logger.warn(
+                    'Account check failed: ID mismatch for {apId} (got {returnedId})',
+                    {
+                        apId: account.ap_id.href,
+                        returnedId: data.id,
+                    },
+                );
+                return false;
+            }
+        } catch (parseError) {
+            logger.warn(
+                'Account check failed: Invalid JSON response for {apId}',
+                {
+                    apId: account.ap_id.href,
+                    parseError:
+                        parseError instanceof Error
+                            ? parseError.message
+                            : String(parseError),
                 },
             );
             return false;
