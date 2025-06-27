@@ -1047,4 +1047,85 @@ describe('AccountService', () => {
             }
         });
     });
+
+    describe('getByInternalId', () => {
+        it('should retrieve an account by internal ID with null custom fields', async () => {
+            const account = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            const retrievedAccount = await service.getByInternalId(account.id);
+
+            expect(retrievedAccount).not.toBeNull();
+            expect(retrievedAccount).toMatchObject({
+                id: account.id,
+                username: account.username,
+                name: account.name,
+                bio: account.bio,
+                avatar_url: account.avatar_url,
+                banner_image_url: account.banner_image_url,
+                url: account.url,
+                custom_fields: null, // Verify custom fields is null
+                ap_id: account.ap_id,
+                ap_inbox_url: account.ap_inbox_url,
+                ap_shared_inbox_url: account.ap_shared_inbox_url,
+                ap_outbox_url: account.ap_outbox_url,
+                ap_following_url: account.ap_following_url,
+                ap_followers_url: account.ap_followers_url,
+                ap_liked_url: account.ap_liked_url,
+                ap_public_key: account.ap_public_key,
+                ap_private_key: account.ap_private_key,
+            });
+        });
+
+        it('should retrieve an account by internal ID with non-null custom fields', async () => {
+            // Create an external account with custom fields
+            const customFields = {
+                location: 'San Francisco, CA',
+                website: 'https://example.com',
+                pronouns: 'they/them',
+            };
+
+            const externalAccountDataWithCustomFields = {
+                ...externalAccountData,
+                custom_fields: customFields,
+            };
+
+            const account = await service.createExternalAccount(
+                externalAccountDataWithCustomFields,
+            );
+
+            const retrievedAccount = await service.getByInternalId(account.id);
+
+            expect(retrievedAccount).not.toBeNull();
+            expect(retrievedAccount).toMatchObject({
+                id: account.id,
+                username: account.username,
+                name: account.name,
+                bio: account.bio,
+                avatar_url: account.avatar_url,
+                banner_image_url: account.banner_image_url,
+                url: account.url,
+                custom_fields: customFields, // Verify custom fields is not null
+                ap_id: account.ap_id,
+                ap_inbox_url: account.ap_inbox_url,
+                ap_shared_inbox_url: account.ap_shared_inbox_url,
+                ap_outbox_url: account.ap_outbox_url,
+                ap_following_url: account.ap_following_url,
+                ap_followers_url: account.ap_followers_url,
+                ap_liked_url: account.ap_liked_url,
+                ap_public_key: account.ap_public_key,
+                ap_private_key: account.ap_private_key,
+            });
+        });
+
+        it('should return null when account with internal ID does not exist', async () => {
+            const nonExistentId = 99999;
+            const retrievedAccount =
+                await service.getByInternalId(nonExistentId);
+
+            expect(retrievedAccount).toBeNull();
+        });
+    });
 });
