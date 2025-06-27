@@ -1122,6 +1122,22 @@ app.get(
     }),
 );
 app.get(
+    '/.ghost/activitypub/feed/notes',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => {
+        const handlerFactory = container.resolve('getFeedHandler');
+        return handlerFactory('Feed')(ctx);
+    }),
+);
+app.get(
+    '/.ghost/activitypub/feed/reader',
+    requireRole(GhostRole.Owner, GhostRole.Administrator),
+    spanWrapper((ctx: AppContext) => {
+        const handlerFactory = container.resolve('getFeedHandler');
+        return handlerFactory('Inbox')(ctx);
+    }),
+);
+app.get(
     '/.ghost/activitypub/post/:post_ap_id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
