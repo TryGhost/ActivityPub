@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Logger } from '@logtape/logtape';
+import type { LogRecord, Logger } from '@logtape/logtape';
 import { configure, getConsoleSink, getLogger } from '@logtape/logtape';
 import knex from 'knex';
 
@@ -32,7 +32,19 @@ const config = {
 
 // Configure logging
 await configure({
-    sinks: { console: getConsoleSink() },
+    sinks: {
+        console: getConsoleSink({
+            formatter: (record: LogRecord) => {
+                const loggingObject = {
+                    timestamp: new Date(record.timestamp).toISOString(),
+                    severity: record.level.toUpperCase(),
+                    message: record.message.join(''),
+                    ...record.properties,
+                };
+                return JSON.stringify(loggingObject);
+            },
+        }),
+    },
     filters: {},
     loggers: [
         {
@@ -130,6 +142,51 @@ async function getGhostExploreAccount(): Promise<GhostExploreAccount | null> {
         : null;
 }
 
+// Check if an account is accessible before sending follow request
+async function checkAccountAccessible(
+    account: Account,
+    logger: Logger,
+): Promise<boolean> {
+    try {
+        const response = await fetch(account.ap_id.href, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/activity+json,application/ld+json',
+            },
+            signal: AbortSignal.timeout(10000), // 10 second timeout for pre-check
+        });
+
+        if (!response.ok) {
+            logger.warn(
+                'Account check failed: HTTP {status} {statusText} for {apId}',
+                {
+                    apId: account.ap_id.href,
+                    status: response.status,
+                    statusText: response.statusText,
+                },
+            );
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
+        const isSSLError =
+            errorMessage.toLowerCase().includes('ssl') ||
+            errorMessage.toLowerCase().includes('certificate') ||
+            errorMessage.toLowerCase().includes('tls');
+
+        logger.warn('Account check failed for {apId}: {errorMessage}', {
+            apId: account.ap_id.href,
+            errorMessage,
+            isSSLError,
+        });
+
+        return false;
+    }
+}
+
 type FollowActivity = {
     id: string;
     type: string;
@@ -180,9 +237,11 @@ async function sendFollowActivity(
         // Send the activity to the remote inbox
         await sendFollowActivityToInbox(follow, account, ghostExplore, logger);
     } catch (error) {
-        logger.error('Failed to create follow for {apId} {error}', {
-            apId: account.ap_id,
-            error,
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
+        logger.error('Failed to create follow for {apId}: {errorMessage}', {
+            apId: account.ap_id.href,
+            errorMessage,
         });
         throw error;
     }
@@ -259,19 +318,24 @@ async function sendFollowActivityToInbox(
             throw new Error(`HTTP ${response.status}: ${responseText}`);
         }
 
-        logger.info('Successfully sent Follow activity to {inbox}', {
-            inbox: targetAccount.ap_inbox_url.href,
-            activityId: activity.id,
-            follower: followerAccount.username,
-            target: targetAccount.ap_id,
-        });
+        logger.info(
+            'Successfully sent Follow activity from {follower} to {targetInbox}',
+            {
+                follower: followerAccount.ap_id.href,
+                targetInbox: targetAccount.ap_inbox_url.href,
+            },
+        );
     } catch (error) {
-        logger.error('Failed to send Follow activity', {
-            error,
-            activityId: activity.id,
-            follower: followerAccount.username,
-            target: targetAccount.ap_id,
-        });
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
+        logger.error(
+            'Failed to send Follow activity from {follower}: {errorMessage}',
+            {
+                errorMessage,
+                follower: followerAccount.ap_id.href,
+                targetInbox: targetAccount.ap_inbox_url.href,
+            },
+        );
         throw error;
     }
 }
@@ -283,15 +347,23 @@ async function processAccountsInBatches(
 ) {
     let processed = 0;
     let failed = 0;
+    let skipped = 0;
+    let sslErrors = 0;
+    const startTime = Date.now();
 
     for (let i = 0; i < accounts.length; i += config.batchSize) {
         const batch = accounts.slice(i, i + config.batchSize);
+        const batchNumber = Math.floor(i / config.batchSize) + 1;
+        const totalBatches = Math.ceil(accounts.length / config.batchSize);
 
-        logger.info('Processing batch {current}/{total}', {
-            current: Math.floor(i / config.batchSize) + 1,
-            total: Math.ceil(accounts.length / config.batchSize),
-            batchSize: batch.length,
-        });
+        logger.info(
+            'Processing batch {batchNumber}/{totalBatches} ({batchSize} accounts)',
+            {
+                batchNumber,
+                totalBatches,
+                batchSize: batch.length,
+            },
+        );
 
         // Process batch with concurrency control
         const promises = batch.map((account, index) =>
@@ -302,14 +374,42 @@ async function processAccountsInBatches(
                 );
 
                 try {
+                    // Pre-check if account is accessible
+                    const isAccessible = await checkAccountAccessible(
+                        account,
+                        logger,
+                    );
+                    if (!isAccessible) {
+                        skipped++;
+                        logger.info('Skipping inaccessible account: {apId}', {
+                            apId: account.ap_id.href,
+                        });
+                        return;
+                    }
+
                     await sendFollowActivity(account, ghostExplore, logger);
                     processed++;
                 } catch (error) {
                     failed++;
-                    logger.error('Failed to process account {username}', {
-                        username: account.username,
-                        error,
-                    });
+                    const errorMessage =
+                        error instanceof Error ? error.message : String(error);
+                    const isSSLError =
+                        errorMessage.toLowerCase().includes('ssl') ||
+                        errorMessage.toLowerCase().includes('certificate') ||
+                        errorMessage.toLowerCase().includes('tls');
+
+                    if (isSSLError) {
+                        sslErrors++;
+                    }
+
+                    logger.error(
+                        'Failed to process account {apId}: {errorMessage}',
+                        {
+                            apId: account.ap_id.href,
+                            errorMessage,
+                            isSSLError,
+                        },
+                    );
                 }
             })(),
         );
@@ -317,10 +417,24 @@ async function processAccountsInBatches(
         // Wait for batch to complete
         await Promise.all(promises);
 
-        logger.info('Batch progress: {processed} processed, {failed} failed', {
-            processed,
-            failed,
-        });
+        // Log progress checkpoint every 5 batches or at the end
+        if (batchNumber % 5 === 0 || i + config.batchSize >= accounts.length) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            logger.info(
+                '=== CHECKPOINT === Batch {batchNumber}/{totalBatches} | ' +
+                    'Processed: {processed} | Failed: {failed} | Skipped: {skipped} | ' +
+                    'SSL Errors: {sslErrors} | Elapsed: {elapsed}s',
+                {
+                    batchNumber,
+                    totalBatches,
+                    processed,
+                    failed,
+                    skipped,
+                    sslErrors,
+                    elapsed,
+                },
+            );
+        }
 
         // Add delay between batches to avoid overwhelming the server
         if (i + config.batchSize < accounts.length) {
@@ -330,7 +444,7 @@ async function processAccountsInBatches(
         }
     }
 
-    return { processed, failed };
+    return { processed, failed, skipped, sslErrors };
 }
 
 // Main function
@@ -349,9 +463,9 @@ async function main() {
             );
         }
 
-        logger.info('Found Ghost Explore account', {
+        logger.info('Found Ghost Explore account: {apId} (ID: {id})', {
+            apId: ghostExplore.ap_id.href,
             id: ghostExplore.id,
-            apId: ghostExplore.ap_id,
         });
 
         // Get internal accounts not following Ghost Explore
@@ -373,23 +487,28 @@ async function main() {
         }
 
         // Process accounts
-        const { processed, failed } = await processAccountsInBatches(
-            accounts,
-            ghostExplore,
-            logger,
-        );
+        const { processed, failed, skipped, sslErrors } =
+            await processAccountsInBatches(accounts, ghostExplore, logger);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        logger.info('Job completed in {duration}s', {
-            duration,
-            processed,
-            failed,
-            total: accounts.length,
-        });
+        logger.info(
+            '=== JOB COMPLETED === Total: {total} | Processed: {processed} | ' +
+                'Failed: {failed} | Skipped: {skipped} | SSL errors: {sslErrors} | Duration: {duration}s',
+            {
+                total: accounts.length,
+                processed,
+                failed,
+                skipped,
+                sslErrors,
+                duration,
+            },
+        );
 
         process.exit(failed > 0 ? 1 : 0);
     } catch (error) {
-        logger.error('Job failed {error}', { error });
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
+        logger.error('Job failed: {errorMessage}', { errorMessage });
         process.exit(1);
     } finally {
         await db.destroy();
