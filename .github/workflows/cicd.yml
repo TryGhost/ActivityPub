@@ -717,3 +717,61 @@ jobs:
           status: ${{ job.status }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  build-update-external-accounts-job:
+    name: Build & Push update external accounts job
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Check for changes in update external accounts job"
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            update-external-accounts:
+              - 'jobs/update-external-accounts/**'
+
+      - name: "Authenticate with GCP"
+        if: steps.changes.outputs.update-external-accounts == 'true'
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: "Login to GCP Artifact Registry"
+        if: steps.changes.outputs.update-external-accounts == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: europe-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: "Docker metadata"
+        if: steps.changes.outputs.update-external-accounts == 'true'
+        id: update-external-accounts-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/update-external-accounts
+          tags: |
+            type=sha
+            type=edge,branch=main
+
+      - name: "Build & Push update external accounts job image"
+        if: steps.changes.outputs.update-external-accounts == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: jobs/update-external-accounts
+          push: true
+          tags: ${{ steps.update-external-accounts-meta.outputs.tags }}
+
+      - uses: tryghost/actions/actions/slack-build@main
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
