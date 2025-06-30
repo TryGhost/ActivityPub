@@ -1872,4 +1872,155 @@ describe('KnexPostRepository', () => {
             });
         });
     });
+
+    describe('dirty flag behavior', () => {
+        it('should not update external post counts when dirty flags are false', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(externalAccount, {
+                type: PostType.Note,
+                content: 'External post content',
+                apId: new URL('https://external.com/post/1'),
+            });
+
+            await postRepository.save(post);
+            assert(post.id, 'Post should have an ID after saving');
+
+            const initialRow = await client('posts')
+                .where({ id: post.id })
+                .select('like_count', 'repost_count', 'updated_at')
+                .first();
+
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            await postRepository.save(post);
+
+            const afterRow = await client('posts')
+                .where({ id: post.id })
+                .select('like_count', 'repost_count', 'updated_at')
+                .first();
+
+            expect(afterRow.like_count).toBe(initialRow.like_count);
+            expect(afterRow.repost_count).toBe(initialRow.repost_count);
+            expect(afterRow.updated_at).toEqual(initialRow.updated_at);
+        });
+
+        it('should update external post like count only when dirty flag is set', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(externalAccount, {
+                type: PostType.Note,
+                content: 'External post content',
+                apId: new URL('https://external.com/post/2'),
+            });
+
+            await postRepository.save(post);
+            assert(post.id, 'Post should have an ID after saving');
+
+            post.setLikeCount(42);
+            expect(post.isLikeCountDirty).toBe(true);
+
+            await postRepository.save(post);
+
+            const row = await client('posts')
+                .where({ id: post.id })
+                .select('like_count', 'repost_count')
+                .first();
+
+            expect(row.like_count).toBe(42);
+            expect(row.repost_count).toBe(0);
+
+            expect(post.isLikeCountDirty).toBe(false);
+        });
+
+        it('should update external post repost count only when dirty flag is set', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(externalAccount, {
+                type: PostType.Note,
+                content: 'External post content',
+                apId: new URL('https://external.com/post/3'),
+            });
+
+            await postRepository.save(post);
+            assert(post.id, 'Post should have an ID after saving');
+
+            post.setRepostCount(15);
+            expect(post.isRepostCountDirty).toBe(true);
+
+            await postRepository.save(post);
+
+            const row = await client('posts')
+                .where({ id: post.id })
+                .select('like_count', 'repost_count')
+                .first();
+
+            expect(row.like_count).toBe(0);
+            expect(row.repost_count).toBe(15);
+
+            expect(post.isRepostCountDirty).toBe(false);
+        });
+
+        it('should update both counts when both dirty flags are set', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(externalAccount, {
+                type: PostType.Note,
+                content: 'External post content',
+                apId: new URL('https://external.com/post/4'),
+            });
+
+            await postRepository.save(post);
+            assert(post.id, 'Post should have an ID after saving');
+
+            post.setLikeCount(100);
+            post.setRepostCount(50);
+            expect(post.isLikeCountDirty).toBe(true);
+            expect(post.isRepostCountDirty).toBe(true);
+
+            await postRepository.save(post);
+
+            const row = await client('posts')
+                .where({ id: post.id })
+                .select('like_count', 'repost_count')
+                .first();
+
+            expect(row.like_count).toBe(100);
+            expect(row.repost_count).toBe(50);
+
+            expect(post.isLikeCountDirty).toBe(false);
+            expect(post.isRepostCountDirty).toBe(false);
+        });
+
+        it('should clear dirty flags after successful save', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const post = Post.createFromData(externalAccount, {
+                type: PostType.Note,
+                content: 'External post content',
+                apId: new URL('https://external.com/post/5'),
+            });
+
+            await postRepository.save(post);
+            assert(post.id, 'Post should have an ID after saving');
+
+            post.setLikeCount(99);
+            post.setRepostCount(33);
+            expect(post.isLikeCountDirty).toBe(true);
+            expect(post.isRepostCountDirty).toBe(true);
+
+            await postRepository.save(post);
+
+            expect(post.isLikeCountDirty).toBe(false);
+            expect(post.isRepostCountDirty).toBe(false);
+
+            const row = await client('posts')
+                .where({ id: post.id })
+                .select('like_count', 'repost_count')
+                .first();
+
+            expect(row.like_count).toBe(99);
+            expect(row.repost_count).toBe(33);
+        });
+    });
 });

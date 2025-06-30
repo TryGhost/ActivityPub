@@ -336,7 +336,7 @@ export class KnexPostRepository {
                     // If no likes were added or removed, and the post is
                     // external, update the like count in the database to
                     // account for manual changes to the post's like count
-                    if (!post.isInternal) {
+                    if (!post.isInternal && post.isLikeCountDirty) {
                         await transaction('posts')
                             .update({
                                 like_count: post.likeCount,
@@ -409,7 +409,7 @@ export class KnexPostRepository {
                     // If no reposts were added or removed, and the post is
                     // external, update the repost count in the database to
                     // account for manual changes to the post's repost count
-                    if (!post.isInternal) {
+                    if (!post.isInternal && post.isRepostCountDirty) {
                         await transaction('posts')
                             .update({
                                 repost_count: post.repostCount,
@@ -420,6 +420,9 @@ export class KnexPostRepository {
             }
 
             await transaction.commit();
+
+            // Clear dirty flags after successful save
+            post.clearDirtyFlags();
 
             if (isNewPost) {
                 await this.events.emitAsync(

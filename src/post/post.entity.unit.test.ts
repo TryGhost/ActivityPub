@@ -1068,4 +1068,110 @@ describe('Post', () => {
             expect(post.repostCount).toBe(10);
         });
     });
+
+    describe('dirty flags', () => {
+        describe('setLikeCount with dirty flag', () => {
+            it('should set the dirty flag when like count is changed', async () => {
+                const author = await externalAccount();
+                const apId = new URL('https://example.com/post');
+
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'This is a test note',
+                    apId,
+                });
+
+                expect(post.isLikeCountDirty).toBe(false);
+
+                post.setLikeCount(10);
+
+                expect(post.isLikeCountDirty).toBe(true);
+                expect(post.likeCount).toBe(10);
+            });
+
+            it('should clear dirty flag when clearDirtyFlags is called', async () => {
+                const author = await externalAccount();
+                const apId = new URL('https://example.com/post');
+
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'This is a test note',
+                    apId,
+                });
+
+                post.setLikeCount(10);
+                expect(post.isLikeCountDirty).toBe(true);
+
+                post.clearDirtyFlags();
+
+                expect(post.isLikeCountDirty).toBe(false);
+                expect(post.likeCount).toBe(10); // Count should remain unchanged
+            });
+        });
+
+        describe('setRepostCount with dirty flag', () => {
+            it('should set the dirty flag when repost count is changed', async () => {
+                const author = await externalAccount();
+                const apId = new URL('https://example.com/post');
+
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'This is a test note',
+                    apId,
+                });
+
+                expect(post.isRepostCountDirty).toBe(false);
+
+                post.setRepostCount(5);
+
+                expect(post.isRepostCountDirty).toBe(true);
+                expect(post.repostCount).toBe(5);
+            });
+
+            it('should clear dirty flag when clearDirtyFlags is called', async () => {
+                const author = await externalAccount();
+                const apId = new URL('https://example.com/post');
+
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'This is a test note',
+                    apId,
+                });
+
+                post.setRepostCount(5);
+                expect(post.isRepostCountDirty).toBe(true);
+
+                post.clearDirtyFlags();
+
+                expect(post.isRepostCountDirty).toBe(false);
+                expect(post.repostCount).toBe(5); // Count should remain unchanged
+            });
+        });
+
+        describe('clearDirtyFlags', () => {
+            it('should clear both like and repost dirty flags', async () => {
+                const author = await externalAccount();
+                const apId = new URL('https://example.com/post');
+
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'This is a test note',
+                    apId,
+                });
+
+                post.setLikeCount(10);
+                post.setRepostCount(5);
+
+                expect(post.isLikeCountDirty).toBe(true);
+                expect(post.isRepostCountDirty).toBe(true);
+
+                post.clearDirtyFlags();
+
+                expect(post.isLikeCountDirty).toBe(false);
+                expect(post.isRepostCountDirty).toBe(false);
+                expect(post.likeCount).toBe(10);
+                expect(post.repostCount).toBe(5);
+            });
+        });
+    });
 });
