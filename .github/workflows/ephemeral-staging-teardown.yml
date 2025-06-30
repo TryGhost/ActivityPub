@@ -26,7 +26,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Check Closed PRs Deployed"
         id: check-closed-prs
@@ -87,7 +87,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: stg-activitypub-cicd-stg-envs@ghost-activitypub.iam.gserviceaccount.com
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: "Destroy Tests databases"
         if: ${{ steps.check-closed-prs.outputs.destroy_prs != '' }}
