@@ -113,6 +113,8 @@ export class Post extends BaseEntity {
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
     private deleted = false;
+    private _likeCountDirty = false;
+    private _repostCountDirty = false;
     public readonly content: string | null;
     public readonly mentions: MentionedAccount[] = [];
 
@@ -269,6 +271,7 @@ export class Post extends BaseEntity {
         }
 
         this._likeCount = count;
+        this._likeCountDirty = true;
     }
 
     get repostCount() {
@@ -283,6 +286,20 @@ export class Post extends BaseEntity {
         }
 
         this._repostCount = count;
+        this._repostCountDirty = true;
+    }
+
+    get isLikeCountDirty() {
+        return this._likeCountDirty;
+    }
+
+    get isRepostCountDirty() {
+        return this._repostCountDirty;
+    }
+
+    clearDirtyFlags() {
+        this._likeCountDirty = false;
+        this._repostCountDirty = false;
     }
 
     static async createArticleFromGhostPost(
