@@ -64,6 +64,23 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=activitypub
 
+  update-external-accounts:
+    build: jobs/update-external-accounts
+    environment:
+      - MYSQL_USER=ghost
+      - MYSQL_PASSWORD=password
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=activitypub
+      - BATCH_SIZE=100
+      - MAX_CONCURRENT=10
+      - CONCURRENT_DELAY_MS=50
+      - BATCH_DELAY_MS=1000
+      - REQUEST_TIMEOUT_MS=30000
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   backfill-ghost-explore-follows:
     build: jobs/backfill-ghost-explore-follows
     environment:
