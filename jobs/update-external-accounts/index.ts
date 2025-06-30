@@ -58,6 +58,7 @@ const config = {
     concurrentDelay: Number.parseInt(process.env.CONCURRENT_DELAY_MS || '50'),
     batchDelay: Number.parseInt(process.env.BATCH_DELAY_MS || '1000'),
     maxConcurrent: Number.parseInt(process.env.MAX_CONCURRENT || '10'),
+    lastUpdatedAt: process.env.LAST_UPDATED_AT || '2025-06-27T00:00:00Z',
 };
 
 // Logging
@@ -157,6 +158,7 @@ async function getExternalAccountsChunk(
     const rows = await db('accounts')
         .leftJoin('users', 'users.account_id', 'accounts.id')
         .whereNull('users.account_id')
+        .where('accounts.updated_at', '<', config.lastUpdatedAt)
         .select('accounts.id', 'accounts.username', 'accounts.ap_id')
         .orderBy('accounts.id')
         .offset(offset)
@@ -176,6 +178,7 @@ async function getExternalAccountsCount(): Promise<number> {
     const result = await db('accounts')
         .leftJoin('users', 'users.account_id', 'accounts.id')
         .whereNull('users.account_id')
+        .where('accounts.updated_at', '<', config.lastUpdatedAt)
         .count('accounts.id as count')
         .first();
 
