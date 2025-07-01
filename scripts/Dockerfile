@@ -1,4 +1,4 @@
-FROM debian:bookworm@sha256:0d8498a0e9e6a60011df39aab78534cfe940785e7c59d19dfae1eb53ea59babe
+FROM debian:bookworm@sha256:d42b86d7e24d78a33edcf1ef4f65a20e34acb1e1abd53cabc3f7cdf769fc4082
 
 RUN apt-get update -y
 RUN apt-get install -y curl openssl jq
