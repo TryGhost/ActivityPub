@@ -1,22 +1,28 @@
 import type { Federation, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
+import { KnexAccountRepository } from 'account/account.repository.knex';
+import { AccountService } from 'account/account.service';
+import { CreateHandler } from 'activity-handlers/create.handler';
+import { DeleteHandler } from 'activity-handlers/delete.handler';
+import { FollowHandler } from 'activity-handlers/follow.handler';
 import { UpdateHandler } from 'activity-handlers/update.handler';
+import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { FediverseBridge } from 'activitypub/fediverse-bridge';
+import { FollowersService } from 'activitypub/followers.service';
+import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import type { ContextData } from 'app';
 import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
+import { AsyncEvents } from 'core/events';
 import type { PubSubEvents } from 'events/pubsub';
+import { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
+import { GhostExploreService } from 'explore/ghost-explore.service';
+import { FeedUpdateService } from 'feed/feed-update.service';
+import { FeedService } from 'feed/feed.service';
+import { FlagService } from 'flag/flag.service';
+import { getSiteSettings } from 'helpers/ghost';
 import type { Knex } from 'knex';
 import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
 import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
-import { KnexAccountRepository } from '../account/account.repository.knex';
-import { AccountService } from '../account/account.service';
-import { CreateHandler } from '../activity-handlers/create.handler';
-import { DeleteHandler } from '../activity-handlers/delete.handler';
-import { FollowHandler } from '../activity-handlers/follow.handler';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { FediverseBridge } from '../activitypub/fediverse-bridge';
-import { FollowersService } from '../activitypub/followers.service';
-import { DeleteDispatcher } from '../activitypub/object-dispatchers/delete.dispatcher';
-import { AsyncEvents } from '../core/events';
 import {
     actorDispatcher,
     createAcceptHandler,
@@ -31,49 +37,36 @@ import {
     createUndoHandler,
     keypairDispatcher,
 } from '../dispatchers';
-import { createIncomingPubSubMessageHandler } from '../events/pubsub-http';
-import { GhostExploreService } from '../explore/ghost-explore.service';
-import { FeedUpdateService } from '../feed/feed-update.service';
-import { FeedService } from '../feed/feed.service';
-import { FlagService } from '../flag/flag.service';
-import { getSiteDataHandler } from '../handlers';
-import { getSiteSettings } from '../helpers/ghost';
-import {
-    createDeletePostHandler,
-    createGetAccountFollowsHandler,
-    createGetAccountHandler,
-    createGetAccountLikedPostsHandler,
-    createGetAccountPostsHandler,
-    createGetFeedHandler,
-    createGetPostHandler,
-    createImageUploadHandler,
-    createPostPublishedWebhookHandler,
-    createSearchHandler,
-    createUpdateAccountHandler,
-} from '../http/api';
-import { BlockController } from '../http/api/block';
-import { createDerepostActionHandler } from '../http/api/derepost';
-import { FollowController } from '../http/api/follow';
-import { LikeController } from '../http/api/like';
-import { NotificationController } from '../http/api/notification';
-import { ReplyChainController } from '../http/api/reply-chain';
-import { createRepostActionHandler } from '../http/api/repost';
-import { AccountFollowsView } from '../http/api/views/account.follows.view';
-import { AccountPostsView } from '../http/api/views/account.posts.view';
-import { AccountView } from '../http/api/views/account.view';
-import { BlocksView } from '../http/api/views/blocks.view';
-import { ReplyChainView } from '../http/api/views/reply.chain.view';
-import { createWebFingerHandler } from '../http/handler/webfinger';
-import { ModerationService } from '../moderation/moderation.service';
-import { NotificationEventService } from '../notification/notification-event.service';
-import { NotificationService } from '../notification/notification.service';
-import { PostInteractionCountsService } from '../post/post-interaction-counts.service';
-import { KnexPostRepository } from '../post/post.repository.knex';
-import { PostService } from '../post/post.service';
-import { SiteService } from '../site/site.service';
-import { GCPStorageAdapter } from '../storage/adapters/gcp-storage-adapter';
-import { ImageProcessor } from '../storage/image-processor';
-import { ImageStorageService } from '../storage/image-storage.service';
+
+import { AccountController } from 'http/api/account.controller';
+import { BlockController } from 'http/api/block.controller';
+import { FeedController } from 'http/api/feed.controller';
+import { FollowController } from 'http/api/follow.controller';
+import { LikeController } from 'http/api/like.controller';
+import { MediaController } from 'http/api/media.controller';
+import { NotificationController } from 'http/api/notification.controller';
+import { PostController } from 'http/api/post.controller';
+import { ReplyChainController } from 'http/api/reply-chain';
+import { SearchController } from 'http/api/search.controller';
+import { SiteController } from 'http/api/site.controller';
+import { AccountFollowsView } from 'http/api/views/account.follows.view';
+import { AccountPostsView } from 'http/api/views/account.posts.view';
+import { AccountView } from 'http/api/views/account.view';
+import { BlocksView } from 'http/api/views/blocks.view';
+import { ReplyChainView } from 'http/api/views/reply.chain.view';
+import { WebFingerController } from 'http/api/webfinger.controller';
+import { WebhookController } from 'http/api/webhook.controller';
+import { createWebFingerHandler } from 'http/handler/webfinger';
+import { ModerationService } from 'moderation/moderation.service';
+import { NotificationEventService } from 'notification/notification-event.service';
+import { NotificationService } from 'notification/notification.service';
+import { PostInteractionCountsService } from 'post/post-interaction-counts.service';
+import { KnexPostRepository } from 'post/post.repository.knex';
+import { PostService } from 'post/post.service';
+import { SiteService } from 'site/site.service';
+import { GCPStorageAdapter } from 'storage/adapters/gcp-storage-adapter';
+import { ImageProcessor } from 'storage/image-processor';
+import { ImageStorageService } from 'storage/image-storage.service';
 
 export function registerDependencies(
     container: AwilixContainer,
@@ -212,6 +205,28 @@ export function registerDependencies(
     );
     container.register('likeController', asClass(LikeController).singleton());
 
+    // New controllers
+    container.register(
+        'accountController',
+        asClass(AccountController).singleton(),
+    );
+    container.register('feedController', asClass(FeedController).singleton());
+    container.register('mediaController', asClass(MediaController).singleton());
+    container.register('postController', asClass(PostController).singleton());
+    container.register(
+        'searchController',
+        asClass(SearchController).singleton(),
+    );
+    container.register('siteController', asClass(SiteController).singleton());
+    container.register(
+        'webFingerController',
+        asClass(WebFingerController).singleton(),
+    );
+    container.register(
+        'webhookController',
+        asClass(WebhookController).singleton(),
+    );
+
     container.register('createHandler', asClass(CreateHandler).singleton());
     container.register('deleteHandler', asClass(DeleteHandler).singleton());
     container.register('followHandler', asClass(FollowHandler).singleton());
@@ -282,33 +297,8 @@ export function registerDependencies(
     );
 
     container.register(
-        'getSiteDataHandler',
-        asFunction(getSiteDataHandler).singleton(),
-    );
-
-    container.register(
-        'postPublishedWebhookHandler',
-        asFunction(createPostPublishedWebhookHandler).singleton(),
-    );
-
-    container.register(
         'webFingerHandler',
         asFunction(createWebFingerHandler).singleton(),
-    );
-
-    container.register(
-        'repostActionHandler',
-        asFunction(createRepostActionHandler).singleton(),
-    );
-
-    container.register(
-        'derepostActionHandler',
-        asFunction(createDerepostActionHandler).singleton(),
-    );
-
-    container.register(
-        'searchHandler',
-        asFunction(createSearchHandler).singleton(),
     );
 
     container.register(
@@ -317,62 +307,8 @@ export function registerDependencies(
     );
 
     container.register(
-        'getAccountHandler',
-        asFunction(createGetAccountHandler).singleton(),
-    );
-
-    container.register(
-        'updateAccountHandler',
-        asFunction(createUpdateAccountHandler).singleton(),
-    );
-
-    container.register(
-        'getAccountPostsHandler',
-        asFunction(createGetAccountPostsHandler).singleton(),
-    );
-
-    container.register(
-        'getAccountLikedPostsHandler',
-        asFunction(createGetAccountLikedPostsHandler).singleton(),
-    );
-
-    container.register(
-        'getAccountFollowsHandler',
-        asFunction(createGetAccountFollowsHandler).singleton(),
-    );
-
-    container.register(
-        'getFeedHandler',
-        asFunction(
-            (feedService, accountService, postInteractionCountsService) =>
-                (feedType: 'Feed' | 'Inbox') =>
-                    createGetFeedHandler(
-                        feedService,
-                        accountService,
-                        postInteractionCountsService,
-                        feedType,
-                    ),
-        ).singleton(),
-    );
-
-    container.register(
-        'getPostHandler',
-        asFunction(createGetPostHandler).singleton(),
-    );
-
-    container.register(
         'notificationController',
         asClass(NotificationController).singleton(),
-    );
-
-    container.register(
-        'imageUploadHandler',
-        asFunction(createImageUploadHandler).singleton(),
-    );
-
-    container.register(
-        'deletePostHandler',
-        asFunction(createDeletePostHandler).singleton(),
     );
 
     container.register(
