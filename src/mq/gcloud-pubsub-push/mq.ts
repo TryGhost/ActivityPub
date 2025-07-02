@@ -1,4 +1,8 @@
-import type { MessageQueue, MessageQueueListenOptions } from '@fedify/fedify';
+import type {
+    MessageQueue,
+    MessageQueueEnqueueOptions,
+    MessageQueueListenOptions,
+} from '@fedify/fedify';
 import type { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
@@ -34,7 +38,7 @@ interface Message {
  * Message queue implementation using a GCloud Pub/Sub push subscription
  */
 export class GCloudPubSubPushMessageQueue implements MessageQueue {
-    readonly nativeRetrial = true;
+    readonly nativeRetrial = false;
     private logger: Logger;
     private pubSubClient: PubSub;
     private topic: string;
@@ -59,11 +63,21 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      *
      * @param message Message to enqueue
      */
-    async enqueue(message: FedifyMessage): Promise<void> {
-        this.logger.info(`Enqueuing message [FedifyID: ${message.id}]`, {
-            fedifyId: message.id,
-            mq_message: message,
-        });
+    async enqueue(
+        message: FedifyMessage,
+        options: MessageQueueEnqueueOptions,
+    ): Promise<void> {
+        const delay = options?.delay?.total('millisecond');
+
+        // If the message has a delay, do not enqueue it - this is a retry and we want to ignore for now
+        if (delay !== undefined) {
+            this.logger.info(
+                `Not enqueuing message [FedifyID: ${message.id}] due to delay being set: ${delay}`,
+                { fedifyId: message.id, mq_message: message },
+            );
+
+            return;
+        }
 
         try {
             const messageId = await this.pubSubClient
