@@ -65,7 +65,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      */
     async enqueue(
         message: FedifyMessage,
-        options: MessageQueueEnqueueOptions,
+        options?: MessageQueueEnqueueOptions,
     ): Promise<void> {
         const delay = options?.delay?.total('millisecond');
 
