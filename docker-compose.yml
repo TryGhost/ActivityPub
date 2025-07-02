@@ -121,10 +121,11 @@ services:
     environment:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
-      - FEDIFY_RETRY_TOPIC_NAME=fedify-retry-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_RETRY_SUBSCRIPTION_NAME=fedify-subscription-retry
       - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
+      - FEDIFY_RETRY_TOPIC_NAME=fedify-retry-topic
+      - FEDIFY_RETRY_SUBSCRIPTION_NAME=fedify-subscription-retry
+      - FEDIFY_RETRY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
@@ -255,10 +256,11 @@ services:
     environment:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
-      - FEDIFY_RETRY_TOPIC_NAME=fedify-retry-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
-      - FEDIFY_RETRY_SUBSCRIPTION_NAME=fedify-subscription-retry
       - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
+      - FEDIFY_RETRY_TOPIC_NAME=fedify-retry-topic
+      - FEDIFY_RETRY_SUBSCRIPTION_NAME=fedify-subscription-retry
+      - FEDIFY_RETRY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push

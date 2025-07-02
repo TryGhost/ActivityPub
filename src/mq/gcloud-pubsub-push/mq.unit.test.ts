@@ -229,6 +229,56 @@ describe('GCloudPubSubPushMessageQueue', () => {
             expect(errorListener).toHaveBeenCalledTimes(1);
             expect(errorListener).toHaveBeenCalledWith(error);
         });
+
+        it('should publish to the retry topic if the useRetryTopic flag is true', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error('Failed to handle message');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                },
+                attributes: {},
+            });
+
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledWith({
+                json: {
+                    id: 'abc123',
+                },
+                attributes: {
+                    fedifyId: 'unknown',
+                },
+            });
+        });
     });
 });
 

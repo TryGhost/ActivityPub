@@ -30,13 +30,6 @@ else
     exit 1
 fi
 
-if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${FEDIFY_RETRY_TOPIC_NAME} | grep -q "200"; then
-    echo "Topic created: ${FEDIFY_RETRY_TOPIC_NAME}"
-else
-    echo "Failed to create topic: ${FEDIFY_RETRY_TOPIC_NAME}"
-    exit 1
-fi
-
 # Create the Fedify (push) subscription via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${FEDIFY_SUBSCRIPTION_NAME} \
     -H "Content-Type: application/json" \
@@ -52,18 +45,26 @@ else
     exit 1
 fi
 
+# Create the Fedify retry topic via REST API
+if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/topics/${FEDIFY_RETRY_TOPIC_NAME} | grep -q "200"; then
+    echo "Topic created: ${FEDIFY_RETRY_TOPIC_NAME}"
+else
+    echo "Failed to create topic: ${FEDIFY_RETRY_TOPIC_NAME}"
+    exit 1
+fi
+
 # Create the Fedify retry (push) subscription via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${FEDIFY_RETRY_SUBSCRIPTION_NAME} \
     -H "Content-Type: application/json" \
     -d '{
   "topic": "projects/'${PROJECT_ID}'/topics/'${FEDIFY_RETRY_TOPIC_NAME}'",
   "pushConfig": {
-    "pushEndpoint": "'${FEDIFY_PUSH_ENDPOINT}'"
+    "pushEndpoint": "'${FEDIFY_RETRY_PUSH_ENDPOINT}'"
   }
 }' | grep -q "200"; then
-    echo "Subscription created: ${FEDIFY_SUBSCRIPTION_NAME}"
+    echo "Subscription created: ${FEDIFY_RETRY_SUBSCRIPTION_NAME}"
 else
-    echo "Failed to create subscription: ${FEDIFY_SUBSCRIPTION_NAME}"
+    echo "Failed to create subscription: ${FEDIFY_RETRY_SUBSCRIPTION_NAME}"
     exit 1
 fi
 
@@ -74,7 +75,6 @@ else
     echo "Failed to create topic: ${GHOST_TOPIC_NAME}"
     exit 1
 fi
-
 
 # Create the Ghost (push) subscription via REST API
 if curl -s -o /dev/null -w "%{http_code}" -X PUT http://${HOST}/v1/projects/${PROJECT_ID}/subscriptions/${GHOST_SUBSCRIPTION_NAME} \
@@ -90,7 +90,6 @@ else
     echo "Failed to create subscription: ${GHOST_SUBSCRIPTION_NAME}"
     exit 1
 fi
-
 
 # Keep the container running
 tail -f /dev/null

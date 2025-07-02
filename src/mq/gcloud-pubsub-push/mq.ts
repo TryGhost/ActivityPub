@@ -46,8 +46,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         private logger: Logger,
         private pubSubClient: PubSub,
         private topic: string,
+        private useRetryTopic = false,
         private retryTopic?: string,
-        private useRetryTopic?: boolean,
     ) {}
 
     /**
@@ -191,7 +191,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 await this.pubSubClient.topic(this.retryTopic).publishMessage({
                     json: message.data,
                     attributes: {
-                        fedifyId: message.attributes.fedifyId,
+                        fedifyId,
                     },
                 });
             } else {

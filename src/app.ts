@@ -183,12 +183,12 @@ if (process.env.USE_MQ === 'true') {
                 pubSubClient.projectId,
                 process.env.MQ_PUBSUB_TOPIC_NAME || 'unknown_pubsub_topic_name',
             ),
+            process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
             getFullTopic(
                 pubSubClient.projectId,
                 process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
                     'unknown_pubsub_retry_topic_name',
             ),
-            process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
         );
 
         globalQueue.registerErrorListener((error) =>
