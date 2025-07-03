@@ -4,13 +4,16 @@ import * as Sentry from '@sentry/node';
 
 import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
-import type { AppContext } from 'app';
 import type { FeedService } from 'feed/feed.service';
+import type { Context } from 'hono';
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { PostType } from 'post/post.entity';
 import type { Site } from 'site/site.service';
 import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
-import { createGetFeedHandler } from './feed';
+import { FeedController } from './feed.controller';
+
+// Mock AppContext type without importing from app
+type AppContext = Context;
 
 vi.mock('@sentry/node', () => {
     return {
@@ -18,10 +21,11 @@ vi.mock('@sentry/node', () => {
     };
 });
 
-describe('Feed API', () => {
+describe('FeedController', () => {
     let feedService: FeedService;
     let accountService: AccountService;
     let postInteractionCountsService: PostInteractionCountsService;
+    let feedController: FeedController;
     let site: Site;
     let account: AccountEntity;
     let ctx: AppContext;
@@ -166,6 +170,12 @@ describe('Feed API', () => {
 
         feedService = {} as FeedService;
 
+        feedController = new FeedController(
+            feedService,
+            accountService,
+            postInteractionCountsService,
+        );
+
         ctx = {
             req: {
                 query: (key: string) => {
@@ -194,40 +204,26 @@ describe('Feed API', () => {
         } as unknown as AppContext;
     });
 
-    describe('retrieving a feed', () => {
+    describe('handleGetInbox', () => {
         it('should return a list of posts', async () => {
-            const handler = createGetFeedHandler(
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                'Inbox',
-            );
-
             feedService.getFeedData = vi
                 .fn()
                 .mockImplementation(getMockFeedData);
 
-            const response = await handler(ctx);
+            const response = await feedController.handleGetInbox(ctx);
 
             expect(response.status).toBe(200);
             await expect(response.json()).resolves.toMatchFileSnapshot(
-                './__snapshots__/feed.json',
+                '../__snapshots__/feed.json',
             );
         });
 
         it('should request an update of the interaction counts for the posts in the feed', async () => {
-            const handler = createGetFeedHandler(
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                'Inbox',
-            );
-
             feedService.getFeedData = vi
                 .fn()
                 .mockImplementation(getMockFeedData);
 
-            await handler(ctx);
+            await feedController.handleGetInbox(ctx);
 
             expect(
                 postInteractionCountsService.requestUpdate,
@@ -235,13 +231,6 @@ describe('Feed API', () => {
         });
 
         it('should handle errors when requesting an update of the interaction counts for the posts in the feed', async () => {
-            const handler = createGetFeedHandler(
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                'Inbox',
-            );
-
             feedService.getFeedData = vi
                 .fn()
                 .mockImplementation(getMockFeedData);
@@ -252,7 +241,7 @@ describe('Feed API', () => {
                 .fn()
                 .mockRejectedValue(error);
 
-            const response = await handler(ctx);
+            const response = await feedController.handleGetInbox(ctx);
 
             expect(Sentry.captureException).toHaveBeenCalledWith(error);
 
@@ -260,7 +249,7 @@ describe('Feed API', () => {
             // still be returned
             expect(response.status).toBe(200);
             await expect(response.json()).resolves.toMatchFileSnapshot(
-                './__snapshots__/feed.json',
+                '../__snapshots__/feed.json',
             );
         });
     });

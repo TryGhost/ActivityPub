@@ -32,26 +32,29 @@ const MAX_POSTS_LIMIT = 100;
  */
 const CURRENT_USER_KEYWORD = 'me';
 
-/**
- * Create a handler to handle a request for an account
- */
-export function createGetAccountHandler(
-    accountView: AccountView,
-    accountRepository: KnexAccountRepository,
-) {
+export class AccountController {
+    constructor(
+        private readonly accountView: AccountView,
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly accountFollowsView: AccountFollowsView,
+        private readonly accountPostsView: AccountPostsView,
+        private readonly accountService: AccountService,
+        private readonly fedifyContextFactory: FedifyContextFactory,
+    ) {}
+
     /**
      * Handle a request for an account
      *
      * @param ctx App context
      */
-    return async function handleGetAccount(ctx: AppContext) {
+    async handleGetAccount(ctx: AppContext) {
         const handle = ctx.req.param('handle');
 
         if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
             return new Response(null, { status: 404 });
         }
 
-        const siteDefaultAccount = await accountRepository.getBySite(
+        const siteDefaultAccount = await this.accountRepository.getBySite(
             ctx.get('site'),
         );
 
@@ -62,12 +65,15 @@ export function createGetAccountHandler(
         };
 
         if (handle === CURRENT_USER_KEYWORD) {
-            accountDto = await accountView.viewById(
+            accountDto = await this.accountView.viewById(
                 siteDefaultAccount.id!,
                 viewContext,
             );
         } else {
-            accountDto = await accountView.viewByHandle(handle, viewContext);
+            accountDto = await this.accountView.viewByHandle(
+                handle,
+                viewContext,
+            );
         }
 
         if (accountDto === null) {
@@ -80,25 +86,14 @@ export function createGetAccountHandler(
             },
             status: 200,
         });
-    };
-}
+    }
 
-/**
- * Create a handler to handle a request for a list of account follows
- *
- * @param accountService Account service instance
- */
-export function createGetAccountFollowsHandler(
-    accountRepository: KnexAccountRepository,
-    accountFollowsView: AccountFollowsView,
-    fedifyContextFactory: FedifyContextFactory,
-) {
     /**
      * Handle a request for a list of account follows
      *
      * @param ctx App context
      */
-    return async function handleGetAccountFollows(ctx: AppContext) {
+    async handleGetFollows(ctx: AppContext) {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
 
@@ -112,7 +107,7 @@ export function createGetAccountFollowsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const siteDefaultAccount = await accountRepository.getBySite(site);
+        const siteDefaultAccount = await this.accountRepository.getBySite(site);
 
         const queryNext = ctx.req.query('next');
         const next = queryNext ? decodeURIComponent(queryNext) : null;
@@ -120,14 +115,14 @@ export function createGetAccountFollowsHandler(
         let accountFollows: AccountFollows;
 
         if (handle === 'me') {
-            accountFollows = await accountFollowsView.getFollowsByAccount(
+            accountFollows = await this.accountFollowsView.getFollowsByAccount(
                 siteDefaultAccount,
                 type,
                 Number.parseInt(next || '0'),
                 siteDefaultAccount,
             );
         } else {
-            const ctx = fedifyContextFactory.getFedifyContext();
+            const ctx = this.fedifyContextFactory.getFedifyContext();
             const lookupResult = await lookupActorProfile(ctx, handle);
 
             if (isError(lookupResult)) {
@@ -139,18 +134,19 @@ export function createGetAccountFollowsHandler(
 
             const apId = getValue(lookupResult);
 
-            const account = await accountRepository.getByApId(apId);
+            const account = await this.accountRepository.getByApId(apId);
 
             if (account?.isInternal) {
-                accountFollows = await accountFollowsView.getFollowsByAccount(
-                    account,
-                    type,
-                    Number.parseInt(next || '0'),
-                    siteDefaultAccount,
-                );
+                accountFollows =
+                    await this.accountFollowsView.getFollowsByAccount(
+                        account,
+                        type,
+                        Number.parseInt(next || '0'),
+                        siteDefaultAccount,
+                    );
             } else {
                 const result =
-                    await accountFollowsView.getFollowsByRemoteLookUp(
+                    await this.accountFollowsView.getFollowsByRemoteLookUp(
                         apId,
                         next || '',
                         type,
@@ -195,47 +191,15 @@ export function createGetAccountFollowsHandler(
                 status: 200,
             },
         );
-    };
-}
-
-/**
- * Validates and extracts pagination parameters from the request
- *
- * @param ctx App context
- * @returns Object containing cursor and limit, or null if invalid
- */
-function validateRequestParams(ctx: AppContext) {
-    const queryCursor = ctx.req.query('next');
-    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
-    const queryLimit = ctx.req.query('limit');
-    const limit = queryLimit ? Number(queryLimit) : DEFAULT_POSTS_LIMIT;
-
-    if (limit > MAX_POSTS_LIMIT) {
-        return null;
     }
 
-    return { cursor, limit };
-}
-
-/**
- * Create a handler to handle a request for a list of posts by an account
- *
- * @param accountService Account service instance
- * @param profileService Profile service instance
- */
-export function createGetAccountPostsHandler(
-    accountRepository: KnexAccountRepository,
-    accountPostsView: AccountPostsView,
-    fedifyContextFactory: FedifyContextFactory,
-) {
     /**
      * Handle a request for a list of posts by an account
      *
      * @param ctx App context
      */
-    return async function handleGetPosts(ctx: AppContext) {
-        const params = validateRequestParams(ctx);
+    async handleGetPosts(ctx: AppContext) {
+        const params = this.validateRequestParams(ctx);
         if (!params) {
             return new Response(null, { status: 400 });
         }
@@ -248,14 +212,15 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const currentContextAccount = await accountRepository.getBySite(site);
+        const currentContextAccount =
+            await this.accountRepository.getBySite(site);
 
         let accountPosts: AccountPosts;
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
             const accountPostsResult =
-                await accountPostsView.getPostsFromOutbox(
+                await this.accountPostsView.getPostsFromOutbox(
                     currentContextAccount,
                     currentContextAccount.id,
                     params.limit,
@@ -273,7 +238,7 @@ export function createGetAccountPostsHandler(
             }
             accountPosts = getValue(accountPostsResult);
         } else {
-            const ctx = fedifyContextFactory.getFedifyContext();
+            const ctx = this.fedifyContextFactory.getFedifyContext();
             const lookupResult = await lookupActorProfile(ctx, handle);
 
             if (isError(lookupResult)) {
@@ -285,9 +250,9 @@ export function createGetAccountPostsHandler(
 
             const apId = getValue(lookupResult);
 
-            const account = await accountRepository.getByApId(apId);
+            const account = await this.accountRepository.getByApId(apId);
 
-            const result = await accountPostsView.getPostsByApId(
+            const result = await this.accountPostsView.getPostsByApId(
                 apId,
                 account,
                 currentContextAccount,
@@ -335,26 +300,15 @@ export function createGetAccountPostsHandler(
             }),
             { status: 200 },
         );
-    };
-}
+    }
 
-/**
- * Create a handler to handle a request for a list of posts liked by an account
- *
- * @param accountService Account service instance
- * @param profileService Profile service instance
- */
-export function createGetAccountLikedPostsHandler(
-    accountService: AccountService,
-    accountPostsView: AccountPostsView,
-) {
     /**
      * Handle a request for a list of posts liked by an account
      *
      * @param ctx App context
      */
-    return async function handleGetLikedPosts(ctx: AppContext) {
-        const params = validateRequestParams(ctx);
+    async handleGetLikedPosts(ctx: AppContext) {
+        const params = this.validateRequestParams(ctx);
         if (!params) {
             return new Response(null, { status: 400 });
         }
@@ -366,7 +320,7 @@ export function createGetAccountLikedPostsHandler(
         }
 
         const { results, nextCursor } =
-            await accountPostsView.getPostsLikedByAccount(
+            await this.accountPostsView.getPostsLikedByAccount(
                 account.id,
                 params.limit,
                 params.cursor,
@@ -379,14 +333,14 @@ export function createGetAccountLikedPostsHandler(
             }),
             { status: 200 },
         );
-    };
-}
+    }
 
-/**
- * Create a handler to handle a request for an account update
- */
-export function createUpdateAccountHandler(accountService: AccountService) {
-    return async function handleUpdateAccount(ctx: AppContext) {
+    /**
+     * Handle a request for an account update
+     *
+     * @param ctx App context
+     */
+    async handleUpdateAccount(ctx: AppContext) {
         const schema = z.object({
             name: z.string(),
             bio: z.string(),
@@ -395,7 +349,9 @@ export function createUpdateAccountHandler(accountService: AccountService) {
             bannerImageUrl: z.string(),
         });
 
-        const account = await accountService.getAccountForSite(ctx.get('site'));
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
 
         if (!account) {
             return new Response(null, { status: 404 });
@@ -410,7 +366,7 @@ export function createUpdateAccountHandler(accountService: AccountService) {
             return new Response(JSON.stringify({}), { status: 400 });
         }
 
-        await accountService.updateAccountProfile(account, {
+        await this.accountService.updateAccountProfile(account, {
             name: data.name,
             bio: data.bio,
             username: data.username,
@@ -419,5 +375,25 @@ export function createUpdateAccountHandler(accountService: AccountService) {
         });
 
         return new Response(JSON.stringify({}), { status: 200 });
-    };
+    }
+
+    /**
+     * Validates and extracts pagination parameters from the request
+     *
+     * @param ctx App context
+     * @returns Object containing cursor and limit, or null if invalid
+     */
+    private validateRequestParams(ctx: AppContext) {
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit ? Number(queryLimit) : DEFAULT_POSTS_LIMIT;
+
+        if (limit > MAX_POSTS_LIMIT) {
+            return null;
+        }
+
+        return { cursor, limit };
+    }
 }
