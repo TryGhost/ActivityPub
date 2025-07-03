@@ -50,6 +50,7 @@ import type { LikeController } from 'http/api/like.controller';
 import { handleCreateReply } from 'http/api/reply';
 import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
+import type { WebFingerController } from 'http/api/webfinger.controller';
 import type { WebhookController } from 'http/api/webhook.controller';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
@@ -999,8 +1000,10 @@ function requireRole(...roles: GhostRole[]) {
 app.get(
     '/.well-known/webfinger',
     spanWrapper((ctx: AppContext, next: Next) => {
-        const handler = container.resolve('webFingerHandler');
-        return handler(ctx, next);
+        const webFingerController = container.resolve<WebFingerController>(
+            'webFingerController',
+        );
+        return webFingerController.handleWebFinger(ctx, next);
     }),
 );
 app.post(

@@ -62,7 +62,7 @@ import { AccountPostsView } from '../http/api/views/account.posts.view';
 import { AccountView } from '../http/api/views/account.view';
 import { BlocksView } from '../http/api/views/blocks.view';
 import { ReplyChainView } from '../http/api/views/reply.chain.view';
-import { createWebFingerHandler } from '../http/api/webfinger.controller';
+import { WebFingerController } from '../http/api/webfinger.controller';
 import { WebhookController } from '../http/api/webhook.controller';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationEventService } from '../notification/notification-event.service';
@@ -289,8 +289,8 @@ export function registerDependencies(
     );
 
     container.register(
-        'webFingerHandler',
-        asFunction(createWebFingerHandler).singleton(),
+        'webFingerController',
+        asClass(WebFingerController).singleton(),
     );
 
     container.register(
