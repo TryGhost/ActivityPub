@@ -176,7 +176,7 @@ export function createAcceptHandler(accountService: AccountService) {
     };
 }
 
-export async function handleAnnoucedCreate(
+export async function handleAnnouncedCreate(
     ctx: Context<ContextData>,
     announce: Announce,
     siteService: SiteService,
@@ -300,13 +300,16 @@ export async function handleAnnoucedCreate(
 
     if (!create.objectId) {
         ctx.data.logger.info('Create object id missing, exit early');
+
         return;
     }
+
     // This handles storing the posts in the posts table
     const postResult = await postService.getByApId(create.objectId);
 
     if (isError(postResult)) {
         const error = getError(postResult);
+
         switch (error) {
             case 'upstream-error':
                 ctx.data.logger.info(
@@ -335,6 +338,30 @@ export async function handleAnnoucedCreate(
             default:
                 exhaustiveCheck(error);
         }
+    } else {
+        // Add a repost of the post from the announcer so that followers of the
+        // announcer can see the post in their feed
+        const post = getValue(postResult);
+
+        if (announcer.id === null) {
+            ctx.data.logger.info('Announcer id missing, exit early');
+
+            return;
+        }
+
+        const accountResult = await accountService.ensureByApId(announcer.id);
+
+        if (isError(accountResult)) {
+            ctx.data.logger.info('Announcer account not found, exit early');
+
+            return;
+        }
+
+        const account = getValue(accountResult);
+
+        post.addRepost(account);
+
+        await postService.repostByApId(account, post.apId);
     }
 }
 
@@ -473,7 +500,7 @@ export function createAnnounceHandler(
         const announced = await lookupObject(ctx, announce.objectId);
 
         if (announced instanceof Create) {
-            return handleAnnoucedCreate(
+            return handleAnnouncedCreate(
                 ctx,
                 announce,
                 siteService,
