@@ -43,7 +43,6 @@ import {
     createGetFeedHandler,
     createGetPostHandler,
     createImageUploadHandler,
-    createUpdateAccountHandler,
 } from '../http/api';
 import { BlockController } from '../http/api/block.controller';
 import { createDerepostActionHandler } from '../http/api/derepost';
@@ -308,11 +307,6 @@ export function registerDependencies(
     container.register(
         'replyChainController',
         asClass(ReplyChainController).singleton(),
-    );
-
-    container.register(
-        'updateAccountHandler',
-        asFunction(createUpdateAccountHandler).singleton(),
     );
 
     container.register(

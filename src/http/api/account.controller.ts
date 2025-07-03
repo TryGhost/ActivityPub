@@ -334,7 +334,40 @@ export class AccountController {
      * Handle a request for an account update
      */
     async handleUpdateAccount(ctx: AppContext) {
-        return createUpdateAccountHandler(this.accountService)(ctx);
+        const schema = z.object({
+            name: z.string(),
+            bio: z.string(),
+            username: z.string(),
+            avatarUrl: z.string(),
+            bannerImageUrl: z.string(),
+        });
+
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof schema>;
+
+        try {
+            data = schema.parse((await ctx.req.json()) as unknown);
+        } catch (err) {
+            console.error(err);
+            return new Response(JSON.stringify({}), { status: 400 });
+        }
+
+        await this.accountService.updateAccountProfile(account, {
+            name: data.name,
+            bio: data.bio,
+            username: data.username,
+            avatarUrl: data.avatarUrl,
+            bannerImageUrl: data.bannerImageUrl,
+        });
+
+        return new Response(JSON.stringify({}), { status: 200 });
     }
 }
 
@@ -356,44 +389,4 @@ function validateRequestParams(ctx: AppContext) {
     }
 
     return { cursor, limit };
-}
-
-/**
- * Create a handler to handle a request for an account update
- */
-export function createUpdateAccountHandler(accountService: AccountService) {
-    return async function handleUpdateAccount(ctx: AppContext) {
-        const schema = z.object({
-            name: z.string(),
-            bio: z.string(),
-            username: z.string(),
-            avatarUrl: z.string(),
-            bannerImageUrl: z.string(),
-        });
-
-        const account = await accountService.getAccountForSite(ctx.get('site'));
-
-        if (!account) {
-            return new Response(null, { status: 404 });
-        }
-
-        let data: z.infer<typeof schema>;
-
-        try {
-            data = schema.parse((await ctx.req.json()) as unknown);
-        } catch (err) {
-            console.error(err);
-            return new Response(JSON.stringify({}), { status: 400 });
-        }
-
-        await accountService.updateAccountProfile(account, {
-            name: data.name,
-            bio: data.bio,
-            username: data.username,
-            avatarUrl: data.avatarUrl,
-            bannerImageUrl: data.bannerImageUrl,
-        });
-
-        return new Response(JSON.stringify({}), { status: 200 });
-    };
 }
