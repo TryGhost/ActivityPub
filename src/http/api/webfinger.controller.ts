@@ -7,17 +7,19 @@ import type { SiteService } from 'site/site.service';
 const ACCOUNT_RESOURCE_PREFIX = 'acct:';
 const HOST_REGEX = /^([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]+)$/;
 
-function createWebFingerHandler(
-    accountRepository: KnexAccountRepository,
-    siteService: SiteService,
-) {
+export class WebFingerController {
+    constructor(
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly siteService: SiteService,
+    ) {}
+
     /**
      * Custom webfinger implementation to allow resources hosted on the www
      * version of a host to resolve to the non-www version of the host
      *
      * @see https://github.com/fedify-dev/fedify/blob/main/src/webfinger/handler.ts
      */
-    return async function handleWebFinger(ctx: HonoContext, next: Next) {
+    async handleWebFinger(ctx: HonoContext, next: Next) {
         const resource = ctx.req.query('resource');
 
         // We only support custom handling of `acct:` resources - If the
@@ -37,8 +39,8 @@ function createWebFingerHandler(
         }
 
         const site =
-            (await siteService.getSiteByHost(resourceHost)) ||
-            (await siteService.getSiteByHost(`www.${resourceHost}`));
+            (await this.siteService.getSiteByHost(resourceHost)) ||
+            (await this.siteService.getSiteByHost(`www.${resourceHost}`));
 
         if (!site) {
             return new Response(null, {
@@ -49,7 +51,7 @@ function createWebFingerHandler(
         let account: Account;
 
         try {
-            account = await accountRepository.getBySite(site);
+            account = await this.accountRepository.getBySite(site);
         } catch (error) {
             return new Response(null, {
                 status: 404,
@@ -78,21 +80,5 @@ function createWebFingerHandler(
                 'Content-Type': 'application/jrd+json',
             },
         });
-    };
+    }
 }
-
-// Export new class that uses the factory
-export class WebFingerController {
-    constructor(
-        private readonly accountRepository: KnexAccountRepository,
-        private readonly siteService: SiteService,
-    ) {}
-
-    handleWebFinger = createWebFingerHandler(
-        this.accountRepository,
-        this.siteService,
-    );
-}
-
-// Keep exporting the factory for now to avoid breaking changes
-export { createWebFingerHandler };
