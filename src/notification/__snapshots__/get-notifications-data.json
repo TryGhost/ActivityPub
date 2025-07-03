@@ -11,7 +11,7 @@
     "in_reply_to_post_title": null,
     "in_reply_to_post_type": 1,
     "in_reply_to_post_url": "http://alice.com/post/some-post",
-    "notification_created_at": 2025-03-21T11:00:00.000Z,
+    "notification_created_at": "2025-03-21T11:00:00.000Z",
     "notification_event_type": 3,
     "notification_id": 5,
     "post_ap_id": "https://charlie.com/post/some-reply",
@@ -24,6 +24,7 @@
     "post_title": null,
     "post_type": 0,
     "post_url": "http://charlie.com/post/some-reply",
+    "post_attachments": null
   },
   {
     "actor_avatar_url": null,
@@ -37,7 +38,7 @@
     "in_reply_to_post_title": null,
     "in_reply_to_post_type": null,
     "in_reply_to_post_url": null,
-    "notification_created_at": 2025-03-20T14:00:00.000Z,
+    "notification_created_at": "2025-03-20T14:00:00.000Z",
     "notification_event_type": 4,
     "notification_id": 4,
     "post_ap_id": null,
@@ -50,6 +51,7 @@
     "post_title": null,
     "post_type": null,
     "post_url": null,
+    "post_attachments": null
   },
   {
     "actor_avatar_url": null,
@@ -63,7 +65,7 @@
     "in_reply_to_post_title": null,
     "in_reply_to_post_type": 1,
     "in_reply_to_post_url": "http://alice.com/post/some-post",
-    "notification_created_at": 2025-03-20T11:05:00.000Z,
+    "notification_created_at": "2025-03-20T11:05:00.000Z",
     "notification_event_type": 3,
     "notification_id": 3,
     "post_ap_id": "https://bob.com/post/some-reply",
@@ -76,6 +78,7 @@
     "post_title": null,
     "post_type": 0,
     "post_url": "http://bob.com/post/some-reply",
+    "post_attachments": null
   },
   {
     "actor_avatar_url": null,
@@ -89,7 +92,7 @@
     "in_reply_to_post_title": null,
     "in_reply_to_post_type": null,
     "in_reply_to_post_url": null,
-    "notification_created_at": 2025-03-18T16:55:00.000Z,
+    "notification_created_at": "2025-03-18T16:55:00.000Z",
     "notification_event_type": 2,
     "notification_id": 2,
     "post_ap_id": "https://alice.com/post/some-post",
@@ -102,6 +105,7 @@
     "post_title": null,
     "post_type": 1,
     "post_url": "http://alice.com/post/some-post",
+    "post_attachments": null
   },
   {
     "actor_avatar_url": null,
@@ -115,7 +119,7 @@
     "in_reply_to_post_title": null,
     "in_reply_to_post_type": null,
     "in_reply_to_post_url": null,
-    "notification_created_at": 2025-03-18T09:30:00.000Z,
+    "notification_created_at": "2025-03-18T09:30:00.000Z",
     "notification_event_type": 1,
     "notification_id": 1,
     "post_ap_id": "https://alice.com/post/some-post",
@@ -128,5 +132,6 @@
     "post_title": null,
     "post_type": 1,
     "post_url": "http://alice.com/post/some-post",
-  },
+    "post_attachments": null
+  }
 ]
