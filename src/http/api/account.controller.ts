@@ -33,6 +33,69 @@ const MAX_POSTS_LIMIT = 100;
 const CURRENT_USER_KEYWORD = 'me';
 
 /**
+ * Controller for account-related operations
+ */
+export class AccountController {
+    constructor(
+        private readonly accountView: AccountView,
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly accountFollowsView: AccountFollowsView,
+        private readonly fedifyContextFactory: FedifyContextFactory,
+        private readonly accountPostsView: AccountPostsView,
+        private readonly accountService: AccountService,
+    ) {}
+
+    /**
+     * Handle a request for an account
+     */
+    async handleGetAccount(ctx: AppContext) {
+        return createGetAccountHandler(
+            this.accountView,
+            this.accountRepository,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for a list of account follows
+     */
+    async handleGetAccountFollows(ctx: AppContext) {
+        return createGetAccountFollowsHandler(
+            this.accountRepository,
+            this.accountFollowsView,
+            this.fedifyContextFactory,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for a list of posts by an account
+     */
+    async handleGetAccountPosts(ctx: AppContext) {
+        return createGetAccountPostsHandler(
+            this.accountRepository,
+            this.accountPostsView,
+            this.fedifyContextFactory,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for a list of posts liked by an account
+     */
+    async handleGetAccountLikedPosts(ctx: AppContext) {
+        return createGetAccountLikedPostsHandler(
+            this.accountService,
+            this.accountPostsView,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for an account update
+     */
+    async handleUpdateAccount(ctx: AppContext) {
+        return createUpdateAccountHandler(this.accountService)(ctx);
+    }
+}
+
+/**
  * Create a handler to handle a request for an account
  */
 export function createGetAccountHandler(
