@@ -18,7 +18,10 @@
       "quoteUrl": "as:quoteUrl",
       "sensitive": "as:sensitive",
       "toot": "http://joinmastodon.org/ns#",
-      "votersCount": "toot:votersCount",
+      "votersCount": {
+        "@id": "toot:votersCount",
+        "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
+      },
     },
   ],
   "actor": "https://example.com/user/foo",
