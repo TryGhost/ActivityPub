@@ -50,6 +50,7 @@ import type { LikeController } from 'http/api/like.controller';
 import { handleCreateReply } from 'http/api/reply';
 import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
+import type { WebhookController } from 'http/api/webhook.controller';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import type { NotificationEventService } from 'notification/notification-event.service';
@@ -978,8 +979,9 @@ app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('postPublishedWebhookHandler');
-        return handler(ctx);
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostPublished(ctx);
     }),
 );
 

@@ -46,7 +46,6 @@ import {
     createGetFeedHandler,
     createGetPostHandler,
     createImageUploadHandler,
-    createPostPublishedWebhookHandler,
     createUpdateAccountHandler,
 } from '../http/api';
 import { BlockController } from '../http/api/block.controller';
@@ -64,6 +63,7 @@ import { AccountView } from '../http/api/views/account.view';
 import { BlocksView } from '../http/api/views/blocks.view';
 import { ReplyChainView } from '../http/api/views/reply.chain.view';
 import { createWebFingerHandler } from '../http/api/webfinger.controller';
+import { WebhookController } from '../http/api/webhook.controller';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationEventService } from '../notification/notification-event.service';
 import { NotificationService } from '../notification/notification.service';
@@ -284,8 +284,8 @@ export function registerDependencies(
     container.register('siteController', asClass(SiteController).singleton());
 
     container.register(
-        'postPublishedWebhookHandler',
-        asFunction(createPostPublishedWebhookHandler).singleton(),
+        'webhookController',
+        asClass(WebhookController).singleton(),
     );
 
     container.register(
