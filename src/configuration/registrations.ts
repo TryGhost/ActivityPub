@@ -38,6 +38,7 @@ import { FeedService } from '../feed/feed.service';
 import { FlagService } from '../flag/flag.service';
 import { getSiteSettings } from '../helpers/ghost';
 import {
+    AccountController,
     createDeletePostHandler,
     createGetAccountFollowsHandler,
     createGetAccountHandler,
@@ -375,5 +376,10 @@ export function registerDependencies(
     container.register(
         'pubSubMessageHandler',
         asFunction(createIncomingPubSubMessageHandler).singleton(),
+    );
+
+    container.register(
+        'accountController',
+        asClass(AccountController).singleton(),
     );
 }

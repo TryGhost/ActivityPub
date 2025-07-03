@@ -43,6 +43,7 @@ import { PubSubEvents } from 'events/pubsub';
 import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
+import type { AccountController } from 'http/api/account.controller';
 import type { BlockController } from 'http/api/block.controller';
 import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
@@ -1097,40 +1098,45 @@ app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccount(ctx);
     }),
 );
 app.put(
     '/.ghost/activitypub/account',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('updateAccountHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleUpdateAccount(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountPostsHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccountPosts(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle/liked',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountLikedPostsHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccountLikedPosts(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountFollowsHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccountFollows(ctx);
     }),
 );
 app.get(
