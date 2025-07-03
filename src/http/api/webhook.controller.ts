@@ -40,7 +40,7 @@ const PostPublishedWebhookSchema = z.object({
  *
  * @param ctx App context instance
  */
-export function createPostPublishedWebhookHandler(postService: PostService) {
+function createPostPublishedWebhookHandler(postService: PostService) {
     return async function handleWebhookPostPublished(ctx: AppContext) {
         let data: PostInput;
 
@@ -92,3 +92,13 @@ export function createPostPublishedWebhookHandler(postService: PostService) {
         });
     };
 }
+
+// Export new class that uses the factory
+export class WebhookController {
+    constructor(private readonly postService: PostService) {}
+
+    handlePostPublished = createPostPublishedWebhookHandler(this.postService);
+}
+
+// Keep exporting the factory for now to avoid breaking changes
+export { createPostPublishedWebhookHandler };
