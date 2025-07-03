@@ -48,6 +48,7 @@ import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
 import type { LikeController } from 'http/api/like.controller';
 import { handleCreateReply } from 'http/api/reply';
+import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
@@ -1072,8 +1073,9 @@ app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('searchHandler');
-        return handler(ctx);
+        const searchController =
+            container.resolve<SearchController>('searchController');
+        return searchController.handleSearch(ctx);
     }),
 );
 
