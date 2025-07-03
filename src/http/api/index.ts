@@ -1,4 +1,4 @@
-export * from './account.controller';
+export { AccountController } from './account.controller';
 export * from './feed.controller';
 export * from './notification.controller';
 export * from './note';
