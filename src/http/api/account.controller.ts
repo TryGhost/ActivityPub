@@ -49,10 +49,44 @@ export class AccountController {
      * Handle a request for an account
      */
     async handleGetAccount(ctx: AppContext) {
-        return createGetAccountHandler(
-            this.accountView,
-            this.accountRepository,
-        )(ctx);
+        const handle = ctx.req.param('handle');
+
+        if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
+            return new Response(null, { status: 404 });
+        }
+
+        const siteDefaultAccount = await this.accountRepository.getBySite(
+            ctx.get('site'),
+        );
+
+        let accountDto: AccountDTO | null = null;
+
+        const viewContext = {
+            requestUserAccount: siteDefaultAccount,
+        };
+
+        if (handle === CURRENT_USER_KEYWORD) {
+            accountDto = await this.accountView.viewById(
+                siteDefaultAccount.id!,
+                viewContext,
+            );
+        } else {
+            accountDto = await this.accountView.viewByHandle(
+                handle,
+                viewContext,
+            );
+        }
+
+        if (accountDto === null) {
+            return new Response(null, { status: 404 });
+        }
+
+        return new Response(JSON.stringify(accountDto), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 200,
+        });
     }
 
     /**
@@ -93,57 +127,6 @@ export class AccountController {
     async handleUpdateAccount(ctx: AppContext) {
         return createUpdateAccountHandler(this.accountService)(ctx);
     }
-}
-
-/**
- * Create a handler to handle a request for an account
- */
-export function createGetAccountHandler(
-    accountView: AccountView,
-    accountRepository: KnexAccountRepository,
-) {
-    /**
-     * Handle a request for an account
-     *
-     * @param ctx App context
-     */
-    return async function handleGetAccount(ctx: AppContext) {
-        const handle = ctx.req.param('handle');
-
-        if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
-            return new Response(null, { status: 404 });
-        }
-
-        const siteDefaultAccount = await accountRepository.getBySite(
-            ctx.get('site'),
-        );
-
-        let accountDto: AccountDTO | null = null;
-
-        const viewContext = {
-            requestUserAccount: siteDefaultAccount,
-        };
-
-        if (handle === CURRENT_USER_KEYWORD) {
-            accountDto = await accountView.viewById(
-                siteDefaultAccount.id!,
-                viewContext,
-            );
-        } else {
-            accountDto = await accountView.viewByHandle(handle, viewContext);
-        }
-
-        if (accountDto === null) {
-            return new Response(null, { status: 404 });
-        }
-
-        return new Response(JSON.stringify(accountDto), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status: 200,
-        });
-    };
 }
 
 /**
