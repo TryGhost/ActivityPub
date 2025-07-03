@@ -35,13 +35,15 @@ const PostPublishedWebhookSchema = z.object({
     }),
 });
 
-/**
- * Handle a post.published webhook
- *
- * @param ctx App context instance
- */
-function createPostPublishedWebhookHandler(postService: PostService) {
-    return async function handleWebhookPostPublished(ctx: AppContext) {
+export class WebhookController {
+    constructor(private readonly postService: PostService) {}
+
+    /**
+     * Handle a post.published webhook
+     *
+     * @param ctx App context instance
+     */
+    async handlePostPublished(ctx: AppContext) {
         let data: PostInput;
 
         try {
@@ -57,7 +59,7 @@ function createPostPublishedWebhookHandler(postService: PostService) {
 
         const account = ctx.get('account');
 
-        const postResult = await postService.handleIncomingGhostPost(
+        const postResult = await this.postService.handleIncomingGhostPost(
             account,
             data,
         );
@@ -90,15 +92,5 @@ function createPostPublishedWebhookHandler(postService: PostService) {
             },
             status: 200,
         });
-    };
+    }
 }
-
-// Export new class that uses the factory
-export class WebhookController {
-    constructor(private readonly postService: PostService) {}
-
-    handlePostPublished = createPostPublishedWebhookHandler(this.postService);
-}
-
-// Keep exporting the factory for now to avoid breaking changes
-export { createPostPublishedWebhookHandler };
