@@ -57,7 +57,7 @@ import { LikeController } from '../http/api/like.controller';
 import { NotificationController } from '../http/api/notification.controller';
 import { ReplyChainController } from '../http/api/reply-chain';
 import { createRepostActionHandler } from '../http/api/repost';
-import { getSiteDataHandler } from '../http/api/site.controller';
+import { SiteController } from '../http/api/site.controller';
 import { AccountFollowsView } from '../http/api/views/account.follows.view';
 import { AccountPostsView } from '../http/api/views/account.posts.view';
 import { AccountView } from '../http/api/views/account.view';
@@ -281,10 +281,7 @@ export function registerDependencies(
         asFunction(createFollowingCounter).singleton(),
     );
 
-    container.register(
-        'getSiteDataHandler',
-        asFunction(getSiteDataHandler).singleton(),
-    );
+    container.register('siteController', asClass(SiteController).singleton());
 
     container.register(
         'postPublishedWebhookHandler',

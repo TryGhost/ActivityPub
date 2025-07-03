@@ -48,6 +48,7 @@ import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
 import type { LikeController } from 'http/api/like.controller';
 import { handleCreateReply } from 'http/api/reply';
+import type { SiteController } from 'http/api/site.controller';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import type { NotificationEventService } from 'notification/notification-event.service';
@@ -878,8 +879,9 @@ app.get(
     '/.ghost/activitypub/site',
     requireRole(GhostRole.Owner),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getSiteDataHandler');
-        return handler(ctx);
+        const siteController =
+            container.resolve<SiteController>('siteController');
+        return siteController.handleGetSiteData(ctx);
     }),
 );
 
