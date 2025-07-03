@@ -40,7 +40,6 @@ import { getSiteSettings } from '../helpers/ghost';
 import {
     AccountController,
     createDeletePostHandler,
-    createGetAccountFollowsHandler,
     createGetAccountLikedPostsHandler,
     createGetAccountPostsHandler,
     createGetFeedHandler,
@@ -326,11 +325,6 @@ export function registerDependencies(
     container.register(
         'getAccountLikedPostsHandler',
         asFunction(createGetAccountLikedPostsHandler).singleton(),
-    );
-
-    container.register(
-        'getAccountFollowsHandler',
-        asFunction(createGetAccountFollowsHandler).singleton(),
     );
 
     container.register(

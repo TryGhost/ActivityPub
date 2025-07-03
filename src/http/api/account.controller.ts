@@ -93,58 +93,6 @@ export class AccountController {
      * Handle a request for a list of account follows
      */
     async handleGetAccountFollows(ctx: AppContext) {
-        return createGetAccountFollowsHandler(
-            this.accountRepository,
-            this.accountFollowsView,
-            this.fedifyContextFactory,
-        )(ctx);
-    }
-
-    /**
-     * Handle a request for a list of posts by an account
-     */
-    async handleGetAccountPosts(ctx: AppContext) {
-        return createGetAccountPostsHandler(
-            this.accountRepository,
-            this.accountPostsView,
-            this.fedifyContextFactory,
-        )(ctx);
-    }
-
-    /**
-     * Handle a request for a list of posts liked by an account
-     */
-    async handleGetAccountLikedPosts(ctx: AppContext) {
-        return createGetAccountLikedPostsHandler(
-            this.accountService,
-            this.accountPostsView,
-        )(ctx);
-    }
-
-    /**
-     * Handle a request for an account update
-     */
-    async handleUpdateAccount(ctx: AppContext) {
-        return createUpdateAccountHandler(this.accountService)(ctx);
-    }
-}
-
-/**
- * Create a handler to handle a request for a list of account follows
- *
- * @param accountService Account service instance
- */
-export function createGetAccountFollowsHandler(
-    accountRepository: KnexAccountRepository,
-    accountFollowsView: AccountFollowsView,
-    fedifyContextFactory: FedifyContextFactory,
-) {
-    /**
-     * Handle a request for a list of account follows
-     *
-     * @param ctx App context
-     */
-    return async function handleGetAccountFollows(ctx: AppContext) {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
 
@@ -158,7 +106,7 @@ export function createGetAccountFollowsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const siteDefaultAccount = await accountRepository.getBySite(site);
+        const siteDefaultAccount = await this.accountRepository.getBySite(site);
 
         const queryNext = ctx.req.query('next');
         const next = queryNext ? decodeURIComponent(queryNext) : null;
@@ -166,14 +114,14 @@ export function createGetAccountFollowsHandler(
         let accountFollows: AccountFollows;
 
         if (handle === 'me') {
-            accountFollows = await accountFollowsView.getFollowsByAccount(
+            accountFollows = await this.accountFollowsView.getFollowsByAccount(
                 siteDefaultAccount,
                 type,
                 Number.parseInt(next || '0'),
                 siteDefaultAccount,
             );
         } else {
-            const ctx = fedifyContextFactory.getFedifyContext();
+            const ctx = this.fedifyContextFactory.getFedifyContext();
             const lookupResult = await lookupActorProfile(ctx, handle);
 
             if (isError(lookupResult)) {
@@ -185,18 +133,19 @@ export function createGetAccountFollowsHandler(
 
             const apId = getValue(lookupResult);
 
-            const account = await accountRepository.getByApId(apId);
+            const account = await this.accountRepository.getByApId(apId);
 
             if (account?.isInternal) {
-                accountFollows = await accountFollowsView.getFollowsByAccount(
-                    account,
-                    type,
-                    Number.parseInt(next || '0'),
-                    siteDefaultAccount,
-                );
+                accountFollows =
+                    await this.accountFollowsView.getFollowsByAccount(
+                        account,
+                        type,
+                        Number.parseInt(next || '0'),
+                        siteDefaultAccount,
+                    );
             } else {
                 const result =
-                    await accountFollowsView.getFollowsByRemoteLookUp(
+                    await this.accountFollowsView.getFollowsByRemoteLookUp(
                         apId,
                         next || '',
                         type,
@@ -241,7 +190,35 @@ export function createGetAccountFollowsHandler(
                 status: 200,
             },
         );
-    };
+    }
+
+    /**
+     * Handle a request for a list of posts by an account
+     */
+    async handleGetAccountPosts(ctx: AppContext) {
+        return createGetAccountPostsHandler(
+            this.accountRepository,
+            this.accountPostsView,
+            this.fedifyContextFactory,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for a list of posts liked by an account
+     */
+    async handleGetAccountLikedPosts(ctx: AppContext) {
+        return createGetAccountLikedPostsHandler(
+            this.accountService,
+            this.accountPostsView,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for an account update
+     */
+    async handleUpdateAccount(ctx: AppContext) {
+        return createUpdateAccountHandler(this.accountService)(ctx);
+    }
 }
 
 /**
