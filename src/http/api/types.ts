@@ -229,6 +229,7 @@ export interface NotificationDTO {
               | 'repostCount'
               | 'likedByMe'
               | 'repostedByMe'
+              | 'attachments'
           > & {
               type: 'article' | 'note';
           })
