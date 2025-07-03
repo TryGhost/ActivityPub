@@ -196,68 +196,6 @@ export class AccountController {
      * Handle a request for a list of posts by an account
      */
     async handleGetAccountPosts(ctx: AppContext) {
-        return createGetAccountPostsHandler(
-            this.accountRepository,
-            this.accountPostsView,
-            this.fedifyContextFactory,
-        )(ctx);
-    }
-
-    /**
-     * Handle a request for a list of posts liked by an account
-     */
-    async handleGetAccountLikedPosts(ctx: AppContext) {
-        return createGetAccountLikedPostsHandler(
-            this.accountService,
-            this.accountPostsView,
-        )(ctx);
-    }
-
-    /**
-     * Handle a request for an account update
-     */
-    async handleUpdateAccount(ctx: AppContext) {
-        return createUpdateAccountHandler(this.accountService)(ctx);
-    }
-}
-
-/**
- * Validates and extracts pagination parameters from the request
- *
- * @param ctx App context
- * @returns Object containing cursor and limit, or null if invalid
- */
-function validateRequestParams(ctx: AppContext) {
-    const queryCursor = ctx.req.query('next');
-    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
-    const queryLimit = ctx.req.query('limit');
-    const limit = queryLimit ? Number(queryLimit) : DEFAULT_POSTS_LIMIT;
-
-    if (limit > MAX_POSTS_LIMIT) {
-        return null;
-    }
-
-    return { cursor, limit };
-}
-
-/**
- * Create a handler to handle a request for a list of posts by an account
- *
- * @param accountService Account service instance
- * @param profileService Profile service instance
- */
-export function createGetAccountPostsHandler(
-    accountRepository: KnexAccountRepository,
-    accountPostsView: AccountPostsView,
-    fedifyContextFactory: FedifyContextFactory,
-) {
-    /**
-     * Handle a request for a list of posts by an account
-     *
-     * @param ctx App context
-     */
-    return async function handleGetPosts(ctx: AppContext) {
         const params = validateRequestParams(ctx);
         if (!params) {
             return new Response(null, { status: 400 });
@@ -271,14 +209,15 @@ export function createGetAccountPostsHandler(
             return new Response(null, { status: 400 });
         }
 
-        const currentContextAccount = await accountRepository.getBySite(site);
+        const currentContextAccount =
+            await this.accountRepository.getBySite(site);
 
         let accountPosts: AccountPosts;
 
         // We are using the keyword 'me', if we want to get the posts of the current user
         if (handle === 'me') {
             const accountPostsResult =
-                await accountPostsView.getPostsFromOutbox(
+                await this.accountPostsView.getPostsFromOutbox(
                     currentContextAccount,
                     currentContextAccount.id,
                     params.limit,
@@ -296,7 +235,7 @@ export function createGetAccountPostsHandler(
             }
             accountPosts = getValue(accountPostsResult);
         } else {
-            const ctx = fedifyContextFactory.getFedifyContext();
+            const ctx = this.fedifyContextFactory.getFedifyContext();
             const lookupResult = await lookupActorProfile(ctx, handle);
 
             if (isError(lookupResult)) {
@@ -308,9 +247,9 @@ export function createGetAccountPostsHandler(
 
             const apId = getValue(lookupResult);
 
-            const account = await accountRepository.getByApId(apId);
+            const account = await this.accountRepository.getByApId(apId);
 
-            const result = await accountPostsView.getPostsByApId(
+            const result = await this.accountPostsView.getPostsByApId(
                 apId,
                 account,
                 currentContextAccount,
@@ -358,7 +297,44 @@ export function createGetAccountPostsHandler(
             }),
             { status: 200 },
         );
-    };
+    }
+
+    /**
+     * Handle a request for a list of posts liked by an account
+     */
+    async handleGetAccountLikedPosts(ctx: AppContext) {
+        return createGetAccountLikedPostsHandler(
+            this.accountService,
+            this.accountPostsView,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request for an account update
+     */
+    async handleUpdateAccount(ctx: AppContext) {
+        return createUpdateAccountHandler(this.accountService)(ctx);
+    }
+}
+
+/**
+ * Validates and extracts pagination parameters from the request
+ *
+ * @param ctx App context
+ * @returns Object containing cursor and limit, or null if invalid
+ */
+function validateRequestParams(ctx: AppContext) {
+    const queryCursor = ctx.req.query('next');
+    const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+    const queryLimit = ctx.req.query('limit');
+    const limit = queryLimit ? Number(queryLimit) : DEFAULT_POSTS_LIMIT;
+
+    if (limit > MAX_POSTS_LIMIT) {
+        return null;
+    }
+
+    return { cursor, limit };
 }
 
 /**

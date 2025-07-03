@@ -41,7 +41,6 @@ import {
     AccountController,
     createDeletePostHandler,
     createGetAccountLikedPostsHandler,
-    createGetAccountPostsHandler,
     createGetFeedHandler,
     createGetPostHandler,
     createImageUploadHandler,
@@ -315,11 +314,6 @@ export function registerDependencies(
     container.register(
         'updateAccountHandler',
         asFunction(createUpdateAccountHandler).singleton(),
-    );
-
-    container.register(
-        'getAccountPostsHandler',
-        asFunction(createGetAccountPostsHandler).singleton(),
     );
 
     container.register(
