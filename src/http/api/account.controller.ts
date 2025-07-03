@@ -303,10 +303,31 @@ export class AccountController {
      * Handle a request for a list of posts liked by an account
      */
     async handleGetAccountLikedPosts(ctx: AppContext) {
-        return createGetAccountLikedPostsHandler(
-            this.accountService,
-            this.accountPostsView,
-        )(ctx);
+        const params = validateRequestParams(ctx);
+        if (!params) {
+            return new Response(null, { status: 400 });
+        }
+
+        const account = ctx.get('account');
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        const { results, nextCursor } =
+            await this.accountPostsView.getPostsLikedByAccount(
+                account.id,
+                params.limit,
+                params.cursor,
+            );
+
+        return new Response(
+            JSON.stringify({
+                posts: results,
+                next: nextCursor,
+            }),
+            { status: 200 },
+        );
     }
 
     /**
@@ -335,50 +356,6 @@ function validateRequestParams(ctx: AppContext) {
     }
 
     return { cursor, limit };
-}
-
-/**
- * Create a handler to handle a request for a list of posts liked by an account
- *
- * @param accountService Account service instance
- * @param profileService Profile service instance
- */
-export function createGetAccountLikedPostsHandler(
-    accountService: AccountService,
-    accountPostsView: AccountPostsView,
-) {
-    /**
-     * Handle a request for a list of posts liked by an account
-     *
-     * @param ctx App context
-     */
-    return async function handleGetLikedPosts(ctx: AppContext) {
-        const params = validateRequestParams(ctx);
-        if (!params) {
-            return new Response(null, { status: 400 });
-        }
-
-        const account = ctx.get('account');
-
-        if (!account) {
-            return new Response(null, { status: 404 });
-        }
-
-        const { results, nextCursor } =
-            await accountPostsView.getPostsLikedByAccount(
-                account.id,
-                params.limit,
-                params.cursor,
-            );
-
-        return new Response(
-            JSON.stringify({
-                posts: results,
-                next: nextCursor,
-            }),
-            { status: 200 },
-        );
-    };
 }
 
 /**
