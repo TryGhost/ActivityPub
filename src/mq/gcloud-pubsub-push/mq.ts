@@ -38,18 +38,17 @@ interface Message {
  * Message queue implementation using a GCloud Pub/Sub push subscription
  */
 export class GCloudPubSubPushMessageQueue implements MessageQueue {
-    readonly nativeRetrial = false;
-    private logger: Logger;
-    private pubSubClient: PubSub;
-    private topic: string;
+    readonly nativeRetrial = true;
     private messageHandler?: (message: FedifyMessage) => Promise<void> | void;
     private errorListener?: (error: Error) => void;
 
-    constructor(logger: Logger, pubSubClient: PubSub, topic: string) {
-        this.logger = logger;
-        this.pubSubClient = pubSubClient;
-        this.topic = topic;
-    }
+    constructor(
+        private logger: Logger,
+        private pubSubClient: PubSub,
+        private topic: string,
+        private useRetryTopic = false,
+        private retryTopic?: string,
+    ) {}
 
     /**
      * Indicates whether the message queue is listening for messages or not
@@ -179,7 +178,25 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
             this.errorListener?.(error as Error);
 
-            throw error;
+            if (this.useRetryTopic && this.retryTopic !== undefined) {
+                this.logger.info(
+                    `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+                    {
+                        fedifyId,
+                        pubSubId: message.id,
+                        mq_message: message.data,
+                    },
+                );
+
+                await this.pubSubClient.topic(this.retryTopic).publishMessage({
+                    json: message.data,
+                    attributes: {
+                        fedifyId,
+                    },
+                });
+            } else {
+                throw error;
+            }
         }
     }
 

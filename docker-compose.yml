@@ -21,6 +21,8 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
+      - MQ_PUBSUB_RETRY_TOPIC_NAME=fedify-retry-topic
+      - MQ_PUBSUB_USE_RETRY_TOPIC=true
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
@@ -121,6 +123,9 @@ services:
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
       - FEDIFY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
+      - FEDIFY_RETRY_TOPIC_NAME=fedify-retry-topic
+      - FEDIFY_RETRY_SUBSCRIPTION_NAME=fedify-subscription-retry
+      - FEDIFY_RETRY_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub:8080/.ghost/activitypub/pubsub/ghost/push
@@ -154,6 +159,8 @@ services:
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub-testing:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
+      - MQ_PUBSUB_RETRY_TOPIC_NAME=fedify-retry-topic
+      - MQ_PUBSUB_USE_RETRY_TOPIC=true
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - GCP_BUCKET_NAME=activitypub
       - GCS_LOCAL_STORAGE_HOSTING_URL=http://fake-gcs:4443/.ghost/activitypub/gcs
@@ -251,6 +258,9 @@ services:
       - FEDIFY_TOPIC_NAME=fedify-topic
       - FEDIFY_SUBSCRIPTION_NAME=fedify-subscription
       - FEDIFY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
+      - FEDIFY_RETRY_TOPIC_NAME=fedify-retry-topic
+      - FEDIFY_RETRY_SUBSCRIPTION_NAME=fedify-subscription-retry
+      - FEDIFY_RETRY_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/fedify/push
       - GHOST_TOPIC_NAME=ghost-topic
       - GHOST_SUBSCRIPTION_NAME=ghost-subscription
       - GHOST_PUSH_ENDPOINT=http://activitypub-testing:8083/.ghost/activitypub/pubsub/ghost/push
