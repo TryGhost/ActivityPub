@@ -51,11 +51,11 @@ import {
     createSearchHandler,
     createUpdateAccountHandler,
 } from '../http/api';
-import { BlockController } from '../http/api/block';
+import { BlockController } from '../http/api/block.controller';
 import { createDerepostActionHandler } from '../http/api/derepost';
-import { FollowController } from '../http/api/follow';
-import { LikeController } from '../http/api/like';
-import { NotificationController } from '../http/api/notification';
+import { FollowController } from '../http/api/follow.controller';
+import { LikeController } from '../http/api/like.controller';
+import { NotificationController } from '../http/api/notification.controller';
 import { ReplyChainController } from '../http/api/reply-chain';
 import { createRepostActionHandler } from '../http/api/repost';
 import { AccountFollowsView } from '../http/api/views/account.follows.view';
@@ -63,7 +63,7 @@ import { AccountPostsView } from '../http/api/views/account.posts.view';
 import { AccountView } from '../http/api/views/account.view';
 import { BlocksView } from '../http/api/views/blocks.view';
 import { ReplyChainView } from '../http/api/views/reply.chain.view';
-import { createWebFingerHandler } from '../http/handler/webfinger';
+import { createWebFingerHandler } from '../http/handler/webfinger.controller';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationEventService } from '../notification/notification-event.service';
 import { NotificationService } from '../notification/notification.service';

@@ -4,7 +4,7 @@ import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { Context } from 'hono';
 import type { Site, SiteService } from 'site/site.service';
-import { createWebFingerHandler } from './webfinger';
+import { createWebFingerHandler } from './webfinger.controller';
 
 describe('handleWebFinger', () => {
     let siteService: SiteService;

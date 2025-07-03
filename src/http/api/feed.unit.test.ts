@@ -10,7 +10,7 @@ import type { PostInteractionCountsService } from 'post/post-interaction-counts.
 import { PostType } from 'post/post.entity';
 import type { Site } from 'site/site.service';
 import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
-import { createGetFeedHandler } from './feed';
+import { createGetFeedHandler } from './feed.controller';
 
 vi.mock('@sentry/node', () => {
     return {
