@@ -32,7 +32,7 @@
     "cc": "https://example.com/user/foo/followers",
     "content": "Note content",
     "id": "https://example.com/note/post-123",
-    "published": "2025-01-17T10:30:00Z",
+    "published": "2025-01-01T00:00:00Z",
     "to": "as:Public",
     "type": "Note",
   },
