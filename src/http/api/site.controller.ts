@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 
-import type { HonoContextVariables } from './app';
-import type { SiteService } from './site/site.service';
+import type { HonoContextVariables } from '../../app';
+import type { SiteService } from '../../site/site.service';
 
 export const getSiteDataHandler =
     (siteService: SiteService) =>

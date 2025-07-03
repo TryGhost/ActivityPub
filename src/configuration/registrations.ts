@@ -36,7 +36,6 @@ import { GhostExploreService } from '../explore/ghost-explore.service';
 import { FeedUpdateService } from '../feed/feed-update.service';
 import { FeedService } from '../feed/feed.service';
 import { FlagService } from '../flag/flag.service';
-import { getSiteDataHandler } from '../handlers';
 import { getSiteSettings } from '../helpers/ghost';
 import {
     createDeletePostHandler,
@@ -58,12 +57,13 @@ import { LikeController } from '../http/api/like.controller';
 import { NotificationController } from '../http/api/notification.controller';
 import { ReplyChainController } from '../http/api/reply-chain';
 import { createRepostActionHandler } from '../http/api/repost';
+import { getSiteDataHandler } from '../http/api/site.controller';
 import { AccountFollowsView } from '../http/api/views/account.follows.view';
 import { AccountPostsView } from '../http/api/views/account.posts.view';
 import { AccountView } from '../http/api/views/account.view';
 import { BlocksView } from '../http/api/views/blocks.view';
 import { ReplyChainView } from '../http/api/views/reply.chain.view';
-import { createWebFingerHandler } from '../http/handler/webfinger.controller';
+import { createWebFingerHandler } from '../http/api/webfinger.controller';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationEventService } from '../notification/notification-event.service';
 import { NotificationService } from '../notification/notification.service';
