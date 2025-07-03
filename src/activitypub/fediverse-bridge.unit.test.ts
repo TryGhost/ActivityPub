@@ -14,24 +14,6 @@ import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
 import type { UriBuilder } from './uri';
 
-vi.mock('@js-temporal/polyfill', async () => {
-    const original = await import('@js-temporal/polyfill');
-
-    return {
-        Temporal: {
-            ...original.Temporal,
-            Now: {
-                // Return a fixed instant for deterministic testing
-                instant: vi
-                    .fn()
-                    .mockReturnValue(
-                        original.Temporal.Instant.from('2025-01-17T10:30:00Z'),
-                    ),
-            },
-        },
-    };
-});
-
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 
 describe('FediverseBridge', () => {
@@ -392,6 +374,7 @@ describe('FediverseBridge', () => {
         post.apId = new URL('https://example.com/note/post-123');
         post.mentions = [];
         post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+        post.publishedAt = new Date('2025-01-01T00:00:00Z');
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);
@@ -437,6 +420,7 @@ describe('FediverseBridge', () => {
         post.apId = new URL('https://example.com/note/post-123');
         post.mentions = [mentionedAccount];
         post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+        post.publishedAt = new Date('2025-01-01T00:00:00Z');
 
         const event = new PostCreatedEvent(post);
         events.emit(PostCreatedEvent.getName(), event);

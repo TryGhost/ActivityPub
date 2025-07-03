@@ -39,7 +39,7 @@ export async function buildCreateActivityAndObjectFromPost(
             attribution: post.author.apId,
             content: post.content,
             summary: post.summary,
-            published: Temporal.Now.instant(),
+            published: Temporal.Instant.from(post.publishedAt.toISOString()),
             attachments: post.attachments
                 ? post.attachments
                       .filter((attachment) => attachment.type === 'Image')
