@@ -39,7 +39,7 @@ interface SearchResults {
  *
  * @param accountService Account service instance
  */
-export function createSearchHandler(accountView: AccountView) {
+function createSearchHandler(accountView: AccountView) {
     /**
      * Handle a search request
      *
@@ -82,3 +82,13 @@ export function createSearchHandler(accountView: AccountView) {
         });
     };
 }
+
+// Export new class that uses the factory
+export class SearchController {
+    constructor(private readonly accountView: AccountView) {}
+
+    handleSearch = createSearchHandler(this.accountView);
+}
+
+// Keep exporting the factory for now to avoid breaking changes
+export { createSearchHandler };
