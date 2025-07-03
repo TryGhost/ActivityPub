@@ -24,7 +24,7 @@
     "post_reposted_by_user": 1,
     "post_title": null,
     "post_type": 0,
-    "post_url": "http://charlie.com/post/some-reply"
+    "post_url": "http://charlie.com/post/some-reply",
   },
   {
     "actor_avatar_url": null,
@@ -51,7 +51,7 @@
     "post_reposted_by_user": 0,
     "post_title": null,
     "post_type": null,
-    "post_url": null
+    "post_url": null,
   },
   {
     "actor_avatar_url": null,
@@ -78,7 +78,7 @@
     "post_reposted_by_user": 0,
     "post_title": null,
     "post_type": 0,
-    "post_url": "http://bob.com/post/some-reply"
+    "post_url": "http://bob.com/post/some-reply",
   },
   {
     "actor_avatar_url": null,
@@ -105,7 +105,7 @@
     "post_reposted_by_user": 0,
     "post_title": null,
     "post_type": 1,
-    "post_url": "http://alice.com/post/some-post"
+    "post_url": "http://alice.com/post/some-post",
   },
   {
     "actor_avatar_url": null,
