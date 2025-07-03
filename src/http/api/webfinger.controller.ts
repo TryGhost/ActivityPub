@@ -7,7 +7,7 @@ import type { SiteService } from 'site/site.service';
 const ACCOUNT_RESOURCE_PREFIX = 'acct:';
 const HOST_REGEX = /^([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]+)$/;
 
-export function createWebFingerHandler(
+function createWebFingerHandler(
     accountRepository: KnexAccountRepository,
     siteService: SiteService,
 ) {
@@ -80,3 +80,19 @@ export function createWebFingerHandler(
         });
     };
 }
+
+// Export new class that uses the factory
+export class WebFingerController {
+    constructor(
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly siteService: SiteService,
+    ) {}
+
+    handleWebFinger = createWebFingerHandler(
+        this.accountRepository,
+        this.siteService,
+    );
+}
+
+// Keep exporting the factory for now to avoid breaking changes
+export { createWebFingerHandler };
