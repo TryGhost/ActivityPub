@@ -86,12 +86,14 @@ export class NotificationController {
                           replyCount: result.post_reply_count || 0,
                           repostCount: result.post_repost_count || 0,
                           repostedByMe: result.post_reposted_by_user === 1,
-                          attachments: (result.post_attachments || []).map((attachment) => ({
-                              type: attachment.type ?? '',
-                              mediaType: attachment.mediaType ?? '',
-                              name: attachment.name ?? '',
-                              url: attachment.url,
-                          })),
+                          attachments: (result.post_attachments || []).map(
+                              (attachment) => ({
+                                  type: attachment.type ?? '',
+                                  mediaType: attachment.mediaType ?? '',
+                                  name: attachment.name ?? '',
+                                  url: attachment.url,
+                              }),
+                          ),
                       }
                     : null,
                 inReplyTo: result.in_reply_to_post_ap_id
