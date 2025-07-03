@@ -3,7 +3,8 @@ import type { Context } from 'hono';
 import type { HonoContextVariables } from '../../app';
 import type { SiteService } from '../../site/site.service';
 
-export const getSiteDataHandler =
+// Make factory private
+const getSiteDataHandler =
     (siteService: SiteService) =>
     async (ctx: Context<{ Variables: HonoContextVariables }>) => {
         const request = ctx.req;
@@ -24,3 +25,13 @@ export const getSiteDataHandler =
             },
         });
     };
+
+// Export new class that uses the factory
+export class SiteController {
+    constructor(private readonly siteService: SiteService) {}
+
+    handleGetSiteData = getSiteDataHandler(this.siteService);
+}
+
+// Keep exporting the factory for now to avoid breaking changes
+export { getSiteDataHandler };
