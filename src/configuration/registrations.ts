@@ -49,7 +49,6 @@ import { FollowController } from '../http/api/follow.controller';
 import { LikeController } from '../http/api/like.controller';
 import { NotificationController } from '../http/api/notification.controller';
 import { ReplyChainController } from '../http/api/reply-chain';
-import { createRepostActionHandler } from '../http/api/repost';
 import { SearchController } from '../http/api/search.controller';
 import { SiteController } from '../http/api/site.controller';
 import { AccountFollowsView } from '../http/api/views/account.follows.view';
@@ -286,11 +285,6 @@ export function registerDependencies(
     container.register(
         'webFingerController',
         asClass(WebFingerController).singleton(),
-    );
-
-    container.register(
-        'repostActionHandler',
-        asFunction(createRepostActionHandler).singleton(),
     );
 
     container.register(
