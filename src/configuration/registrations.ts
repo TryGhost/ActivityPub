@@ -44,7 +44,6 @@ import {
     createImageUploadHandler,
 } from '../http/api';
 import { BlockController } from '../http/api/block.controller';
-import { createDerepostActionHandler } from '../http/api/derepost';
 import { FollowController } from '../http/api/follow.controller';
 import { LikeController } from '../http/api/like.controller';
 import { NotificationController } from '../http/api/notification.controller';
@@ -285,11 +284,6 @@ export function registerDependencies(
     container.register(
         'webFingerController',
         asClass(WebFingerController).singleton(),
-    );
-
-    container.register(
-        'derepostActionHandler',
-        asFunction(createDerepostActionHandler).singleton(),
     );
 
     container.register(
