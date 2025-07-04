@@ -49,7 +49,6 @@ import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
 import type { LikeController } from 'http/api/like.controller';
 import type { PostController } from 'http/api/post.controller';
-import { handleCreateReply } from 'http/api/reply';
 import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
 import type { WebFingerController } from 'http/api/webfinger.controller';
@@ -88,7 +87,6 @@ import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
-import { handleCreateNote } from './http/api';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import {
@@ -1048,32 +1046,36 @@ app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const postService = container.resolve('postService');
-        return handleCreateReply(ctx, postService);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleCreateReply(ctx);
     }),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('repostActionHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleRepost(ctx);
     }),
 );
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('derepostActionHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleDerepost(ctx);
     }),
 );
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const postService = container.resolve('postService');
-        return handleCreateNote(ctx, postService);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleCreateNote(ctx);
     }),
 );
 app.get(

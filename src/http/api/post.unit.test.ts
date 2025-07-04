@@ -8,7 +8,7 @@ import { Audience, Post, PostType } from 'post/post.entity';
 import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
 import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
-import { createGetPostHandler } from './post';
+import { createGetPostHandler } from './post.controller';
 
 describe('Post API', () => {
     let site: Site;

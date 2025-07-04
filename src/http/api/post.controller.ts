@@ -59,10 +59,7 @@ export class PostController {
      * Handle a request to repost
      */
     async handleRepost(ctx: AppContext) {
-        const handler = createRepostActionHandler(
-            this.postService,
-            this.accountService,
-        );
+        const handler = createRepostActionHandler(this.postService);
         return handler(ctx);
     }
 
@@ -72,7 +69,7 @@ export class PostController {
     async handleDerepost(ctx: AppContext) {
         const handler = createDerepostActionHandler(
             this.postService,
-            this.accountService,
+            this.postRepository,
         );
         return handler(ctx);
     }
