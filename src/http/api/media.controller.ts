@@ -16,19 +16,6 @@ export class MediaController {
      * Handle image upload
      */
     async handleImageUpload(ctx: Context) {
-        const handler = createImageUploadHandler(
-            this.accountService,
-            this.imageStorageService,
-        );
-        return handler(ctx);
-    }
-}
-
-export function createImageUploadHandler(
-    accountService: AccountService,
-    imageStorageService: ImageStorageService,
-) {
-    return async function handleImageUpload(ctx: Context) {
         const logger = ctx.get('logger');
         const formData = await ctx.req.formData();
         const file = formData.get('file');
@@ -37,8 +24,10 @@ export function createImageUploadHandler(
             return new Response('No valid file provided', { status: 400 });
         }
 
-        const account = await accountService.getAccountForSite(ctx.get('site'));
-        const result = await imageStorageService.save(
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+        const result = await this.imageStorageService.save(
             file,
             `images/${account.uuid}/`,
         );
@@ -72,5 +61,5 @@ export function createImageUploadHandler(
             },
             status: 200,
         });
-    };
+    }
 }

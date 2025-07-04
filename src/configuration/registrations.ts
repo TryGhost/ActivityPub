@@ -42,7 +42,6 @@ import {
     FeedController,
     MediaController,
     PostController,
-    createImageUploadHandler,
 } from '../http/api';
 import { BlockController } from '../http/api/block.controller';
 import { FollowController } from '../http/api/follow.controller';
@@ -303,11 +302,6 @@ export function registerDependencies(
     container.register(
         'notificationController',
         asClass(NotificationController).singleton(),
-    );
-
-    container.register(
-        'imageUploadHandler',
-        asFunction(createImageUploadHandler).singleton(),
     );
 
     container.register(

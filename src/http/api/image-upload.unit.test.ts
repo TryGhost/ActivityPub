@@ -4,11 +4,12 @@ import type { Context } from 'hono';
 import type { ImageStorageService } from 'storage/image-storage.service';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createImageUploadHandler } from './media.controller';
+import { MediaController } from './media.controller';
 
 describe('Image Upload API', () => {
     let accountService: AccountService;
     let imageStorageService: ImageStorageService;
+    let mediaController: MediaController;
     let mockLogger: { error: Mock };
     const getMockContext = (): Context =>
         ({
@@ -40,15 +41,16 @@ describe('Image Upload API', () => {
         imageStorageService = {
             save: vi.fn().mockResolvedValue(ok('https://example.com/test.png')),
         } as unknown as ImageStorageService;
+
+        mediaController = new MediaController(
+            accountService,
+            imageStorageService,
+        );
     });
 
     it('returns 400 if no file is provided', async () => {
         const ctx = getMockContext();
-        const handler = createImageUploadHandler(
-            accountService,
-            imageStorageService,
-        );
-        const response = await handler(ctx);
+        const response = await mediaController.handleImageUpload(ctx);
 
         expect(response.status).toBe(400);
         expect(await response.text()).toBe('No valid file provided');
@@ -60,11 +62,7 @@ describe('Image Upload API', () => {
         formData.append('file', 'not-a-file');
         (ctx.req.formData as Mock).mockResolvedValue(formData);
 
-        const handler = createImageUploadHandler(
-            accountService,
-            imageStorageService,
-        );
-        const response = await handler(ctx);
+        const response = await mediaController.handleImageUpload(ctx);
 
         expect(response.status).toBe(400);
         expect(await response.text()).toBe('No valid file provided');
@@ -83,11 +81,7 @@ describe('Image Upload API', () => {
             error('file-too-large'),
         );
 
-        const handler = createImageUploadHandler(
-            accountService,
-            imageStorageService,
-        );
-        const response = await handler(ctx);
+        const response = await mediaController.handleImageUpload(ctx);
 
         expect(response.status).toBe(413);
         expect(await response.text()).toBe('File is too large');
@@ -109,11 +103,7 @@ describe('Image Upload API', () => {
             error('file-type-not-supported'),
         );
 
-        const handler = createImageUploadHandler(
-            accountService,
-            imageStorageService,
-        );
-        const response = await handler(ctx);
+        const response = await mediaController.handleImageUpload(ctx);
 
         expect(response.status).toBe(415);
         expect(await response.text()).toBe(
@@ -136,11 +126,7 @@ describe('Image Upload API', () => {
         const expectedUrl = 'https://example.com/test.png';
         (imageStorageService.save as Mock).mockResolvedValue(ok(expectedUrl));
 
-        const handler = createImageUploadHandler(
-            accountService,
-            imageStorageService,
-        );
-        const response = await handler(ctx);
+        const response = await mediaController.handleImageUpload(ctx);
 
         expect(response.status).toBe(200);
         const responseData = await response.json();
