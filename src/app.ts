@@ -49,6 +49,7 @@ import type { FeedController } from 'http/api/feed.controller';
 import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
 import type { LikeController } from 'http/api/like.controller';
+import type { MediaController } from 'http/api/media.controller';
 import type { PostController } from 'http/api/post.controller';
 import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
@@ -1225,8 +1226,9 @@ app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('imageUploadHandler');
-        return handler(ctx);
+        const mediaController =
+            container.resolve<MediaController>('mediaController');
+        return mediaController.handleImageUpload(ctx);
     }),
 );
 

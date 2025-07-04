@@ -40,6 +40,7 @@ import { getSiteSettings } from '../helpers/ghost';
 import {
     AccountController,
     FeedController,
+    MediaController,
     PostController,
     createImageUploadHandler,
 } from '../http/api';
@@ -297,6 +298,7 @@ export function registerDependencies(
     );
 
     container.register('feedController', asClass(FeedController).singleton());
+    container.register('mediaController', asClass(MediaController).singleton());
 
     container.register(
         'notificationController',
