@@ -39,6 +39,7 @@ import { FlagService } from '../flag/flag.service';
 import { getSiteSettings } from '../helpers/ghost';
 import {
     AccountController,
+    PostController,
     createDeletePostHandler,
     createGetFeedHandler,
     createGetPostHandler,
@@ -352,4 +353,6 @@ export function registerDependencies(
         'accountController',
         asClass(AccountController).singleton(),
     );
+
+    container.register('postController', asClass(PostController).singleton());
 }
