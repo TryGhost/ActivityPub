@@ -27,7 +27,73 @@ export class PostController {
      * Handle a request to get a post
      */
     async handleGetPost(ctx: AppContext) {
-        return createGetPostHandler(this.postService, this.accountService)(ctx);
+        const postApId = decodeURIComponent(ctx.req.param('post_ap_id'));
+        const idAsUrl = parseURL(postApId);
+
+        if (!idAsUrl) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const postResult = await this.postService.getByApId(idAsUrl);
+
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.get('logger')?.info('Upstream error fetching post', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 404 });
+                case 'not-a-post':
+                    ctx.get('logger')?.info('Resource is not a post', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 404 });
+                case 'missing-author':
+                    ctx.get('logger')?.info('Post author missing', {
+                        postId: idAsUrl.href,
+                    });
+                    return new Response(null, { status: 404 });
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        const post = getValue(postResult);
+
+        const account = ctx.get('account');
+
+        return new Response(
+            JSON.stringify(
+                postToDTO(post, {
+                    authoredByMe: post.author.id === account.id,
+                    likedByMe:
+                        post.id && account.id
+                            ? await this.postService.isLikedByAccount(
+                                  post.id,
+                                  account.id,
+                              )
+                            : false,
+                    repostedByMe:
+                        post.id && account.id
+                            ? await this.postService.isRepostedByAccount(
+                                  post.id,
+                                  account.id,
+                              )
+                            : false,
+                    repostedBy: null,
+                    followingAuthor:
+                        await this.accountService.checkIfAccountIsFollowing(
+                            account.id,
+                            post.author.id,
+                        ),
+                    followingReposter: false,
+                }),
+            ),
+            { status: 200 },
+        );
     }
 
     /**
@@ -73,87 +139,6 @@ export class PostController {
         );
         return handler(ctx);
     }
-}
-
-/**
- * Create a handler for a request to get a post
- */
-export function createGetPostHandler(
-    postService: PostService,
-    accountService: AccountService,
-) {
-    /**
-     * Handle a request to get a post
-     */
-    return async function handleGetPost(ctx: AppContext) {
-        const postApId = decodeURIComponent(ctx.req.param('post_ap_id'));
-        const idAsUrl = parseURL(postApId);
-
-        if (!idAsUrl) {
-            return new Response(null, {
-                status: 400,
-            });
-        }
-
-        const postResult = await postService.getByApId(idAsUrl);
-
-        if (isError(postResult)) {
-            const error = getError(postResult);
-            switch (error) {
-                case 'upstream-error':
-                    ctx.get('logger')?.info('Upstream error fetching post', {
-                        postId: idAsUrl.href,
-                    });
-                    return new Response(null, { status: 404 });
-                case 'not-a-post':
-                    ctx.get('logger')?.info('Resource is not a post', {
-                        postId: idAsUrl.href,
-                    });
-                    return new Response(null, { status: 404 });
-                case 'missing-author':
-                    ctx.get('logger')?.info('Post author missing', {
-                        postId: idAsUrl.href,
-                    });
-                    return new Response(null, { status: 404 });
-                default:
-                    return exhaustiveCheck(error);
-            }
-        }
-
-        const post = getValue(postResult);
-
-        const account = ctx.get('account');
-
-        return new Response(
-            JSON.stringify(
-                postToDTO(post, {
-                    authoredByMe: post.author.id === account.id,
-                    likedByMe:
-                        post.id && account.id
-                            ? await postService.isLikedByAccount(
-                                  post.id,
-                                  account.id,
-                              )
-                            : false,
-                    repostedByMe:
-                        post.id && account.id
-                            ? await postService.isRepostedByAccount(
-                                  post.id,
-                                  account.id,
-                              )
-                            : false,
-                    repostedBy: null,
-                    followingAuthor:
-                        await accountService.checkIfAccountIsFollowing(
-                            account.id,
-                            post.author.id,
-                        ),
-                    followingReposter: false,
-                }),
-            ),
-            { status: 200 },
-        );
-    };
 }
 
 /**

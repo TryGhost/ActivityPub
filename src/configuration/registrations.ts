@@ -42,7 +42,6 @@ import {
     PostController,
     createDeletePostHandler,
     createGetFeedHandler,
-    createGetPostHandler,
     createImageUploadHandler,
 } from '../http/api';
 import { BlockController } from '../http/api/block.controller';
@@ -322,11 +321,6 @@ export function registerDependencies(
                         feedType,
                     ),
         ).singleton(),
-    );
-
-    container.register(
-        'getPostHandler',
-        asFunction(createGetPostHandler).singleton(),
     );
 
     container.register(
