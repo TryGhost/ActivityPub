@@ -100,59 +100,6 @@ export class PostController {
      * Handle a request to delete a post
      */
     async handleDeletePost(ctx: AppContext) {
-        return createDeletePostHandler(
-            this.accountRepository,
-            this.postRepository,
-            this.postService,
-        )(ctx);
-    }
-
-    /**
-     * Handle a request to create a note
-     */
-    async handleCreateNote(ctx: AppContext) {
-        return handleCreateNote(ctx, this.postService);
-    }
-
-    /**
-     * Handle a request to create a reply
-     */
-    async handleCreateReply(ctx: AppContext) {
-        return handleCreateReply(ctx, this.postService);
-    }
-
-    /**
-     * Handle a request to repost
-     */
-    async handleRepost(ctx: AppContext) {
-        const handler = createRepostActionHandler(this.postService);
-        return handler(ctx);
-    }
-
-    /**
-     * Handle a request to derepost
-     */
-    async handleDerepost(ctx: AppContext) {
-        const handler = createDerepostActionHandler(
-            this.postService,
-            this.postRepository,
-        );
-        return handler(ctx);
-    }
-}
-
-/**
- * Create a handler for a request to delete a post
- */
-export function createDeletePostHandler(
-    accountRepository: KnexAccountRepository,
-    postRepository: KnexPostRepository,
-    postService: PostService,
-) {
-    /**
-     * Handle a request to delete a post
-     */
-    return async function handleDeletePost(ctx: AppContext) {
         const logger = ctx.get('logger');
 
         const id = ctx.req.param('id');
@@ -165,8 +112,8 @@ export function createDeletePostHandler(
             });
         }
 
-        const account = await accountRepository.getBySite(ctx.get('site'));
-        const postResult = await postService.getByApId(idAsUrl);
+        const account = await this.accountRepository.getBySite(ctx.get('site'));
+        const postResult = await this.postService.getByApId(idAsUrl);
 
         if (isError(postResult)) {
             const error = getError(postResult);
@@ -204,7 +151,7 @@ export function createDeletePostHandler(
         try {
             // Delete the post from the database
             post.delete(account);
-            await postRepository.save(post);
+            await this.postRepository.save(post);
 
             // Find all activities that reference this post and remove them from the kv-store
             const relatedActivities = await getRelatedActivities(idAsUrl.href);
@@ -225,5 +172,38 @@ export function createDeletePostHandler(
             });
             return new Response(JSON.stringify(err), { status: 500 });
         }
-    };
+    }
+
+    /**
+     * Handle a request to create a note
+     */
+    async handleCreateNote(ctx: AppContext) {
+        return handleCreateNote(ctx, this.postService);
+    }
+
+    /**
+     * Handle a request to create a reply
+     */
+    async handleCreateReply(ctx: AppContext) {
+        return handleCreateReply(ctx, this.postService);
+    }
+
+    /**
+     * Handle a request to repost
+     */
+    async handleRepost(ctx: AppContext) {
+        const handler = createRepostActionHandler(this.postService);
+        return handler(ctx);
+    }
+
+    /**
+     * Handle a request to derepost
+     */
+    async handleDerepost(ctx: AppContext) {
+        const handler = createDerepostActionHandler(
+            this.postService,
+            this.postRepository,
+        );
+        return handler(ctx);
+    }
 }

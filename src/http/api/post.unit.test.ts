@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountEntity } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import type { AppContext, ContextData } from 'app';
+import type { AppContext } from 'app';
 import { error, ok } from 'core/result';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';

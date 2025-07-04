@@ -40,7 +40,6 @@ import { getSiteSettings } from '../helpers/ghost';
 import {
     AccountController,
     PostController,
-    createDeletePostHandler,
     createGetFeedHandler,
     createImageUploadHandler,
 } from '../http/api';
@@ -331,11 +330,6 @@ export function registerDependencies(
     container.register(
         'imageUploadHandler',
         asFunction(createImageUploadHandler).singleton(),
-    );
-
-    container.register(
-        'deletePostHandler',
-        asFunction(createDeletePostHandler).singleton(),
     );
 
     container.register(
