@@ -48,6 +48,7 @@ import type { BlockController } from 'http/api/block.controller';
 import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
 import type { LikeController } from 'http/api/like.controller';
+import type { PostController } from 'http/api/post.controller';
 import { handleCreateReply } from 'http/api/reply';
 import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
@@ -1175,16 +1176,18 @@ app.get(
     '/.ghost/activitypub/post/:post_ap_id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getPostHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleGetPost(ctx);
     }),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('deletePostHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleDeletePost(ctx);
     }),
 );
 app.get(
