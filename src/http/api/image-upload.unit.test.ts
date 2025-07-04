@@ -4,7 +4,7 @@ import type { Context } from 'hono';
 import type { ImageStorageService } from 'storage/image-storage.service';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createImageUploadHandler } from './image-upload';
+import { createImageUploadHandler } from './media.controller';
 
 describe('Image Upload API', () => {
     let accountService: AccountService;

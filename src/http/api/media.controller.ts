@@ -3,6 +3,27 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { Context } from 'hono';
 import type { ImageStorageService } from 'storage/image-storage.service';
 
+/**
+ * Controller for media-related operations
+ */
+export class MediaController {
+    constructor(
+        private readonly accountService: AccountService,
+        private readonly imageStorageService: ImageStorageService,
+    ) {}
+
+    /**
+     * Handle image upload
+     */
+    async handleImageUpload(ctx: Context) {
+        const handler = createImageUploadHandler(
+            this.accountService,
+            this.imageStorageService,
+        );
+        return handler(ctx);
+    }
+}
+
 export function createImageUploadHandler(
     accountService: AccountService,
     imageStorageService: ImageStorageService,
