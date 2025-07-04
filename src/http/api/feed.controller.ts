@@ -18,6 +18,30 @@ const DEFAULT_FEED_POSTS_LIMIT = 20;
 const MAX_FEED_POSTS_LIMIT = 100;
 
 /**
+ * Controller for feed-related operations
+ */
+export class FeedController {
+    constructor(
+        private readonly feedService: FeedService,
+        private readonly accountService: AccountService,
+        private readonly postInteractionCountsService: PostInteractionCountsService,
+    ) {}
+
+    /**
+     * Handle a request for a user's feed
+     */
+    async handleGetFeed(ctx: AppContext, feedType: FeedType) {
+        const handler = createGetFeedHandler(
+            this.feedService,
+            this.accountService,
+            this.postInteractionCountsService,
+            feedType,
+        );
+        return handler(ctx);
+    }
+}
+
+/**
  * Create a handler to handle a request for a user's feed
  *
  * @param feedService Feed service instance
