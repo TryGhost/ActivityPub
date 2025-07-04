@@ -45,6 +45,7 @@ import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import type { AccountController } from 'http/api/account.controller';
 import type { BlockController } from 'http/api/block.controller';
+import type { FeedController } from 'http/api/feed.controller';
 import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
 import type { LikeController } from 'http/api/like.controller';
@@ -1146,32 +1147,36 @@ app.get(
     '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Feed')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Feed');
     }),
 );
 app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Inbox')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Inbox');
     }),
 );
 app.get(
     '/.ghost/activitypub/feed/notes',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Feed')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Feed');
     }),
 );
 app.get(
     '/.ghost/activitypub/feed/reader',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Inbox')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Inbox');
     }),
 );
 app.get(
