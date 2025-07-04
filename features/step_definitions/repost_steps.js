@@ -1,7 +1,9 @@
 import assert from 'node:assert';
 
 import { Then, When } from '@cucumber/cucumber';
+import { waitForAPObjectInFeed } from '../support/feed.js';
 import { createActivity } from '../support/fixtures.js';
+import { waitForAPObjectInInbox } from '../support/inbox.js';
 import { waitForItemInNotifications } from '../support/notifications.js';
 import { fetchActivityPub } from '../support/request.js';
 import { waitForRequest } from '../support/request.js';
@@ -186,3 +188,70 @@ Then('the repost is in our notifications', async function () {
     const found = await waitForItemInNotifications(this.noteId);
     assert(found);
 });
+
+async function checkPostRepostedBy(world, objectType, objectName, actorName) {
+    const object = world.objects[objectName];
+    if (!object) {
+        throw new Error(`Object ${objectName} not found`);
+    }
+
+    const actor = world.actors[actorName];
+    if (!actor) {
+        throw new Error(`Actor ${actorName} not found`);
+    }
+
+    // Determine which feed to check based on object type
+    let feedUrl;
+    if (objectType.toLowerCase() === 'article') {
+        feedUrl =
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/reader';
+        await waitForAPObjectInInbox(object.id);
+    } else {
+        feedUrl =
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes';
+        await waitForAPObjectInFeed(object.id);
+    }
+
+    // Check if the post appears as reposted in the feed
+    const response = await fetchActivityPub(feedUrl, {
+        headers: {
+            Accept: 'application/ld+json',
+        },
+    });
+
+    const feed = await response.json();
+    const post = feed.posts.find((item) => item.id === object.id);
+
+    assert(post, `Post ${object.id} not found in feed`);
+
+    // Check if the post shows it was reposted
+    assert(post.repostCount > 0, 'Post has not been reposted');
+    assert(post.repostedBy, 'Post does not have repostedBy information');
+    assert(
+        post.repostedBy.id === actor.id ||
+            post.repostedBy.handle === actor.handle ||
+            post.repostedBy.name === actorName,
+        `Post was not reposted by ${actorName}`,
+    );
+}
+
+Then(
+    'the {string} {string} is reposted by {string}',
+    async function (objectType, objectName, actorName) {
+        await checkPostRepostedBy(this, objectType, objectName, actorName);
+    },
+);
+
+Then(
+    'the note {string} is reposted by {string}',
+    async function (noteName, actorName) {
+        await checkPostRepostedBy(this, 'note', noteName, actorName);
+    },
+);
+
+Then(
+    'the article {string} is reposted by {string}',
+    async function (articleName, actorName) {
+        await checkPostRepostedBy(this, 'article', articleName, actorName);
+    },
+);

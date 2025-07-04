@@ -475,3 +475,32 @@ Then('{string} has the content {string}', function (postName, content) {
     const object = this.objects[postName];
     assert.equal(object.content, content);
 });
+
+When('{string} announces {string}', async function (actorName, activityName) {
+    const actor = this.actors[actorName];
+    if (!actor) {
+        throw new Error(`Could not find Actor ${actorName}`);
+    }
+
+    const targetActivity = this.activities[activityName];
+    if (!targetActivity) {
+        throw new Error(`Could not find Activity ${activityName}`);
+    }
+
+    const announceActivity = await createActivity(
+        'Announce',
+        targetActivity,
+        actor,
+    );
+
+    await fetchActivityPub(
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/ld+json',
+            },
+            body: JSON.stringify(announceActivity),
+        },
+    );
+});
