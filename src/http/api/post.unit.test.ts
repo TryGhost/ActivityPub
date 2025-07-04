@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Federation } from '@fedify/fedify';
 import { AccountEntity } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import type { AppContext } from 'app';
+import type { AppContext, ContextData } from 'app';
 import { error, ok } from 'core/result';
 import { Audience, Post, PostType } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
@@ -20,6 +21,7 @@ describe('Post API', () => {
     let accountRepository: KnexAccountRepository;
     let postRepository: KnexPostRepository;
     let postController: PostController;
+    let fedify: Federation<ContextData>;
 
     /**
      * Helper to get a mock AppContext
@@ -110,11 +112,13 @@ describe('Post API', () => {
         } as unknown as AccountService;
         accountRepository = {} as unknown as KnexAccountRepository;
         postRepository = {} as unknown as KnexPostRepository;
+        fedify = {} as unknown as Federation<ContextData>;
         postController = new PostController(
             postService,
             accountService,
             accountRepository,
             postRepository,
+            fedify,
         );
     });
 

@@ -3,6 +3,7 @@ import {
     type Actor,
     Announce,
     Create,
+    type Federation,
     Image,
     Mention,
     Note,
@@ -12,7 +13,6 @@ import {
 import { Temporal } from '@js-temporal/polyfill';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import { globalFedify } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import { buildAnnounceActivityForPost } from 'helpers/activitypub/activity';
@@ -22,7 +22,7 @@ import type { ImageAttachment } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { z } from 'zod';
-import type { AppContext } from '../../app';
+import type { AppContext, ContextData } from '../../app';
 import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { getRelatedActivities } from '../../db';
 import { postToDTO } from './helpers/post';
@@ -37,6 +37,7 @@ export class PostController {
         private readonly accountService: AccountService,
         private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
+        private readonly fedify: Federation<ContextData>,
     ) {}
 
     /**
@@ -308,7 +309,7 @@ export class PostController {
             );
         }
 
-        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
+        const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger,
         });
@@ -566,7 +567,7 @@ export class PostController {
             return BadRequest('Could not parse id as URL');
         }
 
-        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
+        const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -640,7 +641,7 @@ export class PostController {
     async handleDerepost(ctx: AppContext) {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
-        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
+        const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
