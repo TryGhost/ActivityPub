@@ -41,7 +41,6 @@ import {
     AccountController,
     FeedController,
     PostController,
-    createGetFeedHandler,
     createImageUploadHandler,
 } from '../http/api';
 import { BlockController } from '../http/api/block.controller';
@@ -298,20 +297,6 @@ export function registerDependencies(
     );
 
     container.register('feedController', asClass(FeedController).singleton());
-
-    container.register(
-        'getFeedHandler',
-        asFunction(
-            (feedService, accountService, postInteractionCountsService) =>
-                (feedType: 'Feed' | 'Inbox') =>
-                    createGetFeedHandler(
-                        feedService,
-                        accountService,
-                        postInteractionCountsService,
-                        feedType,
-                    ),
-        ).singleton(),
-    );
 
     container.register(
         'notificationController',

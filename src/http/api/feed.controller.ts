@@ -31,35 +31,6 @@ export class FeedController {
      * Handle a request for a user's feed
      */
     async handleGetFeed(ctx: AppContext, feedType: FeedType) {
-        const handler = createGetFeedHandler(
-            this.feedService,
-            this.accountService,
-            this.postInteractionCountsService,
-            feedType,
-        );
-        return handler(ctx);
-    }
-}
-
-/**
- * Create a handler to handle a request for a user's feed
- *
- * @param feedService Feed service instance
- * @param accountService Account service instance
- * @param feedType Type of feed
- */
-export function createGetFeedHandler(
-    feedService: FeedService,
-    accountService: AccountService,
-    postInteractionCountsService: PostInteractionCountsService,
-    feedType: FeedType,
-) {
-    /**
-     * Handle a request for a user's feed
-     *
-     * @param ctx App context
-     */
-    return async function handleGetFeed(ctx: AppContext) {
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
@@ -76,7 +47,7 @@ export function createGetFeedHandler(
 
         const account = ctx.get('account');
 
-        const { results, nextCursor } = await feedService.getFeedData({
+        const { results, nextCursor } = await this.feedService.getFeedData({
             accountId: account.id,
             feedType,
             limit,
@@ -143,7 +114,7 @@ export function createGetFeedHandler(
         // Request an update of the interaction counts for the posts in the
         // feed - We do not await this as we do not want to increase the
         // response time of the request
-        postInteractionCountsService
+        this.postInteractionCountsService
             .requestUpdate(
                 ctx.get('site').host,
                 results.map((post) => post.post_id),
@@ -166,5 +137,5 @@ export function createGetFeedHandler(
                 status: 200,
             },
         );
-    };
+    }
 }
