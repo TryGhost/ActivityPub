@@ -6,7 +6,77 @@ import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { getRelatedActivities } from '../../db';
+import { createDerepostActionHandler } from './derepost';
 import { postToDTO } from './helpers/post';
+import { handleCreateNote } from './note';
+import { handleCreateReply } from './reply';
+import { createRepostActionHandler } from './repost';
+
+/**
+ * Controller for post-related operations
+ */
+export class PostController {
+    constructor(
+        private readonly postService: PostService,
+        private readonly accountService: AccountService,
+        private readonly accountRepository: KnexAccountRepository,
+        private readonly postRepository: KnexPostRepository,
+    ) {}
+
+    /**
+     * Handle a request to get a post
+     */
+    async handleGetPost(ctx: AppContext) {
+        return createGetPostHandler(this.postService, this.accountService)(ctx);
+    }
+
+    /**
+     * Handle a request to delete a post
+     */
+    async handleDeletePost(ctx: AppContext) {
+        return createDeletePostHandler(
+            this.accountRepository,
+            this.postRepository,
+            this.postService,
+        )(ctx);
+    }
+
+    /**
+     * Handle a request to create a note
+     */
+    async handleCreateNote(ctx: AppContext) {
+        return handleCreateNote(ctx, this.postService);
+    }
+
+    /**
+     * Handle a request to create a reply
+     */
+    async handleCreateReply(ctx: AppContext) {
+        return handleCreateReply(ctx, this.postService);
+    }
+
+    /**
+     * Handle a request to repost
+     */
+    async handleRepost(ctx: AppContext) {
+        const handler = createRepostActionHandler(
+            this.postService,
+            this.accountService,
+        );
+        return handler(ctx);
+    }
+
+    /**
+     * Handle a request to derepost
+     */
+    async handleDerepost(ctx: AppContext) {
+        const handler = createDerepostActionHandler(
+            this.postService,
+            this.accountService,
+        );
+        return handler(ctx);
+    }
+}
 
 /**
  * Create a handler for a request to get a post
