@@ -2771,10 +2771,10 @@ hex2dec@^1.0.1:
   resolved "https://registry.yarnpkg.com/hex2dec/-/hex2dec-1.1.2.tgz#8e1ce4bef36a74f7d5723c3fb3090c2860077338"
   integrity sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==
 
-hono@4.8.3:
-  version "4.8.3"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.8.3.tgz#4260b812b73d237be3b0e66cfe53089c20014f96"
-  integrity sha512-jYZ6ZtfWjzBdh8H/0CIFfCBHaFL75k+KMzaM177hrWWm2TWL39YMYaJgB74uK/niRc866NMlH9B8uCvIo284WQ==
+hono@4.8.4:
+  version "4.8.4"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.8.4.tgz#edc0e70e83c81c0977f3a786435906e7fda48fe4"
+  integrity sha512-KOIBp1+iUs0HrKztM4EHiB2UtzZDTBihDtOF5K6+WaJjCPeaW4Q92R8j63jOhvJI5+tZSMuKD9REVEXXY9illg==
 
 hosted-git-info@^7.0.0:
   version "7.0.2"
