@@ -57,6 +57,7 @@ describe('NotificationService', () => {
                     'Velit culpa est amet nisi laboris aliqua cillum consectetur consequat duis excepteur esse non dolor irure.',
                 url: 'http://alice.com/post/some-post',
                 ap_id: 'https://alice.com/post/some-post',
+                attachments: JSON.stringify({"url": "https://example.com/image2.jpg", "type": "image", "name": "image2.jpg"}),
             });
 
             // Setup the follower accounts
@@ -90,6 +91,7 @@ describe('NotificationService', () => {
                 url: 'http://bob.com/post/some-reply',
                 ap_id: 'https://bob.com/post/some-reply',
                 like_count: 1,
+                attachments: JSON.stringify([{"url": "https://example.com/image.jpg", "type": "image", "name": "example.jpg"}]),
             });
 
             const [follower2ReplyPostId] = await client('posts').insert({
