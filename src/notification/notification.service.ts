@@ -47,12 +47,14 @@ interface BaseGetNotificationsDataResultRow {
     post_reply_count: number;
     post_repost_count: number;
     post_reposted_by_user: 0 | 1;
-    post_attachments: {
-        type: string | null;
-        mediaType: string | null;
-        name: string | null;
-        url: string;
-    }[] | null;
+    post_attachments:
+        | {
+              type: string | null;
+              mediaType: string | null;
+              name: string | null;
+              url: string;
+          }[]
+        | null;
     in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
