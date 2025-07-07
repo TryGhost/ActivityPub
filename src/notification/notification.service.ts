@@ -52,7 +52,7 @@ interface BaseGetNotificationsDataResultRow {
         mediaType: string | null;
         name: string | null;
         url: string;
-    }[];
+    }[] | null;
     in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
