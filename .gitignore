@@ -74,7 +74,5 @@ typings/
 # Build
 dist/
 
-cedar/data-generation/output/*
-
 # Fake GCS data
-fake-gcs/storage*
+dev/fake-gcs/storage*

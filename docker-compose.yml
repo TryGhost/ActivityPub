@@ -84,18 +84,18 @@ services:
         condition: service_healthy
 
   scripts:
-    build: scripts
+    build: dev/scripts
     depends_on:
       - activitypub
       - fake-mastodon
 
   nginx:
-    build: nginx
+    build: dev/nginx
     ports:
       - "80:80"
     volumes:
       - dev-content:/content:ro
-      - ./fake-gcs/storage:/gcp-storage:ro
+      - ./dev/fake-gcs/storage:/gcp-storage:ro
     depends_on:
       - activitypub
 
@@ -117,7 +117,7 @@ services:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators@sha256:38606e0ec8b892ff2be6fb7238c6b98e7b0b69f60ed433fa2b196bdf4646caf9
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
-      - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
+      - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
     environment:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
@@ -252,7 +252,7 @@ services:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators@sha256:38606e0ec8b892ff2be6fb7238c6b98e7b0b69f60ed433fa2b196bdf4646caf9
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
     volumes:
-      - ./pubsub/start.sh:/opt/activitypub/start-pubsub.sh
+      - ./dev/pubsub/start.sh:/opt/activitypub/start-pubsub.sh
     environment:
       - PROJECT_ID=activitypub
       - FEDIFY_TOPIC_NAME=fedify-topic
@@ -278,7 +278,7 @@ services:
     image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
     volumes:
-      - ./wiremock/fake-ghost/mappings:/home/wiremock/mappings
+      - ./dev/wiremock/fake-ghost/mappings:/home/wiremock/mappings
 
   fake-external-activitypub:
     networks:
@@ -297,12 +297,12 @@ services:
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
   fake-gcs:
-    build: fake-gcs
+    build: dev/fake-gcs
     environment:
       - GCP_BUCKET_NAME=activitypub
       - GCP_PROJECT_ID=activitypub
     volumes:
-      - ./fake-gcs/storage:/storage
+      - ./dev/fake-gcs/storage:/storage
     networks:
       default:
         aliases:
