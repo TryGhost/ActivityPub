@@ -1,26 +1,18 @@
 import type { Federation, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
+import { KnexAccountRepository } from 'account/account.repository.knex';
+import { AccountService } from 'account/account.service';
+import { CreateHandler } from 'activity-handlers/create.handler';
+import { DeleteHandler } from 'activity-handlers/delete.handler';
+import { FollowHandler } from 'activity-handlers/follow.handler';
 import { UpdateHandler } from 'activity-handlers/update.handler';
+import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { FediverseBridge } from 'activitypub/fediverse-bridge';
+import { FollowersService } from 'activitypub/followers.service';
+import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import type { ContextData } from 'app';
 import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
-import type { PubSubEvents } from 'events/pubsub';
-import { AccountController } from 'http/api/account.controller';
-import { FeedController } from 'http/api/feed.controller';
-import { MediaController } from 'http/api/media.controller';
-import { PostController } from 'http/api/post.controller';
-import type { Knex } from 'knex';
-import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
-import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
-import { KnexAccountRepository } from '../account/account.repository.knex';
-import { AccountService } from '../account/account.service';
-import { CreateHandler } from '../activity-handlers/create.handler';
-import { DeleteHandler } from '../activity-handlers/delete.handler';
-import { FollowHandler } from '../activity-handlers/follow.handler';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { FediverseBridge } from '../activitypub/fediverse-bridge';
-import { FollowersService } from '../activitypub/followers.service';
-import { DeleteDispatcher } from '../activitypub/object-dispatchers/delete.dispatcher';
-import { AsyncEvents } from '../core/events';
+import { AsyncEvents } from 'core/events';
 import {
     actorDispatcher,
     createAcceptHandler,
@@ -34,37 +26,45 @@ import {
     createOutboxDispatcher,
     createUndoHandler,
     keypairDispatcher,
-} from '../dispatchers';
-import { createIncomingPubSubMessageHandler } from '../events/pubsub-http';
-import { GhostExploreService } from '../explore/ghost-explore.service';
-import { FeedUpdateService } from '../feed/feed-update.service';
-import { FeedService } from '../feed/feed.service';
-import { FlagService } from '../flag/flag.service';
-import { getSiteSettings } from '../helpers/ghost';
-import { BlockController } from '../http/api/block.controller';
-import { FollowController } from '../http/api/follow.controller';
-import { LikeController } from '../http/api/like.controller';
-import { NotificationController } from '../http/api/notification.controller';
-import { ReplyChainController } from '../http/api/reply-chain';
-import { SearchController } from '../http/api/search.controller';
-import { SiteController } from '../http/api/site.controller';
-import { AccountFollowsView } from '../http/api/views/account.follows.view';
-import { AccountPostsView } from '../http/api/views/account.posts.view';
-import { AccountView } from '../http/api/views/account.view';
-import { BlocksView } from '../http/api/views/blocks.view';
-import { ReplyChainView } from '../http/api/views/reply.chain.view';
-import { WebFingerController } from '../http/api/webfinger.controller';
-import { WebhookController } from '../http/api/webhook.controller';
-import { ModerationService } from '../moderation/moderation.service';
-import { NotificationEventService } from '../notification/notification-event.service';
-import { NotificationService } from '../notification/notification.service';
-import { PostInteractionCountsService } from '../post/post-interaction-counts.service';
-import { KnexPostRepository } from '../post/post.repository.knex';
-import { PostService } from '../post/post.service';
-import { SiteService } from '../site/site.service';
-import { GCPStorageAdapter } from '../storage/adapters/gcp-storage-adapter';
-import { ImageProcessor } from '../storage/image-processor';
-import { ImageStorageService } from '../storage/image-storage.service';
+} from 'dispatchers';
+import type { PubSubEvents } from 'events/pubsub';
+import { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
+import { GhostExploreService } from 'explore/ghost-explore.service';
+import { FeedUpdateService } from 'feed/feed-update.service';
+import { FeedService } from 'feed/feed.service';
+import { FlagService } from 'flag/flag.service';
+import { getSiteSettings } from 'helpers/ghost';
+import { AccountController } from 'http/api/account.controller';
+import { BlockController } from 'http/api/block.controller';
+import { FeedController } from 'http/api/feed.controller';
+import { FollowController } from 'http/api/follow.controller';
+import { LikeController } from 'http/api/like.controller';
+import { MediaController } from 'http/api/media.controller';
+import { NotificationController } from 'http/api/notification.controller';
+import { PostController } from 'http/api/post.controller';
+import { ReplyChainController } from 'http/api/reply-chain';
+import { SearchController } from 'http/api/search.controller';
+import { SiteController } from 'http/api/site.controller';
+import { AccountFollowsView } from 'http/api/views/account.follows.view';
+import { AccountPostsView } from 'http/api/views/account.posts.view';
+import { AccountView } from 'http/api/views/account.view';
+import { BlocksView } from 'http/api/views/blocks.view';
+import { ReplyChainView } from 'http/api/views/reply.chain.view';
+import { WebFingerController } from 'http/api/webfinger.controller';
+import { WebhookController } from 'http/api/webhook.controller';
+import type { Knex } from 'knex';
+import { ModerationService } from 'moderation/moderation.service';
+import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
+import { NotificationEventService } from 'notification/notification-event.service';
+import { NotificationService } from 'notification/notification.service';
+import { PostInteractionCountsService } from 'post/post-interaction-counts.service';
+import { KnexPostRepository } from 'post/post.repository.knex';
+import { PostService } from 'post/post.service';
+import { SiteService } from 'site/site.service';
+import { GCPStorageAdapter } from 'storage/adapters/gcp-storage-adapter';
+import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
+import { ImageProcessor } from 'storage/image-processor';
+import { ImageStorageService } from 'storage/image-storage.service';
 
 export function registerDependencies(
     container: AwilixContainer,
