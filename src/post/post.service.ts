@@ -187,6 +187,7 @@ export class PostService {
                 switch (error) {
                     case 'upstream-error':
                         errorMessage = `Failed to fetch parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}`;
+                        Sentry.captureException(new Error(errorMessage));
                         break;
                     case 'not-a-post':
                         errorMessage = `Parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}, is not an instance of Note or Article`;
@@ -198,8 +199,6 @@ export class PostService {
                         exhaustiveCheck(error);
                     }
                 }
-                const err = new Error(errorMessage);
-                Sentry.captureException(err);
                 context.data.logger.error(errorMessage);
             } else {
                 inReplyTo = getValue(found);
