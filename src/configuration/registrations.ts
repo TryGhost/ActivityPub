@@ -4,6 +4,10 @@ import { UpdateHandler } from 'activity-handlers/update.handler';
 import type { ContextData } from 'app';
 import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
 import type { PubSubEvents } from 'events/pubsub';
+import { AccountController } from 'http/api/account.controller';
+import { FeedController } from 'http/api/feed.controller';
+import { MediaController } from 'http/api/media.controller';
+import { PostController } from 'http/api/post.controller';
 import type { Knex } from 'knex';
 import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
 import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
@@ -37,12 +41,6 @@ import { FeedUpdateService } from '../feed/feed-update.service';
 import { FeedService } from '../feed/feed.service';
 import { FlagService } from '../flag/flag.service';
 import { getSiteSettings } from '../helpers/ghost';
-import {
-    AccountController,
-    FeedController,
-    MediaController,
-    PostController,
-} from '../http/api';
 import { BlockController } from '../http/api/block.controller';
 import { FollowController } from '../http/api/follow.controller';
 import { LikeController } from '../http/api/like.controller';
