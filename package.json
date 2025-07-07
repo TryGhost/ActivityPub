@@ -18,7 +18,7 @@
     "cleanup-db": "docker compose run --rm cleanup-expired-key-value-records cleanup-expired-key-value-records-testing",
     "migration": "docker compose run migrate create",
     "migrate": "docker compose up migrate",
-    "test:cucumber": "./docker/cucumber-tests",
+    "test:cucumber": "./dev/docker/cucumber-tests",
     "test": "docker compose run --rm migrate-testing up && docker compose run --rm -v \"$(pwd)/dist:/opt/activitypub/dist\" activitypub-testing  yarn _test:all && yarn test:cucumber",
     "_test:types": "tsc --noEmit",
     "test:types": "docker compose run --rm activitypub-testing yarn _test:types",
