@@ -10,7 +10,7 @@ import type { PostInteractionCountsService } from 'post/post-interaction-counts.
 import { PostType } from 'post/post.entity';
 import type { Site } from 'site/site.service';
 import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
-import { createGetFeedHandler } from './feed';
+import { FeedController } from './feed.controller';
 
 vi.mock('@sentry/node', () => {
     return {
@@ -22,6 +22,7 @@ describe('Feed API', () => {
     let feedService: FeedService;
     let accountService: AccountService;
     let postInteractionCountsService: PostInteractionCountsService;
+    let feedController: FeedController;
     let site: Site;
     let account: AccountEntity;
     let ctx: AppContext;
@@ -166,6 +167,12 @@ describe('Feed API', () => {
 
         feedService = {} as FeedService;
 
+        feedController = new FeedController(
+            feedService,
+            accountService,
+            postInteractionCountsService,
+        );
+
         ctx = {
             req: {
                 query: (key: string) => {
@@ -196,18 +203,11 @@ describe('Feed API', () => {
 
     describe('retrieving a feed', () => {
         it('should return a list of posts', async () => {
-            const handler = createGetFeedHandler(
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                'Inbox',
-            );
-
             feedService.getFeedData = vi
                 .fn()
                 .mockImplementation(getMockFeedData);
 
-            const response = await handler(ctx);
+            const response = await feedController.handleGetFeed(ctx, 'Inbox');
 
             expect(response.status).toBe(200);
             await expect(response.json()).resolves.toMatchFileSnapshot(
@@ -216,18 +216,11 @@ describe('Feed API', () => {
         });
 
         it('should request an update of the interaction counts for the posts in the feed', async () => {
-            const handler = createGetFeedHandler(
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                'Inbox',
-            );
-
             feedService.getFeedData = vi
                 .fn()
                 .mockImplementation(getMockFeedData);
 
-            await handler(ctx);
+            await feedController.handleGetFeed(ctx, 'Inbox');
 
             expect(
                 postInteractionCountsService.requestUpdate,
@@ -235,13 +228,6 @@ describe('Feed API', () => {
         });
 
         it('should handle errors when requesting an update of the interaction counts for the posts in the feed', async () => {
-            const handler = createGetFeedHandler(
-                feedService,
-                accountService,
-                postInteractionCountsService,
-                'Inbox',
-            );
-
             feedService.getFeedData = vi
                 .fn()
                 .mockImplementation(getMockFeedData);
@@ -252,7 +238,7 @@ describe('Feed API', () => {
                 .fn()
                 .mockRejectedValue(error);
 
-            const response = await handler(ctx);
+            const response = await feedController.handleGetFeed(ctx, 'Inbox');
 
             expect(Sentry.captureException).toHaveBeenCalledWith(error);
 

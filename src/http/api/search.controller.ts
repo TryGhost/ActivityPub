@@ -34,18 +34,15 @@ interface SearchResults {
     accounts: AccountSearchResult[];
 }
 
-/**
- * Create a handler to handle a search request
- *
- * @param accountService Account service instance
- */
-export function createSearchHandler(accountView: AccountView) {
+export class SearchController {
+    constructor(private readonly accountView: AccountView) {}
+
     /**
      * Handle a search request
      *
      * @param ctx App context instance
      */
-    return async function handleSearch(ctx: AppContext) {
+    async handleSearch(ctx: AppContext) {
         // Parse "query" from query parameters
         // ?query=<string>
         const queryQuery = ctx.req.query('query');
@@ -63,11 +60,14 @@ export function createSearchHandler(accountView: AccountView) {
         let dto: AccountDTO | null = null;
 
         if (isHandle(query)) {
-            dto = await accountView.viewByHandle(query, requestUserContext);
+            dto = await this.accountView.viewByHandle(
+                query,
+                requestUserContext,
+            );
         }
 
         if (isUri(query)) {
-            dto = await accountView.viewByApId(query, requestUserContext);
+            dto = await this.accountView.viewByApId(query, requestUserContext);
         }
 
         if (dto !== null) {
@@ -80,5 +80,5 @@ export function createSearchHandler(accountView: AccountView) {
             },
             status: 200,
         });
-    };
+    }
 }

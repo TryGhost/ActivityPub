@@ -5,7 +5,6 @@ import {
     lookupObject,
 } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -221,8 +220,6 @@ export class PostService {
                         exhaustiveCheck(error);
                     }
                 }
-                const err = new Error(errorMessage);
-                Sentry.captureException(err);
                 context.data.logger.error(errorMessage);
             } else {
                 inReplyTo = getValue(found);

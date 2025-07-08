@@ -18,24 +18,19 @@ const DEFAULT_FEED_POSTS_LIMIT = 20;
 const MAX_FEED_POSTS_LIMIT = 100;
 
 /**
- * Create a handler to handle a request for a user's feed
- *
- * @param feedService Feed service instance
- * @param accountService Account service instance
- * @param feedType Type of feed
+ * Controller for feed-related operations
  */
-export function createGetFeedHandler(
-    feedService: FeedService,
-    accountService: AccountService,
-    postInteractionCountsService: PostInteractionCountsService,
-    feedType: FeedType,
-) {
+export class FeedController {
+    constructor(
+        private readonly feedService: FeedService,
+        private readonly accountService: AccountService,
+        private readonly postInteractionCountsService: PostInteractionCountsService,
+    ) {}
+
     /**
      * Handle a request for a user's feed
-     *
-     * @param ctx App context
      */
-    return async function handleGetFeed(ctx: AppContext) {
+    async handleGetFeed(ctx: AppContext, feedType: FeedType) {
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
@@ -52,7 +47,7 @@ export function createGetFeedHandler(
 
         const account = ctx.get('account');
 
-        const { results, nextCursor } = await feedService.getFeedData({
+        const { results, nextCursor } = await this.feedService.getFeedData({
             accountId: account.id,
             feedType,
             limit,
@@ -119,7 +114,7 @@ export function createGetFeedHandler(
         // Request an update of the interaction counts for the posts in the
         // feed - We do not await this as we do not want to increase the
         // response time of the request
-        postInteractionCountsService
+        this.postInteractionCountsService
             .requestUpdate(
                 ctx.get('site').host,
                 results.map((post) => post.post_id),
@@ -142,5 +137,5 @@ export function createGetFeedHandler(
                 status: 200,
             },
         );
-    };
+    }
 }

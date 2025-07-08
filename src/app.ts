@@ -43,11 +43,18 @@ import { PubSubEvents } from 'events/pubsub';
 import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
-import type { BlockController } from 'http/api/block';
-import type { FollowController } from 'http/api/follow';
+import type { AccountController } from 'http/api/account.controller';
+import type { BlockController } from 'http/api/block.controller';
+import type { FeedController } from 'http/api/feed.controller';
+import type { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
-import type { LikeController } from 'http/api/like';
-import { handleCreateReply } from 'http/api/reply';
+import type { LikeController } from 'http/api/like.controller';
+import type { MediaController } from 'http/api/media.controller';
+import type { PostController } from 'http/api/post.controller';
+import type { SearchController } from 'http/api/search.controller';
+import type { SiteController } from 'http/api/site.controller';
+import type { WebFingerController } from 'http/api/webfinger.controller';
+import type { WebhookController } from 'http/api/webhook.controller';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 import type { NotificationEventService } from 'notification/notification-event.service';
@@ -82,7 +89,6 @@ import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
-import { handleCreateNote } from './http/api';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import {
@@ -878,8 +884,9 @@ app.get(
     '/.ghost/activitypub/site',
     requireRole(GhostRole.Owner),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getSiteDataHandler');
-        return handler(ctx);
+        const siteController =
+            container.resolve<SiteController>('siteController');
+        return siteController.handleGetSiteData(ctx);
     }),
 );
 
@@ -975,8 +982,9 @@ app.post(
     '/.ghost/activitypub/webhooks/post/published',
     validateWebhook(),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('postPublishedWebhookHandler');
-        return handler(ctx);
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostPublished(ctx);
     }),
 );
 
@@ -994,8 +1002,10 @@ function requireRole(...roles: GhostRole[]) {
 app.get(
     '/.well-known/webfinger',
     spanWrapper((ctx: AppContext, next: Next) => {
-        const handler = container.resolve('webFingerHandler');
-        return handler(ctx, next);
+        const webFingerController = container.resolve<WebFingerController>(
+            'webFingerController',
+        );
+        return webFingerController.handleWebFinger(ctx, next);
     }),
 );
 app.post(
@@ -1038,40 +1048,45 @@ app.post(
     '/.ghost/activitypub/actions/reply/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const postService = container.resolve('postService');
-        return handleCreateReply(ctx, postService);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleCreateReply(ctx);
     }),
 );
 app.post(
     '/.ghost/activitypub/actions/repost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('repostActionHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleRepost(ctx);
     }),
 );
 app.post(
     '/.ghost/activitypub/actions/derepost/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('derepostActionHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleDerepost(ctx);
     }),
 );
 app.post(
     '/.ghost/activitypub/actions/note',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const postService = container.resolve('postService');
-        return handleCreateNote(ctx, postService);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleCreateNote(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/actions/search',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('searchHandler');
-        return handler(ctx);
+        const searchController =
+            container.resolve<SearchController>('searchController');
+        return searchController.handleSearch(ctx);
     }),
 );
 
@@ -1088,88 +1103,99 @@ app.get(
     '/.ghost/activitypub/account/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccount(ctx);
     }),
 );
 app.put(
     '/.ghost/activitypub/account',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('updateAccountHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleUpdateAccount(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountPostsHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccountPosts(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/posts/:handle/liked',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountLikedPostsHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccountLikedPosts(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/account/:handle/follows/:type',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getAccountFollowsHandler');
-        return handler(ctx);
+        const accountController =
+            container.resolve<AccountController>('accountController');
+        return accountController.handleGetAccountFollows(ctx);
     }),
 );
 app.get(
     '/.ghost/activitypub/feed',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Feed')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Feed');
     }),
 );
 app.get(
     '/.ghost/activitypub/inbox',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Inbox')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Inbox');
     }),
 );
 app.get(
     '/.ghost/activitypub/feed/notes',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Feed')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Feed');
     }),
 );
 app.get(
     '/.ghost/activitypub/feed/reader',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handlerFactory = container.resolve('getFeedHandler');
-        return handlerFactory('Inbox')(ctx);
+        const feedController =
+            container.resolve<FeedController>('feedController');
+        return feedController.handleGetFeed(ctx, 'Inbox');
     }),
 );
 app.get(
     '/.ghost/activitypub/post/:post_ap_id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('getPostHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleGetPost(ctx);
     }),
 );
 app.delete(
     '/.ghost/activitypub/post/:id',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('deletePostHandler');
-        return handler(ctx);
+        const postController =
+            container.resolve<PostController>('postController');
+        return postController.handleDeletePost(ctx);
     }),
 );
 app.get(
@@ -1200,8 +1226,9 @@ app.post(
     '/.ghost/activitypub/upload/image',
     requireRole(GhostRole.Owner, GhostRole.Administrator),
     spanWrapper((ctx: AppContext) => {
-        const handler = container.resolve('imageUploadHandler');
-        return handler(ctx);
+        const mediaController =
+            container.resolve<MediaController>('mediaController');
+        return mediaController.handleImageUpload(ctx);
     }),
 );
 
