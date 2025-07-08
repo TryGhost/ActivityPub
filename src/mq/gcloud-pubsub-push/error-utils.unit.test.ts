@@ -21,6 +21,37 @@ describe('analyzeError', () => {
         expect(result.isReportable).toBe(true);
     });
 
+    describe('DNS resolution errors', () => {
+        it('should handle ENOTFOUND errors as non-retryable', () => {
+            const error = new Error('getaddrinfo ENOTFOUND example.com');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle EAI_AGAIN errors as non-retryable', () => {
+            const error = new Error('getaddrinfo EAI_AGAIN example.com');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle complex DNS error messages', () => {
+            const error = new Error(
+                'Error: getaddrinfo ENOTFOUND example.com\n  File "node:dns", line 122, col 26',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+    });
+
     describe('SSL/TLS certificate related Fedify delivery errors', () => {
         it('should handle hostname/altnames mismatch as non-retryable', () => {
             const error = new Error(
