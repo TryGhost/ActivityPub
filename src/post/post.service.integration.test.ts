@@ -910,4 +910,142 @@ describe('PostService', () => {
             expect(count).toBe(0);
         });
     });
+
+    describe('deleteByApId', () => {
+        it('should delete a post successfully', async () => {
+            const post = await fixtureManager.createPost(account);
+
+            const result = await postService.deleteByApId(post.apId, account);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const success = getValue(result);
+            expect(success).toBe(true);
+
+            // Verify the post is marked as deleted in the database
+            const savedPost = await postRepository.getById(post.id!);
+            expect(savedPost).not.toBeNull();
+            expect(Post.isDeleted(savedPost!)).toBe(true);
+
+            // Verify deleted_at is set in the database
+            const rowInDb = await db('posts')
+                .where({ id: post.id })
+                .select('deleted_at')
+                .first();
+            expect(rowInDb.deleted_at).not.toBeNull();
+        });
+
+        it('should return error when trying to delete a non existent post', async () => {
+            vi.mocked(lookupObject).mockResolvedValue(null);
+
+            const nonExistentPostUrl = new URL(
+                'https://example.com/posts/nonexistent123',
+            );
+
+            const result = await postService.deleteByApId(
+                nonExistentPostUrl,
+                account,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('upstream-error');
+        });
+
+        it("should return error when trying to delete someone else's post", async () => {
+            const [otherAccount] = await fixtureManager.createInternalAccount();
+            const otherPost = await fixtureManager.createPost(otherAccount);
+
+            const result = await postService.deleteByApId(
+                otherPost.apId,
+                account,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('not-author');
+
+            // Verify the post is not deleted
+            const savedPost = await postRepository.getById(otherPost.id!);
+            expect(savedPost).not.toBeNull();
+            expect(Post.isDeleted(savedPost!)).toBe(false);
+        });
+
+        it('should handle deleting an external post', async () => {
+            const externalAccount =
+                await fixtureManager.createExternalAccount();
+            const externalPost =
+                await fixtureManager.createPost(externalAccount);
+
+            // Delete the external post
+            const result = await postService.deleteByApId(
+                externalPost.apId,
+                externalAccount,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const success = getValue(result);
+            expect(success).toBe(true);
+
+            const savedPost = await postRepository.getById(externalPost.id!);
+            expect(savedPost).not.toBeNull();
+            expect(Post.isDeleted(savedPost!)).toBe(true);
+
+            // Verify deleted_at is set in the database
+            const rowInDb = await db('posts')
+                .where({ id: externalPost.id })
+                .select('deleted_at')
+                .first();
+            expect(rowInDb.deleted_at).not.toBeNull();
+        });
+
+        it('should handle deleting a reply post', async () => {
+            const originalPost = await fixtureManager.createPost(account);
+
+            const result = await postService.createReply(
+                account,
+                'This is a reply to delete',
+                originalPost.apId,
+            );
+
+            if (isError(result)) {
+                throw new Error('Reply creation should not be an error');
+            }
+
+            const reply = getValue(result);
+
+            // Delete the reply
+            const deleteResult = await postService.deleteByApId(
+                reply.apId,
+                account,
+            );
+
+            if (isError(deleteResult)) {
+                throw new Error('Delete result should not be an error');
+            }
+
+            const success = getValue(deleteResult);
+            expect(success).toBe(true);
+
+            const savedReply = await postRepository.getById(reply.id!);
+            expect(savedReply).not.toBeNull();
+            expect(Post.isDeleted(savedReply!)).toBe(true);
+
+            // Verify deleted_at is set in the database
+            const rowInDb = await db('posts')
+                .where({ id: reply.id })
+                .select('deleted_at')
+                .first();
+            expect(rowInDb.deleted_at).not.toBeNull();
+        });
+    });
 });
