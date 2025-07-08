@@ -230,7 +230,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             expect(errorListener).toHaveBeenCalledWith(error);
         });
 
-        it('should publish to the retry topic if the useRetryTopic flag is true', async () => {
+        it('should publish to the retry topic if the useRetryTopic flag is true and the error is classified as retryable', async () => {
             const RETRY_TOPIC = 'retry-topic';
 
             const mockRetryTopic = {
@@ -278,6 +278,82 @@ describe('GCloudPubSubPushMessageQueue', () => {
                     fedifyId: 'unknown',
                 },
             });
+        });
+
+        it('should not publish to the retry topic if the useRetryTopic flag is true and the error is classified as non-retryable', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error(
+                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (403 Forbidden):\nForbidden',
+            );
+
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                },
+                attributes: {},
+            });
+
+            expect(mockRetryTopic.publishMessage).not.toHaveBeenCalled();
+        });
+
+        it('should report an error if the error classified as reportable', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                TOPIC,
+            );
+
+            const errorListener = vi.fn();
+            mq.registerErrorListener(errorListener);
+
+            const error = new Error('Failed to handle message');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            try {
+                await mq.handleMessage({
+                    id: 'abc123',
+                    data: {
+                        id: 'abc123',
+                    },
+                    attributes: {},
+                });
+
+                throw new Error('Expected error to be thrown');
+            } catch (err) {
+                expect(errorListener).toHaveBeenCalledTimes(1);
+                expect(errorListener).toHaveBeenCalledWith(err);
+            }
         });
     });
 });

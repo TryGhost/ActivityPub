@@ -8,6 +8,8 @@ import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
+import { analyzeError } from './error-utils';
+
 /**
  * Message from Fedify
  */
@@ -143,8 +145,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 {
                     fedifyId: message.attributes.fedifyId,
                     pubSubId: message.id,
-                    error,
                     mq_message: message.data,
+                    error,
                 },
             );
 
@@ -166,34 +168,52 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 { fedifyId, pubSubId: message.id },
             );
         } catch (error) {
+            const shouldRetryUsingTopic =
+                this.useRetryTopic && this.retryTopic !== undefined;
+
+            const errorAnalysis = analyzeError(error as Error);
+
             this.logger.error(
                 `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
                 {
                     fedifyId,
                     pubSubId: message.id,
-                    error,
                     mq_message: message.data,
+                    error,
                 },
             );
 
-            this.errorListener?.(error as Error);
+            if (errorAnalysis.isReportable) {
+                this.errorListener?.(error as Error);
+            }
 
-            if (this.useRetryTopic && this.retryTopic !== undefined) {
+            if (shouldRetryUsingTopic && errorAnalysis.isRetryable) {
                 this.logger.info(
                     `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
                     {
                         fedifyId,
                         pubSubId: message.id,
                         mq_message: message.data,
+                        error,
                     },
                 );
 
-                await this.pubSubClient.topic(this.retryTopic).publishMessage({
+                await this.pubSubClient.topic(this.retryTopic!).publishMessage({
                     json: message.data,
                     attributes: {
                         fedifyId,
                     },
                 });
+            } else if (shouldRetryUsingTopic && !errorAnalysis.isRetryable) {
+                this.logger.warn(
+                    `Not retrying permanent failure [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+                    {
+                        fedifyId,
+                        pubSubId: message.id,
+                        mq_message: message.data,
+                        error,
+                    },
+                );
             } else {
                 throw error;
             }
