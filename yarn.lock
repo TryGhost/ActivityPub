@@ -2359,10 +2359,10 @@ es-set-tostringtag@^2.1.0:
     has-tostringtag "^1.0.2"
     hasown "^2.0.2"
 
-es-toolkit@1.39.6:
-  version "1.39.6"
-  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.6.tgz#b3c3b8df8d0a7fed4a84d36cd81c6171fcd25881"
-  integrity sha512-uiVjnLem6kkfXumlwUEWEKnwUN5QbSEB0DHy2rNJt0nkYcob5K0TXJ7oJRzhAcvx+SRmz4TahKyN5V9cly/IPA==
+es-toolkit@1.39.7:
+  version "1.39.7"
+  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.7.tgz#961b80a11c922c1a6dca5ca4089c1de7f9937be7"
+  integrity sha512-ek/wWryKouBrZIjkwW2BFf91CWOIMvoy2AE5YYgUrfWsJQM2Su1LoLtrw8uusEpN9RfqLlV/0FVNjT0WMv8Bxw==
 
 es6-promise@^4.2.8:
   version "4.2.8"
