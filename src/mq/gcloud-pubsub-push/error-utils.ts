@@ -9,6 +9,9 @@ export interface ErrorAnalysis {
     isReportable: boolean;
 }
 
+const FEDIFY_DELIVERY_ERROR_REGEX =
+    /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/;
+
 function isUpstreamCertificateError(error: Error): boolean {
     return (
         error.message.match(
@@ -26,17 +29,11 @@ function analyzeUpstreamCertificateError(error: Error): ErrorAnalysis {
 }
 
 function isFedifyDeliveryError(error: Error): boolean {
-    return (
-        error.message.match(
-            /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/,
-        ) !== null
-    );
+    return error.message.match(FEDIFY_DELIVERY_ERROR_REGEX) !== null;
 }
 
 function analyzeFedifyDeliveryError(error: Error): ErrorAnalysis {
-    const fedifyMatch = error.message.match(
-        /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/,
-    );
+    const fedifyMatch = error.message.match(FEDIFY_DELIVERY_ERROR_REGEX);
 
     if (!fedifyMatch) {
         return {
