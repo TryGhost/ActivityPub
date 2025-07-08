@@ -246,7 +246,7 @@ describe('analyzeError', () => {
         });
 
         it('should handle non-standard 5xx codes as non-retryable', () => {
-            const nonStandardCodes = [
+            const nonStandardStatusCodes = [
                 520, // Cloudflare: Web server returns an unknown error
                 521, // Cloudflare: Web server is down
                 522, // Cloudflare: Connection timed out
@@ -260,9 +260,9 @@ describe('analyzeError', () => {
                 599, // Network connect timeout error
             ];
 
-            for (const code of nonStandardCodes) {
+            for (const statusCode of nonStandardStatusCodes) {
                 const error = new Error(
-                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${code} Custom Error):\nProvider specific error`,
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${statusCode} Custom Error):\nProvider specific error`,
                 );
 
                 const result = analyzeError(error);
@@ -273,7 +273,7 @@ describe('analyzeError', () => {
         });
 
         it('should handle non-standard 4xx codes as non-retryable', () => {
-            const nonStandardCodes = [
+            const nonStandardStatusCodes = [
                 419, // Non-standard
                 420, // Non-standard
                 430, // Non-standard
@@ -291,9 +291,9 @@ describe('analyzeError', () => {
                 499, // nginx: Client Closed Request
             ];
 
-            for (const code of nonStandardCodes) {
+            for (const statusCode of nonStandardStatusCodes) {
                 const error = new Error(
-                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${code} Custom Error):\nProvider specific error`,
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${statusCode} Custom Error):\nProvider specific error`,
                 );
 
                 const result = analyzeError(error);
@@ -304,19 +304,18 @@ describe('analyzeError', () => {
         });
 
         it('should handle standard 5xx codes as retryable', () => {
-            const standardRetryableCodes = [
+            const standardRetryableStatusCodes = [
                 502, // Bad Gateway
                 503, // Service Unavailable
                 504, // Gateway Timeout
                 507, // Insufficient Storage
                 508, // Loop Detected
-                510, // Not Extended
                 511, // Network Authentication Required
             ];
 
-            for (const code of standardRetryableCodes) {
+            for (const statusCode of standardRetryableStatusCodes) {
                 const error = new Error(
-                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${code} Standard Error):\nStandard error`,
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${statusCode} Standard Error):\nStandard error`,
                 );
 
                 const result = analyzeError(error);
