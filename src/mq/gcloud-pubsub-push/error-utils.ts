@@ -9,24 +9,35 @@ export interface ErrorAnalysis {
     isReportable: boolean;
 }
 
-/**
- * Analyze an error to determine its characteristics and handling strategy
- *
- * Fedify delivery errors have the format:
- * "Failed to send activity <activity-id> to <inbox-url> (<status-code> <status-text>):\n<error body>"
- *
- * Non-Fedify delivery errors are considered application errors and are
- * retryable and reportable
- *
- * @param error The error to analyze
- */
-export function analyzeError(error: Error): ErrorAnalysis {
-    // Try to match Fedify delivery error format
+function isUpstreamCertificateError(error: Error): boolean {
+    return (
+        error.message.match(
+            /Hostname\/IP does not match certificate's altnames/i,
+        ) !== null
+    );
+}
+
+function analyzeUpstreamCertificateError(error: Error): ErrorAnalysis {
+    // Upstream certificate errors are not retryable and not reportable
+    return {
+        isRetryable: false,
+        isReportable: false,
+    };
+}
+
+function isFedifyDeliveryError(error: Error): boolean {
+    return (
+        error.message.match(
+            /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/,
+        ) !== null
+    );
+}
+
+function analyzeFedifyDeliveryError(error: Error): ErrorAnalysis {
     const fedifyMatch = error.message.match(
         /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/,
     );
 
-    // If it's not a Fedify delivery error, treat it as an application error
     if (!fedifyMatch) {
         return {
             isRetryable: true,
@@ -55,5 +66,35 @@ export function analyzeError(error: Error): ErrorAnalysis {
         // Fedify delivery errors are from remote servers, we don't report
         // them to error tracking
         isReportable: false,
+    };
+}
+
+/**
+ * Analyze an error to determine its characteristics and handling strategy
+ *
+ * Generic Fedify delivery errors have the message format:
+ * "Failed to send activity <activity-id> to <inbox-url> (<status-code> <status-text>):\n<error body>"
+ *
+ * SSL/TLS certificate related Fedify delivery errors are of type TypeError with
+ * message format:
+ * "Hostname/IP does not match certificate's altnames: Host: <host>. is not in the cert's altnames: DNS:<host>"
+ *
+ * Non-Fedify delivery errors are considered application errors and are
+ * retryable and reportable
+ *
+ * @param error The error to analyze
+ */
+export function analyzeError(error: Error): ErrorAnalysis {
+    if (isUpstreamCertificateError(error)) {
+        return analyzeUpstreamCertificateError(error);
+    }
+
+    if (isFedifyDeliveryError(error)) {
+        return analyzeFedifyDeliveryError(error);
+    }
+
+    return {
+        isRetryable: true,
+        isReportable: true,
     };
 }
