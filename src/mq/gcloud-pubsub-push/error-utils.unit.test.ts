@@ -244,5 +244,86 @@ describe('analyzeError', () => {
                 expect(result.isReportable).toBe(false);
             }
         });
+
+        it('should handle non-standard 5xx codes as non-retryable', () => {
+            const nonStandardCodes = [
+                520, // Cloudflare: Web server returns an unknown error
+                521, // Cloudflare: Web server is down
+                522, // Cloudflare: Connection timed out
+                523, // Cloudflare: Origin is unreachable
+                524, // Cloudflare: A timeout occurred
+                525, // Cloudflare: SSL handshake failed
+                526, // Cloudflare: Invalid SSL certificate
+                527, // Cloudflare: Railgun error
+                530, // Cloudflare: Site is frozen
+                598, // Network read timeout error
+                599, // Network connect timeout error
+            ];
+
+            for (const code of nonStandardCodes) {
+                const error = new Error(
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${code} Custom Error):\nProvider specific error`,
+                );
+
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(false);
+                expect(result.isReportable).toBe(false);
+            }
+        });
+
+        it('should handle non-standard 4xx codes as non-retryable', () => {
+            const nonStandardCodes = [
+                419, // Non-standard
+                420, // Non-standard
+                430, // Non-standard
+                440, // Non-standard
+                444, // nginx: No Response
+                449, // Microsoft: Retry With
+                450, // Microsoft: Blocked by Windows Parental Controls
+                460, // AWS ELB: Client closed connection
+                463, // AWS ELB: X-Forwarded-For header with more than 30 IPs
+                494, // nginx: Request header too large
+                495, // nginx: SSL Certificate Error
+                496, // nginx: SSL Certificate Required
+                497, // nginx: HTTP Request Sent to HTTPS Port
+                498, // Non-standard
+                499, // nginx: Client Closed Request
+            ];
+
+            for (const code of nonStandardCodes) {
+                const error = new Error(
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${code} Custom Error):\nProvider specific error`,
+                );
+
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(false);
+                expect(result.isReportable).toBe(false);
+            }
+        });
+
+        it('should handle standard 5xx codes as retryable', () => {
+            const standardRetryableCodes = [
+                502, // Bad Gateway
+                503, // Service Unavailable
+                504, // Gateway Timeout
+                507, // Insufficient Storage
+                508, // Loop Detected
+                510, // Not Extended
+                511, // Network Authentication Required
+            ];
+
+            for (const code of standardRetryableCodes) {
+                const error = new Error(
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${code} Standard Error):\nStandard error`,
+                );
+
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(true);
+                expect(result.isReportable).toBe(false);
+            }
+        });
     });
 });
