@@ -4,7 +4,6 @@ import {
     Note,
     lookupObject,
 } from '@fedify/fedify';
-import * as Sentry from '@sentry/node';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -187,7 +186,6 @@ export class PostService {
                 switch (error) {
                     case 'upstream-error':
                         errorMessage = `Failed to fetch parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}`;
-                        Sentry.captureException(new Error(errorMessage));
                         break;
                     case 'not-a-post':
                         errorMessage = `Parent post for reply ${foundObject.id}, parent id : ${foundObject.replyTargetId}, is not an instance of Note or Article`;
