@@ -53,6 +53,8 @@ export type RepostError =
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
 
+export type DeletePostError = GetByApIdError | 'not-author';
+
 export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
 export type UpdateInteractionCountsError =
     | 'post-not-found'
@@ -498,5 +500,22 @@ export class PostService {
 
     async getOutboxItemCount(accountId: number): Promise<number> {
         return this.postRepository.getOutboxItemCount(accountId);
+    }
+
+    async deleteByApId(
+        apId: URL,
+        account: Account,
+    ): Promise<Result<boolean, DeletePostError>> {
+        const postResult = await this.getByApId(apId);
+        if (isError(postResult)) {
+            return postResult;
+        }
+        const post = getValue(postResult);
+        if (post.author.id !== account.id) {
+            return error('not-author');
+        }
+        post.delete(account);
+        await this.postRepository.save(post);
+        return ok(true);
     }
 }
