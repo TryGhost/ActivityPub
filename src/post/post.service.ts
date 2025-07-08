@@ -89,11 +89,25 @@ export class PostService {
                     : [attachment].filter((a) => a !== undefined);
                 for (const a of attachmentList) {
                     const attachmentJson = await a.toJsonLd();
+                    let url: URL;
+                    let mediaType: string;
+                    if (Array.isArray(attachmentJson.url)) {
+                        if (attachmentJson.url.length === 0) {
+                            // no usable URL – skip this attachment
+                            continue;
+                        }
+                        // attachments can have multiple urls, we need to handle this. For now we are using the first one.
+                        url = new URL(attachmentJson.url[0].href);
+                        mediaType = attachmentJson.url[0].mediaType;
+                    } else {
+                        url = new URL(attachmentJson.url);
+                        mediaType = attachmentJson.mediaType;
+                    }
                     postAttachments.push({
                         type: attachmentJson.type,
-                        mediaType: attachmentJson.mediaType,
+                        mediaType,
                         name: attachmentJson.name,
-                        url: new URL(attachmentJson.url),
+                        url,
                     });
                 }
             }

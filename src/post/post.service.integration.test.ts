@@ -2,6 +2,7 @@ import {
     Collection,
     Document,
     Image,
+    Link,
     Note,
     lookupObject,
 } from '@fedify/fedify';
@@ -829,6 +830,53 @@ describe('PostService', () => {
                 type: 'Document',
                 mediaType: 'image/jpeg',
                 url: attachmentUrl,
+            });
+        });
+
+        it('should handle attachments correctly for incoming posts with multiple urls', async () => {
+            const author = await fixtureManager.createExternalAccount();
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: new URL('https://example.com/post/1'),
+                    content: 'Test post with attachment',
+                    attachments: [
+                        new Document({
+                            urls: [
+                                new Link({
+                                    href: new URL(
+                                        'https://example.com/image.jpg',
+                                    ),
+                                    mediaType: 'image/jpeg',
+                                }),
+                                new Link({
+                                    href: new URL(
+                                        'https://example.com/image.avif',
+                                    ),
+                                    mediaType: 'image/avif',
+                                }),
+                            ],
+                        }),
+                    ],
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(
+                new URL('https://example.com/post/1'),
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toHaveLength(1);
+            expect(post.attachments[0]).toMatchObject({
+                type: 'Document',
+                mediaType: 'image/jpeg',
+                url: new URL('https://example.com/image.jpg'),
             });
         });
     });
