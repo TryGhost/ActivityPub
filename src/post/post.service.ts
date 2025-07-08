@@ -511,7 +511,7 @@ export class PostService {
             return postResult;
         }
         const post = getValue(postResult);
-        if (post.author.id !== account.id) {
+        if (post.author.uuid !== account.uuid) {
             return error('not-author');
         }
         post.delete(account);
