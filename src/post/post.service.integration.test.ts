@@ -917,12 +917,7 @@ describe('PostService', () => {
 
             const result = await postService.deleteByApId(post.apId, account);
 
-            if (isError(result)) {
-                throw new Error('Result should not be an error');
-            }
-
-            const success = getValue(result);
-            expect(success).toBe(true);
+            expect(isError(result)).toBe(false);
 
             // Verify the post is marked as deleted in the database
             const savedPost = await postRepository.getById(post.id!);
@@ -989,12 +984,7 @@ describe('PostService', () => {
                 externalAccount,
             );
 
-            if (isError(result)) {
-                throw new Error('Result should not be an error');
-            }
-
-            const success = getValue(result);
-            expect(success).toBe(true);
+            expect(isError(result)).toBe(false);
 
             const savedPost = await postRepository.getById(externalPost.id!);
             expect(savedPost).not.toBeNull();
