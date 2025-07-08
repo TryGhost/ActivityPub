@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 
-import { type Actor, Like, PUBLIC_COLLECTION, Undo } from '@fedify/fedify';
-import { type AppContext, globalFedify } from 'app';
+import {
+    type Actor,
+    type Federation,
+    Like,
+    PUBLIC_COLLECTION,
+    Undo,
+} from '@fedify/fedify';
+import type { AppContext, ContextData } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { parseURL } from 'core/url';
 import { lookupActor, lookupObject } from 'lookup-helpers';
@@ -14,12 +20,13 @@ export class LikeController {
     constructor(
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
+        private readonly fedify: Federation<ContextData>,
     ) {}
 
     async handleLike(ctx: AppContext) {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
-        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
+        const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
@@ -150,7 +157,7 @@ export class LikeController {
     async handleUnlike(ctx: AppContext) {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
-        const apCtx = globalFedify.createContext(ctx.req.raw as Request, {
+        const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });

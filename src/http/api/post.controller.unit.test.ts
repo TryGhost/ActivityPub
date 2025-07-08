@@ -1,20 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Federation } from '@fedify/fedify';
 import { AccountEntity } from 'account/account.entity';
+import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
-import type { AppContext } from 'app';
+import type { AppContext, ContextData } from 'app';
 import { error, ok } from 'core/result';
 import { Audience, Post, PostType } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
 import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
-import { createGetPostHandler } from './post';
+import { PostController } from './post.controller';
 
 describe('Post API', () => {
     let site: Site;
     let account: AccountEntity;
     let postService: PostService;
     let accountService: AccountService;
+    let accountRepository: KnexAccountRepository;
+    let postRepository: KnexPostRepository;
+    let postController: PostController;
+    let fedify: Federation<ContextData>;
 
     /**
      * Helper to get a mock AppContext
@@ -103,6 +110,16 @@ describe('Post API', () => {
         accountService = {
             checkIfAccountIsFollowing: vi.fn().mockResolvedValue(false),
         } as unknown as AccountService;
+        accountRepository = {} as unknown as KnexAccountRepository;
+        postRepository = {} as unknown as KnexPostRepository;
+        fedify = {} as unknown as Federation<ContextData>;
+        postController = new PostController(
+            postService,
+            accountService,
+            accountRepository,
+            postRepository,
+            fedify,
+        );
     });
 
     it('should return a post', async () => {
@@ -125,9 +142,7 @@ describe('Post API', () => {
             }
         });
 
-        const handler = createGetPostHandler(postService, accountService);
-
-        const response = await handler(ctx);
+        const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toMatchFileSnapshot(
@@ -153,9 +168,7 @@ describe('Post API', () => {
             .fn()
             .mockImplementation((_site) => account);
 
-        const handler = createGetPostHandler(postService, accountService);
-
-        const response = await handler(ctx);
+        const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toMatchFileSnapshot(
@@ -190,9 +203,7 @@ describe('Post API', () => {
             .fn()
             .mockImplementation((_site) => account);
 
-        const handler = createGetPostHandler(postService, accountService);
-
-        const response = await handler(ctx);
+        const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toMatchFileSnapshot(
@@ -227,9 +238,7 @@ describe('Post API', () => {
             .fn()
             .mockImplementation((_site) => account);
 
-        const handler = createGetPostHandler(postService, accountService);
-
-        const response = await handler(ctx);
+        const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toMatchFileSnapshot(
@@ -242,8 +251,7 @@ describe('Post API', () => {
 
         const ctx = getMockAppContext(postApId);
 
-        const handler = createGetPostHandler(postService, accountService);
-        const response = await handler(ctx);
+        const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(400);
     });
@@ -256,8 +264,7 @@ describe('Post API', () => {
 
         postService.getByApId = vi.fn().mockResolvedValue(error('not-a-post'));
 
-        const handler = createGetPostHandler(postService, accountService);
-        const response = await handler(ctx);
+        const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(404);
     });

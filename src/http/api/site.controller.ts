@@ -1,11 +1,10 @@
-import type { Context } from 'hono';
+import type { AppContext } from '../../app';
+import type { SiteService } from '../../site/site.service';
 
-import type { HonoContextVariables } from './app';
-import type { SiteService } from './site/site.service';
+export class SiteController {
+    constructor(private readonly siteService: SiteService) {}
 
-export const getSiteDataHandler =
-    (siteService: SiteService) =>
-    async (ctx: Context<{ Variables: HonoContextVariables }>) => {
+    async handleGetSiteData(ctx: AppContext) {
         const request = ctx.req;
         const host = request.header('host');
         if (!host) {
@@ -15,7 +14,7 @@ export const getSiteDataHandler =
             });
         }
 
-        const site = await siteService.initialiseSiteForHost(host);
+        const site = await this.siteService.initialiseSiteForHost(host);
 
         return new Response(JSON.stringify(site), {
             status: 200,
@@ -23,4 +22,5 @@ export const getSiteDataHandler =
                 'Content-Type': 'application/json',
             },
         });
-    };
+    }
+}
