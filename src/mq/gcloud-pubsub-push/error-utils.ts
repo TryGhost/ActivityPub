@@ -13,7 +13,7 @@ export interface ErrorAnalysis {
  * Analyze an error to determine its characteristics and handling strategy
  *
  * Fedify delivery errors have the format:
- * "Failed to send activity <activityId> to <inbox> (<status> <statusText>):\n<error body>"
+ * "Failed to send activity <activity-id> to <inbox-url> (<status-code> <status-text>):\n<error body>"
  *
  * Non-Fedify delivery errors are considered application errors and are
  * retryable and reportable
@@ -22,9 +22,11 @@ export interface ErrorAnalysis {
  */
 export function analyzeError(error: Error): ErrorAnalysis {
     // Try to match Fedify delivery error format
-    const fedifyMatch = error.message.match(/\((\d{3})\s+[\w\s]+\):/);
+    const fedifyMatch = error.message.match(
+        /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/,
+    );
 
-    // If it's not a Fedify error, treat it as an application error
+    // If it's not a Fedify delivery error, treat it as an application error
     if (!fedifyMatch) {
         return {
             isRetryable: true,
@@ -32,7 +34,7 @@ export function analyzeError(error: Error): ErrorAnalysis {
         };
     }
 
-    // Extract status code from Fedify error
+    // Extract status code from the Fedify delivery error
     const statusCode = Number.parseInt(fedifyMatch[1], 10);
 
     const permanentFailureCodes = [

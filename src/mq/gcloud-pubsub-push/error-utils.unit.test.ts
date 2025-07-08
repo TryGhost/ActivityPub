@@ -130,4 +130,54 @@ describe('analyzeError', () => {
         expect(result.isRetryable).toBe(false);
         expect(result.isReportable).toBe(false);
     });
+
+    describe('fedify delivery error regex specificity', () => {
+        it('should not match errors with status code pattern but wrong prefix', () => {
+            const error = new Error(
+                'Some other error (404 Not Found): This should not match',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(true);
+        });
+
+        it('should not match errors with partial Fedify format', () => {
+            const error = new Error(
+                'Error occurred (500 Server Error): but not a Fedify error',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(true);
+        });
+
+        it('should not match when status code pattern appears mid-message', () => {
+            const error = new Error(
+                'Connection failed because server returned (403 Forbidden): access denied',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(true);
+        });
+
+        it('should match valid Fedify errors with various activity and inbox formats', () => {
+            const testCases = [
+                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (404 Not Found):\nNot found',
+                'Failed to send activity https://site.com/posts/abc-123 to https://mastodon.social/users/someone/inbox (400 Bad Request):\nBad request',
+                'Failed to send activity https://blog.test/activities/update/post-456 to https://instance.example/actor/inbox (503 Service Unavailable):\nService down',
+            ];
+
+            for (const message of testCases) {
+                const error = new Error(message);
+                const result = analyzeError(error);
+
+                expect(result.isReportable).toBe(false);
+            }
+        });
+    });
 });
