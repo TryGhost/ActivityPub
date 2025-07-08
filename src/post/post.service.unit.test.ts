@@ -1,3 +1,4 @@
+import type { Logger } from '@logtape/logtape';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AccountService } from 'account/account.service';
@@ -26,6 +27,7 @@ describe('PostService', () => {
             {} as FedifyContextFactory,
             {} as ImageStorageService,
             {} as ModerationService,
+            {} as Logger,
         );
 
         const result = await postService.isLikedByAccount(postId, accountId);
@@ -51,6 +53,7 @@ describe('PostService', () => {
             {} as FedifyContextFactory,
             {} as ImageStorageService,
             {} as ModerationService,
+            {} as Logger,
         );
 
         const result = await postService.isRepostedByAccount(postId, accountId);
@@ -77,6 +80,7 @@ describe('PostService', () => {
             {} as FedifyContextFactory,
             {} as ImageStorageService,
             {} as ModerationService,
+            {} as Logger,
         );
 
         const result = await postService.getOutboxForAccount(
@@ -107,6 +111,7 @@ describe('PostService', () => {
             {} as FedifyContextFactory,
             {} as ImageStorageService,
             {} as ModerationService,
+            {} as Logger,
         );
 
         const result = await postService.getOutboxItemCount(accountId);

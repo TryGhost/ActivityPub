@@ -4,6 +4,7 @@ import {
     Note,
     lookupObject,
 } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
@@ -17,6 +18,7 @@ import {
     isError,
     ok,
 } from 'core/result';
+import { parseURL } from 'core/url';
 import {
     getLikeCountFromRemote,
     getRepostCountFromRemote,
@@ -69,6 +71,7 @@ export class PostService {
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly imageStorageService: ImageStorageService,
         private readonly moderationService: ModerationService,
+        private readonly logger: Logger,
     ) {}
 
     /**
@@ -89,19 +92,25 @@ export class PostService {
                     : [attachment].filter((a) => a !== undefined);
                 for (const a of attachmentList) {
                     const attachmentJson = await a.toJsonLd();
-                    let url: URL;
-                    let mediaType: string;
+                    let url: URL | null;
+                    let mediaType: string | null;
                     if (Array.isArray(attachmentJson.url)) {
                         if (attachmentJson.url.length === 0) {
                             // no usable URL – skip this attachment
                             continue;
                         }
                         // attachments can have multiple urls, we need to handle this. For now we are using the first one.
-                        url = new URL(attachmentJson.url[0].href);
+                        url = parseURL(attachmentJson.url[0].href);
                         mediaType = attachmentJson.url[0].mediaType;
                     } else {
-                        url = new URL(attachmentJson.url);
+                        url = parseURL(attachmentJson.url);
                         mediaType = attachmentJson.mediaType;
+                    }
+                    if (!url) {
+                        this.logger.error(
+                            `Failed to parse URL for attachment for post ${foundObject.id}`,
+                        );
+                        continue;
                     }
                     postAttachments.push({
                         type: attachmentJson.type,

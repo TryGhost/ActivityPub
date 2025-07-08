@@ -7,6 +7,7 @@ import {
     lookupObject,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -51,6 +52,7 @@ describe('PostService', () => {
     let accountService: AccountService;
     let account: Account;
     let events: AsyncEvents;
+    let logger: Logger;
 
     beforeEach(async () => {
         db = await createTestDb();
@@ -58,6 +60,11 @@ describe('PostService', () => {
         postRepository = new KnexPostRepository(db, events);
         accountRepository = new KnexAccountRepository(db, events);
         fixtureManager = createFixtureManager(db, events);
+        logger = {
+            info: vi.fn(),
+            error: vi.fn(),
+            warn: vi.fn(),
+        } as unknown as Logger;
         mockFedifyContextFactory = {
             getFedifyContext: () => ({
                 getDocumentLoader: async () => ({}),
@@ -113,6 +120,7 @@ describe('PostService', () => {
             mockFedifyContextFactory,
             imageStorageService,
             moderationService,
+            logger,
         );
 
         // Reset the database before each test
@@ -276,6 +284,7 @@ describe('PostService', () => {
                 mockFedifyContextFactory,
                 failingStorageService,
                 moderationService,
+                logger,
             );
 
             const content = 'This is a test note';
