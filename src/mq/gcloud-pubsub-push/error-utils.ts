@@ -9,8 +9,20 @@ export interface ErrorAnalysis {
     isReportable: boolean;
 }
 
-const FEDIFY_DELIVERY_ERROR_REGEX =
-    /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/;
+function isDnsResolutionError(error: Error): boolean {
+    return (
+        error.message.match(/getaddrinfo ENOTFOUND/i) !== null ||
+        error.message.match(/getaddrinfo EAI_AGAIN/i) !== null
+    );
+}
+
+function analyzeDnsResolutionError(error: Error): ErrorAnalysis {
+    // DNS resolution errors are not retryable and not reportable
+    return {
+        isRetryable: false,
+        isReportable: false,
+    };
+}
 
 function isUpstreamCertificateError(error: Error): boolean {
     return (
@@ -27,6 +39,9 @@ function analyzeUpstreamCertificateError(error: Error): ErrorAnalysis {
         isReportable: false,
     };
 }
+
+const FEDIFY_DELIVERY_ERROR_REGEX =
+    /^Failed to send activity .+ to .+ \((\d{3})\s+[\w\s]+\):/;
 
 function isFedifyDeliveryError(error: Error): boolean {
     return error.message.match(FEDIFY_DELIVERY_ERROR_REGEX) !== null;
@@ -73,8 +88,11 @@ function analyzeFedifyDeliveryError(error: Error): ErrorAnalysis {
  * "Failed to send activity <activity-id> to <inbox-url> (<status-code> <status-text>):\n<error body>"
  *
  * SSL/TLS certificate related Fedify delivery errors are of type TypeError with
- * message format:
+ * the message format:
  * "Hostname/IP does not match certificate's altnames: Host: <host>. is not in the cert's altnames: DNS:<host>"
+ *
+ * DNS resolution errors have the message format:
+ * "getaddrinfo <error-code ENOTFOUND|EAI_AGAIN> <domain>"
  *
  * Non-Fedify delivery errors are considered application errors and are
  * retryable and reportable
@@ -82,6 +100,10 @@ function analyzeFedifyDeliveryError(error: Error): ErrorAnalysis {
  * @param error The error to analyze
  */
 export function analyzeError(error: Error): ErrorAnalysis {
+    if (isDnsResolutionError(error)) {
+        return analyzeDnsResolutionError(error);
+    }
+
     if (isUpstreamCertificateError(error)) {
         return analyzeUpstreamCertificateError(error);
     }
