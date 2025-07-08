@@ -76,3 +76,6 @@ dist/
 
 # Fake GCS data
 dev/fake-gcs/storage*
+
+# AI agent configuration
+.claude/settings.local.json
