@@ -34,7 +34,8 @@
     "test:all": "docker compose run --rm activitypub-testing yarn _test:all",
     "_test:single": "vitest run --coverage --reporter=dot",
     "test:single": "docker compose run --rm activitypub-testing yarn _test:single",
-    "lint": "biome check"
+    "lint": "biome check",
+    "fmt": "biome format --write"
   },
   "files": [
     "src"

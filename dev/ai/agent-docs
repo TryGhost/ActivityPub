@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# Claude - https://docs.anthropic.com/en/docs/claude-code/memory
+ln -s AGENTS.md CLAUDE.md
+
+# Gemini - https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/memory.md
+ln -s AGENTS.md GEMINI.md
+
+# Cursor - https://docs.cursor.com/context/rules
+ln -s AGENTS.md .cursorrules
+
+# Windsurf - https://docs.windsurf.com/windsurf/cascade/memories
+ln -s AGENTS.md .windsurfrules

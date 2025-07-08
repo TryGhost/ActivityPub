@@ -4,6 +4,12 @@ This directory contains all development-related tools, configurations, and utili
 
 ## Directory Structure
 
+### `/ai`
+
+AI agent related tools, configurations, and utilities
+
+- `agent-docs` - Script to generate documentation for AI agents
+
 ### `/docker`
 
 Contains Docker-related files and configurations for running tests and other containerized operations
