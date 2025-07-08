@@ -130,10 +130,13 @@ export class PostController {
         }
 
         const account = await this.accountRepository.getBySite(ctx.get('site'));
-        const postResult = await this.postService.getByApId(idAsUrl);
+        const deleteResult = await this.postService.deleteByApId(
+            idAsUrl,
+            account,
+        );
 
-        if (isError(postResult)) {
-            const error = getError(postResult);
+        if (isError(deleteResult)) {
+            const error = getError(deleteResult);
             switch (error) {
                 case 'upstream-error':
                     logger.info('Upstream error fetching post for deletion', {
@@ -152,24 +155,17 @@ export class PostController {
                         { postId: idAsUrl.href },
                     );
                     return new Response(null, { status: 400 });
+                case 'not-author':
+                    logger.info(
+                        `Can't delete post ${idAsUrl.href} because ${account.id} is not the author of the post`,
+                    );
+                    return new Response(null, { status: 403 });
                 default:
                     return exhaustiveCheck(error);
             }
         }
 
-        const post = getValue(postResult);
-
-        if (post.author.uuid !== account.uuid) {
-            return new Response(null, {
-                status: 403,
-            });
-        }
-
         try {
-            // Delete the post from the database
-            post.delete(account);
-            await this.postRepository.save(post);
-
             // Find all activities that reference this post and remove them from the kv-store
             const relatedActivities = await getRelatedActivities(idAsUrl.href);
 

@@ -2,7 +2,7 @@ import type { Actor, Context, Delete } from '@fedify/fedify';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { ContextData } from 'app';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import { exhaustiveCheck, getError, isError } from 'core/result';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import { getRelatedActivities } from '../db';
@@ -58,25 +58,23 @@ export class DeleteHandler {
             return;
         }
 
-        const postResult = await this.postService.getByApId(
+        const deleteResult = await this.postService.deleteByApId(
             deleteActivity.objectId,
+            senderAccount,
         );
 
-        if (isError(postResult)) {
-            const error = getError(postResult);
+        if (isError(deleteResult)) {
+            const error = getError(deleteResult);
             switch (error) {
                 case 'upstream-error':
                 case 'missing-author':
                 case 'not-a-post':
+                case 'not-author':
                     return;
                 default:
                     return exhaustiveCheck(error);
             }
         }
-
-        const post = getValue(postResult);
-        post.delete(senderAccount);
-        await this.postRepository.save(post);
 
         // Find all activities that reference this post and remove them from the kv-store
         const relatedActivities = await getRelatedActivities(
