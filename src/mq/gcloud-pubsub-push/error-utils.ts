@@ -9,11 +9,25 @@ export interface ErrorAnalysis {
     isReportable: boolean;
 }
 
-function isDnsResolutionError(error: Error): boolean {
-    return (
+const MAX_CAUSE_DEPTH = 10;
+
+function isDnsResolutionError(error: Error, depth = 0): boolean {
+    if (depth > MAX_CAUSE_DEPTH) {
+        return false;
+    }
+
+    if (
         error.message.match(/getaddrinfo ENOTFOUND/i) !== null ||
         error.message.match(/getaddrinfo EAI_AGAIN/i) !== null
-    );
+    ) {
+        return true;
+    }
+
+    if ('cause' in error && error.cause instanceof Error) {
+        return isDnsResolutionError(error.cause, depth + 1);
+    }
+
+    return false;
 }
 
 function analyzeDnsResolutionError(error: Error): ErrorAnalysis {
@@ -24,12 +38,24 @@ function analyzeDnsResolutionError(error: Error): ErrorAnalysis {
     };
 }
 
-function isUpstreamCertificateError(error: Error): boolean {
-    return (
+function isUpstreamCertificateError(error: Error, depth = 0): boolean {
+    if (depth > MAX_CAUSE_DEPTH) {
+        return false;
+    }
+
+    if (
         error.message.match(
             /Hostname\/IP does not match certificate's altnames/i,
         ) !== null
-    );
+    ) {
+        return true;
+    }
+
+    if ('cause' in error && error.cause instanceof Error) {
+        return isUpstreamCertificateError(error.cause, depth + 1);
+    }
+
+    return false;
 }
 
 function analyzeUpstreamCertificateError(error: Error): ErrorAnalysis {
