@@ -1150,7 +1150,7 @@ app.get(
     spanWrapper((ctx: AppContext) => {
         const feedController =
             container.resolve<FeedController>('feedController');
-        return feedController.handleGetFeed(ctx, 'Feed');
+        return feedController.getNotesFeed(ctx);
     }),
 );
 app.get(
@@ -1159,7 +1159,7 @@ app.get(
     spanWrapper((ctx: AppContext) => {
         const feedController =
             container.resolve<FeedController>('feedController');
-        return feedController.handleGetFeed(ctx, 'Inbox');
+        return feedController.getReaderFeed(ctx);
     }),
 );
 app.get(
@@ -1168,7 +1168,7 @@ app.get(
     spanWrapper((ctx: AppContext) => {
         const feedController =
             container.resolve<FeedController>('feedController');
-        return feedController.handleGetFeed(ctx, 'Feed');
+        return feedController.getNotesFeed(ctx);
     }),
 );
 app.get(
@@ -1177,7 +1177,7 @@ app.get(
     spanWrapper((ctx: AppContext) => {
         const feedController =
             container.resolve<FeedController>('feedController');
-        return feedController.handleGetFeed(ctx, 'Inbox');
+        return feedController.getReaderFeed(ctx);
     }),
 );
 app.get(

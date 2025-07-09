@@ -27,10 +27,15 @@ export class FeedController {
         private readonly postInteractionCountsService: PostInteractionCountsService,
     ) {}
 
-    /**
-     * Handle a request for a user's feed
-     */
-    async handleGetFeed(ctx: AppContext, feedType: FeedType) {
+    async getNotesFeed(ctx: AppContext) {
+        return this.handleGetFeed(ctx, 'Feed');
+    }
+
+    async getReaderFeed(ctx: AppContext) {
+        return this.handleGetFeed(ctx, 'Inbox');
+    }
+
+    private async handleGetFeed(ctx: AppContext, feedType: FeedType) {
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
 
