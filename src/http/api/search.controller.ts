@@ -2,6 +2,8 @@ import { pick } from 'es-toolkit';
 import type { AppContext } from '../../app';
 import { isHandle } from '../../helpers/activitypub/actor';
 import { isUri } from '../../helpers/uri';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 import type { AccountDTO } from './types';
 import type { AccountView } from './views/account.view';
 
@@ -42,6 +44,8 @@ export class SearchController {
      *
      * @param ctx App context instance
      */
+    @Route('GET', '/.ghost/activitypub/actions/search')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleSearch(ctx: AppContext) {
         // Parse "query" from query parameters
         // ?query=<string>

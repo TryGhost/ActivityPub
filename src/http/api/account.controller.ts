@@ -6,6 +6,8 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { isHandle } from 'helpers/activitypub/actor';
 import { lookupActorProfile } from 'lookup-helpers';
 import { z } from 'zod';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 import type { AccountDTO } from './types';
 import type {
     AccountFollows,
@@ -48,6 +50,8 @@ export class AccountController {
     /**
      * Handle a request for an account
      */
+    @Route('GET', '/.ghost/activitypub/account/:handle')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccount(ctx: AppContext) {
         const handle = ctx.req.param('handle');
 
@@ -92,6 +96,8 @@ export class AccountController {
     /**
      * Handle a request for a list of account follows
      */
+    @Route('GET', '/.ghost/activitypub/account/:handle/follows/:type')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountFollows(ctx: AppContext) {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
@@ -195,6 +201,8 @@ export class AccountController {
     /**
      * Handle a request for a list of posts by an account
      */
+    @Route('GET', '/.ghost/activitypub/posts/:handle')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountPosts(ctx: AppContext) {
         const params = validateRequestParams(ctx);
         if (!params) {
@@ -302,6 +310,8 @@ export class AccountController {
     /**
      * Handle a request for a list of posts liked by an account
      */
+    @Route('GET', '/.ghost/activitypub/posts/:handle/liked')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountLikedPosts(ctx: AppContext) {
         const params = validateRequestParams(ctx);
         if (!params) {
@@ -333,6 +343,8 @@ export class AccountController {
     /**
      * Handle a request for an account update
      */
+    @Route('PUT', '/.ghost/activitypub/account')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUpdateAccount(ctx: AppContext) {
         const schema = z.object({
             name: z.string(),

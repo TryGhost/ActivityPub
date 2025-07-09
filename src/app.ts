@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 import {
@@ -43,20 +44,20 @@ import { PubSubEvents } from 'events/pubsub';
 import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
-import type { AccountController } from 'http/api/account.controller';
-import type { BlockController } from 'http/api/block.controller';
-import type { FeedController } from 'http/api/feed.controller';
-import type { FollowController } from 'http/api/follow.controller';
+import { AccountController } from 'http/api/account.controller';
+import { BlockController } from 'http/api/block.controller';
+import { FeedController } from 'http/api/feed.controller';
+import { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
-import type { LikeController } from 'http/api/like.controller';
-import type { MediaController } from 'http/api/media.controller';
-import type { PostController } from 'http/api/post.controller';
-import type { SearchController } from 'http/api/search.controller';
+import { LikeController } from 'http/api/like.controller';
+import { MediaController } from 'http/api/media.controller';
+import { NotificationController } from 'http/api/notification.controller';
+import { PostController } from 'http/api/post.controller';
+import { ReplyChainController } from 'http/api/reply-chain';
+import { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
-import type { WebFingerController } from 'http/api/webfinger.controller';
+import { WebFingerController } from 'http/api/webfinger.controller';
 import type { WebhookController } from 'http/api/webhook.controller';
-import jwt from 'jsonwebtoken';
-import jose from 'node-jose';
 import type { NotificationEventService } from 'notification/notification-event.service';
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { behindProxy } from 'x-forwarded-fetch';
@@ -89,6 +90,12 @@ import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
+import {
+    GhostRole,
+    createRoleMiddleware,
+    requireRole,
+} from './http/middleware/role-guard';
+import { RouteRegistry } from './http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import {
@@ -561,15 +568,6 @@ globalFedify.setNodeInfoDispatcher(
 
 /** Hono */
 
-enum GhostRole {
-    Anonymous = 'Anonymous',
-    Owner = 'Owner',
-    Administrator = 'Administrator',
-    Editor = 'Editor',
-    Author = 'Author',
-    Contributor = 'Contributor',
-}
-
 export type HonoContextVariables = {
     globaldb: KvStore;
     logger: Logger;
@@ -743,114 +741,7 @@ app.use(async (ctx, next) => {
     });
 });
 
-function sleep(n: number) {
-    return new Promise((resolve) => setTimeout(resolve, n));
-}
-
-async function getKey(jwksURL: URL, retries = 5) {
-    try {
-        const cachedKey = await globalFedifyKv.get([
-            'cachedJwks',
-            jwksURL.hostname,
-        ]);
-        if (cachedKey) {
-            return cachedKey;
-        }
-
-        const jwksResponse = await fetch(jwksURL, {
-            redirect: 'follow',
-        });
-
-        const jwks = await jwksResponse.json();
-
-        const key = (await jose.JWK.asKey(jwks.keys[0])).toPEM();
-        await globalFedifyKv.set(['cachedJwks', jwksURL.hostname], key);
-
-        return key;
-    } catch (err) {
-        if (retries === 0) {
-            throw err;
-        }
-        await sleep(100);
-        return getKey(jwksURL, retries - 1);
-    }
-}
-
-app.use(async (ctx, next) => {
-    const request = ctx.req;
-    const host = request.header('host');
-    if (!host) {
-        ctx.get('logger').info('No Host header');
-        return new Response('No Host header', {
-            status: 401,
-        });
-    }
-    ctx.set('role', GhostRole.Anonymous);
-
-    const authorization = request.header('authorization');
-
-    if (!authorization) {
-        return next();
-    }
-
-    const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
-
-    if (!match) {
-        ctx.get('logger').info('Invalid Authorization header');
-        return new Response('Invalid Authorization header', {
-            status: 401,
-        });
-    }
-
-    let protocol = 'https';
-    // We allow insecure requests when not in production for things like testing
-    if (
-        !['staging', 'production'].includes(process.env.NODE_ENV || '') &&
-        !request.raw.url.startsWith('https')
-    ) {
-        protocol = 'http';
-    }
-
-    const jwksURL = new URL(
-        '/ghost/.well-known/jwks.json',
-        `${protocol}://${host}`,
-    );
-
-    const key = await getKey(jwksURL);
-    try {
-        const claims = jwt.verify(token, key);
-        if (typeof claims === 'string' || typeof claims.role !== 'string') {
-            return;
-        }
-        if (
-            [
-                'Owner',
-                'Administrator',
-                'Editor',
-                'Author',
-                'Contributor',
-            ].includes(claims.role)
-        ) {
-            ctx.set(
-                'role',
-                GhostRole[
-                    claims.role as
-                        | 'Owner'
-                        | 'Administrator'
-                        | 'Editor'
-                        | 'Author'
-                        | 'Contributor'
-                ],
-            );
-        } else {
-            ctx.set('role', GhostRole.Anonymous);
-        }
-    } catch (err) {
-        ctx.set('role', GhostRole.Anonymous);
-    }
-
-    await next();
-});
+app.use(createRoleMiddleware(globalFedifyKv));
 
 app.use(async (ctx, next) => {
     const request = ctx.req;
@@ -939,6 +830,8 @@ app.use(async (ctx, next) => {
 
 /** Custom API routes */
 
+const routeRegistry = new RouteRegistry();
+
 function validateWebhook() {
     return async function webhookMiddleware(
         ctx: HonoContext<{ Variables: HonoContextVariables }>,
@@ -988,309 +881,24 @@ app.post(
     }),
 );
 
-function requireRole(...roles: GhostRole[]) {
-    return function roleMiddleware(ctx: HonoContext, next: Next) {
-        if (!roles.includes(ctx.get('role'))) {
-            return new Response(null, {
-                status: 403,
-            });
-        }
-        return next();
-    };
-}
+routeRegistry.registerController('webFingerController', WebFingerController);
+routeRegistry.registerController('followController', FollowController);
+routeRegistry.registerController('likeController', LikeController);
+routeRegistry.registerController('postController', PostController);
+routeRegistry.registerController('searchController', SearchController);
+routeRegistry.registerController('replyChainController', ReplyChainController);
+routeRegistry.registerController('accountController', AccountController);
+routeRegistry.registerController('feedController', FeedController);
+routeRegistry.registerController(
+    'notificationController',
+    NotificationController,
+);
+routeRegistry.registerController('mediaController', MediaController);
+routeRegistry.registerController('blockController', BlockController);
 
-app.get(
-    '/.well-known/webfinger',
-    spanWrapper((ctx: AppContext, next: Next) => {
-        const webFingerController = container.resolve<WebFingerController>(
-            'webFingerController',
-        );
-        return webFingerController.handleWebFinger(ctx, next);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/follow/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const followController =
-            container.resolve<FollowController>('followController');
-        return followController.handleFollow(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/unfollow/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const followController =
-            container.resolve<FollowController>('followController');
-        return followController.handleUnfollow(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/like/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const likeController =
-            container.resolve<LikeController>('likeController');
-        return likeController.handleLike(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/unlike/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const likeController =
-            container.resolve<LikeController>('likeController');
-        return likeController.handleUnlike(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/reply/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const postController =
-            container.resolve<PostController>('postController');
-        return postController.handleCreateReply(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/repost/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const postController =
-            container.resolve<PostController>('postController');
-        return postController.handleRepost(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/derepost/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const postController =
-            container.resolve<PostController>('postController');
-        return postController.handleDerepost(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/actions/note',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const postController =
-            container.resolve<PostController>('postController');
-        return postController.handleCreateNote(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/actions/search',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const searchController =
-            container.resolve<SearchController>('searchController');
-        return searchController.handleSearch(ctx);
-    }),
-);
+// Mount all registered routes
+routeRegistry.mountRoutes(app, container);
 
-app.get(
-    '/.ghost/activitypub/replies/:post_ap_id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const controller = container.resolve('replyChainController');
-        return controller.handleGetReplies(ctx);
-    }),
-);
-
-app.get(
-    '/.ghost/activitypub/account/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const accountController =
-            container.resolve<AccountController>('accountController');
-        return accountController.handleGetAccount(ctx);
-    }),
-);
-app.put(
-    '/.ghost/activitypub/account',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const accountController =
-            container.resolve<AccountController>('accountController');
-        return accountController.handleUpdateAccount(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/posts/:handle',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const accountController =
-            container.resolve<AccountController>('accountController');
-        return accountController.handleGetAccountPosts(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/posts/:handle/liked',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const accountController =
-            container.resolve<AccountController>('accountController');
-        return accountController.handleGetAccountLikedPosts(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/account/:handle/follows/:type',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const accountController =
-            container.resolve<AccountController>('accountController');
-        return accountController.handleGetAccountFollows(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/feed',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const feedController =
-            container.resolve<FeedController>('feedController');
-        return feedController.getNotesFeed(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/inbox',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const feedController =
-            container.resolve<FeedController>('feedController');
-        return feedController.getReaderFeed(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/feed/notes',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const feedController =
-            container.resolve<FeedController>('feedController');
-        return feedController.getNotesFeed(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/feed/reader',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const feedController =
-            container.resolve<FeedController>('feedController');
-        return feedController.getReaderFeed(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/post/:post_ap_id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const postController =
-            container.resolve<PostController>('postController');
-        return postController.handleGetPost(ctx);
-    }),
-);
-app.delete(
-    '/.ghost/activitypub/post/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const postController =
-            container.resolve<PostController>('postController');
-        return postController.handleDeletePost(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/notifications',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const controller = container.resolve('notificationController');
-        return controller.handleGetNotifications(ctx);
-    }),
-);
-app.get(
-    '/.ghost/activitypub/notifications/unread/count',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const controller = container.resolve('notificationController');
-        return controller.handleGetUnreadNotificationsCount(ctx);
-    }),
-);
-app.put(
-    '/.ghost/activitypub/notifications/unread/reset',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const controller = container.resolve('notificationController');
-        return controller.handleResetUnreadNotificationsCount(ctx);
-    }),
-);
-app.post(
-    '/.ghost/activitypub/upload/image',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const mediaController =
-            container.resolve<MediaController>('mediaController');
-        return mediaController.handleImageUpload(ctx);
-    }),
-);
-
-app.post(
-    '/.ghost/activitypub/actions/block/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const blockController =
-            container.resolve<BlockController>('blockController');
-        return blockController.handleBlock(ctx);
-    }),
-);
-
-app.post(
-    '/.ghost/activitypub/actions/unblock/:id',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const blockController =
-            container.resolve<BlockController>('blockController');
-        return blockController.handleUnblock(ctx);
-    }),
-);
-
-app.post(
-    '/.ghost/activitypub/actions/block/domain/:domain',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const blockController =
-            container.resolve<BlockController>('blockController');
-        return blockController.handleBlockDomain(ctx);
-    }),
-);
-
-app.post(
-    '/.ghost/activitypub/actions/unblock/domain/:domain',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const blockController =
-            container.resolve<BlockController>('blockController');
-        return blockController.handleUnblockDomain(ctx);
-    }),
-);
-
-app.get(
-    '/.ghost/activitypub/blocks/accounts',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const blockController =
-            container.resolve<BlockController>('blockController');
-        return blockController.handleGetBlockedAccounts(ctx);
-    }),
-);
-
-app.get(
-    '/.ghost/activitypub/blocks/domains',
-    requireRole(GhostRole.Owner, GhostRole.Administrator),
-    spanWrapper((ctx: AppContext) => {
-        const blockController =
-            container.resolve<BlockController>('blockController');
-        return blockController.handleGetBlockedDomains(ctx);
-    }),
-);
 /** Federation wire up */
 app.use(
     federation(

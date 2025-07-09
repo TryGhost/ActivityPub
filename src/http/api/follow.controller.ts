@@ -7,6 +7,8 @@ import type { AppContext, ContextData } from 'app';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import { lookupActor, lookupActorProfile, lookupObject } from 'lookup-helpers';
 import type { ModerationService } from 'moderation/moderation.service';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 export class FollowController {
@@ -16,6 +18,8 @@ export class FollowController {
         private readonly fedify: Federation<ContextData>,
     ) {}
 
+    @Route('POST', '/.ghost/activitypub/actions/follow/:handle')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
@@ -123,6 +127,8 @@ export class FollowController {
         });
     }
 
+    @Route('POST', '/.ghost/activitypub/actions/unfollow/:handle')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {

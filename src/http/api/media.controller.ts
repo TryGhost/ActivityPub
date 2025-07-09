@@ -2,6 +2,8 @@ import type { AccountService } from 'account/account.service';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { Context } from 'hono';
 import type { ImageStorageService } from 'storage/image-storage.service';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 
 /**
  * Controller for media-related operations
@@ -15,6 +17,8 @@ export class MediaController {
     /**
      * Handle image upload
      */
+    @Route('POST', '/.ghost/activitypub/upload/image')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleImageUpload(ctx: Context) {
         const logger = ctx.get('logger');
         const formData = await ctx.req.formData();

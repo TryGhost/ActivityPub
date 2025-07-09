@@ -3,6 +3,8 @@ import { getAccountHandle } from 'account/utils';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { NotificationService } from 'notification/notification.service';
 import type { AppContext } from '../../app';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 import type { NotificationDTO } from './types';
 
 const DEFAULT_NOTIFICATIONS_LIMIT = 20;
@@ -27,6 +29,8 @@ export class NotificationController {
         private readonly notificationService: NotificationService,
     ) {}
 
+    @Route('GET', '/.ghost/activitypub/notifications')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetNotifications(ctx: AppContext) {
         const queryCursor = ctx.req.query('next');
         const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
@@ -108,6 +112,8 @@ export class NotificationController {
         );
     }
 
+    @Route('GET', '/.ghost/activitypub/notifications/unread/count')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetUnreadNotificationsCount(ctx: AppContext) {
         const account = ctx.get('account');
 
@@ -139,6 +145,8 @@ export class NotificationController {
         );
     }
 
+    @Route('PUT', '/.ghost/activitypub/notifications/unread/reset')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleResetUnreadNotificationsCount(ctx: AppContext) {
         const account = ctx.get('account');
 
