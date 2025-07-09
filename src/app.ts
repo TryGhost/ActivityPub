@@ -892,12 +892,12 @@ app.post(
 );
 
 app.post(
-    '/.ghost/activitypub/webhooks/post/updated',
+    '/.ghost/activitypub/v1/webhooks/post/published',
     validateWebhook(),
     spanWrapper((ctx: AppContext) => {
         const webhookController =
             container.resolve<WebhookController>('webhookController');
-        return webhookController.handlePostUpdated(ctx);
+        return webhookController.handlePostPublished(ctx);
     }),
 );
 
