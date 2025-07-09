@@ -64,6 +64,16 @@ export interface GhostPost {
     authors?: GhostAuthor[] | null;
 }
 
+export interface PostUpdateParams {
+    title: string | null;
+    content: string | null;
+    excerpt: string | null;
+    summary: string | null;
+    imageUrl: URL | null;
+    url: URL;
+    metadata: Metadata | null;
+}
+
 export interface PostAttachment {
     type: string | null;
     mediaType: string | null;
@@ -127,7 +137,9 @@ export class Post extends BaseEntity {
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
+    private updatedParams: PostUpdateParams | null = null;
     private deleted = false;
+    private updated = false;
     private _likeCountDirty = false;
     private _repostCountDirty = false;
     public readonly content: string | null;
@@ -199,6 +211,23 @@ export class Post extends BaseEntity {
         this.handleDeleted();
     }
 
+    update(account: Account, params: PostUpdateParams) {
+        if (account.uuid !== this.author.uuid) {
+            throw new Error(
+                `Account ${account.uuid} cannot update Post ${this.uuid}`,
+            );
+        }
+        this.updated = true;
+        this.updatedParams = params;
+    }
+
+    getUpdatedParams() {
+        const updatedParams = this.updatedParams;
+        this.updatedParams = null;
+        this.updated = false;
+        return updatedParams;
+    }
+
     private handleDeleted() {
         // TODO: Clean up the any type
         // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -215,6 +244,10 @@ export class Post extends BaseEntity {
 
     static isDeleted(post: Post) {
         return post.deleted;
+    }
+
+    static isUpdated(post: Post) {
+        return post.updated;
     }
 
     get readingTimeMinutes() {
