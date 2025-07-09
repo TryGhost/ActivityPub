@@ -55,8 +55,6 @@ import type { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
 import type { WebFingerController } from 'http/api/webfinger.controller';
 import type { WebhookController } from 'http/api/webhook.controller';
-import jwt from 'jsonwebtoken';
-import jose from 'node-jose';
 import type { NotificationEventService } from 'notification/notification-event.service';
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { behindProxy } from 'x-forwarded-fetch';
@@ -89,6 +87,11 @@ import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
 import { getRequestData } from './helpers/request-data';
+import {
+    GhostRole,
+    createRoleMiddleware,
+    requireRole,
+} from './http/middleware/role-guard';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import { KnexKvStore } from './knex.kvstore';
 import {
@@ -561,15 +564,6 @@ globalFedify.setNodeInfoDispatcher(
 
 /** Hono */
 
-enum GhostRole {
-    Anonymous = 'Anonymous',
-    Owner = 'Owner',
-    Administrator = 'Administrator',
-    Editor = 'Editor',
-    Author = 'Author',
-    Contributor = 'Contributor',
-}
-
 export type HonoContextVariables = {
     globaldb: KvStore;
     logger: Logger;
@@ -743,114 +737,7 @@ app.use(async (ctx, next) => {
     });
 });
 
-function sleep(n: number) {
-    return new Promise((resolve) => setTimeout(resolve, n));
-}
-
-async function getKey(jwksURL: URL, retries = 5) {
-    try {
-        const cachedKey = await globalFedifyKv.get([
-            'cachedJwks',
-            jwksURL.hostname,
-        ]);
-        if (cachedKey) {
-            return cachedKey;
-        }
-
-        const jwksResponse = await fetch(jwksURL, {
-            redirect: 'follow',
-        });
-
-        const jwks = await jwksResponse.json();
-
-        const key = (await jose.JWK.asKey(jwks.keys[0])).toPEM();
-        await globalFedifyKv.set(['cachedJwks', jwksURL.hostname], key);
-
-        return key;
-    } catch (err) {
-        if (retries === 0) {
-            throw err;
-        }
-        await sleep(100);
-        return getKey(jwksURL, retries - 1);
-    }
-}
-
-app.use(async (ctx, next) => {
-    const request = ctx.req;
-    const host = request.header('host');
-    if (!host) {
-        ctx.get('logger').info('No Host header');
-        return new Response('No Host header', {
-            status: 401,
-        });
-    }
-    ctx.set('role', GhostRole.Anonymous);
-
-    const authorization = request.header('authorization');
-
-    if (!authorization) {
-        return next();
-    }
-
-    const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
-
-    if (!match) {
-        ctx.get('logger').info('Invalid Authorization header');
-        return new Response('Invalid Authorization header', {
-            status: 401,
-        });
-    }
-
-    let protocol = 'https';
-    // We allow insecure requests when not in production for things like testing
-    if (
-        !['staging', 'production'].includes(process.env.NODE_ENV || '') &&
-        !request.raw.url.startsWith('https')
-    ) {
-        protocol = 'http';
-    }
-
-    const jwksURL = new URL(
-        '/ghost/.well-known/jwks.json',
-        `${protocol}://${host}`,
-    );
-
-    const key = await getKey(jwksURL);
-    try {
-        const claims = jwt.verify(token, key);
-        if (typeof claims === 'string' || typeof claims.role !== 'string') {
-            return;
-        }
-        if (
-            [
-                'Owner',
-                'Administrator',
-                'Editor',
-                'Author',
-                'Contributor',
-            ].includes(claims.role)
-        ) {
-            ctx.set(
-                'role',
-                GhostRole[
-                    claims.role as
-                        | 'Owner'
-                        | 'Administrator'
-                        | 'Editor'
-                        | 'Author'
-                        | 'Contributor'
-                ],
-            );
-        } else {
-            ctx.set('role', GhostRole.Anonymous);
-        }
-    } catch (err) {
-        ctx.set('role', GhostRole.Anonymous);
-    }
-
-    await next();
-});
+app.use(createRoleMiddleware(globalFedifyKv));
 
 app.use(async (ctx, next) => {
     const request = ctx.req;
@@ -988,16 +875,6 @@ app.post(
     }),
 );
 
-function requireRole(...roles: GhostRole[]) {
-    return function roleMiddleware(ctx: HonoContext, next: Next) {
-        if (!roles.includes(ctx.get('role'))) {
-            return new Response(null, {
-                status: 403,
-            });
-        }
-        return next();
-    };
-}
 
 app.get(
     '/.well-known/webfinger',
