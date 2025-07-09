@@ -21,6 +21,34 @@ describe('analyzeError', () => {
         expect(result.isReportable).toBe(true);
     });
 
+    it('should handle errors with non-Error causes gracefully', () => {
+        const error = new Error('Something failed');
+        Object.defineProperty(error, 'cause', {
+            value: 'string cause',
+            enumerable: false,
+            configurable: true,
+        });
+
+        const result = analyzeError(error);
+
+        expect(result.isRetryable).toBe(true);
+        expect(result.isReportable).toBe(true);
+    });
+
+    it('should handle errors with null causes gracefully', () => {
+        const error = new Error('Something failed');
+        Object.defineProperty(error, 'cause', {
+            value: null,
+            enumerable: false,
+            configurable: true,
+        });
+
+        const result = analyzeError(error);
+
+        expect(result.isRetryable).toBe(true);
+        expect(result.isReportable).toBe(true);
+    });
+
     describe('DNS resolution errors', () => {
         it('should handle ENOTFOUND errors as non-retryable', () => {
             const error = new Error('getaddrinfo ENOTFOUND example.com');
@@ -49,6 +77,114 @@ describe('analyzeError', () => {
 
             expect(result.isRetryable).toBe(false);
             expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle DNS errors in error cause chain', () => {
+            const dnsError = new Error(
+                'getaddrinfo ENOTFOUND djordjes-mbp.tail5da2a.ts.net',
+            );
+
+            const fetchError = new TypeError('fetch failed');
+            Object.defineProperty(fetchError, 'cause', {
+                value: dnsError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle deeply nested DNS errors', () => {
+            const dnsError = new Error('getaddrinfo EAI_AGAIN example.com');
+
+            const middleError = new Error('Network request failed');
+            Object.defineProperty(middleError, 'cause', {
+                value: dnsError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const topError = new TypeError('fetch failed');
+            Object.defineProperty(topError, 'cause', {
+                value: middleError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(topError);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle circular error references without stack overflow', () => {
+            // Create a circular reference chain
+            const error1 = new Error('Error 1');
+            const error2 = new Error('Error 2');
+            const error3 = new Error(
+                'Error 3 - getaddrinfo ENOTFOUND example.com',
+            );
+
+            // Create circular references
+            Object.defineProperty(error1, 'cause', {
+                value: error2,
+                enumerable: false,
+                configurable: true,
+            });
+
+            Object.defineProperty(error2, 'cause', {
+                value: error3,
+                enumerable: false,
+                configurable: true,
+            });
+
+            Object.defineProperty(error3, 'cause', {
+                value: error1, // Circular reference back to error1
+                enumerable: false,
+                configurable: true,
+            });
+
+            // This should not cause stack overflow
+            const result = analyzeError(error1);
+
+            // Even with circular reference, we should detect the DNS error
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should stop recursion at MAX_CAUSE_DEPTH even without finding target error', () => {
+            // Create a deep chain that exceeds MAX_CAUSE_DEPTH (10)
+            // Start with DNS error at the bottom
+            const dnsError = new Error(
+                'getaddrinfo ENOTFOUND deep.example.com',
+            );
+
+            let currentError = dnsError;
+
+            // Build chain from bottom to top (15 levels, more than MAX_CAUSE_DEPTH of 10)
+            for (let i = 0; i < 15; i++) {
+                const wrapperError = new Error(`Nested error level ${15 - i}`);
+
+                Object.defineProperty(wrapperError, 'cause', {
+                    value: currentError,
+                    enumerable: false,
+                    configurable: true,
+                });
+
+                currentError = wrapperError;
+            }
+
+            // currentError is now the top-level error with DNS error buried 15 levels deep
+
+            // This should not find the DNS error because it's beyond MAX_CAUSE_DEPTH
+            const result = analyzeError(currentError);
+
+            // Should be treated as generic error (retryable and reportable)
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(true);
         });
     });
 
@@ -81,6 +217,116 @@ describe('analyzeError', () => {
 
             const result = analyzeError(error);
 
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(true);
+        });
+
+        it('should handle certificate errors in error cause chain', () => {
+            const certError = new Error(
+                "Hostname/IP does not match certificate's altnames: Host: example.com. is not in the cert's altnames: DNS:other.com",
+            );
+            const fetchError = new TypeError('fetch failed');
+
+            Object.defineProperty(fetchError, 'cause', {
+                value: certError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle deeply nested certificate errors', () => {
+            const certError = new Error(
+                "Hostname/IP does not match certificate's altnames: Host: www.example.com",
+            );
+
+            const middleError = new Error('SSL handshake failed');
+            Object.defineProperty(middleError, 'cause', {
+                value: certError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const topError = new TypeError('Request failed');
+            Object.defineProperty(topError, 'cause', {
+                value: middleError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(topError);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle circular certificate error references without stack overflow', () => {
+            // Create a circular reference chain with certificate error
+            const error1 = new Error('Error 1');
+            const error2 = new Error('Error 2');
+            const error3 = new Error(
+                "Hostname/IP does not match certificate's altnames: Host: example.com",
+            );
+
+            // Create circular references
+            Object.defineProperty(error1, 'cause', {
+                value: error2,
+                enumerable: false,
+                configurable: true,
+            });
+
+            Object.defineProperty(error2, 'cause', {
+                value: error3,
+                enumerable: false,
+                configurable: true,
+            });
+
+            Object.defineProperty(error3, 'cause', {
+                value: error1, // Circular reference back to error1
+                enumerable: false,
+                configurable: true,
+            });
+
+            // This should not cause stack overflow
+            const result = analyzeError(error1);
+
+            // Even with circular reference, we should detect the certificate error
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should stop certificate error recursion at MAX_CAUSE_DEPTH', () => {
+            // Create a deep chain that exceeds MAX_CAUSE_DEPTH (10)
+            // Start with certificate error at the bottom
+            const certError = new Error(
+                "Hostname/IP does not match certificate's altnames: Host: deep.example.com",
+            );
+
+            let currentError = certError;
+
+            // Build chain from bottom to top (15 levels, more than MAX_CAUSE_DEPTH of 10)
+            for (let i = 0; i < 15; i++) {
+                const wrapperError = new Error(`SSL error level ${15 - i}`);
+
+                Object.defineProperty(wrapperError, 'cause', {
+                    value: currentError,
+                    enumerable: false,
+                    configurable: true,
+                });
+
+                currentError = wrapperError;
+            }
+
+            // currentError is now the top-level error with certificate error buried 15 levels deep
+
+            // This should not find the certificate error because it's beyond MAX_CAUSE_DEPTH
+            const result = analyzeError(currentError);
+
+            // Should be treated as generic error (retryable and reportable)
             expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(true);
         });

@@ -9,6 +9,7 @@ export class ReplyChainController {
     constructor(private readonly replyChainView: ReplyChainView) {}
 
     @Route('GET', '/.ghost/activitypub/replies/:post_ap_id')
+    @Route('GET', '/.ghost/activitypub/v1/replies/:post_ap_id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetReplies(ctx: AppContext) {
         const account = ctx.get('account');

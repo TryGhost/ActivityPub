@@ -18,6 +18,7 @@ export class MediaController {
      * Handle image upload
      */
     @Route('POST', '/.ghost/activitypub/upload/image')
+    @Route('POST', '/.ghost/activitypub/v1/upload/image')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleImageUpload(ctx: Context) {
         const logger = ctx.get('logger');

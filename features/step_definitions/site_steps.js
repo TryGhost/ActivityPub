@@ -11,7 +11,7 @@ Given('there is no entry in the sites table', async function () {
 
 When('we request the site endpoint', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/site',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/site',
         {
             headers: {
                 Accept: 'application/ld+json',

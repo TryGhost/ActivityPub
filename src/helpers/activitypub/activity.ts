@@ -13,10 +13,10 @@ import type { Account } from 'account/account.entity';
 import type { FedifyContext } from 'app';
 import { type Post, PostType } from 'post/post.entity';
 
-export async function buildCreateActivityAndObjectFromPost(
+async function getFedifyObjectForPost(
     post: Post,
     ctx: FedifyContext,
-): Promise<{ createActivity: Create; fedifyObject: FedifyNote | Article }> {
+): Promise<{ fedifyObject: FedifyNote | Article; ccs: URL[] }> {
     let fedifyObject: FedifyNote | Article;
     let mentions: Mention[] = [];
     let ccs: URL[] = [];
@@ -78,7 +78,14 @@ export async function buildCreateActivityAndObjectFromPost(
     } else {
         throw new Error(`Unsupported post type: ${post.type}`);
     }
+    return { fedifyObject, ccs };
+}
 
+export async function buildCreateActivityAndObjectFromPost(
+    post: Post,
+    ctx: FedifyContext,
+): Promise<{ createActivity: Create; fedifyObject: FedifyNote | Article }> {
+    const { fedifyObject, ccs } = await getFedifyObjectForPost(post, ctx);
     const createActivity = new Create({
         id: ctx.getObjectUri(Create, { id: post.uuid }),
         actor: post.author.apId,

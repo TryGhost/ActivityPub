@@ -53,7 +53,7 @@ import { LikeController } from 'http/api/like.controller';
 import { MediaController } from 'http/api/media.controller';
 import { NotificationController } from 'http/api/notification.controller';
 import { PostController } from 'http/api/post.controller';
-import { ReplyChainController } from 'http/api/reply-chain';
+import { ReplyChainController } from 'http/api/reply-chain.controller';
 import { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
 import { WebFingerController } from 'http/api/webfinger.controller';
@@ -773,6 +773,16 @@ app.use(async (ctx, next) => {
 // Because the site doesn't always exist - this is how it's created
 app.get(
     '/.ghost/activitypub/site',
+    requireRole(GhostRole.Owner),
+    spanWrapper((ctx: AppContext) => {
+        const siteController =
+            container.resolve<SiteController>('siteController');
+        return siteController.handleGetSiteData(ctx);
+    }),
+);
+
+app.get(
+    '/.ghost/activitypub/v1/site',
     requireRole(GhostRole.Owner),
     spanWrapper((ctx: AppContext) => {
         const siteController =

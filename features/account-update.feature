@@ -3,14 +3,14 @@ Feature: Update account information
     Given we are followed by "Alice"
 
   Scenario: Update account information
-    Given an authenticated "put" request is made to "/.ghost/activitypub/account" with the data:
+    Given an authenticated "put" request is made to "/.ghost/activitypub/v1/account" with the data:
       | name           | Updated Name                    |
       | bio            | Updated bio                     |
       | username       | updatedUsername                 |
       | avatarUrl      | https://example.com/avatar.jpg  |
       | bannerImageUrl | https://example.com/banner.jpg  |
     And the request is accepted with a 200
-    When an authenticated "get" request is made to "/.ghost/activitypub/account/me"
+    When an authenticated "get" request is made to "/.ghost/activitypub/v1/account/me"
     Then the request is accepted with a 200
     And the response contains the account details:
       | name           | Updated Name                                 |

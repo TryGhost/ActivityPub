@@ -37,7 +37,7 @@ Given('we are not following {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
 
     const unfollowResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unfollow/${actor.handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/unfollow/${actor.handle}`,
         {
             method: 'POST',
         },
@@ -52,7 +52,7 @@ Given('we are following {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
 
     const followResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/follow/${actor.handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/follow/${actor.handle}`,
         {
             method: 'POST',
         },
@@ -87,7 +87,7 @@ Given('we are following {string}', async function (input) {
 Given('we follow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/follow/${handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/follow/${handle}`,
         {
             method: 'POST',
         },
@@ -104,7 +104,7 @@ Given('we follow {string}', async function (name) {
 Given('we unfollow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unfollow/${handle}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/unfollow/${handle}`,
         {
             method: 'POST',
         },

@@ -9,7 +9,7 @@ import { fetchActivityPub } from '../support/request.js';
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/like/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/like/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -19,7 +19,7 @@ When('we like the object {string}', async function (name) {
 When('we unlike the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/unlike/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/unlike/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },

@@ -45,6 +45,7 @@ export class SearchController {
      * @param ctx App context instance
      */
     @Route('GET', '/.ghost/activitypub/actions/search')
+    @Route('GET', '/.ghost/activitypub/v1/actions/search')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleSearch(ctx: AppContext) {
         // Parse "query" from query parameters

@@ -124,7 +124,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -142,7 +142,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -160,7 +160,7 @@ When('we attempt to reply to an unknown object', async function () {
     const id = 'http://fake-external-activitypub.test/note/123';
 
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(id)}`,
         {
             method: 'POST',
             headers: {
@@ -179,7 +179,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -206,7 +206,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/reply/${encodeURIComponent(object.id)}`,
+            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {

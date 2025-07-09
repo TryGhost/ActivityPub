@@ -11,7 +11,7 @@ import { waitForRequest } from '../support/request.js';
 When('we repost the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/repost/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/repost/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -20,7 +20,7 @@ When('we repost the object {string}', async function (name) {
 
 Then('the object {string} should be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/feed/notes',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -40,7 +40,7 @@ Then(
     'the object {string} should have a repost count of {int}',
     async function (name, repostCount) {
         const response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/feed/notes',
             {
                 headers: {
                     Accept: 'application/ld+json',
@@ -60,7 +60,7 @@ Then(
 When('we undo the repost of the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/actions/derepost/${encodeURIComponent(id)}`,
+        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/derepost/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -69,7 +69,7 @@ When('we undo the repost of the object {string}', async function (name) {
 
 Then('the object {string} should not be reposted', async function (name) {
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/feed/notes',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -204,11 +204,11 @@ async function checkPostRepostedBy(world, objectType, objectName, actorName) {
     let feedUrl;
     if (objectType.toLowerCase() === 'article') {
         feedUrl =
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/reader';
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/feed/reader';
         await waitForAPObjectInInbox(object.id);
     } else {
         feedUrl =
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes';
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/feed/notes';
         await waitForAPObjectInFeed(object.id);
     }
 

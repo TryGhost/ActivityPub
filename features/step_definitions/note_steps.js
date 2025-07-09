@@ -7,7 +7,7 @@ import { mapPostToActivityPubObject } from '../support/utils.js';
 
 async function createNote(noteName, content, imageUrl, imageAltText) {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
         {
             method: 'POST',
             headers: {
@@ -33,7 +33,7 @@ async function createNote(noteName, content, imageUrl, imageAltText) {
 
 When('we attempt to create a note with no content', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
         {
             method: 'POST',
             headers: {
@@ -46,7 +46,7 @@ When('we attempt to create a note with no content', async function () {
 
 When('we attempt to create a note with invalid content', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
         {
             method: 'POST',
             headers: {
@@ -63,7 +63,7 @@ When(
     'we create a note {string} with the content',
     async function (noteName, noteContent) {
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
             {
                 method: 'POST',
                 headers: {
@@ -88,7 +88,7 @@ When(
     'we create a note {string} with imageUrl {string} and content',
     async function (noteName, imageUrl, noteContent) {
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/actions/note',
+            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
             {
                 method: 'POST',
                 headers: {
