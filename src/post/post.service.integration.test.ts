@@ -2,10 +2,12 @@ import {
     Collection,
     Document,
     Image,
+    Link,
     Note,
     lookupObject,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -50,6 +52,7 @@ describe('PostService', () => {
     let accountService: AccountService;
     let account: Account;
     let events: AsyncEvents;
+    let logger: Logger;
 
     beforeEach(async () => {
         db = await createTestDb();
@@ -57,6 +60,11 @@ describe('PostService', () => {
         postRepository = new KnexPostRepository(db, events);
         accountRepository = new KnexAccountRepository(db, events);
         fixtureManager = createFixtureManager(db, events);
+        logger = {
+            info: vi.fn(),
+            error: vi.fn(),
+            warn: vi.fn(),
+        } as unknown as Logger;
         mockFedifyContextFactory = {
             getFedifyContext: () => ({
                 getDocumentLoader: async () => ({}),
@@ -112,6 +120,7 @@ describe('PostService', () => {
             mockFedifyContextFactory,
             imageStorageService,
             moderationService,
+            logger,
         );
 
         // Reset the database before each test
@@ -275,6 +284,7 @@ describe('PostService', () => {
                 mockFedifyContextFactory,
                 failingStorageService,
                 moderationService,
+                logger,
             );
 
             const content = 'This is a test note';
@@ -829,6 +839,53 @@ describe('PostService', () => {
                 type: 'Document',
                 mediaType: 'image/jpeg',
                 url: attachmentUrl,
+            });
+        });
+
+        it('should handle attachments correctly for incoming posts with multiple urls', async () => {
+            const author = await fixtureManager.createExternalAccount();
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: new URL('https://example.com/post/1'),
+                    content: 'Test post with attachment',
+                    attachments: [
+                        new Document({
+                            urls: [
+                                new Link({
+                                    href: new URL(
+                                        'https://example.com/image.jpg',
+                                    ),
+                                    mediaType: 'image/jpeg',
+                                }),
+                                new Link({
+                                    href: new URL(
+                                        'https://example.com/image.avif',
+                                    ),
+                                    mediaType: 'image/avif',
+                                }),
+                            ],
+                        }),
+                    ],
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(
+                new URL('https://example.com/post/1'),
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.attachments).toHaveLength(1);
+            expect(post.attachments[0]).toMatchObject({
+                type: 'Document',
+                mediaType: 'image/jpeg',
+                url: new URL('https://example.com/image.jpg'),
             });
         });
     });
