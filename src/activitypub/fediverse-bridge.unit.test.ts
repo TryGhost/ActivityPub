@@ -22,6 +22,7 @@ describe('FediverseBridge', () => {
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
     let mockUriBuilder: UriBuilder<FedifyObject>;
+    let bridge: FediverseBridge;
 
     beforeEach(() => {
         events = new EventEmitter();
@@ -60,15 +61,14 @@ describe('FediverseBridge', () => {
                 return context;
             },
         } as FedifyContextFactory;
-    });
-
-    it('Sends delete activities on the PostDeletedEvent', async () => {
-        const bridge = new FediverseBridge(
+        bridge = new FediverseBridge(
             events,
             fedifyContextFactory,
             accountService,
         );
+    });
 
+    it('Sends delete activities on the PostDeletedEvent', async () => {
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
@@ -94,12 +94,6 @@ describe('FediverseBridge', () => {
     });
 
     it('Does not send delete activities on the PostDeletedEvent for external accounts', async () => {
-        const bridge = new FediverseBridge(
-            events,
-            fedifyContextFactory,
-            accountService,
-        );
-
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
@@ -349,11 +343,6 @@ describe('FediverseBridge', () => {
     });
 
     it('should create and send a Note activity for internal accounts on the PostCreatedEvent', async () => {
-        const bridge = new FediverseBridge(
-            events,
-            fedifyContextFactory,
-            accountService,
-        );
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
@@ -391,11 +380,6 @@ describe('FediverseBridge', () => {
     });
 
     it('should include mentions in the Note activity for internal accounts on the PostCreatedEvent', async () => {
-        const bridge = new FediverseBridge(
-            events,
-            fedifyContextFactory,
-            accountService,
-        );
         await bridge.init();
         const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
 
@@ -434,11 +418,6 @@ describe('FediverseBridge', () => {
     });
 
     it('should create and send an Article activity for internal accounts on the PostCreatedEvent', async () => {
-        const bridge = new FediverseBridge(
-            events,
-            fedifyContextFactory,
-            accountService,
-        );
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
@@ -479,11 +458,6 @@ describe('FediverseBridge', () => {
     });
 
     it('should not create or send activities for external accounts on the PostCreatedEvent', async () => {
-        const bridge = new FediverseBridge(
-            events,
-            fedifyContextFactory,
-            accountService,
-        );
         await bridge.init();
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
