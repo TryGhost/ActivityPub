@@ -1292,24 +1292,6 @@ app.get(
     }),
 );
 /** Federation wire up */
-
-app.get(
-    '/.ghost/activitypub/followers/:handle',
-    async (ctx: HonoContext, next: Next) => {
-        await next();
-        const logger = ctx.get('logger');
-        try {
-            const res = ctx.res.clone();
-            const body = await res.json();
-            logger.info(body.orderedItems.join(','));
-        } catch (err) {
-            if (err instanceof Error) {
-                logger.error('{error}', { error: err.message });
-            }
-        }
-    },
-);
-
 app.use(
     federation(
         globalFedify,
