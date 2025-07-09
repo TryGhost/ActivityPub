@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import type { AwilixContainer } from 'awilix';
-import type { Hono, MiddlewareHandler } from 'hono';
+import type { Hono, MiddlewareHandler, Next } from 'hono';
 import type { AppContext, HonoContextVariables } from '../../app';
 import { spanWrapper } from '../../instrumentation';
 import {
