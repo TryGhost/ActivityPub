@@ -42,7 +42,7 @@ import { LikeController } from 'http/api/like.controller';
 import { MediaController } from 'http/api/media.controller';
 import { NotificationController } from 'http/api/notification.controller';
 import { PostController } from 'http/api/post.controller';
-import { ReplyChainController } from 'http/api/reply-chain';
+import { ReplyChainController } from 'http/api/reply-chain.controller';
 import { SearchController } from 'http/api/search.controller';
 import { SiteController } from 'http/api/site.controller';
 import { AccountFollowsView } from 'http/api/views/account.follows.view';

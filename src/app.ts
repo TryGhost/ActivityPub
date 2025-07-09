@@ -53,7 +53,7 @@ import { LikeController } from 'http/api/like.controller';
 import { MediaController } from 'http/api/media.controller';
 import { NotificationController } from 'http/api/notification.controller';
 import { PostController } from 'http/api/post.controller';
-import { ReplyChainController } from 'http/api/reply-chain';
+import { ReplyChainController } from 'http/api/reply-chain.controller';
 import { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
 import { WebFingerController } from 'http/api/webfinger.controller';
@@ -781,6 +781,16 @@ app.get(
     }),
 );
 
+app.get(
+    '/.ghost/activitypub/v1/site',
+    requireRole(GhostRole.Owner),
+    spanWrapper((ctx: AppContext) => {
+        const siteController =
+            container.resolve<SiteController>('siteController');
+        return siteController.handleGetSiteData(ctx);
+    }),
+);
+
 /**
  * Essentially Auth middleware and also handles the multitenancy
  */
@@ -873,6 +883,16 @@ function validateWebhook() {
 
 app.post(
     '/.ghost/activitypub/webhooks/post/published',
+    validateWebhook(),
+    spanWrapper((ctx: AppContext) => {
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostPublished(ctx);
+    }),
+);
+
+app.post(
+    '/.ghost/activitypub/v1/webhooks/post/published',
     validateWebhook(),
     spanWrapper((ctx: AppContext) => {
         const webhookController =

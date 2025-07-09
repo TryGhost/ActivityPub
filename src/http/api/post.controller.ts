@@ -46,6 +46,7 @@ export class PostController {
      * Handle a request to get a post
      */
     @Route('GET', '/.ghost/activitypub/post/:post_ap_id')
+    @Route('GET', '/.ghost/activitypub/v1/post/:post_ap_id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetPost(ctx: AppContext) {
         const postApId = decodeURIComponent(ctx.req.param('post_ap_id'));
@@ -121,6 +122,7 @@ export class PostController {
      * Handle a request to delete a post
      */
     @Route('DELETE', '/.ghost/activitypub/post/:id')
+    @Route('DELETE', '/.ghost/activitypub/v1/post/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleDeletePost(ctx: AppContext) {
         const logger = ctx.get('logger');
@@ -197,6 +199,7 @@ export class PostController {
      * Handle a request to create a note
      */
     @Route('POST', '/.ghost/activitypub/actions/note')
+    @Route('POST', '/.ghost/activitypub/v1/actions/note')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleCreateNote(ctx: AppContext) {
         const NoteSchema = z.object({
@@ -287,6 +290,7 @@ export class PostController {
      * Handle a request to create a reply
      */
     @Route('POST', '/.ghost/activitypub/actions/reply/:id')
+    @Route('POST', '/.ghost/activitypub/v1/actions/reply/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleCreateReply(ctx: AppContext) {
         const account = ctx.get('account');
@@ -566,6 +570,7 @@ export class PostController {
      * Handle a request to repost
      */
     @Route('POST', '/.ghost/activitypub/actions/repost/:id')
+    @Route('POST', '/.ghost/activitypub/v1/actions/repost/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleRepost(ctx: AppContext): Promise<Response> {
         const id = ctx.req.param('id');
@@ -647,6 +652,7 @@ export class PostController {
      * Handle a request to derepost
      */
     @Route('POST', '/.ghost/activitypub/actions/derepost/:id')
+    @Route('POST', '/.ghost/activitypub/v1/actions/derepost/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleDerepost(ctx: AppContext) {
         const account = ctx.get('account');

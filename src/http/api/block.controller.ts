@@ -14,6 +14,7 @@ export class BlockController {
     ) {}
 
     @Route('POST', '/.ghost/activitypub/actions/block/:id')
+    @Route('POST', '/.ghost/activitypub/v1/actions/block/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlock(ctx: AppContext) {
         const accountToBlock = parseURL(
@@ -54,6 +55,7 @@ export class BlockController {
     }
 
     @Route('POST', '/.ghost/activitypub/actions/unblock/:id')
+    @Route('POST', '/.ghost/activitypub/v1/actions/unblock/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblock(ctx: AppContext) {
         const accountToUnblock = parseURL(
@@ -94,6 +96,7 @@ export class BlockController {
     }
 
     @Route('POST', '/.ghost/activitypub/actions/block/domain/:domain')
+    @Route('POST', '/.ghost/activitypub/v1/actions/block/domain/:domain')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlockDomain(ctx: AppContext) {
         const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
@@ -112,6 +115,7 @@ export class BlockController {
     }
 
     @Route('POST', '/.ghost/activitypub/actions/unblock/domain/:domain')
+    @Route('POST', '/.ghost/activitypub/v1/actions/unblock/domain/:domain')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblockDomain(ctx: AppContext) {
         const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
@@ -130,6 +134,7 @@ export class BlockController {
     }
 
     @Route('GET', '/.ghost/activitypub/blocks/accounts')
+    @Route('GET', '/.ghost/activitypub/v1/blocks/accounts')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetBlockedAccounts(ctx: AppContext) {
         const account = ctx.get('account');
@@ -149,6 +154,7 @@ export class BlockController {
     }
 
     @Route('GET', '/.ghost/activitypub/blocks/domains')
+    @Route('GET', '/.ghost/activitypub/v1/blocks/domains')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetBlockedDomains(ctx: AppContext) {
         const account = ctx.get('account');

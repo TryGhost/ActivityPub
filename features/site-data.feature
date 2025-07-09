@@ -1,8 +1,8 @@
 Feature: Get site data
   Scenario: It will 403 without authentication
-    When an unauthenticated request is made to "/.ghost/activitypub/site"
+    When an unauthenticated request is made to "/.ghost/activitypub/v1/site"
     Then the request is rejected with a 403
 
   Scenario: It will respond with authentication
-    When an authenticated request is made to "/.ghost/activitypub/site"
+    When an authenticated request is made to "/.ghost/activitypub/v1/site"
     Then the request is accepted

@@ -29,15 +29,15 @@ export class FeedController {
         private readonly postInteractionCountsService: PostInteractionCountsService,
     ) {}
 
-    @Route('GET', '/.ghost/activitypub/feed')
     @Route('GET', '/.ghost/activitypub/feed/notes')
+    @Route('GET', '/.ghost/activitypub/v1/feed/notes')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getNotesFeed(ctx: AppContext) {
         return this.handleGetFeed(ctx, 'Feed');
     }
 
-    @Route('GET', '/.ghost/activitypub/inbox')
     @Route('GET', '/.ghost/activitypub/feed/reader')
+    @Route('GET', '/.ghost/activitypub/v1/feed/reader')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getReaderFeed(ctx: AppContext) {
         return this.handleGetFeed(ctx, 'Inbox');

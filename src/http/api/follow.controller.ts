@@ -19,6 +19,7 @@ export class FollowController {
     ) {}
 
     @Route('POST', '/.ghost/activitypub/actions/follow/:handle')
+    @Route('POST', '/.ghost/activitypub/v1/actions/follow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
@@ -128,6 +129,7 @@ export class FollowController {
     }
 
     @Route('POST', '/.ghost/activitypub/actions/unfollow/:handle')
+    @Route('POST', '/.ghost/activitypub/v1/actions/unfollow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
