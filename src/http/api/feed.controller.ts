@@ -5,6 +5,8 @@ import type { AccountService } from '../../account/account.service';
 import { getAccountHandle } from '../../account/utils';
 import type { AppContext } from '../../app';
 import type { FeedService, FeedType } from '../../feed/feed.service';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 import type { PostDTO } from './types';
 
 /**
@@ -27,10 +29,16 @@ export class FeedController {
         private readonly postInteractionCountsService: PostInteractionCountsService,
     ) {}
 
+    @Route('GET', '/.ghost/activitypub/feed')
+    @Route('GET', '/.ghost/activitypub/feed/notes')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getNotesFeed(ctx: AppContext) {
         return this.handleGetFeed(ctx, 'Feed');
     }
 
+    @Route('GET', '/.ghost/activitypub/inbox')
+    @Route('GET', '/.ghost/activitypub/feed/reader')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getReaderFeed(ctx: AppContext) {
         return this.handleGetFeed(ctx, 'Inbox');
     }

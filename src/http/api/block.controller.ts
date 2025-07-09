@@ -2,6 +2,8 @@ import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
 import { exhaustiveCheck, getError, isError } from 'core/result';
 import { parseURL } from 'core/url';
+import { RequireRoles, Route } from '../decorators/route.decorator';
+import { GhostRole } from '../middleware/role-guard';
 import { BadRequest, NotFound } from './helpers/response';
 import type { BlocksView } from './views/blocks.view';
 
@@ -11,6 +13,8 @@ export class BlockController {
         private readonly blocksView: BlocksView,
     ) {}
 
+    @Route('POST', '/.ghost/activitypub/actions/block/:id')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlock(ctx: AppContext) {
         const accountToBlock = parseURL(
             decodeURIComponent(ctx.req.param('id')),
@@ -49,6 +53,8 @@ export class BlockController {
         });
     }
 
+    @Route('POST', '/.ghost/activitypub/actions/unblock/:id')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblock(ctx: AppContext) {
         const accountToUnblock = parseURL(
             decodeURIComponent(ctx.req.param('id')),
@@ -87,6 +93,8 @@ export class BlockController {
         });
     }
 
+    @Route('POST', '/.ghost/activitypub/actions/block/domain/:domain')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlockDomain(ctx: AppContext) {
         const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
         if (!domain) {
@@ -103,6 +111,8 @@ export class BlockController {
         });
     }
 
+    @Route('POST', '/.ghost/activitypub/actions/unblock/domain/:domain')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblockDomain(ctx: AppContext) {
         const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
         if (!domain) {
@@ -119,6 +129,8 @@ export class BlockController {
         });
     }
 
+    @Route('GET', '/.ghost/activitypub/blocks/accounts')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetBlockedAccounts(ctx: AppContext) {
         const account = ctx.get('account');
         const blockedAccounts = await this.blocksView.getBlockedAccounts(
@@ -136,6 +148,8 @@ export class BlockController {
         );
     }
 
+    @Route('GET', '/.ghost/activitypub/blocks/domains')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetBlockedDomains(ctx: AppContext) {
         const account = ctx.get('account');
         const blockedDomains = await this.blocksView.getBlockedDomains(

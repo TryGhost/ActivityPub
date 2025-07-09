@@ -3,6 +3,7 @@ import type { Context as HonoContext, Next } from 'hono';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { SiteService } from 'site/site.service';
+import { Route } from '../decorators/route.decorator';
 
 const ACCOUNT_RESOURCE_PREFIX = 'acct:';
 const HOST_REGEX = /^([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]+)$/;
@@ -19,6 +20,7 @@ export class WebFingerController {
      *
      * @see https://github.com/fedify-dev/fedify/blob/main/src/webfinger/handler.ts
      */
+    @Route('GET', '/.well-known/webfinger')
     async handleWebFinger(ctx: HonoContext, next: Next) {
         const resource = ctx.req.query('resource');
 
