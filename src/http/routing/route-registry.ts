@@ -1,7 +1,12 @@
+import 'reflect-metadata';
 import type { AwilixContainer } from 'awilix';
 import type { Hono, MiddlewareHandler } from 'hono';
 import type { AppContext, HonoContextVariables } from '../../app';
 import { spanWrapper } from '../../instrumentation';
+import {
+    ROLES_METADATA_KEY,
+    ROUTES_METADATA_KEY,
+} from '../decorators/route.decorator';
 import type { GhostRole } from '../middleware/role-guard';
 import { requireRole } from '../middleware/role-guard';
 
@@ -18,6 +23,33 @@ export class RouteRegistry {
 
     registerRoute(registration: RouteRegistration): void {
         this.routes.push(registration);
+    }
+
+    registerController(
+        controllerToken: string,
+        ControllerClass: { prototype: object },
+    ): void {
+        const routes =
+            Reflect.getMetadata(
+                ROUTES_METADATA_KEY,
+                ControllerClass.prototype,
+            ) || [];
+
+        for (const route of routes) {
+            const roles = Reflect.getMetadata(
+                ROLES_METADATA_KEY,
+                ControllerClass.prototype,
+                route.methodName,
+            );
+
+            this.registerRoute({
+                method: route.method,
+                path: route.path,
+                controllerToken,
+                methodName: route.methodName,
+                requiredRoles: roles,
+            });
+        }
     }
 
     mountRoutes(

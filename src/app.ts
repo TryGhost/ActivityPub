@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 import {
