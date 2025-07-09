@@ -44,8 +44,19 @@ import { PubSubEvents } from 'events/pubsub';
 import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
+import { AccountController } from 'http/api/account.controller';
+import { BlockController } from 'http/api/block.controller';
+import { FeedController } from 'http/api/feed.controller';
+import { FollowController } from 'http/api/follow.controller';
 import { BadRequest } from 'http/api/helpers/response';
+import { LikeController } from 'http/api/like.controller';
+import { MediaController } from 'http/api/media.controller';
+import { NotificationController } from 'http/api/notification.controller';
+import { PostController } from 'http/api/post.controller';
+import { ReplyChainController } from 'http/api/reply-chain';
+import { SearchController } from 'http/api/search.controller';
 import type { SiteController } from 'http/api/site.controller';
+import { WebFingerController } from 'http/api/webfinger.controller';
 import type { WebhookController } from 'http/api/webhook.controller';
 import type { NotificationEventService } from 'notification/notification-event.service';
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
@@ -870,250 +881,20 @@ app.post(
     }),
 );
 
-// WebFinger route
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.well-known/webfinger',
-    controllerToken: 'webFingerController',
-    methodName: 'handleWebFinger',
-});
-// Follow actions
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/follow/:handle',
-    controllerToken: 'followController',
-    methodName: 'handleFollow',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/unfollow/:handle',
-    controllerToken: 'followController',
-    methodName: 'handleUnfollow',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-// Like actions
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/like/:id',
-    controllerToken: 'likeController',
-    methodName: 'handleLike',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/unlike/:id',
-    controllerToken: 'likeController',
-    methodName: 'handleUnlike',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Post actions
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/reply/:id',
-    controllerToken: 'postController',
-    methodName: 'handleCreateReply',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/repost/:id',
-    controllerToken: 'postController',
-    methodName: 'handleRepost',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/derepost/:id',
-    controllerToken: 'postController',
-    methodName: 'handleDerepost',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/note',
-    controllerToken: 'postController',
-    methodName: 'handleCreateNote',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Search
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/actions/search',
-    controllerToken: 'searchController',
-    methodName: 'handleSearch',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Reply chain
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/replies/:post_ap_id',
-    controllerToken: 'replyChainController',
-    methodName: 'handleGetReplies',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Account routes
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/account/:handle',
-    controllerToken: 'accountController',
-    methodName: 'handleGetAccount',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'PUT',
-    path: '/.ghost/activitypub/account',
-    controllerToken: 'accountController',
-    methodName: 'handleUpdateAccount',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/posts/:handle',
-    controllerToken: 'accountController',
-    methodName: 'handleGetAccountPosts',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/posts/:handle/liked',
-    controllerToken: 'accountController',
-    methodName: 'handleGetAccountLikedPosts',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/account/:handle/follows/:type',
-    controllerToken: 'accountController',
-    methodName: 'handleGetAccountFollows',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Feed routes
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/feed',
-    controllerToken: 'feedController',
-    methodName: 'getNotesFeed',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/inbox',
-    controllerToken: 'feedController',
-    methodName: 'getReaderFeed',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/feed/notes',
-    controllerToken: 'feedController',
-    methodName: 'getNotesFeed',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/feed/reader',
-    controllerToken: 'feedController',
-    methodName: 'getReaderFeed',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Post routes
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/post/:post_ap_id',
-    controllerToken: 'postController',
-    methodName: 'handleGetPost',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'DELETE',
-    path: '/.ghost/activitypub/post/:id',
-    controllerToken: 'postController',
-    methodName: 'handleDeletePost',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Notification routes
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/notifications',
-    controllerToken: 'notificationController',
-    methodName: 'handleGetNotifications',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/notifications/unread/count',
-    controllerToken: 'notificationController',
-    methodName: 'handleGetUnreadNotificationsCount',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'PUT',
-    path: '/.ghost/activitypub/notifications/unread/reset',
-    controllerToken: 'notificationController',
-    methodName: 'handleResetUnreadNotificationsCount',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Media routes
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/upload/image',
-    controllerToken: 'mediaController',
-    methodName: 'handleImageUpload',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-
-// Block actions
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/block/:id',
-    controllerToken: 'blockController',
-    methodName: 'handleBlock',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/unblock/:id',
-    controllerToken: 'blockController',
-    methodName: 'handleUnblock',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/block/domain/:domain',
-    controllerToken: 'blockController',
-    methodName: 'handleBlockDomain',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'POST',
-    path: '/.ghost/activitypub/actions/unblock/domain/:domain',
-    controllerToken: 'blockController',
-    methodName: 'handleUnblockDomain',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/blocks/accounts',
-    controllerToken: 'blockController',
-    methodName: 'handleGetBlockedAccounts',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
-routeRegistry.registerRoute({
-    method: 'GET',
-    path: '/.ghost/activitypub/blocks/domains',
-    controllerToken: 'blockController',
-    methodName: 'handleGetBlockedDomains',
-    requiredRoles: [GhostRole.Owner, GhostRole.Administrator],
-});
+routeRegistry.registerController('webFingerController', WebFingerController);
+routeRegistry.registerController('followController', FollowController);
+routeRegistry.registerController('likeController', LikeController);
+routeRegistry.registerController('postController', PostController);
+routeRegistry.registerController('searchController', SearchController);
+routeRegistry.registerController('replyChainController', ReplyChainController);
+routeRegistry.registerController('accountController', AccountController);
+routeRegistry.registerController('feedController', FeedController);
+routeRegistry.registerController(
+    'notificationController',
+    NotificationController,
+);
+routeRegistry.registerController('mediaController', MediaController);
+routeRegistry.registerController('blockController', BlockController);
 
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);
