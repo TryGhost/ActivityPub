@@ -13,7 +13,7 @@ Feature: Liked Posts on Profile
     And "Alice" sends "Note2" to the Inbox
     And we like the object "Note1"
     And the request is accepted
-    When an authenticated request is made to "/.ghost/activitypub/posts/me/liked"
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/liked"
     Then the request is accepted
     And "Note1" is in the liked posts
     And "Note2" is not in the liked posts
@@ -25,7 +25,7 @@ Feature: Liked Posts on Profile
     And "Alice" sends "Note2" to the Inbox
     And we like the object "Note1"
     And we like the object "Note2"
-    When an authenticated request is made to "/.ghost/activitypub/posts/me/liked"
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/liked"
     Then the request is accepted
     And post "1" in the "liked posts" response is "Note2"
     And post "2" in the "liked posts" response is "Note1"
@@ -40,18 +40,18 @@ Feature: Liked Posts on Profile
     And we like the object "Note1"
     And we like the object "Note2"
     And we like the object "Note3"
-    When an authenticated request is made to "/.ghost/activitypub/posts/me/liked?limit=2"
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/liked?limit=2"
     Then the request is accepted
     And "Note3" is in the liked posts
     And "Note2" is in the liked posts
     And "Note1" is not in the liked posts
     And the liked posts response has a next cursor
-    When an authenticated request is made to "/.ghost/activitypub/posts/me/liked?limit=3"
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/liked?limit=3"
     Then the request is accepted
     And "Note1" is in the liked posts
 
   Scenario: Requests with limit over 100 are rejected
-    When an authenticated request is made to "/.ghost/activitypub/posts/me/liked?limit=200"
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/liked?limit=200"
     Then the request is rejected with a 400
 
   Scenario: Liked posts include our own posts
@@ -60,6 +60,6 @@ Feature: Liked Posts on Profile
       Hello World
       """
     And we like the object "Note1"
-    When an authenticated request is made to "/.ghost/activitypub/posts/me/liked"
+    When an authenticated request is made to "/.ghost/activitypub/v1/posts/me/liked"
     Then the request is accepted
     And "Note1" is in the liked posts

@@ -82,7 +82,7 @@ When('we get a reply notification from {string}', async function (actorName) {
 
 When('we reset unread notifications count', async () => {
     await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/notifications/unread/reset',
+        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/notifications/unread/reset',
         {
             method: 'PUT',
         },

@@ -14,12 +14,12 @@ Feature: Delete a post
     And the note "AliceNote" is in our feed
 
   Scenario: We can delete our post and it should remove it from the feed
-    Given an authenticated "delete" request is made to "/.ghost/activitypub/post/OurNote"
+    Given an authenticated "delete" request is made to "/.ghost/activitypub/v1/post/OurNote"
     And the request is accepted with a 204
     And the note "OurNote" is not in our feed
     And a "Delete(OurNote)" activity is sent to "Alice"
 
   Scenario: Attempting to delete another user's post
-    Given an authenticated "delete" request is made to "/.ghost/activitypub/post/AliceNote"
+    Given an authenticated "delete" request is made to "/.ghost/activitypub/v1/post/AliceNote"
     And the request is rejected with a 403
     And the note "AliceNote" is in our feed
