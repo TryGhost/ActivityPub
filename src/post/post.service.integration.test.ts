@@ -1095,4 +1095,221 @@ describe('PostService', () => {
             expect(rowInDb.deleted_at).not.toBeNull();
         });
     });
+
+    describe('updateGhostPostByUuid', () => {
+        it('should return error when post is not found', async () => {
+            const ghostPost = {
+                uuid: 'non-existent-uuid',
+                title: 'Test Post',
+                html: '<p>Test content</p>',
+                excerpt: 'Test excerpt',
+                custom_excerpt: null,
+                feature_image: null,
+                published_at: new Date().toISOString(),
+                url: 'https://example.com/test-post',
+                visibility: 'public',
+                authors: [],
+            };
+
+            const result = await postService.updateGhostPostByUuid(
+                account,
+                ghostPost,
+            );
+
+            expect(isError(result)).toBe(true);
+            expect(getError(result as Err<string>)).toBe('post-not-found');
+        });
+
+        it('should update post successfully when fields have changed', async () => {
+            const originalPost = await fixtureManager.createPost(account, {
+                type: PostType.Article,
+            });
+
+            const updatedGhostPost = {
+                uuid: originalPost.uuid,
+                title: 'Updated Title',
+                html: '<p>Updated content</p>',
+                excerpt: 'Updated excerpt',
+                custom_excerpt: 'Updated summary',
+                feature_image: 'https://example.com/updated-image.jpg',
+                published_at: originalPost.publishedAt.toISOString(),
+                url: 'https://example.com/updated-post',
+                visibility: 'public',
+                authors: [{ name: 'Updated Author', profile_image: null }],
+            };
+
+            const result = await postService.updateGhostPostByUuid(
+                account,
+                updatedGhostPost,
+            );
+            expect(isError(result)).toBe(false);
+
+            const updatedPost = await postRepository.getById(originalPost.id!);
+            expect(updatedPost).not.toBeNull();
+            expect(updatedPost!.title).toBe('Updated Title');
+            expect(updatedPost!.content).toBe('<p>Updated content</p>');
+            expect(updatedPost!.excerpt).toBe('Updated excerpt');
+            expect(updatedPost!.summary).toBe('Updated summary');
+            expect(updatedPost!.imageUrl?.href).toBe(
+                'https://example.com/updated-image.jpg',
+            );
+            expect(updatedPost!.url.href).toBe(
+                'https://example.com/updated-post',
+            );
+            expect(updatedPost!.metadata).toEqual({
+                ghostAuthors: [{ name: 'Updated Author', profile_image: null }],
+            });
+        });
+
+        it('should not update post when no fields have changed', async () => {
+            const originalPost = await fixtureManager.createPost(account, {
+                type: PostType.Article,
+                metadata: {
+                    ghostAuthors: [],
+                },
+            });
+
+            const originalRowInDb = await db('posts')
+                .where({ uuid: originalPost.uuid })
+                .select('updated_at')
+                .first();
+
+            const sameGhostPost = {
+                uuid: originalPost.uuid,
+                title: originalPost.title || '',
+                html: originalPost.content,
+                excerpt: originalPost.excerpt,
+                custom_excerpt: originalPost.summary,
+                feature_image: originalPost.imageUrl?.href || null,
+                published_at: originalPost.publishedAt.toISOString(),
+                url: originalPost.url.href,
+                visibility: 'public',
+                authors: [],
+            };
+
+            const result = await postService.updateGhostPostByUuid(
+                account,
+                sameGhostPost,
+            );
+
+            expect(isError(result)).toBe(false);
+
+            const afterUpdateRowInDb = await db('posts')
+                .where({ uuid: originalPost.uuid })
+                .select('updated_at')
+                .first();
+            expect(afterUpdateRowInDb.updated_at).toEqual(
+                originalRowInDb.updated_at,
+            );
+        });
+
+        it('should delete post when it becomes private content', async () => {
+            const originalPost = await fixtureManager.createPost(account, {
+                type: PostType.Article,
+            });
+            const privateGhostPost = {
+                uuid: originalPost.uuid,
+                title: 'Private Title',
+                html: '<!--members-only--><p>Private content only</p>',
+                excerpt: 'Private content only',
+                custom_excerpt: null,
+                feature_image: null,
+                published_at: originalPost.publishedAt.toISOString(),
+                url: originalPost.url.href,
+                visibility: 'members',
+                authors: [],
+            };
+
+            const result = await postService.updateGhostPostByUuid(
+                account,
+                privateGhostPost,
+            );
+
+            expect(isError(result)).toBe(false);
+
+            const deletedPost = await postRepository.getById(originalPost.id!);
+            expect(deletedPost).not.toBeNull();
+            expect(Post.isDeleted(deletedPost!)).toBe(true);
+
+            const rowInDb = await db('posts')
+                .where({ uuid: originalPost.uuid })
+                .select('deleted_at')
+                .first();
+            expect(rowInDb.deleted_at).not.toBeNull();
+        });
+
+        it('should delete post when it has missing content', async () => {
+            const originalPost = await fixtureManager.createPost(account, {
+                type: PostType.Article,
+            });
+
+            // Update with empty content
+            const emptyGhostPost = {
+                uuid: originalPost.uuid,
+                title: 'Empty Title',
+                html: '', // Empty content
+                excerpt: '',
+                custom_excerpt: null,
+                feature_image: null,
+                published_at: originalPost.publishedAt.toISOString(),
+                url: originalPost.url.href,
+                visibility: 'public',
+                authors: [],
+            };
+
+            const result = await postService.updateGhostPostByUuid(
+                account,
+                emptyGhostPost,
+            );
+
+            expect(isError(result)).toBe(false);
+
+            const deletedPost = await postRepository.getById(originalPost.id!);
+            expect(deletedPost).not.toBeNull();
+            expect(Post.isDeleted(deletedPost!)).toBe(true);
+
+            const rowInDb = await db('posts')
+                .where({ uuid: originalPost.uuid })
+                .select('deleted_at')
+                .first();
+            expect(rowInDb.deleted_at).not.toBeNull();
+        });
+
+        it('should handle null values correctly when updating', async () => {
+            const originalPost = await fixtureManager.createPost(account, {
+                type: PostType.Article,
+            });
+
+            const nullGhostPost = {
+                uuid: originalPost.uuid,
+                title: 'Updated Title',
+                html: '<p>Updated content</p>',
+                excerpt: 'Updated excerpt',
+                custom_excerpt: null, // This will be null
+                feature_image: null, // This will be null
+                published_at: originalPost.publishedAt.toISOString(),
+                url: originalPost.url.href,
+                visibility: 'public',
+                authors: [],
+            };
+
+            const result = await postService.updateGhostPostByUuid(
+                account,
+                nullGhostPost,
+            );
+
+            expect(isError(result)).toBe(false);
+
+            const updatedPost = await postRepository.getById(originalPost.id!);
+            expect(updatedPost).not.toBeNull();
+            expect(updatedPost!.title).toBe('Updated Title');
+            expect(updatedPost!.content).toBe('<p>Updated content</p>');
+            expect(updatedPost!.excerpt).toBe('Updated excerpt');
+            expect(updatedPost!.summary).toBeNull();
+            expect(updatedPost!.imageUrl).toBeNull();
+            expect(updatedPost!.metadata).toEqual({
+                ghostAuthors: [],
+            });
+        });
+    });
 });

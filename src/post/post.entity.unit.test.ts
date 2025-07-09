@@ -12,6 +12,7 @@ import {
     PostSummary,
     PostTitle,
     PostType,
+    type PostUpdateParams,
 } from './post.entity';
 
 const externalAccount = async (id: number | null = 456) =>
@@ -905,6 +906,188 @@ describe('Post', () => {
 
                     expect(post.excerpt).toEqual(ghostPost.excerpt);
                 });
+            });
+        });
+
+        describe('update', () => {
+            it('should allow the author to update the post', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const updateParams: PostUpdateParams = {
+                    title: 'Updated Title',
+                    content: 'Updated content',
+                    excerpt: 'Updated excerpt',
+                    summary: 'Updated summary',
+                    imageUrl: new URL('https://example.com/updated-image.jpg'),
+                    url: new URL('https://example.com/updated-post'),
+                    metadata: { ghostAuthors: [] },
+                };
+
+                expect(Post.isUpdated(post)).toBe(false);
+
+                post.update(author, updateParams);
+
+                expect(Post.isUpdated(post)).toBe(true);
+            });
+
+            it('should throw an error if someone other than the author tries to update', async () => {
+                const author = await internalAccount();
+                const notAuthor = await externalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const updateParams: PostUpdateParams = {
+                    title: 'Updated Title',
+                    content: 'Updated content',
+                    excerpt: 'Updated excerpt',
+                    summary: 'Updated summary',
+                    imageUrl: new URL('https://example.com/updated-image.jpg'),
+                    url: new URL('https://example.com/updated-post'),
+                    metadata: { ghostAuthors: [] },
+                };
+
+                expect(() => {
+                    post.update(notAuthor, updateParams);
+                }).toThrow(
+                    `Account ${notAuthor.uuid} cannot update Post ${post.uuid}`,
+                );
+
+                expect(Post.isUpdated(post)).toBe(false);
+            });
+
+            it('should store the update parameters', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const updateParams: PostUpdateParams = {
+                    title: 'Updated Title',
+                    content: 'Updated content',
+                    excerpt: 'Updated excerpt',
+                    summary: 'Updated summary',
+                    imageUrl: new URL('https://example.com/updated-image.jpg'),
+                    url: new URL('https://example.com/updated-post'),
+                    metadata: { ghostAuthors: [] },
+                };
+
+                post.update(author, updateParams);
+
+                const retrievedParams = post.getUpdatedParams();
+                expect(retrievedParams).toEqual(updateParams);
+            });
+        });
+
+        describe('getUpdatedParams', () => {
+            it('should return the stored update parameters', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const updateParams: PostUpdateParams = {
+                    title: 'Updated Title',
+                    content: 'Updated content',
+                    excerpt: 'Updated excerpt',
+                    summary: 'Updated summary',
+                    imageUrl: new URL('https://example.com/updated-image.jpg'),
+                    url: new URL('https://example.com/updated-post'),
+                    metadata: { ghostAuthors: [] },
+                };
+
+                post.update(author, updateParams);
+
+                const retrievedParams = post.getUpdatedParams();
+                expect(retrievedParams).toEqual(updateParams);
+            });
+
+            it('should clear the update parameters after retrieving them', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const updateParams: PostUpdateParams = {
+                    title: 'Updated Title',
+                    content: 'Updated content',
+                    excerpt: 'Updated excerpt',
+                    summary: 'Updated summary',
+                    imageUrl: new URL('https://example.com/updated-image.jpg'),
+                    url: new URL('https://example.com/updated-post'),
+                    metadata: { ghostAuthors: [] },
+                };
+
+                post.update(author, updateParams);
+
+                // First call should return the params
+                const retrievedParams = post.getUpdatedParams();
+                expect(retrievedParams).toEqual(updateParams);
+
+                // Second call should return null since params were cleared
+                const retrievedParamsAgain = post.getUpdatedParams();
+                expect(retrievedParamsAgain).toBeNull();
+            });
+
+            it('should set the updated flag to false after retrieving parameters', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const updateParams: PostUpdateParams = {
+                    title: 'Updated Title',
+                    content: 'Updated content',
+                    excerpt: 'Updated excerpt',
+                    summary: 'Updated summary',
+                    imageUrl: new URL('https://example.com/updated-image.jpg'),
+                    url: new URL('https://example.com/updated-post'),
+                    metadata: { ghostAuthors: [] },
+                };
+
+                post.update(author, updateParams);
+
+                expect(Post.isUpdated(post)).toBe(true);
+
+                post.getUpdatedParams();
+
+                expect(Post.isUpdated(post)).toBe(false);
+            });
+
+            it('should return null if no update parameters are stored', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const retrievedParams = post.getUpdatedParams();
+                expect(retrievedParams).toBeNull();
+            });
+
+            it('should return null if called without an update', async () => {
+                const author = await internalAccount();
+                const post = Post.createFromData(author, {
+                    type: PostType.Note,
+                    content: 'Original content',
+                });
+
+                const firstCall = post.getUpdatedParams();
+                expect(firstCall).toBeNull();
+
+                const secondCall = post.getUpdatedParams();
+                expect(secondCall).toBeNull();
+
+                expect(Post.isUpdated(post)).toBe(false);
             });
         });
     });

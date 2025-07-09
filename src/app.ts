@@ -901,6 +901,16 @@ app.post(
     }),
 );
 
+app.post(
+    '/.ghost/activitypub/v1/webhooks/post/updated',
+    validateWebhook(),
+    spanWrapper((ctx: AppContext) => {
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostUpdated(ctx);
+    }),
+);
+
 routeRegistry.registerController('webFingerController', WebFingerController);
 routeRegistry.registerController('followController', FollowController);
 routeRegistry.registerController('likeController', LikeController);
