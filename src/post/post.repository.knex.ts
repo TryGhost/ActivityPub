@@ -150,6 +150,12 @@ export class KnexPostRepository {
         });
     }
 
+    async getByUuid(uuid: Post['uuid']): Promise<Post | null> {
+        return await this.getByQuery((qb: Knex.QueryBuilder) => {
+            return qb.where('posts.uuid', uuid);
+        });
+    }
+
     async getByApId(apId: URL): Promise<Post | null> {
         return await this.getByQuery((qb: Knex.QueryBuilder) => {
             return qb.whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [
@@ -166,6 +172,7 @@ export class KnexPostRepository {
     async save(post: Post): Promise<void> {
         const isNewPost = post.isNew;
         const isDeletedPost = Post.isDeleted(post);
+        const isUpdatedPost = Post.isUpdated(post);
 
         if (post.author.id === null) {
             throw new Error(
@@ -186,6 +193,7 @@ export class KnexPostRepository {
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
+            let wasUpdated = false;
             let outboxType: OutboxType = OutboxType.Original;
 
             if (isNewPost) {
@@ -288,6 +296,24 @@ export class KnexPostRepository {
                         .del();
 
                     wasDeleted = true;
+                }
+            } else if (isUpdatedPost) {
+                const updatedParams = post.getUpdatedParams();
+                if (updatedParams) {
+                    await transaction('posts')
+                        .update({
+                            title: updatedParams.title,
+                            excerpt: updatedParams.excerpt,
+                            summary: updatedParams.summary,
+                            content: updatedParams.content,
+                            image_url: updatedParams.imageUrl?.href || null,
+                            url: updatedParams.url.href,
+                            metadata: updatedParams.metadata
+                                ? JSON.stringify(updatedParams.metadata)
+                                : null,
+                        })
+                        .where({ id: post.id });
+                    wasUpdated = true;
                 }
             } else {
                 if (likesToAdd.length > 0 || likesToRemove.length > 0) {
@@ -436,6 +462,10 @@ export class KnexPostRepository {
                     PostDeletedEvent.getName(),
                     new PostDeletedEvent(post, post.author.id),
                 );
+            }
+
+            if (wasUpdated) {
+                //TODO: Send post updated event
             }
 
             for (const accountId of likeAccountIds) {

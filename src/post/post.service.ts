@@ -35,6 +35,7 @@ import {
     Post,
     type PostAttachment,
     PostType,
+    type PostUpdateParams,
 } from './post.entity';
 import type { KnexPostRepository, Outbox } from './post.repository.knex';
 
@@ -54,6 +55,8 @@ export type RepostError =
     | InteractionError;
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
+
+export type UpdatePostError = 'post-not-found';
 
 export type DeletePostError = GetByApIdError | 'not-author';
 
@@ -539,6 +542,58 @@ export class PostService {
         }
         post.delete(account);
         await this.postRepository.save(post);
+        return ok(true);
+    }
+
+    async updateGhostPostByUuid(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Result<boolean, UpdatePostError>> {
+        const post = await this.postRepository.getByUuid(ghostPost.uuid);
+        if (post === null) {
+            return error('post-not-found');
+        }
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'missing-content':
+                case 'private-content':
+                    //Remove the post if it's private or empty
+                    post.delete(account);
+                    await this.postRepository.save(post);
+                    return ok(true);
+            }
+        }
+        const updatedPost = getValue(postResult);
+
+        if (
+            post.title !== updatedPost.title ||
+            post.content !== updatedPost.content ||
+            post.excerpt !== updatedPost.excerpt ||
+            post.summary !== updatedPost.summary ||
+            post.imageUrl?.href !== updatedPost.imageUrl?.href ||
+            post.url.href !== updatedPost.url.href ||
+            JSON.stringify(post.metadata) !==
+                JSON.stringify(updatedPost.metadata)
+        ) {
+            const params: PostUpdateParams = {
+                title: updatedPost.title,
+                content: updatedPost.content,
+                excerpt: updatedPost.excerpt,
+                summary: updatedPost.summary,
+                imageUrl: updatedPost.imageUrl,
+                url: updatedPost.url,
+                metadata: updatedPost.metadata,
+            };
+
+            post.update(account, params);
+            await this.postRepository.save(post);
+        }
+
         return ok(true);
     }
 }
