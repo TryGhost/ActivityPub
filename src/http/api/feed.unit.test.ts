@@ -207,7 +207,7 @@ describe('Feed API', () => {
                 .fn()
                 .mockImplementation(getMockFeedData);
 
-            const response = await feedController.handleGetFeed(ctx, 'Inbox');
+            const response = await feedController.getReaderFeed(ctx);
 
             expect(response.status).toBe(200);
             await expect(response.json()).resolves.toMatchFileSnapshot(
@@ -220,7 +220,7 @@ describe('Feed API', () => {
                 .fn()
                 .mockImplementation(getMockFeedData);
 
-            await feedController.handleGetFeed(ctx, 'Inbox');
+            await feedController.getReaderFeed(ctx);
 
             expect(
                 postInteractionCountsService.requestUpdate,
@@ -238,7 +238,7 @@ describe('Feed API', () => {
                 .fn()
                 .mockRejectedValue(error);
 
-            const response = await feedController.handleGetFeed(ctx, 'Inbox');
+            const response = await feedController.getReaderFeed(ctx);
 
             expect(Sentry.captureException).toHaveBeenCalledWith(error);
 
