@@ -67,7 +67,7 @@ function analyzeUpstreamCertificateError(error: Error): ErrorAnalysis {
 }
 
 const FEDIFY_DELIVERY_ERROR_REGEX =
-    /^Failed to send activity .+ to .+ \((\d{3})\s+.+?\):/;
+    /^Failed to send activity .+ to .+ \((\d{3})\s+.*?\):/;
 
 function isFedifyDeliveryError(error: Error): boolean {
     return error.message.match(FEDIFY_DELIVERY_ERROR_REGEX) !== null;

@@ -518,6 +518,33 @@ describe('analyzeError', () => {
             }
         });
 
+        it('should handle non-standard 5xx codes without message as non-retryable', () => {
+            const nonStandardStatusCodes = [
+                520, // Cloudflare: Web server returns an unknown error
+                521, // Cloudflare: Web server is down
+                522, // Cloudflare: Connection timed out
+                523, // Cloudflare: Origin is unreachable
+                524, // Cloudflare: A timeout occurred
+                525, // Cloudflare: SSL handshake failed
+                526, // Cloudflare: Invalid SSL certificate
+                527, // Cloudflare: Railgun error
+                530, // Cloudflare: Site is frozen
+                598, // Network read timeout error
+                599, // Network connect timeout error
+            ];
+
+            for (const statusCode of nonStandardStatusCodes) {
+                const error = new Error(
+                    `Failed to send activity https://example.com/activity/123 to https://other.com/inbox (${statusCode} ):\nProvider specific error`,
+                );
+
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(false);
+                expect(result.isReportable).toBe(false);
+            }
+        });
+
         it('should handle non-standard 4xx codes as non-retryable', () => {
             const nonStandardStatusCodes = [
                 419, // Non-standard
