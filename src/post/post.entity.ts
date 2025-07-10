@@ -433,6 +433,116 @@ export class Post extends BaseEntity {
         );
     }
 
+    async updateArticleFromGhostPost(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Post> {
+        const isPublic = ghostPost.visibility === 'public';
+
+        let content = ghostPost.html;
+        let excerpt = ghostPost.excerpt;
+
+        const allOptionsDisabled: PrepareContentOptions = {
+            removeGatedContent: false,
+            removeMemberContent: false,
+            escapeHtml: false,
+            convertLineBreaks: false,
+            wrapInParagraph: false,
+            extractLinks: false,
+            addPaidContentMessage: false,
+            addMentions: false,
+        };
+
+        if (content === null || content === '') {
+            this.delete(account);
+            return this;
+        }
+
+        content = ContentPreparer.prepare(content, {
+            ...allOptionsDisabled,
+            removeGatedContent: true,
+        });
+
+        if (isPublic === false) {
+            content = ContentPreparer.prepare(content, {
+                ...allOptionsDisabled,
+                removeMemberContent: true,
+            });
+
+            if (content === '') {
+                this.delete(account);
+                return this;
+            }
+
+            if (
+                ghostPost.custom_excerpt === null ||
+                ghostPost.custom_excerpt === ''
+            ) {
+                excerpt = ContentPreparer.regenerateExcerpt(content);
+            }
+
+            // We add the paid content message _after_ so it doesn't appear in excerpt
+            content = ContentPreparer.prepare(content, {
+                ...allOptionsDisabled,
+                addPaidContentMessage: {
+                    url: new URL(ghostPost.url),
+                },
+            });
+        }
+
+        const metadata = {
+            ghostAuthors: ghostPost.authors ?? [],
+        };
+
+        if (
+            this.title !== ghostPost.title ||
+            this.content !== content ||
+            this.excerpt !== excerpt ||
+            this.summary !== ghostPost.custom_excerpt ||
+            this.imageUrl?.href !== ghostPost.feature_image ||
+            this.url.href !== ghostPost.url ||
+            JSON.stringify(this.metadata) !== JSON.stringify(metadata)
+        ) {
+            const params: PostUpdateParams = {
+                title: ghostPost.title,
+                content: content,
+                excerpt: excerpt,
+                summary: ghostPost.custom_excerpt,
+                imageUrl: parseURL(ghostPost.feature_image),
+                url: new URL(ghostPost.url),
+                metadata: metadata,
+            };
+
+            this.update(account, params);
+        }
+
+        return new Post(
+            this.id,
+            this.uuid,
+            this.author,
+            this.type,
+            this.audience,
+            ghostPost.title,
+            excerpt,
+            ghostPost.custom_excerpt,
+            content,
+            new URL(ghostPost.url),
+            parseURL(ghostPost.feature_image),
+            this.publishedAt,
+            metadata,
+            this.likeCount,
+            this.repostCount,
+            this.replyCount,
+            this.inReplyTo,
+            this.threadRoot,
+            this._readingTimeMinutes,
+            this.attachments,
+            this.apId,
+            this.deleted,
+            this.updatedAt,
+        );
+    }
+
     static createFromData(account: Account, data: PostData): Post {
         let inReplyTo = null;
         let threadRoot = null;
