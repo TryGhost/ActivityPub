@@ -902,16 +902,6 @@ app.post(
 );
 
 app.post(
-    '/.ghost/activitypub/webhooks/post/updated',
-    validateWebhook(),
-    spanWrapper((ctx: AppContext) => {
-        const webhookController =
-            container.resolve<WebhookController>('webhookController');
-        return webhookController.handlePostUpdated(ctx);
-    }),
-);
-
-app.post(
     '/.ghost/activitypub/v1/webhooks/post/updated',
     validateWebhook(),
     spanWrapper((ctx: AppContext) => {
