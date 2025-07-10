@@ -47,6 +47,14 @@ interface BaseGetNotificationsDataResultRow {
     post_reply_count: number;
     post_repost_count: number;
     post_reposted_by_user: 0 | 1;
+    post_attachments:
+        | {
+              type: string | null;
+              mediaType: string | null;
+              name: string | null;
+              url: string;
+          }[]
+        | null;
     in_reply_to_post_ap_id: string;
     in_reply_to_post_type: string;
     in_reply_to_post_title: string;
@@ -109,6 +117,7 @@ export class NotificationService {
                 'post.content as post_content',
                 'post.url as post_url',
                 'post.like_count as post_like_count',
+                'post.attachments as post_attachments',
                 this.db.raw(`
                     CASE
                         WHEN post_likes.account_id IS NOT NULL THEN 1
