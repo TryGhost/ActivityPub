@@ -5,7 +5,14 @@ import {
     createTestExternalAccount,
     createTestInternalAccount,
 } from '../test/account-entity-test-helpers';
-import { Audience, Post, type PostData, PostType } from './post.entity';
+import {
+    Audience,
+    Post,
+    type PostData,
+    PostSummary,
+    PostTitle,
+    PostType,
+} from './post.entity';
 
 const externalAccount = async (id: number | null = 456) =>
     createTestExternalAccount(id || 456, {
@@ -142,8 +149,8 @@ describe('Post', () => {
                 author,
                 PostType.Note,
                 Audience.Public,
-                'Title of my post',
-                'This is such a great...',
+                PostTitle.parse('Title of my post'),
+                PostSummary.parse('This is such a great...'),
                 null,
                 '<p> This is such a great post </p>',
                 new URL('https://ghost.org/ap/note/123'),

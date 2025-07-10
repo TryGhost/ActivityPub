@@ -19,7 +19,14 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Audience, OutboxType, Post, PostType } from './post.entity';
+import {
+    Audience,
+    OutboxType,
+    Post,
+    PostSummary,
+    PostTitle,
+    PostType,
+} from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 describe('KnexPostRepository', () => {
@@ -430,8 +437,8 @@ describe('KnexPostRepository', () => {
                 account,
                 PostType.Article,
                 Audience.Public,
-                'Some title',
-                'Some excerpt',
+                PostTitle.parse('Some title'),
+                PostSummary.parse('Some excerpt'),
                 null,
                 'Some content',
                 new URL(`https://${site.host}/hello-world`),

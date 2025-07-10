@@ -6,7 +6,13 @@ import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { AccountService } from 'account/account.service';
 import type { AppContext, ContextData } from 'app';
 import { error, ok } from 'core/result';
-import { Audience, Post, PostType } from 'post/post.entity';
+import {
+    Audience,
+    Post,
+    PostSummary,
+    PostTitle,
+    PostType,
+} from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
@@ -61,8 +67,8 @@ describe('Post API', () => {
             account,
             PostType.Article,
             Audience.Public,
-            `Test Post ${id}`,
-            `Test Post ${id} Excerpt`,
+            PostTitle.parse(`Test Post ${id}`),
+            PostSummary.parse(`Test Post ${id} Excerpt`),
             null,
             `Test Post ${id} Content`,
             new URL(`https://${site.host}/posts/${id}`),

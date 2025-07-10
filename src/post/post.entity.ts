@@ -1,10 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import { type Result, error, ok } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
+import z from 'zod';
 import type { Account } from '../account/account.entity';
 import { BaseEntity } from '../core/base.entity';
 import { parseURL } from '../core/url';
 import { ContentPreparer, type PrepareContentOptions } from './content';
+
+/** @see PostSummary.parse to get a branded PostSummary */
+export type PostSummary = string & { readonly __brand: unique symbol };
+export const PostSummary = z
+    .string()
+    .max(500)
+    .transform((val) => val as PostSummary);
+
+/** @see PostTitle.parse to get a branded PostTitle */
+export type PostTitle = string & { readonly __brand: unique symbol };
+export const PostTitle = z
+    .string()
+    .max(256)
+    .transform((val) => val as PostTitle);
 
 export enum PostType {
     Note = 0,
@@ -124,9 +139,9 @@ export class Post extends BaseEntity {
         public readonly author: Account,
         public readonly type: CreatePostType,
         public readonly audience: Audience,
-        public readonly title: string | null,
-        public readonly excerpt: string | null,
-        public readonly summary: string | null,
+        public readonly title: PostTitle | null,
+        public readonly excerpt: PostSummary | null,
+        public readonly summary: PostSummary | null,
         content: string | null,
         url: URL | null,
         public readonly imageUrl: URL | null,
@@ -309,7 +324,9 @@ export class Post extends BaseEntity {
         const isPublic = ghostPost.visibility === 'public';
 
         let content = ghostPost.html;
-        let excerpt = ghostPost.excerpt;
+        let excerpt = ghostPost.excerpt
+            ? PostSummary.parse(ghostPost.excerpt)
+            : null;
 
         const allOptionsDisabled: PrepareContentOptions = {
             removeGatedContent: false,
@@ -357,6 +374,11 @@ export class Post extends BaseEntity {
             });
         }
 
+        const title = ghostPost.title ? PostTitle.parse(ghostPost.title) : null;
+        const summary = ghostPost.custom_excerpt
+            ? PostSummary.parse(ghostPost.custom_excerpt)
+            : null;
+
         return ok(
             new Post(
                 null,
@@ -364,9 +386,9 @@ export class Post extends BaseEntity {
                 account,
                 PostType.Article,
                 Audience.Public,
-                ghostPost.title,
+                title,
                 excerpt,
-                ghostPost.custom_excerpt,
+                summary,
                 content,
                 new URL(ghostPost.url),
                 parseURL(ghostPost.feature_image),
@@ -398,15 +420,25 @@ export class Post extends BaseEntity {
             );
         }
 
+        const title = data.title
+            ? PostTitle.parse(data.title.slice(0, 256))
+            : null;
+        const excerpt = data.excerpt
+            ? ContentPreparer.regenerateExcerpt(data.excerpt)
+            : null;
+        const summary = data.summary
+            ? ContentPreparer.regenerateExcerpt(data.summary)
+            : null;
+
         const post = new Post(
             null,
             null,
             account,
             data.type,
             data.audience ?? Audience.Public,
-            data.title ?? null,
-            data.excerpt ?? null,
-            data.summary ?? null,
+            title,
+            excerpt,
+            summary,
             data.content ?? null,
             data.url ?? null,
             data.imageUrl ?? null,

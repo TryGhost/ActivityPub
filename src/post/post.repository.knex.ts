@@ -16,6 +16,8 @@ import {
     type Metadata,
     OutboxType,
     Post,
+    PostSummary,
+    PostTitle,
 } from './post.entity';
 
 interface PostRow {
@@ -890,9 +892,9 @@ export class KnexPostRepository {
             author,
             row.type,
             row.audience,
-            row.title,
-            row.excerpt,
-            row.summary,
+            row.title ? PostTitle.parse(row.title) : null,
+            row.excerpt ? PostSummary.parse(row.excerpt) : null,
+            row.summary ? PostSummary.parse(row.summary) : null,
             row.content,
             new URL(row.url),
             parseURL(row.image_url),
