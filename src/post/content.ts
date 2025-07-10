@@ -4,7 +4,7 @@ import { parse } from 'node-html-parser';
 import urlRegex from 'url-regex';
 import { HANDLE_REGEX } from '../constants';
 import { isEqual } from '../helpers/uri';
-import type { Mention } from './post.entity';
+import { type Mention, PostSummary } from './post.entity';
 
 /**
  * Marker to indicate that the proceeding content is member content
@@ -78,8 +78,8 @@ export class ContentPreparer {
         return ContentPreparer.instance.prepare(content, options);
     }
 
-    static regenerateExcerpt(html: string, charLimit = 500) {
-        return ContentPreparer.instance.regenerateExcerpt(html, charLimit);
+    static regenerateExcerpt(html: string) {
+        return ContentPreparer.instance.regenerateExcerpt(html);
     }
 
     static parseMentions(content: string) {
@@ -203,9 +203,8 @@ export class ContentPreparer {
      * Re-generate excerpt from HTML content, based on a character limit
      *
      * @param html HTML content to generate an excerpt from
-     * @param charLimit Character limit for the excerpt
      */
-    regenerateExcerpt(html: string, charLimit: number) {
+    regenerateExcerpt(html: string): PostSummary {
         const text = htmlToText(html, {
             wordwrap: false,
             preserveNewlines: true,
@@ -222,11 +221,11 @@ export class ContentPreparer {
             ],
         }).trim();
 
-        if (text.length <= charLimit) {
-            return text;
+        if (text.length <= 500) {
+            return PostSummary.parse(text);
         }
 
-        return `${text.substring(0, charLimit - 3)}...`;
+        return PostSummary.parse(`${text.substring(0, 500 - 3)}...`);
     }
 
     private parseMentions(content: string): Set<string> {
