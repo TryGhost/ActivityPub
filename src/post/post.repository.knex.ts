@@ -152,12 +152,6 @@ export class KnexPostRepository {
         });
     }
 
-    async getByUuid(uuid: Post['uuid']): Promise<Post | null> {
-        return await this.getByQuery((qb: Knex.QueryBuilder) => {
-            return qb.where('posts.uuid', uuid);
-        });
-    }
-
     async getByApId(apId: URL): Promise<Post | null> {
         return await this.getByQuery((qb: Knex.QueryBuilder) => {
             return qb.whereRaw('posts.ap_id_hash = UNHEX(SHA2(?, 256))', [
