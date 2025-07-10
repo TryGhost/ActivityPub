@@ -1982,7 +1982,7 @@ describe('KnexPostRepository', () => {
 
             post.update(account, updateParams);
 
-            expect(Post.isUpdated(post)).toBe(true);
+            expect(post.isUpdateDirty).toBe(true);
 
             await postRepository.save(post);
 
@@ -2014,8 +2014,7 @@ describe('KnexPostRepository', () => {
                 new Date(updatedRowInDb.updated_at).getTime(),
             ).toBeGreaterThan(new Date(originalRowInDb.updated_at).getTime());
 
-            expect(Post.isUpdated(post)).toBe(false);
-            expect(post.getUpdatedParams()).toBeNull();
+            expect(post.isUpdateDirty).toBe(false);
         });
 
         it('should not update database if no updated parameters are provided', async () => {
@@ -2045,8 +2044,7 @@ describe('KnexPostRepository', () => {
                 .select('*')
                 .first();
 
-            const updatedParams = post.getUpdatedParams();
-            expect(updatedParams).toBeNull();
+            expect(post.isUpdateDirty).toBe(false);
 
             await postRepository.save(post);
 

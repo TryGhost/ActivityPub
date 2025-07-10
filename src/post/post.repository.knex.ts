@@ -168,7 +168,6 @@ export class KnexPostRepository {
     async save(post: Post): Promise<void> {
         const isNewPost = post.isNew;
         const isDeletedPost = Post.isDeleted(post);
-        const isUpdatedPost = Post.isUpdated(post);
 
         if (post.author.id === null) {
             throw new Error(
@@ -293,24 +292,21 @@ export class KnexPostRepository {
 
                     wasDeleted = true;
                 }
-            } else if (isUpdatedPost) {
-                const updatedParams = post.getUpdatedParams();
-                if (updatedParams) {
-                    await transaction('posts')
-                        .update({
-                            title: updatedParams.title,
-                            excerpt: updatedParams.excerpt,
-                            summary: updatedParams.summary,
-                            content: updatedParams.content,
-                            image_url: updatedParams.imageUrl?.href || null,
-                            url: updatedParams.url.href,
-                            metadata: updatedParams.metadata
-                                ? JSON.stringify(updatedParams.metadata)
-                                : null,
-                        })
-                        .where({ id: post.id });
-                    wasUpdated = true;
-                }
+            } else if (post.isUpdateDirty) {
+                await transaction('posts')
+                    .update({
+                        title: post.title,
+                        excerpt: post.excerpt,
+                        summary: post.summary,
+                        content: post.content,
+                        image_url: post.imageUrl?.href || null,
+                        url: post.url.href,
+                        metadata: post.metadata
+                            ? JSON.stringify(post.metadata)
+                            : null,
+                    })
+                    .where({ id: post.id });
+                wasUpdated = true;
             } else {
                 if (likesToAdd.length > 0 || likesToRemove.length > 0) {
                     const { insertedLikesCount, accountIdsInserted } =

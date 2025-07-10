@@ -547,7 +547,7 @@ export class PostService {
     async updateGhostPost(
         account: Account,
         ghostPost: GhostPost,
-    ): Promise<Result<boolean, UpdatePostError>> {
+    ): Promise<Result<Post, UpdatePostError>> {
         const apId = account.getApIdForPost({
             uuid: ghostPost.uuid,
             type: PostType.Article,
@@ -559,6 +559,6 @@ export class PostService {
         await post.updateArticleFromGhostPost(account, ghostPost);
         await this.postRepository.save(post);
 
-        return ok(true);
+        return ok(post);
     }
 }
