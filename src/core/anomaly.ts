@@ -34,7 +34,8 @@ class Anomaly extends Error {
 
         this.name = 'Anomaly';
         this.category = category;
-        this.retryable = retryable || getRetryable(category);
+        this.retryable =
+            retryable !== undefined ? retryable : getRetryable(category);
         this.metadata = metadata;
     }
 }
