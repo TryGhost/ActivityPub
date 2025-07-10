@@ -400,62 +400,62 @@ describe('ContentPreparer', () => {
     describe('regenerateExcerpt', () => {
         it('returns the original content as text if shorter than the limit', () => {
             const content = '<p>Hello, world!</p>';
-            const result = preparer.regenerateExcerpt(content, 500);
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual('Hello, world!');
         });
 
         it('truncates the content if longer than the limit', () => {
             const content =
-                '<p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
-            const result = preparer.regenerateExcerpt(content, 48);
+                '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>';
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual(
-                'I expect content to be truncated exactly here...',
+                'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit...',
             );
-            expect(result.length).toEqual(48);
+            expect(result.length).toEqual(500);
         });
 
         it('should ignore <img> tags', () => {
             const content =
-                '<img src="https://example.com/image.jpg" /><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
-            const result = preparer.regenerateExcerpt(content, 48);
+                '<img src="https://example.com/image.jpg" /><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>';
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual(
-                'I expect content to be truncated exactly here...',
+                'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit...',
             );
-            expect(result.length).toEqual(48);
+            expect(result.length).toEqual(500);
         });
 
         it('should remove <a> href attributes', () => {
             const content =
-                '<a href="https://example.com/image.jpg" />Link.</a><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
-            const result = preparer.regenerateExcerpt(content, 55);
+                '<a href="https://example.com/image.jpg" />Link.</a><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>';
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual(
-                'Link.\n\nI expect content to be truncated exactly here...',
+                'Link.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus er...',
             );
-            expect(result.length).toEqual(55);
+            expect(result.length).toEqual(500);
         });
 
         it('should ignore <figcaption> tags', () => {
             const content =
-                '<figcaption>This is a caption</figcaption><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
-            const result = preparer.regenerateExcerpt(content, 48);
+                '<figcaption>This is a caption</figcaption><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>';
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual(
-                'I expect content to be truncated exactly here...',
+                'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit...',
             );
-            expect(result.length).toEqual(48);
+            expect(result.length).toEqual(500);
         });
 
         it('should ignore <hr> tags', () => {
             const content =
-                '<hr /><p>I expect content to be truncated exactly here and the rest of the content to not be part of the excerpt</p>';
-            const result = preparer.regenerateExcerpt(content, 48);
+                '<hr /><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>';
+            const result = preparer.regenerateExcerpt(content);
 
             expect(result).toEqual(
-                'I expect content to be truncated exactly here...',
+                'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit...',
             );
         });
     });

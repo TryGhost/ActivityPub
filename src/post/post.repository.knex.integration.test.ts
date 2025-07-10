@@ -19,7 +19,14 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
-import { Audience, OutboxType, Post, PostType } from './post.entity';
+import {
+    Audience,
+    OutboxType,
+    Post,
+    PostSummary,
+    PostTitle,
+    PostType,
+} from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
 describe('KnexPostRepository', () => {
@@ -356,6 +363,34 @@ describe('KnexPostRepository', () => {
         });
     });
 
+    it('Can save a Post created with out of bounds fields', async () => {
+        const site =
+            await siteService.initialiseSiteForHost('testing-saving.com');
+        const account = await accountRepository.getBySite(site);
+        const post = Post.createFromData(account, {
+            type: PostType.Article,
+            content: 'Hello, world!',
+            inReplyTo: null,
+            audience: Audience.Public,
+            title: 'Title'.repeat(1000),
+            summary: 'Hello, world!'.repeat(1000),
+            imageUrl: null,
+            publishedAt: new Date('2025-01-01'),
+            metadata: null,
+        });
+
+        await postRepository.save(post);
+
+        const rowInDb = await client('posts')
+            .where({
+                uuid: post.uuid,
+            })
+            .select('*')
+            .first();
+
+        assert(rowInDb, 'A row should have been saved in the DB');
+    });
+
     it('Can save a Post', async () => {
         const site =
             await siteService.initialiseSiteForHost('testing-saving.com');
@@ -402,8 +437,8 @@ describe('KnexPostRepository', () => {
                 account,
                 PostType.Article,
                 Audience.Public,
-                'Some title',
-                'Some excerpt',
+                PostTitle.parse('Some title'),
+                PostSummary.parse('Some excerpt'),
                 null,
                 'Some content',
                 new URL(`https://${site.host}/hello-world`),
