@@ -144,11 +144,10 @@ export class Post extends BaseEntity {
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
     private repostsToRemove: Set<number> = new Set();
-    private updatedParams: PostUpdateParams | null = null;
     private deleted = false;
-    private updated = false;
     private _likeCountDirty = false;
     private _repostCountDirty = false;
+    private _updateDirty = false;
     public readonly content: string | null;
     public readonly mentions: MentionedAccount[] = [];
 
@@ -224,15 +223,18 @@ export class Post extends BaseEntity {
                 `Account ${account.uuid} cannot update Post ${this.uuid}`,
             );
         }
-        this.updated = true;
-        this.updatedParams = params;
-    }
+        this._updateDirty = true;
 
-    getUpdatedParams() {
-        const updatedParams = this.updatedParams;
-        this.updatedParams = null;
-        this.updated = false;
-        return updatedParams;
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+        const self = this as any;
+        self.title = params.title;
+        self.content = params.content;
+        self.excerpt = params.excerpt;
+        self.summary = params.summary;
+        self.imageUrl = params.imageUrl;
+        self.url = params.url;
+        self.metadata = params.metadata;
     }
 
     private handleDeleted() {
@@ -251,10 +253,6 @@ export class Post extends BaseEntity {
 
     static isDeleted(post: Post) {
         return post.deleted;
-    }
-
-    static isUpdated(post: Post) {
-        return post.updated;
     }
 
     get readingTimeMinutes() {
@@ -352,9 +350,14 @@ export class Post extends BaseEntity {
         return this._repostCountDirty;
     }
 
+    get isUpdateDirty() {
+        return this._updateDirty;
+    }
+
     clearDirtyFlags() {
         this._likeCountDirty = false;
         this._repostCountDirty = false;
+        this._updateDirty = false;
     }
 
     static async createArticleFromGhostPost(

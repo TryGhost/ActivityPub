@@ -1142,21 +1142,23 @@ describe('PostService', () => {
                 account,
                 updatedGhostPost,
             );
-            expect(isError(result)).toBe(false);
 
-            const updatedPost = await postRepository.getById(originalPost.id!);
-            expect(updatedPost).not.toBeNull();
-            expect(updatedPost!.title).toBe('Updated Title');
-            expect(updatedPost!.content).toBe('<p>Updated content</p>');
-            expect(updatedPost!.excerpt).toBe('Updated excerpt');
-            expect(updatedPost!.summary).toBe('Updated summary');
-            expect(updatedPost!.imageUrl?.href).toBe(
+            if (isError(result)) {
+                throw new Error('Update should not be an error');
+            }
+
+            const updatedPost = getValue(result);
+            expect(updatedPost.title).toBe('Updated Title');
+            expect(updatedPost.content).toBe('<p>Updated content</p>');
+            expect(updatedPost.excerpt).toBe('Updated excerpt');
+            expect(updatedPost.summary).toBe('Updated summary');
+            expect(updatedPost.imageUrl?.href).toBe(
                 'https://example.com/updated-image.jpg',
             );
-            expect(updatedPost!.url.href).toBe(
+            expect(updatedPost.url.href).toBe(
                 'https://example.com/updated-post',
             );
-            expect(updatedPost!.metadata).toEqual({
+            expect(updatedPost.metadata).toEqual({
                 ghostAuthors: [{ name: 'Updated Author', profile_image: null }],
             });
         });
@@ -1298,16 +1300,17 @@ describe('PostService', () => {
                 nullGhostPost,
             );
 
-            expect(isError(result)).toBe(false);
+            if (isError(result)) {
+                throw new Error('Update should not be an error');
+            }
 
-            const updatedPost = await postRepository.getById(originalPost.id!);
-            expect(updatedPost).not.toBeNull();
-            expect(updatedPost!.title).toBe('Updated Title');
-            expect(updatedPost!.content).toBe('<p>Updated content</p>');
-            expect(updatedPost!.excerpt).toBe('Updated excerpt');
-            expect(updatedPost!.summary).toBeNull();
-            expect(updatedPost!.imageUrl).toBeNull();
-            expect(updatedPost!.metadata).toEqual({
+            const updatedPost = getValue(result);
+            expect(updatedPost.title).toBe('Updated Title');
+            expect(updatedPost.content).toBe('<p>Updated content</p>');
+            expect(updatedPost.excerpt).toBe('Updated excerpt');
+            expect(updatedPost.summary).toBeNull();
+            expect(updatedPost.imageUrl).toBeNull();
+            expect(updatedPost.metadata).toEqual({
                 ghostAuthors: [],
             });
         });
