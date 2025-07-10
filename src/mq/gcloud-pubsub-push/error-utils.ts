@@ -38,7 +38,7 @@ function analyzeDnsResolutionError(error: Error): ErrorAnalysis {
     };
 }
 
-function isUpstreamCertificateError(error: Error, depth = 0): boolean {
+function isUpstreamSSLError(error: Error, depth = 0): boolean {
     if (depth > MAX_CAUSE_DEPTH) {
         return false;
     }
@@ -51,14 +51,22 @@ function isUpstreamCertificateError(error: Error, depth = 0): boolean {
         return true;
     }
 
+    if (
+        error.message.match(
+            /Client network socket disconnected before secure TLS connection was established/i,
+        ) !== null
+    ) {
+        return true;
+    }
+
     if ('cause' in error && error.cause instanceof Error) {
-        return isUpstreamCertificateError(error.cause, depth + 1);
+        return isUpstreamSSLError(error.cause, depth + 1);
     }
 
     return false;
 }
 
-function analyzeUpstreamCertificateError(error: Error): ErrorAnalysis {
+function analyzeUpstreamSSLError(error: Error): ErrorAnalysis {
     // Upstream certificate errors are not retryable and not reportable
     return {
         isRetryable: false,
@@ -152,8 +160,8 @@ export function analyzeError(error: Error): ErrorAnalysis {
         return analyzeDnsResolutionError(error);
     }
 
-    if (isUpstreamCertificateError(error)) {
-        return analyzeUpstreamCertificateError(error);
+    if (isUpstreamSSLError(error)) {
+        return analyzeUpstreamSSLError(error);
     }
 
     if (isFedifyDeliveryError(error)) {
