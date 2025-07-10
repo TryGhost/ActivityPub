@@ -1096,7 +1096,7 @@ describe('PostService', () => {
         });
     });
 
-    describe('updateGhostPostByUuid', () => {
+    describe('updateGhostPost', () => {
         it('should return error when post is not found', async () => {
             const ghostPost = {
                 uuid: 'non-existent-uuid',
@@ -1111,7 +1111,7 @@ describe('PostService', () => {
                 authors: [],
             };
 
-            const result = await postService.updateGhostPostByUuid(
+            const result = await postService.updateGhostPost(
                 account,
                 ghostPost,
             );
@@ -1138,7 +1138,7 @@ describe('PostService', () => {
                 authors: [{ name: 'Updated Author', profile_image: null }],
             };
 
-            const result = await postService.updateGhostPostByUuid(
+            const result = await postService.updateGhostPost(
                 account,
                 updatedGhostPost,
             );
@@ -1187,7 +1187,7 @@ describe('PostService', () => {
                 authors: [],
             };
 
-            const result = await postService.updateGhostPostByUuid(
+            const result = await postService.updateGhostPost(
                 account,
                 sameGhostPost,
             );
@@ -1220,7 +1220,7 @@ describe('PostService', () => {
                 authors: [],
             };
 
-            const result = await postService.updateGhostPostByUuid(
+            const result = await postService.updateGhostPost(
                 account,
                 privateGhostPost,
             );
@@ -1257,7 +1257,7 @@ describe('PostService', () => {
                 authors: [],
             };
 
-            const result = await postService.updateGhostPostByUuid(
+            const result = await postService.updateGhostPost(
                 account,
                 emptyGhostPost,
             );
@@ -1293,7 +1293,7 @@ describe('PostService', () => {
                 authors: [],
             };
 
-            const result = await postService.updateGhostPostByUuid(
+            const result = await postService.updateGhostPost(
                 account,
                 nullGhostPost,
             );

@@ -115,10 +115,7 @@ export class WebhookController {
 
         const account = ctx.get('account');
 
-        const result = await this.postService.updateGhostPostByUuid(
-            account,
-            data,
-        );
+        const result = await this.postService.updateGhostPost(account, data);
 
         if (isError(result)) {
             const error = getError(result);

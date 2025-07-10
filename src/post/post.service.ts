@@ -544,21 +544,21 @@ export class PostService {
         return ok(true);
     }
 
-    async updateGhostPostByUuid(
+    async updateGhostPost(
         account: Account,
         ghostPost: GhostPost,
-    ): Promise<Result<Post, UpdatePostError>> {
-        const post = await this.postRepository.getByUuid(ghostPost.uuid);
+    ): Promise<Result<boolean, UpdatePostError>> {
+        const apId = account.getApIdForPost({
+            uuid: ghostPost.uuid,
+            type: PostType.Article,
+        });
+        const post = await this.postRepository.getByApId(apId);
         if (post === null) {
             return error('post-not-found');
         }
-        const updatedPost = await post.updateArticleFromGhostPost(
-            account,
-            ghostPost,
-        );
-
+        await post.updateArticleFromGhostPost(account, ghostPost);
         await this.postRepository.save(post);
 
-        return ok(updatedPost);
+        return ok(true);
     }
 }
