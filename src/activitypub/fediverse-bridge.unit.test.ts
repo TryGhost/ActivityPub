@@ -8,7 +8,9 @@ import type { AccountService } from 'account/account.service';
 import { AccountBlockedEvent } from 'account/events';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
+import { PostUpdatedEvent } from 'post/post-updated.event';
 import { Post, PostType } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';
@@ -16,9 +18,27 @@ import type { UriBuilder } from './uri';
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 
+vi.mock('@js-temporal/polyfill', async () => {
+    const original = await import('@js-temporal/polyfill');
+    return {
+        Temporal: {
+            ...original.Temporal,
+            Now: {
+                // Return a fixed instant for deterministic testing
+                instant: vi
+                    .fn()
+                    .mockReturnValue(
+                        original.Temporal.Instant.from('2025-01-01T00:00:00Z'),
+                    ),
+            },
+        },
+    };
+});
+
 describe('FediverseBridge', () => {
     let events: EventEmitter;
     let accountService: AccountService;
+    let postRepository: KnexPostRepository;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
     let mockUriBuilder: UriBuilder<FedifyObject>;
@@ -29,6 +49,9 @@ describe('FediverseBridge', () => {
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
+        postRepository = {
+            getById: vi.fn(),
+        } as unknown as KnexPostRepository;
         mockUriBuilder = {
             buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
                 return new URL(
@@ -65,6 +88,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
     });
 
@@ -153,6 +177,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -236,6 +261,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -281,6 +307,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -323,6 +350,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -478,6 +506,87 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should send update activities on the PostUpdatedEvent for internal accounts', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://example.com/user/foo');
+        author.isInternal = true;
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
+
+        const post = Object.create(Post);
+        post.id = 456;
+        post.author = author;
+        post.type = PostType.Article;
+        post.title = 'Updated Post Title';
+        post.content = 'Updated post content';
+        post.apId = new URL('https://example.com/article/post-456');
+        post.publishedAt = new Date('2025-01-01T00:00:00Z');
+
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostUpdatedEvent(post.id);
+        events.emit(PostUpdatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(postRepository.getById).toHaveBeenCalledWith(post.id);
+        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(context.data.globaldb.set).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not send update activities on the PostUpdatedEvent for external accounts', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://external.com/user/foo');
+        author.isInternal = false;
+
+        const post = Object.create(Post);
+        post.id = 456;
+        post.author = author;
+        post.type = PostType.Article;
+        post.title = 'Updated Post Title';
+        post.content = 'Updated post content';
+        post.apId = new URL('https://external.com/article/post-456');
+
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostUpdatedEvent(post.id);
+        events.emit(PostUpdatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(postRepository.getById).toHaveBeenCalledWith(post.id);
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should not send update activities on the PostUpdatedEvent when post is not found', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        vi.mocked(postRepository.getById).mockResolvedValue(null);
+
+        const event = new PostUpdatedEvent(999);
+        events.emit(PostUpdatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(postRepository.getById).toHaveBeenCalledWith(999);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });

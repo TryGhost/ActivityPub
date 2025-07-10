@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
     Announce,
     Article,
@@ -7,6 +7,7 @@ import {
     Image,
     Mention,
     PUBLIC_COLLECTION,
+    Update,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Account } from 'account/account.entity';
@@ -40,6 +41,7 @@ async function getFedifyObjectForPost(
             content: post.content,
             summary: post.summary,
             published: Temporal.Instant.from(post.publishedAt.toISOString()),
+            updated: Temporal.Now.instant(),
             attachments: post.attachments
                 ? post.attachments
                       .filter((attachment) => attachment.type === 'Image')
@@ -70,6 +72,7 @@ async function getFedifyObjectForPost(
             content: post.content,
             image: post.imageUrl,
             published: Temporal.Instant.from(post.publishedAt.toISOString()),
+            updated: Temporal.Now.instant(),
             preview,
             url: post.url,
             to: PUBLIC_COLLECTION,
@@ -118,4 +121,23 @@ export async function buildAnnounceActivityForPost(
     });
 
     return announce;
+}
+
+export async function buildUpdateActivityAndObjectFromPost(
+    post: Post,
+    ctx: FedifyContext,
+): Promise<{ updateActivity: Update; fedifyObject: FedifyNote | Article }> {
+    const { fedifyObject, ccs } = await getFedifyObjectForPost(post, ctx);
+    const updateActivity = new Update({
+        id: ctx.getObjectUri(Update, { id: randomUUID() }),
+        actor: post.author.apId,
+        object: fedifyObject,
+        to: PUBLIC_COLLECTION,
+        ccs: ccs,
+    });
+
+    return {
+        updateActivity,
+        fedifyObject,
+    };
 }

@@ -9,6 +9,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
+import { PostUpdatedEvent } from './post-updated.event';
 import {
     type Audience,
     type CreatePostType,
@@ -464,8 +465,11 @@ export class KnexPostRepository {
                 );
             }
 
-            if (wasUpdated) {
-                //TODO: Send post updated event
+            if (wasUpdated && post.id) {
+                await this.events.emitAsync(
+                    PostUpdatedEvent.getName(),
+                    new PostUpdatedEvent(post.id),
+                );
             }
 
             for (const accountId of likeAccountIds) {

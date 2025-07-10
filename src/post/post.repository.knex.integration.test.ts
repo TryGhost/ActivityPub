@@ -19,6 +19,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
+import { PostUpdatedEvent } from './post-updated.event';
 import { Audience, OutboxType, Post, PostType } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 
@@ -1949,7 +1950,21 @@ describe('KnexPostRepository', () => {
 
             expect(Post.isUpdated(post)).toBe(true);
 
+            const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
             await postRepository.save(post);
+
+            expect(eventsEmitSpy).toHaveBeenCalledWith(
+                PostUpdatedEvent.getName(),
+                expect.objectContaining({
+                    getPostId: expect.any(Function),
+                }),
+            );
+
+            const emittedEvent = eventsEmitSpy.mock.calls.find(
+                (call) => call[0] === PostUpdatedEvent.getName(),
+            )?.[1];
+            expect(emittedEvent?.getPostId()).toBe(post.id);
 
             const updatedRowInDb = await client('posts')
                 .where({ uuid: post.uuid })
@@ -2013,7 +2028,14 @@ describe('KnexPostRepository', () => {
             const updatedParams = post.getUpdatedParams();
             expect(updatedParams).toBeNull();
 
+            const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
+
             await postRepository.save(post);
+
+            expect(eventsEmitSpy).not.toHaveBeenCalledWith(
+                PostUpdatedEvent.getName(),
+                expect.any(Object),
+            );
 
             const afterSaveRowInDb = await client('posts')
                 .where({ uuid: post.uuid })
