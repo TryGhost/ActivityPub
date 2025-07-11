@@ -11,7 +11,7 @@
     "@logtape/logtape": "0.12.1",
     "@fedify/fedify": "1.7.0",
     "knex": "3.1.0",
-    "mysql2": "3.14.1",
+    "mysql2": "3.14.2",
     "tsx": "4.20.3"
   },
   "devDependencies": {
