@@ -156,6 +156,11 @@ await configure({
                 toLogLevel(process.env.LOG_LEVEL) ||
                 'warning',
         },
+        {
+            category: ['logtape', 'meta'],
+            sinks: ['console'],
+            level: 'error',
+        },
     ],
 });
 
