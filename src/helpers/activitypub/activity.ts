@@ -20,6 +20,9 @@ async function getFedifyObjectForPost(
     let fedifyObject: FedifyNote | Article;
     let mentions: Mention[] = [];
     let ccs: URL[] = [];
+    const updatedAt = post.updatedAt
+        ? Temporal.Instant.from(post.updatedAt.toISOString())
+        : Temporal.Now.instant();
 
     if (post.type === PostType.Note) {
         mentions = post.mentions.map(
@@ -40,9 +43,7 @@ async function getFedifyObjectForPost(
             content: post.content,
             summary: post.summary,
             published: Temporal.Instant.from(post.publishedAt.toISOString()),
-            updated: post.updatedAt
-                ? Temporal.Instant.from(post.updatedAt.toISOString())
-                : Temporal.Now.instant(),
+            updated: updatedAt,
             attachments: post.attachments
                 ? post.attachments
                       .filter((attachment) => attachment.type === 'Image')
@@ -73,9 +74,7 @@ async function getFedifyObjectForPost(
             content: post.content,
             image: post.imageUrl,
             published: Temporal.Instant.from(post.publishedAt.toISOString()),
-            updated: post.updatedAt
-                ? Temporal.Instant.from(post.updatedAt.toISOString())
-                : Temporal.Now.instant(),
+            updated: updatedAt,
             preview,
             url: post.url,
             to: PUBLIC_COLLECTION,
