@@ -10,9 +10,13 @@ import {
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { AccountBlockedEvent, AccountUpdatedEvent } from 'account/events';
-import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
+import {
+    buildCreateActivityAndObjectFromPost,
+    buildUpdateActivityAndObjectFromPost,
+} from 'helpers/activitypub/activity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
+import { PostUpdatedEvent } from 'post/post-updated.event';
 import { PostType } from 'post/post.entity';
 import { v4 as uuidv4 } from 'uuid';
 import type { FedifyContextFactory } from './fedify-context.factory';
@@ -36,6 +40,10 @@ export class FediverseBridge {
         this.events.on(
             PostDeletedEvent.getName(),
             this.handlePostDeleted.bind(this),
+        );
+        this.events.on(
+            PostUpdatedEvent.getName(),
+            this.handlePostUpdated.bind(this),
         );
         this.events.on(
             AccountBlockedEvent.getName(),
@@ -125,6 +133,30 @@ export class FediverseBridge {
         );
 
         await this.sendActivityToFollowers(post.author, deleteActivity);
+    }
+
+    private async handlePostUpdated(event: PostUpdatedEvent) {
+        const post = event.getPost();
+        if (!post.author.isInternal) {
+            return;
+        }
+
+        const ctx = this.fedifyContextFactory.getFedifyContext();
+
+        const { updateActivity, fedifyObject } =
+            await buildUpdateActivityAndObjectFromPost(post, ctx);
+
+        await ctx.data.globaldb.set(
+            [updateActivity.id!.href],
+            await updateActivity.toJsonLd(),
+        );
+
+        await ctx.data.globaldb.set(
+            [fedifyObject.id!.href],
+            await fedifyObject.toJsonLd(),
+        );
+
+        await this.sendActivityToFollowers(post.author, updateActivity);
     }
 
     private async handleAccountUpdatedEvent(event: AccountUpdatedEvent) {

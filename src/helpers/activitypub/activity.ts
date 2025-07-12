@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
     Announce,
     Article,
@@ -7,6 +7,7 @@ import {
     Image,
     Mention,
     PUBLIC_COLLECTION,
+    Update,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Account } from 'account/account.entity';
@@ -60,8 +61,8 @@ async function getFedifyObjectForPost(
             ccs: ccs,
         });
     } else if (post.type === PostType.Article) {
-        const preview = new FedifyNote({
-            id: ctx.getObjectUri(FedifyNote, { id: String(post.id) }),
+        const preview = new Article({
+            id: ctx.getObjectUri(Article, { id: String(post.id) }),
             content: post.excerpt,
         });
         ccs = post.author.apFollowers ? [post.author.apFollowers] : [];
@@ -123,4 +124,23 @@ export async function buildAnnounceActivityForPost(
     });
 
     return announce;
+}
+
+export async function buildUpdateActivityAndObjectFromPost(
+    post: Post,
+    ctx: FedifyContext,
+): Promise<{ updateActivity: Update; fedifyObject: FedifyNote | Article }> {
+    const { fedifyObject, ccs } = await getFedifyObjectForPost(post, ctx);
+    const updateActivity = new Update({
+        id: ctx.getObjectUri(Update, { id: randomUUID() }),
+        actor: post.author.apId,
+        object: fedifyObject,
+        to: PUBLIC_COLLECTION,
+        ccs: ccs,
+    });
+
+    return {
+        updateActivity,
+        fedifyObject,
+    };
 }
