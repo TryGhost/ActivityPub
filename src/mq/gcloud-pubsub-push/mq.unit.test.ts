@@ -9,6 +9,20 @@ vi.mock('@google-cloud/pubsub', () => ({
     PubSub: vi.fn(),
 }));
 
+vi.mock('@opentelemetry/api', () => ({
+    context: {
+        active: vi.fn(() => ({})),
+    },
+    propagation: {
+        inject: vi.fn(),
+    },
+}));
+
+vi.mock('@sentry/node', () => ({
+    startSpan: vi.fn((_options, callback) => callback()),
+    continueTrace: vi.fn((_sentryTrace, callback) => callback()),
+}));
+
 describe('GCloudPubSubPushMessageQueue', () => {
     const PROJECT_ID = 'test_project';
     const TOPIC = 'test_topic';
@@ -22,6 +36,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             info: vi.fn(),
             error: vi.fn(),
             warn: vi.fn(),
+            debug: vi.fn(),
         } as unknown as Logger;
 
         mockTopic = {
@@ -56,7 +71,10 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             expect(mockTopic.publishMessage).toHaveBeenCalledTimes(1);
             expect(mockTopic.publishMessage).toHaveBeenCalledWith({
-                json: message,
+                json: expect.objectContaining({
+                    ...message,
+                    traceContext: expect.any(Object),
+                }),
                 attributes: {
                     fedifyId: message.id,
                 },
@@ -151,7 +169,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
             await mq.handleMessage({
                 id: 'abc123',
                 data: messageData,
-                attributes: {},
+                attributes: {
+                    fedifyId: 'abc123',
+                },
             });
 
             expect(handler).toHaveBeenCalledTimes(1);
@@ -177,7 +197,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
                     data: {
                         id: 'abc123',
                     },
-                    attributes: {},
+                    attributes: {
+                        fedifyId: 'abc123',
+                    },
                 }),
             ).rejects.toThrow(error);
         });
@@ -195,7 +217,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
                     data: {
                         id: 'abc123',
                     },
-                    attributes: {},
+                    attributes: {
+                        fedifyId: 'abc123',
+                    },
                 }),
             ).rejects.toThrow(
                 'Message queue is not listening, cannot handle message',
@@ -222,7 +246,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
                     data: {
                         id: 'abc123',
                     },
-                    attributes: {},
+                    attributes: {
+                        fedifyId: 'abc123',
+                    },
                 }),
             ).rejects.toThrow(error);
 
@@ -266,7 +292,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 data: {
                     id: 'abc123',
                 },
-                attributes: {},
+                attributes: {
+                    fedifyId: 'abc123',
+                },
             });
 
             expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
@@ -275,7 +303,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
                     id: 'abc123',
                 },
                 attributes: {
-                    fedifyId: 'unknown',
+                    fedifyId: 'abc123',
                 },
             });
         });
@@ -319,7 +347,9 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 data: {
                     id: 'abc123',
                 },
-                attributes: {},
+                attributes: {
+                    fedifyId: 'abc123',
+                },
             });
 
             expect(mockRetryTopic.publishMessage).not.toHaveBeenCalled();
@@ -385,6 +415,7 @@ describe('handlePushMessage', () => {
             info: vi.fn(),
             error: vi.fn(),
             warn: vi.fn(),
+            debug: vi.fn(),
         } as unknown as Logger;
 
         mockPubSubClient = {
@@ -482,5 +513,48 @@ describe('handlePushMessage', () => {
         const result = await handlePushMessage(ctx);
 
         expect(result.status).toBe(500);
+    });
+
+    it('should handle messages with tracing context', async () => {
+        const mq = new GCloudPubSubPushMessageQueue(
+            mockLogger,
+            mockPubSubClient,
+            TOPIC,
+        );
+
+        const messageData = {
+            id: 'abc123',
+            traceContext: {
+                'sentry-trace': 'trace-123',
+                baggage: 'baggage-data',
+            },
+        };
+
+        (ctx.req.json as Mock).mockResolvedValue({
+            message: {
+                message_id: 'abc123',
+                data: Buffer.from(JSON.stringify(messageData)).toString(
+                    'base64',
+                ),
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            },
+        });
+
+        const handler = vi.fn().mockResolvedValue(undefined);
+        mq.listen(handler);
+
+        const handlePushMessage = createPushMessageHandler(mq, mockLogger);
+
+        const result = await handlePushMessage(ctx);
+
+        expect(result.status).toBe(200);
+        expect(handler).toHaveBeenCalledWith(
+            expect.objectContaining({
+                id: 'abc123',
+                traceContext: expect.any(Object),
+            }),
+        );
     });
 });
