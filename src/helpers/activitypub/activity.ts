@@ -40,6 +40,9 @@ async function getFedifyObjectForPost(
             content: post.content,
             summary: post.summary,
             published: Temporal.Instant.from(post.publishedAt.toISOString()),
+            updated: post.updatedAt
+                ? Temporal.Instant.from(post.updatedAt.toISOString())
+                : Temporal.Now.instant(),
             attachments: post.attachments
                 ? post.attachments
                       .filter((attachment) => attachment.type === 'Image')
@@ -70,6 +73,9 @@ async function getFedifyObjectForPost(
             content: post.content,
             image: post.imageUrl,
             published: Temporal.Instant.from(post.publishedAt.toISOString()),
+            updated: post.updatedAt
+                ? Temporal.Instant.from(post.updatedAt.toISOString())
+                : Temporal.Now.instant(),
             preview,
             url: post.url,
             to: PUBLIC_COLLECTION,

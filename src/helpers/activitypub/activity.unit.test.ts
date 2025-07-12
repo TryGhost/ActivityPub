@@ -15,6 +15,25 @@ import {
     buildCreateActivityAndObjectFromPost,
 } from './activity';
 
+vi.mock('@js-temporal/polyfill', async () => {
+    const original = await vi.importActual<
+        typeof import('@js-temporal/polyfill')
+    >('@js-temporal/polyfill');
+    return {
+        Temporal: {
+            ...original.Temporal,
+            Now: {
+                // Return a fixed instant for deterministic testing
+                instant: vi
+                    .fn()
+                    .mockReturnValue(
+                        original.Temporal.Instant.from('2025-01-15T10:30:00Z'),
+                    ),
+            },
+        },
+    };
+});
+
 describe('Build activity', () => {
     let context: FedifyContext;
     let mockUriBuilder: UriBuilder<FedifyObject>;
@@ -63,6 +82,7 @@ describe('Build activity', () => {
             post.mentions = [];
             post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
             post.publishedAt = new Date('2025-01-01T00:00:00Z');
+            post.updatedAt = new Date('2025-01-01T00:00:00Z');
 
             const result = await buildCreateActivityAndObjectFromPost(
                 post,
@@ -192,6 +212,7 @@ describe('Build activity', () => {
                 'https://example.com/img/post-123_feature.jpg',
             );
             post.publishedAt = new Date('2025-01-12T10:30:00Z');
+            post.updatedAt = new Date('2025-01-12T10:30:00Z');
             post.url = new URL('https://example.com/post/post-123');
             post.apId = new URL('https://example.com/article/post-123');
             post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
