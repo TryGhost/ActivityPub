@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { type Result, error, ok } from 'core/result';
+import {
+    type Result,
+    error,
+    getError,
+    getValue,
+    isError,
+    ok,
+} from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import z from 'zod';
 import type { Account } from '../account/account.entity';
@@ -62,6 +69,16 @@ export interface GhostPost {
     url: string;
     visibility: string;
     authors?: GhostAuthor[] | null;
+}
+
+export interface PostUpdateParams {
+    title: string | null;
+    content: string | null;
+    excerpt: string | null;
+    summary: string | null;
+    imageUrl: URL | null;
+    url: URL;
+    metadata: Metadata | null;
 }
 
 export interface PostAttachment {
@@ -130,6 +147,7 @@ export class Post extends BaseEntity {
     private deleted = false;
     private _likeCountDirty = false;
     private _repostCountDirty = false;
+    private _updateDirty = false;
     public readonly content: string | null;
     public readonly mentions: MentionedAccount[] = [];
 
@@ -197,6 +215,26 @@ export class Post extends BaseEntity {
 
         this.deleted = true;
         this.handleDeleted();
+    }
+
+    update(account: Account, params: PostUpdateParams) {
+        if (account.uuid !== this.author.uuid) {
+            throw new Error(
+                `Account ${account.uuid} cannot update Post ${this.uuid}`,
+            );
+        }
+        this._updateDirty = true;
+
+        // TODO: Clean up the any type
+        // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
+        const self = this as any;
+        self.title = params.title;
+        self.content = params.content;
+        self.excerpt = params.excerpt;
+        self.summary = params.summary;
+        self.imageUrl = params.imageUrl;
+        self.url = params.url;
+        self.metadata = params.metadata;
     }
 
     private handleDeleted() {
@@ -312,9 +350,14 @@ export class Post extends BaseEntity {
         return this._repostCountDirty;
     }
 
+    get isUpdateDirty() {
+        return this._updateDirty;
+    }
+
     clearDirtyFlags() {
         this._likeCountDirty = false;
         this._repostCountDirty = false;
+        this._updateDirty = false;
     }
 
     static async createArticleFromGhostPost(
@@ -398,6 +441,49 @@ export class Post extends BaseEntity {
                 },
             ),
         );
+    }
+
+    async updateArticleFromGhostPost(account: Account, ghostPost: GhostPost) {
+        const postResult = await Post.createArticleFromGhostPost(
+            account,
+            ghostPost,
+        );
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'missing-content':
+                case 'private-content':
+                    //Remove the post if it's private or empty
+                    this.delete(account);
+                    return;
+            }
+        }
+        const updatedPost = getValue(postResult);
+
+        if (
+            this.title !== updatedPost.title ||
+            this.content !== updatedPost.content ||
+            this.excerpt !== updatedPost.excerpt ||
+            this.summary !== updatedPost.summary ||
+            this.imageUrl?.href !== updatedPost.imageUrl?.href ||
+            this.url.href !== updatedPost.url.href ||
+            JSON.stringify(this.metadata) !==
+                JSON.stringify(updatedPost.metadata)
+        ) {
+            const params: PostUpdateParams = {
+                title: updatedPost.title,
+                content: updatedPost.content,
+                excerpt: updatedPost.excerpt,
+                summary: updatedPost.summary,
+                imageUrl: updatedPost.imageUrl,
+                url: updatedPost.url,
+                metadata: updatedPost.metadata,
+            };
+
+            this.update(account, params);
+        }
+
+        return;
     }
 
     static createFromData(account: Account, data: PostData): Post {

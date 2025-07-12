@@ -55,6 +55,8 @@ export type RepostError =
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
 
+export type UpdatePostError = 'post-not-found';
+
 export type DeletePostError = GetByApIdError | 'not-author';
 
 export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
@@ -540,5 +542,23 @@ export class PostService {
         post.delete(account);
         await this.postRepository.save(post);
         return ok(true);
+    }
+
+    async updateGhostPost(
+        account: Account,
+        ghostPost: GhostPost,
+    ): Promise<Result<Post, UpdatePostError>> {
+        const apId = account.getApIdForPost({
+            uuid: ghostPost.uuid,
+            type: PostType.Article,
+        });
+        const post = await this.postRepository.getByApId(apId);
+        if (post === null) {
+            return error('post-not-found');
+        }
+        await post.updateArticleFromGhostPost(account, ghostPost);
+        await this.postRepository.save(post);
+
+        return ok(post);
     }
 }

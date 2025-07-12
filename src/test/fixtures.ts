@@ -8,7 +8,12 @@ import { AccountService } from 'account/account.service';
 import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
 import type { NotificationType } from 'notification/notification.service';
-import { type CreatePostType, Post, PostType } from 'post/post.entity';
+import {
+    type CreatePostType,
+    type Metadata,
+    Post,
+    PostType,
+} from 'post/post.entity';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { type Site, SiteService } from 'site/site.service';
 import { generateTestCryptoKeyPair } from './crypto-key-pair';
@@ -125,9 +130,11 @@ export class FixtureManager {
         {
             type = PostType.Note,
             inReplyTo,
+            metadata,
         }: {
             type?: CreatePostType;
             inReplyTo?: Post;
+            metadata?: Metadata;
         } = {},
     ) {
         let apId = null;
@@ -144,6 +151,7 @@ export class FixtureManager {
                     ? faker.lorem.paragraph()
                     : faker.lorem.sentence(),
             title: type === PostType.Article ? faker.lorem.sentence() : null,
+            metadata,
         });
 
         await this.postRepository.save(post);

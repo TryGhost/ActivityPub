@@ -4,7 +4,7 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { postToDTO } from './helpers/post';
-import { BadRequest } from './helpers/response';
+import { BadRequest, NotFound } from './helpers/response';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -90,6 +90,44 @@ export class WebhookController {
             headers: {
                 'Content-Type': 'application/json',
             },
+            status: 200,
+        });
+    }
+
+    /**
+     * Handle a post.published.edited webhook
+     *
+     * @param ctx App context instance
+     */
+    async handlePostUpdated(ctx: AppContext) {
+        let data: PostInput;
+
+        try {
+            data = PostPublishedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.current;
+        } catch (err) {
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
+        }
+
+        const account = ctx.get('account');
+
+        const result = await this.postService.updateGhostPost(account, data);
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'post-not-found':
+                    return NotFound('Could not find post to update');
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        return new Response(JSON.stringify(getValue(result)), {
             status: 200,
         });
     }
