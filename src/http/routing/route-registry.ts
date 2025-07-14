@@ -1,8 +1,8 @@
 import 'reflect-metadata';
+import * as Sentry from '@sentry/node';
 import type { AwilixContainer } from 'awilix';
 import type { Hono, MiddlewareHandler, Next } from 'hono';
 import type { AppContext, HonoContextVariables } from '../../app';
-import { spanWrapper } from '../../instrumentation';
 import {
     ROLES_METADATA_KEY,
     ROUTES_METADATA_KEY,
@@ -83,12 +83,16 @@ export class RouteRegistry {
             );
         }
 
-        middleware.push(
-            spanWrapper((ctx: AppContext, next: Next) => {
-                const controller = container.resolve(route.controllerToken);
-                return controller[route.methodName](ctx, next);
-            }),
-        );
+        middleware.push((ctx: AppContext, next: Next) => {
+            const controller = container.resolve(route.controllerToken);
+            return Sentry.startSpan(
+                {
+                    op: 'controller.handle',
+                    name: `${controller.constructor.name}.${route.methodName}`,
+                },
+                () => controller[route.methodName](ctx, next),
+            );
+        });
 
         return middleware;
     }
