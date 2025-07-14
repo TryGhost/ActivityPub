@@ -93,4 +93,22 @@ export class WebhookController {
             status: 200,
         });
     }
+
+    async handlePostUnpublished(ctx: AppContext) {
+        return new Response(null, {
+            status: 200,
+        });
+    }
+
+    async handlePostUpdated(ctx: AppContext) {
+        return new Response(null, {
+            status: 200,
+        });
+    }
+
+    async handlePostDeleted(ctx: AppContext) {
+        return new Response(null, {
+            status: 200,
+        });
+    }
 }

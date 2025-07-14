@@ -883,6 +883,36 @@ app.post(
     }),
 );
 
+app.post(
+    '/.ghost/activitypub/v1/webhooks/post/unpublished',
+    validateWebhook(),
+    spanWrapper((ctx: AppContext) => {
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostUnpublished(ctx);
+    }),
+);
+
+app.post(
+    '/.ghost/activitypub/v1/webhooks/post/updated',
+    validateWebhook(),
+    spanWrapper((ctx: AppContext) => {
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostUpdated(ctx);
+    }),
+);
+
+app.post(
+    '/.ghost/activitypub/v1/webhooks/post/deleted',
+    validateWebhook(),
+    spanWrapper((ctx: AppContext) => {
+        const webhookController =
+            container.resolve<WebhookController>('webhookController');
+        return webhookController.handlePostDeleted(ctx);
+    }),
+);
+
 routeRegistry.registerController('webFingerController', WebFingerController);
 routeRegistry.registerController('followController', FollowController);
 routeRegistry.registerController('likeController', LikeController);
