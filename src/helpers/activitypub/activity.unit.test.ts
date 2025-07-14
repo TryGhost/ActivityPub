@@ -4,6 +4,7 @@ import {
     Create,
     Note as FedifyNote,
     type Object as FedifyObject,
+    Update,
 } from '@fedify/fedify';
 import { AccountEntity } from 'account/account.entity';
 import type { UriBuilder } from 'activitypub/uri';
@@ -13,7 +14,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     buildAnnounceActivityForPost,
     buildCreateActivityAndObjectFromPost,
+    buildUpdateActivityAndObjectFromPost,
 } from './activity';
+
+vi.mock('node:crypto', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('node:crypto')>();
+    return {
+        ...actual,
+        randomUUID: vi.fn(() => 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4'),
+    };
+});
 
 describe('Build activity', () => {
     let context: FedifyContext;
@@ -232,6 +242,79 @@ describe('Build activity', () => {
             await expect(
                 buildCreateActivityAndObjectFromPost(post, context),
             ).rejects.toThrow('Unsupported post type: 5');
+        });
+    });
+
+    describe('buildUpdateActivityAndObjectFromPost', () => {
+        it('should build an Update activity and Note object for a Note post', async () => {
+            const author = Object.create(AccountEntity);
+            author.id = 123;
+            author.username = 'testuser';
+            author.apId = new URL('https://example.com/user/foo');
+            author.apFollowers = new URL(
+                'https://example.com/user/foo/followers',
+            );
+
+            const post = Object.create(Post);
+            post.id = 'post-123';
+            post.author = author;
+            post.type = PostType.Note;
+            post.content = 'Updated note content';
+            post.apId = new URL('https://example.com/note/post-123');
+            post.mentions = [];
+            post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+            post.publishedAt = new Date('2025-01-01T00:00:00Z');
+
+            const result = await buildUpdateActivityAndObjectFromPost(
+                post,
+                context,
+            );
+
+            expect(result.updateActivity).toBeInstanceOf(Update);
+            expect(result.fedifyObject).toBeInstanceOf(FedifyNote);
+
+            const updateJsonLd = await result.updateActivity.toJsonLd();
+            await expect(updateJsonLd).toMatchFileSnapshot(
+                './__snapshots__/note-update-activity.json',
+            );
+        });
+
+        it('should build an Update activity and Article object for an Article post', async () => {
+            const author = Object.create(AccountEntity);
+            author.id = 123;
+            author.username = 'testuser';
+            author.apId = new URL('https://example.com/user/foo');
+            author.apFollowers = new URL(
+                'https://example.com/user/foo/followers',
+            );
+
+            const post = Object.create(Post);
+            post.id = 'post-123';
+            post.author = author;
+            post.type = PostType.Article;
+            post.title = 'Updated post title';
+            post.content = 'Updated post content';
+            post.excerpt = 'Updated post excerpt';
+            post.imageUrl = new URL(
+                'https://example.com/img/post-123_updated_feature.jpg',
+            );
+            post.publishedAt = new Date('2025-01-12T10:30:00Z');
+            post.url = new URL('https://example.com/post/post-123');
+            post.apId = new URL('https://example.com/article/post-123');
+            post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+
+            const result = await buildUpdateActivityAndObjectFromPost(
+                post,
+                context,
+            );
+
+            expect(result.updateActivity).toBeInstanceOf(Update);
+            expect(result.fedifyObject).toBeInstanceOf(Article);
+
+            const updateJsonLd = await result.updateActivity.toJsonLd();
+            await expect(updateJsonLd).toMatchFileSnapshot(
+                './__snapshots__/article-update-activity.json',
+            );
         });
     });
 
