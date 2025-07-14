@@ -19,6 +19,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
+import { PostUpdatedEvent } from './post-updated.event';
 import {
     Audience,
     OutboxType,
@@ -1984,7 +1985,20 @@ describe('KnexPostRepository', () => {
 
             expect(post.isUpdateDirty).toBe(true);
 
+            const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
             await postRepository.save(post);
+
+            expect(eventsEmitSpy).toHaveBeenCalledWith(
+                PostUpdatedEvent.getName(),
+                expect.objectContaining({
+                    getPost: expect.any(Function),
+                }),
+            );
+
+            const emittedEvent = eventsEmitSpy.mock.calls.find(
+                (call) => call[0] === PostUpdatedEvent.getName(),
+            )?.[1];
+            expect(emittedEvent?.getPost()).toEqual(post);
 
             const updatedRowInDb = await client('posts')
                 .where({ uuid: post.uuid })
@@ -2046,7 +2060,10 @@ describe('KnexPostRepository', () => {
 
             expect(post.isUpdateDirty).toBe(false);
 
+            const eventsEmitSpy = vi.spyOn(events, 'emitAsync');
             await postRepository.save(post);
+
+            expect(eventsEmitSpy).not.toHaveBeenCalled();
 
             const afterSaveRowInDb = await client('posts')
                 .where({ uuid: post.uuid })
