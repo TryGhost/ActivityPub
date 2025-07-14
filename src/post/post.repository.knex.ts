@@ -9,6 +9,7 @@ import { PostDeletedEvent } from './post-deleted.event';
 import { PostDerepostedEvent } from './post-dereposted.event';
 import { PostLikedEvent } from './post-liked.event';
 import { PostRepostedEvent } from './post-reposted.event';
+import { PostUpdatedEvent } from './post-updated.event';
 import {
     type Audience,
     type CreatePostType,
@@ -188,6 +189,7 @@ export class KnexPostRepository {
             let likeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
+            let wasUpdated = false;
             let outboxType: OutboxType = OutboxType.Original;
 
             if (isNewPost) {
@@ -291,6 +293,21 @@ export class KnexPostRepository {
 
                     wasDeleted = true;
                 }
+            } else if (post.isUpdateDirty) {
+                await transaction('posts')
+                    .update({
+                        title: post.title,
+                        excerpt: post.excerpt,
+                        summary: post.summary,
+                        content: post.content,
+                        image_url: post.imageUrl?.href || null,
+                        url: post.url.href,
+                        metadata: post.metadata
+                            ? JSON.stringify(post.metadata)
+                            : null,
+                    })
+                    .where({ id: post.id });
+                wasUpdated = true;
             } else {
                 if (likesToAdd.length > 0 || likesToRemove.length > 0) {
                     const { insertedLikesCount, accountIdsInserted } =
@@ -437,6 +454,13 @@ export class KnexPostRepository {
                 await this.events.emitAsync(
                     PostDeletedEvent.getName(),
                     new PostDeletedEvent(post, post.author.id),
+                );
+            }
+
+            if (wasUpdated) {
+                await this.events.emitAsync(
+                    PostUpdatedEvent.getName(),
+                    new PostUpdatedEvent(post),
                 );
             }
 

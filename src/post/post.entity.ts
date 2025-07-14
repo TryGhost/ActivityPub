@@ -64,6 +64,16 @@ export interface GhostPost {
     authors?: GhostAuthor[] | null;
 }
 
+export interface PostUpdateParams {
+    title: PostTitle | null;
+    content: string | null;
+    excerpt: PostSummary | null;
+    summary: PostSummary | null;
+    imageUrl: URL | null;
+    url: URL;
+    metadata: Metadata | null;
+}
+
 export interface PostAttachment {
     type: string | null;
     mediaType: string | null;
@@ -122,7 +132,7 @@ export type CreatePostError = 'private-content' | 'missing-content';
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;
-    public readonly url: URL;
+    private _url: URL;
     private likesToRemove: Set<number> = new Set();
     private likesToAdd: Set<number> = new Set();
     private repostsToAdd: Set<number> = new Set();
@@ -130,7 +140,13 @@ export class Post extends BaseEntity {
     private deleted = false;
     private _likeCountDirty = false;
     private _repostCountDirty = false;
-    public readonly content: string | null;
+    private _updateDirty = false;
+    private _content: string | null;
+    private _title: PostTitle | null;
+    private _excerpt: PostSummary | null;
+    private _summary: PostSummary | null;
+    private _imageUrl: URL | null;
+    private _metadata: Metadata | null;
     public readonly mentions: MentionedAccount[] = [];
 
     constructor(
@@ -139,14 +155,14 @@ export class Post extends BaseEntity {
         public readonly author: Account,
         public readonly type: CreatePostType,
         public readonly audience: Audience,
-        public readonly title: PostTitle | null,
-        public readonly excerpt: PostSummary | null,
-        public readonly summary: PostSummary | null,
+        title: PostTitle | null,
+        excerpt: PostSummary | null,
+        summary: PostSummary | null,
         content: string | null,
         url: URL | null,
-        public readonly imageUrl: URL | null,
+        imageUrl: URL | null,
         public readonly publishedAt: Date,
-        public readonly metadata: Metadata | null = null,
+        metadata: Metadata | null = null,
         private _likeCount = 0,
         private _repostCount = 0,
         public readonly replyCount = 0,
@@ -173,15 +189,48 @@ export class Post extends BaseEntity {
             this.apId = apId;
         }
         if (url === null) {
-            this.url = this.apId;
+            this._url = this.apId;
         } else {
-            this.url = url;
+            this._url = url;
         }
-        this.content = content !== null ? sanitizeHtml(content) : null;
+        this._title = title;
+        this._excerpt = excerpt;
+        this._summary = summary;
+        this._content = content !== null ? sanitizeHtml(content) : null;
+        this._imageUrl = imageUrl;
+        this._metadata = metadata;
         if (_deleted) {
             this.deleted = true;
             this.handleDeleted();
         }
+    }
+
+    get title(): PostTitle | null {
+        return this._title;
+    }
+
+    get excerpt(): PostSummary | null {
+        return this._excerpt;
+    }
+
+    get summary(): PostSummary | null {
+        return this._summary;
+    }
+
+    get content(): string | null {
+        return this._content;
+    }
+
+    get imageUrl(): URL | null {
+        return this._imageUrl;
+    }
+
+    get url(): URL {
+        return this._url;
+    }
+
+    get metadata(): Metadata | null {
+        return this._metadata;
     }
 
     get isInternal() {
@@ -199,18 +248,35 @@ export class Post extends BaseEntity {
         this.handleDeleted();
     }
 
+    update(account: Account, params: PostUpdateParams) {
+        if (account.uuid !== this.author.uuid) {
+            throw new Error(
+                `Account ${account.uuid} cannot update Post ${this.uuid}`,
+            );
+        }
+        this._updateDirty = true;
+
+        this._title = params.title;
+        this._content = params.content ? sanitizeHtml(params.content) : null;
+        this._excerpt = params.excerpt;
+        this._summary = params.summary;
+        this._imageUrl = params.imageUrl;
+        this._url = params.url;
+        this._metadata = params.metadata;
+    }
+
     private handleDeleted() {
         // TODO: Clean up the any type
         // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
         const self = this as any;
         self.type = PostType.Tombstone;
-        self.title = null;
-        self.content = null;
-        self.excerpt = null;
-        self.summary = null;
-        self.imageUrl = null;
+        this._title = null;
+        this._content = null;
+        this._excerpt = null;
+        this._summary = null;
+        this._imageUrl = null;
         self.attachments = [];
-        self.metadata = null;
+        this._metadata = null;
     }
 
     static isDeleted(post: Post) {
@@ -312,9 +378,14 @@ export class Post extends BaseEntity {
         return this._repostCountDirty;
     }
 
+    get isUpdateDirty() {
+        return this._updateDirty;
+    }
+
     clearDirtyFlags() {
         this._likeCountDirty = false;
         this._repostCountDirty = false;
+        this._updateDirty = false;
     }
 
     static async createArticleFromGhostPost(
