@@ -1908,6 +1908,159 @@ describe('KnexPostRepository', () => {
         });
     });
 
+    describe('Post Updates', () => {
+        it('should handle updating a post with new parameters', async () => {
+            const site =
+                await siteService.initialiseSiteForHost('testing-update.com');
+            const account = await accountRepository.getBySite(site);
+
+            // Original post
+            const postResult = await Post.createArticleFromGhostPost(account, {
+                title: 'Original Title',
+                uuid: randomUUID(),
+                html: '<p>Original content</p>',
+                excerpt: 'Original excerpt',
+                custom_excerpt: 'Original summary',
+                feature_image: 'https://example.com/original-image.jpg',
+                url: 'https://testing-update.com/original-post',
+                published_at: '2025-01-01',
+                visibility: 'public',
+                authors: [
+                    {
+                        name: 'Original Author',
+                        profile_image:
+                            'https://example.com/original-author.jpg',
+                    },
+                ],
+            });
+            const post = getValue(postResult as Ok<Post>) as Post;
+
+            await postRepository.save(post);
+
+            const originalRowInDb = await client('posts')
+                .where({ uuid: post.uuid })
+                .select('*')
+                .first();
+
+            expect(originalRowInDb.title).toBe('Original Title');
+            expect(originalRowInDb.content).toBe('<p>Original content</p>');
+            expect(originalRowInDb.excerpt).toBe('Original excerpt');
+            expect(originalRowInDb.summary).toBe('Original summary');
+            expect(originalRowInDb.image_url).toBe(
+                'https://example.com/original-image.jpg',
+            );
+            expect(originalRowInDb.url).toBe(
+                'https://testing-update.com/original-post',
+            );
+            expect(originalRowInDb.metadata).toEqual({
+                ghostAuthors: [
+                    {
+                        name: 'Original Author',
+                        profile_image:
+                            'https://example.com/original-author.jpg',
+                    },
+                ],
+            });
+
+            const updateParams = {
+                title: PostTitle.parse('Updated Title'),
+                content: '<p>Updated content</p>',
+                excerpt: PostSummary.parse('Updated excerpt'),
+                summary: PostSummary.parse('Updated summary'),
+                imageUrl: new URL('https://example.com/updated-image.jpg'),
+                url: new URL('https://testing-update.com/updated-post'),
+                metadata: {
+                    ghostAuthors: [
+                        {
+                            name: 'Updated Author',
+                            profile_image:
+                                'https://example.com/updated-author.jpg',
+                        },
+                    ],
+                },
+            };
+
+            post.update(account, updateParams);
+
+            expect(post.isUpdateDirty).toBe(true);
+
+            await postRepository.save(post);
+
+            const updatedRowInDb = await client('posts')
+                .where({ uuid: post.uuid })
+                .select('*')
+                .first();
+
+            expect(updatedRowInDb.title).toBe('Updated Title');
+            expect(updatedRowInDb.content).toBe('<p>Updated content</p>');
+            expect(updatedRowInDb.excerpt).toBe('Updated excerpt');
+            expect(updatedRowInDb.summary).toBe('Updated summary');
+            expect(updatedRowInDb.image_url).toBe(
+                'https://example.com/updated-image.jpg',
+            );
+            expect(updatedRowInDb.url).toBe(
+                'https://testing-update.com/updated-post',
+            );
+            expect(updatedRowInDb.metadata).toEqual({
+                ghostAuthors: [
+                    {
+                        name: 'Updated Author',
+                        profile_image: 'https://example.com/updated-author.jpg',
+                    },
+                ],
+            });
+
+            expect(
+                new Date(updatedRowInDb.updated_at).getTime(),
+            ).toBeGreaterThan(new Date(originalRowInDb.updated_at).getTime());
+
+            expect(post.isUpdateDirty).toBe(false);
+        });
+
+        it('should not update database if no updated parameters are provided', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-no-update.com',
+            );
+            const account = await accountRepository.getBySite(site);
+
+            const postResult = await Post.createArticleFromGhostPost(account, {
+                title: 'Original Title',
+                uuid: randomUUID(),
+                html: '<p>Original content</p>',
+                excerpt: 'Original excerpt',
+                custom_excerpt: null,
+                feature_image: null,
+                url: 'https://testing-no-update.com/original-post',
+                published_at: '2025-01-01',
+                visibility: 'public',
+                authors: [],
+            });
+            const post = getValue(postResult as Ok<Post>) as Post;
+
+            await postRepository.save(post);
+
+            const originalRowInDb = await client('posts')
+                .where({ uuid: post.uuid })
+                .select('*')
+                .first();
+
+            expect(post.isUpdateDirty).toBe(false);
+
+            await postRepository.save(post);
+
+            const afterSaveRowInDb = await client('posts')
+                .where({ uuid: post.uuid })
+                .select('*')
+                .first();
+
+            expect(afterSaveRowInDb.updated_at).toEqual(
+                originalRowInDb.updated_at,
+            );
+            expect(afterSaveRowInDb.title).toBe(originalRowInDb.title);
+            expect(afterSaveRowInDb.content).toBe(originalRowInDb.content);
+        });
+    });
+
     describe('dirty flag behavior', () => {
         it('should not update external post counts when dirty flags are false', async () => {
             const externalAccount =
