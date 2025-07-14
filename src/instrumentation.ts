@@ -1,3 +1,4 @@
+import { IncomingMessage } from 'node:http';
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
 import {
     BatchSpanProcessor,
@@ -21,6 +22,39 @@ export async function setupInstrumentation() {
             release: process.env.K_REVISION,
             tracesSampleRate: 1.0,
             maxValueLength: 2000,
+            integrations: [
+                // Customize HTTP integration to use better span names
+                Sentry.httpIntegration({
+                    instrumentation: {
+                        requestHook: (span, req) => {
+                            // Only process IncomingMessage (server-side requests)
+                            if (span && req instanceof IncomingMessage) {
+                                if (req.url && req.method) {
+                                    try {
+                                        const url = new URL(
+                                            req.url,
+                                            `http://${req.headers.host || 'localhost'}`,
+                                        );
+                                        span.updateName(
+                                            `${req.method} ${url.pathname}`,
+                                        );
+                                        span.setAttributes({
+                                            'service.name': 'activitypub',
+                                            'http.method': req.method,
+                                            'http.route': url.pathname,
+                                            'http.url': req.url,
+                                            'http.target': url.pathname,
+                                        });
+                                    } catch (e) {
+                                        // Ignore URL parsing errors
+                                    }
+                                }
+                            }
+                        },
+                        applyCustomAttributesOnSpan: (span) => {},
+                    },
+                }),
+            ],
         });
 
         if (process.env.K_SERVICE) {

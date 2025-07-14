@@ -5,6 +5,8 @@ import type {
 } from '@fedify/fedify';
 import type { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
+import { context, propagation } from '@opentelemetry/api';
+import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
@@ -65,6 +67,36 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      * @param message Message to enqueue
      */
     async enqueue(
+        message: FedifyMessage,
+        options?: MessageQueueEnqueueOptions,
+    ): Promise<void> {
+        return await Sentry.startSpan(
+            {
+                op: 'queue.publish',
+                name: 'pubsub.message.publish',
+                attributes: {
+                    'messaging.system': 'pubsub',
+                    'messaging.destination': this.topic,
+                    'fedify.message_id': message.id,
+                },
+            },
+            async () => {
+                const carrier: Record<string, string> = {};
+                const activeContext = context.active();
+                propagation.inject(activeContext, carrier);
+
+                return this._enqueue(
+                    {
+                        ...message,
+                        traceContext: carrier,
+                    },
+                    options,
+                );
+            },
+        );
+    }
+
+    private async _enqueue(
         message: FedifyMessage,
         options?: MessageQueueEnqueueOptions,
     ): Promise<void> {
@@ -302,13 +334,68 @@ export function createPushMessageHandler(
             return new Response(null, { status: 400 });
         }
 
+        const message = {
+            id: json.message.message_id,
+            data,
+            attributes: json.message.attributes,
+        };
+
+        // TODO: zod schema on FedifyMessage OR have Fedify export a type for us.
+        if (
+            message.data.traceContext &&
+            typeof message.data.traceContext === 'object' &&
+            'baggage' in message.data.traceContext &&
+            'sentry-trace' in message.data.traceContext &&
+            typeof message.data.traceContext.baggage === 'string' &&
+            typeof message.data.traceContext['sentry-trace'] === 'string'
+        ) {
+            logger.debug(
+                `Continuing trace from message [FedifyID: ${message.id}] - traceContext: {traceContext}`,
+                {
+                    fedifyId: message.id,
+                    traceContext: message.data.traceContext,
+                },
+            );
+
+            return Sentry.continueTrace(
+                {
+                    sentryTrace: message.data.traceContext['sentry-trace'],
+                    baggage: message.data.traceContext.baggage,
+                },
+                () => {
+                    return Sentry.startSpan(
+                        {
+                            op: 'queue.process',
+                            name: 'pubsub.message.handle',
+                            attributes: {
+                                'messaging.system': 'pubsub',
+                                'messaging.message_id': message.id,
+                                'fedify.message_id': message.id,
+                            },
+                        },
+                        () => {
+                            const carrier: Record<string, string> = {};
+                            const activeContext = context.active();
+                            propagation.inject(activeContext, carrier);
+
+                            message.data.traceContext = carrier;
+
+                            // Handle the message
+                            return mq
+                                .handleMessage(message)
+                                .then(() => new Response(null, { status: 200 }))
+                                .catch(
+                                    () => new Response(null, { status: 500 }),
+                                );
+                        },
+                    );
+                },
+            );
+        }
+
         // Handle the message
         return mq
-            .handleMessage({
-                id: json.message.message_id,
-                data,
-                attributes: json.message.attributes,
-            })
+            .handleMessage(message)
             .then(() => new Response(null, { status: 200 }))
             .catch(() => new Response(null, { status: 500 }));
     };

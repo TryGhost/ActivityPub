@@ -89,7 +89,6 @@ import {
 import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
-import { getRequestData } from './helpers/request-data';
 import {
     GhostRole,
     createRoleMiddleware,
@@ -155,6 +154,11 @@ await configure({
                 toLogLevel(process.env.LOG_LEVEL_FEDIFY) ||
                 toLogLevel(process.env.LOG_LEVEL) ||
                 'warning',
+        },
+        {
+            category: ['logtape', 'meta'],
+            sinks: ['console'],
+            level: 'error',
         },
     ],
 });
@@ -608,36 +612,14 @@ app.use(async (ctx, next) => {
 
     ctx.set('logger', globalLogging.with(extra));
 
-    return Sentry.withIsolationScope((scope) => {
-        scope.addEventProcessor((event) => {
-            Sentry.addRequestDataToEvent(event, getRequestData(ctx.req.raw));
-            return event;
-        });
-
-        return Sentry.continueTrace(
-            {
-                sentryTrace: ctx.req.header('sentry-trace'),
-                baggage: ctx.req.header('baggage'),
-            },
-            () => {
-                return Sentry.startSpan(
-                    {
-                        op: 'http.server',
-                        name: `${ctx.req.method} ${ctx.req.path}`,
-                        attributes: {
-                            ...extra,
-                            'service.name': 'activitypub',
-                        },
-                    },
-                    () => {
-                        return withContext(extra, () => {
-                            return next();
-                        });
-                    },
-                );
-            },
-        );
+    await withContext(extra, () => {
+        return next();
     });
+
+    // Uses the Hono path e.g. /path/:id instead of /path/123
+    Sentry.getActiveSpan()?.updateName(
+        `${ctx.req.method} ${ctx.req.routePath}`,
+    );
 });
 
 app.use(async (ctx, next) => {
