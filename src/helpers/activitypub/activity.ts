@@ -22,7 +22,7 @@ async function getFedifyObjectForPost(
     let ccs: URL[] = [];
     const updatedAt = post.updatedAt
         ? Temporal.Instant.from(post.updatedAt.toISOString())
-        : Temporal.Now.instant();
+        : Temporal.Instant.from(post.publishedAt.toISOString());
 
     if (post.type === PostType.Note) {
         mentions = post.mentions.map(

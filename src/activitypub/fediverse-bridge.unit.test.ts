@@ -16,25 +16,6 @@ import type { UriBuilder } from './uri';
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 
-vi.mock('@js-temporal/polyfill', async () => {
-    const original = await vi.importActual<
-        typeof import('@js-temporal/polyfill')
-    >('@js-temporal/polyfill');
-    return {
-        Temporal: {
-            ...original.Temporal,
-            Now: {
-                // Return a fixed instant for deterministic testing
-                instant: vi
-                    .fn()
-                    .mockReturnValue(
-                        original.Temporal.Instant.from('2025-01-15T10:30:00Z'),
-                    ),
-            },
-        },
-    };
-});
-
 describe('FediverseBridge', () => {
     let events: EventEmitter;
     let accountService: AccountService;
