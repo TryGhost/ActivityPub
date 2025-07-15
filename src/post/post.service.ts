@@ -35,6 +35,7 @@ import {
     Post,
     type PostAttachment,
     PostType,
+    type PostUpdateParams,
 } from './post.entity';
 import type { KnexPostRepository, Outbox } from './post.repository.knex';
 
@@ -56,6 +57,8 @@ export type RepostError =
 export type GhostPostError = CreatePostError | 'post-already-exists';
 
 export type DeletePostError = GetByApIdError | 'not-author';
+
+export type UpdatePostError = 'post-not-found' | 'not-author';
 
 export const INTERACTION_COUNTS_NOT_FOUND = 'interaction-counts-not-found';
 export type UpdateInteractionCountsError =
@@ -540,5 +543,33 @@ export class PostService {
         post.delete(account);
         await this.postRepository.save(post);
         return ok(true);
+    }
+
+    async updateByApId(
+        apId: URL,
+        account: Account,
+        params: PostUpdateParams,
+    ): Promise<Result<Post, UpdatePostError>> {
+        const post = await this.postRepository.getByApId(apId);
+        if (post === null) {
+            return error('post-not-found');
+        }
+        if (post.author.uuid !== account.uuid) {
+            return error('not-author');
+        }
+        if (
+            post.title !== params.title ||
+            post.content !== params.content ||
+            post.excerpt !== params.excerpt ||
+            post.summary !== params.summary ||
+            post.imageUrl?.href !== params.imageUrl?.href ||
+            post.url.href !== params.url.href ||
+            JSON.stringify(post.metadata) !== JSON.stringify(params.metadata)
+        ) {
+            post.update(account, params);
+            await this.postRepository.save(post);
+        }
+
+        return ok(post);
     }
 }

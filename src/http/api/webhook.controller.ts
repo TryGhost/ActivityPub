@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import type { GhostPostService } from 'ghost-post/ghost-post.service';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { postToDTO } from './helpers/post';
@@ -36,7 +37,10 @@ const PostPublishedWebhookSchema = z.object({
 });
 
 export class WebhookController {
-    constructor(private readonly postService: PostService) {}
+    constructor(
+        private readonly postService: PostService,
+        private readonly ghostPostService: GhostPostService,
+    ) {}
 
     /**
      * Handle a post.published webhook
@@ -101,6 +105,23 @@ export class WebhookController {
     }
 
     async handlePostUpdated(ctx: AppContext) {
+        let data: PostInput;
+
+        try {
+            data = PostPublishedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.current;
+        } catch (err) {
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
+        }
+
+        const account = ctx.get('account');
+
+        await this.ghostPostService.updateArticleFromGhostPost(account, data);
+
         return new Response(null, {
             status: 200,
         });

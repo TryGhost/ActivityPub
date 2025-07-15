@@ -28,7 +28,13 @@ import type { ImageStorageService } from 'storage/image-storage.service';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { OutboxType, Post, PostType } from './post.entity';
+import {
+    OutboxType,
+    Post,
+    PostSummary,
+    PostTitle,
+    PostType,
+} from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
 import { PostService } from './post.service';
 
@@ -1093,6 +1099,176 @@ describe('PostService', () => {
                 .select('deleted_at')
                 .first();
             expect(rowInDb.deleted_at).not.toBeNull();
+        });
+    });
+
+    describe('updateByApId', () => {
+        it('should update a post successfully', async () => {
+            const post = await fixtureManager.createPost(account);
+
+            const updateParams = {
+                title: PostTitle.parse('Updated Title'),
+                content: '<p>Updated content</p>',
+                excerpt: PostSummary.parse('Updated excerpt'),
+                summary: PostSummary.parse('Updated summary'),
+                imageUrl: new URL('https://example.com/updated-image.jpg'),
+                url: new URL('https://example.com/updated-url'),
+                metadata: {
+                    ghostAuthors: [
+                        { name: 'Updated Author', profile_image: null },
+                    ],
+                },
+            };
+
+            const result = await postService.updateByApId(
+                post.apId,
+                account,
+                updateParams,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const updatedPost = getValue(result);
+            expect(updatedPost.title).toBe(updateParams.title);
+            expect(updatedPost.content).toBe(updateParams.content);
+            expect(updatedPost.excerpt).toBe(updateParams.excerpt);
+            expect(updatedPost.summary).toBe(updateParams.summary);
+            expect(updatedPost.imageUrl?.href).toBe(updateParams.imageUrl.href);
+            expect(updatedPost.url.href).toBe(updateParams.url.href);
+            expect(updatedPost.metadata).toEqual(updateParams.metadata);
+        });
+
+        it('should return post without updating when no changes are made', async () => {
+            const post = await fixtureManager.createPost(account);
+
+            const updateParams = {
+                title: post.title,
+                content: post.content,
+                excerpt: post.excerpt,
+                summary: post.summary,
+                imageUrl: post.imageUrl,
+                url: post.url,
+                metadata: post.metadata,
+            };
+
+            const result = await postService.updateByApId(
+                post.apId,
+                account,
+                updateParams,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const updatedPost = getValue(result);
+            expect(updatedPost.id).toBe(post.id);
+            expect(updatedPost.title).toBe(post.title);
+            expect(updatedPost.content).toBe(post.content);
+        });
+
+        it('should return error when post is not found', async () => {
+            const nonExistentPostUrl = new URL(
+                'https://example.com/posts/nonexistent',
+            );
+
+            const updateParams = {
+                title: PostTitle.parse('Updated Title'),
+                content: '<p>Updated content</p>',
+                excerpt: PostSummary.parse('Updated excerpt'),
+                summary: PostSummary.parse('Updated summary'),
+                imageUrl: new URL('https://example.com/updated-image.jpg'),
+                url: new URL('https://example.com/updated-url'),
+                metadata: {
+                    ghostAuthors: [
+                        { name: 'Updated Author', profile_image: null },
+                    ],
+                },
+            };
+
+            const result = await postService.updateByApId(
+                nonExistentPostUrl,
+                account,
+                updateParams,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('post-not-found');
+        });
+
+        it('should return error when account is not the author', async () => {
+            const [otherAccount] = await fixtureManager.createInternalAccount();
+            const otherPost = await fixtureManager.createPost(otherAccount);
+
+            const updateParams = {
+                title: PostTitle.parse('Updated Title'),
+                content: '<p>Updated content</p>',
+                excerpt: PostSummary.parse('Updated excerpt'),
+                summary: PostSummary.parse('Updated summary'),
+                imageUrl: new URL('https://example.com/updated-image.jpg'),
+                url: new URL('https://example.com/updated-url'),
+                metadata: {
+                    ghostAuthors: [
+                        { name: 'Updated Author', profile_image: null },
+                    ],
+                },
+            };
+
+            const result = await postService.updateByApId(
+                otherPost.apId,
+                account,
+                updateParams,
+            );
+
+            if (!isError(result)) {
+                throw new Error('Expected result to be an error');
+            }
+
+            expect(getError(result)).toBe('not-author');
+
+            // Verify the post was not updated
+            const savedPost = await postRepository.getById(otherPost.id!);
+            expect(savedPost).not.toBeNull();
+            expect(savedPost!.title).toBe(otherPost.title);
+            expect(savedPost!.content).toBe(otherPost.content);
+        });
+
+        it('should handle null values in update params', async () => {
+            const post = await fixtureManager.createPost(account);
+
+            const updateParams = {
+                title: null,
+                content: null,
+                excerpt: null,
+                summary: null,
+                imageUrl: null,
+                url: new URL('https://example.com/updated-url'),
+                metadata: null,
+            };
+
+            const result = await postService.updateByApId(
+                post.apId,
+                account,
+                updateParams,
+            );
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const updatedPost = getValue(result);
+            expect(updatedPost.title).toBeNull();
+            expect(updatedPost.content).toBeNull();
+            expect(updatedPost.excerpt).toBeNull();
+            expect(updatedPost.summary).toBeNull();
+            expect(updatedPost.imageUrl).toBeNull();
+            expect(updatedPost.url.href).toBe(updateParams.url.href);
+            expect(updatedPost.metadata).toBeNull();
         });
     });
 });

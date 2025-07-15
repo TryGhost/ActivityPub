@@ -33,6 +33,7 @@ import { GhostExploreService } from 'explore/ghost-explore.service';
 import { FeedUpdateService } from 'feed/feed-update.service';
 import { FeedService } from 'feed/feed.service';
 import { FlagService } from 'flag/flag.service';
+import { GhostPostService } from 'ghost-post/ghost-post.service';
 import { getSiteSettings } from 'helpers/ghost';
 import { AccountController } from 'http/api/account.controller';
 import { BlockController } from 'http/api/block.controller';
@@ -145,6 +146,10 @@ export function registerDependencies(
     );
     container.register('accountService', asClass(AccountService).singleton());
     container.register('postService', asClass(PostService).singleton());
+    container.register(
+        'ghostPostService',
+        asClass(GhostPostService).singleton(),
+    );
     container.register(
         'postInteractionCountsService',
         asClass(PostInteractionCountsService).singleton(),
