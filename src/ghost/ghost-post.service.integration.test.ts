@@ -426,7 +426,10 @@ describe('GhostPostService', () => {
                 .spyOn(postService, 'deleteByApId')
                 .mockResolvedValue(['not-author', null]);
 
-            const deleteResult = await ghostPostService.deleteGhostPost(account, uuid);
+            const deleteResult = await ghostPostService.deleteGhostPost(
+                account,
+                uuid,
+            );
 
             const apId = account.getApIdForPost({
                 uuid,
