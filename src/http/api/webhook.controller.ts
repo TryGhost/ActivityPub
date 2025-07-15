@@ -1,3 +1,4 @@
+import type { Logger } from '@logtape/logtape';
 import { z } from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
@@ -5,7 +6,7 @@ import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { postToDTO } from './helpers/post';
-import { BadRequest } from './helpers/response';
+import { BadRequest, Forbidden } from './helpers/response';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -36,10 +37,19 @@ const PostPublishedWebhookSchema = z.object({
     }),
 });
 
+const PostDeletedWebhookSchema = z.object({
+    post: z.object({
+        previous: z.object({
+            uuid: z.string().uuid(),
+        }),
+    }),
+});
+
 export class WebhookController {
     constructor(
         private readonly postService: PostService,
         private readonly ghostPostService: GhostPostService,
+        private readonly logger: Logger,
     ) {}
 
     /**
@@ -128,6 +138,45 @@ export class WebhookController {
     }
 
     async handlePostDeleted(ctx: AppContext) {
+        let uuid: string;
+        try {
+            uuid = PostDeletedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.previous.uuid;
+        } catch (err) {
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
+        }
+
+        const account = ctx.get('account');
+
+        const deleteResult = await this.ghostPostService.deleteGhostPost(
+            account,
+            uuid,
+        );
+
+        if (isError(deleteResult)) {
+            const error = getError(deleteResult);
+            this.logger.error(
+                'Failed to delete post with uuid: {uuid}, error: {error}',
+                { uuid, error: error },
+            );
+            switch (error) {
+                case 'upstream-error':
+                case 'not-a-post':
+                case 'missing-author':
+                    return BadRequest('Failed to delete ghost post');
+                case 'not-author':
+                    return Forbidden(
+                        `Failed to delete ghost post, ${account.name} is not the author of this post`,
+                    );
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
         return new Response(null, {
             status: 200,
         });
