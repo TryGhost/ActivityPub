@@ -8,6 +8,7 @@ import {
     type Context,
     Create,
     Delete,
+    type Federation,
     Follow,
     type KvStore,
     Like,
@@ -16,7 +17,6 @@ import {
     type RequestContext,
     Undo,
     Update,
-    createFederation,
 } from '@fedify/fedify';
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
@@ -27,7 +27,6 @@ import {
     configure,
     getAnsiColorFormatter,
     getConsoleSink,
-    getLogger,
     isLogLevel,
     withContext,
 } from '@logtape/logtape';
@@ -39,8 +38,7 @@ import type { FollowHandler } from 'activity-handlers/follow.handler';
 import type { UpdateHandler } from 'activity-handlers/update.handler';
 import type { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { get } from 'es-toolkit/compat';
-import { EventSerializer } from 'events/event';
-import { PubSubEvents } from 'events/pubsub';
+import type { EventSerializer } from 'events/event';
 import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
@@ -96,13 +94,11 @@ import {
 } from './http/middleware/role-guard';
 import { RouteRegistry } from './http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
-import { KnexKvStore } from './knex.kvstore';
 import {
-    GCloudPubSubPushMessageQueue,
+    type GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
 import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interaction-counts-update-requested.event';
-import { getFullTopic, initPubSubClient } from './pubsub';
 import type { Site, SiteService } from './site/site.service';
 
 await setupInstrumentation();
@@ -168,93 +164,23 @@ export type ContextData = {
     logger: Logger;
 };
 
-const globalLogging = getLogger(['activitypub']);
-export const globalFedifyKv = await KnexKvStore.create(knex, 'key_value');
+// Register all dependencies
+registerDependencies(container, { knex });
 
-const eventSerializer = new EventSerializer();
+const globalLogging = container.resolve<Logger>('logging');
 
-eventSerializer.register(
-    PostInteractionCountsUpdateRequestedEvent.getName(),
-    PostInteractionCountsUpdateRequestedEvent,
-);
-
-let globalQueue: GCloudPubSubPushMessageQueue | undefined;
-let globalPubSubEvents: PubSubEvents | undefined;
+// Init queue
+const globalQueue = container.resolve<GCloudPubSubPushMessageQueue>('queue');
 
 if (process.env.USE_MQ === 'true') {
     globalLogging.info('Message queue is enabled');
 
-    const pubSubClient = initPubSubClient({
-        host: process.env.MQ_PUBSUB_HOST || 'unknown_pubsub_host',
-        isEmulator: !['staging', 'production'].includes(
-            process.env.NODE_ENV || 'unknown_node_env',
-        ),
-        projectId: process.env.MQ_PUBSUB_PROJECT_ID || 'unknown_project_id',
+    globalQueue.registerErrorListener((error) => {
+        Sentry.captureException(error);
     });
-
-    try {
-        globalQueue = new GCloudPubSubPushMessageQueue(
-            globalLogging,
-            pubSubClient,
-            getFullTopic(
-                pubSubClient.projectId,
-                process.env.MQ_PUBSUB_TOPIC_NAME || 'unknown_pubsub_topic_name',
-            ),
-            process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
-            getFullTopic(
-                pubSubClient.projectId,
-                process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
-                    'unknown_pubsub_retry_topic_name',
-            ),
-        );
-
-        globalQueue.registerErrorListener((error) =>
-            Sentry.captureException(error),
-        );
-
-        globalPubSubEvents = new PubSubEvents(
-            pubSubClient,
-            getFullTopic(
-                pubSubClient.projectId,
-                process.env.MQ_PUBSUB_GHOST_TOPIC_NAME ||
-                    'unknown_pubsub_ghost_topic_name',
-            ),
-            eventSerializer,
-            globalLogging,
-        );
-    } catch (err) {
-        globalLogging.error('Failed to initialise message queue {error}', {
-            error: err,
-        });
-
-        process.exit(1);
-    }
 } else {
     globalLogging.info('Message queue is disabled');
 }
-
-export const globalFedify = createFederation<ContextData>({
-    kv: globalFedifyKv,
-    queue: globalQueue,
-    manuallyStartQueue: process.env.MANUALLY_START_QUEUE === 'true',
-    skipSignatureVerification:
-        process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
-        ['development', 'testing'].includes(process.env.NODE_ENV || ''),
-    allowPrivateAddress:
-        process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
-        ['development', 'testing'].includes(process.env.NODE_ENV || ''),
-    firstKnock: 'draft-cavage-http-signatures-12',
-});
-
-// Register all dependencies
-registerDependencies(container, {
-    knex,
-    globalLogging,
-    globalFedifyKv,
-    globalFedify,
-    globalQueue,
-    globalPubSubEvents,
-});
 
 /**
  * Fedify request context with app specific context data
@@ -264,6 +190,9 @@ registerDependencies(container, {
 export type FedifyRequestContext = RequestContext<ContextData>;
 export type FedifyContext = Context<ContextData>;
 
+const globalFedify = container.resolve<Federation<ContextData>>('fedify');
+const globalFedifyKv = container.resolve<KvStore>('fedifyKv');
+
 if (process.env.MANUALLY_START_QUEUE === 'true') {
     globalFedify.startQueue({
         globaldb: globalFedifyKv,
@@ -272,28 +201,24 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
 }
 
 // Initialize services that need it
-const fediverseBridge = container.resolve<FediverseBridge>('fediverseBridge');
-fediverseBridge.init();
+container.resolve<FediverseBridge>('fediverseBridge').init();
 
-const feedUpdateService =
-    container.resolve<FeedUpdateService>('feedUpdateService');
-feedUpdateService.init();
+container.resolve<FeedUpdateService>('feedUpdateService').init();
 
-const notificationEventService = container.resolve<NotificationEventService>(
-    'notificationEventService',
-);
-notificationEventService.init();
+container.resolve<NotificationEventService>('notificationEventService').init();
 
-const globalPostInteractionCountsService =
-    container.resolve<PostInteractionCountsService>(
-        'postInteractionCountsService',
+container.resolve<GhostExploreService>('ghostExploreService').init();
+
+container
+    .resolve<PostInteractionCountsService>('postInteractionCountsService')
+    .init();
+
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(
+        PostInteractionCountsUpdateRequestedEvent.getName(),
+        PostInteractionCountsUpdateRequestedEvent,
     );
-globalPostInteractionCountsService.init();
-
-const ghostExploreService = container.resolve<GhostExploreService>(
-    'ghostExploreService',
-);
-ghostExploreService.init();
 
 /** Fedify */
 
@@ -637,14 +562,10 @@ app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
     return handler(ctx);
 });
 
-// This needs to go before the middleware which loads the site
-// because this endpoint does not require the site to exist
-if (globalQueue instanceof GCloudPubSubPushMessageQueue) {
-    app.post(
-        '/.ghost/activitypub/pubsub/fedify/push',
-        spanWrapper(createPushMessageHandler(globalQueue, globalLogging)),
-    );
-}
+app.post(
+    '/.ghost/activitypub/pubsub/fedify/push',
+    spanWrapper(createPushMessageHandler(globalQueue, globalLogging)),
+);
 
 app.use(
     cors({

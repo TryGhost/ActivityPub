@@ -1,5 +1,6 @@
-import type { Federation, KvStore } from '@fedify/fedify';
-import type { Logger } from '@logtape/logtape';
+import { type KvStore, createFederation } from '@fedify/fedify';
+import type { PubSub } from '@google-cloud/pubsub';
+import { type Logger, getLogger } from '@logtape/logtape';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import { CreateHandler } from 'activity-handlers/create.handler';
@@ -11,7 +12,13 @@ import { FediverseBridge } from 'activitypub/fediverse-bridge';
 import { FollowersService } from 'activitypub/followers.service';
 import { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import type { ContextData } from 'app';
-import { type AwilixContainer, asClass, asFunction, asValue } from 'awilix';
+import {
+    type AwilixContainer,
+    aliasTo,
+    asClass,
+    asFunction,
+    asValue,
+} from 'awilix';
 import { AsyncEvents } from 'core/events';
 import {
     actorDispatcher,
@@ -27,7 +34,8 @@ import {
     createUndoHandler,
     keypairDispatcher,
 } from 'dispatchers';
-import type { PubSubEvents } from 'events/pubsub';
+import { EventSerializer } from 'events/event';
+import { PubSubEvents } from 'events/pubsub';
 import { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
 import { GhostExploreService } from 'explore/ghost-explore.service';
 import { FeedUpdateService } from 'feed/feed-update.service';
@@ -54,13 +62,15 @@ import { ReplyChainView } from 'http/api/views/reply.chain.view';
 import { WebFingerController } from 'http/api/webfinger.controller';
 import { WebhookController } from 'http/api/webhook.controller';
 import type { Knex } from 'knex';
+import { KnexKvStore } from 'knex.kvstore';
 import { ModerationService } from 'moderation/moderation.service';
-import type { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
+import { GCloudPubSubPushMessageQueue } from 'mq/gcloud-pubsub-push/mq';
 import { NotificationEventService } from 'notification/notification-event.service';
 import { NotificationService } from 'notification/notification.service';
 import { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { PostService } from 'post/post.service';
+import { getFullTopic, initPubSubClient } from 'pubsub';
 import { SiteService } from 'site/site.service';
 import { GCPStorageAdapter } from 'storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from 'storage/adapters/local-storage-adapter';
@@ -71,23 +81,115 @@ export function registerDependencies(
     container: AwilixContainer,
     deps: {
         knex: Knex;
-        globalLogging: Logger;
-        globalFedifyKv: KvStore;
-        globalFedify: Federation<ContextData>;
-        globalQueue?: GCloudPubSubPushMessageQueue;
-        globalPubSubEvents?: PubSubEvents;
     },
 ) {
-    container.register('logging', asValue(deps.globalLogging));
-    container.register('logger', asValue(deps.globalLogging));
+    container.register({
+        logging: asFunction(() => {
+            return getLogger(['activitypub']);
+        }).singleton(),
+        logger: aliasTo('logging'),
+    });
+
     container.register('client', asValue(deps.knex));
     container.register('db', asValue(deps.knex));
-    container.register('fedifyKv', asValue(deps.globalFedifyKv));
-    container.register('globalDb', asValue(deps.globalFedifyKv));
+
+    container.register({
+        fedifyKv: asFunction((db: Knex) => {
+            return KnexKvStore.create(db, 'key_value');
+        }).singleton(),
+        globalDb: aliasTo('fedifyKv'),
+    });
 
     container.register('events', asValue(new AsyncEvents()));
 
+    container.register('eventSerializer', asClass(EventSerializer).singleton());
+
+    container.register(
+        'pubSubClient',
+        asFunction(() => {
+            return initPubSubClient({
+                host: process.env.MQ_PUBSUB_HOST || 'unknown_pubsub_host',
+                isEmulator: !['staging', 'production'].includes(
+                    process.env.NODE_ENV || 'unknown_node_env',
+                ),
+                projectId:
+                    process.env.MQ_PUBSUB_PROJECT_ID || 'unknown_project_id',
+            });
+        }).singleton(),
+    );
+
+    container.register(
+        'pubSubEvents',
+        asFunction(
+            (
+                pubSubClient: PubSub,
+                eventSerializer: EventSerializer,
+                logging: Logger,
+            ) => {
+                return new PubSubEvents(
+                    pubSubClient,
+                    getFullTopic(
+                        pubSubClient.projectId,
+                        process.env.MQ_PUBSUB_GHOST_TOPIC_NAME ||
+                            'unknown_pubsub_ghost_topic_name',
+                    ),
+                    eventSerializer,
+                    logging,
+                );
+            },
+        ).singleton(),
+    );
+
+    if (process.env.USE_MQ === 'true') {
+        container.register('commandBus', aliasTo('pubSubEvents'));
+    } else {
+        container.register('commandBus', asValue(new AsyncEvents()));
+    }
+
+    container.register(
+        'queue',
+        asFunction((logging: Logger, pubSubClient: PubSub) => {
+            return new GCloudPubSubPushMessageQueue(
+                logging,
+                pubSubClient,
+                getFullTopic(
+                    pubSubClient.projectId,
+                    process.env.MQ_PUBSUB_TOPIC_NAME ||
+                        'unknown_pubsub_topic_name',
+                ),
+                process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
+                getFullTopic(
+                    pubSubClient.projectId,
+                    process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
+                        'unknown_pubsub_retry_topic_name',
+                ),
+            );
+        }).singleton(),
+    );
+
     container.register('flagService', asValue(new FlagService([])));
+
+    container.register(
+        'fedify',
+        asFunction((fedifyKv: KvStore, queue: GCloudPubSubPushMessageQueue) => {
+            return createFederation<ContextData>({
+                kv: fedifyKv,
+                queue: process.env.USE_MQ === 'true' ? queue : undefined,
+                manuallyStartQueue: process.env.MANUALLY_START_QUEUE === 'true',
+                skipSignatureVerification:
+                    process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
+                    ['development', 'testing'].includes(
+                        process.env.NODE_ENV || '',
+                    ),
+                allowPrivateAddress:
+                    process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
+                    ['development', 'testing'].includes(
+                        process.env.NODE_ENV || '',
+                    ),
+                firstKnock: 'draft-cavage-http-signatures-12',
+            });
+        }).singleton(),
+    );
 
     container.register(
         'fedifyContextFactory',
@@ -96,7 +198,7 @@ export function registerDependencies(
 
     container.register(
         'storageAdapter',
-        asFunction(() => {
+        asFunction((logging: Logger) => {
             if (
                 process.env.LOCAL_STORAGE_PATH &&
                 process.env.LOCAL_STORAGE_HOSTING_URL
@@ -109,7 +211,7 @@ export function registerDependencies(
             const bucketName = process.env.GCP_BUCKET_NAME || '';
             return new GCPStorageAdapter(
                 bucketName,
-                deps.globalLogging,
+                logging,
                 process.env.GCP_STORAGE_EMULATOR_HOST ?? undefined,
                 process.env.GCS_LOCAL_STORAGE_HOSTING_URL ?? undefined,
             );
@@ -122,19 +224,6 @@ export function registerDependencies(
         'imageStorageService',
         asClass(ImageStorageService).singleton(),
     );
-
-    if (deps.globalQueue) {
-        container.register('queue', asValue(deps.globalQueue));
-    }
-
-    if (deps.globalPubSubEvents) {
-        container.register('commandBus', asValue(deps.globalPubSubEvents));
-        container.register('pubSubEvents', asValue(deps.globalPubSubEvents));
-    } else {
-        container.register('commandBus', asValue(new AsyncEvents()));
-    }
-
-    container.register('fedify', asValue(deps.globalFedify));
 
     container.register(
         'accountRepository',
