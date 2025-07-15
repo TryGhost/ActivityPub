@@ -1,3 +1,4 @@
+import { FetchError } from '@fedify/fedify';
 import { describe, expect, it } from 'vitest';
 
 import { analyzeError } from './error-utils';
@@ -329,6 +330,200 @@ describe('analyzeError', () => {
             // Should be treated as generic error (retryable and reportable)
             expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(true);
+        });
+    });
+
+    describe('FetchError handling', () => {
+        it('should handle FetchError with HTTP 503 as retryable', () => {
+            const error = new FetchError(
+                'https://mastodon.nz/users/BobLefridge',
+                'HTTP 503: https://mastodon.nz/users/BobLefridge',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 404 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/users/notfound',
+                'HTTP 404: https://example.com/users/notfound',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 400 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 400: Bad Request',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 401 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 401: Unauthorized',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 403 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 403: Forbidden',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 410 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 410: Gone',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 422 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 422: Unprocessable Entity',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 429 as retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 429: Too Many Requests',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 500 as retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 500: Internal Server Error',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 502 as retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 502: Bad Gateway',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 504 as retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 504: Gateway Timeout',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with non-standard HTTP 520 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 520: Web Server Returns an Unknown Error',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with non-standard HTTP 522 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 522: Connection Timed Out',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError without HTTP status code as retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'Network error occurred',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with malformed HTTP status as retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP abc: Invalid status',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle FetchError with HTTP 501 as non-retryable', () => {
+            const error = new FetchError(
+                'https://example.com/api',
+                'HTTP 501: Not Implemented',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
         });
     });
 

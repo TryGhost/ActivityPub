@@ -757,7 +757,9 @@ export async function inboxErrorHandler(
     ctx: Context<ContextData>,
     error: unknown,
 ) {
-    Sentry.captureException(error);
+    if (process.env.USE_MQ !== 'true') {
+        Sentry.captureException(error);
+    }
     ctx.data.logger.error('Error handling incoming activity: {error}', {
         error,
     });
