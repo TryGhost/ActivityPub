@@ -36,6 +36,14 @@ const PostPublishedWebhookSchema = z.object({
     }),
 });
 
+const PostDeletedWebhookSchema = z.object({
+    post: z.object({
+        previous: z.object({
+            uuid: z.string().uuid(),
+        }),
+    }),
+});
+
 export class WebhookController {
     constructor(
         private readonly postService: PostService,
@@ -128,6 +136,22 @@ export class WebhookController {
     }
 
     async handlePostDeleted(ctx: AppContext) {
+        let uuid: string;
+        try {
+            uuid = PostDeletedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.previous.uuid;
+        } catch (err) {
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
+        }
+
+        const account = ctx.get('account');
+
+        await this.ghostPostService.deleteGhostPost(account, uuid);
+
         return new Response(null, {
             status: 200,
         });

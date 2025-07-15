@@ -379,4 +379,65 @@ describe('GhostPostService', () => {
             });
         });
     });
+
+    describe('deleteGhostPost', () => {
+        it('should delete an existing post successfully', async () => {
+            const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120009';
+
+            const initialResult = await postService.handleIncomingGhostPost(
+                account,
+                {
+                    title: 'Test Article to Delete',
+                    uuid,
+                    html: '<p>Content to be deleted</p>',
+                    excerpt: 'Test excerpt',
+                    custom_excerpt: null,
+                    feature_image: null,
+                    published_at: new Date().toISOString(),
+                    url: 'https://example.com/test-article-to-delete',
+                    visibility: 'public',
+                    authors: [],
+                },
+            );
+
+            expect(isError(initialResult)).toBe(false);
+            if (isError(initialResult)) {
+                throw new Error('Failed to create initial post');
+            }
+            const initialPost = getValue(initialResult);
+
+            const postBeforeDeletion = await postRepository.getById(
+                initialPost.id!,
+            );
+            expect(postBeforeDeletion).not.toBeNull();
+            expect(Post.isDeleted(postBeforeDeletion!)).toBe(false);
+
+            await ghostPostService.deleteGhostPost(account, uuid);
+
+            const deletedPost = await postRepository.getById(initialPost.id!);
+            expect(deletedPost).not.toBeNull();
+            expect(Post.isDeleted(deletedPost!)).toBe(true);
+        });
+
+        it('should log error when deletion fails', async () => {
+            const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120010';
+
+            const deleteByApIdSpy = vi
+                .spyOn(postService, 'deleteByApId')
+                .mockResolvedValue(['not-author', null]);
+
+            await ghostPostService.deleteGhostPost(account, uuid);
+
+            const apId = account.getApIdForPost({
+                uuid,
+                type: PostType.Article,
+            });
+
+            expect(deleteByApIdSpy).toHaveBeenCalledWith(apId, account);
+            expect(logger.error).toHaveBeenCalledWith(
+                'Failed to delete post with apId: {apId}, error: {error}',
+                { apId, error: 'not-author' },
+            );
+        });
+    });
 });

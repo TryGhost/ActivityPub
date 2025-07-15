@@ -95,4 +95,19 @@ export class GhostPostService {
             }
         }
     }
+
+    async deleteGhostPost(account: Account, uuid: string) {
+        const apId = account.getApIdForPost({
+            uuid,
+            type: PostType.Article,
+        });
+
+        const deleteResult = await this.postService.deleteByApId(apId, account);
+        if (isError(deleteResult)) {
+            this.logger.error(
+                'Failed to delete post with apId: {apId}, error: {error}',
+                { apId, error: getError(deleteResult) },
+            );
+        }
+    }
 }
