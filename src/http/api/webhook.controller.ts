@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import type { GhostPostService } from 'ghost-post/ghost-post.service';
+import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { postToDTO } from './helpers/post';
