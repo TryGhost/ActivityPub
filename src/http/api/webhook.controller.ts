@@ -1,3 +1,4 @@
+import type { Logger } from '@logtape/logtape';
 import { z } from 'zod';
 
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
@@ -48,6 +49,7 @@ export class WebhookController {
     constructor(
         private readonly postService: PostService,
         private readonly ghostPostService: GhostPostService,
+        private readonly logger: Logger,
     ) {}
 
     /**
@@ -157,6 +159,10 @@ export class WebhookController {
 
         if (isError(deleteResult)) {
             const error = getError(deleteResult);
+            this.logger.error(
+                'Failed to delete post with uuid: {uuid}, error: {error}',
+                { uuid, error: error },
+            );
             switch (error) {
                 case 'upstream-error':
                 case 'not-a-post':

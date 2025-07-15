@@ -111,13 +111,6 @@ export class GhostPostService {
             type: PostType.Article,
         });
 
-        const deleteResult = await this.postService.deleteByApId(apId, account);
-        if (isError(deleteResult)) {
-            this.logger.error(
-                'Failed to delete post with apId: {apId}, error: {error}',
-                { apId, error: getError(deleteResult) },
-            );
-        }
-        return deleteResult;
+        return await this.postService.deleteByApId(apId, account);
     }
 }

@@ -419,7 +419,7 @@ describe('GhostPostService', () => {
             expect(Post.isDeleted(deletedPost!)).toBe(true);
         });
 
-        it('should log and return an error when deletion fails', async () => {
+        it('should return an error when deletion fails', async () => {
             const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120010';
 
             const deleteByApIdSpy = vi
@@ -437,10 +437,6 @@ describe('GhostPostService', () => {
             });
 
             expect(deleteByApIdSpy).toHaveBeenCalledWith(apId, account);
-            expect(logger.error).toHaveBeenCalledWith(
-                'Failed to delete post with apId: {apId}, error: {error}',
-                { apId, error: 'not-author' },
-            );
             expect(isError(deleteResult)).toBe(true);
         });
     });
