@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest';
-
 import { AccountEntity } from 'account/account.entity';
 import { PostType } from 'post/post.entity';
+import { describe, expect, it } from 'vitest';
 import { createInternalAccountDraftData } from '../test/account-entity-test-helpers';
 import {
     AccountBlockedEvent,

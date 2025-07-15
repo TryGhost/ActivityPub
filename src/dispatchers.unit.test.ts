@@ -5,13 +5,6 @@ import type {
     Note,
     RequestContext,
 } from '@fedify/fedify';
-import {
-    createOutboxCounter,
-    createOutboxDispatcher,
-    likedDispatcher,
-    nodeInfoDispatcher,
-} from './dispatchers';
-
 import type { ContextData } from 'app';
 import {
     buildAnnounceActivityForPost,
@@ -21,6 +14,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountEntity } from './account/account.entity';
 import type { AccountService } from './account/account.service';
 import { ACTOR_DEFAULT_HANDLE } from './constants';
+import {
+    createOutboxCounter,
+    createOutboxDispatcher,
+    likedDispatcher,
+    nodeInfoDispatcher,
+} from './dispatchers';
 import { OutboxType, Post, PostType } from './post/post.entity';
 import type { PostService } from './post/post.service';
 import type { Site, SiteService } from './site/site.service';

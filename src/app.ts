@@ -21,13 +21,13 @@ import {
 import { federation } from '@fedify/fedify/x/hono';
 import { serve } from '@hono/node-server';
 import {
-    type LogLevel,
-    type LogRecord,
-    type Logger,
     configure,
     getAnsiColorFormatter,
     getConsoleSink,
     isLogLevel,
+    type Logger,
+    type LogLevel,
+    type LogRecord,
     withContext,
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
@@ -88,15 +88,15 @@ import type { GhostExploreService } from './explore/ghost-explore.service';
 import type { FeedUpdateService } from './feed/feed-update.service';
 import { getTraceContext } from './helpers/context-header';
 import {
-    GhostRole,
     createRoleMiddleware,
+    GhostRole,
     requireRole,
 } from './http/middleware/role-guard';
 import { RouteRegistry } from './http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from './instrumentation';
 import {
-    type GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
+    type GCloudPubSubPushMessageQueue,
 } from './mq/gcloud-pubsub-push/mq';
 import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interaction-counts-update-requested.event';
 import type { Site, SiteService } from './site/site.service';
@@ -514,7 +514,7 @@ const app = new Hono<{ Variables: HonoContextVariables }>();
  */
 export type AppContext = HonoContext<{ Variables: HonoContextVariables }>;
 
-app.get('/ping', (ctx) => {
+app.get('/ping', (_ctx) => {
     return new Response('', {
         status: 200,
     });
@@ -731,7 +731,7 @@ app.use(async (ctx, next) => {
         ctx.set('account', account);
 
         await next();
-    } catch (err) {
+    } catch (_err) {
         ctx.get('logger').error('No account found for {host}', {
             host: site.host,
         });

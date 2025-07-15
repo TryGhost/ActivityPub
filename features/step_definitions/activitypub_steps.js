@@ -6,8 +6,7 @@ import {
     createActor,
     createObject,
 } from '../support/fixtures.js';
-import { fetchActivityPub } from '../support/request.js';
-import { waitForRequest } from '../support/request.js';
+import { fetchActivityPub, waitForRequest } from '../support/request.js';
 import { parseActivityString, parseActorString } from '../support/steps.js';
 
 async function activityCreatedBy(activityDef, name, actorName) {

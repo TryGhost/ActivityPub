@@ -1,14 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import EventEmitter from 'node:events';
 import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
-
 import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { AccountBlockedEvent } from 'account/events';
+import { Post, PostType } from 'post/post.entity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
-import { Post, PostType } from 'post/post.entity';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
 import { FediverseBridge } from './fediverse-bridge';

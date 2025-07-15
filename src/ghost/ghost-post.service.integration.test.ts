@@ -12,7 +12,7 @@ import { KnexPostRepository } from 'post/post.repository.knex';
 import { PostService } from 'post/post.service';
 import type { ImageStorageService } from 'storage/image-storage.service';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GhostPostService } from './ghost-post.service';
 

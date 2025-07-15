@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import type { Actor } from '@fedify/fedify';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FedifyRequestContext } from '../app';
 

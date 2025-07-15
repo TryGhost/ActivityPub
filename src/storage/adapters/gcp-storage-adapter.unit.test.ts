@@ -1,7 +1,7 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
 import { error, getValue, isError, ok } from 'core/result';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { GCPStorageAdapter } from './gcp-storage-adapter';
 
 const mockLogger = {

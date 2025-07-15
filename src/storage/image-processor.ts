@@ -1,5 +1,5 @@
 import type { Logger } from '@logtape/logtape';
-import { type Result, error, ok } from 'core/result';
+import { error, ok, type Result } from 'core/result';
 import sharp from 'sharp';
 
 export type ValidationError = 'file-too-large' | 'file-type-not-supported';

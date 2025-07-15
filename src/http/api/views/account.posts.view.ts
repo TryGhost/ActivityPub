@@ -7,7 +7,7 @@ import {
 import type { Account } from 'account/account.entity';
 import { getAccountHandle } from 'account/utils';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { type Result, error, getValue, isError, ok } from 'core/result';
+import { error, getValue, isError, ok, type Result } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { ContentPreparer } from 'post/content';
@@ -335,7 +335,7 @@ export class AccountPostsView {
                     page = await outbox.getFirst();
                 }
             }
-        } catch (err) {
+        } catch (_err) {
             return error('error-getting-outbox');
         }
 
@@ -543,7 +543,7 @@ export class AccountPostsView {
                 }
 
                 result.results.push(this.mapActivityToPostDTO(activity));
-            } catch (err) {
+            } catch (_err) {
                 // If we can't map a post to an activity, skip it
                 // This ensures that a single invalid or unreachable post doesn't block the API from returning valid posts
             }
@@ -851,7 +851,7 @@ export class AccountPostsView {
                     username: actor.preferredUsername,
                     url: actor.url,
                 } as Account;
-            } catch (err) {
+            } catch (_err) {
                 return error('network-failure');
             }
         }

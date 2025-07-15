@@ -1,16 +1,14 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import assert from 'node:assert';
-import type { Knex } from 'knex';
-
 import { exportJwk } from '@fedify/fedify';
 import { AsyncEvents } from 'core/events';
+import type { Knex } from 'knex';
 import {
     createExternalAccountDraftData,
     createInternalAccountDraftData,
 } from 'test/account-entity-test-helpers';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import type { Site } from '../site/site.service';
 import { AccountEntity } from './account.entity';

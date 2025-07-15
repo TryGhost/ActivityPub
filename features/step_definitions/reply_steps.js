@@ -1,6 +1,5 @@
-import { Given, Then, When } from '@cucumber/cucumber';
-
 import assert from 'node:assert';
+import { Given, Then, When } from '@cucumber/cucumber';
 import { waitForItemInFeed } from '../support/feed.js';
 import { createActivity, createObject } from '../support/fixtures.js';
 import { waitForItemInNotifications } from '../support/notifications.js';

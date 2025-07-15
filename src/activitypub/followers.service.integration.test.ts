@@ -4,7 +4,7 @@ import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { FedifyContextFactory } from './fedify-context.factory';
 import { FollowersService } from './followers.service';
@@ -36,7 +36,7 @@ describe('FollowersService', () => {
         });
         it('Can get all followers, handling missing data', async () => {
             // Create accounts on different domains to avoid conflicts
-            const [account, accountSite] =
+            const [account, _accountSite] =
                 await fixtureManager.createInternalAccount();
             const [follower1] = await fixtureManager.createInternalAccount();
             const [follower2] = await fixtureManager.createInternalAccount();

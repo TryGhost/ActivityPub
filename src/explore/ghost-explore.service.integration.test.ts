@@ -7,7 +7,7 @@ import { AsyncEvents } from 'core/events';
 import { error, ok } from 'core/result';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import {
     afterEach,
     beforeAll,

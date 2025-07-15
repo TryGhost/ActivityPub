@@ -1,4 +1,4 @@
-import { type Actor, type Context, type Update, isActor } from '@fedify/fedify';
+import { type Actor, type Context, isActor, type Update } from '@fedify/fedify';
 import type { AccountService } from 'account/account.service';
 import { mapActorToExternalAccountData } from 'account/utils';
 import type { ContextData } from 'app';

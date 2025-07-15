@@ -116,7 +116,7 @@ export function createRoleMiddleware(jwksCache: KvStore) {
             } else {
                 ctx.set('role', GhostRole.Anonymous);
             }
-        } catch (err) {
+        } catch (_err) {
             ctx.set('role', GhostRole.Anonymous);
         }
 

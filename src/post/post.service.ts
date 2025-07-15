@@ -1,21 +1,21 @@
 import {
     Article,
     Mention as FedifyMention,
-    Note,
     lookupObject,
+    Note,
 } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import {
-    type Result,
     error,
     exhaustiveCheck,
     getError,
     getValue,
     isError,
     ok,
+    type Result,
 } from 'core/result';
 import { parseURL } from 'core/url';
 import {

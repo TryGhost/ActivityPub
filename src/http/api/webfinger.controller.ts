@@ -1,7 +1,6 @@
-import type { Context as HonoContext, Next } from 'hono';
-
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
+import type { Context as HonoContext, Next } from 'hono';
 import type { SiteService } from 'site/site.service';
 import { Route } from '../decorators/route.decorator';
 
@@ -54,7 +53,7 @@ export class WebFingerController {
 
         try {
             account = await this.accountRepository.getBySite(site);
-        } catch (error) {
+        } catch (_error) {
             return new Response(null, {
                 status: 404,
             });

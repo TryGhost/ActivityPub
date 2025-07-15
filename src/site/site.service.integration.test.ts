@@ -1,9 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
@@ -27,7 +26,7 @@ describe('SiteService', () => {
     let service: SiteService;
     let accountService: AccountService;
     let ghostService: IGhostService;
-    let site: Site;
+    let _site: Site;
     let db: Knex;
 
     beforeAll(async () => {
@@ -53,7 +52,7 @@ describe('SiteService', () => {
             generateTestCryptoKeyPair,
         );
         ghostService = {
-            async getSiteSettings(host: string) {
+            async getSiteSettings(_host: string) {
                 return {
                     site: {
                         icon: '',

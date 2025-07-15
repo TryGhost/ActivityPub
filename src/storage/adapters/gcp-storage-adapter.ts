@@ -1,6 +1,6 @@
 import { type Bucket, Storage } from '@google-cloud/storage';
 import type { Logger } from '@logtape/logtape';
-import { type Result, error, ok } from 'core/result';
+import { error, ok, type Result } from 'core/result';
 import type {
     StorageAdapter,
     StorageError,
@@ -113,7 +113,7 @@ export class GCPStorageAdapter implements StorageAdapter {
             if (!exists) {
                 return error('file-not-found');
             }
-        } catch (err) {
+        } catch (_err) {
             return error('file-not-found');
         }
 

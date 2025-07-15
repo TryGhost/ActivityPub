@@ -3,8 +3,8 @@ import {
     Document,
     Image,
     Link,
-    Note,
     lookupObject,
+    Note,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Logger } from '@logtape/logtape';
@@ -14,8 +14,8 @@ import { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import { AsyncEvents } from 'core/events';
 import {
-    type Error as Err,
     error as createError,
+    type Error as Err,
     error,
     getError,
     getValue,
@@ -26,7 +26,7 @@ import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
 import type { ImageStorageService } from 'storage/image-storage.service';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     OutboxType,
@@ -97,7 +97,7 @@ describe('PostService', () => {
                 ...original,
                 lookupActorProfile: vi
                     .fn()
-                    .mockImplementation(async (ctx, handle) => {
+                    .mockImplementation(async (_ctx, handle) => {
                         // Extract username and domain from handle
                         const match = handle.match(/@?([^@]+)@(.+)/);
                         if (!match) return error('lookup-error');

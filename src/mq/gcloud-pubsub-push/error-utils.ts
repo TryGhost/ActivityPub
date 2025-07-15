@@ -32,7 +32,7 @@ function isDnsResolutionError(error: Error, depth = 0): boolean {
     return false;
 }
 
-function analyzeDnsResolutionError(error: Error): ErrorAnalysis {
+function analyzeDnsResolutionError(_error: Error): ErrorAnalysis {
     // DNS resolution errors are not retryable and not reportable
     return {
         isRetryable: false,
@@ -68,7 +68,7 @@ function isUpstreamSSLError(error: Error, depth = 0): boolean {
     return false;
 }
 
-function analyzeUpstreamSSLError(error: Error): ErrorAnalysis {
+function analyzeUpstreamSSLError(_error: Error): ErrorAnalysis {
     // Upstream certificate errors are not retryable and not reportable
     return {
         isRetryable: false,

@@ -6,7 +6,7 @@ import { ok } from 'core/result';
 import { ModerationService } from 'moderation/moderation.service';
 import nock from 'nock';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountFollowsView } from './account.follows.view';
 

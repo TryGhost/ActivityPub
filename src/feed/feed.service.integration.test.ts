@@ -1,10 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Account } from '../account/account.entity';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
@@ -13,11 +12,11 @@ import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import {
     Audience,
     type FollowersOnlyPost,
+    Post,
     type PostData,
     PostType,
     type PublicPost,
 } from '../post/post.entity';
-import { Post } from '../post/post.entity';
 import { KnexPostRepository } from '../post/post.repository.knex';
 import { SiteService } from '../site/site.service';
 import { FeedService } from './feed.service';

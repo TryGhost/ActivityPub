@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import { Article } from '@fedify/fedify';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FedifyRequestContext } from '../app';
 

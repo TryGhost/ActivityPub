@@ -1,12 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { Federation, KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
-import type { Context } from 'hono';
-
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { ContextData } from 'app';
+import type { Context } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PubSubEvents } from './pubsub';
 import { createIncomingPubSubMessageHandler } from './pubsub-http';
@@ -56,7 +54,7 @@ describe('handleIncomingPubSubMessage', () => {
         } as unknown as PubSubEvents;
         const fedify = {} as unknown as Federation<ContextData>;
         const fedifyContextFactory = {
-            registerContext: vi.fn().mockImplementation(async (ctx, fn) => {
+            registerContext: vi.fn().mockImplementation(async (_ctx, fn) => {
                 return await fn();
             }),
         } as unknown as FedifyContextFactory;

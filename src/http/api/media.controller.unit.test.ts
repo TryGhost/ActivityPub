@@ -3,7 +3,7 @@ import { error, ok } from 'core/result';
 import type { Context } from 'hono';
 import type { ImageStorageService } from 'storage/image-storage.service';
 
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { MediaController } from './media.controller';
 
 describe('Image Upload API', () => {

@@ -1,5 +1,5 @@
 import { getAccountHandle } from 'account/utils';
-import { type Result, error, ok } from 'core/result';
+import { error, ok, type Result } from 'core/result';
 import type { Knex } from 'knex';
 import { PostType } from 'post/post.entity';
 import z from 'zod';
