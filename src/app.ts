@@ -597,6 +597,12 @@ app.get('/ping', (ctx) => {
 
 /** Middleware */
 
+// This is going to throw an error on every request
+// app.onError on line 940 will transform it into a 429/403 response, mimicking the rate-limiting error (HTTP 429) or blocklist error (HTTP 403) from the infra
+app.use(async (ctx, next) => {
+    throw new Error('test');
+});
+
 app.use(async (ctx, next) => {
     const extra: Record<string, string | boolean> = {};
 
@@ -948,6 +954,9 @@ app.use(
 
 // Send errors to Sentry
 app.onError((err, c) => {
+    // Update this to mimic rate-limiting error (HTTP 429) or blocklist error (HTTP 403)
+    return c.text('', 429);
+
     if (err.name === 'jsonld.SyntaxError') {
         const code = get(err, 'details.code');
         if (code === 'invalid term definition') {
