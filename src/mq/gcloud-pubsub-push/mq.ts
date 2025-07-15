@@ -282,15 +282,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         try {
             const inboxUrl = new URL(message.inbox);
 
-            const account =
-                await this.accountService.getAccountByInboxUrl(inboxUrl);
-
-            if (account) {
-                await this.accountService.recordDeliveryFailure(
-                    account.id,
-                    error.message,
-                );
-            }
+            await this.accountService.recordDeliveryFailure(
+                inboxUrl,
+                error.message,
+            );
         } catch (error) {
             this.logger.error(
                 `Failed to record delivery failure [FedifyID: ${message.id}]: ${error}`,
@@ -311,12 +306,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         try {
             const inboxUrl = new URL(message.inbox);
 
-            const account =
-                await this.accountService.getAccountByInboxUrl(inboxUrl);
-
-            if (account) {
-                await this.accountService.clearDeliveryFailure(account.id);
-            }
+            await this.accountService.clearDeliveryFailure(inboxUrl);
         } catch (error) {
             this.logger.error(
                 `Failed to clear delivery failure [FedifyID: ${message.id}]: ${error}`,

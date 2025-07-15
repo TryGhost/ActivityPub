@@ -57,7 +57,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
         } as unknown as PubSub;
 
         mockAccountService = {
-            getAccountByInboxUrl: vi.fn(),
             recordDeliveryFailure: vi.fn(),
             clearDeliveryFailure: vi.fn(),
         } as unknown as AccountService;
@@ -440,11 +439,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             mq.listen(handler);
 
-            const mockAccount = { id: 'account-123' };
-            (mockAccountService.getAccountByInboxUrl as Mock).mockResolvedValue(
-                mockAccount,
-            );
-
             await mq.handleMessage({
                 id: 'abc123',
                 data: {
@@ -458,11 +452,11 @@ describe('GCloudPubSubPushMessageQueue', () => {
             });
 
             expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).toHaveBeenCalledWith(new URL('https://other.com/inbox'));
-            expect(
                 mockAccountService.recordDeliveryFailure,
-            ).toHaveBeenCalledWith('account-123', error.message);
+            ).toHaveBeenCalledWith(
+                new URL('https://other.com/inbox'),
+                error.message,
+            );
         });
 
         it('should not record a delivery failure when the message type is not outbox', async () => {
@@ -512,9 +506,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
             });
 
-            expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).not.toHaveBeenCalled();
             expect(
                 mockAccountService.recordDeliveryFailure,
             ).not.toHaveBeenCalled();
@@ -568,68 +559,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
             });
 
             expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).not.toHaveBeenCalled();
-            expect(
-                mockAccountService.recordDeliveryFailure,
-            ).not.toHaveBeenCalled();
-        });
-
-        it('should not record a delivery failure when the account can not be found', async () => {
-            const RETRY_TOPIC = 'retry-topic';
-
-            const mockRetryTopic = {
-                publishMessage: vi.fn(),
-            } as unknown as Topic;
-
-            mockPubSubClient = {
-                projectId: PROJECT_ID,
-                topic: vi.fn((topic) => {
-                    if (topic === RETRY_TOPIC) {
-                        return mockRetryTopic;
-                    }
-
-                    throw new Error(`Unexpected topic: ${topic}`);
-                }),
-            } as unknown as PubSub;
-
-            const mq = new GCloudPubSubPushMessageQueue(
-                mockLogger,
-                mockPubSubClient,
-                mockAccountService,
-                TOPIC,
-                true,
-                RETRY_TOPIC,
-            );
-
-            const error = new Error(
-                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (403 Forbidden):\nForbidden',
-            );
-
-            const handler = vi.fn().mockRejectedValue(error);
-
-            mq.listen(handler);
-
-            (mockAccountService.getAccountByInboxUrl as Mock).mockResolvedValue(
-                null,
-            );
-
-            await mq.handleMessage({
-                id: 'abc123',
-                data: {
-                    id: 'abc123',
-                    type: 'outbox',
-                    inbox: 'https://other.com/inbox',
-                },
-                attributes: {
-                    fedifyId: 'abc123',
-                },
-            });
-
-            expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).toHaveBeenCalledWith(new URL('https://other.com/inbox'));
-            expect(
                 mockAccountService.recordDeliveryFailure,
             ).not.toHaveBeenCalled();
         });
@@ -645,11 +574,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const handler = vi.fn().mockResolvedValue(undefined);
 
             mq.listen(handler);
-
-            const mockAccount = { id: 'account-123' };
-            (mockAccountService.getAccountByInboxUrl as Mock).mockResolvedValue(
-                mockAccount,
-            );
 
             await mq.handleMessage({
                 id: 'abc123',
@@ -669,11 +593,8 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 inbox: 'https://other.com/inbox',
             });
             expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).toHaveBeenCalledWith(new URL('https://other.com/inbox'));
-            expect(
                 mockAccountService.clearDeliveryFailure,
-            ).toHaveBeenCalledWith('account-123');
+            ).toHaveBeenCalledWith(new URL('https://other.com/inbox'));
         });
 
         it('should not clear delivery failure when the message type is not outbox', async () => {
@@ -705,9 +626,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 type: 'inbox',
                 inbox: 'https://other.com/inbox',
             });
-            expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).not.toHaveBeenCalled();
             expect(
                 mockAccountService.clearDeliveryFailure,
             ).not.toHaveBeenCalled();
@@ -742,50 +660,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 type: 'outbox',
                 inbox: { url: 'https://other.com/inbox' },
             });
-            expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).not.toHaveBeenCalled();
-            expect(
-                mockAccountService.clearDeliveryFailure,
-            ).not.toHaveBeenCalled();
-        });
-
-        it('should not clear delivery failure when the account can not be found', async () => {
-            const mq = new GCloudPubSubPushMessageQueue(
-                mockLogger,
-                mockPubSubClient,
-                mockAccountService,
-                TOPIC,
-            );
-
-            const handler = vi.fn().mockResolvedValue(undefined);
-
-            mq.listen(handler);
-
-            (mockAccountService.getAccountByInboxUrl as Mock).mockResolvedValue(
-                null,
-            );
-
-            await mq.handleMessage({
-                id: 'abc123',
-                data: {
-                    id: 'abc123',
-                    type: 'outbox',
-                    inbox: 'https://other.com/inbox',
-                },
-                attributes: {
-                    fedifyId: 'abc123',
-                },
-            });
-
-            expect(handler).toHaveBeenCalledWith({
-                id: 'abc123',
-                type: 'outbox',
-                inbox: 'https://other.com/inbox',
-            });
-            expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).toHaveBeenCalledWith(new URL('https://other.com/inbox'));
             expect(
                 mockAccountService.clearDeliveryFailure,
             ).not.toHaveBeenCalled();
@@ -854,9 +728,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             // Should NOT call permanent failure handling for retryable errors
             expect(
-                mockAccountService.getAccountByInboxUrl,
-            ).not.toHaveBeenCalled();
-            expect(
                 mockAccountService.recordDeliveryFailure,
             ).not.toHaveBeenCalled();
         });
@@ -899,7 +770,6 @@ describe('handlePushMessage', () => {
         } as unknown as PubSub;
 
         mockAccountService = {
-            getAccountByInboxUrl: vi.fn(),
             recordDeliveryFailure: vi.fn(),
             clearDeliveryFailure: vi.fn(),
         } as unknown as AccountService;

@@ -176,27 +176,6 @@ describe('AccountService', () => {
         });
     });
 
-    describe('getAccountByInboxUrl', () => {
-        it('should return the result from the account repository', async () => {
-            const inboxUrl = new URL('https://example.com/inbox');
-            const account = { apInbox: inboxUrl } as unknown as AccountEntity;
-
-            vi.mocked(knexAccountRepository.getByInboxUrl).mockImplementation(
-                (_inboxUrl) => {
-                    if (_inboxUrl.href === inboxUrl.href) {
-                        return Promise.resolve(account);
-                    }
-
-                    return Promise.resolve(null);
-                },
-            );
-
-            const result = await accountService.getAccountByInboxUrl(inboxUrl);
-
-            expect(result).toBe(account);
-        });
-    });
-
     describe('followAccount', () => {
         it('should follow an account', async () => {
             const account = {

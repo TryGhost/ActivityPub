@@ -752,16 +752,18 @@ export class AccountService {
         await this.accountRepository.save(updated);
     }
 
-    async getAccountByInboxUrl(inboxUrl: URL): Promise<Account | null> {
-        return await this.accountRepository.getByInboxUrl(inboxUrl);
-    }
-
     async recordDeliveryFailure(
-        accountId: number,
+        inboxUrl: URL,
         failureReason: string,
     ): Promise<void> {
+        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
+
+        if (!account) {
+            return;
+        }
+
         const existing = await this.db('account_delivery_backoffs')
-            .where('account_id', accountId)
+            .where('account_id', account.id)
             .first();
 
         if (existing) {
@@ -772,7 +774,7 @@ export class AccountService {
             );
 
             await this.db('account_delivery_backoffs')
-                .where('account_id', accountId)
+                .where('account_id', account.id)
                 .update({
                     last_failure_at: this.db.fn.now(),
                     last_failure_reason: failureReason,
@@ -785,7 +787,7 @@ export class AccountService {
             );
 
             await this.db('account_delivery_backoffs').insert({
-                account_id: accountId,
+                account_id: account.id,
                 last_failure_reason: failureReason,
                 backoff_until: backoffUntil,
                 backoff_seconds: DELIVERY_FAILURE_BACKOFF_SECONDS,
@@ -793,9 +795,15 @@ export class AccountService {
         }
     }
 
-    async clearDeliveryFailure(accountId: number): Promise<void> {
+    async clearDeliveryFailure(inboxUrl: URL): Promise<void> {
+        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
+
+        if (!account) {
+            return;
+        }
+
         await this.db('account_delivery_backoffs')
-            .where('account_id', accountId)
+            .where('account_id', account.id)
             .delete();
     }
 }

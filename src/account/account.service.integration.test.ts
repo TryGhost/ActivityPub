@@ -1137,9 +1137,10 @@ describe('AccountService', () => {
     describe('recordDeliveryFailure', () => {
         it('should create a new backoff for first failure', async () => {
             const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
 
             await service.recordDeliveryFailure(
-                account.id,
+                account.apInbox!,
                 'Connection refused',
             );
 
@@ -1160,9 +1161,10 @@ describe('AccountService', () => {
 
         it('should double the backoff time on subsequent failures', async () => {
             const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
 
-            await service.recordDeliveryFailure(account.id, 'First failure');
-            await service.recordDeliveryFailure(account.id, 'Second failure');
+            await service.recordDeliveryFailure(inboxUrl, 'First failure');
+            await service.recordDeliveryFailure(inboxUrl, 'Second failure');
 
             const backoff = await db('account_delivery_backoffs')
                 .where('account_id', account.id)
@@ -1174,7 +1176,7 @@ describe('AccountService', () => {
                     DELIVERY_FAILURE_BACKOFF_MULTIPLIER,
             );
 
-            await service.recordDeliveryFailure(account.id, 'Third failure');
+            await service.recordDeliveryFailure(inboxUrl, 'Third failure');
 
             const updatedRecord = await db('account_delivery_backoffs')
                 .where('account_id', account.id)
@@ -1186,16 +1188,30 @@ describe('AccountService', () => {
                     DELIVERY_FAILURE_BACKOFF_MULTIPLIER ** 2,
             );
         });
+
+        it('should not fail when recording failure for non-existent account', async () => {
+            const nonExistentInboxUrl = new URL(
+                'https://example.com/nonexistent/inbox',
+            );
+
+            await expect(
+                service.recordDeliveryFailure(
+                    nonExistentInboxUrl,
+                    'Connection refused',
+                ),
+            ).resolves.not.toThrow();
+
+            const backoff = await db('account_delivery_backoffs').first();
+            expect(backoff).toBeUndefined();
+        });
     });
 
     describe('clearDeliveryFailure', () => {
         it('should remove an existing delivery backoff', async () => {
             const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
 
-            await service.recordDeliveryFailure(
-                account.id,
-                'Connection refused',
-            );
+            await service.recordDeliveryFailure(inboxUrl, 'Connection refused');
 
             let backoff = await db('account_delivery_backoffs')
                 .where('account_id', account.id)
@@ -1203,7 +1219,7 @@ describe('AccountService', () => {
 
             expect(backoff).toBeDefined();
 
-            await service.clearDeliveryFailure(account.id);
+            await service.clearDeliveryFailure(inboxUrl);
 
             backoff = await db('account_delivery_backoffs')
                 .where('account_id', account.id)
@@ -1214,20 +1230,33 @@ describe('AccountService', () => {
 
         it('should not throw when clearing a non-existent delivery backoff', async () => {
             const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
 
             await expect(
-                service.clearDeliveryFailure(account.id),
+                service.clearDeliveryFailure(inboxUrl),
+            ).resolves.not.toThrow();
+        });
+
+        it('should not throw when clearing delivery for non-existent account', async () => {
+            const nonExistentInboxUrl = new URL(
+                'https://example.com/nonexistent/inbox',
+            );
+
+            await expect(
+                service.clearDeliveryFailure(nonExistentInboxUrl),
             ).resolves.not.toThrow();
         });
 
         it('should only clear the delivery backoff for the specified account', async () => {
             const [account1] = await fixtureManager.createInternalAccount();
             const [account2] = await fixtureManager.createInternalAccount();
+            const inboxUrl1 = account1.apInbox!;
+            const inboxUrl2 = account2.apInbox!;
 
-            await service.recordDeliveryFailure(account1.id, 'Failure 1');
-            await service.recordDeliveryFailure(account2.id, 'Failure 2');
+            await service.recordDeliveryFailure(inboxUrl1, 'Failure 1');
+            await service.recordDeliveryFailure(inboxUrl2, 'Failure 2');
 
-            await service.clearDeliveryFailure(account1.id);
+            await service.clearDeliveryFailure(inboxUrl1);
 
             const account1Backoff = await db('account_delivery_backoffs')
                 .where('account_id', account1.id)
