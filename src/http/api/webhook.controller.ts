@@ -73,7 +73,7 @@ export class WebhookController {
 
         const account = ctx.get('account');
 
-        const postResult = await this.postService.handleIncomingGhostPost(
+        const postResult = await this.ghostPostService.createGhostPost(
             account,
             data,
         );

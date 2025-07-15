@@ -2,21 +2,29 @@ import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import {
     type Result,
+    error,
     exhaustiveCheck,
     getError,
     getValue,
     isError,
+    ok,
 } from 'core/result';
+import type { Knex } from 'knex';
 import {
     type GhostPost,
     Post,
     PostType,
     type PostUpdateParams,
 } from 'post/post.entity';
-import type { DeletePostError, PostService } from 'post/post.service';
+import type {
+    DeletePostError,
+    GhostPostError,
+    PostService,
+} from 'post/post.service';
 
 export class GhostPostService {
     constructor(
+        private readonly db: Knex,
         private readonly postService: PostService,
         private readonly logger: Logger,
     ) {}
@@ -77,11 +85,10 @@ export class GhostPostService {
                         'Post not found for apId: {apId}, creating new post',
                         { apId },
                     );
-                    const newPostResult =
-                        await this.postService.handleIncomingGhostPost(
-                            account,
-                            ghostPost,
-                        );
+                    const newPostResult = await this.createGhostPost(
+                        account,
+                        ghostPost,
+                    );
                     if (isError(newPostResult)) {
                         this.logger.error(
                             'Failed to create new post with apId: {apId}, error: {error}',
@@ -112,5 +119,45 @@ export class GhostPostService {
         });
 
         return await this.postService.deleteByApId(apId, account);
+    }
+
+    async createGhostPost(
+        account: Account,
+        data: GhostPost,
+    ): Promise<Result<Post, GhostPostError>> {
+        const existingPost = await this.getApIdForGhostPost(data.uuid);
+
+        if (existingPost) {
+            return error('post-already-exists');
+        }
+
+        const postResult = await this.postService.handleIncomingGhostPost(
+            account,
+            data,
+        );
+        if (isError(postResult)) {
+            return postResult;
+        }
+
+        const post = getValue(postResult);
+        await this.insertGhostPostMapping(data.uuid, post.apId);
+
+        return ok(post);
+    }
+
+    private async insertGhostPostMapping(ghostUuid: string, apId: URL) {
+        await this.db('ghost_ap_post_mappings').insert({
+            ghost_uuid: ghostUuid,
+            ap_id: apId.href,
+        });
+    }
+
+    private async getApIdForGhostPost(ghostUuid: string) {
+        const result = await this.db('ghost_ap_post_mappings')
+            .select('ap_id')
+            .where('ghost_uuid', ghostUuid)
+            .first();
+
+        return result?.ap_id ?? null;
     }
 }

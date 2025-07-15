@@ -440,7 +440,7 @@ export class PostService {
     async handleIncomingGhostPost(
         account: Account,
         ghostPost: GhostPost,
-    ): Promise<Result<Post, GhostPostError>> {
+    ): Promise<Result<Post, CreatePostError>> {
         const postResult = await Post.createArticleFromGhostPost(
             account,
             ghostPost,
@@ -451,12 +451,6 @@ export class PostService {
         }
 
         const post = getValue(postResult);
-
-        const existingPost = await this.postRepository.getByApId(post.apId);
-
-        if (existingPost) {
-            return error('post-already-exists');
-        }
 
         await this.postRepository.save(post);
 
