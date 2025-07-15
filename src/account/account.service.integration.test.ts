@@ -18,7 +18,11 @@ import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { AP_BASE_PATH } from '../constants';
 import { KnexAccountRepository } from './account.repository.knex';
-import { AccountService } from './account.service';
+import {
+    AccountService,
+    DELIVERY_FAILURE_BACKOFF_MULTIPLIER,
+    DELIVERY_FAILURE_BACKOFF_SECONDS,
+} from './account.service';
 import { AccountFollowedEvent } from './events/account-followed.event';
 import type { ExternalAccountData, InternalAccountData, Site } from './types';
 
@@ -95,6 +99,7 @@ describe('AccountService', () => {
 
         // Clean up the database
         await db.raw('SET FOREIGN_KEY_CHECKS = 0');
+        await db('account_delivery_backoffs').truncate();
         await db('follows').truncate();
         await db('accounts').truncate();
         await db('users').truncate();
@@ -1126,6 +1131,116 @@ describe('AccountService', () => {
                 await service.getByInternalId(nonExistentId);
 
             expect(retrievedAccount).toBeNull();
+        });
+    });
+
+    describe('recordDeliveryFailure', () => {
+        it('should create a new backoff for first failure', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await service.recordDeliveryFailure(
+                account.id,
+                'Connection refused',
+            );
+
+            const backoff = await db('account_delivery_backoffs')
+                .where('account_id', account.id)
+                .first();
+
+            expect(backoff).toBeDefined();
+            expect(backoff.account_id).toBe(account.id);
+            expect(backoff.last_failure_reason).toBe('Connection refused');
+            expect(backoff.backoff_seconds).toBe(
+                DELIVERY_FAILURE_BACKOFF_SECONDS,
+            );
+            expect(new Date(backoff.backoff_until).getTime()).toBeGreaterThan(
+                Date.now(),
+            );
+        });
+
+        it('should double the backoff time on subsequent failures', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await service.recordDeliveryFailure(account.id, 'First failure');
+            await service.recordDeliveryFailure(account.id, 'Second failure');
+
+            const backoff = await db('account_delivery_backoffs')
+                .where('account_id', account.id)
+                .first();
+
+            expect(backoff.last_failure_reason).toBe('Second failure');
+            expect(backoff.backoff_seconds).toBe(
+                DELIVERY_FAILURE_BACKOFF_SECONDS *
+                    DELIVERY_FAILURE_BACKOFF_MULTIPLIER,
+            );
+
+            await service.recordDeliveryFailure(account.id, 'Third failure');
+
+            const updatedRecord = await db('account_delivery_backoffs')
+                .where('account_id', account.id)
+                .first();
+
+            expect(updatedRecord.last_failure_reason).toBe('Third failure');
+            expect(updatedRecord.backoff_seconds).toBe(
+                DELIVERY_FAILURE_BACKOFF_SECONDS *
+                    DELIVERY_FAILURE_BACKOFF_MULTIPLIER ** 2,
+            );
+        });
+    });
+
+    describe('clearDeliveryFailure', () => {
+        it('should remove an existing delivery backoff', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await service.recordDeliveryFailure(
+                account.id,
+                'Connection refused',
+            );
+
+            let backoff = await db('account_delivery_backoffs')
+                .where('account_id', account.id)
+                .first();
+
+            expect(backoff).toBeDefined();
+
+            await service.clearDeliveryFailure(account.id);
+
+            backoff = await db('account_delivery_backoffs')
+                .where('account_id', account.id)
+                .first();
+
+            expect(backoff).toBeUndefined();
+        });
+
+        it('should not throw when clearing a non-existent delivery backoff', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await expect(
+                service.clearDeliveryFailure(account.id),
+            ).resolves.not.toThrow();
+        });
+
+        it('should only clear the delivery backoff for the specified account', async () => {
+            const [account1] = await fixtureManager.createInternalAccount();
+            const [account2] = await fixtureManager.createInternalAccount();
+
+            await service.recordDeliveryFailure(account1.id, 'Failure 1');
+            await service.recordDeliveryFailure(account2.id, 'Failure 2');
+
+            await service.clearDeliveryFailure(account1.id);
+
+            const account1Backoff = await db('account_delivery_backoffs')
+                .where('account_id', account1.id)
+                .first();
+
+            expect(account1Backoff).toBeUndefined();
+
+            const account2Backoff = await db('account_delivery_backoffs')
+                .where('account_id', account2.id)
+                .first();
+
+            expect(account2Backoff).toBeDefined();
+            expect(account2Backoff.last_failure_reason).toBe('Failure 2');
         });
     });
 });

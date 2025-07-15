@@ -10,6 +10,7 @@ import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
+import type { AccountService } from 'account/account.service';
 import { analyzeError } from './error-utils';
 
 /**
@@ -49,6 +50,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
     constructor(
         private logger: Logger,
         private pubSubClient: PubSub,
+        private accountService: AccountService,
         private topic: string,
         private useRetryTopic = false,
         private retryTopic?: string,
@@ -195,6 +197,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         try {
             await this.messageHandler(message.data);
 
+            await this.handleSuccess(message.data);
+
             this.logger.info(
                 `Acknowledged message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
                 { fedifyId, pubSubId: message.id },
@@ -237,6 +241,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     },
                 });
             } else if (shouldRetryUsingTopic && !errorAnalysis.isRetryable) {
+                await this.handlePermanentFailure(message.data, error as Error);
+
                 this.logger.warn(
                     `Not retrying permanent failure [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
                     {
@@ -259,6 +265,64 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      */
     registerErrorListener(listener: (error: Error) => void): void {
         this.errorListener = listener;
+    }
+
+    private async handlePermanentFailure(
+        message: FedifyMessage,
+        error: Error,
+    ): Promise<void> {
+        if (message.type !== 'outbox') {
+            return;
+        }
+
+        if (typeof message.inbox !== 'string') {
+            return;
+        }
+
+        try {
+            const inboxUrl = new URL(message.inbox);
+
+            const account =
+                await this.accountService.getAccountByInboxUrl(inboxUrl);
+
+            if (account) {
+                await this.accountService.recordDeliveryFailure(
+                    account.id,
+                    error.message,
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to record delivery failure [FedifyID: ${message.id}]: ${error}`,
+                { fedifyId: message.id, error, mq_message: message },
+            );
+        }
+    }
+
+    private async handleSuccess(message: FedifyMessage): Promise<void> {
+        if (message.type !== 'outbox') {
+            return;
+        }
+
+        if (typeof message.inbox !== 'string') {
+            return;
+        }
+
+        try {
+            const inboxUrl = new URL(message.inbox);
+
+            const account =
+                await this.accountService.getAccountByInboxUrl(inboxUrl);
+
+            if (account) {
+                await this.accountService.clearDeliveryFailure(account.id);
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to clear delivery failure [FedifyID: ${message.id}]: ${error}`,
+                { fedifyId: message.id, error, mq_message: message },
+            );
+        }
     }
 }
 

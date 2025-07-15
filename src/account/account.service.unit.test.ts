@@ -22,6 +22,7 @@ describe('AccountService', () => {
             save: vi.fn(),
             getById: vi.fn(),
             getByApId: vi.fn(),
+            getByInboxUrl: vi.fn(),
         } as unknown as KnexAccountRepository;
         fedifyContextFactory = {} as FedifyContextFactory;
         generateKeyPair = vi.fn();
@@ -170,6 +171,27 @@ describe('AccountService', () => {
             );
 
             const result = await accountService.getAccountById(accountId);
+
+            expect(result).toBe(account);
+        });
+    });
+
+    describe('getAccountByInboxUrl', () => {
+        it('should return the result from the account repository', async () => {
+            const inboxUrl = new URL('https://example.com/inbox');
+            const account = { apInbox: inboxUrl } as unknown as AccountEntity;
+
+            vi.mocked(knexAccountRepository.getByInboxUrl).mockImplementation(
+                (_inboxUrl) => {
+                    if (_inboxUrl.href === inboxUrl.href) {
+                        return Promise.resolve(account);
+                    }
+
+                    return Promise.resolve(null);
+                },
+            );
+
+            const result = await accountService.getAccountByInboxUrl(inboxUrl);
 
             expect(result).toBe(account);
         });
