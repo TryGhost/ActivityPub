@@ -1,13 +1,19 @@
 import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import {
+    type Result,
+    exhaustiveCheck,
+    getError,
+    getValue,
+    isError,
+} from 'core/result';
 import {
     type GhostPost,
     Post,
     PostType,
     type PostUpdateParams,
 } from 'post/post.entity';
-import type { PostService } from 'post/post.service';
+import type { DeletePostError, PostService } from 'post/post.service';
 
 export class GhostPostService {
     constructor(
@@ -96,7 +102,10 @@ export class GhostPostService {
         }
     }
 
-    async deleteGhostPost(account: Account, uuid: string) {
+    async deleteGhostPost(
+        account: Account,
+        uuid: string,
+    ): Promise<Result<boolean, DeletePostError>> {
         const apId = account.getApIdForPost({
             uuid,
             type: PostType.Article,
@@ -109,5 +118,6 @@ export class GhostPostService {
                 { apId, error: getError(deleteResult) },
             );
         }
+        return deleteResult;
     }
 }

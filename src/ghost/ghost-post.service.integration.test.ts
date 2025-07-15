@@ -419,14 +419,14 @@ describe('GhostPostService', () => {
             expect(Post.isDeleted(deletedPost!)).toBe(true);
         });
 
-        it('should log error when deletion fails', async () => {
+        it('should log and return an error when deletion fails', async () => {
             const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120010';
 
             const deleteByApIdSpy = vi
                 .spyOn(postService, 'deleteByApId')
                 .mockResolvedValue(['not-author', null]);
 
-            await ghostPostService.deleteGhostPost(account, uuid);
+            const deleteResult = await ghostPostService.deleteGhostPost(account, uuid);
 
             const apId = account.getApIdForPost({
                 uuid,
@@ -438,6 +438,7 @@ describe('GhostPostService', () => {
                 'Failed to delete post with apId: {apId}, error: {error}',
                 { apId, error: 'not-author' },
             );
+            expect(isError(deleteResult)).toBe(true);
         });
     });
 });

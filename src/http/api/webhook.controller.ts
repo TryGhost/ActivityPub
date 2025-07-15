@@ -5,7 +5,7 @@ import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
 import { postToDTO } from './helpers/post';
-import { BadRequest } from './helpers/response';
+import { BadRequest, Forbidden } from './helpers/response';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -150,7 +150,26 @@ export class WebhookController {
 
         const account = ctx.get('account');
 
-        await this.ghostPostService.deleteGhostPost(account, uuid);
+        const deleteResult = await this.ghostPostService.deleteGhostPost(
+            account,
+            uuid,
+        );
+
+        if (isError(deleteResult)) {
+            const error = getError(deleteResult);
+            switch (error) {
+                case 'upstream-error':
+                case 'not-a-post':
+                case 'missing-author':
+                    return BadRequest('Failed to delete ghost post');
+                case 'not-author':
+                    return Forbidden(
+                        `Failed to delete ghost post, ${account.name} is not the author of this post`,
+                    );
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
 
         return new Response(null, {
             status: 200,
