@@ -1,8 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountEntity } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';

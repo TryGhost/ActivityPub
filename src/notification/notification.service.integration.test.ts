@@ -1,12 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-
 import type { Knex } from 'knex';
-
 import { ModerationService } from 'moderation/moderation.service';
-import { Audience, PostType } from 'post/post.entity';
 import type { Post } from 'post/post.entity';
+import { Audience, PostType } from 'post/post.entity';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { NotificationService, NotificationType } from './notification.service';
 
 describe('NotificationService', () => {
@@ -818,7 +816,7 @@ describe('NotificationService', () => {
     describe('removeBlockedAccountNotifications', () => {
         it('should remove all notifications from a blocked account', async () => {
             // Create internal blocker account
-            const [account, site, userId] =
+            const [account, _site, userId] =
                 await fixtureManager.createInternalAccount(null, 'alice.com');
 
             // Create an external account that will be blocked
@@ -899,7 +897,7 @@ describe('NotificationService', () => {
     describe('removeBlockedDomainNotifications', () => {
         it('should remove all notifications from accounts from a blocked domain', async () => {
             // Create internal blocker account
-            const [account, site, userId] =
+            const [account, _site, userId] =
                 await fixtureManager.createInternalAccount(null, 'alice.com');
 
             // Create an external account that will have its domain blocked

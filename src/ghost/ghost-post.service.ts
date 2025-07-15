@@ -1,11 +1,11 @@
 import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import {
-    type Result,
     exhaustiveCheck,
     getError,
     getValue,
     isError,
+    type Result,
 } from 'core/result';
 import {
     type GhostPost,

@@ -1,9 +1,8 @@
 import type { Logger } from '@logtape/logtape';
-import { z } from 'zod';
-
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
+import { z } from 'zod';
 import type { AppContext } from '../../app';
 import { postToDTO } from './helpers/post';
 import { BadRequest, Forbidden } from './helpers/response';
@@ -108,7 +107,7 @@ export class WebhookController {
         });
     }
 
-    async handlePostUnpublished(ctx: AppContext) {
+    async handlePostUnpublished(_ctx: AppContext) {
         return new Response(null, {
             status: 200,
         });

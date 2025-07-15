@@ -1,9 +1,9 @@
 import type { PubSub, Topic } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { GCloudPubSubPushMessageQueue, createPushMessageHandler } from './mq';
+import { createPushMessageHandler, GCloudPubSubPushMessageQueue } from './mq';
 
 vi.mock('@google-cloud/pubsub', () => ({
     PubSub: vi.fn(),

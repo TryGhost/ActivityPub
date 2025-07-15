@@ -2,6 +2,7 @@ import { type Actor, PropertyValue } from '@fedify/fedify';
 import type { AccountService } from '../../account/account.service';
 import { HANDLE_REGEX } from '../../constants';
 import type { Site } from '../../site/site.service';
+
 interface Attachment {
     name: string;
     value: string;

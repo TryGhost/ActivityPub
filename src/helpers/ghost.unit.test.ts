@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import ky, { type ResponsePromise } from 'ky';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('ky');
 

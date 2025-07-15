@@ -1,8 +1,7 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-
 import { Temporal } from '@js-temporal/polyfill';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { KnexKvStore } from './knex.kvstore';
 
 describe('KnexKvStore', () => {

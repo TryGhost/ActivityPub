@@ -1,11 +1,10 @@
 import type { Federation } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
-import type { Context } from 'hono';
-import { z } from 'zod';
-
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import type { ContextData } from 'app';
 import { createFedifyCtxForHost } from 'helpers/fedify';
+import type { Context } from 'hono';
+import { z } from 'zod';
 
 import {
     PUBSUB_MESSAGE_ATTR_EVENT_HOST,
@@ -45,7 +44,7 @@ export function createIncomingPubSubMessageHandler(
                     `[${PUBSUB_MESSAGE_ATTR_EVENT_HOST}] missing from payload`,
                 );
             }
-        } catch (error) {
+        } catch (_error) {
             return new Response(null, { status: 400 });
         }
 

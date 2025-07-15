@@ -1,25 +1,19 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import { AsyncEvents } from 'core/events';
-import { type Ok, getValue } from 'core/result';
-import { FeedUpdateService } from 'feed/feed-update.service';
+import { getValue, type Ok } from 'core/result';
 import { FeedService } from 'feed/feed.service';
+import { FeedUpdateService } from 'feed/feed-update.service';
 import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '../account/account.repository.knex';
 import { AccountService } from '../account/account.service';
 import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { SiteService } from '../site/site.service';
-import { PostCreatedEvent } from './post-created.event';
-import { PostDeletedEvent } from './post-deleted.event';
-import { PostDerepostedEvent } from './post-dereposted.event';
-import { PostLikedEvent } from './post-liked.event';
-import { PostRepostedEvent } from './post-reposted.event';
-import { PostUpdatedEvent } from './post-updated.event';
 import {
     Audience,
     OutboxType,
@@ -29,6 +23,12 @@ import {
     PostType,
 } from './post.entity';
 import { KnexPostRepository } from './post.repository.knex';
+import { PostCreatedEvent } from './post-created.event';
+import { PostDeletedEvent } from './post-deleted.event';
+import { PostDerepostedEvent } from './post-dereposted.event';
+import { PostLikedEvent } from './post-liked.event';
+import { PostRepostedEvent } from './post-reposted.event';
+import { PostUpdatedEvent } from './post-updated.event';
 
 describe('KnexPostRepository', () => {
     let events: AsyncEvents;
@@ -67,7 +67,7 @@ describe('KnexPostRepository', () => {
             generateTestCryptoKeyPair,
         );
         siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
+            async getSiteSettings(_host: string) {
                 return {
                     site: {
                         title: 'Test Site',

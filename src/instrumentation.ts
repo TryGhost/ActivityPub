@@ -45,13 +45,13 @@ export async function setupInstrumentation() {
                                             'http.url': req.url,
                                             'http.target': url.pathname,
                                         });
-                                    } catch (e) {
+                                    } catch (_e) {
                                         // Ignore URL parsing errors
                                     }
                                 }
                             }
                         },
-                        applyCustomAttributesOnSpan: (span) => {},
+                        applyCustomAttributesOnSpan: (_span) => {},
                     },
                 }),
             ],

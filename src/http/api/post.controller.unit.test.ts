@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { Federation } from '@fedify/fedify';
 import { AccountEntity } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
@@ -16,6 +14,7 @@ import {
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { PostService } from 'post/post.service';
 import type { Site } from 'site/site.service';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
 import { PostController } from './post.controller';
 

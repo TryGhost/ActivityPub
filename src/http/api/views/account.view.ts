@@ -366,7 +366,7 @@ export class AccountView {
             const collection = await getCollection.bind(actor)();
 
             return collection?.totalItems ?? 0;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }

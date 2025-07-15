@@ -7,6 +7,7 @@ import {
     Follow,
     Group,
     Image,
+    importJwk,
     Like,
     Note,
     Person,
@@ -14,7 +15,6 @@ import {
     type RequestContext,
     Undo,
     Update,
-    importJwk,
     verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
@@ -110,7 +110,7 @@ export const keypairDispatcher = (
                     ),
                 },
             ];
-        } catch (err) {
+        } catch (_err) {
             ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
             return [];
         }
@@ -772,7 +772,7 @@ export function createFollowersDispatcher(
 ) {
     return async function dispatchFollowers(
         ctx: Context<ContextData>,
-        handle: string,
+        _handle: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (!site) {
@@ -795,7 +795,7 @@ export function createFollowingDispatcher(
 ) {
     return async function dispatchFollowing(
         ctx: RequestContext<ContextData>,
-        handle: string,
+        _handle: string,
         cursor: string | null,
     ) {
         ctx.data.logger.info('Following Dispatcher');
@@ -854,7 +854,7 @@ export function createFollowersCounter(
 ) {
     return async function countFollowers(
         ctx: RequestContext<ContextData>,
-        handle: string,
+        _handle: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (!site) {
@@ -876,7 +876,7 @@ export function createFollowingCounter(
 ) {
     return async function countFollowing(
         ctx: RequestContext<ContextData>,
-        handle: string,
+        _handle: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (!site) {
@@ -903,7 +903,7 @@ export function createOutboxDispatcher(
 ) {
     return async function outboxDispatcher(
         ctx: RequestContext<ContextData>,
-        handle: string,
+        _handle: string,
         cursor: string | null,
     ) {
         ctx.data.logger.info('Outbox Dispatcher');
@@ -973,9 +973,9 @@ export function outboxFirstCursor() {
 }
 
 export async function likedDispatcher(
-    ctx: RequestContext<ContextData>,
-    handle: string,
-    cursor: string | null,
+    _ctx: RequestContext<ContextData>,
+    _handle: string,
+    _cursor: string | null,
 ) {
     return {
         items: [],
@@ -984,8 +984,8 @@ export async function likedDispatcher(
 }
 
 export async function likedCounter(
-    ctx: RequestContext<ContextData>,
-    handle: string,
+    _ctx: RequestContext<ContextData>,
+    _handle: string,
 ) {
     return 0;
 }
@@ -1102,7 +1102,7 @@ export async function undoDispatcher(
     return Undo.fromJsonLd(exists);
 }
 
-export async function nodeInfoDispatcher(ctx: RequestContext<ContextData>) {
+export async function nodeInfoDispatcher(_ctx: RequestContext<ContextData>) {
     return {
         software: {
             name: 'ghost',

@@ -1,6 +1,5 @@
+import { getValue, isError, type Ok } from 'core/result';
 import { describe, expect, it } from 'vitest';
-
-import { type Ok, getValue, isError } from 'core/result';
 import {
     createTestExternalAccount,
     createTestInternalAccount,

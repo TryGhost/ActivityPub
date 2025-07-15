@@ -78,18 +78,6 @@ export class ContentPreparer {
         return ContentPreparer.instance.prepare(content, options);
     }
 
-    static regenerateExcerpt(html: string) {
-        return ContentPreparer.instance.regenerateExcerpt(html);
-    }
-
-    static parseMentions(content: string) {
-        return ContentPreparer.instance.parseMentions(content);
-    }
-
-    static updateMentions(content: string, mentions: Mention[]) {
-        return ContentPreparer.instance.updateMentions(content, mentions);
-    }
-
     /**
      * Prepare the content
      *
@@ -199,6 +187,10 @@ export class ContentPreparer {
         return linkifyHtml(html, options);
     }
 
+    static regenerateExcerpt(html: string) {
+        return ContentPreparer.instance.regenerateExcerpt(html);
+    }
+
     /**
      * Re-generate excerpt from HTML content, based on a character limit
      *
@@ -228,10 +220,18 @@ export class ContentPreparer {
         return PostSummary.parse(`${text.substring(0, 500 - 3)}...`);
     }
 
+    static parseMentions(content: string) {
+        return ContentPreparer.instance.parseMentions(content);
+    }
+
     private parseMentions(content: string): Set<string> {
         const mentions =
             content.match(new RegExp(HANDLE_REGEX.source, 'g')) || [];
         return new Set(mentions);
+    }
+
+    static updateMentions(content: string, mentions: Mention[]) {
+        return ContentPreparer.instance.updateMentions(content, mentions);
     }
 
     /**
@@ -265,7 +265,7 @@ export class ContentPreparer {
             }
 
             return html.toString();
-        } catch (error) {
+        } catch (_error) {
             // If anything goes wrong during parsing or processing, return the original content
             return content;
         }

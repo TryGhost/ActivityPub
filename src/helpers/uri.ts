@@ -3,7 +3,7 @@ export function isUri(value: string): boolean {
         new URL(value);
 
         return true;
-    } catch (err) {
+    } catch (_err) {
         return false;
     }
 }
@@ -17,7 +17,7 @@ export function toURL(value: unknown): URL | undefined {
     }
     try {
         return new URL(value);
-    } catch (err) {
+    } catch (_err) {
         return undefined;
     }
 }

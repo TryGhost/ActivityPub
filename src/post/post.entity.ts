@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type Result, error, ok } from 'core/result';
+import { error, ok, type Result } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import z from 'zod';
 import type { Account } from '../account/account.entity';

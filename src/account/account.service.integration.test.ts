@@ -1,5 +1,11 @@
-import { type Actor, type Note, isActor, lookupObject } from '@fedify/fedify';
+import { type Actor, isActor, lookupObject, type Note } from '@fedify/fedify';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import { AsyncEvents } from 'core/events';
+import { getError, getValue, isError } from 'core/result';
+import type { Knex } from 'knex';
+import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
+import { createTestDb } from 'test/db';
+import { createFixtureManager, type FixtureManager } from 'test/fixtures';
 import {
     afterEach,
     beforeAll,
@@ -9,13 +15,6 @@ import {
     it,
     vi,
 } from 'vitest';
-
-import { AsyncEvents } from 'core/events';
-import { getError, getValue, isError } from 'core/result';
-import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { AP_BASE_PATH } from '../constants';
 import { KnexAccountRepository } from './account.repository.knex';
 import { AccountService } from './account.service';

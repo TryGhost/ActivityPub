@@ -11,9 +11,9 @@ import type { Account } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import { AccountBlockedEvent, AccountUpdatedEvent } from 'account/events';
 import { buildCreateActivityAndObjectFromPost } from 'helpers/activitypub/activity';
+import { PostType } from 'post/post.entity';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
-import { PostType } from 'post/post.entity';
 import { v4 as uuidv4 } from 'uuid';
 import type { FedifyContextFactory } from './fedify-context.factory';
 

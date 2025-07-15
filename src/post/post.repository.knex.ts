@@ -1,15 +1,8 @@
-import type { Knex } from 'knex';
-
 import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
+import type { Knex } from 'knex';
 import { AccountEntity } from '../account/account.entity';
 import { parseURL } from '../core/url';
-import { PostCreatedEvent } from './post-created.event';
-import { PostDeletedEvent } from './post-deleted.event';
-import { PostDerepostedEvent } from './post-dereposted.event';
-import { PostLikedEvent } from './post-liked.event';
-import { PostRepostedEvent } from './post-reposted.event';
-import { PostUpdatedEvent } from './post-updated.event';
 import {
     type Audience,
     type CreatePostType,
@@ -20,6 +13,12 @@ import {
     PostSummary,
     PostTitle,
 } from './post.entity';
+import { PostCreatedEvent } from './post-created.event';
+import { PostDeletedEvent } from './post-deleted.event';
+import { PostDerepostedEvent } from './post-dereposted.event';
+import { PostLikedEvent } from './post-liked.event';
+import { PostRepostedEvent } from './post-reposted.event';
+import { PostUpdatedEvent } from './post-updated.event';
 
 interface PostRow {
     id: number;

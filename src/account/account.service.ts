@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
     type Actor,
     exportJwk,
@@ -5,12 +6,10 @@ import {
     isActor,
     lookupObject,
 } from '@fedify/fedify';
-import type { Knex } from 'knex';
-
-import { randomUUID } from 'node:crypto';
 import type { AsyncEvents } from 'core/events';
-import { type Result, error, getValue, isError, ok } from 'core/result';
+import { error, getValue, isError, ok, type Result } from 'core/result';
 import { parseURL } from 'core/url';
+import type { Knex } from 'knex';
 import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
 import { type Account, AccountEntity } from './account.entity';
 import type { KnexAccountRepository } from './account.repository.knex';
@@ -129,7 +128,7 @@ export class AccountService {
             }
 
             actor = potentialActor;
-        } catch (err) {
+        } catch (_err) {
             return error('network-failure');
         }
 
@@ -145,7 +144,7 @@ export class AccountService {
 
         try {
             data = await mapActorToExternalAccountData(actor);
-        } catch (err) {
+        } catch (_err) {
             return error('invalid-data');
         }
 

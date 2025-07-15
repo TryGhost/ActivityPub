@@ -1,4 +1,4 @@
-import { type Result, error, ok } from 'core/result';
+import { error, ok, type Result } from 'core/result';
 import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import type { ModerationService } from 'moderation/moderation.service';

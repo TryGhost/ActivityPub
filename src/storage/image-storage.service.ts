@@ -1,4 +1,4 @@
-import { type Result, getValue, isError, ok } from 'core/result';
+import { getValue, isError, ok, type Result } from 'core/result';
 import { v4 as uuidv4 } from 'uuid';
 import type {
     StorageAdapter,

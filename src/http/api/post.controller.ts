@@ -217,7 +217,7 @@ export class PostController {
 
         try {
             data = NoteSchema.parse((await ctx.req.json()) as unknown);
-        } catch (err) {
+        } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
                 { status: 400 },
@@ -312,7 +312,7 @@ export class PostController {
 
         try {
             data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
-        } catch (err) {
+        } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
                 { status: 400 },

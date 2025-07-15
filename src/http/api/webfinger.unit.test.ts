@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
 import type { Context } from 'hono';
 import type { Site, SiteService } from 'site/site.service';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebFingerController } from './webfinger.controller';
 
 describe('handleWebFinger', () => {
