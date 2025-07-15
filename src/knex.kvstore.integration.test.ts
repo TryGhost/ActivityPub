@@ -13,7 +13,7 @@ describe('KnexKvStore', () => {
     });
     it('Implements a basic KvStore', async () => {
         const table = 'key_value';
-        const store = await KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table);
 
         // checkReadingUnsetKey
         {
@@ -51,7 +51,7 @@ describe('KnexKvStore', () => {
 
     it('Can store boolean values', async () => {
         const table = 'key_value';
-        const store = await KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table);
 
         // checkTrue
         {
@@ -72,7 +72,7 @@ describe('KnexKvStore', () => {
 
     it('Can handle concurrent calls', async () => {
         const table = 'key_value';
-        const store = await KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table);
 
         const calls = [
             store.set(['concurrent'], true),
@@ -91,7 +91,7 @@ describe('KnexKvStore', () => {
 
     it('Can handle storing ttl', async () => {
         const table = 'key_value';
-        const store = await KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table);
 
         await store.set(['will-expire'], 'hello', {
             ttl: Temporal.Duration.from({ days: 1 }),

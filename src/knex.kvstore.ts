@@ -7,7 +7,7 @@ export class KnexKvStore implements KvStore {
         private readonly table: string,
     ) {}
 
-    static async create(knex: Knex.Knex, table: string) {
+    static create(knex: Knex.Knex, table: string) {
         // TODO: Validate table structure
         return new KnexKvStore(knex, table);
     }
