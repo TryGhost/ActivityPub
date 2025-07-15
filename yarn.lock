@@ -532,10 +532,10 @@
   resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.7.5.tgz#d153b25e1bdb3fb75c8e6617e6770ee5573dea6e"
   integrity sha512-kRTIxecP4xey9X2dG15GsMpS5WNQa2ywoSIlPXVbpwiEHMB2R78chSh2sIBlx46S5Aya7ZKpOq9ygGOlVjIJGA==
 
-"@fedify/fedify@1.7.2":
-  version "1.7.2"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.7.2.tgz#e53892b3cf25394ab092422c6825085bab81b38f"
-  integrity sha512-iYz87BCJuasgOUa74EPTf4HLVX6CIO4jW8MhLnr2fgii03iCj7u3KLYUcPxSk2s7aeFGM2lLg/9w6U4UKgYEGg==
+"@fedify/fedify@1.7.5":
+  version "1.7.5"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.7.5.tgz#41ae1578c329bcde2f58bc2f2d5d8c0a49cf5684"
+  integrity sha512-pbzAK7ERJZ+1NBr2u0//fLGNSm5c6ZhFag8Sdut9pZ7r5sSwBwU8lq1zHAo/lxEd8Ew1mEbRDWASK+8KqygotA==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@es-toolkit/es-toolkit" "npm:es-toolkit@^1.38.0"
