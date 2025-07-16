@@ -811,15 +811,22 @@ export class AccountService {
         backoffUntil: Date;
         backoffSeconds: number;
     } | null> {
-        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
-
-        if (!account) {
-            return null;
-        }
-
         const backoff = await this.db('account_delivery_backoffs')
-            .where('account_id', account.id)
-            .where('backoff_until', '>', this.db.fn.now())
+            .join(
+                'accounts',
+                'accounts.id',
+                'account_delivery_backoffs.account_id',
+            )
+            .where('accounts.ap_inbox_url', inboxUrl.href)
+            .where(
+                'account_delivery_backoffs.backoff_until',
+                '>',
+                this.db.fn.now(),
+            )
+            .select(
+                'account_delivery_backoffs.backoff_until',
+                'account_delivery_backoffs.backoff_seconds',
+            )
             .first();
 
         if (!backoff) {
