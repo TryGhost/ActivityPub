@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
     Announce,
     Article,
@@ -7,6 +7,7 @@ import {
     Image,
     Mention,
     PUBLIC_COLLECTION,
+    Update,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Account } from 'account/account.entity';
@@ -101,6 +102,25 @@ export async function buildCreateActivityAndObjectFromPost(
 
     return {
         createActivity,
+        fedifyObject,
+    };
+}
+
+export async function buildUpdateActivityAndObjectFromPost(
+    post: Post,
+    ctx: FedifyContext,
+): Promise<{ updateActivity: Update; fedifyObject: FedifyNote | Article }> {
+    const { fedifyObject, ccs } = await getFedifyObjectForPost(post, ctx);
+    const updateActivity = new Update({
+        id: ctx.getObjectUri(Update, { id: randomUUID() }),
+        actor: post.author.apId,
+        object: fedifyObject,
+        to: PUBLIC_COLLECTION,
+        ccs: ccs,
+    });
+
+    return {
+        updateActivity,
         fedifyObject,
     };
 }

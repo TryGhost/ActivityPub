@@ -8,6 +8,7 @@ import type { AccountService } from 'account/account.service';
 import { AccountBlockedEvent } from 'account/events';
 import { PostCreatedEvent } from 'post/post-created.event';
 import { PostDeletedEvent } from 'post/post-deleted.event';
+import { PostUpdatedEvent } from 'post/post-updated.event';
 import { Post, PostType } from 'post/post.entity';
 import type { FedifyContext } from '../app';
 import type { FedifyContextFactory } from './fedify-context.factory';
@@ -15,6 +16,14 @@ import { FediverseBridge } from './fediverse-bridge';
 import type { UriBuilder } from './uri';
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
+
+vi.mock('node:crypto', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('node:crypto')>();
+    return {
+        ...actual,
+        randomUUID: vi.fn(() => 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4'),
+    };
+});
 
 describe('FediverseBridge', () => {
     let events: EventEmitter;
@@ -478,6 +487,69 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should send update activities on the PostUpdatedEvent for internal accounts', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+        const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://example.com/user/foo');
+        author.isInternal = true;
+        author.apFollowers = new URL('https://example.com/user/foo/followers');
+
+        const post = Object.create(Post);
+        post.id = 456;
+        post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
+        post.author = author;
+        post.type = PostType.Article;
+        post.title = 'Updated Post Title';
+        post.content = 'Updated post content';
+        post.apId = new URL('https://example.com/article/post-456');
+        post.publishedAt = new Date('2025-01-01T00:00:00Z');
+
+        const event = new PostUpdatedEvent(post);
+        events.emit(PostUpdatedEvent.getName(), event);
+
+        await nextTick();
+        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(context.data.globaldb.set).toHaveBeenCalledTimes(2);
+
+        const storedActivity = await globalDbSet.mock.calls[0][1];
+        await expect(storedActivity).toMatchFileSnapshot(
+            './__snapshots__/publish-post-update-activity.json',
+        );
+    });
+
+    it('should not send update activities on the PostUpdatedEvent for external accounts', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const author = Object.create(AccountEntity);
+        author.id = 123;
+        author.username = 'testuser';
+        author.apId = new URL('https://external.com/user/foo');
+        author.isInternal = false;
+
+        const post = Object.create(Post);
+        post.id = 456;
+        post.author = author;
+        post.type = PostType.Article;
+        post.title = 'Updated Post Title';
+        post.content = 'Updated post content';
+        post.apId = new URL('https://external.com/article/post-456');
+
+        const event = new PostUpdatedEvent(post);
+        events.emit(PostUpdatedEvent.getName(), event);
+
+        await nextTick();
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
