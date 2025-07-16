@@ -3,6 +3,7 @@ import type { Logger } from '@logtape/logtape';
 import type { Context } from 'hono';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { AccountService } from 'account/account.service';
 import { GCloudPubSubPushMessageQueue, createPushMessageHandler } from './mq';
 
 vi.mock('@google-cloud/pubsub', () => ({
@@ -30,6 +31,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
     let mockLogger: Logger;
     let mockTopic: Topic;
     let mockPubSubClient: PubSub;
+    let mockAccountService: AccountService;
 
     beforeEach(() => {
         mockLogger = {
@@ -53,6 +55,11 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 throw new Error(`Unexpected topic: ${topic}`);
             }),
         } as unknown as PubSub;
+
+        mockAccountService = {
+            recordDeliveryFailure: vi.fn(),
+            clearDeliveryFailure: vi.fn(),
+        } as unknown as AccountService;
     });
 
     describe('enqueue', () => {
@@ -60,6 +67,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -89,6 +97,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -111,6 +120,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -129,6 +139,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -155,6 +166,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -182,6 +194,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -208,6 +221,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -230,6 +244,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -277,6 +292,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
                 true,
                 RETRY_TOPIC,
@@ -329,6 +345,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
                 true,
                 RETRY_TOPIC,
@@ -359,6 +376,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             const mq = new GCloudPubSubPushMessageQueue(
                 mockLogger,
                 mockPubSubClient,
+                mockAccountService,
                 TOPIC,
             );
 
@@ -385,6 +403,334 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 expect(errorListener).toHaveBeenCalledWith(err);
             }
         });
+
+        it('should handle permanent failures for non-retryable errors', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error(
+                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (403 Forbidden):\nForbidden',
+            );
+
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            expect(
+                mockAccountService.recordDeliveryFailure,
+            ).toHaveBeenCalledWith(
+                new URL('https://other.com/inbox'),
+                error.message,
+            );
+        });
+
+        it('should not record a delivery failure when the message type is not outbox', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error(
+                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (403 Forbidden):\nForbidden',
+            );
+
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'inbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            expect(
+                mockAccountService.recordDeliveryFailure,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should not record a delivery failure when the message inbox is not a string', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error(
+                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (403 Forbidden):\nForbidden',
+            );
+
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: { url: 'https://other.com/inbox' },
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            expect(
+                mockAccountService.recordDeliveryFailure,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should clear delivery failure on successful message handling', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const handler = vi.fn().mockResolvedValue(undefined);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            expect(handler).toHaveBeenCalledWith({
+                id: 'abc123',
+                type: 'outbox',
+                inbox: 'https://other.com/inbox',
+            });
+            expect(
+                mockAccountService.clearDeliveryFailure,
+            ).toHaveBeenCalledWith(new URL('https://other.com/inbox'));
+        });
+
+        it('should not clear delivery failure when the message type is not outbox', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const handler = vi.fn().mockResolvedValue(undefined);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'inbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            expect(handler).toHaveBeenCalledWith({
+                id: 'abc123',
+                type: 'inbox',
+                inbox: 'https://other.com/inbox',
+            });
+            expect(
+                mockAccountService.clearDeliveryFailure,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should not clear delivery failure when the message inbox is not a string', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const handler = vi.fn().mockResolvedValue(undefined);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: { url: 'https://other.com/inbox' },
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            expect(handler).toHaveBeenCalledWith({
+                id: 'abc123',
+                type: 'outbox',
+                inbox: { url: 'https://other.com/inbox' },
+            });
+            expect(
+                mockAccountService.clearDeliveryFailure,
+            ).not.toHaveBeenCalled();
+        });
+
+        it('should not try and handle a retryable error as a permanent failure', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            // This is a retryable error (500 status code)
+            const error = new Error(
+                'Failed to send activity https://example.com/activity/123 to https://other.com/inbox (500 Internal Server Error):\nServer Error',
+            );
+
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            // Should publish to retry topic for retryable errors
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledWith({
+                json: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                },
+            });
+
+            // Should NOT call permanent failure handling for retryable errors
+            expect(
+                mockAccountService.recordDeliveryFailure,
+            ).not.toHaveBeenCalled();
+        });
     });
 });
 
@@ -395,6 +741,7 @@ describe('handlePushMessage', () => {
     let ctx: Context;
     let mockLogger: Logger;
     let mockPubSubClient: PubSub;
+    let mockAccountService: AccountService;
 
     beforeEach(() => {
         ctx = {
@@ -421,12 +768,18 @@ describe('handlePushMessage', () => {
         mockPubSubClient = {
             projectId: PROJECT_ID,
         } as unknown as PubSub;
+
+        mockAccountService = {
+            recordDeliveryFailure: vi.fn(),
+            clearDeliveryFailure: vi.fn(),
+        } as unknown as AccountService;
     });
 
     it('should return a 429 response if the message queue is not listening', async () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
+            mockAccountService,
             TOPIC,
         );
 
@@ -441,6 +794,7 @@ describe('handlePushMessage', () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
+            mockAccountService,
             TOPIC,
         );
 
@@ -461,6 +815,7 @@ describe('handlePushMessage', () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
+            mockAccountService,
             TOPIC,
         );
 
@@ -485,6 +840,7 @@ describe('handlePushMessage', () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
+            mockAccountService,
             TOPIC,
         );
 
@@ -501,6 +857,7 @@ describe('handlePushMessage', () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
+            mockAccountService,
             TOPIC,
         );
 
@@ -519,6 +876,7 @@ describe('handlePushMessage', () => {
         const mq = new GCloudPubSubPushMessageQueue(
             mockLogger,
             mockPubSubClient,
+            mockAccountService,
             TOPIC,
         );
 

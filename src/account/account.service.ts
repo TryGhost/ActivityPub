@@ -51,6 +51,9 @@ type RemoteAccountFetchError =
     | 'network-failure'
     | 'not-found';
 
+export const DELIVERY_FAILURE_BACKOFF_SECONDS = 604800; // 1 week - This is temporarily high to do an initial block of broken accounts - This will be reduced to 60 seconds in the future;
+export const DELIVERY_FAILURE_BACKOFF_MULTIPLIER = 2;
+
 export class AccountService {
     /**
      * @param db Database client
@@ -747,5 +750,60 @@ export class AccountService {
         const updated = account.readAllNotifications();
 
         await this.accountRepository.save(updated);
+    }
+
+    async recordDeliveryFailure(
+        inboxUrl: URL,
+        failureReason: string,
+    ): Promise<void> {
+        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
+
+        if (!account) {
+            return;
+        }
+
+        const existing = await this.db('account_delivery_backoffs')
+            .where('account_id', account.id)
+            .first();
+
+        if (existing) {
+            const newBackoffSeconds =
+                existing.backoff_seconds * DELIVERY_FAILURE_BACKOFF_MULTIPLIER;
+            const backoffUntil = new Date(
+                Date.now() + newBackoffSeconds * 1000,
+            );
+
+            await this.db('account_delivery_backoffs')
+                .where('account_id', account.id)
+                .update({
+                    last_failure_at: this.db.fn.now(),
+                    last_failure_reason: failureReason,
+                    backoff_until: backoffUntil,
+                    backoff_seconds: newBackoffSeconds,
+                });
+        } else {
+            const backoffUntil = new Date(
+                Date.now() + DELIVERY_FAILURE_BACKOFF_SECONDS * 1000,
+            );
+
+            await this.db('account_delivery_backoffs').insert({
+                account_id: account.id,
+                last_failure_reason: failureReason,
+                backoff_until: backoffUntil,
+                backoff_seconds: DELIVERY_FAILURE_BACKOFF_SECONDS,
+            });
+        }
+    }
+
+    async clearDeliveryFailure(inboxUrl: URL): Promise<void> {
+        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
+
+        if (!account) {
+            return;
+        }
+
+        await this.db('account_delivery_backoffs')
+            .where('account_id', account.id)
+            .delete();
     }
 }

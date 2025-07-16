@@ -320,6 +320,34 @@ export class KnexAccountRepository {
         return this.mapRowToAccountEntity(accountRow);
     }
 
+    async getByInboxUrl(inboxUrl: URL): Promise<Account | null> {
+        const accountRow = await this.db('accounts')
+            .where('accounts.ap_inbox_url', inboxUrl.href)
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .select(
+                'accounts.id',
+                'accounts.uuid',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.url',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.ap_followers_url',
+                'accounts.ap_inbox_url',
+                'accounts.custom_fields',
+                'users.site_id',
+            )
+            .first();
+
+        if (!accountRow) {
+            return null;
+        }
+
+        return this.mapRowToAccountEntity(accountRow);
+    }
+
     private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {
         if (!row.uuid) {
             row.uuid = randomUUID();

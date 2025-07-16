@@ -148,23 +148,30 @@ export function registerDependencies(
 
     container.register(
         'queue',
-        asFunction((logging: Logger, pubSubClient: PubSub) => {
-            return new GCloudPubSubPushMessageQueue(
-                logging,
-                pubSubClient,
-                getFullTopic(
-                    pubSubClient.projectId,
-                    process.env.MQ_PUBSUB_TOPIC_NAME ||
-                        'unknown_pubsub_topic_name',
-                ),
-                process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
-                getFullTopic(
-                    pubSubClient.projectId,
-                    process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
-                        'unknown_pubsub_retry_topic_name',
-                ),
-            );
-        }).singleton(),
+        asFunction(
+            (
+                logging: Logger,
+                pubSubClient: PubSub,
+                accountService: AccountService,
+            ) => {
+                return new GCloudPubSubPushMessageQueue(
+                    logging,
+                    pubSubClient,
+                    accountService,
+                    getFullTopic(
+                        pubSubClient.projectId,
+                        process.env.MQ_PUBSUB_TOPIC_NAME ||
+                            'unknown_pubsub_topic_name',
+                    ),
+                    process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
+                    getFullTopic(
+                        pubSubClient.projectId,
+                        process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
+                            'unknown_pubsub_retry_topic_name',
+                    ),
+                );
+            },
+        ).singleton(),
     );
 
     container.register('flagService', asValue(new FlagService([])));

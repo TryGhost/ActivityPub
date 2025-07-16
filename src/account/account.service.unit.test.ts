@@ -22,6 +22,7 @@ describe('AccountService', () => {
             save: vi.fn(),
             getById: vi.fn(),
             getByApId: vi.fn(),
+            getByInboxUrl: vi.fn(),
         } as unknown as KnexAccountRepository;
         fedifyContextFactory = {} as FedifyContextFactory;
         generateKeyPair = vi.fn();
