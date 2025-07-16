@@ -114,6 +114,39 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             return;
         }
 
+        // If the message is an outgoing message, and the account (resolved from the inbox URL) has an active delivery backoff, do not enqueue it
+        if (message.type === 'outbox' && typeof message.inbox === 'string') {
+            try {
+                const inboxUrl = new URL(message.inbox);
+                const activeBackoff =
+                    await this.accountService.getActiveDeliveryBackoff(
+                        inboxUrl,
+                    );
+
+                if (activeBackoff) {
+                    this.logger.warn(
+                        `Dropping message [FedifyID: ${message.id}] due to active delivery backoff for inbox: ${inboxUrl.href}. Backoff until: ${activeBackoff.backoffUntil.toISOString()}, Backoff seconds: ${activeBackoff.backoffSeconds}`,
+                        {
+                            fedifyId: message.id,
+                            inboxUrl: inboxUrl.href,
+                            backoffUntil:
+                                activeBackoff.backoffUntil.toISOString(),
+                            backoffSeconds: activeBackoff.backoffSeconds,
+                            mq_message: message,
+                        },
+                    );
+                    return;
+                }
+            } catch (error) {
+                this.logger.error(
+                    `Failed to check backoff for message [FedifyID: ${message.id}]: ${error}`,
+                    { fedifyId: message.id, error, mq_message: message },
+                );
+
+                // Continue with enqueuing if we can't check the backoff
+            }
+        }
+
         try {
             const messageId = await this.pubSubClient
                 .topic(this.topic)

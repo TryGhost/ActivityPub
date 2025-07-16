@@ -806,4 +806,29 @@ export class AccountService {
             .where('account_id', account.id)
             .delete();
     }
+
+    async getActiveDeliveryBackoff(inboxUrl: URL): Promise<{
+        backoffUntil: Date;
+        backoffSeconds: number;
+    } | null> {
+        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
+
+        if (!account) {
+            return null;
+        }
+
+        const backoff = await this.db('account_delivery_backoffs')
+            .where('account_id', account.id)
+            .where('backoff_until', '>', this.db.fn.now())
+            .first();
+
+        if (!backoff) {
+            return null;
+        }
+
+        return {
+            backoffUntil: backoff.backoff_until,
+            backoffSeconds: backoff.backoff_seconds,
+        };
+    }
 }

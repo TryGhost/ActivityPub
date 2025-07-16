@@ -59,6 +59,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
         mockAccountService = {
             recordDeliveryFailure: vi.fn(),
             clearDeliveryFailure: vi.fn(),
+            getActiveDeliveryBackoff: vi.fn(),
         } as unknown as AccountService;
     });
 
@@ -112,6 +113,94 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             expect(errorListener).toHaveBeenCalledTimes(1);
             expect(errorListener).toHaveBeenCalledWith(error);
+        });
+
+        it('should drop outbox messages with active backoff', async () => {
+            const activeBackoff = {
+                backoffUntil: new Date(Date.now() + 3600000), // 1 hour from now
+                backoffSeconds: 3600,
+            };
+
+            (
+                mockAccountService.getActiveDeliveryBackoff as Mock
+            ).mockResolvedValue(activeBackoff);
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const message = {
+                id: 'abc123',
+                type: 'outbox',
+                inbox: 'https://example.com/inbox',
+            };
+
+            await mq.enqueue(message);
+
+            expect(
+                mockAccountService.getActiveDeliveryBackoff,
+            ).toHaveBeenCalledWith(new URL('https://example.com/inbox'));
+            expect(mockTopic.publishMessage).not.toHaveBeenCalled();
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('Dropping message'),
+                expect.objectContaining({
+                    fedifyId: message.id,
+                    inboxUrl: 'https://example.com/inbox',
+                    backoffUntil: activeBackoff.backoffUntil.toISOString(),
+                    backoffSeconds: activeBackoff.backoffSeconds,
+                }),
+            );
+        });
+
+        it('should enqueue outbox messages without active backoff', async () => {
+            (
+                mockAccountService.getActiveDeliveryBackoff as Mock
+            ).mockResolvedValue(null);
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const message = {
+                id: 'abc123',
+                type: 'outbox',
+                inbox: 'https://example.com/inbox',
+            };
+
+            await mq.enqueue(message);
+
+            expect(
+                mockAccountService.getActiveDeliveryBackoff,
+            ).toHaveBeenCalledWith(new URL('https://example.com/inbox'));
+            expect(mockTopic.publishMessage).toHaveBeenCalledTimes(1);
+        });
+
+        it('should enqueue non-outbox messages without checking backoff', async () => {
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+            );
+
+            const message = {
+                id: 'abc123',
+                type: 'inbox',
+                inbox: 'https://example.com/inbox',
+            };
+
+            await mq.enqueue(message);
+
+            expect(
+                mockAccountService.getActiveDeliveryBackoff,
+            ).not.toHaveBeenCalled();
+            expect(mockTopic.publishMessage).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -772,6 +861,7 @@ describe('handlePushMessage', () => {
         mockAccountService = {
             recordDeliveryFailure: vi.fn(),
             clearDeliveryFailure: vi.fn(),
+            getActiveDeliveryBackoff: vi.fn(),
         } as unknown as AccountService;
     });
 
