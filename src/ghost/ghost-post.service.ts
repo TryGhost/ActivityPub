@@ -1,3 +1,4 @@
+import type EventEmitter from 'node:events';
 import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import {
@@ -10,6 +11,7 @@ import {
     ok,
 } from 'core/result';
 import type { Knex } from 'knex';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import {
     type GhostPost,
     Post,
@@ -27,7 +29,15 @@ export class GhostPostService {
         private readonly db: Knex,
         private readonly postService: PostService,
         private readonly logger: Logger,
+        private readonly events: EventEmitter,
     ) {}
+
+    async init() {
+        this.events.on(
+            PostDeletedEvent.getName(),
+            this.deleteGhostPostMapping.bind(this),
+        );
+    }
 
     async updateArticleFromGhostPost(account: Account, ghostPost: GhostPost) {
         const apId = account.getApIdForPost({
@@ -159,5 +169,18 @@ export class GhostPostService {
             .first();
 
         return result?.ap_id ?? null;
+    }
+
+    private async deleteGhostPostMapping(event: PostDeletedEvent) {
+        const post = event.getPost();
+        if (!post.author.isInternal) {
+            return;
+        }
+        await this.db('ghost_ap_post_mappings')
+            .whereRaw(
+                'ghost_ap_post_mappings.ap_id_hash = UNHEX(SHA2(?, 256))',
+                [post.apId.href],
+            )
+            .delete();
     }
 }

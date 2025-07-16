@@ -82,7 +82,13 @@ describe('GhostPostService', () => {
             logger,
         );
 
-        ghostPostService = new GhostPostService(db, postService, logger);
+        ghostPostService = new GhostPostService(
+            db,
+            postService,
+            logger,
+            events,
+        );
+        await ghostPostService.init();
 
         // Reset the database before each test
         await fixtureManager.reset();
@@ -522,6 +528,52 @@ describe('GhostPostService', () => {
 
             expect(deleteByApIdSpy).toHaveBeenCalledWith(apId, account);
             expect(isError(deleteResult)).toBe(true);
+        });
+
+        it('should remove ghost post mapping when post is deleted', async () => {
+            const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120011';
+
+            const createResult = await ghostPostService.createGhostPost(
+                account,
+                {
+                    title: 'Test Article for Mapping Deletion',
+                    uuid,
+                    html: '<p>Content that will be deleted</p>',
+                    excerpt: 'Test excerpt',
+                    custom_excerpt: null,
+                    feature_image: null,
+                    published_at: new Date().toISOString(),
+                    url: 'https://example.com/test-article-mapping-deletion',
+                    visibility: 'public',
+                    authors: [],
+                },
+            );
+
+            expect(isError(createResult)).toBe(false);
+            if (isError(createResult)) {
+                throw new Error('Failed to create initial post');
+            }
+
+            const mappingBeforeDeletion = await db('ghost_ap_post_mappings')
+                .select('*')
+                .where('ghost_uuid', uuid)
+                .first();
+
+            expect(mappingBeforeDeletion).not.toBeNull();
+            expect(mappingBeforeDeletion.ghost_uuid).toBe(uuid);
+
+            const deleteResult = await ghostPostService.deleteGhostPost(
+                account,
+                uuid,
+            );
+            expect(isError(deleteResult)).toBe(false);
+
+            const mappingAfterDeletion = await db('ghost_ap_post_mappings')
+                .select('*')
+                .where('ghost_uuid', uuid)
+                .first();
+
+            expect(mappingAfterDeletion).toBeUndefined();
         });
     });
 });
