@@ -1,0 +1,1 @@
+TRUNCATE TABLE ghost_ap_post_mappings;
