@@ -632,7 +632,7 @@
   resolved "https://registry.yarnpkg.com/@google-cloud/precise-date/-/precise-date-4.0.0.tgz#e179893a3ad628b17a6fabdfcc9d468753aac11a"
   integrity sha512-1TUx3KdaU3cN7nfCdNf+UVqA/PSX29Cjcox3fZZBtINlRrXVTmUkQnCKv2MbBUbCopbK4olAT1IHl76uZyCiVA==
 
-"@google-cloud/profiler@^6.0.3":
+"@google-cloud/profiler@6.0.3":
   version "6.0.3"
   resolved "https://registry.yarnpkg.com/@google-cloud/profiler/-/profiler-6.0.3.tgz#bf1195b045e2c2b00c142afc60af44bcf762dd6e"
   integrity sha512-Ey8li6Vc2CbfEzOTSZaqKolxPMGacxVUQuhChNT0Wi55a3nfImMiiuDgqYw1In/a9Q3Z62O7jUg2L8f1XwMN7Q==
