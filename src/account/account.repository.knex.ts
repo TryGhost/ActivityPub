@@ -322,7 +322,10 @@ export class KnexAccountRepository {
 
     async getByInboxUrl(inboxUrl: URL): Promise<Account | null> {
         const accountRow = await this.db('accounts')
-            .where('accounts.ap_inbox_url', inboxUrl.href)
+            .whereRaw(
+                'accounts.ap_inbox_url_hash = UNHEX(SHA2(LOWER(?), 256))',
+                [inboxUrl.href],
+            )
             .leftJoin('users', 'users.account_id', 'accounts.id')
             .select(
                 'accounts.id',
