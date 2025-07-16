@@ -51,7 +51,7 @@ type RemoteAccountFetchError =
     | 'network-failure'
     | 'not-found';
 
-export const DELIVERY_FAILURE_BACKOFF_SECONDS = 60;
+export const DELIVERY_FAILURE_BACKOFF_SECONDS = 604800; // 1 week - This is temporarily high to do an initial block of broken accounts - This will be reduced to 60 seconds in the future;
 export const DELIVERY_FAILURE_BACKOFF_MULTIPLIER = 2;
 
 export class AccountService {
