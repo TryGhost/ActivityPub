@@ -13,16 +13,15 @@ import {
 import type { Knex } from 'knex';
 import { PostDeletedEvent } from 'post/post-deleted.event';
 import {
+    type CreatePostError,
     type GhostPost,
     Post,
     PostType,
     type PostUpdateParams,
 } from 'post/post.entity';
-import type {
-    DeletePostError,
-    GhostPostError,
-    PostService,
-} from 'post/post.service';
+import type { DeletePostError, PostService } from 'post/post.service';
+
+export type GhostPostError = CreatePostError | 'post-already-exists';
 
 export class GhostPostService {
     constructor(

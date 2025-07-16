@@ -54,8 +54,6 @@ export type RepostError =
     | 'already-reposted'
     | InteractionError;
 
-export type GhostPostError = CreatePostError | 'post-already-exists';
-
 export type DeletePostError = GetByApIdError | 'not-author';
 
 export type UpdatePostError = 'post-not-found' | 'not-author';
