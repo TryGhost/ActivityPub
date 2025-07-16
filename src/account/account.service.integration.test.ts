@@ -1272,4 +1272,76 @@ describe('AccountService', () => {
             expect(account2Backoff.last_failure_reason).toBe('Failure 2');
         });
     });
+
+    describe('getActiveDeliveryBackoff', () => {
+        it('should return null when no backoff for an account exists', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
+
+            const backoff = await service.getActiveDeliveryBackoff(inboxUrl);
+
+            expect(backoff).toBeNull();
+        });
+
+        it('should return details of the active backoff', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
+
+            await service.recordDeliveryFailure(inboxUrl, 'Connection refused');
+
+            const backoff = await service.getActiveDeliveryBackoff(inboxUrl);
+
+            expect(backoff).toBeDefined();
+            expect(backoff?.backoffSeconds).toBe(
+                DELIVERY_FAILURE_BACKOFF_SECONDS,
+            );
+            expect(backoff?.backoffUntil).toBeInstanceOf(Date);
+            expect(backoff?.backoffUntil.getTime()).toBeGreaterThan(Date.now());
+        });
+
+        it('should return null when the backoff has expired', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
+
+            await db('account_delivery_backoffs').insert({
+                account_id: account.id,
+                last_failure_reason: 'Connection refused',
+                backoff_until: new Date(Date.now() - 3600000), // 1 hour ago
+                backoff_seconds: 60,
+            });
+
+            const backoff = await service.getActiveDeliveryBackoff(inboxUrl);
+
+            expect(backoff).toBeNull();
+        });
+
+        it('should return the updated backoff after multiple failures', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const inboxUrl = account.apInbox!;
+
+            await service.recordDeliveryFailure(inboxUrl, 'First failure');
+            await service.recordDeliveryFailure(inboxUrl, 'Second failure');
+
+            const backoff = await service.getActiveDeliveryBackoff(inboxUrl);
+
+            expect(backoff).toBeDefined();
+            expect(backoff?.backoffSeconds).toBe(
+                DELIVERY_FAILURE_BACKOFF_SECONDS *
+                    DELIVERY_FAILURE_BACKOFF_MULTIPLIER,
+            );
+            expect(backoff?.backoffUntil).toBeInstanceOf(Date);
+            expect(backoff?.backoffUntil.getTime()).toBeGreaterThan(Date.now());
+        });
+
+        it('should return null for a non-existent account', async () => {
+            const nonExistentInboxUrl = new URL(
+                'https://non-existent.example.com/inbox',
+            );
+
+            const backoff =
+                await service.getActiveDeliveryBackoff(nonExistentInboxUrl);
+
+            expect(backoff).toBeNull();
+        });
+    });
 });
