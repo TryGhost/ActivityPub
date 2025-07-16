@@ -8,7 +8,7 @@ INSERT INTO ghost_ap_post_mappings (
     ghost_uuid,
     ap_id
 )
-SELECT
+SELECT DISTINCT
     posts.uuid AS ghost_uuid,
     posts.ap_id AS ap_id
 FROM posts
