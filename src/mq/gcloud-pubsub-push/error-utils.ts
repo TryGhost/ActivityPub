@@ -61,6 +61,14 @@ function isUpstreamSSLError(error: Error, depth = 0): boolean {
         return true;
     }
 
+    if (error.message.match(/certificate has expired/i) !== null) {
+        return true;
+    }
+
+    if (error.message.match(/self-signed certificate/i) !== null) {
+        return true;
+    }
+
     if ('cause' in error && error.cause instanceof Error) {
         return isUpstreamSSLError(error.cause, depth + 1);
     }
@@ -70,6 +78,47 @@ function isUpstreamSSLError(error: Error, depth = 0): boolean {
 
 function analyzeUpstreamSSLError(error: Error): ErrorAnalysis {
     // Upstream certificate errors are not retryable and not reportable
+    return {
+        isRetryable: false,
+        isReportable: false,
+    };
+}
+
+function isNetworkConnectivityError(error: Error, depth = 0): boolean {
+    if (depth > MAX_CAUSE_DEPTH) {
+        return false;
+    }
+
+    if (
+        error.message.match(/connect EHOSTUNREACH/i) !== null ||
+        error.message.match(/connect ETIMEDOUT/i) !== null ||
+        error.message.match(/connect ECONNREFUSED/i) !== null ||
+        error.message.match(/connect ECONNRESET/i) !== null ||
+        error.message.match(/socket hang up/i) !== null
+    ) {
+        return true;
+    }
+
+    if (error instanceof AggregateError) {
+        for (const subError of error.errors) {
+            if (
+                subError instanceof Error &&
+                isNetworkConnectivityError(subError, depth + 1)
+            ) {
+                return true;
+            }
+        }
+    }
+
+    if ('cause' in error && error.cause instanceof Error) {
+        return isNetworkConnectivityError(error.cause, depth + 1);
+    }
+
+    return false;
+}
+
+function analyzeNetworkConnectivityError(error: Error): ErrorAnalysis {
+    // Network connectivity errors are not retryable and not reportable
     return {
         isRetryable: false,
         isReportable: false,
@@ -200,11 +249,17 @@ function analyzeFetchError(error: FetchError): ErrorAnalysis {
  * "Failed to send activity <activity-id> to <inbox-url> (<status-code> <status-text>):\n<error body>"
  *
  * SSL/TLS certificate related Fedify delivery errors are of type TypeError with
- * the message format:
- * "Hostname/IP does not match certificate's altnames: Host: <host>. is not in the cert's altnames: DNS:<host>"
+ * the message format(s):
+ * - "Hostname/IP does not match certificate's altnames: Host: <host>. is not in the cert's altnames: DNS:<host>"
+ * - "certificate has expired"
+ * - "self-signed certificate"
  *
  * DNS resolution errors have the message format:
  * "getaddrinfo <error-code ENOTFOUND|EAI_AGAIN> <domain>"
+ *
+ * Network connectivity errors have the message format:
+ * "connect <error-code EHOSTUNREACH|ETIMEDOUT|ECONNREFUSED|ECONNRESET> <host:port>"
+ * May be wrapped in AggregateError when multiple connection attempts fail
  *
  * Non-Fedify delivery errors are considered application errors and are
  * retryable and reportable
@@ -218,6 +273,10 @@ export function analyzeError(error: Error): ErrorAnalysis {
 
     if (isUpstreamSSLError(error)) {
         return analyzeUpstreamSSLError(error);
+    }
+
+    if (isNetworkConnectivityError(error)) {
+        return analyzeNetworkConnectivityError(error);
     }
 
     if (isFedifyDeliveryError(error)) {
