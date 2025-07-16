@@ -78,6 +78,16 @@ export async function setupInstrumentation() {
                 ),
             );
         }
+
+        if (process.env.ENABLE_CPU_PROFILER === 'true') {
+            const cpuProfiler = await import('@google-cloud/profiler');
+            cpuProfiler.start({
+                serviceContext: {
+                    service: process.env.K_SERVICE || 'activitypub',
+                    version: process.env.K_REVISION || 'unknown',
+                },
+            });
+        }
     }
 }
 
