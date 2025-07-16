@@ -45,6 +45,16 @@ const PostDeletedWebhookSchema = z.object({
     }),
 });
 
+const PostUnpublishedWebhookSchema = z.object({
+    post: z.object({
+        current: z.object({
+            uuid: z.string().uuid(),
+        }),
+    }),
+});
+
+type DeleteReason = 'Deleted' | 'Unpublished';
+
 export class WebhookController {
     constructor(
         private readonly postService: PostService,
@@ -112,12 +122,6 @@ export class WebhookController {
         });
     }
 
-    async handlePostUnpublished(ctx: AppContext) {
-        return new Response(null, {
-            status: 200,
-        });
-    }
-
     async handlePostUpdated(ctx: AppContext) {
         let data: PostInput;
 
@@ -141,12 +145,18 @@ export class WebhookController {
         });
     }
 
-    async handlePostDeleted(ctx: AppContext) {
+    async handlePostDeleted(ctx: AppContext, reason: DeleteReason) {
         let uuid: string;
         try {
-            uuid = PostDeletedWebhookSchema.parse(
-                (await ctx.req.json()) as unknown,
-            ).post.previous.uuid;
+            if (reason === 'Deleted') {
+                uuid = PostDeletedWebhookSchema.parse(
+                    (await ctx.req.json()) as unknown,
+                ).post.previous.uuid;
+            } else {
+                uuid = PostUnpublishedWebhookSchema.parse(
+                    (await ctx.req.json()) as unknown,
+                ).post.current.uuid;
+            }
         } catch (err) {
             if (err instanceof Error) {
                 return BadRequest(`Could not parse payload: ${err.message}`);

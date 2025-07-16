@@ -813,7 +813,7 @@ app.post(
     spanWrapper((ctx: AppContext) => {
         const webhookController =
             container.resolve<WebhookController>('webhookController');
-        return webhookController.handlePostUnpublished(ctx);
+        return webhookController.handlePostDeleted(ctx, 'Unpublished');
     }),
 );
 
@@ -833,7 +833,7 @@ app.post(
     spanWrapper((ctx: AppContext) => {
         const webhookController =
             container.resolve<WebhookController>('webhookController');
-        return webhookController.handlePostDeleted(ctx);
+        return webhookController.handlePostDeleted(ctx, 'Deleted');
     }),
 );
 
