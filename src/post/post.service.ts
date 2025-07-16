@@ -28,8 +28,6 @@ import type { VerificationError } from 'storage/adapters/storage-adapter';
 import type { ImageStorageService } from 'storage/image-storage.service';
 import { ContentPreparer } from './content';
 import {
-    type CreatePostError,
-    type GhostPost,
     type ImageAttachment,
     type Mention,
     Post,
@@ -429,26 +427,6 @@ export class PostService {
         }
 
         post.addRepost(account);
-
-        await this.postRepository.save(post);
-
-        return ok(post);
-    }
-
-    async handleIncomingGhostPost(
-        account: Account,
-        ghostPost: GhostPost,
-    ): Promise<Result<Post, CreatePostError>> {
-        const postResult = await Post.createArticleFromGhostPost(
-            account,
-            ghostPost,
-        );
-
-        if (isError(postResult)) {
-            return postResult;
-        }
-
-        const post = getValue(postResult);
 
         await this.postRepository.save(post);
 

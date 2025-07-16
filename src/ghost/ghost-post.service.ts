@@ -19,6 +19,7 @@ import {
     PostType,
     type PostUpdateParams,
 } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { DeletePostError, PostService } from 'post/post.service';
 
 export type GhostPostError = CreatePostError | 'post-already-exists';
@@ -27,6 +28,7 @@ export class GhostPostService {
     constructor(
         private readonly db: Knex,
         private readonly postService: PostService,
+        private readonly postRepository: KnexPostRepository,
         private readonly logger: Logger,
         private readonly events: EventEmitter,
     ) {}
@@ -140,25 +142,20 @@ export class GhostPostService {
             return error('post-already-exists');
         }
 
-        const postResult = await this.postService.handleIncomingGhostPost(
-            account,
-            data,
-        );
+        const postResult = await Post.createArticleFromGhostPost(account, data);
         if (isError(postResult)) {
             return postResult;
         }
 
         const post = getValue(postResult);
-        await this.insertGhostPostMapping(data.uuid, post.apId);
+
+        await this.postRepository.save(post);
+        await this.db('ghost_ap_post_mappings').insert({
+            ghost_uuid: data.uuid,
+            ap_id: post.apId.href,
+        });
 
         return ok(post);
-    }
-
-    private async insertGhostPostMapping(ghostUuid: string, apId: URL) {
-        await this.db('ghost_ap_post_mappings').insert({
-            ghost_uuid: ghostUuid,
-            ap_id: apId.href,
-        });
     }
 
     private async getApIdForGhostPost(ghostUuid: string) {

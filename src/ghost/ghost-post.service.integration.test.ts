@@ -85,6 +85,7 @@ describe('GhostPostService', () => {
         ghostPostService = new GhostPostService(
             db,
             postService,
+            postRepository,
             logger,
             events,
         );
@@ -118,7 +119,7 @@ describe('GhostPostService', () => {
             };
 
             // Creating initial post
-            const initialResult = await postService.handleIncomingGhostPost(
+            const initialResult = await ghostPostService.createGhostPost(
                 account,
                 {
                     title: 'Original Test Article',
@@ -173,9 +174,9 @@ describe('GhostPostService', () => {
                 authors: [],
             };
 
-            const handleIncomingGhostPostSpy = vi.spyOn(
-                postService,
-                'handleIncomingGhostPost',
+            const createGhostPostSpy = vi.spyOn(
+                ghostPostService,
+                'createGhostPost',
             );
 
             await ghostPostService.updateArticleFromGhostPost(
@@ -183,10 +184,7 @@ describe('GhostPostService', () => {
                 ghostPost,
             );
 
-            expect(handleIncomingGhostPostSpy).toHaveBeenCalledWith(
-                account,
-                ghostPost,
-            );
+            expect(createGhostPostSpy).toHaveBeenCalledWith(account, ghostPost);
 
             const apId = account.getApIdForPost({
                 uuid: ghostPost.uuid,
@@ -199,7 +197,7 @@ describe('GhostPostService', () => {
         });
 
         it('should delete post when ghost post has missing content', async () => {
-            const initialResult = await postService.handleIncomingGhostPost(
+            const initialResult = await ghostPostService.createGhostPost(
                 account,
                 {
                     title: 'Test Article',
@@ -252,7 +250,7 @@ describe('GhostPostService', () => {
         });
 
         it('should delete post when ghost post is private', async () => {
-            const initialResult = await postService.handleIncomingGhostPost(
+            const initialResult = await ghostPostService.createGhostPost(
                 account,
                 {
                     title: 'Test Article',
@@ -319,7 +317,7 @@ describe('GhostPostService', () => {
             };
 
             // First create the initial post
-            const initialResult = await postService.handleIncomingGhostPost(
+            const initialResult = await ghostPostService.createGhostPost(
                 account,
                 ghostPost,
             );
@@ -474,7 +472,7 @@ describe('GhostPostService', () => {
         it('should delete an existing post successfully', async () => {
             const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120009';
 
-            const initialResult = await postService.handleIncomingGhostPost(
+            const initialResult = await ghostPostService.createGhostPost(
                 account,
                 {
                     title: 'Test Article to Delete',
