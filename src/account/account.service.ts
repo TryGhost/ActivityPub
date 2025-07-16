@@ -817,7 +817,10 @@ export class AccountService {
                 'accounts.id',
                 'account_delivery_backoffs.account_id',
             )
-            .where('accounts.ap_inbox_url', inboxUrl.href)
+            .whereRaw(
+                'accounts.ap_inbox_url_hash = UNHEX(SHA2(LOWER(?), 256))',
+                [inboxUrl.href],
+            )
             .where(
                 'account_delivery_backoffs.backoff_until',
                 '>',
