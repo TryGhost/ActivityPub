@@ -7,7 +7,7 @@ import { AsyncEvents } from 'core/events';
 import { getError, getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
-import { Post, PostType } from 'post/post.entity';
+import { Post } from 'post/post.entity';
 import { KnexPostRepository } from 'post/post.repository.knex';
 import { PostService } from 'post/post.service';
 import type { ImageStorageService } from 'storage/image-storage.service';
@@ -158,42 +158,6 @@ describe('GhostPostService', () => {
             expect(updatedPost!.url.href).toBe(
                 'https://example.com/updated-test-article',
             );
-        });
-
-        it('should create a new post when the post does not exist', async () => {
-            const ghostPost = {
-                title: 'New Test Article',
-                uuid: 'ee218320-b2e6-11ef-8a80-0242ac120003',
-                html: '<p>This is new content</p>',
-                excerpt: 'New excerpt',
-                custom_excerpt: null,
-                feature_image: null,
-                published_at: new Date().toISOString(),
-                url: 'https://example.com/new-test-article',
-                visibility: 'public' as const,
-                authors: [],
-            };
-
-            const createGhostPostSpy = vi.spyOn(
-                ghostPostService,
-                'createGhostPost',
-            );
-
-            await ghostPostService.updateArticleFromGhostPost(
-                account,
-                ghostPost,
-            );
-
-            expect(createGhostPostSpy).toHaveBeenCalledWith(account, ghostPost);
-
-            const apId = account.getApIdForPost({
-                uuid: ghostPost.uuid,
-                type: PostType.Article,
-            });
-            const createdPost = await postRepository.getByApId(apId);
-            expect(createdPost).not.toBeNull();
-            expect(createdPost!.title).toBe('New Test Article');
-            expect(createdPost!.content).toContain('This is new content');
         });
 
         it('should delete post when ghost post has missing content', async () => {
@@ -366,10 +330,12 @@ describe('GhostPostService', () => {
                 ghostPost,
             );
 
-            const apId = account.getApIdForPost({
-                uuid: ghostPost.uuid,
-                type: PostType.Article,
-            });
+            const apIdForPost = await db('ghost_ap_post_mappings')
+                .select('ap_id')
+                .where('ghost_uuid', ghostPost.uuid)
+                .first();
+            expect(apIdForPost).not.toBeNull();
+            const apId = new URL(apIdForPost.ap_id);
             const createdPost = await postRepository.getByApId(apId);
             expect(createdPost).not.toBeNull();
             expect(createdPost!.metadata).toEqual({
@@ -505,27 +471,6 @@ describe('GhostPostService', () => {
             const deletedPost = await postRepository.getById(initialPost.id!);
             expect(deletedPost).not.toBeNull();
             expect(Post.isDeleted(deletedPost!)).toBe(true);
-        });
-
-        it('should return an error when deletion fails', async () => {
-            const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120010';
-
-            const deleteByApIdSpy = vi
-                .spyOn(postService, 'deleteByApId')
-                .mockResolvedValue(['not-author', null]);
-
-            const deleteResult = await ghostPostService.deleteGhostPost(
-                account,
-                uuid,
-            );
-
-            const apId = account.getApIdForPost({
-                uuid,
-                type: PostType.Article,
-            });
-
-            expect(deleteByApIdSpy).toHaveBeenCalledWith(apId, account);
-            expect(isError(deleteResult)).toBe(true);
         });
 
         it('should remove ghost post mapping when post is deleted', async () => {

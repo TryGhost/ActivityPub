@@ -16,7 +16,6 @@ import {
     type CreatePostError,
     type GhostPost,
     Post,
-    PostType,
     type PostUpdateParams,
 } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
@@ -26,6 +25,8 @@ export type GhostPostError =
     | CreatePostError
     | 'post-already-exists'
     | 'failed-to-create-post';
+
+export type DeleteGhostPostError = DeletePostError | 'post-not-found';
 
 export class GhostPostService {
     constructor(
@@ -44,10 +45,25 @@ export class GhostPostService {
     }
 
     async updateArticleFromGhostPost(account: Account, ghostPost: GhostPost) {
-        const apId = account.getApIdForPost({
-            uuid: ghostPost.uuid,
-            type: PostType.Article,
-        });
+        const apIdForPost = await this.getApIdForGhostPost(ghostPost.uuid);
+        if (!apIdForPost) {
+            this.logger.info(
+                'No apId found for ghost post {uuid}, creating new post',
+                { uuid: ghostPost.uuid },
+            );
+            const newPostResult = await this.createGhostPost(
+                account,
+                ghostPost,
+            );
+            if (isError(newPostResult)) {
+                this.logger.error(
+                    'Failed to create new post with uuid: {uuid}, error: {error}',
+                    { uuid: ghostPost.uuid, error: getError(newPostResult) },
+                );
+            }
+            return;
+        }
+        const apId = new URL(apIdForPost);
 
         const postResult = await Post.createArticleFromGhostPost(
             account,
@@ -126,12 +142,12 @@ export class GhostPostService {
     async deleteGhostPost(
         account: Account,
         uuid: string,
-    ): Promise<Result<boolean, DeletePostError>> {
-        const apId = account.getApIdForPost({
-            uuid,
-            type: PostType.Article,
-        });
-
+    ): Promise<Result<boolean, DeleteGhostPostError>> {
+        const apIdForPost = await this.getApIdForGhostPost(uuid);
+        if (!apIdForPost) {
+            return error('post-not-found');
+        }
+        const apId = new URL(apIdForPost);
         return await this.postService.deleteByApId(apId, account);
     }
 
