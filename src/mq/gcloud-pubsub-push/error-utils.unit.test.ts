@@ -439,7 +439,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(error);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -448,7 +448,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(error);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -457,7 +457,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(error);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -466,7 +466,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(error);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -475,7 +475,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(error);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -492,7 +492,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(fetchError);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -512,7 +512,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(aggregateError);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -534,7 +534,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(fetchError);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -567,7 +567,7 @@ describe('analyzeError', () => {
 
             const result = analyzeError(fetchError);
 
-            expect(result.isRetryable).toBe(false);
+            expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(false);
         });
 
@@ -585,7 +585,7 @@ describe('analyzeError', () => {
                 const error = new Error(message);
                 const result = analyzeError(error);
 
-                expect(result.isRetryable).toBe(false);
+                expect(result.isRetryable).toBe(true);
                 expect(result.isReportable).toBe(false);
             }
         });

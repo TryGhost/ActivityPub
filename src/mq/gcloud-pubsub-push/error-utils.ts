@@ -118,9 +118,9 @@ function isNetworkConnectivityError(error: Error, depth = 0): boolean {
 }
 
 function analyzeNetworkConnectivityError(error: Error): ErrorAnalysis {
-    // Network connectivity errors are not retryable and not reportable
+    // Network connectivity errors are retryable but not reportable
     return {
-        isRetryable: false,
+        isRetryable: true,
         isReportable: false,
     };
 }
