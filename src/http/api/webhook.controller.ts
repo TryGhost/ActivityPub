@@ -1,6 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { z } from 'zod';
 
+import type { Account } from 'account/account.entity';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
@@ -52,8 +53,6 @@ const PostUnpublishedWebhookSchema = z.object({
         }),
     }),
 });
-
-type DeleteReason = 'Deleted' | 'Unpublished';
 
 export class WebhookController {
     constructor(
@@ -122,6 +121,22 @@ export class WebhookController {
         });
     }
 
+    async handlePostUnpublished(ctx: AppContext) {
+        let uuid: string;
+        try {
+            uuid = PostUnpublishedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.current.uuid;
+        } catch (err) {
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
+        }
+
+        return this.deletePost(ctx.get('account'), uuid);
+    }
+
     async handlePostUpdated(ctx: AppContext) {
         let data: PostInput;
 
@@ -145,18 +160,12 @@ export class WebhookController {
         });
     }
 
-    async handlePostDeleted(ctx: AppContext, reason: DeleteReason) {
+    async handlePostDeleted(ctx: AppContext) {
         let uuid: string;
         try {
-            if (reason === 'Deleted') {
-                uuid = PostDeletedWebhookSchema.parse(
-                    (await ctx.req.json()) as unknown,
-                ).post.previous.uuid;
-            } else {
-                uuid = PostUnpublishedWebhookSchema.parse(
-                    (await ctx.req.json()) as unknown,
-                ).post.current.uuid;
-            }
+            uuid = PostDeletedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.previous.uuid;
         } catch (err) {
             if (err instanceof Error) {
                 return BadRequest(`Could not parse payload: ${err.message}`);
@@ -164,8 +173,10 @@ export class WebhookController {
             return BadRequest('Could not parse payload');
         }
 
-        const account = ctx.get('account');
+        return this.deletePost(ctx.get('account'), uuid);
+    }
 
+    private async deletePost(account: Account, uuid: string) {
         const deleteResult = await this.ghostPostService.deleteGhostPost(
             account,
             uuid,
