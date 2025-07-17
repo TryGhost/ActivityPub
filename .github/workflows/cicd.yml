@@ -13,7 +13,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'  # Trigger on semantic version tags like v1.0.0
+      - "v*.*.*" # Trigger on semantic version tags like v1.0.0
 
 permissions:
   id-token: write
@@ -423,6 +423,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: stg-${{ matrix.region_name }}-activitypub-queue
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -433,6 +434,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: stg-${{ matrix.region_name }}-activitypub-retry-queue
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -443,6 +445,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: stg-${{ matrix.region_name }}-activitypub-external
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -453,6 +456,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: stg-${{ matrix.region_name }}-activitypub-api
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -504,6 +508,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: prd-${{ matrix.region_name }}-activitypub-queue
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -514,6 +519,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: prd-${{ matrix.region_name }}-activitypub-retry-queue
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -524,6 +530,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: prd-${{ matrix.region_name }}-activitypub-external
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
@@ -534,6 +541,7 @@ jobs:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ needs.build-test-push.outputs.activitypub_docker_version }}
           region: ${{ matrix.region }}
           service: prd-${{ matrix.region_name }}-activitypub-api
+          revision_traffic: LATEST=100
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
