@@ -549,7 +549,7 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.uuid).not.toBe(ghostPost.uuid);
         expect(post.content).toEqual(ghostPost.html);
         expect(post.summary).toBeNull();
     });
@@ -575,7 +575,7 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.uuid).not.toBe(ghostPost.uuid);
         expect(post.content).toEqual(ghostPost.html);
         expect(post.excerpt).toEqual(ghostPost.excerpt);
         expect(post.summary).toEqual(ghostPost.custom_excerpt);
@@ -624,7 +624,7 @@ describe('Post', () => {
         );
         const post = getValue(postResult as Ok<Post>) as Post;
 
-        expect(post.uuid).toEqual(ghostPost.uuid);
+        expect(post.uuid).not.toBe(ghostPost.uuid);
         expect(post.content).toEqual(
             '<p>Welcome!</p><img src="https://ghost.org/feature-image.jpeg" /><div class="gh-paid-content-notice"><h3>Upgrade to continue reading</h3><p>Become a paid member to get access to all premium content</p><a class="gh-paid-content-cta" href="https://ghost.org/post#/portal/signup">Upgrade</a></div>',
         );

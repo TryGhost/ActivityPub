@@ -457,7 +457,7 @@ export class Post extends BaseEntity {
         return ok(
             new Post(
                 null,
-                ghostPost.uuid,
+                randomUUID(),
                 account,
                 PostType.Article,
                 Audience.Public,

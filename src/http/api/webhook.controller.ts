@@ -1,6 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { z } from 'zod';
 
+import type { Account } from 'account/account.entity';
 import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
@@ -40,6 +41,14 @@ const PostPublishedWebhookSchema = z.object({
 const PostDeletedWebhookSchema = z.object({
     post: z.object({
         previous: z.object({
+            uuid: z.string().uuid(),
+        }),
+    }),
+});
+
+const PostUnpublishedWebhookSchema = z.object({
+    post: z.object({
+        current: z.object({
             uuid: z.string().uuid(),
         }),
     }),
@@ -113,9 +122,19 @@ export class WebhookController {
     }
 
     async handlePostUnpublished(ctx: AppContext) {
-        return new Response(null, {
-            status: 200,
-        });
+        let uuid: string;
+        try {
+            uuid = PostUnpublishedWebhookSchema.parse(
+                (await ctx.req.json()) as unknown,
+            ).post.current.uuid;
+        } catch (err) {
+            if (err instanceof Error) {
+                return BadRequest(`Could not parse payload: ${err.message}`);
+            }
+            return BadRequest('Could not parse payload');
+        }
+
+        return this.deletePost(ctx.get('account'), uuid);
     }
 
     async handlePostUpdated(ctx: AppContext) {
@@ -154,8 +173,10 @@ export class WebhookController {
             return BadRequest('Could not parse payload');
         }
 
-        const account = ctx.get('account');
+        return this.deletePost(ctx.get('account'), uuid);
+    }
 
+    private async deletePost(account: Account, uuid: string) {
         const deleteResult = await this.ghostPostService.deleteGhostPost(
             account,
             uuid,
