@@ -331,6 +331,264 @@ describe('analyzeError', () => {
             expect(result.isRetryable).toBe(true);
             expect(result.isReportable).toBe(true);
         });
+
+        it('should handle certificate expiration errors as non-retryable', () => {
+            const error = new Error('certificate has expired');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle certificate expiration errors in error cause chain', () => {
+            const certError = new Error('certificate has expired');
+            const tlsError = new Error('TLS handshake failed');
+            Object.defineProperty(tlsError, 'cause', {
+                value: certError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const fetchError = new TypeError('fetch failed');
+            Object.defineProperty(fetchError, 'cause', {
+                value: tlsError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle certificate expiration with various case formats', () => {
+            const testCases = [
+                'certificate has expired',
+                'Certificate has expired',
+                'CERTIFICATE HAS EXPIRED',
+                'Error: certificate has expired',
+                'TLS Error: Certificate Has Expired',
+            ];
+
+            for (const message of testCases) {
+                const error = new Error(message);
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(false);
+                expect(result.isReportable).toBe(false);
+            }
+        });
+
+        it('should handle self-signed certificate errors as non-retryable', () => {
+            const error = new Error('self-signed certificate');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle self-signed certificate errors in error cause chain', () => {
+            const certError = new Error('self-signed certificate');
+            const tlsError = new Error('TLS handshake failed');
+            Object.defineProperty(tlsError, 'cause', {
+                value: certError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const fetchError = new TypeError('fetch failed');
+            Object.defineProperty(fetchError, 'cause', {
+                value: tlsError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(false);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle self-signed certificate with various case formats', () => {
+            const testCases = [
+                'self-signed certificate',
+                'Self-signed certificate',
+                'SELF-SIGNED CERTIFICATE',
+                'Error: self-signed certificate',
+                'TLS Error: Self-Signed Certificate',
+            ];
+
+            for (const message of testCases) {
+                const error = new Error(message);
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(false);
+                expect(result.isReportable).toBe(false);
+            }
+        });
+    });
+
+    describe('Network connectivity errors', () => {
+        it('should handle EHOSTUNREACH errors as non-retryable', () => {
+            const error = new Error(
+                'connect EHOSTUNREACH 2403:5815:4782:15:be24:11ff:fece:137c:443 - Local (:::0)',
+            );
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle ETIMEDOUT errors as non-retryable', () => {
+            const error = new Error('connect ETIMEDOUT 119.17.159.140:443');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle ECONNREFUSED errors as non-retryable', () => {
+            const error = new Error('connect ECONNREFUSED 127.0.0.1:443');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle ECONNRESET errors as non-retryable', () => {
+            const error = new Error('connect ECONNRESET');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle socket hang up errors as non-retryable', () => {
+            const error = new Error('socket hang up');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle network errors in error cause chain', () => {
+            const connectError = new Error(
+                'connect EHOSTUNREACH 2a04:4e42:600::775:443 - Local (:::0)',
+            );
+            const fetchError = new TypeError('fetch failed');
+            Object.defineProperty(fetchError, 'cause', {
+                value: connectError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle AggregateError with network connectivity errors', () => {
+            const errors = [
+                new Error(
+                    'connect EHOSTUNREACH 2a04:4e42:600::775:443 - Local (:::0)',
+                ),
+                new Error('connect ETIMEDOUT 151.101.131.7:443'),
+                new Error(
+                    'connect EHOSTUNREACH 2a04:4e42:400::775:443 - Local (:::0)',
+                ),
+                new Error('connect ETIMEDOUT 151.101.3.7:443'),
+            ];
+
+            const aggregateError = new AggregateError(errors);
+
+            const result = analyzeError(aggregateError);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle AggregateError in error cause chain', () => {
+            const errors = [
+                new Error(
+                    'connect EHOSTUNREACH 2a04:4e42:600::775:443 - Local (:::0)',
+                ),
+                new Error('connect ETIMEDOUT 151.101.131.7:443'),
+            ];
+
+            const aggregateError = new AggregateError(errors);
+            const fetchError = new TypeError('fetch failed');
+            Object.defineProperty(fetchError, 'cause', {
+                value: aggregateError,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle AggregateError with non-network errors as retryable', () => {
+            const errors = [
+                new Error('Some other error'),
+                new Error('Another random error'),
+            ];
+
+            const aggregateError = new AggregateError(errors);
+
+            const result = analyzeError(aggregateError);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(true);
+        });
+
+        it('should handle deeply nested AggregateError', () => {
+            const connectError = new Error(
+                'connect ETIMEDOUT 151.101.131.7:443',
+            );
+            const innerAggregate = new AggregateError([connectError]);
+            const outerAggregate = new AggregateError([innerAggregate]);
+            const fetchError = new TypeError('fetch failed');
+            Object.defineProperty(fetchError, 'cause', {
+                value: outerAggregate,
+                enumerable: false,
+                configurable: true,
+            });
+
+            const result = analyzeError(fetchError);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle network connectivity errors with various case formats', () => {
+            const testCases = [
+                'connect EHOSTUNREACH 192.168.1.1:443',
+                'Connect ETIMEDOUT 10.0.0.1:443',
+                'CONNECT ECONNREFUSED localhost:3000',
+                'Error: connect ECONNRESET',
+                'Socket hang up',
+                'SOCKET HANG UP',
+            ];
+
+            for (const message of testCases) {
+                const error = new Error(message);
+                const result = analyzeError(error);
+
+                expect(result.isRetryable).toBe(true);
+                expect(result.isReportable).toBe(false);
+            }
+        });
     });
 
     describe('FetchError handling', () => {
