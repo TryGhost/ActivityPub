@@ -3,6 +3,7 @@ import {
     Document,
     Image,
     Link,
+    Mention,
     Note,
     lookupObject,
 } from '@fedify/fedify';
@@ -893,6 +894,49 @@ describe('PostService', () => {
                 mediaType: 'image/jpeg',
                 url: new URL('https://example.com/image.jpg'),
             });
+        });
+
+        it('should handle duplicate mentions', async () => {
+            const authorAccount = await fixtureManager.createExternalAccount();
+            const mentionedAccount =
+                await fixtureManager.createExternalAccount();
+
+            const apId = new URL('https://blahblah.com/post/1');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: apId,
+                    content: `<a class="u-url list-slug" href="${mentionedAccount.apId}" rel="external nofollow noopener" target="_blank">@${mentionedAccount.username}@${mentionedAccount.apId.hostname}</a> Very nice shot! And luckily the water was so calm.`,
+                    published: Temporal.Instant.from(
+                        '2025-07-14T22:29:48+00:00',
+                    ),
+                    attribution: authorAccount.apId,
+                    tags: [
+                        new Mention({
+                            href: mentionedAccount.apId,
+                            name: `@${mentionedAccount.username}@${mentionedAccount.apId.hostname}`,
+                        }),
+                        new Mention({
+                            href: mentionedAccount.apId,
+                            name: `@${mentionedAccount.username}@${mentionedAccount.apId.hostname}`,
+                        }),
+                    ],
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error(
+                    `Result should not be an error: ${getError(result)}`,
+                );
+            }
+
+            const post = getValue(result);
+            expect(post).not.toBeNull();
+            expect(post.mentions).toHaveLength(1);
+            expect(post.mentions[0].username).toBe(mentionedAccount.username);
+            expect(post.mentions[0].apId).toEqual(mentionedAccount.apId);
         });
     });
 
