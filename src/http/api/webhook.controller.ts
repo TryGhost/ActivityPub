@@ -171,6 +171,7 @@ export class WebhookController {
                 case 'upstream-error':
                 case 'not-a-post':
                 case 'missing-author':
+                case 'post-not-found':
                     return BadRequest('Failed to delete ghost post');
                 case 'not-author':
                     return Forbidden(

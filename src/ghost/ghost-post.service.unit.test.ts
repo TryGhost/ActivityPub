@@ -1,7 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import type { AsyncEvents } from 'core/events';
-import { getError, getValue, isError, ok } from 'core/result';
+import { error, getError, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
 import { Post } from 'post/post.entity';
 import type { KnexPostRepository } from 'post/post.repository.knex';
@@ -28,6 +28,7 @@ describe('GhostPostService', () => {
     beforeEach(() => {
         mockLogger = {
             error: vi.fn(),
+            info: vi.fn(),
         } as unknown as Logger;
 
         mockEvents = {} as unknown as AsyncEvents;
@@ -40,6 +41,13 @@ describe('GhostPostService', () => {
             id: 1,
             apId: new URL('https://example.com/posts/test-post'),
             uuid: 'post-uuid-456',
+            title: 'Existing Post',
+            content: '<p>Updated content</p>',
+            excerpt: 'Updated excerpt',
+            summary: null,
+            imageUrl: null,
+            url: new URL('https://example.com/existing'),
+            metadata: null,
         } as unknown as Post;
 
         mockPostRepository = {
@@ -48,6 +56,7 @@ describe('GhostPostService', () => {
 
         mockPostService = {
             deleteByApId: vi.fn().mockResolvedValue(ok(true)),
+            updateByApId: vi.fn().mockResolvedValue(ok(mockPost)),
         } as unknown as PostService;
 
         vi.spyOn(Post, 'createArticleFromGhostPost').mockResolvedValue(
@@ -165,6 +174,126 @@ describe('GhostPostService', () => {
             expect(mockLogger.error).not.toHaveBeenCalled();
 
             expect(mockPostService.deleteByApId).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateArticleFromGhostPost', () => {
+        it('should create a new post when ghost post mapping does not exist', async () => {
+            mockQueryBuilder.first.mockResolvedValue(null); // No mapping found
+
+            const ghostPostData = {
+                title: 'Non-existent Post',
+                uuid: 'non-existent-uuid',
+                html: '<p>Content</p>',
+                excerpt: 'Excerpt',
+                custom_excerpt: null,
+                feature_image: null,
+                published_at: new Date().toISOString(),
+                url: 'https://example.com/non-existent',
+                visibility: 'public' as const,
+                authors: [],
+            };
+            const createGhostPostSpy = vi
+                .spyOn(ghostPostService, 'createGhostPost')
+                .mockResolvedValue(ok(mockPost));
+
+            const result = await ghostPostService.updateArticleFromGhostPost(
+                mockAccount,
+                ghostPostData,
+            );
+
+            expect(mockDb).toHaveBeenCalledWith('ghost_ap_post_mappings');
+            expect(createGhostPostSpy).toHaveBeenCalledWith(
+                mockAccount,
+                ghostPostData,
+            );
+            expect(result).toBeUndefined();
+        });
+
+        it('should update the post when ghost post mapping exists', async () => {
+            const apIdHref = 'https://example.com/posts/existing-post';
+            mockQueryBuilder.first.mockResolvedValue({ ap_id: apIdHref }); // Mapping found
+
+            const ghostPostData = {
+                title: 'Existing Post',
+                uuid: 'existing-uuid',
+                html: '<p>Updated content</p>',
+                excerpt: 'Updated excerpt',
+                custom_excerpt: null,
+                feature_image: null,
+                published_at: new Date().toISOString(),
+                url: 'https://example.com/existing',
+                visibility: 'public' as const,
+                authors: [],
+            };
+
+            const result = await ghostPostService.updateArticleFromGhostPost(
+                mockAccount,
+                ghostPostData,
+            );
+
+            expect(result).toBeUndefined();
+
+            expect(mockPostService.updateByApId).toHaveBeenCalledWith(
+                new URL(apIdHref),
+                mockAccount,
+                expect.objectContaining({
+                    title: ghostPostData.title,
+                    content: expect.any(String),
+                }),
+            );
+        });
+    });
+
+    describe('deleteGhostPost', () => {
+        it('should return post-not-found error when ghost post mapping does not exist', async () => {
+            mockQueryBuilder.first.mockResolvedValue(null); // No mapping found
+
+            const uuid = 'non-existent-uuid';
+
+            const result = await ghostPostService.deleteGhostPost(
+                mockAccount,
+                uuid,
+            );
+            expect(isError(result)).toBe(true);
+            if (!isError(result)) {
+                throw new Error('Expected error result');
+            }
+            expect(getError(result)).toBe('post-not-found');
+            expect(mockPostService.deleteByApId).not.toHaveBeenCalled();
+        });
+
+        it('should delete post when ghost post mapping exists', async () => {
+            const apIdHref = 'https://example.com/posts/to-delete';
+            mockQueryBuilder.first.mockResolvedValue({ ap_id: apIdHref }); // Mapping found
+
+            const uuid = 'existing-uuid-to-delete';
+
+            await ghostPostService.deleteGhostPost(mockAccount, uuid);
+            expect(mockPostService.deleteByApId).toHaveBeenCalledWith(
+                new URL(apIdHref),
+                mockAccount,
+            );
+        });
+
+        it('should return an error when deletion fails', async () => {
+            const uuid = 'ee218320-b2e6-11ef-8a80-0242ac120010';
+            const apIdHref = 'https://example.com/posts/to-delete';
+            mockQueryBuilder.first.mockResolvedValue({ ap_id: apIdHref });
+            mockPostService.deleteByApId = vi
+                .fn()
+                .mockResolvedValue(error('not-author'));
+
+            const deleteResult = await ghostPostService.deleteGhostPost(
+                mockAccount,
+                uuid,
+            );
+
+            expect(mockPostService.deleteByApId).toHaveBeenCalledWith(
+                new URL(apIdHref),
+                mockAccount,
+            );
+            expect(isError(deleteResult)).toBe(true);
         });
     });
 });
