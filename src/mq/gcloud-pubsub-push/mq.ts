@@ -11,6 +11,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 import type { AccountService } from 'account/account.service';
+import { parseURL } from 'core/url';
 import { analyzeError } from './error-utils';
 
 /**
@@ -114,10 +115,55 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             return;
         }
 
-        // If the message is an outgoing message, and the account (resolved from the inbox URL) has an active delivery backoff, do not enqueue it
+        // Filter messages which send to an ActivityPub inbox
         if (message.type === 'outbox' && typeof message.inbox === 'string') {
+            const inboxUrl = parseURL(message.inbox);
+
+            if (!inboxUrl) {
+                this.logger.error(
+                    `Message [FedifyID: ${message.id}] has an inbox URL that is not a valid URL: ${message.inbox}`,
+                    { fedifyId: message.id, mq_message: message },
+                );
+
+                return;
+            }
+
+            // We don't want to deliver Create activities to internal accounts
+            if (
+                message.activityType ===
+                'https://www.w3.org/ns/activitystreams#Create'
+            ) {
+                // Don't bother doing a DB lookup if the pathname doesn't even match
+                if (inboxUrl.pathname.startsWith('/.ghost/activitypub')) {
+                    try {
+                        const shouldDeliver =
+                            await this.accountService.shouldDeliverActivity(
+                                inboxUrl,
+                            );
+
+                        if (!shouldDeliver) {
+                            this.logger.info(
+                                `Dropping message [FedifyID: ${message.id}] due to inbox URL being an internal account: ${inboxUrl.href}`,
+                                { fedifyId: message.id, mq_message: message },
+                            );
+
+                            return;
+                        }
+                    } catch (error) {
+                        this.logger.error(
+                            `Failed to get account for message [FedifyID: ${message.id}]: ${error}`,
+                            {
+                                fedifyId: message.id,
+                                error,
+                                mq_message: message,
+                            },
+                        );
+                    }
+                }
+            }
+
+            // If the message is an outgoing message, and the account (resolved from the inbox URL) has an active delivery backoff, do not enqueue it
             try {
-                const inboxUrl = new URL(message.inbox);
                 const activeBackoff =
                     await this.accountService.getActiveDeliveryBackoff(
                         inboxUrl,
