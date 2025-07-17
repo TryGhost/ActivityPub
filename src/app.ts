@@ -40,6 +40,7 @@ import type { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dis
 import { get } from 'es-toolkit/compat';
 import type { EventSerializer } from 'events/event';
 import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
+import type { GhostPostService } from 'ghost/ghost-post.service';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
 import { AccountController } from 'http/api/account.controller';
@@ -208,6 +209,8 @@ container.resolve<FeedUpdateService>('feedUpdateService').init();
 container.resolve<NotificationEventService>('notificationEventService').init();
 
 container.resolve<GhostExploreService>('ghostExploreService').init();
+
+container.resolve<GhostPostService>('ghostPostService').init();
 
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')

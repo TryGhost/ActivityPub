@@ -1,25 +1,47 @@
+import type EventEmitter from 'node:events';
 import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import {
     type Result,
+    error,
     exhaustiveCheck,
     getError,
     getValue,
     isError,
+    ok,
 } from 'core/result';
+import type { Knex } from 'knex';
+import { PostDeletedEvent } from 'post/post-deleted.event';
 import {
+    type CreatePostError,
     type GhostPost,
     Post,
     PostType,
     type PostUpdateParams,
 } from 'post/post.entity';
+import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { DeletePostError, PostService } from 'post/post.service';
+
+export type GhostPostError =
+    | CreatePostError
+    | 'post-already-exists'
+    | 'failed-to-create-post';
 
 export class GhostPostService {
     constructor(
+        private readonly db: Knex,
         private readonly postService: PostService,
+        private readonly postRepository: KnexPostRepository,
         private readonly logger: Logger,
+        private readonly events: EventEmitter,
     ) {}
+
+    async init() {
+        this.events.on(
+            PostDeletedEvent.getName(),
+            this.deleteGhostPostMapping.bind(this),
+        );
+    }
 
     async updateArticleFromGhostPost(account: Account, ghostPost: GhostPost) {
         const apId = account.getApIdForPost({
@@ -77,11 +99,10 @@ export class GhostPostService {
                         'Post not found for apId: {apId}, creating new post',
                         { apId },
                     );
-                    const newPostResult =
-                        await this.postService.handleIncomingGhostPost(
-                            account,
-                            ghostPost,
-                        );
+                    const newPostResult = await this.createGhostPost(
+                        account,
+                        ghostPost,
+                    );
                     if (isError(newPostResult)) {
                         this.logger.error(
                             'Failed to create new post with apId: {apId}, error: {error}',
@@ -112,5 +133,62 @@ export class GhostPostService {
         });
 
         return await this.postService.deleteByApId(apId, account);
+    }
+
+    async createGhostPost(
+        account: Account,
+        data: GhostPost,
+    ): Promise<Result<Post, GhostPostError>> {
+        const existingPost = await this.getApIdForGhostPost(data.uuid);
+
+        if (existingPost) {
+            return error('post-already-exists');
+        }
+
+        const postResult = await Post.createArticleFromGhostPost(account, data);
+        if (isError(postResult)) {
+            return postResult;
+        }
+
+        const post = getValue(postResult);
+        await this.postRepository.save(post);
+
+        try {
+            await this.db('ghost_ap_post_mappings').insert({
+                ghost_uuid: data.uuid,
+                ap_id: post.apId.href,
+            });
+        } catch (err) {
+            this.logger.error(
+                'Failed to create ghost post mapping for apId: {apId}, error: {error}',
+                { apId: post.apId.href, error: err },
+            );
+            await this.postService.deleteByApId(post.apId, account);
+            return error('failed-to-create-post');
+        }
+
+        return ok(post);
+    }
+
+    private async getApIdForGhostPost(ghostUuid: string) {
+        const result = await this.db('ghost_ap_post_mappings')
+            .select('ap_id')
+            .where('ghost_uuid', ghostUuid)
+            .first();
+
+        return result?.ap_id ?? null;
+    }
+
+    private async deleteGhostPostMapping(event: PostDeletedEvent) {
+        const post = event.getPost();
+        if (!post.author.isInternal) {
+            return;
+        }
+        await this.db('ghost_ap_post_mappings')
+            .whereRaw(
+                'ghost_ap_post_mappings.ap_id_hash = UNHEX(SHA2(?, 256))',
+                [post.apId.href],
+            )
+            .delete();
     }
 }

@@ -28,8 +28,6 @@ import type { VerificationError } from 'storage/adapters/storage-adapter';
 import type { ImageStorageService } from 'storage/image-storage.service';
 import { ContentPreparer } from './content';
 import {
-    type CreatePostError,
-    type GhostPost,
     type ImageAttachment,
     type Mention,
     Post,
@@ -53,8 +51,6 @@ export type RepostError =
     | GetByApIdError
     | 'already-reposted'
     | InteractionError;
-
-export type GhostPostError = CreatePostError | 'post-already-exists';
 
 export type DeletePostError = GetByApIdError | 'not-author';
 
@@ -431,32 +427,6 @@ export class PostService {
         }
 
         post.addRepost(account);
-
-        await this.postRepository.save(post);
-
-        return ok(post);
-    }
-
-    async handleIncomingGhostPost(
-        account: Account,
-        ghostPost: GhostPost,
-    ): Promise<Result<Post, GhostPostError>> {
-        const postResult = await Post.createArticleFromGhostPost(
-            account,
-            ghostPost,
-        );
-
-        if (isError(postResult)) {
-            return postResult;
-        }
-
-        const post = getValue(postResult);
-
-        const existingPost = await this.postRepository.getByApId(post.apId);
-
-        if (existingPost) {
-            return error('post-already-exists');
-        }
 
         await this.postRepository.save(post);
 
