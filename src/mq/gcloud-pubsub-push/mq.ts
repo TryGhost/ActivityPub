@@ -131,7 +131,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             // We don't want to deliver Create activities to internal accounts
             if (
                 message.activityType ===
-                'https://www.w3.org/ns/activitystreams#Create'
+                    'https://www.w3.org/ns/activitystreams#Create' &&
+                process.env.FORCE_INTERNAL_ACTIVITY_DELIVERY !== 'true'
             ) {
                 // Don't bother doing a DB lookup if the pathname doesn't even match
                 if (inboxUrl.pathname.startsWith('/.ghost/activitypub')) {
