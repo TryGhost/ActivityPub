@@ -22,7 +22,10 @@ import {
 import type { KnexPostRepository } from 'post/post.repository.knex';
 import type { DeletePostError, PostService } from 'post/post.service';
 
-export type GhostPostError = CreatePostError | 'post-already-exists';
+export type GhostPostError =
+    | CreatePostError
+    | 'post-already-exists'
+    | 'failed-to-create-post';
 
 export class GhostPostService {
     constructor(
@@ -148,12 +151,21 @@ export class GhostPostService {
         }
 
         const post = getValue(postResult);
-
         await this.postRepository.save(post);
-        await this.db('ghost_ap_post_mappings').insert({
-            ghost_uuid: data.uuid,
-            ap_id: post.apId.href,
-        });
+
+        try {
+            await this.db('ghost_ap_post_mappings').insert({
+                ghost_uuid: data.uuid,
+                ap_id: post.apId.href,
+            });
+        } catch (err) {
+            this.logger.error(
+                'Failed to create ghost post mapping for apId: {apId}, error: {error}',
+                { apId: post.apId.href, error: err },
+            );
+            await this.postService.deleteByApId(post.apId, account);
+            return error('failed-to-create-post');
+        }
 
         return ok(post);
     }

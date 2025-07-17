@@ -93,6 +93,10 @@ export class WebhookController {
                     return BadRequest(
                         'Webhook already processed for this post',
                     );
+                case 'failed-to-create-post':
+                    return new Response('Failed to create post', {
+                        status: 500,
+                    });
                 default:
                     return exhaustiveCheck(error);
             }
