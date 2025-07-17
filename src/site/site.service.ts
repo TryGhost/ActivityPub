@@ -21,7 +21,7 @@ export class SiteService {
         private ghostService: IGhostService,
     ) {}
 
-    private async createSite(host: string): Promise<Site> {
+    private async createSite(host: string, isGhostPro: boolean): Promise<Site> {
         const rows = await this.client
             .select('*')
             .from('sites')
@@ -36,6 +36,7 @@ export class SiteService {
             .insert({
                 host,
                 webhook_secret,
+                ghost_pro: isGhostPro,
             })
             .into('sites');
 
@@ -66,12 +67,15 @@ export class SiteService {
         };
     }
 
-    public async initialiseSiteForHost(host: string): Promise<Site> {
+    public async initialiseSiteForHost(
+        host: string,
+        isGhostPro = false,
+    ): Promise<Site> {
         const existingSite = await this.getSiteByHost(host);
 
         let site: Site;
         if (existingSite === null) {
-            site = await this.createSite(host);
+            site = await this.createSite(host, isGhostPro);
         } else {
             site = existingSite;
         }

@@ -30,6 +30,7 @@ services:
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
       - LOCAL_STORAGE_PATH=/opt/activitypub/content
       # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
+      # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
     command: yarn build:watch
     depends_on:
       migrate:
