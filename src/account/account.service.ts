@@ -752,6 +752,17 @@ export class AccountService {
         await this.accountRepository.save(updated);
     }
 
+    // TODO Move all methods below to a delivery service
+
+    async shouldDeliverActivity(inboxUrl: URL): Promise<boolean> {
+        const account = await this.accountRepository.getByInboxUrl(inboxUrl);
+        if (!account) {
+            return false;
+        }
+
+        return !account.isInternal;
+    }
+
     async recordDeliveryFailure(
         inboxUrl: URL,
         failureReason: string,
