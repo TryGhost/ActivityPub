@@ -520,6 +520,94 @@ app.get('/ping', (ctx) => {
     });
 });
 
+app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
+    try {
+        globalLogging.info('Trace testing endpoint');
+        const extra: Record<string, string | boolean> = {};
+
+        const { traceId, spanId, sampled } = getTraceContext(
+            ctx.req.header('traceparent'),
+        );
+        if (traceId && spanId) {
+            extra['logging.googleapis.com/trace'] =
+                `projects/ghost-activitypub/traces/${traceId}`;
+            extra['logging.googleapis.com/spanId'] = spanId;
+            extra['logging.googleapis.com/trace_sampled'] = sampled;
+        }
+
+        return await withContext(extra, async () => {
+            globalLogging.info('Continuing trace');
+            return await Sentry.continueTrace(
+                {
+                    sentryTrace: ctx.req.header('traceparent'),
+                    baggage: undefined,
+                },
+                async () => {
+                    globalLogging.info('Updating span name');
+                    Sentry.getActiveSpan()?.updateName(
+                        `${ctx.req.method} ${ctx.req.routePath}`,
+                    );
+                    return Sentry.startSpan(
+                        {
+                            op: 'fn',
+                            name: 'first',
+                        },
+                        () => {
+                            globalLogging.info('First span');
+                            return withContext(
+                                {
+                                    'logging.googleapis.com/spanId':
+                                        Sentry.getActiveSpan()?.spanContext()
+                                            .spanId,
+                                },
+                                () => {
+                                    globalLogging.info(
+                                        'First span with context',
+                                    );
+                                    return Sentry.startSpan(
+                                        {
+                                            op: 'fn',
+                                            name: 'second',
+                                        },
+                                        () => {
+                                            globalLogging.info('Second span');
+                                            return withContext(
+                                                {
+                                                    'logging.googleapis.com/spanId':
+                                                        Sentry.getActiveSpan()?.spanContext()
+                                                            .spanId,
+                                                },
+                                                async () => {
+                                                    globalLogging.info(
+                                                        'Second span with context',
+                                                    );
+                                                    return new Response(
+                                                        'Hello',
+                                                        {
+                                                            status: 200,
+                                                        },
+                                                    );
+                                                },
+                                            );
+                                        },
+                                    );
+                                },
+                            );
+                        },
+                    );
+                },
+            );
+        });
+    } catch (err: unknown) {
+        return new Response(
+            `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+            {
+                status: 400,
+            },
+        );
+    }
+});
+
 /** Middleware */
 
 app.use(async (ctx, next) => {
