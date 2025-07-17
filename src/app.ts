@@ -542,7 +542,7 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
             });
             return await Sentry.continueTrace(
                 {
-                    sentryTrace: ctx.req.header('traceparent'),
+                    sentryTrace: `${traceId}-${spanId}-01`,
                     baggage: undefined,
                 },
                 async () => {
@@ -645,7 +645,7 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                                     ctx.req.header(
                                                                         'traceparent',
                                                                     ),
-                                                                version: 1,
+                                                                version: 2,
                                                             },
                                                             null,
                                                             4,
