@@ -141,7 +141,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                                 inboxUrl,
                             );
 
-                        if (!shouldDeliver) {
+                        if (
+                            !shouldDeliver &&
+                            message.baseUrl === 'https://fabien.ghost.io'
+                        ) {
                             this.logger.info(
                                 `Dropping message [FedifyID: ${message.id}] due to inbox URL being an internal account: ${inboxUrl.href}`,
                                 { fedifyId: message.id, mq_message: message },
