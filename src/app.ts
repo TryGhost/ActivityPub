@@ -543,6 +543,10 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                     baggage: undefined,
                 },
                 async () => {
+                    const continueTraceSpanId =
+                        Sentry.getActiveSpan()?.spanContext().spanId;
+                    const continueTraceTraceId =
+                        Sentry.getActiveSpan()?.spanContext().traceId;
                     globalLogging.info('Updating span name');
                     Sentry.getActiveSpan()?.updateName(
                         `${ctx.req.method} ${ctx.req.routePath}`,
@@ -554,8 +558,13 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                         },
                         () => {
                             globalLogging.info('First span');
+                            const firstSpanId =
+                                Sentry.getActiveSpan()?.spanContext().spanId;
+                            const firstTraceId =
+                                Sentry.getActiveSpan()?.spanContext().traceId;
                             return withContext(
                                 {
+                                    'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${firstTraceId}`,
                                     'logging.googleapis.com/spanId':
                                         Sentry.getActiveSpan()?.spanContext()
                                             .spanId,
@@ -570,9 +579,16 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                             name: 'second',
                                         },
                                         () => {
+                                            const secondSpanId =
+                                                Sentry.getActiveSpan()?.spanContext()
+                                                    .spanId;
+                                            const secondTraceId =
+                                                Sentry.getActiveSpan()?.spanContext()
+                                                    .traceId;
                                             globalLogging.info('Second span');
                                             return withContext(
                                                 {
+                                                    'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${secondTraceId}`,
                                                     'logging.googleapis.com/spanId':
                                                         Sentry.getActiveSpan()?.spanContext()
                                                             .spanId,
@@ -582,7 +598,20 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                         'Second span with context',
                                                     );
                                                     return new Response(
-                                                        'Hello',
+                                                        JSON.stringify(
+                                                            {
+                                                                traceId,
+                                                                spanId,
+                                                                firstSpanId,
+                                                                firstTraceId,
+                                                                continueTraceSpanId,
+                                                                continueTraceTraceId,
+                                                                secondSpanId,
+                                                                secondTraceId,
+                                                            },
+                                                            null,
+                                                            4,
+                                                        ),
                                                         {
                                                             status: 200,
                                                         },
