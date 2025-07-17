@@ -337,6 +337,10 @@ export class Post extends BaseEntity {
     }
 
     addMention(account: Account) {
+        if (this.mentions.some((m) => m.id === account.id)) {
+            return;
+        }
+
         this.mentions.push(account);
     }
 
