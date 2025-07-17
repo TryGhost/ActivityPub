@@ -536,7 +536,10 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
         }
 
         return await withContext(extra, async () => {
-            globalLogging.info('Continuing trace');
+            globalLogging.info('Continuing trace {traceId} {spanId}', {
+                traceId,
+                spanId,
+            });
             return await Sentry.continueTrace(
                 {
                     sentryTrace: ctx.req.header('traceparent'),
@@ -547,7 +550,13 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                         Sentry.getActiveSpan()?.spanContext().spanId;
                     const continueTraceTraceId =
                         Sentry.getActiveSpan()?.spanContext().traceId;
-                    globalLogging.info('Updating span name');
+                    globalLogging.info(
+                        'Updating span name {continueTraceSpanId} {continueTraceTraceId}',
+                        {
+                            continueTraceSpanId,
+                            continueTraceTraceId,
+                        },
+                    );
                     Sentry.getActiveSpan()?.updateName(
                         `${ctx.req.method} ${ctx.req.routePath}`,
                     );
@@ -557,21 +566,30 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                             name: 'first',
                         },
                         () => {
-                            globalLogging.info('First span');
                             const firstSpanId =
                                 Sentry.getActiveSpan()?.spanContext().spanId;
                             const firstTraceId =
                                 Sentry.getActiveSpan()?.spanContext().traceId;
+                            globalLogging.info(
+                                'First span {firstSpanId} {firstTraceId}',
+                                {
+                                    firstSpanId,
+                                    firstTraceId,
+                                },
+                            );
                             return withContext(
                                 {
                                     'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${firstTraceId}`,
                                     'logging.googleapis.com/spanId':
-                                        Sentry.getActiveSpan()?.spanContext()
-                                            .spanId,
+                                        firstSpanId,
                                 },
                                 () => {
                                     globalLogging.info(
-                                        'First span with context',
+                                        'First span with context {firstSpanId} {firstTraceId}',
+                                        {
+                                            firstSpanId,
+                                            firstTraceId,
+                                        },
                                     );
                                     return Sentry.startSpan(
                                         {
@@ -585,17 +603,32 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                             const secondTraceId =
                                                 Sentry.getActiveSpan()?.spanContext()
                                                     .traceId;
-                                            globalLogging.info('Second span');
+                                            globalLogging.info(
+                                                'Second span {secondSpanId} {secondTraceId}',
+                                                {
+                                                    secondSpanId,
+                                                    secondTraceId,
+                                                },
+                                            );
                                             return withContext(
                                                 {
                                                     'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${secondTraceId}`,
                                                     'logging.googleapis.com/spanId':
-                                                        Sentry.getActiveSpan()?.spanContext()
-                                                            .spanId,
+                                                        secondSpanId,
                                                 },
                                                 async () => {
                                                     globalLogging.info(
-                                                        'Second span with context',
+                                                        'Second span with context {secondSpanId} {secondTraceId}',
+                                                        {
+                                                            secondSpanId,
+                                                            secondTraceId,
+                                                        },
+                                                    );
+                                                    const error = new Error(
+                                                        'Test error',
+                                                    );
+                                                    Sentry.captureException(
+                                                        error,
                                                     );
                                                     return new Response(
                                                         JSON.stringify(
@@ -608,6 +641,11 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                                 continueTraceTraceId,
                                                                 secondSpanId,
                                                                 secondTraceId,
+                                                                traceparent:
+                                                                    ctx.req.header(
+                                                                        'traceparent',
+                                                                    ),
+                                                                version: 1,
                                                             },
                                                             null,
                                                             4,
