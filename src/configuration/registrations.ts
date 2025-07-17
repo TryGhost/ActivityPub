@@ -373,7 +373,20 @@ export function registerDependencies(
         asFunction(createFollowingCounter).singleton(),
     );
 
-    container.register('siteController', asClass(SiteController).singleton());
+    container.register(
+        'siteController',
+        asFunction((siteService: SiteService) => {
+            let ghostProIpAddresses: string[] | undefined;
+
+            if (process.env.GHOST_PRO_IP_ADDRESSES) {
+                ghostProIpAddresses = process.env.GHOST_PRO_IP_ADDRESSES.split(
+                    ',',
+                ).map((ip) => ip.trim());
+            }
+
+            return new SiteController(siteService, ghostProIpAddresses);
+        }).singleton(),
+    );
 
     container.register(
         'webhookController',

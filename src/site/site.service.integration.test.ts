@@ -107,4 +107,23 @@ describe('SiteService', () => {
 
         expect(retrievedSite).toMatchObject(site);
     });
+
+    it('Can initialise a site with the `ghost_pro` flag', async () => {
+        const site = await service.initialiseSiteForHost('hostname.tld', true);
+
+        expect(site.host).toBe('hostname.tld');
+        expect(site.webhook_secret).toBeDefined();
+        expect(site.id).toBeDefined();
+
+        const siteRows = await db('sites').select('*');
+
+        expect(siteRows).toHaveLength(1);
+
+        const siteRow = siteRows[0];
+
+        expect(siteRow.id).toBe(site.id);
+        expect(siteRow.webhook_secret).toBe(site.webhook_secret);
+        expect(siteRow.host).toBe(site.host);
+        expect(siteRow.ghost_pro).toBe(1);
+    });
 });
