@@ -523,6 +523,150 @@ app.get('/ping', (ctx) => {
     });
 });
 
+app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
+    try {
+        globalLogging.info('Trace testing endpoint');
+        const extra: Record<string, string | boolean> = {};
+
+        const { traceId, spanId, sampled } = getTraceContext(
+            ctx.req.header('traceparent'),
+        );
+        if (traceId && spanId) {
+            extra['logging.googleapis.com/trace'] =
+                `projects/ghost-activitypub/traces/${traceId}`;
+            extra['logging.googleapis.com/spanId'] = spanId;
+            extra['logging.googleapis.com/trace_sampled'] = sampled;
+        }
+
+        return await withContext(extra, async () => {
+            globalLogging.info('Continuing trace {traceId} {spanId}', {
+                traceId,
+                spanId,
+            });
+            const continueTraceSpanId =
+                Sentry.getActiveSpan()?.spanContext().spanId;
+            const continueTraceTraceId =
+                Sentry.getActiveSpan()?.spanContext().traceId;
+            globalLogging.info(
+                'Updating span name {continueTraceSpanId} {continueTraceTraceId}',
+                {
+                    continueTraceSpanId,
+                    continueTraceTraceId,
+                },
+            );
+            Sentry.getActiveSpan()?.updateName(
+                `${ctx.req.method} ${ctx.req.routePath}`,
+            );
+            return Sentry.startSpan(
+                {
+                    op: 'fn',
+                    name: 'first',
+                },
+                () => {
+                    const firstSpanId =
+                        Sentry.getActiveSpan()?.spanContext().spanId;
+                    const firstTraceId =
+                        Sentry.getActiveSpan()?.spanContext().traceId;
+                    globalLogging.info(
+                        'First span {firstSpanId} {firstTraceId}',
+                        {
+                            firstSpanId,
+                            firstTraceId,
+                        },
+                    );
+                    return withContext(
+                        {
+                            'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${firstTraceId}`,
+                            'logging.googleapis.com/spanId': firstSpanId,
+                        },
+                        () => {
+                            globalLogging.info(
+                                'First span with context {firstSpanId} {firstTraceId}',
+                                {
+                                    firstSpanId,
+                                    firstTraceId,
+                                },
+                            );
+                            return Sentry.startSpan(
+                                {
+                                    op: 'fn',
+                                    name: 'second',
+                                },
+                                () => {
+                                    const secondSpanId =
+                                        Sentry.getActiveSpan()?.spanContext()
+                                            .spanId;
+                                    const secondTraceId =
+                                        Sentry.getActiveSpan()?.spanContext()
+                                            .traceId;
+                                    globalLogging.info(
+                                        'Second span {secondSpanId} {secondTraceId}',
+                                        {
+                                            secondSpanId,
+                                            secondTraceId,
+                                        },
+                                    );
+                                    return withContext(
+                                        {
+                                            'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${secondTraceId}`,
+                                            'logging.googleapis.com/spanId':
+                                                secondSpanId,
+                                        },
+                                        async () => {
+                                            globalLogging.info(
+                                                'Second span with context {secondSpanId} {secondTraceId}',
+                                                {
+                                                    secondSpanId,
+                                                    secondTraceId,
+                                                },
+                                            );
+                                            const error = new Error(
+                                                'Test error',
+                                            );
+                                            Sentry.captureException(error);
+                                            return new Response(
+                                                JSON.stringify(
+                                                    {
+                                                        traceId,
+                                                        spanId,
+                                                        firstSpanId,
+                                                        firstTraceId,
+                                                        continueTraceSpanId,
+                                                        continueTraceTraceId,
+                                                        secondSpanId,
+                                                        secondTraceId,
+                                                        traceparent:
+                                                            ctx.req.header(
+                                                                'traceparent',
+                                                            ),
+                                                        version: 3,
+                                                    },
+                                                    null,
+                                                    4,
+                                                ),
+                                                {
+                                                    status: 200,
+                                                },
+                                            );
+                                        },
+                                    );
+                                },
+                            );
+                        },
+                    );
+                },
+            );
+        });
+    } catch (err: unknown) {
+        return new Response(
+            `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+            {
+                status: 400,
+            },
+        );
+    }
+});
+
 /** Middleware */
 
 app.use(async (ctx, next) => {
