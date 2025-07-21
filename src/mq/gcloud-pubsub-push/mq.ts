@@ -19,6 +19,14 @@ import { analyzeError } from './error-utils';
  */
 interface FedifyMessage {
     id: string;
+    activity?: {
+        [key: string]: unknown;
+        type?: string;
+        object?: {
+            [key: string]: unknown;
+            type?: string;
+        };
+    };
     [key: string]: unknown;
 }
 
@@ -129,14 +137,10 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             }
 
             const activityTypeIsHandledByDomain =
-                message.activityType ===
-                    'https://www.w3.org/ns/activitystreams#Create' ||
-                message.activityType ===
-                    'https://www.w3.org/ns/activitystreams#Like' ||
-                message.activityType ===
-                    'https://www.w3.org/ns/activitystreams#Announce' ||
-                message.activityType ===
-                    'https://www.w3.org/ns/activitystreams#Delete';
+                message.activity?.type === 'Create' ||
+                message.activity?.type === 'Like' ||
+                message.activity?.type === 'Announce' ||
+                message.activity?.type === 'Delete';
 
             if (
                 activityTypeIsHandledByDomain &&
