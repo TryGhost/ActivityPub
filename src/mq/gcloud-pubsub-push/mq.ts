@@ -128,10 +128,18 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 return;
             }
 
-            // We don't want to deliver Create activities to internal accounts
-            if (
+            const activityTypeIsHandledByDomain =
                 message.activityType ===
-                    'https://www.w3.org/ns/activitystreams#Create' &&
+                    'https://www.w3.org/ns/activitystreams#Create' ||
+                message.activityType ===
+                    'https://www.w3.org/ns/activitystreams#Like' ||
+                message.activityType ===
+                    'https://www.w3.org/ns/activitystreams#Announce' ||
+                message.activityType ===
+                    'https://www.w3.org/ns/activitystreams#Delete';
+
+            if (
+                activityTypeIsHandledByDomain &&
                 process.env.FORCE_INTERNAL_ACTIVITY_DELIVERY !== 'true'
             ) {
                 // Don't bother doing a DB lookup if the pathname doesn't even match
