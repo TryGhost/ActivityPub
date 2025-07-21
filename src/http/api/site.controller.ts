@@ -1,8 +1,12 @@
+import { IncomingMessage } from 'node:http';
 import type { AppContext } from '../../app';
 import type { SiteService } from '../../site/site.service';
 
 export class SiteController {
-    constructor(private readonly siteService: SiteService) {}
+    constructor(
+        private readonly siteService: SiteService,
+        private readonly ghostProIpAddresses?: string[],
+    ) {}
 
     async handleGetSiteData(ctx: AppContext) {
         const request = ctx.req;
@@ -14,7 +18,12 @@ export class SiteController {
             });
         }
 
-        const site = await this.siteService.initialiseSiteForHost(host);
+        const requestIp = this.getRequestIp(ctx);
+        const isGhostPro = this.isGhostProIp(requestIp);
+        const site = await this.siteService.initialiseSiteForHost(
+            host,
+            isGhostPro,
+        );
 
         return new Response(JSON.stringify(site), {
             status: 200,
@@ -22,5 +31,37 @@ export class SiteController {
                 'Content-Type': 'application/json',
             },
         });
+    }
+
+    private getRequestIp(ctx: AppContext): string | null {
+        const forwardedFor = ctx.req.header('x-forwarded-for');
+        if (forwardedFor) {
+            return forwardedFor.split(',')[0].trim();
+        }
+
+        const req = ctx.req.raw;
+        if (req instanceof IncomingMessage) {
+            const remoteAddress = req.socket?.remoteAddress;
+            if (remoteAddress) {
+                return remoteAddress;
+            }
+        }
+
+        return null;
+    }
+
+    private isGhostProIp(requestIp: string | null): boolean {
+        if (!requestIp) {
+            return false;
+        }
+
+        if (
+            !this.ghostProIpAddresses ||
+            this.ghostProIpAddresses.length === 0
+        ) {
+            return false;
+        }
+
+        return this.ghostProIpAddresses.includes(requestIp);
     }
 }
