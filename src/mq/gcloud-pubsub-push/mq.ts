@@ -63,6 +63,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         private topic: string,
         private useRetryTopic = false,
         private retryTopic?: string,
+        private maxDeliveryAttempts = Number.POSITIVE_INFINITY,
     ) {}
 
     /**
@@ -284,6 +285,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         }
 
         const fedifyId = message.attributes.fedifyId ?? 'unknown';
+        const deliveryAttemptCount = Number(message.attributes.attempt) || 1;
 
         this.logger.info(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
@@ -319,7 +321,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 this.errorListener?.(error as Error);
             }
 
-            if (shouldRetryUsingTopic && errorAnalysis.isRetryable) {
+            if (
+                shouldRetryUsingTopic &&
+                errorAnalysis.isRetryable &&
+                deliveryAttemptCount < this.maxDeliveryAttempts
+            ) {
                 this.logger.info(
                     `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
                     {
@@ -334,8 +340,21 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     json: message.data,
                     attributes: {
                         fedifyId,
+                        attempt: String(deliveryAttemptCount + 1),
                     },
                 });
+            } else if (deliveryAttemptCount >= this.maxDeliveryAttempts) {
+                await this.handlePermanentFailure(message.data, error as Error);
+
+                this.logger.warn(
+                    `Not retrying message [FedifyID: ${fedifyId}, PubSubID: ${message.id}] due to delivery attempt count being >= ${this.maxDeliveryAttempts}`,
+                    {
+                        fedifyId,
+                        pubSubId: message.id,
+                        mq_message: message.data,
+                        error,
+                    },
+                );
             } else if (shouldRetryUsingTopic && !errorAnalysis.isRetryable) {
                 await this.handlePermanentFailure(message.data, error as Error);
 

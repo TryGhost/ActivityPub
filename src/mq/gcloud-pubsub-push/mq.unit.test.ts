@@ -409,6 +409,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
                 attributes: {
                     fedifyId: 'abc123',
+                    attempt: '2',
                 },
             });
         });
@@ -812,6 +813,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
                 attributes: {
                     fedifyId: 'abc123',
+                    attempt: '2',
                 },
             });
 
@@ -819,6 +821,174 @@ describe('GCloudPubSubPushMessageQueue', () => {
             expect(
                 mockAccountService.recordDeliveryFailure,
             ).not.toHaveBeenCalled();
+        });
+
+        it('should correctly set the attempt attribute when the message has no attempt attribute', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error('Failed to handle message');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                    // No attempt attribute
+                },
+            });
+
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledWith({
+                json: {
+                    id: 'abc123',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                    attempt: '2', // Should be 2 since undefined || 1 = 1, then 1 + 1 = 2
+                },
+            });
+        });
+
+        it('should handle messages with an invalid attempt attribute', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error('Failed to handle message');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                    attempt: 'invalid',
+                },
+            });
+
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
+            expect(mockRetryTopic.publishMessage).toHaveBeenCalledWith({
+                json: {
+                    id: 'abc123',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                    attempt: '2', // Should be 2 since NaN || 1 = 1, then 1 + 1 = 2
+                },
+            });
+        });
+
+        it('should not retry a message if the delivery attempt count is >= the max delivery attempts', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+                3, // max delivery attempts
+            );
+
+            const error = new Error('Failed to handle message');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage({
+                id: 'abc123',
+                data: {
+                    id: 'abc123',
+                    type: 'outbox',
+                    inbox: 'https://other.com/inbox',
+                },
+                attributes: {
+                    fedifyId: 'abc123',
+                    attempt: '3',
+                },
+            });
+
+            // Should not retry since we are at max attempts
+            expect(mockRetryTopic.publishMessage).not.toHaveBeenCalled();
+
+            // Should handle as permanent failure
+            expect(
+                mockAccountService.recordDeliveryFailure,
+            ).toHaveBeenCalledWith(
+                new URL('https://other.com/inbox'),
+                error.message,
+            );
         });
     });
 });

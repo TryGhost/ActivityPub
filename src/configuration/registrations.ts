@@ -169,6 +169,8 @@ export function registerDependencies(
                         process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
                             'unknown_pubsub_retry_topic_name',
                     ),
+                    Number(process.env.MQ_PUBSUB_MAX_DELIVERY_ATTEMPTS) ||
+                        Number.POSITIVE_INFINITY,
                 );
             },
         ).singleton(),
