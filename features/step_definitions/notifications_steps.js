@@ -27,16 +27,13 @@ When('we get a like notification from {string}', async function (actorName) {
     }
 
     const activity = await createActivity('Like', this.articleId, actor);
-    await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(activity),
+    await fetchActivityPub('https://self.test/.ghost/activitypub/inbox/index', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/ld+json',
         },
-    );
+        body: JSON.stringify(activity),
+    });
 
     await waitForItemInNotifications((notification) => {
         return (
@@ -66,23 +63,20 @@ When('we get a reply notification from {string}', async function (actorName) {
     });
     const activity = await createActivity('Create', object, actor);
 
-    await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(activity),
+    await fetchActivityPub('https://self.test/.ghost/activitypub/inbox/index', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/ld+json',
         },
-    );
+        body: JSON.stringify(activity),
+    });
 
     await waitForItemInNotifications(object.id);
 });
 
 When('we reset unread notifications count', async () => {
     await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/notifications/unread/reset',
+        'https://self.test/.ghost/activitypub/v1/notifications/unread/reset',
         {
             method: 'PUT',
         },

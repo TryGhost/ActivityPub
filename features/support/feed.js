@@ -10,7 +10,7 @@ export async function waitForItemInFeed(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
+        'https://self.test/.ghost/activitypub/feed/notes',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -50,17 +50,15 @@ export async function waitForAPObjectInFeed(
         retryCount: 0,
         delay: 0,
     },
+    feedUrl = 'https://self.test/.ghost/activitypub/feed/notes',
 ) {
     const MAX_RETRIES = 5;
 
-    const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/feed/notes',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
+    const response = await fetchActivityPub(feedUrl, {
+        headers: {
+            Accept: 'application/ld+json',
         },
-    );
+    });
 
     const json = await response.json();
 

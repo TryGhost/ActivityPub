@@ -10,7 +10,7 @@ export async function waitForFollowerToBeRemoved(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        'https://self.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -54,7 +54,7 @@ export async function waitForFollowerToBeAdded(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        'http://self.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',

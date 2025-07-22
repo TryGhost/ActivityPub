@@ -10,7 +10,7 @@ export async function waitForFollowingToBeAdded(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/following/index?cursor=0',
+        'https://self.test/.ghost/activitypub/following/index?cursor=0',
         {
             headers: {
                 Accept: 'application/ld+json',

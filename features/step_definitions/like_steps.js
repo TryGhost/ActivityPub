@@ -9,7 +9,7 @@ import { fetchActivityPub } from '../support/request.js';
 When('we like the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/like/${encodeURIComponent(id)}`,
+        `https://self.test/.ghost/activitypub/v1/actions/like/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -19,7 +19,7 @@ When('we like the object {string}', async function (name) {
 When('we unlike the object {string}', async function (name) {
     const id = this.objects[name].id;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/unlike/${encodeURIComponent(id)}`,
+        `https://self.test/.ghost/activitypub/v1/actions/unlike/${encodeURIComponent(id)}`,
         {
             method: 'POST',
         },
@@ -41,16 +41,13 @@ When('{string} likes our article', async function (actorName) {
     }
 
     const activity = await createActivity('Like', this.articleId, actor);
-    await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(activity),
+    await fetchActivityPub('https://self.test/.ghost/activitypub/inbox/index', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/ld+json',
         },
-    );
+        body: JSON.stringify(activity),
+    });
 
     this.likeId = activity.id;
 });

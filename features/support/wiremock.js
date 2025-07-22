@@ -6,25 +6,25 @@ let externalActivityPub;
 /** @type {WireMock} */
 let ghostActivityPub;
 
-export function getExternalActivityPub() {
+export function getExternalWiremock() {
     if (!externalActivityPub) {
-        externalActivityPub = new WireMock(
-            process.env.URL_EXTERNAL_ACTIVITY_PUB,
-        );
+        externalActivityPub = new WireMock('http://fake-external-activitypub');
     }
 
     return externalActivityPub;
 }
 
-export function getGhostActivityPub() {
+export function getGhostWiremock() {
     if (!ghostActivityPub) {
-        ghostActivityPub = new WireMock(process.env.URL_GHOST_ACTIVITY_PUB);
+        ghostActivityPub = new WireMock('http://ghost-wiremock');
     }
 
     return ghostActivityPub;
 }
 
-export function reset() {
-    getExternalActivityPub().clearAllRequests();
-    getGhostActivityPub().clearAllRequests();
+export async function reset() {
+    await Promise.all([
+        getExternalWiremock().clearAllRequests(),
+        getGhostWiremock().clearAllRequests(),
+    ]);
 }

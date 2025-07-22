@@ -31,7 +31,7 @@ When(
         }
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test${requestPath}`,
+            `https://self.test${requestPath}`,
             {
                 method: requestMethod,
                 headers: {
@@ -45,17 +45,14 @@ When(
 When(
     /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with the data:$/,
     async function (method, path, data) {
-        this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test${path}`,
-            {
-                method: method,
-                headers: {
-                    Accept: 'application/ld+json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data.rowsHash()),
+        this.response = await fetchActivityPub(`https://self.test${path}`, {
+            method: method,
+            headers: {
+                Accept: 'application/ld+json',
+                'Content-Type': 'application/json',
             },
-        );
+            body: JSON.stringify(data.rowsHash()),
+        });
     },
 );
 
@@ -72,19 +69,16 @@ When(
             new File([image], 'dog.jpg', { type: 'image/jpeg' }),
         );
 
-        this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test${path}`,
-            {
-                method: method || 'post',
-                body: formData,
-            },
-        );
+        this.response = await fetchActivityPub(`https://self.test${path}`, {
+            method: method || 'post',
+            body: formData,
+        });
     },
 );
 
 When('an unauthenticated request is made to {string}', async function (path) {
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test${path}`,
+        `https://self.test${path}`,
         {
             headers: {
                 Accept: 'application/ld+json',

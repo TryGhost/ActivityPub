@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 
 import { getCurrentDirectory } from './path.js';
-import { getExternalActivityPub } from './wiremock.js';
+import { getExternalWiremock } from './wiremock.js';
 
 function generateObject(type, content, tags = [], inReplyTo = null) {
     if (type === 'Article') {
@@ -87,7 +87,7 @@ export async function createObject(
 
     const url = new URL(object.id);
 
-    getExternalActivityPub().register(
+    await getExternalWiremock().register(
         {
             method: 'GET',
             endpoint: url.pathname,
@@ -219,9 +219,9 @@ export async function createActivity(type, object, actor) {
         };
     }
 
-    const externalActivityPub = getExternalActivityPub();
+    const externalActivityPub = getExternalWiremock();
 
-    externalActivityPub.register(
+    await externalActivityPub.register(
         {
             method: 'GET',
             endpoint: activity.id.replace(
@@ -251,29 +251,27 @@ export async function createActor(
                 'https://www.w3.org/ns/activitystreams',
                 'https://w3id.org/security/data-integrity/v1',
             ],
-            id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
-            url: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
+            id: 'https://self.test/.ghost/activitypub/users/index',
+            url: 'https://self.test/.ghost/activitypub/users/index',
             type,
 
-            handle: '@index@fake-ghost-activitypub.test',
+            handle: '@index@self.test',
 
             preferredUsername: 'index',
             name,
             summary: 'A test actor for testing',
 
-            inbox: 'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-            outbox: 'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
-            followers:
-                'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
-            following:
-                'http://fake-ghost-activitypub.test/.ghost/activitypub/following/index',
-            liked: 'http://fake-ghost-activitypub.test/.ghost/activitypub/liked/index',
+            inbox: 'https://self.test/.ghost/activitypub/inbox/index',
+            outbox: 'https://self.test/.ghost/activitypub/outbox/index',
+            followers: 'https://self.test/.ghost/activitypub/followers/index',
+            following: 'https://self.test/.ghost/activitypub/following/index',
+            liked: 'https://self.test/.ghost/activitypub/liked/index',
 
             'https://w3id.org/security#publicKey': {
-                id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index#main-key',
+                id: 'https://self.test/.ghost/activitypub/users/index#main-key',
                 type: 'https://w3id.org/security#Key',
                 'https://w3id.org/security#owner': {
-                    id: 'http://fake-ghost-activitypub.test/.ghost/activitypub/users/index',
+                    id: 'https://self.test/.ghost/activitypub/users/index',
                 },
                 'https://w3id.org/security#publicKeyPem':
                     '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
@@ -313,98 +311,98 @@ export async function createActor(
         },
     };
 
-    const externalActivityPub = getExternalActivityPub();
+    const externalActivityPub = getExternalWiremock();
 
-    externalActivityPub.register(
-        {
-            method: 'POST',
-            endpoint: `/inbox/${name}`,
-        },
-        {
-            status: 202,
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/user/${name}`,
-        },
-        {
-            status: 200,
-            body: user,
-            headers: {
-                'Content-Type': 'application/activity+json',
+    await Promise.all([
+        externalActivityPub.register(
+            {
+                method: 'POST',
+                endpoint: `/inbox/${name}`,
             },
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/followers/${name}`,
-        },
-        {
-            status: 200,
-            body: {
-                '@context': 'https://www.w3.org/ns/activitystreams',
-                type: 'OrderedCollection',
-                totalItems: 0,
-                orderedItems: [],
+            {
+                status: 202,
             },
-            headers: {
-                'Content-Type': 'application/activity+json',
+        ),
+        externalActivityPub.register(
+            {
+                method: 'GET',
+                endpoint: `/user/${name}`,
             },
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/following/${name}`,
-        },
-        {
-            status: 200,
-            body: {
-                '@context': 'https://www.w3.org/ns/activitystreams',
-                type: 'OrderedCollection',
-                totalItems: 0,
-                orderedItems: [],
+            {
+                status: 200,
+                body: user,
+                headers: {
+                    'Content-Type': 'application/activity+json',
+                },
             },
-            headers: {
-                'Content-Type': 'application/activity+json',
+        ),
+        externalActivityPub.register(
+            {
+                method: 'GET',
+                endpoint: `/followers/${name}`,
             },
-        },
-    );
-
-    externalActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub.test`)}`,
-        },
-        {
-            status: 200,
-            body: {
-                subject: `acct:${name}@fake-external-activitypub.test`,
-                aliases: [`http://fake-external-activitypub.test/user/${name}`],
-                links: [
-                    {
-                        rel: 'self',
-                        href: `http://fake-external-activitypub.test/user/${name}`,
-                        type: 'application/activity+json',
-                    },
-                    {
-                        rel: 'http://webfinger.net/rel/profile-page',
-                        href: 'https://activitypub.ghost.org/',
-                    },
-                    {
-                        rel: 'http://webfinger.net/rel/avatar',
-                        href: 'https://activitypub.ghost.org/content/images/2024/09/ghost-orb-white-squircle-07.png',
-                    },
-                ],
+            {
+                status: 200,
+                body: {
+                    '@context': 'https://www.w3.org/ns/activitystreams',
+                    type: 'OrderedCollection',
+                    totalItems: 0,
+                    orderedItems: [],
+                },
+                headers: {
+                    'Content-Type': 'application/activity+json',
+                },
             },
-        },
-    );
+        ),
+        externalActivityPub.register(
+            {
+                method: 'GET',
+                endpoint: `/following/${name}`,
+            },
+            {
+                status: 200,
+                body: {
+                    '@context': 'https://www.w3.org/ns/activitystreams',
+                    type: 'OrderedCollection',
+                    totalItems: 0,
+                    orderedItems: [],
+                },
+                headers: {
+                    'Content-Type': 'application/activity+json',
+                },
+            },
+        ),
+        externalActivityPub.register(
+            {
+                method: 'GET',
+                endpoint: `/.well-known/webfinger?resource=${encodeURIComponent(`acct:${name}@fake-external-activitypub.test`)}`,
+            },
+            {
+                status: 200,
+                body: {
+                    subject: `acct:${name}@fake-external-activitypub.test`,
+                    aliases: [
+                        `http://fake-external-activitypub.test/user/${name}`,
+                    ],
+                    links: [
+                        {
+                            rel: 'self',
+                            href: `http://fake-external-activitypub.test/user/${name}`,
+                            type: 'application/activity+json',
+                        },
+                        {
+                            rel: 'http://webfinger.net/rel/profile-page',
+                            href: 'https://activitypub.ghost.org/',
+                        },
+                        {
+                            rel: 'http://webfinger.net/rel/avatar',
+                            href: 'https://activitypub.ghost.org/content/images/2024/09/ghost-orb-white-squircle-07.png',
+                        },
+                    ],
+                },
+            },
+        ),
+    ]);
 
     return user;
 }
