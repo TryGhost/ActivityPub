@@ -9,7 +9,7 @@ Given('we are sent invalid @context values to the inbox', async function () {
     const actor = await createActor('Alice');
 
     this.response = await fetch(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'https://self.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             headers: {
@@ -38,7 +38,7 @@ Given(
         const actor = await createActor('Alice');
 
         this.response = await fetch(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+            'https://self.test/.ghost/activitypub/inbox/index',
             {
                 method: 'POST',
                 headers: {
@@ -65,7 +65,7 @@ Given(
 
 Given('we are sent invalid url to the inbox', async function () {
     this.response = await fetch(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'https://self.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             headers: {
@@ -90,7 +90,7 @@ Given('we are sent invalid url to the inbox', async function () {
 
 Given('we are sent invalid type to the inbox', async function () {
     this.response = await fetch(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'https://self.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             headers: {
@@ -106,7 +106,7 @@ Given('we are sent invalid type to the inbox', async function () {
 
 Given('we are sent a publish webhook', async function () {
     const endpoint =
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/webhooks/post/published';
+        'https://self.test/.ghost/activitypub/webhooks/post/published';
     const payload = createWebhookPost();
     const body = JSON.stringify(payload);
     const timestamp = Date.now();
@@ -129,7 +129,7 @@ When(
     'we are sent a second publish webhook for the same post',
     async function () {
         const endpoint =
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/webhooks/post/published';
+            'https://self.test/.ghost/activitypub/webhooks/post/published';
         const payload = this.firstPublishWebhook;
         const body = JSON.stringify(payload);
         const timestamp = Date.now();

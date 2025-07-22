@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 
 import { getCurrentDirectory } from './path.js';
 import { wait } from './utils.js';
-import { getExternalActivityPub } from './wiremock.js';
+import { getExternalWiremock } from './wiremock.js';
 
 export async function fetchActivityPub(url, options = {}, auth = true) {
     if (!options.headers) {
@@ -43,7 +43,7 @@ export async function waitForRequest(
     step = 100,
     milliseconds = 1000,
 ) {
-    const externalActivityPub = getExternalActivityPub();
+    const externalActivityPub = getExternalWiremock();
 
     const calls = await externalActivityPub.getRequestsForAPI(method, path);
     const found = calls.find(matcher);

@@ -17,5 +17,5 @@ Feature: Update account information
       | bio            | Updated bio                                  |
       | avatarUrl      | https://example.com/avatar.jpg               |
       | bannerImageUrl | https://example.com/banner.jpg               |
-      | handle         | @updatedUsername@fake-ghost-activitypub.test |
+      | handle         | @updatedUsername@self.test |
     And a "Update(Us)" activity is sent to "Alice"

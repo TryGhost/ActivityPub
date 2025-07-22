@@ -37,7 +37,7 @@ Given('we are not following {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
 
     const unfollowResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/unfollow/${actor.handle}`,
+        `https://self.test/.ghost/activitypub/v1/actions/unfollow/${actor.handle}`,
         {
             method: 'POST',
         },
@@ -52,7 +52,7 @@ Given('we are following {string}', async function (input) {
     const { actor } = await getActor.call(this, input);
 
     const followResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/follow/${actor.handle}`,
+        `https://self.test/.ghost/activitypub/v1/actions/follow/${actor.handle}`,
         {
             method: 'POST',
         },
@@ -67,7 +67,7 @@ Given('we are following {string}', async function (input) {
     const accept = await createActivity('Accept', follow, actor);
 
     const acceptResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'https://self.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             headers: {
@@ -87,7 +87,7 @@ Given('we are following {string}', async function (input) {
 Given('we follow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/follow/${handle}`,
+        `https://self.test/.ghost/activitypub/v1/actions/follow/${handle}`,
         {
             method: 'POST',
         },
@@ -104,7 +104,7 @@ Given('we follow {string}', async function (name) {
 Given('we unfollow {string}', async function (name) {
     const handle = this.actors[name].handle;
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/unfollow/${handle}`,
+        `https://self.test/.ghost/activitypub/v1/actions/unfollow/${handle}`,
         {
             method: 'POST',
         },
@@ -122,7 +122,7 @@ async function weAreFollowedBy(actor) {
 
     // Send the follow activity to the inbox
     const response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+        'https://self.test/.ghost/activitypub/inbox/index',
         {
             method: 'POST',
             body: JSON.stringify(activity),
@@ -152,7 +152,7 @@ Given('we are followed by:', async function (actors) {
 
 Then('{string} is in our Followers', async function (actorName) {
     const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        'https://self.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -172,7 +172,7 @@ Then('{string} is in our Followers', async function (actorName) {
 
 Then('{string} is in our Followers once only', async function (actorName) {
     const initialResponse = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+        'https://self.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',

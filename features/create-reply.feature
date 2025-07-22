@@ -53,13 +53,13 @@ Feature: Creating a reply
     And Activity "Reply" is sent to "Bob"
 
   Scenario: Creating a reply with an image URL
-    When we reply "Reply" to "Article" with imageUrl "http://fake-ghost-activitypub.test/.ghost/activitypub/gcs/image.jpg" and content
+    When we reply "Reply" to "Article" with imageUrl "https://self.test/.ghost/activitypub/gcs/image.jpg" and content
       """
       This is a great article!
       """
     Then Activity with object "Reply" is sent to all followers
     And "Reply" has the content "<p>This is a great article!</p>"
-    And note "Reply" has the image URL "http://fake-ghost-activitypub.test/.ghost/activitypub/gcs/image.jpg"
+    And note "Reply" has the image URL "https://self.test/.ghost/activitypub/gcs/image.jpg"
 
   Scenario: Creating a reply with an invalid image URL
     When we reply "Reply" to "Article" with imageUrl "not-a-url" and content

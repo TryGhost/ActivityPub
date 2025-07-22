@@ -157,7 +157,7 @@ Given('{string} has Object {string}', function (activityName, objectName) {
 
 When('we request the outbox', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/outbox/index',
+        'https://self.test/.ghost/activitypub/outbox/index',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -179,7 +179,7 @@ When(
         const activity = this.activities[activityName];
 
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
+            'https://self.test/.ghost/activitypub/inbox/index',
             {
                 method: 'POST',
                 headers: {
@@ -193,7 +193,7 @@ When(
 
 async function getObjectInCollection(objectName, collectionType) {
     const initialResponse = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/${collectionType}/index`,
+        `https://self.test/.ghost/activitypub/${collectionType}/index`,
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -280,7 +280,7 @@ Then(
     'Activity {string} is sent to all followers',
     async function (activityName) {
         const followersResponse = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+            'https://self.test/.ghost/activitypub/followers/index',
         );
         const followersResponseJson = await followersResponse.json();
 
@@ -317,7 +317,7 @@ Then(
     'A {string} Activity is sent to all followers',
     async function (activityString) {
         const followersResponse = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+            'https://self.test/.ghost/activitypub/followers/index',
         );
         const followersResponseJson = await followersResponse.json();
 
@@ -363,7 +363,7 @@ Then(
     'Activity with object {string} is sent to all followers',
     async function (objectName) {
         const followersResponse = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/followers/index',
+            'https://self.test/.ghost/activitypub/followers/index',
         );
         const followersResponseJson = await followersResponse.json();
 
@@ -493,14 +493,11 @@ When('{string} announces {string}', async function (actorName, activityName) {
         actor,
     );
 
-    await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(announceActivity),
+    await fetchActivityPub('https://self.test/.ghost/activitypub/inbox/index', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/ld+json',
         },
-    );
+        body: JSON.stringify(announceActivity),
+    });
 });

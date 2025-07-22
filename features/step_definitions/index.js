@@ -7,21 +7,25 @@ import {
     BeforeAll,
     setDefaultTimeout,
 } from '@cucumber/cucumber';
-import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import jose from 'node-jose';
 
 import { getClient, reset as resetDatabase } from '../support/db.js';
-import { createActor, getWebhookSecret } from '../support/fixtures.js';
+import { getWebhookSecret } from '../support/fixtures.js';
 import { getCurrentDirectory } from '../support/path.js';
+import { fetchActivityPub } from '../support/request.js';
 import {
-    getGhostActivityPub,
+    getGhostWiremock,
     reset as resetWiremock,
 } from '../support/wiremock.js';
 
 setDefaultTimeout(1000 * 10);
 
-BeforeAll(async () => {
-    const ghostActivityPub = getGhostActivityPub();
+AfterAll(async () => {
+    await getClient().destroy();
+});
+
+BeforeAll(async function setupWiremock() {
+    const ghostActivityPub = getGhostWiremock();
 
     const publicKey = fs.readFileSync(
         resolve(getCurrentDirectory(), '../fixtures/private.key'),
@@ -33,100 +37,91 @@ BeforeAll(async () => {
     });
     const jwk = key.toJSON();
 
-    ghostActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: '/ghost/.well-known/jwks.json',
-        },
-        {
-            status: 200,
-            body: {
-                keys: [jwk],
+    await Promise.all([
+        ghostActivityPub.register(
+            {
+                method: 'GET',
+                endpoint: '/ghost/.well-known/jwks.json',
             },
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
-        },
-    );
-
-    ghostActivityPub.register(
-        {
-            method: 'GET',
-            endpoint: '/ghost/api/admin/site',
-        },
-        {
-            status: 200,
-            body: {
-                settings: {
-                    site: {
-                        title: 'Testing Blog',
-                        icon: 'https://ghost.org/favicon.ico',
-                        description: 'A blog for testing',
-                    },
+            {
+                status: 200,
+                body: {
+                    keys: [jwk],
+                },
+                headers: {
+                    'Content-Type': 'application/activity+json',
                 },
             },
-            headers: {
-                'Content-Type': 'application/json',
+        ),
+        ghostActivityPub.register(
+            {
+                method: 'GET',
+                endpoint: '/ghost/api/admin/site/',
             },
-        },
+            {
+                status: 200,
+                body: {
+                    settings: {
+                        site: {
+                            title: 'Testing Blog',
+                            icon: 'https://ghost.org/favicon.ico',
+                            description: 'A blog for testing',
+                        },
+                    },
+                },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            },
+        ),
+    ]);
+});
+
+BeforeAll(async function setupSelfSite() {
+    const res = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/site',
     );
+    if (!res.ok) {
+        const error = await res.text();
+        throw new Error(`Failed to fetch site: ${res.status} ${error}`);
+    }
+
+    const json = await res.json();
+
+    await getClient()('sites')
+        .update('webhook_secret', getWebhookSecret())
+        .where('id', '=', json.id);
+
+    this.SITE_ID = json.id;
 });
 
-AfterAll(async () => {
-    await getClient().destroy();
+BeforeAll(async function setupLocalSites() {
+    await Promise.all([
+        fetchActivityPub('https://alice.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://bob.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://carol.test/.ghost/activitypub/site'),
+    ]);
 });
 
-Before(async function () {
+Before(async function reset() {
     await resetWiremock();
     await resetDatabase();
-
-    const [siteId] = await getClient()('sites').insert({
-        host: new URL(process.env.URL_GHOST_ACTIVITY_PUB).host,
-        webhook_secret: getWebhookSecret(),
-    });
-
-    this.SITE_ID = siteId;
+    await Promise.all([
+        fetchActivityPub('https://self.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://alice.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://bob.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://carol.test/.ghost/activitypub/site'),
+    ]);
 });
 
-Before(async function () {
-    if (!this.activities) {
-        this.activities = {};
-    }
-    if (!this.objects) {
-        this.objects = {};
-    }
-    if (!this.actors) {
-        const actor = await createActor('Test', { remote: false });
+Before(async function setupState() {
+    const res = await fetch('https://self.test/.ghost/activitypub/users/index');
+    const actor = await res.json();
 
-        const keypair = await generateCryptoKeyPair();
-
-        const [accountId] = await getClient()('accounts').insert({
-            username: actor.preferredUsername,
-            name: actor.name,
-            bio: actor.summary,
-            avatar_url: null,
-            banner_image_url: null,
-            url: actor.url,
-            custom_fields: null,
-            ap_id: actor.id,
-            ap_inbox_url: actor.inbox,
-            ap_shared_inbox_url: null,
-            ap_outbox_url: actor.outbox,
-            ap_following_url: actor.following,
-            ap_followers_url: actor.followers,
-            ap_liked_url: actor.liked,
-            ap_public_key: JSON.stringify(await exportJwk(keypair.publicKey)),
-            ap_private_key: JSON.stringify(await exportJwk(keypair.privateKey)),
-            domain: new URL(actor.id).host,
-        });
-
-        await getClient()('users').insert({
-            account_id: accountId,
-            site_id: this.SITE_ID,
-        });
-
-        this.actors = {
-            Us: actor,
-        };
-    }
+    this.activities = {};
+    this.objects = {};
+    this.actors = {
+        Us: actor,
+    };
+    this.actors.Us.handle = '@index@self.test';
 });

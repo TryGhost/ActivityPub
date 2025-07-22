@@ -36,6 +36,5 @@ export async function reset() {
     await db('outboxes').truncate();
     await db('accounts').truncate();
     await db('users').truncate();
-    await db('sites').truncate();
     await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 }

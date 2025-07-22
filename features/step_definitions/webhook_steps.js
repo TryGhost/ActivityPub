@@ -8,7 +8,7 @@ import { fetchActivityPub } from '../support/request.js';
 
 const endpoints = {
     'post.published':
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/webhooks/post/published',
+        'https://self.test/.ghost/activitypub/webhooks/post/published',
 };
 
 Given('a {string} webhook', function (string) {

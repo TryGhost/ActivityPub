@@ -7,7 +7,7 @@ import { mapPostToActivityPubObject } from '../support/utils.js';
 
 async function createNote(noteName, content, imageUrl, imageAltText) {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
+        'https://self.test/.ghost/activitypub/v1/actions/note',
         {
             method: 'POST',
             headers: {
@@ -33,7 +33,7 @@ async function createNote(noteName, content, imageUrl, imageAltText) {
 
 When('we attempt to create a note with no content', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
+        'https://self.test/.ghost/activitypub/v1/actions/note',
         {
             method: 'POST',
             headers: {
@@ -46,7 +46,7 @@ When('we attempt to create a note with no content', async function () {
 
 When('we attempt to create a note with invalid content', async function () {
     this.response = await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
+        'https://self.test/.ghost/activitypub/v1/actions/note',
         {
             method: 'POST',
             headers: {
@@ -63,7 +63,7 @@ When(
     'we create a note {string} with the content',
     async function (noteName, noteContent) {
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
+            'https://self.test/.ghost/activitypub/v1/actions/note',
             {
                 method: 'POST',
                 headers: {
@@ -88,7 +88,7 @@ When(
     'we create a note {string} with imageUrl {string} and content',
     async function (noteName, imageUrl, noteContent) {
         this.response = await fetchActivityPub(
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/note',
+            'https://self.test/.ghost/activitypub/v1/actions/note',
             {
                 method: 'POST',
                 headers: {
@@ -123,8 +123,7 @@ Then(
 
 When('we create a note {string} with an image', async function (noteName) {
     const content = 'Hello World';
-    const imageUrl =
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/gcs/image.jpg';
+    const imageUrl = 'https://self.test/.ghost/activitypub/gcs/image.jpg';
     await createNote.call(this, noteName, content, imageUrl);
 });
 
@@ -132,8 +131,7 @@ When(
     'we create a note {string} with an image and alt text',
     async function (noteName) {
         const content = 'Hello World';
-        const imageUrl =
-            'http://fake-ghost-activitypub.test/.ghost/activitypub/gcs/image.jpg';
+        const imageUrl = 'https://self.test/.ghost/activitypub/gcs/image.jpg';
         const imageAltText = 'Alt Text';
         await createNote.call(this, noteName, content, imageUrl, imageAltText);
     },

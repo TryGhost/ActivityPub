@@ -30,16 +30,13 @@ When('{string} sends us a reply to our article', async function (actorName) {
     });
     const activity = await createActivity('Create', object, actor);
 
-    await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(activity),
+    await fetchActivityPub('https://self.test/.ghost/activitypub/inbox/index', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/ld+json',
         },
-    );
+        body: JSON.stringify(activity),
+    });
 
     this.replyId = object.id;
 });
@@ -64,16 +61,13 @@ When('{string} sends us a reply to our note', async function (actorName) {
     });
     const activity = await createActivity('Create', object, actor);
 
-    await fetchActivityPub(
-        'http://fake-ghost-activitypub.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
-            },
-            body: JSON.stringify(activity),
+    await fetchActivityPub('https://self.test/.ghost/activitypub/inbox/index', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/ld+json',
         },
-    );
+        body: JSON.stringify(activity),
+    });
 
     this.replyId = object.id;
 });
@@ -124,7 +118,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
+            `https://self.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -142,7 +136,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
+            `https://self.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -160,7 +154,7 @@ When('we attempt to reply to an unknown object', async function () {
     const id = 'http://fake-external-activitypub.test/note/123';
 
     this.response = await fetchActivityPub(
-        `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(id)}`,
+        `https://self.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(id)}`,
         {
             method: 'POST',
             headers: {
@@ -179,7 +173,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
+            `https://self.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {
@@ -206,7 +200,7 @@ When(
         const object = this.objects[objectName];
 
         this.response = await fetchActivityPub(
-            `http://fake-ghost-activitypub.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
+            `https://self.test/.ghost/activitypub/v1/actions/reply/${encodeURIComponent(object.id)}`,
             {
                 method: 'POST',
                 headers: {

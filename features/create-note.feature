@@ -44,13 +44,13 @@ Feature: Creating a note
 
   Scenario: Creating a note with an image URL
     Given we are followed by "Alice"
-    When we create a note "Note" with imageUrl "http://fake-ghost-activitypub.test/.ghost/activitypub/gcs/image.jpg" and content
+    When we create a note "Note" with imageUrl "https://self.test/.ghost/activitypub/gcs/image.jpg" and content
       """
       Hello, world!
       """
     Then Activity with object "Note" is sent to all followers
     And "Note" has the content "<p>Hello, world!</p>"
-    And note "Note" has the image URL "http://fake-ghost-activitypub.test/.ghost/activitypub/gcs/image.jpg"
+    And note "Note" has the image URL "https://self.test/.ghost/activitypub/gcs/image.jpg"
 
   Scenario: Creating a note with an invalid image URL
     When we create a note "Note" with imageUrl "not-a-url" and content
@@ -74,3 +74,4 @@ Feature: Creating a note
   Scenario: Creating a note with an invalid image URL
     When we create a note "Note" with an invalid image url
     Then the note is not created
+

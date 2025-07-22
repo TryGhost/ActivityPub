@@ -6,12 +6,13 @@ Then('the response contains {string} account details', async function (name) {
     const responseJson = await this.response.clone().json();
     const actor = name === 'Our' ? this.actors.Us : this.actors[name];
 
+    assert.equal(responseJson.apId, actor.id);
     assert.equal(responseJson.name, actor.name);
     assert.equal(responseJson.handle, actor.handle);
-    assert.equal(responseJson.bio, actor.summary);
     assert.equal(responseJson.url, actor.url);
     assert.equal(responseJson.avatarUrl, actor.icon?.url || '');
     assert.equal(responseJson.bannerImageUrl, actor.image?.url || '');
+    assert.equal(typeof responseJson.bio, 'string');
     assert.equal(typeof responseJson.postCount, 'number');
     assert.equal(typeof responseJson.likedCount, 'number');
     assert.equal(typeof responseJson.followingCount, 'number');

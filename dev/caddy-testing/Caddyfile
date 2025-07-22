@@ -1,0 +1,92 @@
+{
+    # Enable debug logging for troubleshooting
+    debug
+
+    # Use Caddy's internal CA for self-signed certificates
+    local_certs
+}
+
+# Main test domains
+self.test {
+    tls internal
+
+    handle /.ghost/activitypub/* {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/webfinger {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/nodeinfo {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle {
+        reverse_proxy ghost-wiremock:80
+    }
+}
+
+alice.test {
+    tls internal
+    handle /.ghost/activitypub/* {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/webfinger {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/nodeinfo {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle {
+        reverse_proxy ghost-wiremock:80
+    }
+}
+
+bob.test {
+    tls internal
+
+    handle /.ghost/activitypub/* {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/webfinger {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/nodeinfo {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle {
+        reverse_proxy ghost-wiremock:80
+    }
+}
+
+carol.test {
+        tls internal
+
+    handle /.ghost/activitypub/* {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/webfinger {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle /.well-known/nodeinfo {
+        reverse_proxy activitypub-testing:8083
+    }
+
+    handle {
+        reverse_proxy ghost-wiremock:80
+    }
+}
+
+fake-external-activitypub.test {
+    tls internal
+    reverse_proxy external-wiremock:80
+}
