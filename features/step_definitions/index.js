@@ -78,17 +78,14 @@ BeforeAll(async function setupWiremock() {
 });
 
 BeforeAll(async function setupSelfSite() {
-    await fetchActivityPub('https://self.test/.ghost/activitypub/site');
+    const res = await fetchActivityPub('https://self.test/.ghost/activitypub/v1/site');
+    const json = await res.json();
 
     await getClient()('sites')
         .update('webhook_secret', getWebhookSecret())
-        .where('host', '=', 'self.test');
+        .where('id', '=', json.id);
 
-    const site = await getClient()('sites')
-        .where('host', '=', 'self.test')
-        .first();
-
-    this.SITE_ID = site.id;
+    this.SITE_ID = json.id;
 });
 
 BeforeAll(async function setupLocalSites() {
