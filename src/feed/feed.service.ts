@@ -1,5 +1,6 @@
 import { chunk } from 'es-toolkit';
 import { sanitizeHtml } from 'helpers/html';
+import type { AuthorDTO, PostDTO } from 'http/api/types';
 import type { Knex } from 'knex';
 import type { ModerationService } from 'moderation/moderation.service';
 import {
@@ -86,6 +87,11 @@ export type GetFeedDataResultRow =
 export interface GetFeedDataResult {
     results: GetFeedDataResultRow[];
     nextCursor: string | null;
+}
+
+export interface FeedData {
+    post: PostDTO;
+    reposts: AuthorDTO[] | null;
 }
 
 export class FeedService {
@@ -458,5 +464,35 @@ export class FeedService {
             })
             .andWhere('user_id', user.id)
             .delete();
+    }
+
+    mapPostsToFeedData(posts: PostDTO[]): FeedData[] {
+        // Group posts by ID
+        const groupedPosts = posts.reduce(
+            (acc, post) => {
+                if (!acc[post.id]) {
+                    acc[post.id] = [];
+                }
+                acc[post.id].push(post);
+                return acc;
+            },
+            {} as Record<string, PostDTO[]>,
+        );
+
+        const feedData: FeedData[] = Object.values(groupedPosts).map(
+            (group) => {
+                const basePost = group[0];
+                const reposts = group
+                    .map((post) => post.repostedBy)
+                    .filter((repost): repost is AuthorDTO => repost !== null);
+
+                return {
+                    post: basePost,
+                    reposts: reposts && reposts.length > 0 ? reposts : null,
+                };
+            },
+        );
+
+        return feedData;
     }
 }

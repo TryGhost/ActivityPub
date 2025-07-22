@@ -124,6 +124,8 @@ export class FeedController {
             };
         });
 
+        const feedData = this.feedService.mapPostsToFeedData(posts);
+
         // Request an update of the interaction counts for the posts in the
         // feed - We do not await this as we do not want to increase the
         // response time of the request
@@ -141,9 +143,18 @@ export class FeedController {
                 );
             });
 
+        console.log(
+            'posts: ',
+            feedData.map((feed) => ({
+                id: feed.post.id,
+                publishedAt: feed.post.publishedAt,
+                content: feed.post.content,
+                reposts: JSON.stringify(feed.reposts, null, 2),
+            })),
+        );
         return new Response(
             JSON.stringify({
-                posts,
+                feedData,
                 next: nextCursor,
             }),
             {

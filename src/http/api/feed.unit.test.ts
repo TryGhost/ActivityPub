@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/node';
 import { AccountEntity } from 'account/account.entity';
 import type { AccountService } from 'account/account.service';
 import type { AppContext } from 'app';
-import type { FeedService } from 'feed/feed.service';
+import { FeedService } from 'feed/feed.service';
 import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { PostType } from 'post/post.entity';
 import type { Site } from 'site/site.service';
@@ -113,6 +113,36 @@ describe('Feed API', () => {
                             'https://example.com/images/bazqux.png',
                         post_attachments: [],
                     },
+                    {
+                        post_id: 790,
+                        post_type: PostType.Article,
+                        post_title: 'Post 790',
+                        post_excerpt: 'Excerpt 790',
+                        post_content: 'Content 790',
+                        post_url: 'https://example.com/post-790',
+                        post_image_url:
+                            'https://example.com/images/post-790.png',
+                        post_published_at: new Date(),
+                        post_like_count: 0,
+                        post_liked_by_user: 0,
+                        post_reply_count: 1,
+                        post_reading_time_minutes: 2,
+                        post_repost_count: 3,
+                        post_reposted_by_user: 1,
+                        post_ap_id:
+                            'https://example.com/.activitypub/post/post-790',
+                        author_id: 987,
+                        author_name: 'Foo Bar',
+                        author_username: 'foobar',
+                        author_url: 'https://example.com/foobar',
+                        reposter_id: 650,
+                        reposter_name: 'James',
+                        reposter_username: 'james',
+                        reposter_url: 'https://example.com/james',
+                        reposter_avatar_url:
+                            'https://example.com/images/james.png',
+                        post_attachments: [],
+                    },
                 ],
                 nextCursor: null,
             };
@@ -173,6 +203,9 @@ describe('Feed API', () => {
             postInteractionCountsService,
         );
 
+        feedService.mapPostsToFeedData =
+            FeedService.prototype.mapPostsToFeedData;
+
         ctx = {
             req: {
                 query: (key: string) => {
@@ -224,7 +257,7 @@ describe('Feed API', () => {
 
             expect(
                 postInteractionCountsService.requestUpdate,
-            ).toHaveBeenCalledWith(site.host, [789, 790]);
+            ).toHaveBeenCalledWith(site.host, [789, 790, 790]);
         });
 
         it('should handle errors when requesting an update of the interaction counts for the posts in the feed', async () => {
