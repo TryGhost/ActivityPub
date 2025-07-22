@@ -18,8 +18,13 @@ export class SiteController {
             });
         }
 
+        ctx.get('logger').info('Ghost Pro IP addresses: {ipAddresses}', {
+            ipAddresses: this.ghostProIpAddresses,
+        });
         const requestIp = this.getRequestIp(ctx);
+        ctx.get('logger').info('Request IP: {ip}', { ip: requestIp });
         const isGhostPro = this.isGhostProIp(requestIp);
+        ctx.get('logger').info('Is Ghost Pro: {isGhostPro}', { isGhostPro });
         const site = await this.siteService.initialiseSiteForHost(
             host,
             isGhostPro,
@@ -36,17 +41,24 @@ export class SiteController {
     private getRequestIp(ctx: AppContext): string | null {
         const forwardedFor = ctx.req.header('x-forwarded-for');
         if (forwardedFor) {
+            ctx.get('logger').info('IP address {ip} from x-forwarded-for header', {
+                ip: forwardedFor.split(',')[0].trim(),
+            });
             return forwardedFor.split(',')[0].trim();
         }
 
         const req = ctx.req.raw;
         if (req instanceof IncomingMessage) {
             const remoteAddress = req.socket?.remoteAddress;
+            ctx.get('logger').info('IP address {ip} from socket remote address', {
+                ip: remoteAddress,
+            });
             if (remoteAddress) {
                 return remoteAddress;
             }
         }
 
+        ctx.get('logger').info('No IP address found');
         return null;
     }
 
