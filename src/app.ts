@@ -920,7 +920,12 @@ serve(
 
 process.on('SIGINT', () => process.exit(0));
 process.on('SIGTERM', () => {
+    if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
+        process.exit(0);
+    }
+
     globalLogging.info('Received SIGTERM, shutting down gracefully');
+
     setTimeout(() => {
         process.exit(0);
     }, 9000);
