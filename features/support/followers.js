@@ -54,7 +54,7 @@ export async function waitForFollowerToBeAdded(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'http://self.test/.ghost/activitypub/followers/index',
+        'https://self.test/.ghost/activitypub/followers/index',
         {
             headers: {
                 Accept: 'application/ld+json',
