@@ -78,7 +78,9 @@ BeforeAll(async function setupWiremock() {
 });
 
 BeforeAll(async function setupSelfSite() {
-    const res = await fetchActivityPub('https://self.test/.ghost/activitypub/v1/site');
+    const res = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/site',
+    );
     const json = await res.json();
 
     await getClient()('sites')
