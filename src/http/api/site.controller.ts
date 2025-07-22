@@ -41,18 +41,24 @@ export class SiteController {
     private getRequestIp(ctx: AppContext): string | null {
         const forwardedFor = ctx.req.header('x-forwarded-for');
         if (forwardedFor) {
-            ctx.get('logger').info('IP address {ip} from x-forwarded-for header', {
-                ip: forwardedFor.split(',')[0].trim(),
-            });
+            ctx.get('logger').info(
+                'IP address {ip} from x-forwarded-for header',
+                {
+                    ip: forwardedFor.split(',')[0].trim(),
+                },
+            );
             return forwardedFor.split(',')[0].trim();
         }
 
         const req = ctx.req.raw;
         if (req instanceof IncomingMessage) {
             const remoteAddress = req.socket?.remoteAddress;
-            ctx.get('logger').info('IP address {ip} from socket remote address', {
-                ip: remoteAddress,
-            });
+            ctx.get('logger').info(
+                'IP address {ip} from socket remote address',
+                {
+                    ip: remoteAddress,
+                },
+            );
             if (remoteAddress) {
                 return remoteAddress;
             }
