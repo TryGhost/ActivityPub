@@ -18,19 +18,28 @@ export class SiteController {
             });
         }
 
-        const requestIp = this.getRequestIp(ctx);
-        const isGhostPro = this.isGhostProIp(requestIp);
-        const site = await this.siteService.initialiseSiteForHost(
-            host,
-            isGhostPro,
-        );
+        try {
+            const requestIp = this.getRequestIp(ctx);
+            const isGhostPro = this.isGhostProIp(requestIp);
+            const site = await this.siteService.initialiseSiteForHost(
+                host,
+                isGhostPro,
+            );
 
-        return new Response(JSON.stringify(site), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+            return new Response(JSON.stringify(site), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+        } catch (error) {
+            return new Response(
+                error instanceof Error ? error.message : 'Unknown error',
+                {
+                    status: 500,
+                },
+            );
+        }
     }
 
     private getRequestIp(ctx: AppContext): string | null {

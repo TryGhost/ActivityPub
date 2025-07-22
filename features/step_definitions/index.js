@@ -83,7 +83,7 @@ BeforeAll(async function setupSelfSite() {
     );
     if (!res.ok) {
         const error = await res.text();
-        throw new Error(`Failed to fetch site: ${error}`);
+        throw new Error(`Failed to fetch site: ${res.status} ${error}`);
     }
 
     const json = await res.json();
