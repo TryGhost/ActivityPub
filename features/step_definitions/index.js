@@ -81,6 +81,11 @@ BeforeAll(async function setupSelfSite() {
     const res = await fetchActivityPub(
         'https://self.test/.ghost/activitypub/v1/site',
     );
+    if (!res.ok) {
+        const error = await res.text();
+        throw new Error(`Failed to fetch site: ${error}`);
+    }
+
     const json = await res.json();
 
     await getClient()('sites')
