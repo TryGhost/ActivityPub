@@ -8,7 +8,7 @@ let ghostActivityPub;
 
 export function getExternalWiremock() {
     if (!externalActivityPub) {
-        externalActivityPub = new WireMock('http://fake-external-activitypub');
+        externalActivityPub = new WireMock('http://external-wiremock');
     }
 
     return externalActivityPub;

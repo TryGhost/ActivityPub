@@ -85,3 +85,8 @@ carol.test {
         reverse_proxy ghost-wiremock:80
     }
 }
+
+fake-external-activitypub.test {
+    tls internal
+    reverse_proxy external-wiremock:80
+}

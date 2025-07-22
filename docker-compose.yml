@@ -222,15 +222,13 @@ services:
       - GCS_LOCAL_STORAGE_HOSTING_URL=https://self.test/.ghost/activitypub/gcs
       - TAGS
       - URL_GHOST_ACTIVITY_PUB=https://self.test
-      - URL_EXTERNAL_ACTIVITY_PUB=http://fake-external-activitypub.test
+      - URL_EXTERNAL_ACTIVITY_PUB=https://fake-external-activitypub.test
     command: /opt/activitypub/node_modules/.bin/cucumber-js
     depends_on:
       caddy-testing:
         condition: service_started
-      fake-gcs:
+      activitypub-testing:
         condition: service_healthy
-      fake-external-activitypub:
-        condition: service_started
 
   mysql-testing:
     networks:
@@ -278,6 +276,7 @@ services:
           - alice.test
           - bob.test
           - carol.test
+          - fake-external-activitypub.test
     image: caddy:2
     ports:
       - "443:443"
@@ -292,6 +291,8 @@ services:
         condition: service_started
       ghost-wiremock:
         condition: service_started
+      external-wiremock:
+        condition: service_started
 
   ghost-wiremock:
     networks:
@@ -299,11 +300,9 @@ services:
     image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 
-  fake-external-activitypub:
+  external-wiremock:
     networks:
-      test_network:
-        aliases:
-          - fake-external-activitypub.test
+      - test_network
     image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
 

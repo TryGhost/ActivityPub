@@ -15,13 +15,13 @@ function generateObject(type, content, tags = [], inReplyTo = null) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Article',
-            id: `http://fake-external-activitypub.test/article/${uuid}`,
-            url: `http://fake-external-activitypub.test/article/${uuid}`,
+            id: `https://fake-external-activitypub.test/article/${uuid}`,
+            url: `https://fake-external-activitypub.test/article/${uuid}`,
             to: 'as:Public',
-            cc: 'http://fake-external-activitypub.test/followers',
+            cc: 'https://fake-external-activitypub.test/followers',
             content: content ?? '<p>This is a test article</p>',
             published: new Date(),
-            attributedTo: 'http://fake-external-activitypub.test/user',
+            attributedTo: 'https://fake-external-activitypub.test/user',
             tag: tags,
             inReplyTo,
         };
@@ -35,13 +35,13 @@ function generateObject(type, content, tags = [], inReplyTo = null) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Note',
-            id: `http://fake-external-activitypub.test/note/${uuid}`,
-            url: `http://fake-external-activitypub.test/note/${uuid}`,
+            id: `https://fake-external-activitypub.test/note/${uuid}`,
+            url: `https://fake-external-activitypub.test/note/${uuid}`,
             to: 'as:Public',
-            cc: 'http://fake-external-activitypub.test/followers',
+            cc: 'https://fake-external-activitypub.test/followers',
             content: content ?? '<p>This is a test note</p>',
             published: new Date(),
-            attributedTo: 'http://fake-external-activitypub.test/user',
+            attributedTo: 'https://fake-external-activitypub.test/user',
             tag: tags,
             inReplyTo,
         };
@@ -55,8 +55,8 @@ function generateObject(type, content, tags = [], inReplyTo = null) {
                 'https://w3id.org/security/data-integrity/v1',
             ],
             type: 'Accept',
-            id: `http://fake-external-activitypub.test/accept/${uuid}`,
-            url: `http://fake-external-activitypub.test/accept/${uuid}`,
+            id: `https://fake-external-activitypub.test/accept/${uuid}`,
+            url: `https://fake-external-activitypub.test/accept/${uuid}`,
         };
     }
 }
@@ -284,8 +284,8 @@ export async function createActor(
             'https://www.w3.org/ns/activitystreams',
             'https://w3id.org/security/data-integrity/v1',
         ],
-        id: `http://fake-external-activitypub.test/user/${name}`,
-        url: `http://fake-external-activitypub.test/user/${name}`,
+        id: `https://fake-external-activitypub.test/user/${name}`,
+        url: `https://fake-external-activitypub.test/user/${name}`,
         type,
 
         handle: `@${name}@fake-external-activitypub.test`,
@@ -294,17 +294,17 @@ export async function createActor(
         name,
         summary: 'A test actor for testing',
 
-        inbox: `http://fake-external-activitypub.test/inbox/${name}`,
-        outbox: `http://fake-external-activitypub.test/inbox/${name}`,
-        followers: `http://fake-external-activitypub.test/followers/${name}`,
-        following: `http://fake-external-activitypub.test/following/${name}`,
-        liked: `http://fake-external-activitypub.test/liked/${name}`,
+        inbox: `https://fake-external-activitypub.test/inbox/${name}`,
+        outbox: `https://fake-external-activitypub.test/inbox/${name}`,
+        followers: `https://fake-external-activitypub.test/followers/${name}`,
+        following: `https://fake-external-activitypub.test/following/${name}`,
+        liked: `https://fake-external-activitypub.test/liked/${name}`,
 
         'https://w3id.org/security#publicKey': {
-            id: 'http://fake-external-activitypub.test/user#main-key',
+            id: 'https://fake-external-activitypub.test/user#main-key',
             type: 'https://w3id.org/security#Key',
             'https://w3id.org/security#owner': {
-                id: 'http://fake-external-activitypub.test/user',
+                id: 'https://fake-external-activitypub.test/user',
             },
             'https://w3id.org/security#publicKeyPem':
                 '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
@@ -382,12 +382,12 @@ export async function createActor(
                 body: {
                     subject: `acct:${name}@fake-external-activitypub.test`,
                     aliases: [
-                        `http://fake-external-activitypub.test/user/${name}`,
+                        `https://fake-external-activitypub.test/user/${name}`,
                     ],
                     links: [
                         {
                             rel: 'self',
-                            href: `http://fake-external-activitypub.test/user/${name}`,
+                            href: `https://fake-external-activitypub.test/user/${name}`,
                             type: 'application/activity+json',
                         },
                         {
@@ -420,7 +420,7 @@ export function createWebhookPost() {
                 custom_excerpt: null,
                 feature_image: null,
                 published_at: new Date().toISOString(),
-                url: `http://fake-external-activitypub.test/post/${uuid}`,
+                url: `https://fake-external-activitypub.test/post/${uuid}`,
                 visibility: 'public',
                 authors: [
                     {
