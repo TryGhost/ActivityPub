@@ -310,7 +310,12 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
             const deliveryAttemptCount =
                 deliveryAttempt && deliveryAttempt > 0 ? deliveryAttempt : 1;
-            const isFirstAttempt = deliveryAttemptCount === 1;
+
+            const isFromRetryQueue = message.attributes.isRetry === 'true';
+
+            // On main queue: always publish to retry queue on failure
+            // On retry queue: throw to use GCP's exponential backoff
+            const shouldPublishToRetry = !isFromRetryQueue;
 
             this.logger.error(
                 `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
@@ -334,8 +339,8 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 errorAnalysis.isRetryable &&
                 deliveryAttemptCount < this.maxDeliveryAttempts
             ) {
-                if (isFirstAttempt) {
-                    // First attempt: publish to retry topic
+                if (shouldPublishToRetry) {
+                    // From main queue: publish to retry topic
                     this.logger.info(
                         `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
                         {
@@ -344,6 +349,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                             mq_message: message.data,
                             error,
                             deliveryAttempt: deliveryAttemptCount,
+                            isFromRetryQueue,
                         },
                     );
 
@@ -353,10 +359,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                             json: message.data,
                             attributes: {
                                 fedifyId,
+                                isRetry: 'true',
                             },
                         });
                 } else {
-                    // Retry attempt: throw to let GCP handle exponential backoff
+                    // From retry queue: throw to let GCP handle exponential backoff
                     this.logger.info(
                         `Throwing error for GCP retry [FedifyID: ${fedifyId}, PubSubID: ${message.id}], attempt ${deliveryAttemptCount}`,
                         {
@@ -365,6 +372,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                             mq_message: message.data,
                             error,
                             deliveryAttempt: deliveryAttemptCount,
+                            isFromRetryQueue,
                         },
                     );
 

@@ -360,7 +360,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             expect(errorListener).toHaveBeenCalledWith(error);
         });
 
-        it('should publish to the retry topic on first attempt if the useRetryTopic flag is true and the error is classified as retryable', async () => {
+        it('should publish to the retry topic from main queue if the useRetryTopic flag is true and the error is classified as retryable', async () => {
             const RETRY_TOPIC = 'retry-topic';
 
             const mockRetryTopic = {
@@ -392,7 +392,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             mq.listen(handler);
 
-            // First attempt (deliveryAttempt is undefined or 1)
+            // Message from main queue (no isRetry attribute)
             await mq.handleMessage({
                 id: 'abc123',
                 data: {
@@ -410,11 +410,12 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
                 attributes: {
                     fedifyId: 'abc123',
+                    isRetry: 'true',
                 },
             });
         });
 
-        it('should throw error on retry attempt to let GCP handle exponential backoff', async () => {
+        it('should throw error from retry queue to let GCP handle exponential backoff', async () => {
             const RETRY_TOPIC = 'retry-topic';
 
             const mockRetryTopic = {
@@ -446,7 +447,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             mq.listen(handler);
 
-            // Retry attempt (deliveryAttempt > 1)
+            // Message from retry queue (has isRetry attribute)
             await expect(
                 mq.handleMessage(
                     {
@@ -456,9 +457,10 @@ describe('GCloudPubSubPushMessageQueue', () => {
                         },
                         attributes: {
                             fedifyId: 'abc123',
+                            isRetry: 'true',
                         },
                     },
-                    2,
+                    1, // Even on first delivery attempt from retry queue
                 ),
             ).rejects.toThrow(error);
 
@@ -865,6 +867,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
                 attributes: {
                     fedifyId: 'abc123',
+                    isRetry: 'true',
                 },
             });
 
