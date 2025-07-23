@@ -264,8 +264,12 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      * Handle a message
      *
      * @param message Message to handle
+     * @param deliveryAttempt The delivery attempt count from GCP (optional)
      */
-    async handleMessage(message: Message): Promise<void> {
+    async handleMessage(
+        message: Message,
+        deliveryAttempt?: number,
+    ): Promise<void> {
         if (this.messageHandler === undefined) {
             const error = new Error(
                 'Message queue is not listening, cannot handle message',
@@ -285,7 +289,6 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         }
 
         const fedifyId = message.attributes.fedifyId ?? 'unknown';
-        const deliveryAttemptCount = Number(message.attributes.attempt) || 1;
 
         this.logger.info(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
@@ -305,7 +308,9 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             const shouldRetryUsingTopic =
                 this.useRetryTopic && this.retryTopic !== undefined;
 
-            const errorAnalysis = analyzeError(error as Error);
+            const deliveryAttemptCount =
+                deliveryAttempt && deliveryAttempt > 0 ? deliveryAttempt : 1;
+            const isFirstAttempt = deliveryAttemptCount === 1;
 
             this.logger.error(
                 `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
@@ -314,8 +319,11 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     pubSubId: message.id,
                     mq_message: message.data,
                     error,
+                    deliveryAttempt: deliveryAttemptCount,
                 },
             );
+
+            const errorAnalysis = analyzeError(error as Error);
 
             if (errorAnalysis.isReportable) {
                 this.errorListener?.(error as Error);
@@ -326,23 +334,42 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                 errorAnalysis.isRetryable &&
                 deliveryAttemptCount < this.maxDeliveryAttempts
             ) {
-                this.logger.info(
-                    `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
-                    {
-                        fedifyId,
-                        pubSubId: message.id,
-                        mq_message: message.data,
-                        error,
-                    },
-                );
+                if (isFirstAttempt) {
+                    // First attempt: publish to retry topic
+                    this.logger.info(
+                        `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+                        {
+                            fedifyId,
+                            pubSubId: message.id,
+                            mq_message: message.data,
+                            error,
+                            deliveryAttempt: deliveryAttemptCount,
+                        },
+                    );
 
-                await this.pubSubClient.topic(this.retryTopic!).publishMessage({
-                    json: message.data,
-                    attributes: {
-                        fedifyId,
-                        attempt: String(deliveryAttemptCount + 1),
-                    },
-                });
+                    await this.pubSubClient
+                        .topic(this.retryTopic!)
+                        .publishMessage({
+                            json: message.data,
+                            attributes: {
+                                fedifyId,
+                            },
+                        });
+                } else {
+                    // Retry attempt: throw to let GCP handle exponential backoff
+                    this.logger.info(
+                        `Throwing error for GCP retry [FedifyID: ${fedifyId}, PubSubID: ${message.id}], attempt ${deliveryAttemptCount}`,
+                        {
+                            fedifyId,
+                            pubSubId: message.id,
+                            mq_message: message.data,
+                            error,
+                            deliveryAttempt: deliveryAttemptCount,
+                        },
+                    );
+
+                    throw error;
+                }
             } else if (deliveryAttemptCount >= this.maxDeliveryAttempts) {
                 await this.handlePermanentFailure(message.data, error as Error);
 
@@ -353,6 +380,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                         pubSubId: message.id,
                         mq_message: message.data,
                         error,
+                        deliveryAttempt: deliveryAttemptCount,
                     },
                 );
             } else if (shouldRetryUsingTopic && !errorAnalysis.isRetryable) {
@@ -365,6 +393,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                         pubSubId: message.id,
                         mq_message: message.data,
                         error,
+                        deliveryAttempt: deliveryAttemptCount,
                     },
                 );
             } else {
@@ -440,6 +469,9 @@ const IncomingPushMessageSchema = z.object({
         data: z.string(),
         attributes: z.record(z.string()),
     }),
+    // GCP may send this as a number or string depending on the client library
+    // See https://cloud.google.com/pubsub/docs/handling-failures
+    deliveryAttempt: z.union([z.number(), z.string()]).optional(),
 });
 
 /**
@@ -550,8 +582,12 @@ export function createPushMessageHandler(
                             message.data.traceContext = carrier;
 
                             // Handle the message
+                            const deliveryAttempt = json.deliveryAttempt
+                                ? Number(json.deliveryAttempt)
+                                : undefined;
+
                             return mq
-                                .handleMessage(message)
+                                .handleMessage(message, deliveryAttempt)
                                 .then(() => new Response(null, { status: 200 }))
                                 .catch(
                                     () => new Response(null, { status: 500 }),
@@ -563,8 +599,12 @@ export function createPushMessageHandler(
         }
 
         // Handle the message
+        const deliveryAttempt = json.deliveryAttempt
+            ? Number(json.deliveryAttempt)
+            : undefined;
+
         return mq
-            .handleMessage(message)
+            .handleMessage(message, deliveryAttempt)
             .then(() => new Response(null, { status: 200 }))
             .catch(() => new Response(null, { status: 500 }));
     };

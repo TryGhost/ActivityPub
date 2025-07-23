@@ -360,7 +360,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             expect(errorListener).toHaveBeenCalledWith(error);
         });
 
-        it('should publish to the retry topic if the useRetryTopic flag is true and the error is classified as retryable', async () => {
+        it('should publish to the retry topic on first attempt if the useRetryTopic flag is true and the error is classified as retryable', async () => {
             const RETRY_TOPIC = 'retry-topic';
 
             const mockRetryTopic = {
@@ -392,6 +392,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             mq.listen(handler);
 
+            // First attempt (deliveryAttempt is undefined or 1)
             await mq.handleMessage({
                 id: 'abc123',
                 data: {
@@ -409,9 +410,60 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
                 attributes: {
                     fedifyId: 'abc123',
-                    attempt: '2',
                 },
             });
+        });
+
+        it('should throw error on retry attempt to let GCP handle exponential backoff', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+            );
+
+            const error = new Error('Failed to handle message');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            // Retry attempt (deliveryAttempt > 1)
+            await expect(
+                mq.handleMessage(
+                    {
+                        id: 'abc123',
+                        data: {
+                            id: 'abc123',
+                        },
+                        attributes: {
+                            fedifyId: 'abc123',
+                        },
+                    },
+                    2,
+                ),
+            ).rejects.toThrow(error);
+
+            // Should not publish to retry topic
+            expect(mockRetryTopic.publishMessage).not.toHaveBeenCalled();
         });
 
         it('should not publish to the retry topic if the useRetryTopic flag is true and the error is classified as non-retryable', async () => {
@@ -813,7 +865,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 },
                 attributes: {
                     fedifyId: 'abc123',
-                    attempt: '2',
                 },
             });
 
@@ -821,116 +872,6 @@ describe('GCloudPubSubPushMessageQueue', () => {
             expect(
                 mockAccountService.recordDeliveryFailure,
             ).not.toHaveBeenCalled();
-        });
-
-        it('should correctly set the attempt attribute when the message has no attempt attribute', async () => {
-            const RETRY_TOPIC = 'retry-topic';
-
-            const mockRetryTopic = {
-                publishMessage: vi.fn(),
-            } as unknown as Topic;
-
-            mockPubSubClient = {
-                projectId: PROJECT_ID,
-                topic: vi.fn((topic) => {
-                    if (topic === RETRY_TOPIC) {
-                        return mockRetryTopic;
-                    }
-
-                    throw new Error(`Unexpected topic: ${topic}`);
-                }),
-            } as unknown as PubSub;
-
-            const mq = new GCloudPubSubPushMessageQueue(
-                mockLogger,
-                mockPubSubClient,
-                mockAccountService,
-                TOPIC,
-                true,
-                RETRY_TOPIC,
-            );
-
-            const error = new Error('Failed to handle message');
-            const handler = vi.fn().mockRejectedValue(error);
-
-            mq.listen(handler);
-
-            await mq.handleMessage({
-                id: 'abc123',
-                data: {
-                    id: 'abc123',
-                },
-                attributes: {
-                    fedifyId: 'abc123',
-                    // No attempt attribute
-                },
-            });
-
-            expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
-            expect(mockRetryTopic.publishMessage).toHaveBeenCalledWith({
-                json: {
-                    id: 'abc123',
-                },
-                attributes: {
-                    fedifyId: 'abc123',
-                    attempt: '2', // Should be 2 since undefined || 1 = 1, then 1 + 1 = 2
-                },
-            });
-        });
-
-        it('should handle messages with an invalid attempt attribute', async () => {
-            const RETRY_TOPIC = 'retry-topic';
-
-            const mockRetryTopic = {
-                publishMessage: vi.fn(),
-            } as unknown as Topic;
-
-            mockPubSubClient = {
-                projectId: PROJECT_ID,
-                topic: vi.fn((topic) => {
-                    if (topic === RETRY_TOPIC) {
-                        return mockRetryTopic;
-                    }
-
-                    throw new Error(`Unexpected topic: ${topic}`);
-                }),
-            } as unknown as PubSub;
-
-            const mq = new GCloudPubSubPushMessageQueue(
-                mockLogger,
-                mockPubSubClient,
-                mockAccountService,
-                TOPIC,
-                true,
-                RETRY_TOPIC,
-            );
-
-            const error = new Error('Failed to handle message');
-            const handler = vi.fn().mockRejectedValue(error);
-
-            mq.listen(handler);
-
-            await mq.handleMessage({
-                id: 'abc123',
-                data: {
-                    id: 'abc123',
-                },
-                attributes: {
-                    fedifyId: 'abc123',
-                    attempt: 'invalid',
-                },
-            });
-
-            expect(mockRetryTopic.publishMessage).toHaveBeenCalledTimes(1);
-            expect(mockRetryTopic.publishMessage).toHaveBeenCalledWith({
-                json: {
-                    id: 'abc123',
-                },
-                attributes: {
-                    fedifyId: 'abc123',
-                    attempt: '2', // Should be 2 since NaN || 1 = 1, then 1 + 1 = 2
-                },
-            });
         });
 
         it('should not retry a message if the delivery attempt count is >= the max delivery attempts', async () => {
@@ -966,18 +907,20 @@ describe('GCloudPubSubPushMessageQueue', () => {
 
             mq.listen(handler);
 
-            await mq.handleMessage({
-                id: 'abc123',
-                data: {
+            await mq.handleMessage(
+                {
                     id: 'abc123',
-                    type: 'outbox',
-                    inbox: 'https://other.com/inbox',
+                    data: {
+                        id: 'abc123',
+                        type: 'outbox',
+                        inbox: 'https://other.com/inbox',
+                    },
+                    attributes: {
+                        fedifyId: 'abc123',
+                    },
                 },
-                attributes: {
-                    fedifyId: 'abc123',
-                    attempt: '3',
-                },
-            });
+                3,
+            );
 
             // Should not retry since we are at max attempts
             expect(mockRetryTopic.publishMessage).not.toHaveBeenCalled();
