@@ -271,7 +271,9 @@ export class KnexPostRepository {
                     if (post.inReplyTo) {
                         await transaction('posts')
                             .update({
-                                reply_count: this.db.raw('reply_count - 1'),
+                                reply_count: this.db.raw(
+                                    'CASE WHEN reply_count > 0 THEN reply_count - 1 ELSE 0 END',
+                                ),
                             })
                             .where({ id: post.inReplyTo });
                     }

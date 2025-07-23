@@ -283,96 +283,67 @@ describe('KnexPostRepository', () => {
             expect(postRowAfterDelete.reply_count).toBe(0);
         });
 
-        it('negative reply count error repro', async () => {
-            // This simulates what happens in production when the same reply is
-            // deleted multiple times. This can occur when a delete is sent to
-            // many internal accounts at once:
-            // - foo.com is followed by bar.com, baz.com and qux.com
-            // - foo.com deletes a post
-            // - bar.com, baz.com and qux.com all receive the delete and try to
-            //   decrement the reply count as part of the delete operation
+        it('Prevents reply_count from going negative when multiple deletes occur', async () => {
             const site = await siteService.initialiseSiteForHost(
-                'testing-race-condition.com',
+                'testing-prevent-negative-reply-count.com',
             );
             const account = await accountRepository.getBySite(site);
 
-            const parentPost = Post.createNote(account, 'Parent post content');
+            const parentPost = Post.createNote(account, 'Parent post');
             await postRepository.save(parentPost);
 
-            const replyPost = Post.createReply(
+            const reply = Post.createReply(
                 account,
-                'Reply post content',
+                'Reply content',
                 parentPost,
             );
-            await postRepository.save(replyPost);
+            await postRepository.save(reply);
 
             // Verify initial state
-            const parentFromDb = await client('posts')
+            let parentFromDb = await client('posts')
                 .where({ id: parentPost.id })
                 .first();
 
             expect(parentFromDb.reply_count).toBe(1);
 
-            // Get fresh instances of the reply from the database to simulate
-            // multiple concurrent requests loading the same post
-            const replyInstances = await Promise.all([
-                postRepository.getByApId(replyPost.apId),
-                postRepository.getByApId(replyPost.apId),
-                postRepository.getByApId(replyPost.apId),
-            ]);
+            // Delete the reply "normally" first
+            reply.delete(account);
+            await postRepository.save(reply);
 
-            for (const instance of replyInstances) {
-                expect(instance).not.toBeNull();
-                expect(Post.isDeleted(instance!)).toBe(false);
-            }
-
-            // Simulate concurrent delete operations - each instance thinks
-            // it's the first to delete
-            const deletePromises = replyInstances.map((instance, index) =>
-                (async () => {
-                    try {
-                        // Each request marks the post as deleted
-                        instance!.delete(account);
-
-                        // And saves it, which triggers the reply_count decrement
-                        await postRepository.save(instance!);
-
-                        return { success: true, error: null };
-                    } catch (error) {
-                        return { success: false, error };
-                    }
-                })(),
-            );
-
-            const results = await Promise.all(deletePromises);
-
-            const failures = results.filter((r) => !r.success);
-            const errors = failures.map((f) => f.error);
-
-            // We expect at least one of the deletes to fail
-            expect(failures.length).toBeGreaterThan(0);
-
-            // Check that we have the specific BIGINT UNSIGNED error
-            const hasBigintError = errors.some((error) => {
-                const errorMessage =
-                    error instanceof Error ? error.message : String(error);
-
-                return (
-                    errorMessage.includes(
-                        'BIGINT UNSIGNED value is out of range',
-                    ) && errorMessage.includes('reply_count - 1')
-                );
-            });
-
-            expect(hasBigintError).toBe(true);
-
-            // Check the final state
-            const parentFromDbAfter = await client('posts')
+            // Verify reply is deleted and count is 0
+            parentFromDb = await client('posts')
                 .where({ id: parentPost.id })
                 .first();
 
-            // The reply count should be 0 (not negative)
-            expect(parentFromDbAfter.reply_count).toBe(0);
+            expect(parentFromDb.reply_count).toBe(0);
+
+            // Manually simulate a race condition by updating the deleted_at
+            // back to null. This simulates what would happen if a second delete
+            // request comes in during the transaction window before the first
+            // delete is committed
+            await client('posts')
+                .where({ id: reply.id })
+                .update({ deleted_at: null });
+
+            // Load the reply again and try to delete it
+            const reloadedReply = await postRepository.getByApId(reply.apId);
+
+            expect(reloadedReply).not.toBeNull();
+
+            reloadedReply!.delete(account);
+
+            // This is where the BIGINT UNSIGNED error would occur because
+            // reply_count is already 0 and it tries to do 0 - 1
+            await expect(
+                postRepository.save(reloadedReply!),
+            ).resolves.not.toThrow();
+
+            // Verify reply_count is still 0 (not negative)
+            parentFromDb = await client('posts')
+                .where({ id: parentPost.id })
+                .first();
+
+            expect(parentFromDb.reply_count).toBe(0);
         });
 
         it('Deletes likes when a post is deleted', async () => {
