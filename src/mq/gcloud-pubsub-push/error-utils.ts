@@ -69,6 +69,15 @@ function isUpstreamSSLError(error: Error, depth = 0): boolean {
         return true;
     }
 
+    if (
+        error.message.match(
+            /SSL routines:ssl3_read_bytes:tlsv1 alert internal error/i,
+        ) !== null ||
+        error.message.match(/SSL alert number 80/i) !== null
+    ) {
+        return true;
+    }
+
     if ('cause' in error && error.cause instanceof Error) {
         return isUpstreamSSLError(error.cause, depth + 1);
     }
@@ -254,6 +263,7 @@ function analyzeFetchError(error: FetchError): ErrorAnalysis {
  * - "Hostname/IP does not match certificate's altnames: Host: <host>. is not in the cert's altnames: DNS:<host>"
  * - "certificate has expired"
  * - "self-signed certificate"
+ * - "2892DBF5017F0000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1605:SSL alert number 80"
  *
  * DNS resolution errors have the message format:
  * "getaddrinfo <error-code ENOTFOUND|EAI_AGAIN> <domain>"
