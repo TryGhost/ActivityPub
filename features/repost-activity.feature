@@ -39,3 +39,9 @@ Feature: Reposting a post/note
     And "Alice" sends "Note" to the Inbox
     When we undo the repost of the object "Note"
     Then the request is rejected with a 409
+
+  Scenario: Delivering reposts to internal accounts
+    Given I have internal account followers
+    When I repost alices note
+    Then the note is in my followers feeds
+    And alice receives a repost notification

@@ -34,3 +34,8 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
       | post.current.visibility | private |
     When it is sent to the webhook endpoint with private visibility
     Then the request is rejected with a 400
+
+  Scenario: Delivering articles to internal accounts
+    Given I have internal account followers
+    When I create a post in ghost
+    Then the article is in my followers feeds

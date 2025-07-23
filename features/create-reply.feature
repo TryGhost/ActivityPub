@@ -67,3 +67,9 @@ Feature: Creating a reply
       This is a great article!
       """
     Then the request is rejected with a 400
+
+  Scenario: Delivering replies to internal accounts
+    Given I have internal account followers
+    When I create a reply to alice
+    Then the reply is not in my followers feeds
+    And alice receives a reply notification
