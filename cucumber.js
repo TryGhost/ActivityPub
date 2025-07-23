@@ -2,11 +2,11 @@
 
 export default {
     backtrace: true,
-    format: ['snippets'],
+    format: ['progress'],
     formatOptions: {
-        snippetInterface: 'async-await',
+        snippetInterface: 'synchronous',
     },
-    failFast: false,
+    failFast: true,
     // @see https://github.com/cucumber/cucumber-js/blob/main/docs/filtering.md#tags
     tags: process.env.TAGS,
 };
