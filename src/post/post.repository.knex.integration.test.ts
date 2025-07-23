@@ -283,6 +283,71 @@ describe('KnexPostRepository', () => {
             expect(postRowAfterDelete.reply_count).toBe(0);
         });
 
+        it('Can handle concurrent delete attempts atomically', async () => {
+            // This simulates what happens in production when the same reply is
+            // deleted multiple times. This can occur when a delete is sent to
+            // many internal accounts at once:
+            // - foo.com is followed by bar.com, baz.com and qux.com
+            // - foo.com deletes a post
+            // - bar.com, baz.com and qux.com all receive the delete and try to
+            //   decrement the reply count as part of the delete operation
+            const site = await siteService.initialiseSiteForHost(
+                'testing-atomic-delete.com',
+            );
+            const account = await accountRepository.getBySite(site);
+
+            // Create parent with 3 replies
+            const parentPost = Post.createNote(account, 'Parent post content');
+            await postRepository.save(parentPost);
+
+            const reply1 = Post.createReply(account, 'Reply 1', parentPost);
+            const reply2 = Post.createReply(account, 'Reply 2', parentPost);
+            const reply3 = Post.createReply(account, 'Reply 3', parentPost);
+
+            await postRepository.save(reply1);
+            await postRepository.save(reply2);
+            await postRepository.save(reply3);
+
+            // Verify initial state
+            let parentFromDb = await client('posts')
+                .where({ id: parentPost.id })
+                .first();
+
+            expect(parentFromDb.reply_count).toBe(3);
+
+            // Get fresh instances of reply1 to simulate multiple concurrent requests
+            const replyInstances = await Promise.all([
+                postRepository.getByApId(reply1.apId),
+                postRepository.getByApId(reply1.apId),
+                postRepository.getByApId(reply1.apId),
+            ]);
+
+            // Simulate concurrent delete operations
+            const deletePromises = replyInstances.map((instance) => {
+                instance!.delete(account);
+                return postRepository.save(instance!);
+            });
+
+            // All deletes should complete without error
+            await expect(Promise.all(deletePromises)).resolves.not.toThrow();
+
+            // Check the final state
+            parentFromDb = await client('posts')
+                .where({ id: parentPost.id })
+                .first();
+
+            // The reply count should be exactly 2 (not 0 or 1)
+            // because only ONE delete should have decremented the count
+            expect(parentFromDb.reply_count).toBe(2);
+
+            // Verify that the reply is marked as deleted
+            const deletedReply = await client('posts')
+                .where({ id: reply1.id })
+                .first();
+
+            expect(deletedReply.deleted_at).not.toBeNull();
+        });
+
         it('Deletes likes when a post is deleted', async () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-delete-likes.com',

@@ -262,36 +262,44 @@ export class KnexPostRepository {
                     .first();
 
                 if (existingRow && existingRow.deleted_at === null) {
-                    await transaction('posts')
+                    // Use an atomic update to prevent race conditions if this
+                    // delete operation has been executed concurrently with
+                    // another delete operation (i.e. multiple internal accounts
+                    // try to delete the same post at the same time)
+                    wasDeleted = await transaction('posts')
                         .update({
                             deleted_at: transaction.raw('CURRENT_TIMESTAMP'),
                         })
-                        .where({ id: post.id });
+                        .where({
+                            id: post.id,
+                            deleted_at: null,
+                        })
+                        .then((result) => result > 0);
 
-                    if (post.inReplyTo) {
-                        await transaction('posts')
-                            .update({
-                                reply_count: this.db.raw('reply_count - 1'),
-                            })
-                            .where({ id: post.inReplyTo });
+                    if (wasDeleted) {
+                        if (post.inReplyTo) {
+                            await transaction('posts')
+                                .update({
+                                    reply_count: this.db.raw('reply_count - 1'),
+                                })
+                                .where({ id: post.inReplyTo });
+                        }
+
+                        // Delete likes associated with the deleted post
+                        await transaction('likes')
+                            .where({ post_id: post.id })
+                            .del();
+
+                        // Delete mentions associated with the deleted post
+                        await transaction('mentions')
+                            .where({ post_id: post.id })
+                            .del();
+
+                        // Delete outboxes associated with the deleted post
+                        await transaction('outboxes')
+                            .where({ post_id: post.id })
+                            .del();
                     }
-
-                    // Delete likes associated with the deleted post
-                    await transaction('likes')
-                        .where({ post_id: post.id })
-                        .del();
-
-                    // Delete mentions associated with the deleted post
-                    await transaction('mentions')
-                        .where({ post_id: post.id })
-                        .del();
-
-                    // Delete outboxes associated with the deleted post
-                    await transaction('outboxes')
-                        .where({ post_id: post.id })
-                        .del();
-
-                    wasDeleted = true;
                 }
             } else if (post.isUpdateDirty) {
                 await transaction('posts')
