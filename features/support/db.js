@@ -37,5 +37,6 @@ export async function reset() {
     await db('accounts').truncate();
     await db('users').truncate();
     await db('account_delivery_backoffs').truncate();
+    await db('mentions').truncate();
     await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 }
