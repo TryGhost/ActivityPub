@@ -39,4 +39,4 @@ Feature: Deliver Create(Article) activities when a post.published webhook is rec
   Scenario: Delivering articles to internal accounts
     Given I have internal account followers
     When I create a post in ghost
-    Then an article is in my followers feeds
+    Then the article is in my followers feeds

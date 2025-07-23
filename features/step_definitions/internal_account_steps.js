@@ -1,18 +1,91 @@
-import { Given, When, Then } from '@cucumber/cucumber';
+import assert from 'node:assert';
+import { createHmac } from 'node:crypto';
+import { Given, Then, When } from '@cucumber/cucumber';
+import { createWebhookPost, getWebhookSecret } from '../support/fixtures.js';
+import { fetchActivityPub } from '../support/request.js';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 Given('I have internal account followers', async () => {
-    // Write code here that turns the phrase above into concrete actions
-    return 'pending';
+    const followers = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/followers/index',
+    );
+    const json = await followers.json();
+    const initialFollowersCount = json.totalItems;
+    let followersCount = initialFollowersCount;
+
+    await Promise.all([
+        fetchActivityPub(
+            'https://alice.test/.ghost/activitypub/v1/actions/follow/@index@self.test',
+            { method: 'POST' },
+        ),
+        fetchActivityPub(
+            'https://bob.test/.ghost/activitypub/v1/actions/follow/@index@self.test',
+            { method: 'POST' },
+        ),
+        fetchActivityPub(
+            'https://carol.test/.ghost/activitypub/v1/actions/follow/@index@self.test',
+            { method: 'POST' },
+        ),
+    ]);
+
+    let attempts = 0;
+    while (followersCount < initialFollowersCount + 3 && attempts++ < 100) {
+        const followers = await fetchActivityPub(
+            'https://self.test/.ghost/activitypub/followers/index',
+        );
+        const json = await followers.json();
+        followersCount = json.totalItems;
+        await sleep(100);
+    }
 });
 
-When('I create a post in ghost', async () => {
-    // Write code here that turns the phrase above into concrete actions
-    return 'pending';
+When('I create a post in ghost', async function () {
+    const body = JSON.stringify(createWebhookPost());
+    const timestamp = Date.now();
+    const hmac = createHmac('sha256', getWebhookSecret())
+        .update(body + timestamp)
+        .digest('hex');
+
+    const response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/webhooks/post/published',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`,
+            },
+            body: body,
+        },
+    );
+
+    this.article = await response.json();
 });
 
-Then('an article is in my followers feeds', async () => {
-    // Write code here that turns the phrase above into concrete actions
-    return 'pending';
+Then('the article is in my followers feeds', async function () {
+    const feeds = await Promise.all([
+        fetchActivityPub(
+            'https://alice.test/.ghost/activitypub/v1/feed/reader',
+            { method: 'GET' },
+        ),
+        fetchActivityPub('https://bob.test/.ghost/activitypub/v1/feed/reader', {
+            method: 'GET',
+        }),
+        fetchActivityPub(
+            'https://carol.test/.ghost/activitypub/v1/feed/reader',
+            { method: 'GET' },
+        ),
+    ]);
+
+    const articleId = this.article.id;
+
+    for (const feed of feeds) {
+        const json = await feed.json();
+        assert(
+            json.posts.find((post) => post.id === articleId),
+            'Article is not in feed',
+        );
+    }
 });
 
 When('I create a note which mentions alice', async () => {
