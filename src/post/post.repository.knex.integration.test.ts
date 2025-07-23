@@ -283,6 +283,98 @@ describe('KnexPostRepository', () => {
             expect(postRowAfterDelete.reply_count).toBe(0);
         });
 
+        it('negative reply count error repro', async () => {
+            // This simulates what happens in production when the same reply is
+            // deleted multiple times. This can occur when a delete is sent to
+            // many internal accounts at once:
+            // - foo.com is followed by bar.com, baz.com and qux.com
+            // - foo.com deletes a post
+            // - bar.com, baz.com and qux.com all receive the delete and try to
+            //   decrement the reply count as part of the delete operation
+            const site = await siteService.initialiseSiteForHost(
+                'testing-race-condition.com',
+            );
+            const account = await accountRepository.getBySite(site);
+
+            const parentPost = Post.createNote(account, 'Parent post content');
+            await postRepository.save(parentPost);
+
+            const replyPost = Post.createReply(
+                account,
+                'Reply post content',
+                parentPost,
+            );
+            await postRepository.save(replyPost);
+
+            // Verify initial state
+            const parentFromDb = await client('posts')
+                .where({ id: parentPost.id })
+                .first();
+
+            expect(parentFromDb.reply_count).toBe(1);
+
+            // Get fresh instances of the reply from the database to simulate
+            // multiple concurrent requests loading the same post
+            const replyInstances = await Promise.all([
+                postRepository.getByApId(replyPost.apId),
+                postRepository.getByApId(replyPost.apId),
+                postRepository.getByApId(replyPost.apId),
+            ]);
+
+            for (const instance of replyInstances) {
+                expect(instance).not.toBeNull();
+                expect(Post.isDeleted(instance!)).toBe(false);
+            }
+
+            // Simulate concurrent delete operations - each instance thinks
+            // it's the first to delete
+            const deletePromises = replyInstances.map((instance, index) =>
+                (async () => {
+                    try {
+                        // Each request marks the post as deleted
+                        instance!.delete(account);
+
+                        // And saves it, which triggers the reply_count decrement
+                        await postRepository.save(instance!);
+
+                        return { success: true, error: null };
+                    } catch (error) {
+                        return { success: false, error };
+                    }
+                })(),
+            );
+
+            const results = await Promise.all(deletePromises);
+
+            const failures = results.filter((r) => !r.success);
+            const errors = failures.map((f) => f.error);
+
+            // We expect at least one of the deletes to fail
+            expect(failures.length).toBeGreaterThan(0);
+
+            // Check that we have the specific BIGINT UNSIGNED error
+            const hasBigintError = errors.some((error) => {
+                const errorMessage =
+                    error instanceof Error ? error.message : String(error);
+
+                return (
+                    errorMessage.includes(
+                        'BIGINT UNSIGNED value is out of range',
+                    ) && errorMessage.includes('reply_count - 1')
+                );
+            });
+
+            expect(hasBigintError).toBe(true);
+
+            // Check the final state
+            const parentFromDbAfter = await client('posts')
+                .where({ id: parentPost.id })
+                .first();
+
+            // The reply count should be 0 (not negative)
+            expect(parentFromDbAfter.reply_count).toBe(0);
+        });
+
         it('Deletes likes when a post is deleted', async () => {
             const site = await siteService.initialiseSiteForHost(
                 'testing-delete-likes.com',
