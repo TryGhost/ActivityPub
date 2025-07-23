@@ -32,3 +32,9 @@ Feature: Liking an object
     Then we unlike the object "Note"
     Then the request is accepted
     And a "Undo(Like)" activity is sent to "Alice"
+
+  @only
+  Scenario: Delivering likes to internal accounts
+    Given I have internal account followers
+    When I like alices note
+    Then alice recieves a like notification
