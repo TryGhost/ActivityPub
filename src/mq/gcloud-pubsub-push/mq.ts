@@ -464,14 +464,12 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
  * @see https://cloud.google.com/pubsub/docs/push#receive_push
  */
 const IncomingPushMessageSchema = z.object({
+    deliveryAttempt: z.number().optional(),
     message: z.object({
         message_id: z.string(),
         data: z.string(),
         attributes: z.record(z.string()),
     }),
-    // GCP may send this as a number or string depending on the client library
-    // See https://cloud.google.com/pubsub/docs/handling-failures
-    deliveryAttempt: z.union([z.number(), z.string()]).optional(),
 });
 
 /**
@@ -582,12 +580,8 @@ export function createPushMessageHandler(
                             message.data.traceContext = carrier;
 
                             // Handle the message
-                            const deliveryAttempt = json.deliveryAttempt
-                                ? Number(json.deliveryAttempt)
-                                : undefined;
-
                             return mq
-                                .handleMessage(message, deliveryAttempt)
+                                .handleMessage(message, json.deliveryAttempt)
                                 .then(() => new Response(null, { status: 200 }))
                                 .catch(
                                     () => new Response(null, { status: 500 }),
@@ -599,12 +593,8 @@ export function createPushMessageHandler(
         }
 
         // Handle the message
-        const deliveryAttempt = json.deliveryAttempt
-            ? Number(json.deliveryAttempt)
-            : undefined;
-
         return mq
-            .handleMessage(message, deliveryAttempt)
+            .handleMessage(message, json.deliveryAttempt)
             .then(() => new Response(null, { status: 200 }))
             .catch(() => new Response(null, { status: 500 }));
     };
