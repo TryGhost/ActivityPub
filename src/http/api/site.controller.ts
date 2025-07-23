@@ -21,6 +21,13 @@ export class SiteController {
         try {
             const requestIp = this.getRequestIp(ctx);
             const isGhostPro = this.isGhostProIp(requestIp);
+            ctx.get('logger').info(
+                'Request IP: {requestIp} (Ghost (Pro): {isGhostPro})',
+                {
+                    requestIp,
+                    isGhostPro,
+                },
+            );
             const site = await this.siteService.initialiseSiteForHost(
                 host,
                 isGhostPro,
