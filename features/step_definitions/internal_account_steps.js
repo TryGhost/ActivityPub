@@ -132,7 +132,7 @@ Then('the note is in my followers feeds', async function () {
     }
 });
 
-Then('alice recieves a mention notification', async function () {
+Then('alice receives a mention notification', async function () {
     const notifications = await fetchActivityPub(
         'https://alice.test/.ghost/activitypub/v1/notifications',
         { method: 'GET' },
@@ -204,7 +204,7 @@ Then('the reply is not in my followers feeds', async function () {
     }
 });
 
-Then('alice recieves a reply notification', async function () {
+Then('alice receives a reply notification', async function () {
     const notifications = await fetchActivityPub(
         'https://alice.test/.ghost/activitypub/v1/notifications',
         { method: 'GET' },
@@ -300,7 +300,7 @@ When('I like alices note', async function () {
     );
 });
 
-Then('alice recieves a like notification', async function () {
+Then('alice receives a like notification', async function () {
     const notifications = await fetchActivityPub(
         'https://alice.test/.ghost/activitypub/v1/notifications',
         { method: 'GET' },
@@ -343,7 +343,7 @@ When('I repost alices note', async function () {
     );
 });
 
-Then('alice recieves a repost notification', async function () {
+Then('alice receives a repost notification', async function () {
     const notifications = await fetchActivityPub(
         'https://alice.test/.ghost/activitypub/v1/notifications',
         { method: 'GET' },

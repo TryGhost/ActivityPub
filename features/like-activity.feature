@@ -36,4 +36,4 @@ Feature: Liking an object
   Scenario: Delivering likes to internal accounts
     Given I have internal account followers
     When I like alices note
-    Then alice recieves a like notification
+    Then alice receives a like notification

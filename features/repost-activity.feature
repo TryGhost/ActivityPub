@@ -44,4 +44,4 @@ Feature: Reposting a post/note
     Given I have internal account followers
     When I repost alices note
     Then the note is in my followers feeds
-    And alice recieves a repost notification
+    And alice receives a repost notification

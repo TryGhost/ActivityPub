@@ -79,4 +79,4 @@ Feature: Creating a note
     Given I have internal account followers
     When I create a note which mentions alice
     Then the note is in my followers feeds
-    And alice recieves a mention notification
+    And alice receives a mention notification
