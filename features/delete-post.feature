@@ -24,7 +24,6 @@ Feature: Delete a post
     And the request is rejected with a 403
     And the note "AliceNote" is in our feed
 
-  @only
   Scenario: Delivering deletes to internal accounts
     Given I have internal account followers
     When I delete a note

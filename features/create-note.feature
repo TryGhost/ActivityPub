@@ -75,7 +75,6 @@ Feature: Creating a note
     When we create a note "Note" with an invalid image url
     Then the note is not created
 
-  @only
   Scenario: Delivering notes and mentions to internal accounts
     Given I have internal account followers
     When I create a note which mentions alice

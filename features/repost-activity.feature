@@ -40,7 +40,6 @@ Feature: Reposting a post/note
     When we undo the repost of the object "Note"
     Then the request is rejected with a 409
 
-  @only
   Scenario: Delivering reposts to internal accounts
     Given I have internal account followers
     When I repost alices note

@@ -33,7 +33,6 @@ Feature: Liking an object
     Then the request is accepted
     And a "Undo(Like)" activity is sent to "Alice"
 
-  @only
   Scenario: Delivering likes to internal accounts
     Given I have internal account followers
     When I like alices note
