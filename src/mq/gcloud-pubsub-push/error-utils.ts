@@ -71,9 +71,9 @@ function isUpstreamSSLError(error: Error, depth = 0): boolean {
 
     if (
         error.message.match(
-            /SSL routines:ssl3_read_bytes:tlsv1 alert internal error/i,
+            /SSL routines:ssl3_read_bytes/i,
         ) !== null ||
-        error.message.match(/SSL alert number 80/i) !== null
+        error.message.match(/SSL alert number/i) !== null
     ) {
         return true;
     }
@@ -265,6 +265,7 @@ function analyzeFetchError(error: FetchError): ErrorAnalysis {
  * - "certificate has expired"
  * - "self-signed certificate"
  * - "2892DBF5017F0000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1605:SSL alert number 80"
+ * - "2882725CA57F0000:error:0A000410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1605:SSL alert number 40"
  *
  * DNS resolution errors have the message format:
  * "getaddrinfo <error-code ENOTFOUND|EAI_AGAIN> <domain>"
