@@ -70,9 +70,7 @@ function isUpstreamSSLError(error: Error, depth = 0): boolean {
     }
 
     if (
-        error.message.match(
-            /SSL routines:ssl3_read_bytes/i,
-        ) !== null ||
+        error.message.match(/SSL routines:ssl3_read_bytes/i) !== null ||
         error.message.match(/SSL alert number/i) !== null
     ) {
         return true;
