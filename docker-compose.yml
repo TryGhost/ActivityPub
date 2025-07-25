@@ -23,6 +23,7 @@ services:
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
       - MQ_PUBSUB_RETRY_TOPIC_NAME=fedify-retry-topic
       - MQ_PUBSUB_USE_RETRY_TOPIC=true
+      - MQ_PUBSUB_MAX_DELIVERY_ATTEMPTS=5
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
@@ -162,6 +163,7 @@ services:
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
       - MQ_PUBSUB_RETRY_TOPIC_NAME=fedify-retry-topic
       - MQ_PUBSUB_USE_RETRY_TOPIC=true
+      - MQ_PUBSUB_MAX_DELIVERY_ATTEMPTS=5
       - MQ_PUBSUB_GHOST_TOPIC_NAME=ghost-topic
       - GCP_BUCKET_NAME=activitypub
       - GCS_LOCAL_STORAGE_HOSTING_URL=http://fake-gcs:4443/.ghost/activitypub/gcs

@@ -63,6 +63,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         private topic: string,
         private useRetryTopic = false,
         private retryTopic?: string,
+        private maxDeliveryAttempts = Number.POSITIVE_INFINITY,
     ) {}
 
     /**
@@ -260,8 +261,12 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
      * Handle a message
      *
      * @param message Message to handle
+     * @param deliveryAttempt The delivery attempt count from GCP (optional)
      */
-    async handleMessage(message: Message): Promise<void> {
+    async handleMessage(
+        message: Message,
+        deliveryAttempt?: number,
+    ): Promise<void> {
         if (this.messageHandler === undefined) {
             const error = new Error(
                 'Message queue is not listening, cannot handle message',
@@ -300,7 +305,14 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
             const shouldRetryUsingTopic =
                 this.useRetryTopic && this.retryTopic !== undefined;
 
-            const errorAnalysis = analyzeError(error as Error);
+            const deliveryAttemptCount =
+                deliveryAttempt && deliveryAttempt > 0 ? deliveryAttempt : 1;
+
+            const isFromRetryQueue = message.attributes.isRetry === 'true';
+
+            // On main queue: always publish to retry queue on failure
+            // On retry queue: throw to use GCP's exponential backoff
+            const shouldPublishToRetry = !isFromRetryQueue;
 
             this.logger.error(
                 `Failed to handle message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]: ${error}`,
@@ -309,30 +321,73 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     pubSubId: message.id,
                     mq_message: message.data,
                     error,
+                    deliveryAttempt: deliveryAttemptCount,
                 },
             );
+
+            const errorAnalysis = analyzeError(error as Error);
 
             if (errorAnalysis.isReportable) {
                 this.errorListener?.(error as Error);
             }
 
-            if (shouldRetryUsingTopic && errorAnalysis.isRetryable) {
-                this.logger.info(
-                    `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+            if (
+                shouldRetryUsingTopic &&
+                errorAnalysis.isRetryable &&
+                deliveryAttemptCount < this.maxDeliveryAttempts
+            ) {
+                if (shouldPublishToRetry) {
+                    // From main queue: publish to retry topic
+                    this.logger.info(
+                        `Publishing to retry topic [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
+                        {
+                            fedifyId,
+                            pubSubId: message.id,
+                            mq_message: message.data,
+                            error,
+                            deliveryAttempt: deliveryAttemptCount,
+                            isFromRetryQueue,
+                        },
+                    );
+
+                    await this.pubSubClient
+                        .topic(this.retryTopic!)
+                        .publishMessage({
+                            json: message.data,
+                            attributes: {
+                                fedifyId,
+                                isRetry: 'true',
+                            },
+                        });
+                } else {
+                    // From retry queue: throw to let GCP handle exponential backoff
+                    this.logger.info(
+                        `Throwing error for GCP retry [FedifyID: ${fedifyId}, PubSubID: ${message.id}], attempt ${deliveryAttemptCount}`,
+                        {
+                            fedifyId,
+                            pubSubId: message.id,
+                            mq_message: message.data,
+                            error,
+                            deliveryAttempt: deliveryAttemptCount,
+                            isFromRetryQueue,
+                        },
+                    );
+
+                    throw error;
+                }
+            } else if (deliveryAttemptCount >= this.maxDeliveryAttempts) {
+                await this.handlePermanentFailure(message.data, error as Error);
+
+                this.logger.warn(
+                    `Not retrying message [FedifyID: ${fedifyId}, PubSubID: ${message.id}] due to delivery attempt count being >= ${this.maxDeliveryAttempts}`,
                     {
                         fedifyId,
                         pubSubId: message.id,
                         mq_message: message.data,
                         error,
+                        deliveryAttempt: deliveryAttemptCount,
                     },
                 );
-
-                await this.pubSubClient.topic(this.retryTopic!).publishMessage({
-                    json: message.data,
-                    attributes: {
-                        fedifyId,
-                    },
-                });
             } else if (shouldRetryUsingTopic && !errorAnalysis.isRetryable) {
                 await this.handlePermanentFailure(message.data, error as Error);
 
@@ -343,6 +398,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                         pubSubId: message.id,
                         mq_message: message.data,
                         error,
+                        deliveryAttempt: deliveryAttemptCount,
                     },
                 );
             } else {
@@ -413,6 +469,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
  * @see https://cloud.google.com/pubsub/docs/push#receive_push
  */
 const IncomingPushMessageSchema = z.object({
+    deliveryAttempt: z.number().optional(),
     message: z.object({
         message_id: z.string(),
         data: z.string(),
@@ -529,7 +586,7 @@ export function createPushMessageHandler(
 
                             // Handle the message
                             return mq
-                                .handleMessage(message)
+                                .handleMessage(message, json.deliveryAttempt)
                                 .then(() => new Response(null, { status: 200 }))
                                 .catch(
                                     () => new Response(null, { status: 500 }),
@@ -542,7 +599,7 @@ export function createPushMessageHandler(
 
         // Handle the message
         return mq
-            .handleMessage(message)
+            .handleMessage(message, json.deliveryAttempt)
             .then(() => new Response(null, { status: 200 }))
             .catch(() => new Response(null, { status: 500 }));
     };
