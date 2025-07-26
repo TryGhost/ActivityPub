@@ -1,9 +1,17 @@
 import { IncomingMessage } from 'node:http';
-import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
+import {
+    DiagConsoleLogger,
+    DiagLogLevel,
+    diag,
+    trace,
+} from '@opentelemetry/api';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import { Resource } from '@opentelemetry/resources';
 import {
     BatchSpanProcessor,
+    NodeTracerProvider,
     SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+} from '@opentelemetry/sdk-trace-node';
 import * as Sentry from '@sentry/node';
 
 export async function setupInstrumentation() {
@@ -14,6 +22,22 @@ export async function setupInstrumentation() {
             diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
         }
     }
+
+    // Setup OpenTelemetry
+    const resource = new Resource({
+        'service.name': 'activitypub',
+        'service.version': process.env.K_REVISION || '1.0.0',
+        'deployment.environment': process.env.NODE_ENV || 'unknown',
+    });
+
+    const provider = new NodeTracerProvider({
+        resource,
+    });
+
+    // Configure W3C Trace Context propagator for trace continuation
+    provider.register({
+        propagator: new W3CTraceContextPropagator(),
+    });
 
     if (process.env.SENTRY_DSN) {
         const sentryClient = Sentry.init({
@@ -89,6 +113,30 @@ export async function setupInstrumentation() {
             });
         }
     }
+
+    // Add Google Cloud Trace exporter to OpenTelemetry
+    if (process.env.K_SERVICE) {
+        const { TraceExporter } = await import(
+            '@google-cloud/opentelemetry-cloud-trace-exporter'
+        );
+        provider.addSpanProcessor(
+            new BatchSpanProcessor(new TraceExporter({})),
+        );
+    }
+
+    // Add OTLP exporter for development
+    if (process.env.NODE_ENV === 'development') {
+        const { OTLPTraceExporter } = await import(
+            '@opentelemetry/exporter-trace-otlp-proto'
+        );
+        provider.addSpanProcessor(
+            new SimpleSpanProcessor(
+                new OTLPTraceExporter({
+                    url: 'http://jaeger:4318/v1/traces',
+                }),
+            ),
+        );
+    }
 }
 
 export function spanWrapper<TArgs extends unknown[], TReturn>(
@@ -102,5 +150,27 @@ export function spanWrapper<TArgs extends unknown[], TReturn>(
             },
             () => fn(...args),
         );
+    };
+}
+
+export function otelSpanWrapper<TArgs extends unknown[], TReturn>(
+    fn: (...args: TArgs) => TReturn,
+) {
+    const tracer = trace.getTracer('activitypub', '1.0.0');
+    return (...args: TArgs) => {
+        return tracer.startActiveSpan(fn.name || 'anonymous', (span) => {
+            try {
+                const result = fn(...args);
+                if (result instanceof Promise) {
+                    return result.finally(() => span.end());
+                }
+                span.end();
+                return result;
+            } catch (error) {
+                span.recordException(error as Error);
+                span.end();
+                throw error;
+            }
+        });
     };
 }
