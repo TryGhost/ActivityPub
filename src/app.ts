@@ -573,7 +573,6 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                     );
                     return withContext(
                         {
-                            'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${firstTraceId}`,
                             'logging.googleapis.com/spanId': firstSpanId,
                         },
                         () => {
@@ -605,7 +604,6 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                     );
                                     return withContext(
                                         {
-                                            'logging.googleapis.com/trace': `projects/ghost-activitypub/traces/${secondTraceId}`,
                                             'logging.googleapis.com/spanId':
                                                 secondSpanId,
                                         },
@@ -636,7 +634,7 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                             ctx.req.header(
                                                                 'traceparent',
                                                             ),
-                                                        version: 3,
+                                                        version: 4,
                                                     },
                                                     null,
                                                     4,
