@@ -1,3 +1,4 @@
+import './instrumentation';
 import 'reflect-metadata';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
@@ -94,15 +95,13 @@ import {
     requireRole,
 } from './http/middleware/role-guard';
 import { RouteRegistry } from './http/routing/route-registry';
-import { setupInstrumentation, spanWrapper } from './instrumentation';
+import { spanWrapper } from './instrumentation';
 import {
     type GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
 } from './mq/gcloud-pubsub-push/mq';
 import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interaction-counts-update-requested.event';
 import type { Site, SiteService } from './site/site.service';
-
-await setupInstrumentation();
 
 function toLogLevel(level: unknown): LogLevel | null {
     if (typeof level !== 'string') {

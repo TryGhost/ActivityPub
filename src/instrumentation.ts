@@ -110,6 +110,8 @@ export async function setupInstrumentation() {
     sdk.start();
 }
 
+await setupInstrumentation();
+
 export function spanWrapper<TArgs extends unknown[], TReturn>(
     fn: (...args: TArgs) => TReturn,
 ) {
