@@ -520,10 +520,15 @@ app.get('/ping', (ctx) => {
     });
 });
 
+const tracer = otelApi.trace.getTracer('activitypub', '1.0.0');
+
 app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
     try {
         let activeContext = otelApi.context.active();
-        if (ctx.req.header('traceparent')) {
+        if (
+            ctx.req.header('traceparent') &&
+            ctx.req.query('forcetraceparent')
+        ) {
             activeContext = otelApi.propagation.extract(activeContext, {
                 traceparent: ctx.req.header('traceparent'),
                 tracestate: ctx.req.header('tracestate'),
@@ -569,131 +574,123 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
             //     'http.url': ctx.req.url,
             // });
 
-            return await otelApi.trace
-                .getTracer('activitypub', '1.0.0')
-                .startActiveSpan(
-                    'first',
-                    {
-                        attributes: {},
-                    },
-                    activeContext,
-                    (firstSpan) => {
-                        try {
-                            const firstSpanId = firstSpan.spanContext().spanId;
-                            const firstTraceId =
-                                firstSpan.spanContext().traceId;
-                            globalLogging.info(
-                                'First span {firstSpanId} {firstTraceId}',
-                                {
-                                    firstSpanId,
-                                    firstTraceId,
-                                },
-                            );
-                            return withContext(
-                                {
-                                    'logging.googleapis.com/spanId':
+            return await tracer.startActiveSpan(
+                'first',
+                {
+                    attributes: {},
+                },
+                activeContext,
+                (firstSpan) => {
+                    try {
+                        const firstSpanId = firstSpan.spanContext().spanId;
+                        const firstTraceId = firstSpan.spanContext().traceId;
+                        globalLogging.info(
+                            'First span {firstSpanId} {firstTraceId}',
+                            {
+                                firstSpanId,
+                                firstTraceId,
+                            },
+                        );
+                        return withContext(
+                            {
+                                'logging.googleapis.com/spanId': firstSpanId,
+                            },
+                            () => {
+                                globalLogging.info(
+                                    'First span with context {firstSpanId} {firstTraceId}',
+                                    {
                                         firstSpanId,
-                                },
-                                () => {
-                                    globalLogging.info(
-                                        'First span with context {firstSpanId} {firstTraceId}',
-                                        {
-                                            firstSpanId,
-                                            firstTraceId,
-                                        },
-                                    );
-                                    return otelApi.trace
-                                        .getTracer('activitypub', '1.0.0')
-                                        .startActiveSpan(
-                                            'second',
-                                            (secondSpan) => {
-                                                try {
-                                                    const secondSpanId =
-                                                        secondSpan.spanContext()
-                                                            .spanId;
-                                                    const secondTraceId =
-                                                        secondSpan.spanContext()
-                                                            .traceId;
+                                        firstTraceId,
+                                    },
+                                );
+                                return tracer.startActiveSpan(
+                                    'second',
+                                    (secondSpan) => {
+                                        try {
+                                            const secondSpanId =
+                                                secondSpan.spanContext().spanId;
+                                            const secondTraceId =
+                                                secondSpan.spanContext()
+                                                    .traceId;
+                                            globalLogging.info(
+                                                'Second span {secondSpanId} {secondTraceId}',
+                                                {
+                                                    secondSpanId,
+                                                    secondTraceId,
+                                                },
+                                            );
+                                            return withContext(
+                                                {
+                                                    'logging.googleapis.com/spanId':
+                                                        secondSpanId,
+                                                },
+                                                async () => {
                                                     globalLogging.info(
-                                                        'Second span {secondSpanId} {secondTraceId}',
+                                                        'Second span with context {secondSpanId} {secondTraceId}',
                                                         {
                                                             secondSpanId,
                                                             secondTraceId,
                                                         },
                                                     );
-                                                    return withContext(
-                                                        {
-                                                            'logging.googleapis.com/spanId':
+                                                    const error = new Error(
+                                                        'Test error',
+                                                    );
+                                                    Sentry.captureException(
+                                                        error,
+                                                    );
+                                                    secondSpan.recordException(
+                                                        error,
+                                                    );
+
+                                                    if (activeSpan) {
+                                                        activeSpan.updateName(
+                                                            `${ctx.req.method} ${ctx.req.routePath}`,
+                                                        );
+                                                        activeSpan.end();
+                                                    }
+
+                                                    return new Response(
+                                                        JSON.stringify(
+                                                            {
+                                                                traceId:
+                                                                    traceId ||
+                                                                    firstTraceId,
+                                                                spanId:
+                                                                    spanId ||
+                                                                    firstSpanId,
+                                                                firstSpanId,
+                                                                firstTraceId,
+                                                                continueTraceSpanId,
+                                                                continueTraceTraceId,
                                                                 secondSpanId,
-                                                        },
-                                                        async () => {
-                                                            globalLogging.info(
-                                                                'Second span with context {secondSpanId} {secondTraceId}',
-                                                                {
-                                                                    secondSpanId,
-                                                                    secondTraceId,
-                                                                },
-                                                            );
-                                                            const error =
-                                                                new Error(
-                                                                    'Test error',
-                                                                );
-                                                            Sentry.captureException(
-                                                                error,
-                                                            );
-                                                            secondSpan.recordException(
-                                                                error,
-                                                            );
-
-                                                            if (activeSpan) {
-                                                                activeSpan.updateName(
-                                                                    `${ctx.req.method} ${ctx.req.routePath}`,
-                                                                );
-                                                                activeSpan.end();
-                                                            }
-
-                                                            return new Response(
-                                                                JSON.stringify(
-                                                                    {
-                                                                        traceId:
-                                                                            traceId ||
-                                                                            firstTraceId,
-                                                                        spanId:
-                                                                            spanId ||
-                                                                            firstSpanId,
-                                                                        firstSpanId,
-                                                                        firstTraceId,
-                                                                        continueTraceSpanId,
-                                                                        continueTraceTraceId,
-                                                                        secondSpanId,
-                                                                        secondTraceId,
-                                                                        traceparent:
-                                                                            ctx.req.header(
-                                                                                'traceparent',
-                                                                            ),
-                                                                        version: 5,
-                                                                    },
-                                                                    null,
-                                                                    4,
-                                                                ),
-                                                                {
-                                                                    status: 200,
-                                                                },
-                                                            );
+                                                                secondTraceId,
+                                                                traceparent:
+                                                                    ctx.req.header(
+                                                                        'traceparent',
+                                                                    ),
+                                                                version: 6,
+                                                            },
+                                                            null,
+                                                            4,
+                                                        ),
+                                                        {
+                                                            status: 200,
                                                         },
                                                     );
-                                                } finally {
-                                                    secondSpan.end();
-                                                }
-                                            },
-                                        );
-                                },
-                            );
-                        } finally {
-                            firstSpan.end();
-                        }
-                    },
-                );
+                                                },
+                                            );
+                                        } finally {
+                                            secondSpan.end();
+                                        }
+                                    },
+                                );
+                            },
+                        );
+                    } finally {
+                        firstSpan.end();
+                    }
+                },
+            );
         });
     } catch (err: unknown) {
         return new Response(
