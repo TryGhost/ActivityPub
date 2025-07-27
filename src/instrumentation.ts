@@ -1,4 +1,3 @@
-import { IncomingMessage } from 'node:http';
 import * as otelApi from '@opentelemetry/api';
 import * as opentelemetry from '@opentelemetry/sdk-node';
 import * as Sentry from '@sentry/node';
@@ -36,35 +35,6 @@ export async function setupInstrumentation() {
                 // Customize HTTP integration to use better span names
                 Sentry.httpIntegration({
                     spans: false,
-                    instrumentation: {
-                        requestHook: (span, req) => {
-                            console.log('!!!!!! request hook for Sentry !!!!!');
-                            // Only process IncomingMessage (server-side requests)
-                            if (span && req instanceof IncomingMessage) {
-                                if (req.url && req.method) {
-                                    try {
-                                        const url = new URL(
-                                            req.url,
-                                            `http://${req.headers.host || 'localhost'}`,
-                                        );
-                                        span.updateName(
-                                            `${req.method} ${url.pathname}`,
-                                        );
-                                        span.setAttributes({
-                                            'service.name': 'activitypub',
-                                            'http.method': req.method,
-                                            'http.route': url.pathname,
-                                            'http.url': req.url,
-                                            'http.target': url.pathname,
-                                        });
-                                    } catch (e) {
-                                        // Ignore URL parsing errors
-                                    }
-                                }
-                            }
-                        },
-                        applyCustomAttributesOnSpan: (span) => {},
-                    },
                 }),
             ],
         });
