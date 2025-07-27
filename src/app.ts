@@ -544,6 +544,8 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
             extra['logging.googleapis.com/trace_sampled'] = sampled;
         }
 
+        const activeSpan = otelApi.trace.getActiveSpan();
+
         return await withContext(extra, async () => {
             globalLogging.info('Continuing trace {traceId} {spanId}', {
                 traceId,
@@ -638,6 +640,14 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                 otelApi.trace
                                                     .getActiveSpan()
                                                     ?.recordException(error);
+
+                                                if (activeSpan) {
+                                                    activeSpan.updateName(
+                                                        `${ctx.req.method} ${ctx.req.routePath}`,
+                                                    );
+                                                    activeSpan.end();
+                                                }
+
                                                 return new Response(
                                                     JSON.stringify(
                                                         {
