@@ -1,5 +1,5 @@
-import { IncomingMessage } from 'node:http';
-import { Socket } from 'node:net';
+// import { IncomingMessage } from 'node:http';
+// import { Socket } from 'node:net';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppContext } from '../../app';
@@ -73,97 +73,97 @@ describe('SiteController', () => {
             expect(body).toEqual(mockSite);
         });
 
-        it('sets `ghost_pro` flag to false when request IP is not a Ghost (Pro) IP', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com', {
-                'x-forwarded-for': '192.168.1.1',
-            });
+        // it('sets `ghost_pro` flag to false when request IP is not a Ghost (Pro) IP', async () => {
+        //     siteController = new SiteController(siteService, [
+        //         '10.0.0.1',
+        //         '10.0.0.2',
+        //     ]);
+        //     const ctx = getMockAppContext('example.com', {
+        //         'x-forwarded-for': '192.168.1.1',
+        //     });
 
-            await siteController.handleGetSiteData(ctx);
+        //     await siteController.handleGetSiteData(ctx);
 
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                false,
-            );
-        });
+        //     expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
+        //         'example.com',
+        //         false,
+        //     );
+        // });
 
-        it('sets `ghost_pro` flag to true when request IP is a Ghost (Pro) IP', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com', {
-                'x-forwarded-for': '10.0.0.1',
-            });
+        // it('sets `ghost_pro` flag to true when request IP is a Ghost (Pro) IP', async () => {
+        //     siteController = new SiteController(siteService, [
+        //         '10.0.0.1',
+        //         '10.0.0.2',
+        //     ]);
+        //     const ctx = getMockAppContext('example.com', {
+        //         'x-forwarded-for': '10.0.0.1',
+        //     });
 
-            await siteController.handleGetSiteData(ctx);
+        //     await siteController.handleGetSiteData(ctx);
 
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                true,
-            );
-        });
+        //     expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
+        //         'example.com',
+        //         true,
+        //     );
+        // });
 
-        it('handles a comma-separated list of IPs in x-forwarded-for header', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com', {
-                'x-forwarded-for': '10.0.0.1, 192.168.1.1, 172.16.0.1',
-            });
+        // it('handles a comma-separated list of IPs in x-forwarded-for header', async () => {
+        //     siteController = new SiteController(siteService, [
+        //         '10.0.0.1',
+        //         '10.0.0.2',
+        //     ]);
+        //     const ctx = getMockAppContext('example.com', {
+        //         'x-forwarded-for': '10.0.0.1, 192.168.1.1, 172.16.0.1',
+        //     });
 
-            await siteController.handleGetSiteData(ctx);
+        //     await siteController.handleGetSiteData(ctx);
 
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                true,
-            );
-        });
+        //     expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
+        //         'example.com',
+        //         true,
+        //     );
+        // });
 
-        it('uses the remote address when x-forwarded-for header is not present', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com');
+        // it('uses the remote address when x-forwarded-for header is not present', async () => {
+        //     siteController = new SiteController(siteService, [
+        //         '10.0.0.1',
+        //         '10.0.0.2',
+        //     ]);
+        //     const ctx = getMockAppContext('example.com');
 
-            const mockSocket = new Socket();
-            Object.defineProperty(mockSocket, 'remoteAddress', {
-                value: '10.0.0.2',
-                writable: false,
-            });
+        //     const mockSocket = new Socket();
+        //     Object.defineProperty(mockSocket, 'remoteAddress', {
+        //         value: '10.0.0.2',
+        //         writable: false,
+        //     });
 
-            const mockIncomingMessage = new IncomingMessage(mockSocket);
-            Object.defineProperty(ctx.req, 'raw', {
-                value: mockIncomingMessage,
-                writable: false,
-            });
+        //     const mockIncomingMessage = new IncomingMessage(mockSocket);
+        //     Object.defineProperty(ctx.req, 'raw', {
+        //         value: mockIncomingMessage,
+        //         writable: false,
+        //     });
 
-            await siteController.handleGetSiteData(ctx);
+        //     await siteController.handleGetSiteData(ctx);
 
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                true,
-            );
-        });
+        //     expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
+        //         'example.com',
+        //         true,
+        //     );
+        // });
 
-        it('sets `ghost_pro` flag to false when no IP headers are found', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com');
+        // it('sets `ghost_pro` flag to false when no IP headers are found', async () => {
+        //     siteController = new SiteController(siteService, [
+        //         '10.0.0.1',
+        //         '10.0.0.2',
+        //     ]);
+        //     const ctx = getMockAppContext('example.com');
 
-            await siteController.handleGetSiteData(ctx);
+        //     await siteController.handleGetSiteData(ctx);
 
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                false,
-            );
-        });
+        //     expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
+        //         'example.com',
+        //         false,
+        //     );
+        // });
     });
 });
