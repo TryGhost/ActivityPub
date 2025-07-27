@@ -1,21 +1,29 @@
 import { IncomingMessage } from 'node:http';
 import * as otelApi from '@opentelemetry/api';
-import * as Sentry from '@sentry/node';
 import * as opentelemetry from '@opentelemetry/sdk-node';
+import * as Sentry from '@sentry/node';
 
+import {
+    BatchSpanProcessor,
+    type SpanExporter,
+} from '@opentelemetry/sdk-trace-base';
 import {
     // SentrySpanProcessor, // Commented out for now
     SentryPropagator,
-} from "@sentry/opentelemetry";
-import { BatchSpanProcessor, SpanExporter } from '@opentelemetry/sdk-trace-base';
-
+} from '@sentry/opentelemetry';
 
 export async function setupInstrumentation() {
     if (process.env.NODE_ENV === 'production') {
         if (process.env.OTEL_DEBUG_LOGGING) {
-            otelApi.diag.setLogger(new otelApi.DiagConsoleLogger(), otelApi.DiagLogLevel.DEBUG);
+            otelApi.diag.setLogger(
+                new otelApi.DiagConsoleLogger(),
+                otelApi.DiagLogLevel.DEBUG,
+            );
         } else {
-            otelApi.diag.setLogger(new otelApi.DiagConsoleLogger(), otelApi.DiagLogLevel.INFO);
+            otelApi.diag.setLogger(
+                new otelApi.DiagConsoleLogger(),
+                otelApi.DiagLogLevel.INFO,
+            );
         }
     }
 
@@ -33,7 +41,7 @@ export async function setupInstrumentation() {
                     spans: false,
                     instrumentation: {
                         requestHook: (span, req) => {
-                            console.log('!!!!!! request hook for Sentry !!!!!')
+                            console.log('!!!!!! request hook for Sentry !!!!!');
                             // Only process IncomingMessage (server-side requests)
                             if (span && req instanceof IncomingMessage) {
                                 if (req.url && req.method) {
