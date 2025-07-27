@@ -7,10 +7,6 @@ import {
     BatchSpanProcessor,
     type SpanExporter,
 } from '@opentelemetry/sdk-trace-base';
-import {
-    // SentrySpanProcessor, // Commented out for now
-    SentryPropagator,
-} from '@sentry/opentelemetry';
 
 export async function setupInstrumentation() {
     if (process.env.NODE_ENV === 'production') {
@@ -71,36 +67,6 @@ export async function setupInstrumentation() {
                 }),
             ],
         });
-
-        const { OTLPTraceExporter } = await import(
-            '@opentelemetry/exporter-trace-otlp-proto'
-        );
-
-        let traceExporter: SpanExporter | undefined;
-        if (process.env.NODE_ENV === 'development') {
-            traceExporter = new OTLPTraceExporter({
-                url: 'http://jaeger:4318/v1/traces',
-            });
-        }
-
-        const spanProcessors = [];
-        if (process.env.K_SERVICE) {
-            const { TraceExporter } = await import(
-                '@google-cloud/opentelemetry-cloud-trace-exporter'
-            );
-            spanProcessors.push(new BatchSpanProcessor(new TraceExporter({})));
-        }
-
-        const sdk = new opentelemetry.NodeSDK({
-            traceExporter,
-            instrumentations: [],
-            spanProcessors: spanProcessors,
-        });
-
-        otelApi.propagation.setGlobalPropagator(new SentryPropagator());
-
-        sdk.start();
-
         if (process.env.ENABLE_CPU_PROFILER === 'true') {
             const cpuProfiler = await import('@google-cloud/profiler');
             cpuProfiler.start({
@@ -111,6 +77,36 @@ export async function setupInstrumentation() {
             });
         }
     }
+
+    const { OTLPTraceExporter } = await import(
+        '@opentelemetry/exporter-trace-otlp-proto'
+    );
+
+    let traceExporter: SpanExporter | undefined;
+    if (process.env.NODE_ENV === 'development') {
+        console.log('!!!!!! using OTLPTraceExporter !!!!!');
+        traceExporter = new OTLPTraceExporter({
+            url: 'http://jaeger:4318/v1/traces',
+        });
+    }
+
+    const spanProcessors = [];
+    if (process.env.K_SERVICE) {
+        const { TraceExporter } = await import(
+            '@google-cloud/opentelemetry-cloud-trace-exporter'
+        );
+        spanProcessors.push(new BatchSpanProcessor(new TraceExporter({})));
+    }
+
+    const sdk = new opentelemetry.NodeSDK({
+        traceExporter,
+        instrumentations: [],
+        spanProcessors: spanProcessors,
+    });
+
+    // otelApi.propagation.setGlobalPropagator(new SentryPropagator());
+
+    sdk.start();
 }
 
 export function spanWrapper<TArgs extends unknown[], TReturn>(

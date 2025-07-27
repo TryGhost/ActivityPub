@@ -541,12 +541,10 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                 traceId,
                 spanId,
             });
-            const continueTraceTraceId = otelApi.trace
-                .getActiveSpan()
-                ?.spanContext().traceId;
-            const continueTraceSpanId = otelApi.trace
-                .getActiveSpan()
-                ?.spanContext().spanId;
+            const span = otelApi.trace.getActiveSpan();
+
+            const continueTraceTraceId = span?.spanContext().traceId;
+            const continueTraceSpanId = span?.spanContext().spanId;
             globalLogging.info(
                 'Updating span name {continueTraceSpanId} {continueTraceTraceId}',
                 {
@@ -554,9 +552,21 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                     continueTraceTraceId,
                 },
             );
-            otelApi.trace
-                .getActiveSpan()
-                ?.updateName(`${ctx.req.method} ${ctx.req.routePath}`);
+
+            span?.updateName(`${ctx.req.method} ${ctx.req.routePath}`);
+            span?.setAttributes({
+                'http.method': ctx.req.method,
+                'http.route': ctx.req.routePath,
+                'http.url': ctx.req.url,
+            });
+
+            if (ctx.req.header('traceparent')) {
+                otelApi.propagation.extract(otelApi.context.active(), {
+                    traceparent: ctx.req.header('traceparent'),
+                    tracestate: ctx.req.header('tracestate'),
+                });
+            }
+
             return otelApi.trace
                 .getTracer('activitypub', '1.0.0')
                 .startActiveSpan('first', () => {
