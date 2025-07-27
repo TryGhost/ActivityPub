@@ -30,6 +30,7 @@ import {
     isLogLevel,
     withContext,
 } from '@logtape/logtape';
+import * as otelApi from '@opentelemetry/api';
 import * as Sentry from '@sentry/node';
 import type { Account } from 'account/account.entity';
 import type { KnexAccountRepository } from 'account/account.repository.knex';
@@ -540,10 +541,12 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                 traceId,
                 spanId,
             });
-            const continueTraceSpanId =
-                Sentry.getActiveSpan()?.spanContext().spanId;
-            const continueTraceTraceId =
-                Sentry.getActiveSpan()?.spanContext().traceId;
+            const continueTraceTraceId = otelApi.trace
+                .getActiveSpan()
+                ?.spanContext().traceId;
+            const continueTraceSpanId = otelApi.trace
+                .getActiveSpan()
+                ?.spanContext().spanId;
             globalLogging.info(
                 'Updating span name {continueTraceSpanId} {continueTraceTraceId}',
                 {
@@ -551,19 +554,18 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                     continueTraceTraceId,
                 },
             );
-            Sentry.getActiveSpan()?.updateName(
-                `${ctx.req.method} ${ctx.req.routePath}`,
-            );
-            return Sentry.startSpan(
-                {
-                    op: 'fn',
-                    name: 'first',
-                },
-                () => {
-                    const firstSpanId =
-                        Sentry.getActiveSpan()?.spanContext().spanId;
-                    const firstTraceId =
-                        Sentry.getActiveSpan()?.spanContext().traceId;
+            otelApi.trace
+                .getActiveSpan()
+                ?.updateName(`${ctx.req.method} ${ctx.req.routePath}`);
+            return otelApi.trace
+                .getTracer('activitypub', '1.0.0')
+                .startActiveSpan('first', () => {
+                    const firstSpanId = otelApi.trace
+                        .getActiveSpan()
+                        ?.spanContext().spanId;
+                    const firstTraceId = otelApi.trace
+                        .getActiveSpan()
+                        ?.spanContext().traceId;
                     globalLogging.info(
                         'First span {firstSpanId} {firstTraceId}',
                         {
@@ -583,18 +585,15 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                     firstTraceId,
                                 },
                             );
-                            return Sentry.startSpan(
-                                {
-                                    op: 'fn',
-                                    name: 'second',
-                                },
-                                () => {
-                                    const secondSpanId =
-                                        Sentry.getActiveSpan()?.spanContext()
-                                            .spanId;
-                                    const secondTraceId =
-                                        Sentry.getActiveSpan()?.spanContext()
-                                            .traceId;
+                            return otelApi.trace
+                                .getTracer('activitypub', '1.0.0')
+                                .startActiveSpan('second', () => {
+                                    const secondSpanId = otelApi.trace
+                                        .getActiveSpan()
+                                        ?.spanContext().spanId;
+                                    const secondTraceId = otelApi.trace
+                                        .getActiveSpan()
+                                        ?.spanContext().traceId;
                                     globalLogging.info(
                                         'Second span {secondSpanId} {secondTraceId}',
                                         {
@@ -619,6 +618,9 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                 'Test error',
                                             );
                                             Sentry.captureException(error);
+                                            otelApi.trace
+                                                .getActiveSpan()
+                                                ?.recordException(error);
                                             return new Response(
                                                 JSON.stringify(
                                                     {
@@ -634,7 +636,7 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                                             ctx.req.header(
                                                                 'traceparent',
                                                             ),
-                                                        version: 4,
+                                                        version: 5,
                                                     },
                                                     null,
                                                     4,
@@ -645,12 +647,10 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                                             );
                                         },
                                     );
-                                },
-                            );
+                                });
                         },
                     );
-                },
-            );
+                });
         });
     } catch (err: unknown) {
         return new Response(
