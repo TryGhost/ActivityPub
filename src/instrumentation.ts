@@ -82,15 +82,18 @@ export async function setupInstrumentation() {
         '@opentelemetry/exporter-trace-otlp-proto'
     );
 
-    let traceExporter: SpanExporter | undefined;
+    const spanProcessors = [];
     if (process.env.NODE_ENV === 'development') {
         console.log('!!!!!! using OTLPTraceExporter !!!!!');
-        traceExporter = new OTLPTraceExporter({
-            url: 'http://jaeger:4318/v1/traces',
-        });
+        spanProcessors.push(
+            new SimpleSpanProcessor(
+                new OTLPTraceExporter({
+                    url: 'http://jaeger:4318/v1/traces',
+                }),
+            ),
+        );
     }
 
-    const spanProcessors = [];
     if (process.env.K_SERVICE) {
         const { TraceExporter } = await import(
             '@google-cloud/opentelemetry-cloud-trace-exporter'
@@ -99,8 +102,6 @@ export async function setupInstrumentation() {
     }
 
     const sdk = new opentelemetry.NodeSDK({
-        traceExporter,
-        instrumentations: [],
         spanProcessors: spanProcessors,
     });
 
