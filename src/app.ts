@@ -523,6 +523,14 @@ app.get('/ping', (ctx) => {
 
 app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
     try {
+        let activeContext = otelApi.context.active();
+        if (ctx.req.header('traceparent')) {
+            activeContext = otelApi.propagation.extract(activeContext, {
+                traceparent: ctx.req.header('traceparent'),
+                tracestate: ctx.req.header('tracestate'),
+            });
+        }
+
         globalLogging.info('Trace testing endpoint');
         const extra: Record<string, string | boolean> = {};
 
@@ -553,114 +561,114 @@ app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
                 },
             );
 
-            span?.updateName(`${ctx.req.method} ${ctx.req.routePath}`);
-            span?.setAttributes({
-                'http.method': ctx.req.method,
-                'http.route': ctx.req.routePath,
-                'http.url': ctx.req.url,
-            });
-
-            if (ctx.req.header('traceparent')) {
-                otelApi.propagation.extract(otelApi.context.active(), {
-                    traceparent: ctx.req.header('traceparent'),
-                    tracestate: ctx.req.header('tracestate'),
-                });
-            }
+            // span?.updateName(`${ctx.req.method} ${ctx.req.routePath}`);
+            // span?.setAttributes({
+            //     'http.method': ctx.req.method,
+            //     'http.route': ctx.req.routePath,
+            //     'http.url': ctx.req.url,
+            // });
 
             return otelApi.trace
                 .getTracer('activitypub', '1.0.0')
-                .startActiveSpan('first', () => {
-                    const firstSpanId = otelApi.trace
-                        .getActiveSpan()
-                        ?.spanContext().spanId;
-                    const firstTraceId = otelApi.trace
-                        .getActiveSpan()
-                        ?.spanContext().traceId;
-                    globalLogging.info(
-                        'First span {firstSpanId} {firstTraceId}',
-                        {
-                            firstSpanId,
-                            firstTraceId,
-                        },
-                    );
-                    return withContext(
-                        {
-                            'logging.googleapis.com/spanId': firstSpanId,
-                        },
-                        () => {
-                            globalLogging.info(
-                                'First span with context {firstSpanId} {firstTraceId}',
-                                {
-                                    firstSpanId,
-                                    firstTraceId,
-                                },
-                            );
-                            return otelApi.trace
-                                .getTracer('activitypub', '1.0.0')
-                                .startActiveSpan('second', () => {
-                                    const secondSpanId = otelApi.trace
-                                        .getActiveSpan()
-                                        ?.spanContext().spanId;
-                                    const secondTraceId = otelApi.trace
-                                        .getActiveSpan()
-                                        ?.spanContext().traceId;
-                                    globalLogging.info(
-                                        'Second span {secondSpanId} {secondTraceId}',
-                                        {
-                                            secondSpanId,
-                                            secondTraceId,
-                                        },
-                                    );
-                                    return withContext(
-                                        {
-                                            'logging.googleapis.com/spanId':
+                .startActiveSpan(
+                    'first',
+                    {
+                        attributes: {},
+                    },
+                    activeContext,
+                    () => {
+                        const firstSpanId = otelApi.trace
+                            .getActiveSpan()
+                            ?.spanContext().spanId;
+                        const firstTraceId = otelApi.trace
+                            .getActiveSpan()
+                            ?.spanContext().traceId;
+                        globalLogging.info(
+                            'First span {firstSpanId} {firstTraceId}',
+                            {
+                                firstSpanId,
+                                firstTraceId,
+                            },
+                        );
+                        return withContext(
+                            {
+                                'logging.googleapis.com/spanId': firstSpanId,
+                            },
+                            () => {
+                                globalLogging.info(
+                                    'First span with context {firstSpanId} {firstTraceId}',
+                                    {
+                                        firstSpanId,
+                                        firstTraceId,
+                                    },
+                                );
+                                return otelApi.trace
+                                    .getTracer('activitypub', '1.0.0')
+                                    .startActiveSpan('second', () => {
+                                        const secondSpanId = otelApi.trace
+                                            .getActiveSpan()
+                                            ?.spanContext().spanId;
+                                        const secondTraceId = otelApi.trace
+                                            .getActiveSpan()
+                                            ?.spanContext().traceId;
+                                        globalLogging.info(
+                                            'Second span {secondSpanId} {secondTraceId}',
+                                            {
                                                 secondSpanId,
-                                        },
-                                        async () => {
-                                            globalLogging.info(
-                                                'Second span with context {secondSpanId} {secondTraceId}',
-                                                {
+                                                secondTraceId,
+                                            },
+                                        );
+                                        return withContext(
+                                            {
+                                                'logging.googleapis.com/spanId':
                                                     secondSpanId,
-                                                    secondTraceId,
-                                                },
-                                            );
-                                            const error = new Error(
-                                                'Test error',
-                                            );
-                                            Sentry.captureException(error);
-                                            otelApi.trace
-                                                .getActiveSpan()
-                                                ?.recordException(error);
-                                            return new Response(
-                                                JSON.stringify(
+                                            },
+                                            async () => {
+                                                globalLogging.info(
+                                                    'Second span with context {secondSpanId} {secondTraceId}',
                                                     {
-                                                        traceId,
-                                                        spanId,
-                                                        firstSpanId,
-                                                        firstTraceId,
-                                                        continueTraceSpanId,
-                                                        continueTraceTraceId,
                                                         secondSpanId,
                                                         secondTraceId,
-                                                        traceparent:
-                                                            ctx.req.header(
-                                                                'traceparent',
-                                                            ),
-                                                        version: 5,
                                                     },
-                                                    null,
-                                                    4,
-                                                ),
-                                                {
-                                                    status: 200,
-                                                },
-                                            );
-                                        },
-                                    );
-                                });
-                        },
-                    );
-                });
+                                                );
+                                                const error = new Error(
+                                                    'Test error',
+                                                );
+                                                Sentry.captureException(error);
+                                                otelApi.trace
+                                                    .getActiveSpan()
+                                                    ?.recordException(error);
+                                                return new Response(
+                                                    JSON.stringify(
+                                                        {
+                                                            traceId,
+                                                            spanId,
+                                                            firstSpanId,
+                                                            firstTraceId,
+                                                            continueTraceSpanId,
+                                                            continueTraceTraceId,
+                                                            secondSpanId,
+                                                            secondTraceId,
+                                                            traceparent:
+                                                                ctx.req.header(
+                                                                    'traceparent',
+                                                                ),
+                                                            version: 5,
+                                                        },
+                                                        null,
+                                                        4,
+                                                    ),
+                                                    {
+                                                        status: 200,
+                                                    },
+                                                );
+                                            },
+                                        );
+                                    });
+                            },
+                        );
+                    },
+                );
         });
     } catch (err: unknown) {
         return new Response(
