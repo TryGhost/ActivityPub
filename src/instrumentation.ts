@@ -25,6 +25,7 @@ export async function setupInstrumentation() {
             integrations: [
                 // Customize HTTP integration to use better span names
                 Sentry.httpIntegration({
+                    spans: false,
                     instrumentation: {
                         requestHook: (span, req) => {
                             // Only process IncomingMessage (server-side requests)
