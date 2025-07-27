@@ -19,6 +19,7 @@ export class SiteController {
 
         try {
             const isGhostPro = this.isRequestViaGhostPro(ctx);
+            ctx.get('logger').info('isGhostPro: {isGhostPro}', { isGhostPro });
             const site = await this.siteService.initialiseSiteForHost(
                 host,
                 isGhostPro,
@@ -42,10 +43,14 @@ export class SiteController {
 
     private isRequestViaGhostPro(ctx: AppContext): boolean {
         const requestIps = this.getRequestIpAddresses(ctx);
+        ctx.get('logger').info('requestIps: {requestIps}', { requestIps });
         if (!requestIps || requestIps.length === 0) {
             return false;
         }
 
+        ctx.get('logger').info('ghostProIpAddresses: {ghostProIpAddresses}', {
+            ghostProIpAddresses: this.ghostProIpAddresses,
+        });
         const ghostProIps = this.ghostProIpAddresses;
         if (!ghostProIps || ghostProIps.length === 0) {
             return false;
