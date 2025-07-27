@@ -3,6 +3,7 @@ import * as otelApi from '@opentelemetry/api';
 import * as opentelemetry from '@opentelemetry/sdk-node';
 import * as Sentry from '@sentry/node';
 
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import {
     BatchSpanProcessor,
     type SpanExporter,
@@ -102,6 +103,8 @@ export async function setupInstrumentation() {
     }
 
     const sdk = new opentelemetry.NodeSDK({
+        serviceName: 'activitypub',
+        instrumentations: [getNodeAutoInstrumentations()],
         spanProcessors: spanProcessors,
     });
 
