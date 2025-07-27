@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import {
     BatchSpanProcessor,
-    type SpanExporter,
+    SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 
 export async function setupInstrumentation() {
