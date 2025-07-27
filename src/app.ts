@@ -525,9 +525,14 @@ const tracer = otelApi.trace.getTracer('activitypub', '1.0.0');
 app.get('/.ghost/activitypub/trace-testing', async (ctx) => {
     try {
         if (ctx.req.query('X-Cloud-Trace-Context')) {
-            globalLogging.info('X-Cloud-Trace-Context {X-Cloud-Trace-Context}', {
-                'X-Cloud-Trace-Context': ctx.req.header('X-Cloud-Trace-Context'),
-            });
+            globalLogging.info(
+                'X-Cloud-Trace-Context {X-Cloud-Trace-Context}',
+                {
+                    'X-Cloud-Trace-Context': ctx.req.header(
+                        'X-Cloud-Trace-Context',
+                    ),
+                },
+            );
         }
 
         let activeContext = otelApi.context.active();
