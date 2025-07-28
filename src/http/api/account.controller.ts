@@ -50,7 +50,6 @@ export class AccountController {
     /**
      * Handle a request for an account
      */
-    @Route('GET', '/.ghost/activitypub/account/:handle')
     @Route('GET', '/.ghost/activitypub/v1/account/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccount(ctx: AppContext) {
@@ -97,7 +96,6 @@ export class AccountController {
     /**
      * Handle a request for a list of account follows
      */
-    @Route('GET', '/.ghost/activitypub/account/:handle/follows/:type')
     @Route('GET', '/.ghost/activitypub/v1/account/:handle/follows/:type')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountFollows(ctx: AppContext) {
@@ -203,7 +201,6 @@ export class AccountController {
     /**
      * Handle a request for a list of posts by an account
      */
-    @Route('GET', '/.ghost/activitypub/posts/:handle')
     @Route('GET', '/.ghost/activitypub/v1/posts/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountPosts(ctx: AppContext) {
@@ -313,7 +310,6 @@ export class AccountController {
     /**
      * Handle a request for a list of posts liked by an account
      */
-    @Route('GET', '/.ghost/activitypub/posts/:handle/liked')
     @Route('GET', '/.ghost/activitypub/v1/posts/:handle/liked')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountLikedPosts(ctx: AppContext) {
@@ -347,7 +343,6 @@ export class AccountController {
     /**
      * Handle a request for an account update
      */
-    @Route('PUT', '/.ghost/activitypub/account')
     @Route('PUT', '/.ghost/activitypub/v1/account')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUpdateAccount(ctx: AppContext) {

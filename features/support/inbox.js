@@ -10,7 +10,7 @@ export async function waitForItemInInbox(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'https://self.test/.ghost/activitypub/feed/reader',
+        'https://self.test/.ghost/activitypub/v1/feed/reader',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -54,7 +54,7 @@ export async function waitForAPObjectInInbox(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'https://self.test/.ghost/activitypub/feed/reader',
+        'https://self.test/.ghost/activitypub/v1/feed/reader',
         {
             headers: {
                 Accept: 'application/ld+json',

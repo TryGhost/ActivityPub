@@ -106,7 +106,7 @@ Given('we are sent invalid type to the inbox', async function () {
 
 Given('we are sent a publish webhook', async function () {
     const endpoint =
-        'https://self.test/.ghost/activitypub/webhooks/post/published';
+        'https://self.test/.ghost/activitypub/v1/webhooks/post/published';
     const payload = createWebhookPost();
     const body = JSON.stringify(payload);
     const timestamp = Date.now();
@@ -129,7 +129,7 @@ When(
     'we are sent a second publish webhook for the same post',
     async function () {
         const endpoint =
-            'https://self.test/.ghost/activitypub/webhooks/post/published';
+            'https://self.test/.ghost/activitypub/v1/webhooks/post/published';
         const payload = this.firstPublishWebhook;
         const body = JSON.stringify(payload);
         const timestamp = Date.now();
