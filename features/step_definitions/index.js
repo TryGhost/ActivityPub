@@ -97,9 +97,9 @@ BeforeAll(async function setupSelfSite() {
 
 BeforeAll(async function setupLocalSites() {
     await Promise.all([
-        fetchActivityPub('https://alice.test/.ghost/activitypub/site'),
-        fetchActivityPub('https://bob.test/.ghost/activitypub/site'),
-        fetchActivityPub('https://carol.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://alice.test/.ghost/activitypub/v1/site'),
+        fetchActivityPub('https://bob.test/.ghost/activitypub/v1/site'),
+        fetchActivityPub('https://carol.test/.ghost/activitypub/v1/site'),
     ]);
 });
 
@@ -107,10 +107,10 @@ Before(async function reset() {
     await resetWiremock();
     await resetDatabase();
     await Promise.all([
-        fetchActivityPub('https://self.test/.ghost/activitypub/site'),
-        fetchActivityPub('https://alice.test/.ghost/activitypub/site'),
-        fetchActivityPub('https://bob.test/.ghost/activitypub/site'),
-        fetchActivityPub('https://carol.test/.ghost/activitypub/site'),
+        fetchActivityPub('https://self.test/.ghost/activitypub/v1/site'),
+        fetchActivityPub('https://alice.test/.ghost/activitypub/v1/site'),
+        fetchActivityPub('https://bob.test/.ghost/activitypub/v1/site'),
+        fetchActivityPub('https://carol.test/.ghost/activitypub/v1/site'),
     ]);
 });
 
