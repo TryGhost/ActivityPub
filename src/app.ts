@@ -593,6 +593,19 @@ app.use(async (c, next) => {
         'Cache-Control',
         'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0',
     );
+
+    if (process.env.ACTIVITYPUB_SURROGATE_CACHE_CONTROL) {
+        const isApiRequest = c.req.path.startsWith('/.ghost/activitypub/v1');
+
+        if (!isApiRequest) {
+            if (c.req.method === 'GET' || c.req.method === 'HEAD') {
+                c.res.headers.set(
+                    'Surrogate-Control',
+                    process.env.ACTIVITYPUB_SURROGATE_CACHE_CONTROL,
+                );
+            }
+        }
+    }
 });
 
 app.use(async (ctx, next) => {
