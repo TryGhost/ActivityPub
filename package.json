@@ -44,7 +44,7 @@
     "@biomejs/biome": "1.9.4",
     "@cucumber/cucumber": "11.3.0",
     "@faker-js/faker": "9.9.0",
-    "@fedify/cli": "1.7.6",
+    "@fedify/cli": "1.7.7",
     "@types/html-to-text": "9.0.4",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "20.19.9",
