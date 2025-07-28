@@ -1,4 +1,3 @@
-import { IncomingMessage } from 'node:http';
 import type { AppContext } from '../../app';
 import type { SiteService } from '../../site/site.service';
 
@@ -19,15 +18,7 @@ export class SiteController {
         }
 
         try {
-            const requestIp = this.getRequestIp(ctx);
-            const isGhostPro = this.isGhostProIp(requestIp);
-            ctx.get('logger').info(
-                'Request IP: {requestIp} (Ghost (Pro): {isGhostPro})',
-                {
-                    requestIp,
-                    isGhostPro,
-                },
-            );
+            const isGhostPro = this.isRequestViaGhostPro(ctx);
             const site = await this.siteService.initialiseSiteForHost(
                 host,
                 isGhostPro,
@@ -49,35 +40,27 @@ export class SiteController {
         }
     }
 
-    private getRequestIp(ctx: AppContext): string | null {
-        const forwardedFor = ctx.req.header('x-forwarded-for');
-        if (forwardedFor) {
-            return forwardedFor.split(',')[0].trim();
+    private isRequestViaGhostPro(ctx: AppContext): boolean {
+        const requestIps = this.getRequestIpAddresses(ctx);
+        if (!requestIps || requestIps.length === 0) {
+            return false;
         }
 
-        const req = ctx.req.raw;
-        if (req instanceof IncomingMessage) {
-            const remoteAddress = req.socket?.remoteAddress;
-            if (remoteAddress) {
-                return remoteAddress;
-            }
+        const ghostProIps = this.ghostProIpAddresses;
+        if (!ghostProIps || ghostProIps.length === 0) {
+            return false;
         }
 
-        return null;
+        return requestIps.some((ip) => ghostProIps.includes(ip));
     }
 
-    private isGhostProIp(requestIp: string | null): boolean {
-        if (!requestIp) {
-            return false;
+    private getRequestIpAddresses(ctx: AppContext): string[] | null {
+        const forwardedFor = ctx.req.header('x-forwarded-for');
+
+        if (!forwardedFor) {
+            return null;
         }
 
-        if (
-            !this.ghostProIpAddresses ||
-            this.ghostProIpAddresses.length === 0
-        ) {
-            return false;
-        }
-
-        return this.ghostProIpAddresses.includes(requestIp);
+        return forwardedFor.split(',').map((ip) => ip.trim());
     }
 }

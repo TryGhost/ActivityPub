@@ -1,5 +1,3 @@
-import { IncomingMessage } from 'node:http';
-import { Socket } from 'node:net';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppContext } from '../../app';
@@ -73,13 +71,13 @@ describe('SiteController', () => {
             expect(body).toEqual(mockSite);
         });
 
-        it('sets `ghost_pro` flag to false when request IP is not a Ghost (Pro) IP', async () => {
+        it('sets `ghost_pro` flag to false when none of the x-forwarded-for IP addresses matches any of the Ghost (Pro) IP addresses', async () => {
             siteController = new SiteController(siteService, [
                 '10.0.0.1',
                 '10.0.0.2',
             ]);
             const ctx = getMockAppContext('example.com', {
-                'x-forwarded-for': '192.168.1.1',
+                'x-forwarded-for': '192.168.1.1, 218.123.123.123',
             });
 
             await siteController.handleGetSiteData(ctx);
@@ -90,57 +88,13 @@ describe('SiteController', () => {
             );
         });
 
-        it('sets `ghost_pro` flag to true when request IP is a Ghost (Pro) IP', async () => {
+        it('sets `ghost_pro` flag to true when one of the x-forwarded-for IP addresses matches a Ghost (Pro) IP address', async () => {
             siteController = new SiteController(siteService, [
                 '10.0.0.1',
                 '10.0.0.2',
             ]);
             const ctx = getMockAppContext('example.com', {
-                'x-forwarded-for': '10.0.0.1',
-            });
-
-            await siteController.handleGetSiteData(ctx);
-
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                true,
-            );
-        });
-
-        it('handles a comma-separated list of IPs in x-forwarded-for header', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com', {
-                'x-forwarded-for': '10.0.0.1, 192.168.1.1, 172.16.0.1',
-            });
-
-            await siteController.handleGetSiteData(ctx);
-
-            expect(siteService.initialiseSiteForHost).toHaveBeenCalledWith(
-                'example.com',
-                true,
-            );
-        });
-
-        it('uses the remote address when x-forwarded-for header is not present', async () => {
-            siteController = new SiteController(siteService, [
-                '10.0.0.1',
-                '10.0.0.2',
-            ]);
-            const ctx = getMockAppContext('example.com');
-
-            const mockSocket = new Socket();
-            Object.defineProperty(mockSocket, 'remoteAddress', {
-                value: '10.0.0.2',
-                writable: false,
-            });
-
-            const mockIncomingMessage = new IncomingMessage(mockSocket);
-            Object.defineProperty(ctx.req, 'raw', {
-                value: mockIncomingMessage,
-                writable: false,
+                'x-forwarded-for': '192.168.1.1, 10.0.0.1, 218.123.123.123',
             });
 
             await siteController.handleGetSiteData(ctx);
@@ -156,7 +110,7 @@ describe('SiteController', () => {
                 '10.0.0.1',
                 '10.0.0.2',
             ]);
-            const ctx = getMockAppContext('example.com');
+            const ctx = getMockAppContext('example.com'); // no x-forwarded-for header
 
             await siteController.handleGetSiteData(ctx);
 
