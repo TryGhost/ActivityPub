@@ -29,7 +29,6 @@ export class NotificationController {
         private readonly notificationService: NotificationService,
     ) {}
 
-    @Route('GET', '/.ghost/activitypub/notifications')
     @Route('GET', '/.ghost/activitypub/v1/notifications')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetNotifications(ctx: AppContext) {
@@ -121,7 +120,6 @@ export class NotificationController {
         );
     }
 
-    @Route('GET', '/.ghost/activitypub/notifications/unread/count')
     @Route('GET', '/.ghost/activitypub/v1/notifications/unread/count')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetUnreadNotificationsCount(ctx: AppContext) {
@@ -155,7 +153,6 @@ export class NotificationController {
         );
     }
 
-    @Route('PUT', '/.ghost/activitypub/notifications/unread/reset')
     @Route('PUT', '/.ghost/activitypub/v1/notifications/unread/reset')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleResetUnreadNotificationsCount(ctx: AppContext) {

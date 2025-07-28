@@ -25,7 +25,6 @@ export class LikeController {
         private readonly fedify: Federation<ContextData>,
     ) {}
 
-    @Route('POST', '/.ghost/activitypub/actions/like/:id')
     @Route('POST', '/.ghost/activitypub/v1/actions/like/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleLike(ctx: AppContext) {
@@ -159,7 +158,6 @@ export class LikeController {
         });
     }
 
-    @Route('POST', '/.ghost/activitypub/actions/unlike/:id')
     @Route('POST', '/.ghost/activitypub/v1/actions/unlike/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnlike(ctx: AppContext) {

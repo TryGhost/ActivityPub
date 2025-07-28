@@ -678,16 +678,6 @@ app.use(async (ctx, next) => {
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
-    '/.ghost/activitypub/site',
-    requireRole(GhostRole.Owner),
-    spanWrapper((ctx: AppContext) => {
-        const siteController =
-            container.resolve<SiteController>('siteController');
-        return siteController.handleGetSiteData(ctx);
-    }),
-);
-
-app.get(
     '/.ghost/activitypub/v1/site',
     requireRole(GhostRole.Owner),
     spanWrapper((ctx: AppContext) => {
@@ -786,16 +776,6 @@ function validateWebhook() {
         return next();
     };
 }
-
-app.post(
-    '/.ghost/activitypub/webhooks/post/published',
-    validateWebhook(),
-    spanWrapper((ctx: AppContext) => {
-        const webhookController =
-            container.resolve<WebhookController>('webhookController');
-        return webhookController.handlePostPublished(ctx);
-    }),
-);
 
 app.post(
     '/.ghost/activitypub/v1/webhooks/post/published',
