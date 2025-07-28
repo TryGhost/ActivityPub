@@ -19,7 +19,7 @@ export async function waitForItemInNotifications(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'https://self.test/.ghost/activitypub/notifications',
+        'https://self.test/.ghost/activitypub/v1/notifications',
         {
             headers: {
                 Accept: 'application/ld+json',
@@ -63,7 +63,7 @@ export async function waitForUnreadNotifications(
     const MAX_RETRIES = 5;
 
     const response = await fetchActivityPub(
-        'https://self.test/.ghost/activitypub/notifications/unread/count',
+        'https://self.test/.ghost/activitypub/v1/notifications/unread/count',
     );
 
     const responseJson = await response.clone().json();
