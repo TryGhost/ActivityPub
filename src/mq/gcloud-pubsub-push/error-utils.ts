@@ -278,14 +278,6 @@ function analyzeFetchError(error: FetchError): ErrorAnalysis {
  * @param error The error to analyze
  */
 export function analyzeError(error: Error): ErrorAnalysis {
-    // TODO: Remove this once Fedify is fixed
-    if (error instanceof TypeError && error.message === 'unusable') {
-        return {
-            isRetryable: true,
-            isReportable: false,
-        };
-    }
-
     if (isDnsResolutionError(error)) {
         return analyzeDnsResolutionError(error);
     }
