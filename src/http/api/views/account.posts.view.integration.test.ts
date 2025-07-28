@@ -63,7 +63,7 @@ describe('AccountPostsView', () => {
         };
 
         const logger = {
-            debug: vi.fn(),
+            info: vi.fn(),
         } as unknown as Logger;
 
         events = new AsyncEvents();

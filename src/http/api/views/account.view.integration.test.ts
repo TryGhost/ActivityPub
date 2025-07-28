@@ -70,7 +70,7 @@ describe('AccountView', () => {
         });
 
         const logger = {
-            debug: vi.fn(),
+            info: vi.fn(),
         } as unknown as Logger;
 
         postRepository = new KnexPostRepository(db, events, logger);

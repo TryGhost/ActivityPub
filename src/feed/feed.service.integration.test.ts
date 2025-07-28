@@ -124,7 +124,7 @@ describe('FeedService', () => {
 
         // Init deps / support
         const logger = {
-            debug: vi.fn(),
+            info: vi.fn(),
         } as unknown as Logger;
         events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(client, events);

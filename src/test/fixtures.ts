@@ -257,7 +257,7 @@ export function createFixtureManager(
         }),
     });
     const logger = {
-        debug: () => {},
+        info: () => {},
     } as unknown as Logger;
     const postRepository = new KnexPostRepository(db, events, logger);
 

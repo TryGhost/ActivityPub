@@ -409,7 +409,7 @@ export class KnexPostRepository {
                     );
 
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
-                        this.logger.debug(
+                        this.logger.info(
                             `Updating repost count for post ${post.id}`,
                             {
                                 postId: post.id,
