@@ -151,10 +151,10 @@
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-2.1.1.tgz#b9da6a878a371829a0502c9b6c1c143ef6663f4d"
   integrity sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==
 
-"@fedify/fedify@1.7.0":
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.7.0.tgz#8f435661b4267d3c8f073e03412c07e1065c0dab"
-  integrity sha512-AV2BI3XbuGlkWPiG0Qyp7UfULUEMVaOuIELmRjAhAHStagcnZb7vbX/nOIzVjyOMiYhlSoAw1RqMb+yUlCMxaQ==
+"@fedify/fedify@1.7.7":
+  version "1.7.7"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.7.7.tgz#8d5918fb22e8929d689eb1ab285afb901815a0af"
+  integrity sha512-+LzHQQyxbqG5G1uPZ62DpFTKK2W7s0J0fjZ+dcjkSqHnx2JuvjgnevpYPbrS7eYr0MsHZMF/CSBSWeec90xTng==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@es-toolkit/es-toolkit" "npm:es-toolkit@^1.38.0"
