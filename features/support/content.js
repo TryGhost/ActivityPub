@@ -4,7 +4,7 @@ import { fetchActivityPub } from './request.js';
 
 export async function publishArticle() {
     const endpoint =
-        'https://self.test/.ghost/activitypub/webhooks/post/published';
+        'https://self.test/.ghost/activitypub/v1/webhooks/post/published';
     const payload = createWebhookPost();
     const body = JSON.stringify(payload);
     const timestamp = Date.now();
