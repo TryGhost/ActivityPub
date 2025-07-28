@@ -4,6 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Knex } from 'knex';
 
+import type { Logger } from '@logtape/logtape';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
 import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
@@ -68,7 +69,11 @@ describe('AccountView', () => {
             }),
         });
 
-        postRepository = new KnexPostRepository(db, events);
+        const logger = {
+            debug: vi.fn(),
+        } as unknown as Logger;
+
+        postRepository = new KnexPostRepository(db, events, logger);
 
         accountView = new AccountView(db, fedifyContextFactory);
 

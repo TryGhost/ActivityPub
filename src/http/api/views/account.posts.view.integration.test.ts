@@ -1,3 +1,4 @@
+import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -15,7 +16,7 @@ import { KnexPostRepository } from 'post/post.repository.knex';
 import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
 import { createTestDb } from 'test/db';
 import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountPostsView } from './account.posts.view';
 import type { AccountPosts } from './account.posts.view';
 
@@ -61,9 +62,13 @@ describe('AccountPostsView', () => {
             avatar_url: 'https://example.com/avatar.jpg',
         };
 
+        const logger = {
+            debug: vi.fn(),
+        } as unknown as Logger;
+
         events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(db, events);
-        postRepository = new KnexPostRepository(db, events);
+        postRepository = new KnexPostRepository(db, events, logger);
         const fedifyContextFactory = new FedifyContextFactory();
 
         accountService = new AccountService(
