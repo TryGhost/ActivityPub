@@ -40,6 +40,12 @@ export class SiteController {
         }
     }
 
+    async handleDisableSite(ctx: AppContext) {
+        return new Response(null, {
+            status: 200,
+        });
+    }
+
     private isRequestViaGhostPro(ctx: AppContext): boolean {
         const requestIps = this.getRequestIpAddresses(ctx);
         if (!requestIps || requestIps.length === 0) {
