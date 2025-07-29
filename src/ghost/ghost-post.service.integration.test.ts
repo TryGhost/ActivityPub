@@ -34,14 +34,14 @@ describe('GhostPostService', () => {
     beforeEach(async () => {
         db = await createTestDb();
         events = new AsyncEvents();
-        postRepository = new KnexPostRepository(db, events);
-        accountRepository = new KnexAccountRepository(db, events);
-        fixtureManager = createFixtureManager(db, events);
         logger = {
             info: vi.fn(),
             error: vi.fn(),
             warn: vi.fn(),
         } as unknown as Logger;
+        postRepository = new KnexPostRepository(db, events, logger);
+        accountRepository = new KnexAccountRepository(db, events);
+        fixtureManager = createFixtureManager(db, events);
         mockFedifyContextFactory = {
             getFedifyContext: () => ({
                 getDocumentLoader: async () => ({}),

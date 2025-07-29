@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { faker } from '@faker-js/faker';
 import type { Knex } from 'knex';
 
+import type { Logger } from '@logtape/logtape';
 import type { Account } from 'account/account.entity';
 import { KnexAccountRepository } from 'account/account.repository.knex';
 import { AccountService } from 'account/account.service';
@@ -255,7 +256,10 @@ export function createFixtureManager(
             },
         }),
     });
-    const postRepository = new KnexPostRepository(db, events);
+    const logger = {
+        info: () => {},
+    } as unknown as Logger;
+    const postRepository = new KnexPostRepository(db, events, logger);
 
     return new FixtureManager(
         db,

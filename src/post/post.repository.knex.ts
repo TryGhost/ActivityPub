@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
+import type { Logger } from '@logtape/logtape';
 import type { AsyncEvents } from 'core/events';
 import { AccountEntity } from '../account/account.entity';
 import { parseURL } from '../core/url';
@@ -79,6 +80,7 @@ export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
         private readonly events: AsyncEvents,
+        private readonly logger: Logger,
     ) {}
 
     private async getByQuery(query: Knex.QueryCallback): Promise<Post | null> {
@@ -385,20 +387,47 @@ export class KnexPostRepository {
                                   accountIdsInserted: [],
                               };
 
+                    let removedRepostsDb: number | null = null;
+
+                    if (repostsToRemove.length > 0) {
+                        const res = await this.removeReposts(
+                            post,
+                            repostsToRemove,
+                            transaction,
+                        );
+
+                        if (res !== 0) {
+                            removedRepostsDb = res;
+                        }
+                    }
+
                     const removedRepostsCount =
-                        repostsToRemove.length > 0
-                            ? await this.removeReposts(
-                                  post,
-                                  repostsToRemove,
-                                  transaction,
-                              )
-                            : 0;
+                        removedRepostsDb !== null ? removedRepostsDb : 0;
 
                     repostAccountIds = accountIdsInserted.filter(
                         (accountId) => !repostsToRemove.includes(accountId),
                     );
 
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
+                        this.logger.info(
+                            `Updating repost count for post ${post.id}`,
+                            {
+                                postId: post.id,
+                                // What is the current repost count
+                                currentRepostCount: post.repostCount,
+                                // How many reposts are we adding
+                                repostsToAdd: repostsToAdd.length,
+                                // How many reposts are we removing
+                                repostsToRemove: repostsToRemove.length,
+                                // How many reposts were actually inserted into the database
+                                insertedRepostsCount,
+                                // How many reposts were actually removed from the database
+                                removedRepostsDb,
+                                // What value was used to update the repost count
+                                removedRepostsCount,
+                            },
+                        );
+
                         await transaction('posts')
                             .update({
                                 repost_count: post.isInternal

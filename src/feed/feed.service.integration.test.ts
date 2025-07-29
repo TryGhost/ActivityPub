@@ -1,5 +1,6 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Logger } from '@logtape/logtape';
 import { AsyncEvents } from 'core/events';
 import type { Knex } from 'knex';
 import { ModerationService } from 'moderation/moderation.service';
@@ -122,6 +123,9 @@ describe('FeedService', () => {
         postCount = 0;
 
         // Init deps / support
+        const logger = {
+            info: vi.fn(),
+        } as unknown as Logger;
         events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(client, events);
         fedifyContextFactory = new FedifyContextFactory();
@@ -143,7 +147,7 @@ describe('FeedService', () => {
                 };
             },
         });
-        postRepository = new KnexPostRepository(client, events);
+        postRepository = new KnexPostRepository(client, events, logger);
         moderationService = new ModerationService(client);
     });
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
+import type { Logger } from '@logtape/logtape';
 import { AsyncEvents } from 'core/events';
 import { type Ok, getValue } from 'core/result';
 import { FeedUpdateService } from 'feed/feed-update.service';
@@ -77,7 +78,10 @@ describe('KnexPostRepository', () => {
                 };
             },
         });
-        postRepository = new KnexPostRepository(client, events);
+        const logger = {
+            info: vi.fn(),
+        } as unknown as Logger;
+        postRepository = new KnexPostRepository(client, events, logger);
         const moderationService = new ModerationService(client);
         const feedService = new FeedService(client, moderationService);
         const feedUpdateService = new FeedUpdateService(events, feedService);
