@@ -124,6 +124,8 @@ describe('AccountService', () => {
             name: 'Test Site Title',
             bio: 'Test Site Description',
             avatar_url: 'https://www.example.com/avatars/internal-account.png',
+            banner_image_url:
+                'https://www.example.com/banners/internal-account.png',
         };
         externalAccountData = {
             username: 'external-account',

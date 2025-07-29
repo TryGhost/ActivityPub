@@ -74,6 +74,7 @@ describe('KnexPostRepository', () => {
                         title: 'Test Site',
                         description: 'A fake site used for testing',
                         icon: 'https://testing.com/favicon.ico',
+                        cover_image: 'https://testing.com/cover.png',
                     },
                 };
             },

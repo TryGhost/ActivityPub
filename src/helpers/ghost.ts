@@ -5,6 +5,7 @@ export type SiteSettings = {
         description: string | null;
         icon: string | null;
         title: string;
+        cover_image: string | null;
     };
 };
 
@@ -19,6 +20,7 @@ export async function getSiteSettings(host: string): Promise<SiteSettings> {
             description: settings?.site?.description || null,
             title: settings?.site?.title || normalizedHost,
             icon: settings?.site?.icon || null,
+            cover_image: settings?.site?.cover_image || null,
         },
     };
 }

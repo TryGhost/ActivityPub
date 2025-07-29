@@ -96,6 +96,7 @@ export class SiteService {
                 name: settings?.site?.title,
                 bio: settings?.site?.description || null,
                 avatar_url: settings?.site?.icon || null,
+                banner_image_url: settings?.site?.cover_image || null,
             };
 
             await this.accountService.createInternalAccount(

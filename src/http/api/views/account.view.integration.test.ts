@@ -65,6 +65,7 @@ describe('AccountView', () => {
                     description: 'Test site',
                     title: 'Test site',
                     icon: 'Test site',
+                    cover_image: 'Test site',
                 },
             }),
         });
