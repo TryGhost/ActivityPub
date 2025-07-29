@@ -12,9 +12,13 @@ export class KnexKvStore implements KvStore {
         return new KnexKvStore(knex, table);
     }
 
+    private keyToString(key: KvKey): string {
+        return JSON.stringify(key);
+    }
+
     async get(key: KvKey) {
         const query = {
-            key: JSON.stringify(key),
+            key: this.keyToString(key),
         };
         const row = await this.knex(this.table).where(query).first();
         if (!row) {
@@ -35,7 +39,7 @@ export class KnexKvStore implements KvStore {
             };
         }
         const query = {
-            key: JSON.stringify(key),
+            key: this.keyToString(key),
         };
         const values = {
             value: JSON.stringify(valueToStore),
@@ -55,7 +59,7 @@ export class KnexKvStore implements KvStore {
     async delete(key: KvKey) {
         await this.knex(this.table)
             .where({
-                key: JSON.stringify(key),
+                key: this.keyToString(key),
             })
             .del();
     }
