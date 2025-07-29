@@ -599,6 +599,7 @@ app.use(async (c, next) => {
 
         if (!isApiRequest) {
             if (c.req.method === 'GET' || c.req.method === 'HEAD') {
+                c.res.headers.set('Cache-Control', 'public, max-age=0');
                 c.res.headers.set(
                     'Surrogate-Control',
                     process.env.ACTIVITYPUB_SURROGATE_CACHE_CONTROL,
