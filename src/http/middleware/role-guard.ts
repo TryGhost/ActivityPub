@@ -20,7 +20,7 @@ async function getKey(
     jwksURL: URL,
     jwksCache: KvStore,
     retries = 5,
-): Promise<string> {
+): Promise<string | null> {
     try {
         const cachedKey = await jwksCache.get(['cachedJwks', jwksURL.hostname]);
         if (cachedKey && typeof cachedKey === 'string') {
@@ -39,7 +39,7 @@ async function getKey(
         return key;
     } catch (err) {
         if (retries === 0) {
-            throw err;
+            return null;
         }
         await sleep(100);
         return getKey(jwksURL, jwksCache, retries - 1);
@@ -88,6 +88,14 @@ export function createRoleMiddleware(jwksCache: KvStore) {
         );
 
         const key = await getKey(jwksURL, jwksCache);
+
+        if (!key) {
+            ctx.get('logger').error('No key found for {host}', { host });
+            return new Response('No key found', {
+                status: 401,
+            });
+        }
+
         try {
             const claims = jwt.verify(token, key);
             if (typeof claims === 'string' || typeof claims.role !== 'string') {
