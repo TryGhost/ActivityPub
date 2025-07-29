@@ -59,6 +59,7 @@ describe('SiteService', () => {
                         icon: '',
                         title: 'Default Title',
                         description: 'Default Description',
+                        cover_image: 'https://testing.com/cover.png',
                     },
                 };
             },

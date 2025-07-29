@@ -189,7 +189,7 @@ export class AccountService {
             bio: internalAccountData.bio || null,
             url: new URL(`https://${site.host}`),
             avatarUrl: parseURL(internalAccountData.avatar_url),
-            bannerImageUrl: null,
+            bannerImageUrl: parseURL(internalAccountData.banner_image_url),
             customFields: null,
             apPublicKey: keyPair.publicKey,
             apPrivateKey: keyPair.privateKey,

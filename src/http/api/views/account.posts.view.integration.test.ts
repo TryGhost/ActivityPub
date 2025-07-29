@@ -60,6 +60,7 @@ describe('AccountPostsView', () => {
             name: 'Test Site Title',
             bio: 'Test Site Description',
             avatar_url: 'https://example.com/avatar.jpg',
+            banner_image_url: 'https://example.com/banner.jpg',
         };
 
         const logger = {

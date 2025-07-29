@@ -12,6 +12,7 @@ export interface InternalAccountData {
     name?: string;
     bio: string | null;
     avatar_url: string | null;
+    banner_image_url: string | null;
 }
 
 /**

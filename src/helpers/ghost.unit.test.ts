@@ -15,6 +15,7 @@ describe('getSiteSettings', () => {
                 description: 'foo',
                 title: 'bar',
                 icon: 'https://example.com/baz.png',
+                cover_image: 'https://example.com/qux.png',
             },
         };
 
@@ -45,6 +46,7 @@ describe('getSiteSettings', () => {
                 description: null,
                 title: 'bar',
                 icon: 'https://example.com/baz.png',
+                cover_image: null,
             },
         });
     });
@@ -63,6 +65,7 @@ describe('getSiteSettings', () => {
                 description: 'foo',
                 title: 'bar',
                 icon: null,
+                cover_image: null,
             },
         });
     });
@@ -73,6 +76,7 @@ describe('getSiteSettings', () => {
                 site: {
                     description: 'foo',
                     icon: 'https://example.com/baz.png',
+                    cover_image: 'https://example.com/qux.png',
                 },
             }),
         } as ResponsePromise);
@@ -84,6 +88,30 @@ describe('getSiteSettings', () => {
                 description: 'foo',
                 title: 'example.com',
                 icon: 'https://example.com/baz.png',
+                cover_image: 'https://example.com/qux.png',
+            },
+        });
+    });
+
+    it('sets the site cover image to null if missing', async () => {
+        vi.mocked(ky.get).mockReturnValue({
+            json: async () => ({
+                site: {
+                    description: 'foo',
+                    title: 'bar',
+                    icon: 'https://example.com/baz.png',
+                },
+            }),
+        } as ResponsePromise);
+
+        const result = await getSiteSettings(host);
+
+        expect(result).toEqual({
+            site: {
+                description: 'foo',
+                title: 'bar',
+                icon: 'https://example.com/baz.png',
+                cover_image: null,
             },
         });
     });
