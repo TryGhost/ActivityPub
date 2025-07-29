@@ -95,7 +95,10 @@ export function registerDependencies(
 
     container.register({
         fedifyKv: asFunction((db: Knex) => {
-            return KnexKvStore.create(db, 'key_value');
+            return KnexKvStore.create(db, 'key_value', {
+                filterActivityIdempotenceOrigin:
+                    process.env.FILTER_ACTIVITY_IDEMPOTENCE_ORIGIN === 'true',
+            });
         }).singleton(),
         globalDb: aliasTo('fedifyKv'),
     });
