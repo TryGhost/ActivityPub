@@ -100,7 +100,7 @@ function isNetworkConnectivityError(error: Error, depth = 0): boolean {
         error.message.match(/connect EHOSTUNREACH/i) !== null ||
         error.message.match(/connect ETIMEDOUT/i) !== null ||
         error.message.match(/connect ECONNREFUSED/i) !== null ||
-        error.message.match(/connect ECONNRESET/i) !== null ||
+        error.message.match(/ECONNRESET/i) !== null ||
         error.message.match(/socket hang up/i) !== null ||
         error.message.match(/Connect Timeout Error/i) !== null ||
         error.message.match(/other side closed/i) !== null
