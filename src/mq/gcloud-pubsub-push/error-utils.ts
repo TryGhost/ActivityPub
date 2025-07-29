@@ -97,9 +97,9 @@ function isNetworkConnectivityError(error: Error, depth = 0): boolean {
     }
 
     if (
-        error.message.match(/EHOSTUNREACH/i) !== null ||
-        error.message.match(/ETIMEDOUT/i) !== null ||
-        error.message.match(/ECONNREFUSED/i) !== null ||
+        error.message.match(/connect EHOSTUNREACH/i) !== null ||
+        error.message.match(/connect ETIMEDOUT/i) !== null ||
+        error.message.match(/connect ECONNREFUSED/i) !== null ||
         error.message.match(/ECONNRESET/i) !== null ||
         error.message.match(/socket hang up/i) !== null ||
         error.message.match(/Connect Timeout Error/i) !== null ||
