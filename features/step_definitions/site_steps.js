@@ -19,3 +19,12 @@ When('we request the site endpoint', async function () {
         },
     );
 });
+
+When('we disable the site', async function () {
+    this.response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/site',
+        {
+            method: 'DELETE',
+        },
+    );
+});
