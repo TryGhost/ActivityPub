@@ -1,5 +1,5 @@
-import type { Knex } from 'knex';
 import { getAccountHandle } from 'account/utils';
+import type { Knex } from 'knex';
 import type { BlockedDomainDTO, MinimalAccountDTO } from '../types';
 
 export class BlocksView {
