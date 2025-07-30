@@ -261,7 +261,6 @@ export class AccountFollowsView {
 
                 page = follows ? await follows.getFirst() : null;
                 if (!page) {
-                    console.log('No page found here in getFollowsByRemoteLookUp');
                     return this.getUnpaginatedFollows(
                         actor,
                         type,
