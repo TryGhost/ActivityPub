@@ -230,20 +230,30 @@ export class AccountService {
                 );
             }
 
-            // If the existing account isn't internal, generate a private key
-            // This is required for the account to sign outgoing activities after
-            // a potential migration from a different server.
-            const newKeyPair = await this.generateKeyPair();
-            await this.db('accounts')
-                .where({ id: existingAccount.id })
-                .update({
-                    ap_public_key: JSON.stringify(
-                        await exportJwk(newKeyPair.publicKey),
-                    ),
-                    ap_private_key: JSON.stringify(
-                        await exportJwk(newKeyPair.privateKey),
-                    ),
-                });
+            const hasPrivateKey = !!(
+                await this.db('accounts')
+                    .select('ap_private_key')
+                    .where({
+                        id: existingAccount.id,
+                    })
+                    .first()
+            )?.ap_private_key;
+
+            if (!hasPrivateKey) {
+                const newKeyPair = await this.generateKeyPair();
+                await this.db('accounts')
+                    .where({
+                        id: existingAccount.id,
+                    })
+                    .update({
+                        ap_public_key: JSON.stringify(
+                            await exportJwk(newKeyPair.publicKey),
+                        ),
+                        ap_private_key: JSON.stringify(
+                            await exportJwk(newKeyPair.privateKey),
+                        ),
+                    });
+            }
 
             await this.db('users').insert({
                 account_id: existingAccount.id,

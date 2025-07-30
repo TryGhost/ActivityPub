@@ -77,7 +77,7 @@ BeforeAll(async function setupWiremock() {
     ]);
 });
 
-BeforeAll(async function setupSelfSite() {
+async function setupSelfSite() {
     const res = await fetchActivityPub(
         'https://self.test/.ghost/activitypub/v1/site',
     );
@@ -91,9 +91,7 @@ BeforeAll(async function setupSelfSite() {
     await getClient()('sites')
         .update('webhook_secret', getWebhookSecret())
         .where('id', '=', json.id);
-
-    this.SITE_ID = json.id;
-});
+}
 
 BeforeAll(async function setupLocalSites() {
     await Promise.all([
@@ -107,7 +105,7 @@ Before(async function reset() {
     await resetWiremock();
     await resetDatabase();
     await Promise.all([
-        fetchActivityPub('https://self.test/.ghost/activitypub/v1/site'),
+        setupSelfSite(),
         fetchActivityPub('https://alice.test/.ghost/activitypub/v1/site'),
         fetchActivityPub('https://bob.test/.ghost/activitypub/v1/site'),
         fetchActivityPub('https://carol.test/.ghost/activitypub/v1/site'),

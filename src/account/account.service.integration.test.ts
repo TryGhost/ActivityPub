@@ -346,7 +346,7 @@ describe('AccountService', () => {
             expect(user.site_id).toBe(site.id);
         });
 
-        it('should generate a keypair for an existing account without private key during site migration', async () => {
+        it('should generate a new keypair for an existing account without private key during site migration', async () => {
             // Simulate an account that already exists but has no private key
             const username = internalAccountData.username;
             const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
@@ -428,6 +428,52 @@ describe('AccountService', () => {
             expect(returnedAccount.ap_public_key).not.toBe('old-public-key');
             expect(returnedAccount.ap_private_key).toContain('key_ops');
             expect(returnedAccount.ap_public_key).toContain('key_ops');
+        });
+
+        it('should preserve the existing keypair for an existing account with a private key during site migration', async () => {
+            // Simulate an account that already exists with both public and private keys
+            const username = internalAccountData.username;
+            const apId = `https://${site.host}${AP_BASE_PATH}/users/${username}`;
+            const accountData = {
+                name: internalAccountData.name,
+                uuid: 'test-uuid',
+                username: username,
+                bio: internalAccountData.bio,
+                avatar_url: internalAccountData.avatar_url,
+                banner_image_url: null,
+                url: `https://${site.host}`,
+                custom_fields: null,
+                ap_id: apId,
+                ap_inbox_url: `https://${site.host}${AP_BASE_PATH}/inbox/${username}`,
+                ap_shared_inbox_url: null,
+                ap_outbox_url: `https://${site.host}${AP_BASE_PATH}/outbox/${username}`,
+                ap_following_url: `https://${site.host}${AP_BASE_PATH}/following/${username}`,
+                ap_followers_url: `https://${site.host}${AP_BASE_PATH}/followers/${username}`,
+                ap_liked_url: `https://${site.host}${AP_BASE_PATH}/liked/${username}`,
+                ap_public_key: 'public-key',
+                ap_private_key: 'private-key',
+                domain: site.host,
+            };
+            // Insert the account directly
+            const [accountId] = await db('accounts').insert(accountData);
+
+            // Get initial account state
+            const beforeAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(beforeAccount.ap_private_key).toBe('private-key');
+
+            // Call createInternalAccount which should attempt to update the keypair
+            await service.createInternalAccount(site, internalAccountData);
+
+            // Verify the the keypair is preserved
+            const updatedAccount = await db('accounts')
+                .where('id', accountId)
+                .first();
+            expect(updatedAccount.ap_private_key).toBeDefined();
+            expect(updatedAccount.ap_public_key).toBeDefined();
+            expect(updatedAccount.ap_public_key).toBe('public-key');
+            expect(updatedAccount.ap_private_key).toBe('private-key');
         });
 
         it('should generate a keypair for an existing account without any keys during site migration', async () => {

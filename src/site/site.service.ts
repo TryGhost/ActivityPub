@@ -107,4 +107,10 @@ export class SiteService {
 
         return site;
     }
+
+    public async disableSiteForHost(host: string): Promise<boolean> {
+        const result = await this.client.delete().from('sites').where({ host });
+
+        return result === 1;
+    }
 }

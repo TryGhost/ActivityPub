@@ -18,6 +18,7 @@ describe('SiteController', () => {
 
         siteService = {
             initialiseSiteForHost: vi.fn().mockResolvedValue(mockSite),
+            disableSiteForHost: vi.fn().mockResolvedValue(true),
         } as unknown as SiteService;
     });
 
@@ -39,7 +40,10 @@ describe('SiteController', () => {
             },
             get: vi.fn((key: string) => {
                 if (key === 'logger') {
-                    return { info: vi.fn() };
+                    return {
+                        info: vi.fn(),
+                        error: vi.fn(),
+                    };
                 }
                 return undefined;
             }),
@@ -118,6 +122,58 @@ describe('SiteController', () => {
                 'example.com',
                 false,
             );
+        });
+    });
+
+    describe('handleDisableSite', () => {
+        it('returns 401 if no host header is provided', async () => {
+            siteController = new SiteController(siteService);
+
+            const ctx = getMockAppContext(undefined);
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(401);
+
+            const body = await response.json();
+
+            expect(body).toEqual({ error: 'No Host header' });
+        });
+
+        it('returns 200 if the site is disabled', async () => {
+            siteController = new SiteController(siteService);
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(200);
+        });
+
+        it('returns 404 if the site is not found', async () => {
+            siteController = new SiteController(siteService);
+
+            vi.mocked(siteService.disableSiteForHost).mockResolvedValue(false);
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(404);
+        });
+
+        it('returns 500 if an error occurs', async () => {
+            siteController = new SiteController(siteService);
+
+            vi.mocked(siteService.disableSiteForHost).mockRejectedValue(
+                new Error('test'),
+            );
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleDisableSite(ctx);
+
+            expect(response.status).toBe(500);
+
+            const body = await response.text();
+
+            expect(body).toEqual('test');
         });
     });
 });

@@ -41,9 +41,39 @@ export class SiteController {
     }
 
     async handleDisableSite(ctx: AppContext) {
-        return new Response(null, {
-            status: 200,
-        });
+        const logger = ctx.get('logger');
+        const host = ctx.req.header('host');
+
+        if (!host) {
+            logger.info('No Host header');
+
+            return new Response(JSON.stringify({ error: 'No Host header' }), {
+                status: 401,
+            });
+        }
+
+        try {
+            const wasDisabled = await this.siteService.disableSiteForHost(host);
+
+            if (wasDisabled) {
+                return new Response(null, {
+                    status: 200,
+                });
+            }
+
+            return new Response(null, {
+                status: 404,
+            });
+        } catch (error) {
+            logger.error('Site could not be disabled', { error });
+
+            return new Response(
+                error instanceof Error ? error.message : 'Unknown error',
+                {
+                    status: 500,
+                },
+            );
+        }
     }
 
     private isRequestViaGhostPro(ctx: AppContext): boolean {

@@ -166,6 +166,45 @@ When('we request the outbox', async function () {
     );
 });
 
+When('we request the followers collection', async function () {
+    this.response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/followers/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+});
+
+When('we request the following collection', async function () {
+    this.response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/following/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+});
+
+When('we request the liked collection', async function () {
+    this.response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/liked/index',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+});
+
+When('we request the webfinger', async function () {
+    this.response = await fetchActivityPub(
+        'https://self.test/.well-known/webfinger?resource=acct:index@self.test',
+    );
+});
+
 When(
     '{string} sends {string} to the Inbox',
     async function (actorName, activityName) {
