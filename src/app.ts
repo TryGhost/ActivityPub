@@ -701,6 +701,16 @@ app.get(
     }),
 );
 
+app.delete(
+    '/.ghost/activitypub/v1/site',
+    requireRole(GhostRole.Owner),
+    spanWrapper((ctx: AppContext) => {
+        const siteController =
+            container.resolve<SiteController>('siteController');
+        return siteController.handleDisableSite(ctx);
+    }),
+);
+
 /**
  * Essentially Auth middleware and also handles the multitenancy
  */
