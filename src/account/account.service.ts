@@ -235,7 +235,15 @@ export class AccountService {
             // a potential migration from a different server.
             const newKeyPair = await this.generateKeyPair();
             await this.db('accounts')
-                .where({ id: existingAccount.id })
+                .where({
+                    id: existingAccount.id,
+                })
+                // If the account already has a private key, we shouldn't replace
+                // the keypair in case other servers have cached the keypair
+                .whereNull('ap_private_key')
+                // If the account has an empty string for the private key, we
+                // should replace the keypair as this is invalid
+                .orWhere('ap_private_key', '')
                 .update({
                     ap_public_key: JSON.stringify(
                         await exportJwk(newKeyPair.publicKey),

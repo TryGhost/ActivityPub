@@ -127,4 +127,28 @@ describe('SiteService', () => {
         expect(siteRow.host).toBe(site.host);
         expect(siteRow.ghost_pro).toBe(1);
     });
+
+    it('Can disable a site', async () => {
+        await service.initialiseSiteForHost('hostname.tld');
+
+        const result = await service.disableSiteForHost('hostname.tld');
+
+        expect(result).toBe(true);
+
+        const siteRows = await db('sites').select('*');
+
+        expect(siteRows).toHaveLength(0);
+    });
+
+    it('Can disable a site that does not exist', async () => {
+        await service.initialiseSiteForHost('hostname.tld');
+
+        const result = await service.disableSiteForHost('hostname.com'); // Different host
+
+        expect(result).toBe(false);
+
+        const siteRows = await db('sites').select('*');
+
+        expect(siteRows).toHaveLength(1);
+    });
 });
