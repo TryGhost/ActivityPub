@@ -32,7 +32,7 @@ Feature: Disabling a site
     And "Alice" sends "Follow" to the Inbox
     Then the request is rejected with a 403
 
-  Scenario: Disabled site can not be re-enabled
+  Scenario: Disabled site can be re-enabled
     When we disable the site
     And we request the site endpoint
     And the request is accepted
