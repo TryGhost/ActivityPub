@@ -17,9 +17,9 @@
     undici "^5.21.2"
 
 "@es-toolkit/es-toolkit@npm:es-toolkit@^1.38.0":
-  version "1.39.5"
-  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.5.tgz#ee2a78a66aafb76c7345af0ea8c06722c78ef1fd"
-  integrity sha512-z9V0qU4lx1TBXDNFWfAASWk6RNU6c6+TJBKE+FLIg8u0XJ6Yw58Hi0yX8ftEouj6p1QARRlXLFfHbIli93BdQQ==
+  version "1.39.6"
+  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.6.tgz#b3c3b8df8d0a7fed4a84d36cd81c6171fcd25881"
+  integrity sha512-uiVjnLem6kkfXumlwUEWEKnwUN5QbSEB0DHy2rNJt0nkYcob5K0TXJ7oJRzhAcvx+SRmz4TahKyN5V9cly/IPA==
 
 "@esbuild/aix-ppc64@0.25.5":
   version "0.25.5"
@@ -201,9 +201,9 @@
   integrity sha512-Xot4/RM4j+jHHcUn3NKkiHsNyE+hp79LEe/xANLrZVa36QcjlS0X1H+mt+zcOK3p2HvDr3alFoXjq0YLvN06Bw==
 
 "@logtape/logtape@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-1.0.0.tgz#6b8ecfe257d838b5ff92df9c640e24a3dc8d696a"
-  integrity sha512-GOOiaJcHSJQfFt+khrtoxfQ29klDiG8UxrgC+lPt7K6HhwEMQnB47j7V0GQ6F8bnS7JIZgYQmbXb+yGUF2pKhA==
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-1.0.4.tgz#22821f53dd584261ae2d848cd341ef306fdce471"
+  integrity sha512-YvNVrXIxVpnY528zoiEjX8PqTfr0UCtKXyssvaWL8AE+OByFTCooKuKMdPlm6g65YUI9fPXrHn4UnogSskABnA==
 
 "@multiformats/base-x@^4.0.1":
   version "4.0.1"
