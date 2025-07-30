@@ -230,17 +230,14 @@ export class AccountService {
                 );
             }
 
-            const hasPrivateKey =
-                [null, ''].includes(
-                    (
-                        await this.db('accounts')
-                            .select('ap_private_key')
-                            .where({
-                                id: existingAccount.id,
-                            })
-                            .first()
-                    )?.ap_private_key,
-                ) === false;
+            const hasPrivateKey = !!(
+                await this.db('accounts')
+                    .select('ap_private_key')
+                    .where({
+                        id: existingAccount.id,
+                    })
+                    .first()
+            )?.ap_private_key;
 
             if (!hasPrivateKey) {
                 const newKeyPair = await this.generateKeyPair();
