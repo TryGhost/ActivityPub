@@ -201,7 +201,7 @@ When('we request the liked collection', async function () {
 
 When('we request the webfinger', async function () {
     this.response = await fetchActivityPub(
-        'https://self.test/.well-known/webfinger?resource=acct:test@self.test',
+        'https://self.test/.well-known/webfinger?resource=acct:index@self.test',
     );
 });
 
