@@ -190,7 +190,7 @@ export class AccountFollowsView {
                 ? await actor.getFollowing()
                 : await actor.getFollowers();
 
-        if (!follows) {
+        if (!follows || !follows.itemIds || follows.itemIds.length === 0) {
             return error('error-getting-follows');
         }
 
