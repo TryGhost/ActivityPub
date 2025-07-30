@@ -51,7 +51,7 @@ describe('BlocksView', () => {
                 id: blockedOne.apId.toString(),
                 apId: blockedOne.apId.toString(),
                 name: blockedOne.name,
-                handle: `${blockedOne.username}@${blockedOne.apId.host}`,
+                handle: `@${blockedOne.username}@${blockedOne.apId.host}`,
                 avatarUrl: blockedOne.avatarUrl
                     ? blockedOne.avatarUrl.toString()
                     : null,
@@ -64,7 +64,7 @@ describe('BlocksView', () => {
                 id: blockedTwo.apId.toString(),
                 apId: blockedTwo.apId.toString(),
                 name: blockedTwo.name,
-                handle: `${blockedTwo.username}@${blockedTwo.apId.host}`,
+                handle: `@${blockedTwo.username}@${blockedTwo.apId.host}`,
                 avatarUrl: blockedTwo.avatarUrl
                     ? blockedTwo.avatarUrl.toString()
                     : null,

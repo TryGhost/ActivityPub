@@ -1,3 +1,4 @@
+import { getAccountHandle } from 'account/utils';
 import type { Knex } from 'knex';
 import type { BlockedDomainDTO, MinimalAccountDTO } from '../types';
 
@@ -26,7 +27,7 @@ export class BlocksView {
             id: result.ap_id,
             apId: result.ap_id,
             name: result.name || '',
-            handle: `${result.username}@${result.domain}`,
+            handle: getAccountHandle(result.domain, result.username),
             avatarUrl: result.avatar_url || null,
             followedByMe: false,
             blockedByMe: true,
