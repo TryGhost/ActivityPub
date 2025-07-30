@@ -190,7 +190,7 @@ export class AccountFollowsView {
                 ? await actor.getFollowing()
                 : await actor.getFollowers();
 
-        if (!follows) {
+        if (!follows || !follows.itemIds || follows.itemIds.length === 0) {
             return error('error-getting-follows');
         }
 
@@ -261,6 +261,7 @@ export class AccountFollowsView {
 
                 page = follows ? await follows.getFirst() : null;
                 if (!page) {
+                    console.log('No page found here in getFollowsByRemoteLookUp');
                     return this.getUnpaginatedFollows(
                         actor,
                         type,
