@@ -53,10 +53,16 @@ export class SiteController {
         }
 
         try {
-            const result = await this.siteService.disableSiteForHost(host);
+            const wasDisabled = await this.siteService.disableSiteForHost(host);
+
+            if (wasDisabled) {
+                return new Response(null, {
+                    status: 200,
+                });
+            }
 
             return new Response(null, {
-                status: result ? 200 : 404,
+                status: 404,
             });
         } catch (error) {
             logger.error('Site could not be disabled', { error });
