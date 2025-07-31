@@ -1,5 +1,11 @@
 import Knex from 'knex';
 
+interface KnexQueryInfo {
+    sql: string;
+    method: string;
+    bindings: unknown[];
+}
+
 export const knex = Knex({
     client: 'mysql2',
     connection: process.env.MYSQL_SOCKET_PATH
@@ -23,6 +29,41 @@ export const knex = Knex({
         max: 200,
     },
 });
+
+knex.on(
+    'query-error',
+    (
+        error: Error,
+        obj: { sql: string; method: string; bindings: unknown[] },
+    ) => {
+        if (error && obj) {
+            // Add query information as a non-enumerable property
+            Object.defineProperty(error, '__knexQueryInfo', {
+                value: {
+                    sql: obj.sql,
+                    method: obj.method,
+                    bindings: obj.bindings,
+                },
+                enumerable: false,
+                configurable: true,
+            });
+        }
+    },
+);
+
+export function extractQueryInfoFromError(error: Error): KnexQueryInfo | null {
+    if ('__knexQueryInfo' in error) {
+        const obj = error.__knexQueryInfo as KnexQueryInfo;
+
+        return {
+            sql: obj.sql,
+            method: obj.method,
+            bindings: obj.bindings,
+        };
+    }
+
+    return null;
+}
 
 export async function getRelatedActivities(
     postUrl: string,
