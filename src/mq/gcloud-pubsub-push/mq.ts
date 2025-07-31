@@ -376,7 +376,12 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
                     throw error;
                 }
             } else if (deliveryAttemptCount >= this.maxDeliveryAttempts) {
-                await this.handlePermanentFailure(message.data, error as Error);
+                if (!errorAnalysis.isReportable) {
+                    await this.handlePermanentFailure(
+                        message.data,
+                        error as Error,
+                    );
+                }
 
                 this.logger.warn(
                     `Not retrying message [FedifyID: ${fedifyId}, PubSubID: ${message.id}] due to delivery attempt count being >= ${this.maxDeliveryAttempts}`,

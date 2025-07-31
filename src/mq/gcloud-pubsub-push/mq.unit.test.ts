@@ -877,7 +877,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('should not retry a message if the delivery attempt count is >= the max delivery attempts', async () => {
+        it('should not retry a message if the delivery attempt count is >= the max delivery attempts AND the error is not reportable', async () => {
             const RETRY_TOPIC = 'retry-topic';
 
             const mockRetryTopic = {
@@ -905,7 +905,7 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 3, // max delivery attempts
             );
 
-            const error = new Error('Failed to handle message');
+            const error = new Error('connect EHOSTUNREACH'); // Network connectivity error - not reportable
             const handler = vi.fn().mockRejectedValue(error);
 
             mq.listen(handler);
@@ -935,6 +935,63 @@ describe('GCloudPubSubPushMessageQueue', () => {
                 new URL('https://other.com/inbox'),
                 error.message,
             );
+        });
+
+        it('should not add a delivery failure if the delivery attempt count is >= the max delivery attempts AND the error is reportable', async () => {
+            const RETRY_TOPIC = 'retry-topic';
+
+            const mockRetryTopic = {
+                publishMessage: vi.fn(),
+            } as unknown as Topic;
+
+            mockPubSubClient = {
+                projectId: PROJECT_ID,
+                topic: vi.fn((topic) => {
+                    if (topic === RETRY_TOPIC) {
+                        return mockRetryTopic;
+                    }
+
+                    throw new Error(`Unexpected topic: ${topic}`);
+                }),
+            } as unknown as PubSub;
+
+            const mq = new GCloudPubSubPushMessageQueue(
+                mockLogger,
+                mockPubSubClient,
+                mockAccountService,
+                TOPIC,
+                true,
+                RETRY_TOPIC,
+                3, // max delivery attempts
+            );
+
+            const error = new Error('Insert failed');
+            const handler = vi.fn().mockRejectedValue(error);
+
+            mq.listen(handler);
+
+            await mq.handleMessage(
+                {
+                    id: 'abc123',
+                    data: {
+                        id: 'abc123',
+                        type: 'outbox',
+                        inbox: 'https://other.com/inbox',
+                    },
+                    attributes: {
+                        fedifyId: 'abc123',
+                    },
+                },
+                3,
+            );
+
+            // Should not retry since we are at max attempts
+            expect(mockRetryTopic.publishMessage).not.toHaveBeenCalled();
+
+            // Should not handle as permanent failure
+            expect(
+                mockAccountService.recordDeliveryFailure,
+            ).not.toHaveBeenCalled();
         });
     });
 });
