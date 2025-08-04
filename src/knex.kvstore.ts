@@ -1,15 +1,26 @@
 import type { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import type Knex from 'knex';
+
+function getKeyInfo(key: KvKey) {
+    const isFedifyKey = key[0] === '_fedify';
+    return {
+        key,
+        isFedifyKey,
+        keyType: isFedifyKey ? key[1] : key[0],
+    };
+}
 
 export class KnexKvStore implements KvStore {
     private constructor(
         private readonly knex: Knex.Knex,
         private readonly table: string,
+        private readonly logging: Logger,
     ) {}
 
-    static create(knex: Knex.Knex, table: string) {
+    static create(knex: Knex.Knex, table: string, logging: Logger) {
         // TODO: Validate table structure
-        return new KnexKvStore(knex, table);
+        return new KnexKvStore(knex, table, logging);
     }
 
     private keyToString(key: KvKey): string {
@@ -17,6 +28,7 @@ export class KnexKvStore implements KvStore {
     }
 
     async get(key: KvKey) {
+        this.logging.info(`KnexKvStore: Get key ${key}`, getKeyInfo(key));
         const query = {
             key: this.keyToString(key),
         };
@@ -31,6 +43,7 @@ export class KnexKvStore implements KvStore {
     }
 
     async set(key: KvKey, value: unknown, options?: KvStoreSetOptions) {
+        this.logging.info(`KnexKvStore: Set key ${key}`, getKeyInfo(key));
         let valueToStore = value;
 
         if (typeof valueToStore === 'boolean') {
@@ -57,6 +70,7 @@ export class KnexKvStore implements KvStore {
     }
 
     async delete(key: KvKey) {
+        this.logging.info(`KnexKvStore: Delete key ${key}`, getKeyInfo(key));
         await this.knex(this.table)
             .where({
                 key: this.keyToString(key),

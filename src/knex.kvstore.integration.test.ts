@@ -1,19 +1,21 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { Temporal } from '@js-temporal/polyfill';
+import { getLogger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 import { createTestDb } from 'test/db';
 import { KnexKvStore } from './knex.kvstore';
 
 describe('KnexKvStore', () => {
     let client: Knex;
+    const logger = getLogger(['test', 'knex-kvstore']);
 
     beforeAll(async () => {
         client = await createTestDb();
     });
     it('Implements a basic KvStore', async () => {
         const table = 'key_value';
-        const store = KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table, logger);
 
         // checkReadingUnsetKey
         {
@@ -51,7 +53,7 @@ describe('KnexKvStore', () => {
 
     it('Can store boolean values', async () => {
         const table = 'key_value';
-        const store = KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table, logger);
 
         // checkTrue
         {
@@ -72,7 +74,7 @@ describe('KnexKvStore', () => {
 
     it('Can handle concurrent calls', async () => {
         const table = 'key_value';
-        const store = KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table, logger);
 
         const calls = [
             store.set(['concurrent'], true),
@@ -91,7 +93,7 @@ describe('KnexKvStore', () => {
 
     it('Can handle storing ttl', async () => {
         const table = 'key_value';
-        const store = KnexKvStore.create(client, table);
+        const store = KnexKvStore.create(client, table, logger);
 
         await store.set(['will-expire'], 'hello', {
             ttl: Temporal.Duration.from({ days: 1 }),
