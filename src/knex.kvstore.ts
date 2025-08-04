@@ -11,6 +11,27 @@ function getKeyInfo(key: KvKey) {
     };
 }
 
+const preloadedDocumentKeys = [
+    'https://www.w3.org/ns/activitystreams',
+    'https://w3id.org/security/v1',
+    'https://w3id.org/security/data-integrity/v1',
+    'https://www.w3.org/ns/did/v1',
+    'https://w3id.org/security/multikey/v1',
+    'https://w3id.org/identity/v1',
+    'https://purl.archive.org/socialweb/webfinger',
+    'http://schema.org/',
+    'https://gotosocial.org/ns',
+];
+
+function isPreloadedDocument(key: KvKey) {
+    return (
+        key[0] === '_fedify' &&
+        key[1] === 'remoteDocument' &&
+        key[2] &&
+        preloadedDocumentKeys.includes(key[2])
+    );
+}
+
 export class KnexKvStore implements KvStore {
     private constructor(
         private readonly knex: Knex.Knex,
@@ -28,6 +49,9 @@ export class KnexKvStore implements KvStore {
     }
 
     async get(key: KvKey) {
+        if (isPreloadedDocument(key)) {
+            return null;
+        }
         this.logging.info(`KnexKvStore: Get key ${key}`, getKeyInfo(key));
         const query = {
             key: this.keyToString(key),
@@ -43,6 +67,9 @@ export class KnexKvStore implements KvStore {
     }
 
     async set(key: KvKey, value: unknown, options?: KvStoreSetOptions) {
+        if (isPreloadedDocument(key)) {
+            return;
+        }
         this.logging.info(`KnexKvStore: Set key ${key}`, getKeyInfo(key));
         let valueToStore = value;
 
