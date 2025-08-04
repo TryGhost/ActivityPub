@@ -94,8 +94,8 @@ export function registerDependencies(
     container.register('db', asValue(deps.knex));
 
     container.register({
-        fedifyKv: asFunction((db: Knex) => {
-            return KnexKvStore.create(db, 'key_value');
+        fedifyKv: asFunction((db: Knex, logging: Logger) => {
+            return KnexKvStore.create(db, 'key_value', logging);
         }).singleton(),
         globalDb: aliasTo('fedifyKv'),
     });
