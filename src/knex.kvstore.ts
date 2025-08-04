@@ -1,19 +1,47 @@
 import type { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
 import type Knex from 'knex';
 
+export interface KnexKvStoreOptions {
+    filterActivityIdempotenceOrigin?: boolean;
+}
+
 export class KnexKvStore implements KvStore {
     private constructor(
         private readonly knex: Knex.Knex,
         private readonly table: string,
+        private readonly options: KnexKvStoreOptions = {},
     ) {}
 
-    static create(knex: Knex.Knex, table: string) {
+    static create(
+        knex: Knex.Knex,
+        table: string,
+        options: KnexKvStoreOptions = {},
+    ) {
         // TODO: Validate table structure
-        return new KnexKvStore(knex, table);
+        return new KnexKvStore(knex, table, options);
+    }
+
+    private filterKey(key: KvKey): KvKey {
+        if (!this.options.filterActivityIdempotenceOrigin) {
+            return key;
+        }
+        if (
+            key.length !== 4 ||
+            key[0] !== '_fedify' ||
+            key[1] !== 'activityIdempotence'
+        ) {
+            return key;
+        }
+
+        // Remove the origin (3rd element) from the key
+        // Format: ["_fedify", "activityIdempotence", origin, activityUrl]
+        // Becomes: ["_fedify", "activityIdempotence", activityUrl]
+        return [key[0], key[1], key[3]];
     }
 
     private keyToString(key: KvKey): string {
-        return JSON.stringify(key);
+        const filteredKey = this.filterKey(key);
+        return JSON.stringify(filteredKey);
     }
 
     async get(key: KvKey) {
