@@ -12,7 +12,7 @@ import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { ContentPreparer } from 'post/content';
 import { type Mention, OutboxType, PostType } from 'post/post.entity';
-import type { PostDTO } from '../types';
+import type { PostDTOV1 } from '../types';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -77,7 +77,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface AccountPosts {
-    results: PostDTO[];
+    results: PostDTOV1[];
     nextCursor: string | null;
 }
 
@@ -668,7 +668,7 @@ export class AccountPostsView {
     mapToPostDTO(
         result: GetProfileDataResultRow,
         contextAccountId: number,
-    ): PostDTO {
+    ): PostDTOV1 {
         return {
             id: result.post_ap_id,
             type: result.post_type,
@@ -726,7 +726,7 @@ export class AccountPostsView {
 
     // TODO: Clean up the any type
     // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-    mapActivityToPostDTO(activity: any): PostDTO {
+    mapActivityToPostDTO(activity: any): PostDTOV1 {
         const object = activity.object;
         const actor = activity.actor;
         const attributedTo = object.attributedTo;

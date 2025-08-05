@@ -7,7 +7,7 @@ import type { AppContext } from '../../app';
 import type { FeedService, FeedType } from '../../feed/feed.service';
 import { RequireRoles, Route } from '../decorators/route.decorator';
 import { GhostRole } from '../middleware/role-guard';
-import type { PostDTO } from './types';
+import type { PostDTOV1 } from './types';
 
 /**
  * Default number of posts to return in a feed
@@ -65,7 +65,7 @@ export class FeedController {
             cursor,
         });
 
-        const posts: PostDTO[] = results.map((result) => {
+        const posts: PostDTOV1[] = results.map((result) => {
             return {
                 id: result.post_ap_id,
                 type: result.post_type,

@@ -185,14 +185,26 @@ export interface PostDTO {
      */
     repostedByMe: boolean;
     /**
-     * Account that reposted the post
+     * Accounts that reposted the post
      */
-    repostedBy: AuthorDTO | null;
+    repostedBy: AuthorDTO[];
     /**
      * Metadata of the post, containing e.g. information about ghost authors
      */
     metadata?: Metadata | null;
 }
+
+/**
+ * Post returned by the v1 API - Anywhere a post is returned via the v1 API,
+ * it should be this shape, or a partial version of it
+ * This will be deprecated in v2 and we'll use the PostDTO type instead
+ */
+export type PostDTOV1 = Omit<PostDTO, 'repostedBy'> & {
+    /**
+     * Account that reposted the post
+     */
+    repostedBy: AuthorDTO | null;
+};
 
 /**
  * Notification returned by the API

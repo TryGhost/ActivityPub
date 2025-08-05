@@ -2,7 +2,7 @@ import type { Account } from 'account/account.entity';
 import type { Post } from 'post/post.entity';
 import { getAccountHandle } from '../../../account/utils';
 
-import type { AuthorDTO, PostDTO } from '../types';
+import type { AuthorDTO, PostDTOV1 } from '../types';
 
 function accountToAuthorDTO(
     account: Account,
@@ -35,7 +35,7 @@ export function postToDTO(
         followingAuthor: false,
         followingReposter: false,
     },
-): PostDTO {
+): PostDTOV1 {
     return {
         id: post.apId.href,
         type: post.type,
