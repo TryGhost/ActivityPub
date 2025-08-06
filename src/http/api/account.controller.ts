@@ -311,6 +311,7 @@ export class AccountController {
      * Handle a request for a list of posts liked by an account
      */
     @Route('GET', '/.ghost/activitypub/v1/posts/:handle/liked')
+    @Route('GET', '/.ghost/activitypub/v2/posts/:handle/liked')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountLikedPosts(ctx: AppContext) {
         const params = validateRequestParams(ctx);
@@ -331,9 +332,14 @@ export class AccountController {
                 params.cursor,
             );
 
+        // Get API version from context (injected by route registry)
+        const isV1 = ctx.req.path.includes('/v1/');
+
         return new Response(
             JSON.stringify({
-                posts: results,
+                posts: isV1
+                    ? results.map((post) => postDTOToV1(post))
+                    : results, // v2 returns PostDTO directly
                 next: nextCursor,
             }),
             { status: 200 },
