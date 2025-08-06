@@ -1,4 +1,12 @@
 import {
+    type Message,
+    PubSub,
+    type Subscription,
+    type Topic,
+} from '@google-cloud/pubsub';
+import type { Logger } from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
+import {
     afterAll,
     afterEach,
     beforeAll,
@@ -8,15 +16,6 @@ import {
     it,
     vi,
 } from 'vitest';
-
-import {
-    type Message,
-    PubSub,
-    type Subscription,
-    type Topic,
-} from '@google-cloud/pubsub';
-import type { Logger } from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
 
 import { EventSerializer } from '@/events/event';
 import {

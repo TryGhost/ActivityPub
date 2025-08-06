@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
@@ -17,7 +18,6 @@ import type { AccountView } from '@/http/api/views/account.view';
 import { RequireRoles, Route } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import { lookupActorProfile } from '@/lookup-helpers';
-import { z } from 'zod';
 
 /**
  * Default number of posts to return in a profile

@@ -1,10 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import type { Knex } from 'knex';
-
-import type { ModerationService } from '@/moderation/moderation.service';
-
+import { describe, expect, it, vi } from 'vitest';
 import { FeedService } from '@/feed/feed.service';
+import type { ModerationService } from '@/moderation/moderation.service';
 
 describe('FeedService', () => {
     describe('removeBlockedAccountPostsFromFeed', () => {

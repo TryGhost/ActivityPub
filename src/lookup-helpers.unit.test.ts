@@ -1,8 +1,8 @@
+import { type Context, lookupWebFinger } from '@fedify/fedify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContextData } from '@/app';
 import { error, ok } from '@/core/result';
 import { lookupActorProfile } from '@/lookup-helpers';
-import { type Context, lookupWebFinger } from '@fedify/fedify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fedify/fedify', () => ({
     lookupWebFinger: vi.fn(),

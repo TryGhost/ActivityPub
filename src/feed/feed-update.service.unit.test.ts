@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { EventEmitter } from 'node:events';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountEntity } from '@/account/account.entity';
 import {
@@ -8,13 +7,13 @@ import {
     AccountUnfollowedEvent,
     DomainBlockedEvent,
 } from '@/account/events';
-import { FeedUpdateService } from '@/feed/feed-update.service';
 import type { FeedService } from '@/feed/feed.service';
+import { FeedUpdateService } from '@/feed/feed-update.service';
+import { Audience, Post, PostType } from '@/post/post.entity';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import { Audience, Post, PostType } from '@/post/post.entity';
 import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
 
 describe('FeedUpdateService', () => {

@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { EventEmitter } from 'node:events';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Account as AccountEntity } from '@/account/account.entity';
 import {
@@ -9,13 +8,13 @@ import {
     DomainBlockedEvent,
     NotificationsReadEvent,
 } from '@/account/events';
-import { NotificationEventService } from '@/notification/notification-event.service';
 import type { NotificationService } from '@/notification/notification.service';
+import { NotificationEventService } from '@/notification/notification-event.service';
+import type { Post } from '@/post/post.entity';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import type { Post } from '@/post/post.entity';
 
 describe('NotificationEventService', () => {
     let events: EventEmitter;

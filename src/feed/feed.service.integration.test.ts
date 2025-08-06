@@ -1,5 +1,6 @@
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { Account } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
@@ -8,10 +9,10 @@ import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
 import { FeedService } from '@/feed/feed.service';
 import { ModerationService } from '@/moderation/moderation.service';
-import { Post } from '@/post/post.entity';
 import {
     Audience,
     type FollowersOnlyPost,
+    Post,
     type PostData,
     PostType,
     type PublicPost,
@@ -20,8 +21,6 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
 
 describe('FeedService', () => {
     let events: AsyncEvents;

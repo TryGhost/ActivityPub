@@ -1,7 +1,7 @@
-import { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
-import type { ContextData } from '@/app';
 import { Delete, type RequestContext } from '@fedify/fedify';
 import { describe, expect, it } from 'vitest';
+import { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
+import type { ContextData } from '@/app';
 
 describe('DeleteDispatcher', () => {
     describe('dispatch', () => {

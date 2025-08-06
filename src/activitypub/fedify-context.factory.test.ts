@@ -1,6 +1,6 @@
+import { describe, expect, it } from 'vitest';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FedifyContext } from '@/app';
-import { describe, expect, it } from 'vitest';
 
 describe('FedifyContextFactory', () => {
     it('Gives back the fedify context when called in the register callback', async () => {

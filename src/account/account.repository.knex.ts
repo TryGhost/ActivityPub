@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { exportJwk } from '@fedify/fedify';
+import type { Knex } from 'knex';
 import {
     type Account,
     type AccountDraft,
@@ -15,8 +17,6 @@ import {
 import type { AsyncEvents } from '@/core/events';
 import { parseURL } from '@/core/url';
 import type { Site } from '@/site/site.service';
-import { exportJwk } from '@fedify/fedify';
-import type { Knex } from 'knex';
 
 interface AccountRow {
     id: number;

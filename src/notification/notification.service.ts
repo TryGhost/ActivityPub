@@ -1,8 +1,8 @@
-import { type Result, error, ok } from '@/core/result';
+import type { Knex } from 'knex';
+import { error, ok, type Result } from '@/core/result';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import type { Post } from '@/post/post.entity';
-import type { Knex } from 'knex';
 
 export enum NotificationType {
     Like = 1,

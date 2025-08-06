@@ -1,12 +1,12 @@
-import type { ContextData } from '@/app';
 import type { Context } from '@fedify/fedify';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { ContextData } from '@/app';
 import { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
 import type { AccountDTO } from '@/http/api/types';
@@ -16,8 +16,7 @@ import { Audience, Post, PostType } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { SiteService } from '@/site/site.service';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Logger } from '@logtape/logtape';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
@@ -26,7 +25,7 @@ vi.mock('@/lookup-helpers', () => ({
 
 describe('AccountView', () => {
     let db: Knex;
-    let siteService: SiteService;
+    let _siteService: SiteService;
     let accountService: AccountService;
     let postRepository: KnexPostRepository;
     let accountView: AccountView;
@@ -59,7 +58,7 @@ describe('AccountView', () => {
             fedifyContextFactory,
         );
 
-        siteService = new SiteService(db, accountService, {
+        _siteService = new SiteService(db, accountService, {
             getSiteSettings: async () => ({
                 site: {
                     description: 'Test site',

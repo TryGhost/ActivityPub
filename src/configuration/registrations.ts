@@ -1,3 +1,14 @@
+import { createFederation, type KvStore } from '@fedify/fedify';
+import type { PubSub } from '@google-cloud/pubsub';
+import { getLogger, type Logger } from '@logtape/logtape';
+import {
+    type AwilixContainer,
+    aliasTo,
+    asClass,
+    asFunction,
+    asValue,
+} from 'awilix';
+import type { Knex } from 'knex';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import { CreateHandler } from '@/activity-handlers/create.handler';
@@ -28,8 +39,8 @@ import { EventSerializer } from '@/events/event';
 import { PubSubEvents } from '@/events/pubsub';
 import { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
 import { GhostExploreService } from '@/explore/ghost-explore.service';
-import { FeedUpdateService } from '@/feed/feed-update.service';
 import { FeedService } from '@/feed/feed.service';
+import { FeedUpdateService } from '@/feed/feed-update.service';
 import { FlagService } from '@/flag/flag.service';
 import { GhostPostService } from '@/ghost/ghost-post.service';
 import { getSiteSettings } from '@/helpers/ghost';
@@ -54,28 +65,17 @@ import { WebhookController } from '@/http/api/webhook.controller';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
-import { NotificationEventService } from '@/notification/notification-event.service';
 import { NotificationService } from '@/notification/notification.service';
-import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import { NotificationEventService } from '@/notification/notification-event.service';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
+import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
 import { ImageProcessor } from '@/storage/image-processor';
 import { ImageStorageService } from '@/storage/image-storage.service';
-import { type KvStore, createFederation } from '@fedify/fedify';
-import type { PubSub } from '@google-cloud/pubsub';
-import { type Logger, getLogger } from '@logtape/logtape';
-import {
-    type AwilixContainer,
-    aliasTo,
-    asClass,
-    asFunction,
-    asValue,
-} from 'awilix';
-import type { Knex } from 'knex';
 
 export function registerDependencies(
     container: AwilixContainer,

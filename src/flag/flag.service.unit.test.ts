@@ -1,5 +1,5 @@
-import { FlagService } from '@/flag/flag.service';
 import { describe, expect, it } from 'vitest';
+import { FlagService } from '@/flag/flag.service';
 
 describe('FlagService', () => {
     it('should be able to register flags', () => {

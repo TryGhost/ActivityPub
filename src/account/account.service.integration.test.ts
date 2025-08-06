@@ -1,5 +1,5 @@
-import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import { type Actor, type Note, isActor, lookupObject } from '@fedify/fedify';
+import { type Actor, isActor, lookupObject, type Note } from '@fedify/fedify';
+import type { Knex } from 'knex';
 import {
     afterEach,
     beforeAll,
@@ -22,13 +22,13 @@ import type {
     InternalAccountData,
     Site,
 } from '@/account/types';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AP_BASE_PATH } from '@/constants';
 import { AsyncEvents } from '@/core/events';
 import { getError, getValue, isError } from '@/core/result';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Knex } from 'knex';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair
@@ -1189,7 +1189,7 @@ describe('AccountService', () => {
     describe('recordDeliveryFailure', () => {
         it('should create a new backoff for first failure', async () => {
             const [account] = await fixtureManager.createInternalAccount();
-            const inboxUrl = account.apInbox!;
+            const _inboxUrl = account.apInbox!;
 
             await service.recordDeliveryFailure(
                 account.apInbox!,

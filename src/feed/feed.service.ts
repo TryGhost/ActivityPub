@@ -1,3 +1,5 @@
+import { chunk } from 'es-toolkit';
+import type { Knex } from 'knex';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
@@ -6,8 +8,6 @@ import {
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
-import { chunk } from 'es-toolkit';
-import type { Knex } from 'knex';
 
 export type FeedType = 'Inbox' | 'Feed';
 

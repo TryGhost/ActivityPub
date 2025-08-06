@@ -1,15 +1,15 @@
+import type { Logger } from '@logtape/logtape';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { error, ok } from '@/core/result';
 import type { PubSubEvents } from '@/events/pubsub';
-import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
-import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import type { Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import {
     INTERACTION_COUNTS_NOT_FOUND,
     type PostService,
 } from '@/post/post.service';
-import type { Logger } from '@logtape/logtape';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 
 describe('PostInteractionCountsService', () => {
     let service: PostInteractionCountsService;

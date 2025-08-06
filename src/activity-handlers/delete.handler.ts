@@ -1,17 +1,15 @@
+import type { Actor, Context, Delete } from '@fedify/fedify';
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 import { getRelatedActivities } from '@/db';
-import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import type { Actor, Context, Delete } from '@fedify/fedify';
 
 export class DeleteHandler {
     constructor(
         private readonly postService: PostService,
         private readonly accountService: AccountService,
-        private readonly postRepository: KnexPostRepository,
     ) {}
 
     async handle(ctx: Context<ContextData>, deleteActivity: Delete) {

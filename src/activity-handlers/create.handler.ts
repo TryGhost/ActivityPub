@@ -1,16 +1,10 @@
-import type { AccountService } from '@/account/account.service';
+import type { Context, Create } from '@fedify/fedify';
 import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 import type { PostService } from '@/post/post.service';
-import type { SiteService } from '@/site/site.service';
-import type { Context, Create } from '@fedify/fedify';
 
 export class CreateHandler {
-    constructor(
-        private readonly postService: PostService,
-        private readonly accountService: AccountService,
-        private readonly siteService: SiteService,
-    ) {}
+    constructor(private readonly postService: PostService) {}
 
     async handle(ctx: Context<ContextData>, create: Create) {
         ctx.data.logger.info('Handling Create');

@@ -1,14 +1,21 @@
+import {
+    Article,
+    Mention as FedifyMention,
+    lookupObject,
+    Note,
+} from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import {
-    type Result,
     error,
     exhaustiveCheck,
     getError,
     getValue,
     isError,
     ok,
+    type Result,
 } from '@/core/result';
 import { parseURL } from '@/core/url';
 import {
@@ -29,13 +36,6 @@ import {
 import type { KnexPostRepository, Outbox } from '@/post/post.repository.knex';
 import type { VerificationError } from '@/storage/adapters/storage-adapter';
 import type { ImageStorageService } from '@/storage/image-storage.service';
-import {
-    Article,
-    Mention as FedifyMention,
-    Note,
-    lookupObject,
-} from '@fedify/fedify';
-import type { Logger } from '@logtape/logtape';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 

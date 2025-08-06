@@ -1,15 +1,16 @@
 import type EventEmitter from 'node:events';
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
 import type { Account } from '@/account/account.entity';
 import {
-    type Result,
     error,
     exhaustiveCheck,
     getError,
     getValue,
     isError,
     ok,
+    type Result,
 } from '@/core/result';
-import { PostDeletedEvent } from '@/post/post-deleted.event';
 import {
     type CreatePostError,
     type GhostPost,
@@ -18,8 +19,7 @@ import {
 } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { DeletePostError, PostService } from '@/post/post.service';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
+import { PostDeletedEvent } from '@/post/post-deleted.event';
 
 export type GhostPostError =
     | CreatePostError

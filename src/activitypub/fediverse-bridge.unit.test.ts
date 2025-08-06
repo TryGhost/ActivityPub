@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import EventEmitter from 'node:events';
 import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -10,10 +9,10 @@ import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory'
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { UriBuilder } from '@/activitypub/uri';
 import type { FedifyContext } from '@/app';
+import { Post, PostType } from '@/post/post.entity';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
-import { Post, PostType } from '@/post/post.entity';
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
 

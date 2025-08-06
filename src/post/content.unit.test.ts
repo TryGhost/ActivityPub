@@ -1,10 +1,10 @@
+import { describe, expect, it } from 'vitest';
 import { AccountEntity } from '@/account/account.entity';
 import {
     ContentPreparer,
     MEMBER_CONTENT_MARKER,
     PAID_CONTENT_PREVIEW_HTML,
 } from '@/post/content';
-import { describe, expect, it } from 'vitest';
 
 describe('ContentPreparer', () => {
     const preparer = new ContentPreparer();

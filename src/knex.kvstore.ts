@@ -36,7 +36,7 @@ export class KnexKvStore implements KvStore {
         if (!row) {
             return null;
         }
-        if (Object.hasOwnProperty.call(row.value, '@@BOOLEAN@@')) {
+        if (Object.hasOwn(row.value, '@@BOOLEAN@@')) {
             return row.value['@@BOOLEAN@@'];
         }
         return row.value;

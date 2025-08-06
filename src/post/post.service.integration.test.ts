@@ -1,11 +1,24 @@
+import {
+    Collection,
+    Document,
+    Image,
+    Link,
+    lookupObject,
+    Mention,
+    Note,
+} from '@fedify/fedify';
+import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
 import {
-    type Error as Err,
     error as createError,
+    type Error as Err,
     error,
     getError,
     getValue,
@@ -24,20 +37,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import {
-    Collection,
-    Document,
-    Image,
-    Link,
-    Mention,
-    Note,
-    lookupObject,
-} from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 vi.mock('@fedify/fedify', async () => {
     const actual = await vi.importActual('@fedify/fedify');
@@ -98,7 +98,7 @@ describe('PostService', () => {
                 ...original,
                 lookupActorProfile: vi
                     .fn()
-                    .mockImplementation(async (ctx, handle) => {
+                    .mockImplementation(async (_ctx, handle) => {
                         // Extract username and domain from handle
                         const match = handle.match(/@?([^@]+)@(.+)/);
                         if (!match) return error('lookup-error');

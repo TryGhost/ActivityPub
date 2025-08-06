@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-
+import {
+    type Actor,
+    type Federation,
+    Like,
+    PUBLIC_COLLECTION,
+    Undo,
+} from '@fedify/fedify';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -10,13 +16,6 @@ import { GhostRole } from '@/http/middleware/role-guard';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import {
-    type Actor,
-    type Federation,
-    Like,
-    PUBLIC_COLLECTION,
-    Undo,
-} from '@fedify/fedify';
 
 export class LikeController {
     constructor(

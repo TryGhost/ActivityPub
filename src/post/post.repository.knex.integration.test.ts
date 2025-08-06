@@ -1,19 +1,16 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
-import { type Ok, getValue } from '@/core/result';
-import { FeedUpdateService } from '@/feed/feed-update.service';
+import { getValue, type Ok } from '@/core/result';
 import { FeedService } from '@/feed/feed.service';
+import { FeedUpdateService } from '@/feed/feed-update.service';
 import { ModerationService } from '@/moderation/moderation.service';
-import { PostCreatedEvent } from '@/post/post-created.event';
-import { PostDeletedEvent } from '@/post/post-deleted.event';
-import { PostDerepostedEvent } from '@/post/post-dereposted.event';
-import { PostLikedEvent } from '@/post/post-liked.event';
-import { PostRepostedEvent } from '@/post/post-reposted.event';
-import { PostUpdatedEvent } from '@/post/post-updated.event';
 import {
     Audience,
     OutboxType,
@@ -23,13 +20,16 @@ import {
     PostType,
 } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
+import { PostCreatedEvent } from '@/post/post-created.event';
+import { PostDeletedEvent } from '@/post/post-deleted.event';
+import { PostDerepostedEvent } from '@/post/post-dereposted.event';
+import { PostLikedEvent } from '@/post/post-liked.event';
+import { PostRepostedEvent } from '@/post/post-reposted.event';
+import { PostUpdatedEvent } from '@/post/post-updated.event';
 import { SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('KnexPostRepository', () => {
     let events: AsyncEvents;
@@ -68,7 +68,7 @@ describe('KnexPostRepository', () => {
             generateTestCryptoKeyPair,
         );
         siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
+            async getSiteSettings(_host: string) {
                 return {
                     site: {
                         title: 'Test Site',

@@ -54,7 +54,7 @@ export class WebFingerController {
 
         try {
             account = await this.accountRepository.getBySite(site);
-        } catch (error) {
+        } catch (_error) {
             return new Response(null, {
                 status: 404,
             });

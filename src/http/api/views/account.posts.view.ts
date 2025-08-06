@@ -1,11 +1,3 @@
-import type { Account } from '@/account/account.entity';
-import { getAccountHandle } from '@/account/utils';
-import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import { type Result, error, getValue, isError, ok } from '@/core/result';
-import { sanitizeHtml } from '@/helpers/html';
-import type { PostDTO } from '@/http/api/types';
-import { ContentPreparer } from '@/post/content';
-import { type Mention, OutboxType, PostType } from '@/post/post.entity';
 import {
     Activity,
     CollectionPage,
@@ -13,6 +5,14 @@ import {
     lookupObject,
 } from '@fedify/fedify';
 import type { Knex } from 'knex';
+import type { Account } from '@/account/account.entity';
+import { getAccountHandle } from '@/account/utils';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { error, getValue, isError, ok, type Result } from '@/core/result';
+import { sanitizeHtml } from '@/helpers/html';
+import type { PostDTO } from '@/http/api/types';
+import { ContentPreparer } from '@/post/content';
+import { type Mention, OutboxType, PostType } from '@/post/post.entity';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -335,7 +335,7 @@ export class AccountPostsView {
                     page = await outbox.getFirst();
                 }
             }
-        } catch (err) {
+        } catch (_err) {
             return error('error-getting-outbox');
         }
 
@@ -543,7 +543,7 @@ export class AccountPostsView {
                 }
 
                 result.results.push(this.mapActivityToPostDTO(activity));
-            } catch (err) {
+            } catch (_err) {
                 // If we can't map a post to an activity, skip it
                 // This ensures that a single invalid or unreachable post doesn't block the API from returning valid posts
             }
@@ -851,7 +851,7 @@ export class AccountPostsView {
                     username: actor.preferredUsername,
                     url: actor.url,
                 } as Account;
-            } catch (err) {
+            } catch (_err) {
                 return error('network-failure');
             }
         }

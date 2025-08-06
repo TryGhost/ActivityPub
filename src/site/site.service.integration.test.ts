@@ -1,5 +1,5 @@
+import type { Knex } from 'knex';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
@@ -11,7 +11,6 @@ import {
 } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
-import type { Knex } from 'knex';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair
@@ -31,7 +30,7 @@ describe('SiteService', () => {
     let service: SiteService;
     let accountService: AccountService;
     let ghostService: IGhostService;
-    let site: Site;
+    let _site: Site;
     let db: Knex;
 
     beforeAll(async () => {
@@ -57,7 +56,7 @@ describe('SiteService', () => {
             generateTestCryptoKeyPair,
         );
         ghostService = {
-            async getSiteSettings(host: string) {
+            async getSiteSettings(_host: string) {
                 return {
                     site: {
                         icon: '',

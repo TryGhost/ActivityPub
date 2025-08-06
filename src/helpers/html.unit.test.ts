@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import doSanitizeHtml from 'sanitize-html';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { sanitizeHtml } from '@/helpers/html';
 
