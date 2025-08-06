@@ -37,6 +37,21 @@ export class FeedController {
 
     @Route('GET', '/.ghost/activitypub/v1/feed/reader')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async getReaderFeedV1(ctx: AppContext) {
+        const response = await this.handleGetFeed(ctx, 'Inbox');
+
+        const mappedBody = // do something here
+
+        return new Response(mappedBody, {
+            status: response.status,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    }
+
+    @Route('GET', '/.ghost/activitypub/v2/feed/reader')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getReaderFeed(ctx: AppContext) {
         return this.handleGetFeed(ctx, 'Inbox');
     }
