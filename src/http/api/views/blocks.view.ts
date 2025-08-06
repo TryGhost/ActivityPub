@@ -1,6 +1,6 @@
-import { getAccountHandle } from 'account/utils';
+import { getAccountHandle } from '@/account/utils';
+import type { BlockedDomainDTO, MinimalAccountDTO } from '@/http/api/types';
 import type { Knex } from 'knex';
-import type { BlockedDomainDTO, MinimalAccountDTO } from '../types';
 
 export class BlocksView {
     constructor(private readonly db: Knex) {}

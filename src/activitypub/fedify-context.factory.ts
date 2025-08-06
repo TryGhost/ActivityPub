@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { FedifyContext } from '../app';
+import type { FedifyContext } from '@/app';
 
 export class FedifyContextFactory {
     private asyncLocalStorage = new AsyncLocalStorage<FedifyContext>();

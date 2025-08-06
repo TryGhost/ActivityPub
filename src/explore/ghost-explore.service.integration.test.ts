@@ -1,13 +1,14 @@
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { AccountService } from '@/account/account.service';
+import { AccountCreatedEvent } from '@/account/events';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import { error, ok } from '@/core/result';
+import { GhostExploreService } from '@/explore/ghost-explore.service';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import type { Logger } from '@logtape/logtape';
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import type { AccountService } from 'account/account.service';
-import { AccountCreatedEvent } from 'account/events';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { AsyncEvents } from 'core/events';
-import { error, ok } from 'core/result';
 import type { Knex } from 'knex';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import {
     afterEach,
     beforeAll,
@@ -17,7 +18,6 @@ import {
     it,
     vi,
 } from 'vitest';
-import { GhostExploreService } from './ghost-explore.service';
 
 async function createGhostExploreAccount(
     db: Knex,

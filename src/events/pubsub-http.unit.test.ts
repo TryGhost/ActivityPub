@@ -5,11 +5,11 @@ import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { ContextData } from 'app';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { ContextData } from '@/app';
 
-import type { PubSubEvents } from './pubsub';
-import { createIncomingPubSubMessageHandler } from './pubsub-http';
+import type { PubSubEvents } from '@/events/pubsub';
+import { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
 
 vi.mock('@sentry/node', () => {
     return {
@@ -17,7 +17,7 @@ vi.mock('@sentry/node', () => {
     };
 });
 
-vi.mock('helpers/fedify', () => ({
+vi.mock('@/helpers/fedify', () => ({
     createFedifyCtxForHost: vi.fn(),
 }));
 

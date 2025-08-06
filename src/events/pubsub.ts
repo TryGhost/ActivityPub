@@ -2,8 +2,8 @@ import type { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 
-import { AsyncEvents } from 'core/events';
-import type { EventSerializer, SerializableEvent } from './event';
+import { AsyncEvents } from '@/core/events';
+import type { EventSerializer, SerializableEvent } from '@/events/event';
 
 export const PUBSUB_MESSAGE_ATTR_EVENT_HOST = 'event_host';
 export const PUBSUB_MESSAGE_ATTR_EVENT_NAME = 'event_name';

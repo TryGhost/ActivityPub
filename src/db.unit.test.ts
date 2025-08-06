@@ -1,5 +1,5 @@
+import { knex } from '@/db';
 import { describe, expect, it } from 'vitest';
-import { knex } from './db';
 
 describe('Knex Configuration', () => {
     it('should use UTC timezone in connection config', () => {

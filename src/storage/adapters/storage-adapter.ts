@@ -1,4 +1,4 @@
-import type { Result } from 'core/result';
+import type { Result } from '@/core/result';
 
 export type StorageError = 'error-saving-file';
 export type VerificationError =

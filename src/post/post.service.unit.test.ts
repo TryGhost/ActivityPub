@@ -1,12 +1,12 @@
 import type { Logger } from '@logtape/logtape';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { ModerationService } from 'moderation/moderation.service';
-import type { ImageStorageService } from 'storage/image-storage.service';
-import type { KnexPostRepository } from './post.repository.knex';
-import { PostService } from './post.service';
+import type { AccountService } from '@/account/account.service';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { ModerationService } from '@/moderation/moderation.service';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
+import { PostService } from '@/post/post.service';
+import type { ImageStorageService } from '@/storage/image-storage.service';
 
 describe('PostService', () => {
     it('should be able to check if a post is liked by an account', async () => {

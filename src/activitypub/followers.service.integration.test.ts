@@ -1,13 +1,13 @@
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import { AccountService } from 'account/account.service';
-import { AsyncEvents } from 'core/events';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { FollowersService } from '@/activitypub/followers.service';
+import { AsyncEvents } from '@/core/events';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { FedifyContextFactory } from './fedify-context.factory';
-import { FollowersService } from './followers.service';
 
 describe('FollowersService', () => {
     let client: Knex;

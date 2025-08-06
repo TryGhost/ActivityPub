@@ -1,6 +1,6 @@
 import type { Object as FedifyObject } from '@fedify/fedify';
 
-import type { FedifyRequestContext } from '../app';
+import type { FedifyRequestContext } from '@/app';
 
 /**
  * Builds ActivityPub URIs

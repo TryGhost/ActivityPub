@@ -1,26 +1,19 @@
 import assert from 'node:assert';
 import { randomUUID } from 'node:crypto';
-import type { Logger } from '@logtape/logtape';
-import { AsyncEvents } from 'core/events';
-import { type Ok, getValue } from 'core/result';
-import { FeedUpdateService } from 'feed/feed-update.service';
-import { FeedService } from 'feed/feed.service';
-import type { Knex } from 'knex';
-import { ModerationService } from 'moderation/moderation.service';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { KnexAccountRepository } from '../account/account.repository.knex';
-import { AccountService } from '../account/account.service';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { SiteService } from '../site/site.service';
-import { PostCreatedEvent } from './post-created.event';
-import { PostDeletedEvent } from './post-deleted.event';
-import { PostDerepostedEvent } from './post-dereposted.event';
-import { PostLikedEvent } from './post-liked.event';
-import { PostRepostedEvent } from './post-reposted.event';
-import { PostUpdatedEvent } from './post-updated.event';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import { type Ok, getValue } from '@/core/result';
+import { FeedUpdateService } from '@/feed/feed-update.service';
+import { FeedService } from '@/feed/feed.service';
+import { ModerationService } from '@/moderation/moderation.service';
+import { PostCreatedEvent } from '@/post/post-created.event';
+import { PostDeletedEvent } from '@/post/post-deleted.event';
+import { PostDerepostedEvent } from '@/post/post-dereposted.event';
+import { PostLikedEvent } from '@/post/post-liked.event';
+import { PostRepostedEvent } from '@/post/post-reposted.event';
+import { PostUpdatedEvent } from '@/post/post-updated.event';
 import {
     Audience,
     OutboxType,
@@ -28,8 +21,15 @@ import {
     PostSummary,
     PostTitle,
     PostType,
-} from './post.entity';
-import { KnexPostRepository } from './post.repository.knex';
+} from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { SiteService } from '@/site/site.service';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('KnexPostRepository', () => {
     let events: AsyncEvents;

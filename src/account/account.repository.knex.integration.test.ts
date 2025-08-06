@@ -3,19 +3,19 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import assert from 'node:assert';
 import type { Knex } from 'knex';
 
-import { exportJwk } from '@fedify/fedify';
-import { AsyncEvents } from 'core/events';
+import { AccountEntity } from '@/account/account.entity';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountCreatedEvent } from '@/account/events';
+import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
+import { AsyncEvents } from '@/core/events';
+import type { Site } from '@/site/site.service';
 import {
     createExternalAccountDraftData,
     createInternalAccountDraftData,
-} from 'test/account-entity-test-helpers';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import { KnexAccountRepository } from '../account/account.repository.knex';
-import type { Site } from '../site/site.service';
-import { AccountEntity } from './account.entity';
-import { AccountCreatedEvent } from './events';
-import { AccountUpdatedEvent } from './events/account-updated.event';
+} from '@/test/account-entity-test-helpers';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
+import { exportJwk } from '@fedify/fedify';
 
 describe('KnexAccountRepository', () => {
     let client: Knex;

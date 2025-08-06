@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Ok, getValue, isError } from 'core/result';
-import {
-    createTestExternalAccount,
-    createTestInternalAccount,
-} from '../test/account-entity-test-helpers';
+import { type Ok, getValue, isError } from '@/core/result';
 import {
     Audience,
     Post,
@@ -13,7 +9,11 @@ import {
     PostTitle,
     PostType,
     type PostUpdateParams,
-} from './post.entity';
+} from '@/post/post.entity';
+import {
+    createTestExternalAccount,
+    createTestInternalAccount,
+} from '@/test/account-entity-test-helpers';
 
 const externalAccount = async (id: number | null = 456) =>
     createTestExternalAccount(id || 456, {

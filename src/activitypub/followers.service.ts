@@ -1,6 +1,6 @@
+import type { Account } from '@/account/account.entity';
+import { parseURL } from '@/core/url';
 import type { Recipient } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
-import { parseURL } from 'core/url';
 import type { Knex } from 'knex';
 
 export class FollowersService {

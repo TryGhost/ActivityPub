@@ -18,12 +18,12 @@ import {
 import type { Logger } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
 
-import { EventSerializer } from './event';
+import { EventSerializer } from '@/events/event';
 import {
     PUBSUB_MESSAGE_ATTR_EVENT_HOST,
     PUBSUB_MESSAGE_ATTR_EVENT_NAME,
     PubSubEvents,
-} from './pubsub';
+} from '@/events/pubsub';
 
 function encode(data: object) {
     return Buffer.from(JSON.stringify(data)).toString('base64');

@@ -1,5 +1,5 @@
+import { createTestDb } from '@/test/db';
 import type { Knex } from 'knex';
-import { createTestDb } from 'test/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const TEST_TABLE = 'test_timestamps';

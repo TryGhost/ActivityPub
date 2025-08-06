@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Activity, Actor } from '@fedify/fedify';
 
-import type { FedifyRequestContext } from '../app';
+import type { FedifyRequestContext } from '@/app';
 
-import { FedifyActivitySender } from './activity';
+import { FedifyActivitySender } from '@/activitypub/activity';
 
 describe('FedifyActivitySender', () => {
     describe('sendActivityToActorFollowers', () => {

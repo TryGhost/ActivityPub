@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { EventSerializer } from './event';
+import { EventSerializer } from '@/events/event';
 
 class TestEvent {
     constructor(

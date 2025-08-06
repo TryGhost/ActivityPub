@@ -1,6 +1,6 @@
 import { Reject, type RequestContext } from '@fedify/fedify';
 
-import type { ContextData } from '../app';
+import type { ContextData } from '@/app';
 
 export async function dispatchRejectActivity(
     ctx: RequestContext<ContextData>,

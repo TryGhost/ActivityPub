@@ -1,6 +1,6 @@
 import type { Federation } from '@fedify/fedify';
 
-import type { ContextData } from 'app';
+import type { ContextData } from '@/app';
 
 export function createFedifyCtxForHost(
     fedify: Federation<ContextData>,

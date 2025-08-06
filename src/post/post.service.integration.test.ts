@@ -1,3 +1,30 @@
+import type { Account } from '@/account/account.entity';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import {
+    type Error as Err,
+    error as createError,
+    error,
+    getError,
+    getValue,
+    isError,
+    ok,
+} from '@/core/result';
+import { ModerationService } from '@/moderation/moderation.service';
+import {
+    OutboxType,
+    Post,
+    PostSummary,
+    PostTitle,
+    PostType,
+} from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { PostService } from '@/post/post.service';
+import type { ImageStorageService } from '@/storage/image-storage.service';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import {
     Collection,
     Document,
@@ -9,35 +36,8 @@ import {
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Logger } from '@logtape/logtape';
-import type { Account } from 'account/account.entity';
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { AsyncEvents } from 'core/events';
-import {
-    type Error as Err,
-    error as createError,
-    error,
-    getError,
-    getValue,
-    isError,
-    ok,
-} from 'core/result';
 import type { Knex } from 'knex';
-import { ModerationService } from 'moderation/moderation.service';
-import type { ImageStorageService } from 'storage/image-storage.service';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    OutboxType,
-    Post,
-    PostSummary,
-    PostTitle,
-    PostType,
-} from './post.entity';
-import { KnexPostRepository } from './post.repository.knex';
-import { PostService } from './post.service';
 
 vi.mock('@fedify/fedify', async () => {
     const actual = await vi.importActual('@fedify/fedify');
@@ -91,8 +91,8 @@ describe('PostService', () => {
         } as unknown as FedifyContextFactory;
 
         // Mock the lookup functions
-        vi.mock('lookup-helpers', async () => {
-            const original = await vi.importActual('lookup-helpers');
+        vi.mock('@/lookup-helpers', async () => {
+            const original = await vi.importActual('@/lookup-helpers');
 
             return {
                 ...original,

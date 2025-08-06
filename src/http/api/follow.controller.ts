@@ -1,15 +1,24 @@
 import { type Federation, Follow, Undo, isActor } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { AccountService } from 'account/account.service';
-import { mapActorToExternalAccountData } from 'account/utils';
-import type { AppContext, ContextData } from 'app';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { lookupActor, lookupActorProfile, lookupObject } from 'lookup-helpers';
-import type { ModerationService } from 'moderation/moderation.service';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
+import type { AccountService } from '@/account/account.service';
+import { mapActorToExternalAccountData } from '@/account/utils';
+import type { AppContext, ContextData } from '@/app';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import {
+    BadRequest,
+    Conflict,
+    Forbidden,
+    NotFound,
+} from '@/http/api/helpers/response';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import {
+    lookupActor,
+    lookupActorProfile,
+    lookupObject,
+} from '@/lookup-helpers';
+import type { ModerationService } from '@/moderation/moderation.service';
 
 export class FollowController {
     constructor(

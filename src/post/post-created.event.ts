@@ -1,4 +1,4 @@
-import type { Post } from './post.entity';
+import type { Post } from '@/post/post.entity';
 
 export class PostCreatedEvent {
     constructor(private readonly post: Post) {}

@@ -1,13 +1,13 @@
-import { chunk } from 'es-toolkit';
-import { sanitizeHtml } from 'helpers/html';
-import type { Knex } from 'knex';
-import type { ModerationService } from 'moderation/moderation.service';
+import { sanitizeHtml } from '@/helpers/html';
+import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type FollowersOnlyPost,
     type Post,
     PostType,
     type PublicPost,
-} from 'post/post.entity';
+} from '@/post/post.entity';
+import { chunk } from 'es-toolkit';
+import type { Knex } from 'knex';
 
 export type FeedType = 'Inbox' | 'Feed';
 

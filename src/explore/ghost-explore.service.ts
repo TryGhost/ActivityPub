@@ -1,12 +1,12 @@
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { AccountService } from '@/account/account.service';
+import { AccountCreatedEvent } from '@/account/events';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { AsyncEvents } from '@/core/events';
+import { getValue, isError } from '@/core/result';
 import { Follow } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import { uuid4 } from '@sentry/core';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { AccountService } from 'account/account.service';
-import { AccountCreatedEvent } from 'account/events';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { AsyncEvents } from 'core/events';
-import { getValue, isError } from 'core/result';
 
 export class GhostExploreService {
     constructor(

@@ -1,8 +1,8 @@
+import { getError, isError } from '@/core/result';
+import { ImageProcessor } from '@/storage/image-processor';
 import type { Logger } from '@logtape/logtape';
-import { getError, isError } from 'core/result';
 import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
-import { ImageProcessor } from './image-processor';
 
 const mockLogger = {
     info: vi.fn(),

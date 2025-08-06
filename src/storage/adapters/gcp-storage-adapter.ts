@@ -1,11 +1,11 @@
-import { type Bucket, Storage } from '@google-cloud/storage';
-import type { Logger } from '@logtape/logtape';
-import { type Result, error, ok } from 'core/result';
+import { type Result, error, ok } from '@/core/result';
 import type {
     StorageAdapter,
     StorageError,
     VerificationError,
-} from './storage-adapter';
+} from '@/storage/adapters/storage-adapter';
+import { type Bucket, Storage } from '@google-cloud/storage';
+import type { Logger } from '@logtape/logtape';
 
 export class GCPStorageAdapter implements StorageAdapter {
     private storage: Storage;

@@ -4,7 +4,7 @@ import ky, { type ResponsePromise } from 'ky';
 
 vi.mock('ky');
 
-import { getSiteSettings } from './ghost';
+import { getSiteSettings } from '@/helpers/ghost';
 
 describe('getSiteSettings', () => {
     const host = 'example.com';

@@ -1,13 +1,6 @@
-import {
-    Article,
-    Mention as FedifyMention,
-    Note,
-    lookupObject,
-} from '@fedify/fedify';
-import type { Logger } from '@logtape/logtape';
-import type { Account } from 'account/account.entity';
-import type { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { Account } from '@/account/account.entity';
+import type { AccountService } from '@/account/account.service';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import {
     type Result,
     error,
@@ -16,17 +9,15 @@ import {
     getValue,
     isError,
     ok,
-} from 'core/result';
-import { parseURL } from 'core/url';
+} from '@/core/result';
+import { parseURL } from '@/core/url';
 import {
     getLikeCountFromRemote,
     getRepostCountFromRemote,
     lookupActorProfile,
-} from 'lookup-helpers';
-import type { ModerationService } from 'moderation/moderation.service';
-import type { VerificationError } from 'storage/adapters/storage-adapter';
-import type { ImageStorageService } from 'storage/image-storage.service';
-import { ContentPreparer } from './content';
+} from '@/lookup-helpers';
+import type { ModerationService } from '@/moderation/moderation.service';
+import { ContentPreparer } from '@/post/content';
 import {
     type ImageAttachment,
     type Mention,
@@ -34,8 +25,17 @@ import {
     type PostAttachment,
     PostType,
     type PostUpdateParams,
-} from './post.entity';
-import type { KnexPostRepository, Outbox } from './post.repository.knex';
+} from '@/post/post.entity';
+import type { KnexPostRepository, Outbox } from '@/post/post.repository.knex';
+import type { VerificationError } from '@/storage/adapters/storage-adapter';
+import type { ImageStorageService } from '@/storage/image-storage.service';
+import {
+    Article,
+    Mention as FedifyMention,
+    Note,
+    lookupObject,
+} from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 
 export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 

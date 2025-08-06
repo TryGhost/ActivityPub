@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import type { GhostRole } from '../middleware/role-guard';
+import type { GhostRole } from '@/http/middleware/role-guard';
 
 export const ROUTES_METADATA_KEY = Symbol('routes');
 export const ROLES_METADATA_KEY = Symbol('roles');

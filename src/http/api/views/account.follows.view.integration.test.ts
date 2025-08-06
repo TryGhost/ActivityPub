@@ -1,14 +1,14 @@
+import type { Account } from '@/account/account.entity';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { FedifyContext } from '@/app';
+import { ok } from '@/core/result';
+import { AccountFollowsView } from '@/http/api/views/account.follows.view';
+import { ModerationService } from '@/moderation/moderation.service';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import { getDocumentLoader } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
-import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { FedifyContext } from 'app';
-import { ok } from 'core/result';
-import { ModerationService } from 'moderation/moderation.service';
 import nock from 'nock';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AccountFollowsView } from './account.follows.view';
 
 describe('AccountFollowsView', () => {
     let accountFollowsView: AccountFollowsView;

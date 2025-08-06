@@ -1,13 +1,13 @@
 import * as Sentry from '@sentry/node';
 
-import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
-import type { AccountService } from '../../account/account.service';
-import { getAccountHandle } from '../../account/utils';
-import type { AppContext } from '../../app';
-import type { FeedService, FeedType } from '../../feed/feed.service';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import type { PostDTO } from './types';
+import type { AccountService } from '@/account/account.service';
+import { getAccountHandle } from '@/account/utils';
+import type { AppContext } from '@/app';
+import type { FeedService, FeedType } from '@/feed/feed.service';
+import type { PostDTO } from '@/http/api/types';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 
 /**
  * Default number of posts to return in a feed

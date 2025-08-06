@@ -1,3 +1,5 @@
+import type { ContextData } from '@/app';
+import { type Result, error, ok } from '@/core/result';
 import {
     Object as APObject,
     type Actor,
@@ -8,8 +10,6 @@ import {
     isActor,
     lookupWebFinger,
 } from '@fedify/fedify';
-import type { ContextData } from './app';
-import { type Result, error, ok } from './core/result';
 
 export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 

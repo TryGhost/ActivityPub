@@ -1,8 +1,8 @@
+import { BlocksView } from '@/http/api/views/blocks.view';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import type { Knex } from 'knex';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { BlocksView } from './blocks.view';
 
 describe('BlocksView', () => {
     let db: Knex;

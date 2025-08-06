@@ -1,13 +1,13 @@
 import type { Logger } from '@logtape/logtape';
 import { z } from 'zod';
 
-import type { Account } from 'account/account.entity';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import type { GhostPostService } from 'ghost/ghost-post.service';
-import type { PostService } from 'post/post.service';
-import type { AppContext } from '../../app';
-import { postToDTO } from './helpers/post';
-import { BadRequest, Forbidden } from './helpers/response';
+import type { Account } from '@/account/account.entity';
+import type { AppContext } from '@/app';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import type { GhostPostService } from '@/ghost/ghost-post.service';
+import { postToDTO } from '@/http/api/helpers/post';
+import { BadRequest, Forbidden } from '@/http/api/helpers/response';
+import type { PostService } from '@/post/post.service';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),

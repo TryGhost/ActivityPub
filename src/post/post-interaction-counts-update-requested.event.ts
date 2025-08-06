@@ -1,4 +1,4 @@
-import type { SerializableEvent } from 'events/event';
+import type { SerializableEvent } from '@/events/event';
 
 export class PostInteractionCountsUpdateRequestedEvent
     implements SerializableEvent

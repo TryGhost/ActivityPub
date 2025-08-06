@@ -1,11 +1,11 @@
-import type { AccountService } from 'account/account.service';
-import { getAccountHandle } from 'account/utils';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import type { NotificationService } from 'notification/notification.service';
-import type { AppContext } from '../../app';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import type { NotificationDTO } from './types';
+import type { AccountService } from '@/account/account.service';
+import { getAccountHandle } from '@/account/utils';
+import type { AppContext } from '@/app';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import type { NotificationDTO } from '@/http/api/types';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import type { NotificationService } from '@/notification/notification.service';
 
 const DEFAULT_NOTIFICATIONS_LIMIT = 20;
 const MAX_NOTIFICATIONS_LIMIT = 100;

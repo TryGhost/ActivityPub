@@ -2,17 +2,17 @@ import crypto from 'node:crypto';
 import { faker } from '@faker-js/faker';
 import type { Knex } from 'knex';
 
+import type { Account } from '@/account/account.entity';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import type { NotificationType } from '@/notification/notification.service';
+import { type CreatePostType, Post, PostType } from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { type Site, SiteService } from '@/site/site.service';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import type { Logger } from '@logtape/logtape';
-import type { Account } from 'account/account.entity';
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import { AccountService } from 'account/account.service';
-import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { AsyncEvents } from 'core/events';
-import type { NotificationType } from 'notification/notification.service';
-import { type CreatePostType, Post, PostType } from 'post/post.entity';
-import { KnexPostRepository } from 'post/post.repository.knex';
-import { type Site, SiteService } from 'site/site.service';
-import { generateTestCryptoKeyPair } from './crypto-key-pair';
 
 export class FixtureManager {
     constructor(

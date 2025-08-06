@@ -1,3 +1,9 @@
+import type { Account } from '@/account/account.entity';
+import { getAccountHandle } from '@/account/utils';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { type Result, error, getValue, isError, ok } from '@/core/result';
+import type { MinimalAccountDTO } from '@/http/api/types';
+import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type Actor,
     CollectionPage,
@@ -5,13 +11,7 @@ import {
     isActor,
     lookupObject,
 } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
-import { getAccountHandle } from 'account/utils';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { type Result, error, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
-import type { ModerationService } from 'moderation/moderation.service';
-import type { MinimalAccountDTO } from '../types';
 
 /**
  * Maximum number of follow accounts to return

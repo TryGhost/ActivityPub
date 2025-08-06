@@ -1,5 +1,5 @@
-import type { AppContext } from '../../app';
-import type { SiteService } from '../../site/site.service';
+import type { AppContext } from '@/app';
+import type { SiteService } from '@/site/site.service';
 
 export class SiteController {
     constructor(

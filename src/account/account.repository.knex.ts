@@ -1,14 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { exportJwk } from '@fedify/fedify';
-import type { AsyncEvents } from 'core/events';
-import type { Knex } from 'knex';
-import { parseURL } from '../core/url';
-import type { Site } from '../site/site.service';
 import {
     type Account,
     type AccountDraft,
     AccountEntity,
-} from './account.entity';
+} from '@/account/account.entity';
 import {
     AccountBlockedEvent,
     AccountFollowedEvent,
@@ -16,7 +11,12 @@ import {
     AccountUnfollowedEvent,
     DomainBlockedEvent,
     DomainUnblockedEvent,
-} from './events';
+} from '@/account/events';
+import type { AsyncEvents } from '@/core/events';
+import { parseURL } from '@/core/url';
+import type { Site } from '@/site/site.service';
+import { exportJwk } from '@fedify/fedify';
+import type { Knex } from 'knex';
 
 interface AccountRow {
     id: number;

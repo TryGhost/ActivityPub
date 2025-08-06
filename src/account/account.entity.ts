@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { type CreatePostType, PostType } from '../post/post.entity';
 import {
     AccountBlockedEvent,
     AccountCreatedEvent,
@@ -10,7 +9,8 @@ import {
     DomainBlockedEvent,
     DomainUnblockedEvent,
     NotificationsReadEvent,
-} from './events';
+} from '@/account/events';
+import { type CreatePostType, PostType } from '@/post/post.entity';
 
 export interface Account {
     readonly id: number;

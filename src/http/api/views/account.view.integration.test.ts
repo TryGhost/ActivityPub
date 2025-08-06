@@ -1,25 +1,25 @@
+import type { ContextData } from '@/app';
 import type { Context } from '@fedify/fedify';
-import type { ContextData } from 'app';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Knex } from 'knex';
 
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import { error, ok } from '@/core/result';
+import type { AccountDTO } from '@/http/api/types';
+import { AccountView } from '@/http/api/views/account.view';
+import { lookupActorProfile } from '@/lookup-helpers';
+import { Audience, Post, PostType } from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { SiteService } from '@/site/site.service';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import type { Logger } from '@logtape/logtape';
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { AsyncEvents } from 'core/events';
-import { error, ok } from 'core/result';
-import { lookupActorProfile } from 'lookup-helpers';
-import { Audience, Post, PostType } from 'post/post.entity';
-import { KnexPostRepository } from 'post/post.repository.knex';
-import { SiteService } from 'site/site.service';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import type { AccountDTO } from '../types';
-import { AccountView } from './account.view';
 
-vi.mock('lookup-helpers', () => ({
+vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
     lookupObject: vi.fn(),
 }));

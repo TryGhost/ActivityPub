@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PostInteractionCountsUpdateRequestedEvent } from './post-interaction-counts-update-requested.event';
+import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 
 describe('PostInteractionCountsUpdateRequestedEvent', () => {
     it('should be serializable', () => {

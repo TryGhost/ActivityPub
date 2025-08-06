@@ -1,6 +1,6 @@
 import type { Actor } from '@fedify/fedify';
 
-import type { FedifyRequestContext } from '../app';
+import type { FedifyRequestContext } from '@/app';
 
 /**
  * Resolves an ActivityPub actor
