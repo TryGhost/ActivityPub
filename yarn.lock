@@ -928,10 +928,10 @@
   dependencies:
     jsbi "^4.3.0"
 
-"@logtape/logtape@0.12.1":
-  version "0.12.1"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.12.1.tgz#226fc6844c9d55e1182f8751d4c4d8d3d0f6701e"
-  integrity sha512-Xot4/RM4j+jHHcUn3NKkiHsNyE+hp79LEe/xANLrZVa36QcjlS0X1H+mt+zcOK3p2HvDr3alFoXjq0YLvN06Bw==
+"@logtape/logtape@0.12.2":
+  version "0.12.2"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.12.2.tgz#12f4449e84eb61d079b6967034c141d1c3ed7b1d"
+  integrity sha512-V9MHqIIhHBJllHO6By7VDmwDd965b2ytihPcUMou2/ykK5lZPkiiPS7N60k+wb89jH4pebqqBfLgaNrBg15hVw==
 
 "@logtape/logtape@^1.0.0":
   version "1.0.0"
