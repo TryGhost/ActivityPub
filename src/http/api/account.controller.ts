@@ -332,7 +332,6 @@ export class AccountController {
                 params.cursor,
             );
 
-        // Get API version from context (injected by route registry)
         const isV1 = ctx.req.path.includes('/v1/');
 
         return new Response(
