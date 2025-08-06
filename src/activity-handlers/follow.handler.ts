@@ -1,3 +1,7 @@
+import type { AccountService } from '@/account/account.service';
+import type { ContextData } from '@/app';
+import { getValue, isError } from '@/core/result';
+import type { ModerationService } from '@/moderation/moderation.service';
 import {
     Accept,
     type Actor,
@@ -5,10 +9,6 @@ import {
     type Follow,
     Reject,
 } from '@fedify/fedify';
-import type { AccountService } from 'account/account.service';
-import type { ContextData } from 'app';
-import { getValue, isError } from 'core/result';
-import type { ModerationService } from 'moderation/moderation.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export class FollowHandler {

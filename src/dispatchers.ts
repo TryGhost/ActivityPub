@@ -1,3 +1,18 @@
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { AccountService } from '@/account/account.service';
+import type { FollowersService } from '@/activitypub/followers.service';
+import type { ContextData } from '@/app';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import {
+    buildAnnounceActivityForPost,
+    buildCreateActivityAndObjectFromPost,
+} from '@/helpers/activitypub/activity';
+import { isFollowedByDefaultSiteAccount } from '@/helpers/activitypub/actor';
+import { lookupActor, lookupObject } from '@/lookup-helpers';
+import { OutboxType, type Post } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
+import type { PostService } from '@/post/post.service';
+import type { SiteService } from '@/site/site.service';
 import {
     Accept,
     Announce,
@@ -18,21 +33,6 @@ import {
     verifyObject,
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { FollowersService } from 'activitypub/followers.service';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import {
-    buildAnnounceActivityForPost,
-    buildCreateActivityAndObjectFromPost,
-} from 'helpers/activitypub/activity';
-import { OutboxType, type Post } from 'post/post.entity';
-import type { AccountService } from './account/account.service';
-import type { ContextData } from './app';
-import { isFollowedByDefaultSiteAccount } from './helpers/activitypub/actor';
-import { lookupActor, lookupObject } from './lookup-helpers';
-import type { KnexPostRepository } from './post/post.repository.knex';
-import type { PostService } from './post/post.service';
-import type { SiteService } from './site/site.service';
 
 export const actorDispatcher = (
     siteService: SiteService,

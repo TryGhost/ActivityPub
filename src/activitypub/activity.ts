@@ -1,6 +1,6 @@
 import type { Activity, Actor } from '@fedify/fedify';
 
-import type { FedifyRequestContext } from '../app';
+import type { FedifyRequestContext } from '@/app';
 
 /**
  * Sends an ActivityPub activity to Fediverse actors

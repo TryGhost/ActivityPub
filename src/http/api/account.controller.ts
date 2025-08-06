@@ -1,23 +1,23 @@
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { AppContext } from 'app';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { isHandle } from 'helpers/activitypub/actor';
-import { lookupActorProfile } from 'lookup-helpers';
-import { z } from 'zod';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import type { AccountDTO } from './types';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { AccountService } from '@/account/account.service';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { AppContext } from '@/app';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { isHandle } from '@/helpers/activitypub/actor';
+import type { AccountDTO } from '@/http/api/types';
 import type {
     AccountFollows,
     AccountFollowsView,
-} from './views/account.follows.view';
+} from '@/http/api/views/account.follows.view';
 import type {
     AccountPosts,
     AccountPostsView,
-} from './views/account.posts.view';
-import type { AccountView } from './views/account.view';
+} from '@/http/api/views/account.posts.view';
+import type { AccountView } from '@/http/api/views/account.view';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import { lookupActorProfile } from '@/lookup-helpers';
+import { z } from 'zod';
 
 /**
  * Default number of posts to return in a profile

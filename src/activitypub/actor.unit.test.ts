@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Actor } from '@fedify/fedify';
 
-import type { FedifyRequestContext } from '../app';
+import type { FedifyRequestContext } from '@/app';
 
-import { FedifyActorResolver } from './actor';
+import { FedifyActorResolver } from '@/activitypub/actor';
 
 describe('FedifyActorResolver', () => {
     describe('resolveActorByHandle', () => {

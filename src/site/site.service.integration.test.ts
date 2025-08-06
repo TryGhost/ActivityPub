@@ -1,13 +1,17 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AsyncEvents } from 'core/events';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import {
+    type IGhostService,
+    type Site,
+    SiteService,
+} from '@/site/site.service';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
+import { createTestDb } from '@/test/db';
 import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import { KnexAccountRepository } from '../account/account.repository.knex';
-import { AccountService } from '../account/account.service';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { type IGhostService, type Site, SiteService } from './site.service';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair

@@ -2,7 +2,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PubSub } from '@google-cloud/pubsub';
 
-import { getFullTopic, initPubSubClient } from './pubsub';
+import { getFullTopic, initPubSubClient } from '@/pubsub';
 
 vi.mock('@google-cloud/pubsub', () => ({
     PubSub: vi.fn(),

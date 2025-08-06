@@ -1,11 +1,11 @@
-import type { AccountService } from 'account/account.service';
-import type { AppContext } from 'app';
-import { exhaustiveCheck, getError, isError } from 'core/result';
-import { parseURL } from 'core/url';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import { BadRequest, NotFound } from './helpers/response';
-import type { BlocksView } from './views/blocks.view';
+import type { AccountService } from '@/account/account.service';
+import type { AppContext } from '@/app';
+import { exhaustiveCheck, getError, isError } from '@/core/result';
+import { parseURL } from '@/core/url';
+import { BadRequest, NotFound } from '@/http/api/helpers/response';
+import type { BlocksView } from '@/http/api/views/blocks.view';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
 
 export class BlockController {
     constructor(

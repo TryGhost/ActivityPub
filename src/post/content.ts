@@ -1,10 +1,10 @@
+import { HANDLE_REGEX } from '@/constants';
+import { isEqual } from '@/helpers/uri';
+import { type Mention, PostSummary } from '@/post/post.entity';
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
 import { parse } from 'node-html-parser';
 import urlRegex from 'url-regex';
-import { HANDLE_REGEX } from '../constants';
-import { isEqual } from '../helpers/uri';
-import { type Mention, PostSummary } from './post.entity';
 
 /**
  * Marker to indicate that the proceeding content is member content

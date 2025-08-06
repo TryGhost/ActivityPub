@@ -1,11 +1,11 @@
+import type { AppContext } from '@/app';
+import { isHandle } from '@/helpers/activitypub/actor';
+import { isUri } from '@/helpers/uri';
+import type { AccountDTO } from '@/http/api/types';
+import type { AccountView } from '@/http/api/views/account.view';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
 import { pick } from 'es-toolkit';
-import type { AppContext } from '../../app';
-import { isHandle } from '../../helpers/activitypub/actor';
-import { isUri } from '../../helpers/uri';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import type { AccountDTO } from './types';
-import type { AccountView } from './views/account.view';
 
 type AccountSearchResult = Pick<
     AccountDTO,

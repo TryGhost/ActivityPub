@@ -1,20 +1,20 @@
+import type { Account } from '@/account/account.entity';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import { getError, getValue, isError } from '@/core/result';
+import { GhostPostService } from '@/ghost/ghost-post.service';
+import { ModerationService } from '@/moderation/moderation.service';
+import { Post } from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { PostService } from '@/post/post.service';
+import type { ImageStorageService } from '@/storage/image-storage.service';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 import type { Logger } from '@logtape/logtape';
-import type { Account } from 'account/account.entity';
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import { AccountService } from 'account/account.service';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { AsyncEvents } from 'core/events';
-import { getError, getValue, isError } from 'core/result';
 import type { Knex } from 'knex';
-import { ModerationService } from 'moderation/moderation.service';
-import { Post } from 'post/post.entity';
-import { KnexPostRepository } from 'post/post.repository.knex';
-import { PostService } from 'post/post.service';
-import type { ImageStorageService } from 'storage/image-storage.service';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GhostPostService } from './ghost-post.service';
 
 describe('GhostPostService', () => {
     let db: Knex;

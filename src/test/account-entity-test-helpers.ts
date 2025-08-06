@@ -1,5 +1,5 @@
-import { AccountEntity } from '../account/account.entity';
-import { generateTestCryptoKeyPair } from './crypto-key-pair';
+import { AccountEntity } from '@/account/account.entity';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 
 export async function createInternalAccountDraftData(overrides: {
     host: URL;

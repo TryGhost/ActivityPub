@@ -1,24 +1,24 @@
-import type { Logger } from '@logtape/logtape';
-import type { Account } from 'account/account.entity';
-import { KnexAccountRepository } from 'account/account.repository.knex';
-import { AccountService } from 'account/account.service';
+import type { Account } from '@/account/account.entity';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
 import type {
     Account as AccountType,
     InternalAccountData,
     Site,
-} from 'account/types';
-import { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { AsyncEvents } from 'core/events';
-import { getError, getValue, isError } from 'core/result';
+} from '@/account/types';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import { getError, getValue, isError } from '@/core/result';
+import { AccountPostsView } from '@/http/api/views/account.posts.view';
+import type { AccountPosts } from '@/http/api/views/account.posts.view';
+import { Audience, Post, PostType } from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
+import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
-import { Audience, Post, PostType } from 'post/post.entity';
-import { KnexPostRepository } from 'post/post.repository.knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AccountPostsView } from './account.posts.view';
-import type { AccountPosts } from './account.posts.view';
 
 describe('AccountPostsView', () => {
     let viewer: AccountPostsView;

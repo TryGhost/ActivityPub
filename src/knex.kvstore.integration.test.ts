@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { KnexKvStore } from '@/knex.kvstore';
+import { createTestDb } from '@/test/db';
 import { Temporal } from '@js-temporal/polyfill';
 import { getLogger } from '@logtape/logtape';
 import type { Knex } from 'knex';
-import { createTestDb } from 'test/db';
-import { KnexKvStore } from './knex.kvstore';
 
 describe('KnexKvStore', () => {
     let client: Knex;

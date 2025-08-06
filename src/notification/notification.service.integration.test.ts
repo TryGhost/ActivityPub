@@ -2,12 +2,15 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
 
-import { ModerationService } from 'moderation/moderation.service';
-import { Audience, PostType } from 'post/post.entity';
-import type { Post } from 'post/post.entity';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import { NotificationService, NotificationType } from './notification.service';
+import { ModerationService } from '@/moderation/moderation.service';
+import {
+    NotificationService,
+    NotificationType,
+} from '@/notification/notification.service';
+import { Audience, PostType } from '@/post/post.entity';
+import type { Post } from '@/post/post.entity';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
 
 describe('NotificationService', () => {
     let client: Knex;

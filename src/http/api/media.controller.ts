@@ -1,9 +1,9 @@
-import type { AccountService } from 'account/account.service';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
+import type { AccountService } from '@/account/account.service';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import type { ImageStorageService } from '@/storage/image-storage.service';
 import type { Context } from 'hono';
-import type { ImageStorageService } from 'storage/image-storage.service';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
 
 /**
  * Controller for media-related operations

@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { type Actor, PropertyValue } from '@fedify/fedify';
 
-import { getAccountHandle, mapActorToExternalAccountData } from './utils';
+import {
+    getAccountHandle,
+    mapActorToExternalAccountData,
+} from '@/account/utils';
 
 describe('mapActorToExternalAccountData', () => {
     it('should map an actor to an external account data object', async () => {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { AccountEntity } from 'account/account.entity';
-import { Post, PostType } from 'post/post.entity';
-import { createInternalAccountDraftData } from '../../../test/account-entity-test-helpers';
-import { postToDTO } from './post';
+import { AccountEntity } from '@/account/account.entity';
+import { postToDTO } from '@/http/api/helpers/post';
+import { Post, PostType } from '@/post/post.entity';
+import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
 
 async function createAuthor() {
     const draftData = await createInternalAccountDraftData({

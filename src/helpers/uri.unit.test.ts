@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isEqual, isUri, toURL } from './uri';
+import { isEqual, isUri, toURL } from '@/helpers/uri';
 
 describe('isUri', () => {
     it('should return a boolean indicating if the provided string is a valid URI', () => {

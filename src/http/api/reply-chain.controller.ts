@@ -1,9 +1,9 @@
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import type { AppContext } from '../../app';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import { NotFound } from './helpers/response';
-import type { ReplyChainView } from './views/reply.chain.view';
+import type { AppContext } from '@/app';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { NotFound } from '@/http/api/helpers/response';
+import type { ReplyChainView } from '@/http/api/views/reply.chain.view';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
 
 export class ReplyChainController {
     constructor(private readonly replyChainView: ReplyChainView) {}

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Article, KvStore } from '@fedify/fedify';
 
-import { FedifyKvStoreObjectStore } from './object';
+import { FedifyKvStoreObjectStore } from '@/activitypub/object';
 
 describe('FedifyKvStoreObjectStore', () => {
     describe('store', () => {

@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { type Result, error, ok } from 'core/result';
-import { sanitizeHtml } from 'helpers/html';
+import type { Account } from '@/account/account.entity';
+import { BaseEntity } from '@/core/base.entity';
+import { type Result, error, ok } from '@/core/result';
+import { parseURL } from '@/core/url';
+import { sanitizeHtml } from '@/helpers/html';
+import { ContentPreparer, type PrepareContentOptions } from '@/post/content';
 import z from 'zod';
-import type { Account } from '../account/account.entity';
-import { BaseEntity } from '../core/base.entity';
-import { parseURL } from '../core/url';
-import { ContentPreparer, type PrepareContentOptions } from './content';
 
 /** @see PostSummary.parse to get a branded PostSummary */
 export type PostSummary = string & { readonly __brand: unique symbol };

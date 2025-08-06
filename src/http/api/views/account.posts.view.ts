@@ -1,18 +1,18 @@
+import type { Account } from '@/account/account.entity';
+import { getAccountHandle } from '@/account/utils';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { type Result, error, getValue, isError, ok } from '@/core/result';
+import { sanitizeHtml } from '@/helpers/html';
+import type { PostDTO } from '@/http/api/types';
+import { ContentPreparer } from '@/post/content';
+import { type Mention, OutboxType, PostType } from '@/post/post.entity';
 import {
     Activity,
     CollectionPage,
     isActor,
     lookupObject,
 } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
-import { getAccountHandle } from 'account/utils';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { type Result, error, getValue, isError, ok } from 'core/result';
-import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-import { ContentPreparer } from 'post/content';
-import { type Mention, OutboxType, PostType } from 'post/post.entity';
-import type { PostDTO } from '../types';
 
 export type GetPostsError =
     | 'invalid-next-parameter'

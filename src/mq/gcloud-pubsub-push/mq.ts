@@ -10,9 +10,9 @@ import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-import type { AccountService } from 'account/account.service';
-import { parseURL } from 'core/url';
-import { analyzeError } from './error-utils';
+import type { AccountService } from '@/account/account.service';
+import { parseURL } from '@/core/url';
+import { analyzeError } from '@/mq/gcloud-pubsub-push/error-utils';
 
 /**
  * Message from Fedify
@@ -490,7 +490,7 @@ const IncomingPushMessageSchema = z.object({
  *
  * @example
  * ```
- * import { createPushMessageHandler, createMessageQueue } from './mq/gcloud-pubsub-push';
+ * import { createPushMessageHandler, createMessageQueue } from '@/mq/gcloud-pubsub-push';
  *
  * const queue = await createMessageQueue(...);
  *

@@ -1,5 +1,5 @@
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { type Actor, type Note, isActor, lookupObject } from '@fedify/fedify';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
 import {
     afterEach,
     beforeAll,
@@ -10,21 +10,25 @@ import {
     vi,
 } from 'vitest';
 
-import { AsyncEvents } from 'core/events';
-import { getError, getValue, isError } from 'core/result';
-import type { Knex } from 'knex';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import { type FixtureManager, createFixtureManager } from 'test/fixtures';
-import { AP_BASE_PATH } from '../constants';
-import { KnexAccountRepository } from './account.repository.knex';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
 import {
     AccountService,
     DELIVERY_FAILURE_BACKOFF_MULTIPLIER,
     DELIVERY_FAILURE_BACKOFF_SECONDS,
-} from './account.service';
-import { AccountFollowedEvent } from './events/account-followed.event';
-import type { ExternalAccountData, InternalAccountData, Site } from './types';
+} from '@/account/account.service';
+import { AccountFollowedEvent } from '@/account/events/account-followed.event';
+import type {
+    ExternalAccountData,
+    InternalAccountData,
+    Site,
+} from '@/account/types';
+import { AP_BASE_PATH } from '@/constants';
+import { AsyncEvents } from '@/core/events';
+import { getError, getValue, isError } from '@/core/result';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
+import { createTestDb } from '@/test/db';
+import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
+import type { Knex } from 'knex';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair

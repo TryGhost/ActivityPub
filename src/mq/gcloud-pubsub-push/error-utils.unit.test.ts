@@ -1,7 +1,7 @@
 import { FetchError } from '@fedify/fedify';
 import { describe, expect, it } from 'vitest';
 
-import { analyzeError } from './error-utils';
+import { analyzeError } from '@/mq/gcloud-pubsub-push/error-utils';
 
 describe('analyzeError', () => {
     it('should handle non Fedify delivery errors as application errors', () => {

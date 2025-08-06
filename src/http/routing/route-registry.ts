@@ -1,14 +1,14 @@
 import 'reflect-metadata';
-import * as Sentry from '@sentry/node';
-import type { AwilixContainer } from 'awilix';
-import type { Hono, MiddlewareHandler, Next } from 'hono';
-import type { AppContext, HonoContextVariables } from '../../app';
+import type { AppContext, HonoContextVariables } from '@/app';
 import {
     ROLES_METADATA_KEY,
     ROUTES_METADATA_KEY,
-} from '../decorators/route.decorator';
-import type { GhostRole } from '../middleware/role-guard';
-import { requireRole } from '../middleware/role-guard';
+} from '@/http/decorators/route.decorator';
+import type { GhostRole } from '@/http/middleware/role-guard';
+import { requireRole } from '@/http/middleware/role-guard';
+import * as Sentry from '@sentry/node';
+import type { AwilixContainer } from 'awilix';
+import type { Hono, MiddlewareHandler, Next } from 'hono';
 
 interface RouteRegistration {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE';

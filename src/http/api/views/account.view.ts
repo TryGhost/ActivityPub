@@ -1,13 +1,13 @@
+import type { Account } from '@/account/account.entity';
+import { getAccountHandle } from '@/account/utils';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { getError, getValue, isError } from '@/core/result';
+import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
+import { sanitizeHtml } from '@/helpers/html';
+import type { AccountDTO } from '@/http/api/types';
+import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
 import { type Actor, type Collection, isActor } from '@fedify/fedify';
-import type { Account } from 'account/account.entity';
-import { getAccountHandle } from 'account/utils';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import { getError, getValue, isError } from 'core/result';
-import { getAttachments, getHandle } from 'helpers/activitypub/actor';
-import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
-import { lookupActorProfile, lookupObject } from 'lookup-helpers';
-import type { AccountDTO } from '../types';
 
 /**
  * Additional context that can be passed to the view

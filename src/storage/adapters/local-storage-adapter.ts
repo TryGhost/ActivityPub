@@ -1,11 +1,11 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
-import { type Result, error, ok } from 'core/result';
+import { type Result, error, ok } from '@/core/result';
 import type {
     StorageAdapter,
     StorageError,
     VerificationError,
-} from './storage-adapter';
+} from '@/storage/adapters/storage-adapter';
 
 export class LocalStorageAdapter implements StorageAdapter {
     private readonly hostingUrl: URL;

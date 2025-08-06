@@ -1,3 +1,9 @@
+import {
+    createOutboxCounter,
+    createOutboxDispatcher,
+    likedDispatcher,
+    nodeInfoDispatcher,
+} from '@/dispatchers';
 import type {
     Announce,
     Article,
@@ -5,33 +11,27 @@ import type {
     Note,
     RequestContext,
 } from '@fedify/fedify';
-import {
-    createOutboxCounter,
-    createOutboxDispatcher,
-    likedDispatcher,
-    nodeInfoDispatcher,
-} from './dispatchers';
 
-import type { ContextData } from 'app';
+import type { AccountEntity } from '@/account/account.entity';
+import type { AccountService } from '@/account/account.service';
+import type { ContextData } from '@/app';
+import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import {
     buildAnnounceActivityForPost,
     buildCreateActivityAndObjectFromPost,
-} from 'helpers/activitypub/activity';
+} from '@/helpers/activitypub/activity';
+import { OutboxType, Post, PostType } from '@/post/post.entity';
+import type { PostService } from '@/post/post.service';
+import type { Site, SiteService } from '@/site/site.service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AccountEntity } from './account/account.entity';
-import type { AccountService } from './account/account.service';
-import { ACTOR_DEFAULT_HANDLE } from './constants';
-import { OutboxType, Post, PostType } from './post/post.entity';
-import type { PostService } from './post/post.service';
-import type { Site, SiteService } from './site/site.service';
 
-vi.mock('./app', () => ({
+vi.mock('@/app', () => ({
     fedify: {
         createContext: vi.fn(),
     },
 }));
 
-vi.mock('helpers/activitypub/activity', () => ({
+vi.mock('@/helpers/activitypub/activity', () => ({
     buildCreateActivityAndObjectFromPost: vi.fn(),
     buildAnnounceActivityForPost: vi.fn(),
 }));

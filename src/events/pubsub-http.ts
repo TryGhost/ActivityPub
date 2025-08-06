@@ -3,15 +3,15 @@ import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
-import type { ContextData } from 'app';
-import { createFedifyCtxForHost } from 'helpers/fedify';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { ContextData } from '@/app';
+import { createFedifyCtxForHost } from '@/helpers/fedify';
 
 import {
     PUBSUB_MESSAGE_ATTR_EVENT_HOST,
     PUBSUB_MESSAGE_ATTR_EVENT_NAME,
     type PubSubEvents,
-} from './pubsub';
+} from '@/events/pubsub';
 
 const IncomingMessagePayloadSchema = z.object({
     message: z.object({

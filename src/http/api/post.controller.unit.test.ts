@@ -1,23 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Federation } from '@fedify/fedify';
-import { AccountEntity } from 'account/account.entity';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { AccountService } from 'account/account.service';
-import type { AppContext, ContextData } from 'app';
-import { error, ok } from 'core/result';
+import { AccountEntity } from '@/account/account.entity';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { AccountService } from '@/account/account.service';
+import type { AppContext, ContextData } from '@/app';
+import { error, ok } from '@/core/result';
+import { PostController } from '@/http/api/post.controller';
 import {
     Audience,
     Post,
     PostSummary,
     PostTitle,
     PostType,
-} from 'post/post.entity';
-import type { KnexPostRepository } from 'post/post.repository.knex';
-import type { PostService } from 'post/post.service';
-import type { Site } from 'site/site.service';
-import { createInternalAccountDraftData } from '../../test/account-entity-test-helpers';
-import { PostController } from './post.controller';
+} from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
+import type { PostService } from '@/post/post.service';
+import type { Site } from '@/site/site.service';
+import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
+import type { Federation } from '@fedify/fedify';
 
 describe('Post API', () => {
     let site: Site;

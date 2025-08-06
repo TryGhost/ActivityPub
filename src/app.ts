@@ -1,6 +1,72 @@
 import 'reflect-metadata';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
+import type { Account } from '@/account/account.entity';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
+import type { CreateHandler } from '@/activity-handlers/create.handler';
+import type { DeleteHandler } from '@/activity-handlers/delete.handler';
+import type { FollowHandler } from '@/activity-handlers/follow.handler';
+import type { UpdateHandler } from '@/activity-handlers/update.handler';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
+import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
+import { container } from '@/configuration/container';
+import { registerDependencies } from '@/configuration/registrations';
+import { knex } from '@/db';
+import {
+    acceptDispatcher,
+    announceDispatcher,
+    articleDispatcher,
+    createDispatcher,
+    followDispatcher,
+    followingFirstCursor,
+    inboxErrorHandler,
+    likeDispatcher,
+    likedCounter,
+    likedDispatcher,
+    likedFirstCursor,
+    nodeInfoDispatcher,
+    noteDispatcher,
+    outboxFirstCursor,
+    undoDispatcher,
+    updateDispatcher,
+} from '@/dispatchers';
+import type { EventSerializer } from '@/events/event';
+import type { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
+import type { GhostExploreService } from '@/explore/ghost-explore.service';
+import type { FeedUpdateService } from '@/feed/feed-update.service';
+import type { GhostPostService } from '@/ghost/ghost-post.service';
+import { getTraceContext } from '@/helpers/context-header';
+import { AccountController } from '@/http/api/account.controller';
+import { BlockController } from '@/http/api/block.controller';
+import { FeedController } from '@/http/api/feed.controller';
+import { FollowController } from '@/http/api/follow.controller';
+import { BadRequest } from '@/http/api/helpers/response';
+import { LikeController } from '@/http/api/like.controller';
+import { MediaController } from '@/http/api/media.controller';
+import { NotificationController } from '@/http/api/notification.controller';
+import { PostController } from '@/http/api/post.controller';
+import { ReplyChainController } from '@/http/api/reply-chain.controller';
+import { SearchController } from '@/http/api/search.controller';
+import type { SiteController } from '@/http/api/site.controller';
+import { WebFingerController } from '@/http/api/webfinger.controller';
+import type { WebhookController } from '@/http/api/webhook.controller';
+import {
+    GhostRole,
+    createRoleMiddleware,
+    requireRole,
+} from '@/http/middleware/role-guard';
+import { RouteRegistry } from '@/http/routing/route-registry';
+import { setupInstrumentation, spanWrapper } from '@/instrumentation';
+import {
+    type GCloudPubSubPushMessageQueue,
+    createPushMessageHandler,
+} from '@/mq/gcloud-pubsub-push/mq';
+import type { NotificationEventService } from '@/notification/notification-event.service';
+import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
+import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import type { Site, SiteService } from '@/site/site.service';
 import {
     Accept,
     Announce,
@@ -31,76 +97,10 @@ import {
     withContext,
 } from '@logtape/logtape';
 import * as Sentry from '@sentry/node';
-import type { Account } from 'account/account.entity';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { CreateHandler } from 'activity-handlers/create.handler';
-import type { FollowHandler } from 'activity-handlers/follow.handler';
-import type { UpdateHandler } from 'activity-handlers/update.handler';
-import type { DeleteDispatcher } from 'activitypub/object-dispatchers/delete.dispatcher';
 import { get } from 'es-toolkit/compat';
-import type { EventSerializer } from 'events/event';
-import type { createIncomingPubSubMessageHandler } from 'events/pubsub-http';
-import type { GhostPostService } from 'ghost/ghost-post.service';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
-import { AccountController } from 'http/api/account.controller';
-import { BlockController } from 'http/api/block.controller';
-import { FeedController } from 'http/api/feed.controller';
-import { FollowController } from 'http/api/follow.controller';
-import { BadRequest } from 'http/api/helpers/response';
-import { LikeController } from 'http/api/like.controller';
-import { MediaController } from 'http/api/media.controller';
-import { NotificationController } from 'http/api/notification.controller';
-import { PostController } from 'http/api/post.controller';
-import { ReplyChainController } from 'http/api/reply-chain.controller';
-import { SearchController } from 'http/api/search.controller';
-import type { SiteController } from 'http/api/site.controller';
-import { WebFingerController } from 'http/api/webfinger.controller';
-import type { WebhookController } from 'http/api/webhook.controller';
-import type { NotificationEventService } from 'notification/notification-event.service';
-import type { PostInteractionCountsService } from 'post/post-interaction-counts.service';
 import { behindProxy } from 'x-forwarded-fetch';
-import { dispatchRejectActivity } from './activity-dispatchers/reject.dispatcher';
-import type { DeleteHandler } from './activity-handlers/delete.handler';
-import type { FedifyContextFactory } from './activitypub/fedify-context.factory';
-import type { FediverseBridge } from './activitypub/fediverse-bridge';
-import { container } from './configuration/container';
-import { registerDependencies } from './configuration/registrations';
-import { knex } from './db';
-import {
-    acceptDispatcher,
-    announceDispatcher,
-    articleDispatcher,
-    createDispatcher,
-    followDispatcher,
-    followingFirstCursor,
-    inboxErrorHandler,
-    likeDispatcher,
-    likedCounter,
-    likedDispatcher,
-    likedFirstCursor,
-    nodeInfoDispatcher,
-    noteDispatcher,
-    outboxFirstCursor,
-    undoDispatcher,
-    updateDispatcher,
-} from './dispatchers';
-import type { GhostExploreService } from './explore/ghost-explore.service';
-import type { FeedUpdateService } from './feed/feed-update.service';
-import { getTraceContext } from './helpers/context-header';
-import {
-    GhostRole,
-    createRoleMiddleware,
-    requireRole,
-} from './http/middleware/role-guard';
-import { RouteRegistry } from './http/routing/route-registry';
-import { setupInstrumentation, spanWrapper } from './instrumentation';
-import {
-    type GCloudPubSubPushMessageQueue,
-    createPushMessageHandler,
-} from './mq/gcloud-pubsub-push/mq';
-import { PostInteractionCountsUpdateRequestedEvent } from './post/post-interaction-counts-update-requested.event';
-import type { Site, SiteService } from './site/site.service';
 
 await setupInstrumentation();
 

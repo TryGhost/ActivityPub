@@ -5,12 +5,12 @@ import {
     AccountFollowedEvent,
     DomainBlockedEvent,
     NotificationsReadEvent,
-} from 'account/events';
-import type { NotificationService } from 'notification/notification.service';
-import { PostCreatedEvent } from 'post/post-created.event';
-import { PostDeletedEvent } from 'post/post-deleted.event';
-import { PostLikedEvent } from 'post/post-liked.event';
-import { PostRepostedEvent } from 'post/post-reposted.event';
+} from '@/account/events';
+import type { NotificationService } from '@/notification/notification.service';
+import { PostCreatedEvent } from '@/post/post-created.event';
+import { PostDeletedEvent } from '@/post/post-deleted.event';
+import { PostLikedEvent } from '@/post/post-liked.event';
+import { PostRepostedEvent } from '@/post/post-reposted.event';
 
 export class NotificationEventService {
     constructor(

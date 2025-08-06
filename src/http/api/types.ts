@@ -1,4 +1,4 @@
-import type { Metadata, PostType } from '../../post/post.entity';
+import type { Metadata, PostType } from '@/post/post.entity';
 
 /**
  * Base account DTO that can be used across different views

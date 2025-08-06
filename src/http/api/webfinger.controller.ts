@@ -1,9 +1,9 @@
 import type { Context as HonoContext, Next } from 'hono';
 
-import type { Account } from 'account/account.entity';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { SiteService } from 'site/site.service';
-import { Route } from '../decorators/route.decorator';
+import type { Account } from '@/account/account.entity';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import { Route } from '@/http/decorators/route.decorator';
+import type { SiteService } from '@/site/site.service';
 
 const ACCOUNT_RESOURCE_PREFIX = 'acct:';
 const HOST_REGEX = /^([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z0-9]+)$/;

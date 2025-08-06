@@ -1,27 +1,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '@logtape/logtape';
-import { AsyncEvents } from 'core/events';
-import type { Knex } from 'knex';
-import { ModerationService } from 'moderation/moderation.service';
-import { generateTestCryptoKeyPair } from 'test/crypto-key-pair';
-import { createTestDb } from 'test/db';
-import type { Account } from '../account/account.entity';
-import { KnexAccountRepository } from '../account/account.repository.knex';
-import { AccountService } from '../account/account.service';
-import type { Account as AccountType, Site } from '../account/types';
-import { FedifyContextFactory } from '../activitypub/fedify-context.factory';
+import type { Account } from '@/account/account.entity';
+import { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountService } from '@/account/account.service';
+import type { Account as AccountType, Site } from '@/account/types';
+import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AsyncEvents } from '@/core/events';
+import { FeedService } from '@/feed/feed.service';
+import { ModerationService } from '@/moderation/moderation.service';
+import { Post } from '@/post/post.entity';
 import {
     Audience,
     type FollowersOnlyPost,
     type PostData,
     PostType,
     type PublicPost,
-} from '../post/post.entity';
-import { Post } from '../post/post.entity';
-import { KnexPostRepository } from '../post/post.repository.knex';
-import { SiteService } from '../site/site.service';
-import { FeedService } from './feed.service';
+} from '@/post/post.entity';
+import { KnexPostRepository } from '@/post/post.repository.knex';
+import { SiteService } from '@/site/site.service';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
+import { createTestDb } from '@/test/db';
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
 
 describe('FeedService', () => {
     let events: AsyncEvents;

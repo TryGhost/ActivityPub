@@ -1,4 +1,26 @@
 import { createHash } from 'node:crypto';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import type { AccountService } from '@/account/account.service';
+import type { AppContext, ContextData } from '@/app';
+import { ACTOR_DEFAULT_HANDLE } from '@/constants';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { parseURL } from '@/core/url';
+import { getRelatedActivities } from '@/db';
+import { buildAnnounceActivityForPost } from '@/helpers/activitypub/activity';
+import { getHandle } from '@/helpers/activitypub/actor';
+import { postToDTO } from '@/http/api/helpers/post';
+import {
+    BadRequest,
+    Conflict,
+    Forbidden,
+    NotFound,
+} from '@/http/api/helpers/response';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import { lookupActor, lookupObject } from '@/lookup-helpers';
+import type { ImageAttachment } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
+import type { PostService } from '@/post/post.service';
 import {
     type Actor,
     Announce,
@@ -11,24 +33,7 @@ import {
     Undo,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
-import type { KnexAccountRepository } from 'account/account.repository.knex';
-import type { AccountService } from 'account/account.service';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { parseURL } from 'core/url';
-import { buildAnnounceActivityForPost } from 'helpers/activitypub/activity';
-import { getHandle } from 'helpers/activitypub/actor';
-import { lookupActor, lookupObject } from 'lookup-helpers';
-import type { ImageAttachment } from 'post/post.entity';
-import type { KnexPostRepository } from 'post/post.repository.knex';
-import type { PostService } from 'post/post.service';
 import { z } from 'zod';
-import type { AppContext, ContextData } from '../../app';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { getRelatedActivities } from '../../db';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import { postToDTO } from './helpers/post';
-import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 /**
  * Controller for post-related operations

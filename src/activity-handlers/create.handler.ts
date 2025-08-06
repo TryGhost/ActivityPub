@@ -1,9 +1,9 @@
+import type { AccountService } from '@/account/account.service';
+import type { ContextData } from '@/app';
+import { exhaustiveCheck, getError, isError } from '@/core/result';
+import type { PostService } from '@/post/post.service';
+import type { SiteService } from '@/site/site.service';
 import type { Context, Create } from '@fedify/fedify';
-import type { AccountService } from 'account/account.service';
-import type { ContextData } from 'app';
-import { exhaustiveCheck, getError, isError } from 'core/result';
-import type { PostService } from 'post/post.service';
-import type { SiteService } from 'site/site.service';
 
 export class CreateHandler {
     constructor(

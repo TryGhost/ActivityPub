@@ -1,5 +1,5 @@
+import type { ContextData } from '@/app';
 import { Delete, type RequestContext } from '@fedify/fedify';
-import type { ContextData } from 'app';
 
 export class DeleteDispatcher {
     async dispatch(

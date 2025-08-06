@@ -1,10 +1,10 @@
-import type { Account } from 'account/account.entity';
-import type { FedifyContextFactory } from 'activitypub/fedify-context.factory';
+import type { Account } from '@/account/account.entity';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { PostType } from '@/post/post.entity';
 import type { Knex } from 'knex';
-import { PostType } from 'post/post.entity';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AccountPostsView } from './account.posts.view';
+import { AccountPostsView } from '@/http/api/views/account.posts.view';
 
 // Mock the fedify modules
 vi.mock('@fedify/fedify', () => ({
@@ -26,11 +26,11 @@ vi.mock('@fedify/fedify', () => ({
 }));
 
 // Mock the content helpers
-vi.mock('helpers/html', () => ({
+vi.mock('@/helpers/html', () => ({
     sanitizeHtml: vi.fn((content: string) => `${content} [sanitized]`),
 }));
 
-vi.mock('post/content', () => ({
+vi.mock('@/post/content', () => ({
     ContentPreparer: {
         updateMentions: vi.fn(
             (content: string) => `${content} [mentions updated]`,
@@ -290,8 +290,8 @@ describe('Account Posts View', () => {
 
             // Get mocked modules
             const fedifyModule = await vi.importMock('@fedify/fedify');
-            const htmlModule = await vi.importMock('helpers/html');
-            const contentModule = await vi.importMock('post/content');
+            const htmlModule = await vi.importMock('@/helpers/html');
+            const contentModule = await vi.importMock('@/post/content');
 
             isActor = (fedifyModule as { isActor: typeof isActor }).isActor;
             lookupObject = (

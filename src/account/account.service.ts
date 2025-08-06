@@ -8,20 +8,20 @@ import {
 import type { Knex } from 'knex';
 
 import { randomUUID } from 'node:crypto';
-import type { AsyncEvents } from 'core/events';
-import { type Result, error, getValue, isError, ok } from 'core/result';
-import { parseURL } from 'core/url';
-import type { FedifyContextFactory } from '../activitypub/fedify-context.factory';
-import { type Account, AccountEntity } from './account.entity';
-import type { KnexAccountRepository } from './account.repository.knex';
-import { AccountFollowedEvent } from './events/account-followed.event';
+import { type Account, AccountEntity } from '@/account/account.entity';
+import type { KnexAccountRepository } from '@/account/account.repository.knex';
+import { AccountFollowedEvent } from '@/account/events/account-followed.event';
 import type {
     Account as AccountType,
     ExternalAccountData,
     InternalAccountData,
     Site,
-} from './types';
-import { mapActorToExternalAccountData } from './utils';
+} from '@/account/types';
+import { mapActorToExternalAccountData } from '@/account/utils';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { AsyncEvents } from '@/core/events';
+import { type Result, error, getValue, isError, ok } from '@/core/result';
+import { parseURL } from '@/core/url';
 
 interface GetFollowingAccountsOptions {
     limit: number;

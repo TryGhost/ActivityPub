@@ -1,5 +1,15 @@
 import { createHash } from 'node:crypto';
 
+import type { AppContext, ContextData } from '@/app';
+import { ACTOR_DEFAULT_HANDLE } from '@/constants';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { parseURL } from '@/core/url';
+import { Forbidden } from '@/http/api/helpers/response';
+import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { GhostRole } from '@/http/middleware/role-guard';
+import { lookupActor, lookupObject } from '@/lookup-helpers';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
+import type { PostService } from '@/post/post.service';
 import {
     type Actor,
     type Federation,
@@ -7,16 +17,6 @@ import {
     PUBLIC_COLLECTION,
     Undo,
 } from '@fedify/fedify';
-import type { AppContext, ContextData } from 'app';
-import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
-import { parseURL } from 'core/url';
-import { lookupActor, lookupObject } from 'lookup-helpers';
-import type { KnexPostRepository } from 'post/post.repository.knex';
-import type { PostService } from 'post/post.service';
-import { ACTOR_DEFAULT_HANDLE } from '../../constants';
-import { RequireRoles, Route } from '../decorators/route.decorator';
-import { GhostRole } from '../middleware/role-guard';
-import { Forbidden } from './helpers/response';
 
 export class LikeController {
     constructor(

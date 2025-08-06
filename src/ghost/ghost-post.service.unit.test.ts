@@ -1,13 +1,13 @@
+import type { Account } from '@/account/account.entity';
+import type { AsyncEvents } from '@/core/events';
+import { error, getError, getValue, isError, ok } from '@/core/result';
+import { GhostPostService } from '@/ghost/ghost-post.service';
+import { Post } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
+import type { PostService } from '@/post/post.service';
 import type { Logger } from '@logtape/logtape';
-import type { Account } from 'account/account.entity';
-import type { AsyncEvents } from 'core/events';
-import { error, getError, getValue, isError, ok } from 'core/result';
 import type { Knex } from 'knex';
-import { Post } from 'post/post.entity';
-import type { KnexPostRepository } from 'post/post.repository.knex';
-import type { PostService } from 'post/post.service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GhostPostService } from './ghost-post.service';
 
 describe('GhostPostService', () => {
     let ghostPostService: GhostPostService;

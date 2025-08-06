@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppContext } from '../../app';
-import type { Site, SiteService } from '../../site/site.service';
-import { SiteController } from './site.controller';
+import type { AppContext } from '@/app';
+import { SiteController } from '@/http/api/site.controller';
+import type { Site, SiteService } from '@/site/site.service';
 
 describe('SiteController', () => {
     let siteService: SiteService;
