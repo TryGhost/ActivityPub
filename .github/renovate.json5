@@ -18,7 +18,7 @@
       "automerge": true
     },
     {
-      "matchPackageNames": ["@fedify/fedify", "@fedify/fedify-cli"],
+      "matchPackageNames": ["@fedify/fedify", "@fedify/cli"],
       "automerge": false
     },
     {
