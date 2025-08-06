@@ -51,10 +51,19 @@ export function createRoleMiddleware(jwksCache: KvStore) {
         const request = ctx.req;
         const host = request.header('host');
         if (!host) {
-            ctx.get('logger').info('No Host header');
-            return new Response('No Host header', {
-                status: 401,
-            });
+            ctx.get('logger').error('No Host header');
+            return new Response(
+                JSON.stringify({
+                    error: 'Unauthorized',
+                    code: 'HOST_MISSING',
+                }),
+                {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                },
+            );
         }
         ctx.set('role', GhostRole.Anonymous);
 
@@ -67,10 +76,21 @@ export function createRoleMiddleware(jwksCache: KvStore) {
         const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
 
         if (!match) {
-            ctx.get('logger').info('Invalid Authorization header');
-            return new Response('Invalid Authorization header', {
-                status: 401,
+            ctx.get('logger').error('Invalid Authorization header', {
+                headerValue: authorization,
             });
+            return new Response(
+                JSON.stringify({
+                    error: 'Unauthorized',
+                    code: 'INVALID_AUTHORIZATION_HEADER',
+                }),
+                {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                },
+            );
         }
 
         let protocol = 'https';
@@ -91,14 +111,30 @@ export function createRoleMiddleware(jwksCache: KvStore) {
 
         if (!key) {
             ctx.get('logger').error('No key found for {host}', { host });
-            return new Response('No key found', {
-                status: 401,
-            });
+            return new Response(
+                JSON.stringify({
+                    error: 'Unauthorized',
+                    code: 'JWKS_MISSING',
+                }),
+                {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                },
+            );
         }
 
         try {
             const claims = jwt.verify(token, key);
             if (typeof claims === 'string' || typeof claims.role !== 'string') {
+                ctx.get('logger').error(
+                    'Invalid claims for JWT - using Anonymous',
+                    {
+                        jwtClaims: claims,
+                    },
+                );
+                ctx.set('role', GhostRole.Anonymous);
                 return;
             }
             if (
@@ -122,9 +158,18 @@ export function createRoleMiddleware(jwksCache: KvStore) {
                     ],
                 );
             } else {
+                ctx.get('logger').error(
+                    'Invalid role {role} - using Anonymous',
+                    {
+                        role: claims.role,
+                    },
+                );
                 ctx.set('role', GhostRole.Anonymous);
             }
-        } catch (_err) {
+        } catch (err) {
+            ctx.get('logger').error('Error verifying JWT', {
+                error: err,
+            });
             ctx.set('role', GhostRole.Anonymous);
         }
 
@@ -135,9 +180,25 @@ export function createRoleMiddleware(jwksCache: KvStore) {
 export function requireRole(...roles: GhostRole[]) {
     return function roleMiddleware(ctx: HonoContext, next: Next) {
         if (!roles.includes(ctx.get('role'))) {
-            return new Response(null, {
-                status: 403,
-            });
+            ctx.get('logger').error(
+                'User role {userRole} is not allowed to access this resource',
+                {
+                    userRole: ctx.get('role'),
+                    allowedRoles: roles,
+                },
+            );
+            return new Response(
+                JSON.stringify({
+                    error: 'Forbidden',
+                    code: 'ROLE_MISSING',
+                }),
+                {
+                    status: 403,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                },
+            );
         }
         return next();
     };

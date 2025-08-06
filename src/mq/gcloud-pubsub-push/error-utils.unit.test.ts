@@ -462,7 +462,16 @@ describe('analyzeError', () => {
             expect(result.isReportable).toBe(false);
         });
 
-        it('should handle ECONNRESET errors as non-retryable', () => {
+        it('should handle read ECONNRESET errors as non-retryable', () => {
+            const error = new Error('read ECONNRESET');
+
+            const result = analyzeError(error);
+
+            expect(result.isRetryable).toBe(true);
+            expect(result.isReportable).toBe(false);
+        });
+
+        it('should handle connect ECONNRESET errors as non-retryable', () => {
             const error = new Error('connect ECONNRESET');
 
             const result = analyzeError(error);

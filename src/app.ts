@@ -731,9 +731,18 @@ app.use(async (ctx, next) => {
 
     if (!site) {
         ctx.get('logger').info('No site found for {host}', { host });
-        return new Response(null, {
-            status: 403,
-        });
+        return new Response(
+            JSON.stringify({
+                error: 'Forbidden',
+                code: 'SITE_MISSING',
+            }),
+            {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            },
+        );
     }
 
     ctx.set('site', site);
