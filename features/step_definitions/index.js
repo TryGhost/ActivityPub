@@ -1,12 +1,13 @@
-import fs from 'node:fs';
-import { resolve } from 'node:path';
-
 import {
     AfterAll,
     Before,
     BeforeAll,
     setDefaultTimeout,
 } from '@cucumber/cucumber';
+
+import fs from 'node:fs';
+import { resolve } from 'node:path';
+
 import jose from 'node-jose';
 
 import { getClient, reset as resetDatabase } from '../support/db.js';

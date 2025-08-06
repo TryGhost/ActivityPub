@@ -1,6 +1,5 @@
 import * as Sentry from '@sentry/node';
 
-import type { AccountService } from '@/account/account.service';
 import { getAccountHandle } from '@/account/utils';
 import type { AppContext } from '@/app';
 import type { FeedService, FeedType } from '@/feed/feed.service';
@@ -25,7 +24,6 @@ const MAX_FEED_POSTS_LIMIT = 100;
 export class FeedController {
     constructor(
         private readonly feedService: FeedService,
-        private readonly accountService: AccountService,
         private readonly postInteractionCountsService: PostInteractionCountsService,
     ) {}
 

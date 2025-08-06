@@ -1,6 +1,8 @@
-import { randomBytes } from 'node:crypto';
-import knex from 'knex';
 import { afterAll } from 'vitest';
+
+import { randomBytes } from 'node:crypto';
+
+import knex from 'knex';
 
 /**
  * Creates an empty DB with the activitypub schema.

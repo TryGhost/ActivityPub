@@ -3,12 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Sentry from '@sentry/node';
 
 import { AccountEntity } from '@/account/account.entity';
-import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import type { FeedService } from '@/feed/feed.service';
 import { FeedController } from '@/http/api/feed.controller';
-import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { PostType } from '@/post/post.entity';
+import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import type { Site } from '@/site/site.service';
 import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
 
@@ -20,7 +19,6 @@ vi.mock('@sentry/node', () => {
 
 describe('Feed API', () => {
     let feedService: FeedService;
-    let accountService: AccountService;
     let postInteractionCountsService: PostInteractionCountsService;
     let feedController: FeedController;
     let site: Site;
@@ -151,16 +149,6 @@ describe('Feed API', () => {
             ...draft,
         });
 
-        accountService = {
-            getDefaultAccountForSite: async (_site: Site) => {
-                if (_site === site) {
-                    return account;
-                }
-
-                return null;
-            },
-        } as unknown as AccountService;
-
         postInteractionCountsService = {
             requestUpdate: vi.fn().mockResolvedValue(undefined),
         } as unknown as PostInteractionCountsService;
@@ -169,7 +157,6 @@ describe('Feed API', () => {
 
         feedController = new FeedController(
             feedService,
-            accountService,
             postInteractionCountsService,
         );
 

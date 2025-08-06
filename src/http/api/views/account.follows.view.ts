@@ -1,9 +1,3 @@
-import type { Account } from '@/account/account.entity';
-import { getAccountHandle } from '@/account/utils';
-import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import { type Result, error, getValue, isError, ok } from '@/core/result';
-import type { MinimalAccountDTO } from '@/http/api/types';
-import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type Actor,
     CollectionPage,
@@ -12,6 +6,13 @@ import {
     lookupObject,
 } from '@fedify/fedify';
 import type { Knex } from 'knex';
+
+import type { Account } from '@/account/account.entity';
+import { getAccountHandle } from '@/account/utils';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { error, getValue, isError, ok, type Result } from '@/core/result';
+import type { MinimalAccountDTO } from '@/http/api/types';
+import type { ModerationService } from '@/moderation/moderation.service';
 
 /**
  * Maximum number of follow accounts to return
@@ -172,7 +173,7 @@ export class AccountFollowsView {
             if (!(page instanceof CollectionPage) || !page?.itemIds) {
                 return error('error-getting-follows');
             }
-        } catch (err) {
+        } catch (_err) {
             return error('error-getting-follows');
         }
 
@@ -282,7 +283,7 @@ export class AccountFollowsView {
 
                 page = getValue(pageResult);
             }
-        } catch (err) {
+        } catch (_err) {
             return error('error-getting-follows');
         }
 
@@ -415,7 +416,7 @@ export class AccountFollowsView {
                         domainBlockedByMe,
                     });
                 }
-            } catch (err) {
+            } catch (_err) {
                 ctx.data.logger.error('Error while iterating over follow list');
                 // Skip this item if processing fails
                 // This ensures that a single invalid or unreachable follow doesn't block the API from returning valid follows

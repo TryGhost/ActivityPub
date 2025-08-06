@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,15 +7,32 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["package.json", "**/__snapshots__/**"]
+    "includes": ["**", "!**/package.json", "!**/__snapshots__/**"]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 4
   },
-  "organizeImports": {
-    "enabled": true
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              ["vitest", "@cucumber/cucumber"],
+              ":BLANK_LINE:",
+              ":NODE:",
+              ":BLANK_LINE:",
+              ":PACKAGE:",
+              ":BLANK_LINE:",
+              ":ALIAS:"
+            ]
+          }
+        }
+      }
+    }
   },
   "linter": {
     "enabled": true,
@@ -26,9 +43,6 @@
       },
       "style": {
         "noNonNullAssertion": "off"
-      },
-      "suspicious": {
-        "noConsoleLog": "off"
       }
     }
   },

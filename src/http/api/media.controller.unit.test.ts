@@ -1,10 +1,11 @@
-import type { AccountService } from '@/account/account.service';
-import { error, ok } from '@/core/result';
-import type { ImageStorageService } from '@/storage/image-storage.service';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+
 import type { Context } from 'hono';
 
+import type { AccountService } from '@/account/account.service';
+import { error, ok } from '@/core/result';
 import { MediaController } from '@/http/api/media.controller';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ImageStorageService } from '@/storage/image-storage.service';
 
 describe('Image Upload API', () => {
     let accountService: AccountService;

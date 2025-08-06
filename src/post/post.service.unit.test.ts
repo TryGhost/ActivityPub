@@ -1,5 +1,6 @@
-import type { Logger } from '@logtape/logtape';
 import { describe, expect, it, vi } from 'vitest';
+
+import type { Logger } from '@logtape/logtape';
 
 import type { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';

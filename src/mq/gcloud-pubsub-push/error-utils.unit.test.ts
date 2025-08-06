@@ -1,5 +1,6 @@
-import { FetchError } from '@fedify/fedify';
 import { describe, expect, it } from 'vitest';
+
+import { FetchError } from '@fedify/fedify';
 
 import { analyzeError } from '@/mq/gcloud-pubsub-push/error-utils';
 

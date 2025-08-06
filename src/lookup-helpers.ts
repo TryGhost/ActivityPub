@@ -1,15 +1,16 @@
-import type { ContextData } from '@/app';
-import { type Result, error, ok } from '@/core/result';
 import {
-    Object as APObject,
     type Actor,
+    Object as APObject,
     type Article,
     type Collection,
     type Context,
-    type Note,
     isActor,
     lookupWebFinger,
+    type Note,
 } from '@fedify/fedify';
+
+import type { ContextData } from '@/app';
+import { error, ok, type Result } from '@/core/result';
 
 export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
@@ -56,7 +57,7 @@ export async function lookupObject(
     let documentLoader = null;
     try {
         documentLoader = await ctx.getDocumentLoader({ identifier: 'index' });
-    } catch (err) {
+    } catch (_err) {
         ctx.data.logger.warn(
             'Could not get authenticated document loader for lookupObject',
         );

@@ -37,7 +37,7 @@ async function getKey(
         await jwksCache.set(['cachedJwks', jwksURL.hostname], key);
 
         return key;
-    } catch (err) {
+    } catch (_err) {
         if (retries === 0) {
             return null;
         }
@@ -124,7 +124,7 @@ export function createRoleMiddleware(jwksCache: KvStore) {
             } else {
                 ctx.set('role', GhostRole.Anonymous);
             }
-        } catch (err) {
+        } catch (_err) {
             ctx.set('role', GhostRole.Anonymous);
         }
 

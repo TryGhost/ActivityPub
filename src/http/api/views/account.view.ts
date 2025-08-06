@@ -1,3 +1,6 @@
+import { type Actor, type Collection, isActor } from '@fedify/fedify';
+import type { Knex } from 'knex';
+
 import type { Account } from '@/account/account.entity';
 import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
@@ -6,8 +9,6 @@ import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
 import { sanitizeHtml } from '@/helpers/html';
 import type { AccountDTO } from '@/http/api/types';
 import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
-import { type Actor, type Collection, isActor } from '@fedify/fedify';
-import type { Knex } from 'knex';
 
 /**
  * Additional context that can be passed to the view
@@ -366,7 +367,7 @@ export class AccountView {
             const collection = await getCollection.bind(actor)();
 
             return collection?.totalItems ?? 0;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }

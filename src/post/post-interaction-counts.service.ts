@@ -2,12 +2,12 @@ import type { Logger } from '@logtape/logtape';
 
 import { getError, isError } from '@/core/result';
 import type { PubSubEvents } from '@/events/pubsub';
-import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import {
     INTERACTION_COUNTS_NOT_FOUND,
     type PostService,
 } from '@/post/post.service';
+import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 
 export class PostInteractionCountsService {
     constructor(
@@ -116,7 +116,7 @@ export class PostInteractionCountsService {
             lastUpdate = publishedAt;
         }
 
-        const now = new Date().getTime();
+        const now = Date.now();
         const timeSinceLastUpdate = now - lastUpdate.getTime();
         const timeSincePublished = now - publishedAt.getTime();
 

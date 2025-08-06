@@ -1,6 +1,7 @@
+import { Given, When } from '@cucumber/cucumber';
+
 import { createHmac } from 'node:crypto';
 
-import { Given, When } from '@cucumber/cucumber';
 import { merge } from 'es-toolkit';
 
 import { createWebhookPost, getWebhookSecret } from '../support/fixtures.js';

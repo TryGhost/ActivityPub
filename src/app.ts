@@ -1,6 +1,43 @@
 import 'reflect-metadata';
+
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
+
+import {
+    Accept,
+    Announce,
+    Article,
+    type Context,
+    Create,
+    Delete,
+    type Federation,
+    Follow,
+    type KvStore,
+    Like,
+    Note,
+    Reject,
+    type RequestContext,
+    Undo,
+    Update,
+} from '@fedify/fedify';
+import { federation } from '@fedify/fedify/x/hono';
+import { serve } from '@hono/node-server';
+import {
+    configure,
+    getAnsiColorFormatter,
+    getConsoleSink,
+    isLogLevel,
+    type Logger,
+    type LogLevel,
+    type LogRecord,
+    withContext,
+} from '@logtape/logtape';
+import * as Sentry from '@sentry/node';
+import { get } from 'es-toolkit/compat';
+import { Hono, type Context as HonoContext, type Next } from 'hono';
+import { cors } from 'hono/cors';
+import { behindProxy } from 'x-forwarded-fetch';
+
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
@@ -53,54 +90,20 @@ import type { SiteController } from '@/http/api/site.controller';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
 import {
-    GhostRole,
     createRoleMiddleware,
+    GhostRole,
     requireRole,
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
 import {
-    type GCloudPubSubPushMessageQueue,
     createPushMessageHandler,
+    type GCloudPubSubPushMessageQueue,
 } from '@/mq/gcloud-pubsub-push/mq';
 import type { NotificationEventService } from '@/notification/notification-event.service';
-import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import type { Site, SiteService } from '@/site/site.service';
-import {
-    Accept,
-    Announce,
-    Article,
-    type Context,
-    Create,
-    Delete,
-    type Federation,
-    Follow,
-    type KvStore,
-    Like,
-    Note,
-    Reject,
-    type RequestContext,
-    Undo,
-    Update,
-} from '@fedify/fedify';
-import { federation } from '@fedify/fedify/x/hono';
-import { serve } from '@hono/node-server';
-import {
-    type LogLevel,
-    type LogRecord,
-    type Logger,
-    configure,
-    getAnsiColorFormatter,
-    getConsoleSink,
-    isLogLevel,
-    withContext,
-} from '@logtape/logtape';
-import * as Sentry from '@sentry/node';
-import { get } from 'es-toolkit/compat';
-import { Hono, type Context as HonoContext, type Next } from 'hono';
-import { cors } from 'hono/cors';
-import { behindProxy } from 'x-forwarded-fetch';
 
 await setupInstrumentation();
 
@@ -517,7 +520,7 @@ const app = new Hono<{ Variables: HonoContextVariables }>();
  */
 export type AppContext = HonoContext<{ Variables: HonoContextVariables }>;
 
-app.get('/ping', (ctx) => {
+app.get('/ping', (_ctx) => {
     return new Response('', {
         status: 200,
     });
@@ -748,7 +751,7 @@ app.use(async (ctx, next) => {
         ctx.set('account', account);
 
         await next();
-    } catch (err) {
+    } catch (_err) {
         ctx.get('logger').error('No account found for {host}', {
             host: site.host,
         });

@@ -5,13 +5,12 @@ import { z } from 'zod';
 
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { ContextData } from '@/app';
-import { createFedifyCtxForHost } from '@/helpers/fedify';
-
 import {
     PUBSUB_MESSAGE_ATTR_EVENT_HOST,
     PUBSUB_MESSAGE_ATTR_EVENT_NAME,
     type PubSubEvents,
 } from '@/events/pubsub';
+import { createFedifyCtxForHost } from '@/helpers/fedify';
 
 const IncomingMessagePayloadSchema = z.object({
     message: z.object({
@@ -45,7 +44,7 @@ export function createIncomingPubSubMessageHandler(
                     `[${PUBSUB_MESSAGE_ATTR_EVENT_HOST}] missing from payload`,
                 );
             }
-        } catch (error) {
+        } catch (_error) {
             return new Response(null, { status: 400 });
         }
 

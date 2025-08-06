@@ -1,4 +1,19 @@
 import { createHash } from 'node:crypto';
+
+import {
+    type Actor,
+    Announce,
+    Create,
+    type Federation,
+    Image,
+    Mention,
+    Note,
+    PUBLIC_COLLECTION,
+    Undo,
+} from '@fedify/fedify';
+import { Temporal } from '@js-temporal/polyfill';
+import { z } from 'zod';
+
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
@@ -21,19 +36,6 @@ import { lookupActor, lookupObject } from '@/lookup-helpers';
 import type { ImageAttachment } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import {
-    type Actor,
-    Announce,
-    Create,
-    type Federation,
-    Image,
-    Mention,
-    Note,
-    PUBLIC_COLLECTION,
-    Undo,
-} from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
-import { z } from 'zod';
 
 /**
  * Controller for post-related operations
@@ -219,7 +221,7 @@ export class PostController {
 
         try {
             data = NoteSchema.parse((await ctx.req.json()) as unknown);
-        } catch (err) {
+        } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
                 { status: 400 },
@@ -313,7 +315,7 @@ export class PostController {
 
         try {
             data = ReplyActionSchema.parse((await ctx.req.json()) as unknown);
-        } catch (err) {
+        } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
                 { status: 400 },

@@ -6,11 +6,11 @@ import {
     DomainBlockedEvent,
 } from '@/account/events';
 import type { FeedService } from '@/feed/feed.service';
+import { isFollowersOnlyPost, isPublicPost } from '@/post/post.entity';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import { isFollowersOnlyPost, isPublicPost } from '@/post/post.entity';
 
 export class FeedUpdateService {
     constructor(

@@ -1,9 +1,10 @@
-import { getAccountHandle } from '@/account/utils';
-import { type Result, error, ok } from '@/core/result';
-import type { PostDTO } from '@/http/api/types';
-import { PostType } from '@/post/post.entity';
 import type { Knex } from 'knex';
 import z from 'zod';
+
+import { getAccountHandle } from '@/account/utils';
+import { error, ok, type Result } from '@/core/result';
+import type { PostDTO } from '@/http/api/types';
+import { PostType } from '@/post/post.entity';
 
 export type ReplyChain = {
     ancestors: {

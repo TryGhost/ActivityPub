@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import assert from 'node:assert';
+
+import { exportJwk } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
 import { AccountEntity } from '@/account/account.entity';
@@ -14,8 +16,7 @@ import {
     createInternalAccountDraftData,
 } from '@/test/account-entity-test-helpers';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import { exportJwk } from '@fedify/fedify';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('KnexAccountRepository', () => {
     let client: Knex;

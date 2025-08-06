@@ -7,7 +7,6 @@ import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { postToDTO } from '@/http/api/helpers/post';
 import { BadRequest, Forbidden } from '@/http/api/helpers/response';
-import type { PostService } from '@/post/post.service';
 
 const PostInputSchema = z.object({
     uuid: z.string().uuid(),
@@ -56,7 +55,6 @@ const PostUnpublishedWebhookSchema = z.object({
 
 export class WebhookController {
     constructor(
-        private readonly postService: PostService,
         private readonly ghostPostService: GhostPostService,
         private readonly logger: Logger,
     ) {}

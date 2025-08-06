@@ -1,3 +1,7 @@
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import type { Knex } from 'knex';
+
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
@@ -5,9 +9,7 @@ import { FollowersService } from '@/activitypub/followers.service';
 import { AsyncEvents } from '@/core/events';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Knex } from 'knex';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('FollowersService', () => {
     let client: Knex;
@@ -36,7 +38,7 @@ describe('FollowersService', () => {
         });
         it('Can get all followers, handling missing data', async () => {
             // Create accounts on different domains to avoid conflicts
-            const [account, accountSite] =
+            const [account, _accountSite] =
                 await fixtureManager.createInternalAccount();
             const [follower1] = await fixtureManager.createInternalAccount();
             const [follower2] = await fixtureManager.createInternalAccount();

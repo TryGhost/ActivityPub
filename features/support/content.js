@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+
 import { createWebhookPost, getWebhookSecret } from './fixtures.js';
 import { fetchActivityPub } from './request.js';
 

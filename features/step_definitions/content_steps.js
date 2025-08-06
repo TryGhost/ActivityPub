@@ -1,4 +1,5 @@
 import { Given } from '@cucumber/cucumber';
+
 import { publishArticle, publishNote } from '../support/content.js';
 
 Given('we publish an article', async function () {

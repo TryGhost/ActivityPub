@@ -1,3 +1,8 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
+
 import type { Account } from '@/account/account.entity';
 import type { AsyncEvents } from '@/core/events';
 import { error, getError, getValue, isError, ok } from '@/core/result';
@@ -5,9 +10,6 @@ import { GhostPostService } from '@/ghost/ghost-post.service';
 import { Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('GhostPostService', () => {
     let ghostPostService: GhostPostService;

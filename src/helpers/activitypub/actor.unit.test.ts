@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { type Actor, PropertyValue } from '@fedify/fedify';
+
 import type { AccountService } from '@/account/account.service';
 import type { Account, Site } from '@/account/types';
 import {
@@ -10,7 +12,6 @@ import {
     isFollowedByDefaultSiteAccount,
     isHandle,
 } from '@/helpers/activitypub/actor';
-import { type Actor, PropertyValue } from '@fedify/fedify';
 
 describe('getAttachments', () => {
     it('should return an array of attachments for the actor', async () => {

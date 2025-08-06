@@ -1,16 +1,5 @@
 import type EventEmitter from 'node:events';
-import type { Account } from '@/account/account.entity';
-import type { AccountService } from '@/account/account.service';
-import { AccountBlockedEvent, AccountUpdatedEvent } from '@/account/events';
-import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import {
-    buildCreateActivityAndObjectFromPost,
-    buildUpdateActivityAndObjectFromPost,
-} from '@/helpers/activitypub/activity';
-import { PostCreatedEvent } from '@/post/post-created.event';
-import { PostDeletedEvent } from '@/post/post-deleted.event';
-import { PostUpdatedEvent } from '@/post/post-updated.event';
-import { PostType } from '@/post/post.entity';
+
 import {
     type Activity,
     Delete,
@@ -20,6 +9,19 @@ import {
     Update,
 } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
+
+import type { Account } from '@/account/account.entity';
+import type { AccountService } from '@/account/account.service';
+import { AccountBlockedEvent, AccountUpdatedEvent } from '@/account/events';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import {
+    buildCreateActivityAndObjectFromPost,
+    buildUpdateActivityAndObjectFromPost,
+} from '@/helpers/activitypub/activity';
+import { PostType } from '@/post/post.entity';
+import { PostCreatedEvent } from '@/post/post-created.event';
+import { PostDeletedEvent } from '@/post/post-deleted.event';
+import { PostUpdatedEvent } from '@/post/post-updated.event';
 
 export class FediverseBridge {
     constructor(

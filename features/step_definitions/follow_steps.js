@@ -1,6 +1,6 @@
-import assert from 'node:assert';
-
 import { Given, Then } from '@cucumber/cucumber';
+
+import assert from 'node:assert';
 
 import { createActivity, createActor } from '../support/fixtures.js';
 import {

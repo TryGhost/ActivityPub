@@ -1,4 +1,5 @@
 export { AccountBlockedEvent } from '@/account/events/account-blocked.event';
+export { AccountCreatedEvent } from '@/account/events/account-created.event';
 export { AccountFollowedEvent } from '@/account/events/account-followed.event';
 export { AccountUnblockedEvent } from '@/account/events/account-unblocked.event';
 export { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
@@ -6,4 +7,3 @@ export { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 export { DomainBlockedEvent } from '@/account/events/domain-blocked.event';
 export { DomainUnblockedEvent } from '@/account/events/domain-unblocked.event';
 export { NotificationsReadEvent } from '@/account/events/notifications-read-event';
-export { AccountCreatedEvent } from '@/account/events/account-created.event';

@@ -1,36 +1,24 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
+
 import type { Account } from '@/account/account.entity';
-import { KnexAccountRepository } from '@/account/account.repository.knex';
-import { AccountService } from '@/account/account.service';
-import type {
-    Account as AccountType,
-    InternalAccountData,
-    Site,
-} from '@/account/types';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
 import { getError, getValue, isError } from '@/core/result';
-import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import type { AccountPosts } from '@/http/api/views/account.posts.view';
+import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { Audience, Post, PostType } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
-import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('AccountPostsView', () => {
     let viewer: AccountPostsView;
-    let accountService: AccountService;
-    let accountRepository: KnexAccountRepository;
     let events: AsyncEvents;
-    let site: Site;
-    let internalAccountData: InternalAccountData;
     let db: Knex;
-    let defaultAccount: AccountType;
     let siteDefaultAccount: Account | null;
-    let account: AccountType;
     let accountEntity: Account | null;
     let postRepository: KnexPostRepository;
     let fixtureManager: FixtureManager;
@@ -44,55 +32,23 @@ describe('AccountPostsView', () => {
         // Clean up the database
         await fixtureManager.reset();
 
-        const siteData = {
-            host: 'example.com',
-            webhook_secret: 'secret',
-        };
-        const [id] = await db('sites').insert(siteData);
-
-        site = {
-            id,
-            ...siteData,
-        };
-
-        internalAccountData = {
-            username: 'index',
-            name: 'Test Site Title',
-            bio: 'Test Site Description',
-            avatar_url: 'https://example.com/avatar.jpg',
-            banner_image_url: 'https://example.com/banner.jpg',
-        };
-
         const logger = {
             info: vi.fn(),
         } as unknown as Logger;
 
         events = new AsyncEvents();
-        accountRepository = new KnexAccountRepository(db, events);
         postRepository = new KnexPostRepository(db, events, logger);
         const fedifyContextFactory = new FedifyContextFactory();
-
-        accountService = new AccountService(
-            db,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-            generateTestCryptoKeyPair,
-        );
 
         viewer = new AccountPostsView(db, fedifyContextFactory);
 
         const [accountEntityTemp] =
             await fixtureManager.createInternalAccount();
         accountEntity = accountEntityTemp;
-        account = await db('accounts').where({ id: accountEntity.id }).first();
 
         const [siteDefaultAccountTemp] =
             await fixtureManager.createInternalAccount();
         siteDefaultAccount = siteDefaultAccountTemp;
-        defaultAccount = await db('accounts')
-            .where({ id: siteDefaultAccount.id })
-            .first();
     });
 
     describe('getPostsByHandle', () => {
@@ -282,7 +238,9 @@ describe('AccountPostsView', () => {
 
         it('does not return replies', async () => {
             const post = await fixtureManager.createPost(account);
-            const reply = await fixtureManager.createReply(account, post);
+
+            await fixtureManager.createReply(account, post);
+
             const result = await viewer.getPostsFromOutbox(
                 account,
                 contextAccount.id,
@@ -368,7 +326,9 @@ describe('AccountPostsView', () => {
         it('returns an error if the account is not internal', async () => {
             const externalAccount =
                 await fixtureManager.createExternalAccount();
-            const post = await fixtureManager.createPost(externalAccount);
+
+            await fixtureManager.createPost(externalAccount);
+
             const result = await viewer.getPostsFromOutbox(
                 externalAccount,
                 contextAccount.id,
@@ -399,10 +359,8 @@ describe('AccountPostsView', () => {
                 );
 
                 // Create posts
-                const followedAuthorPost =
-                    await fixtureManager.createPost(followedAuthor);
-                const unfollowedAuthorPost =
-                    await fixtureManager.createPost(unfollowedAuthor);
+                await fixtureManager.createPost(followedAuthor);
+                await fixtureManager.createPost(unfollowedAuthor);
 
                 // Get posts from followed author's outbox
                 const followedResult = await viewer.getPostsFromOutbox(
@@ -507,7 +465,7 @@ describe('AccountPostsView', () => {
                     await fixtureManager.createInternalAccount();
 
                 // Create own post
-                const ownPost = await fixtureManager.createPost(viewingAccount);
+                await fixtureManager.createPost(viewingAccount);
 
                 // Get own posts
                 const result = await viewer.getPostsFromOutbox(

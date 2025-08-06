@@ -1,11 +1,13 @@
 import { IncomingMessage } from 'node:http';
-import { extractQueryInfoFromError } from '@/db';
+
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
 import {
     BatchSpanProcessor,
     SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import * as Sentry from '@sentry/node';
+
+import { extractQueryInfoFromError } from '@/db';
 
 export async function setupInstrumentation() {
     if (process.env.NODE_ENV === 'production') {
@@ -101,13 +103,13 @@ export async function setupInstrumentation() {
                                             'http.url': req.url,
                                             'http.target': url.pathname,
                                         });
-                                    } catch (e) {
+                                    } catch (_e) {
                                         // Ignore URL parsing errors
                                     }
                                 }
                             }
                         },
-                        applyCustomAttributesOnSpan: (span) => {},
+                        applyCustomAttributesOnSpan: (_span) => {},
                     },
                 }),
             ],

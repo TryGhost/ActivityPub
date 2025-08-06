@@ -1,9 +1,5 @@
-import {
-    createOutboxCounter,
-    createOutboxDispatcher,
-    likedDispatcher,
-    nodeInfoDispatcher,
-} from '@/dispatchers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import type {
     Announce,
     Article,
@@ -17,13 +13,18 @@ import type { AccountService } from '@/account/account.service';
 import type { ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import {
+    createOutboxCounter,
+    createOutboxDispatcher,
+    likedDispatcher,
+    nodeInfoDispatcher,
+} from '@/dispatchers';
+import {
     buildAnnounceActivityForPost,
     buildCreateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
 import type { PostService } from '@/post/post.service';
 import type { Site, SiteService } from '@/site/site.service';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/app', () => ({
     fedify: {

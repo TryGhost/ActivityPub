@@ -1,12 +1,11 @@
-import type { ContextData } from '@/app';
-import type { Context } from '@fedify/fedify';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Context } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
-import { KnexAccountRepository } from '@/account/account.repository.knex';
-import { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import type { ContextData } from '@/app';
 import { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
 import type { AccountDTO } from '@/http/api/types';
@@ -14,10 +13,8 @@ import { AccountView } from '@/http/api/views/account.view';
 import { lookupActorProfile } from '@/lookup-helpers';
 import { Audience, Post, PostType } from '@/post/post.entity';
 import { KnexPostRepository } from '@/post/post.repository.knex';
-import { SiteService } from '@/site/site.service';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Logger } from '@logtape/logtape';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 vi.mock('@/lookup-helpers', () => ({
     lookupActorProfile: vi.fn(),
@@ -26,8 +23,6 @@ vi.mock('@/lookup-helpers', () => ({
 
 describe('AccountView', () => {
     let db: Knex;
-    let siteService: SiteService;
-    let accountService: AccountService;
     let postRepository: KnexPostRepository;
     let accountView: AccountView;
     const fedifyContext = {
@@ -46,29 +41,9 @@ describe('AccountView', () => {
 
         const events = new AsyncEvents();
 
-        const accountRepository = new KnexAccountRepository(db, events);
-
         const fedifyContextFactory = {
             getFedifyContext: vi.fn(() => fedifyContext),
         } as unknown as FedifyContextFactory;
-
-        accountService = new AccountService(
-            db,
-            events,
-            accountRepository,
-            fedifyContextFactory,
-        );
-
-        siteService = new SiteService(db, accountService, {
-            getSiteSettings: async () => ({
-                site: {
-                    description: 'Test site',
-                    title: 'Test site',
-                    icon: 'Test site',
-                    cover_image: 'Test site',
-                },
-            }),
-        });
 
         const logger = {
             info: vi.fn(),

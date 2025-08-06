@@ -1,8 +1,10 @@
 import crypto from 'node:crypto';
+
+import type { Knex } from 'knex';
+
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { getSiteSettings } from '@/helpers/ghost';
-import type { Knex } from 'knex';
 
 export type Site = {
     id: number;
