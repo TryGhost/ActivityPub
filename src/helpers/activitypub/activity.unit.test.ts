@@ -1,3 +1,14 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+    Announce,
+    Article,
+    Create,
+    Note as FedifyNote,
+    type Object as FedifyObject,
+    Update,
+} from '@fedify/fedify';
+
 import { AccountEntity } from '@/account/account.entity';
 import type { UriBuilder } from '@/activitypub/uri';
 import type { FedifyContext } from '@/app';
@@ -7,15 +18,6 @@ import {
     buildUpdateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
 import { Post, PostType } from '@/post/post.entity';
-import {
-    Announce,
-    Article,
-    Create,
-    Note as FedifyNote,
-    type Object as FedifyObject,
-    Update,
-} from '@fedify/fedify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('node:crypto', async (importOriginal) => {
     const actual = await importOriginal<typeof import('node:crypto')>();

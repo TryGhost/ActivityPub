@@ -1,11 +1,14 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+
+import { File as NodeFile } from 'fetch-blob/file.js';
+
 import { getError, getValue, isError } from '@/core/result';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { ImageProcessor } from '@/storage/image-processor';
 import { ImageStorageService } from '@/storage/image-storage.service';
-import { File as NodeFile } from 'fetch-blob/file.js';
-import { beforeAll, describe, expect, it } from 'vitest';
 
 const logger = {
     info: console.log,

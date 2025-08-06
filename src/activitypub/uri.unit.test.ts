@@ -2,9 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Article } from '@fedify/fedify';
 
-import type { FedifyRequestContext } from '@/app';
-
 import { FedifyUriBuilder } from '@/activitypub/uri';
+import type { FedifyRequestContext } from '@/app';
 
 type ArticleValues = {
     id: string;

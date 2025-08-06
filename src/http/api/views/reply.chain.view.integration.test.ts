@@ -1,10 +1,12 @@
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import type { Knex } from 'knex';
+
 import { unsafeUnwrap } from '@/core/result';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import type { Post } from '@/post/post.entity';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Knex } from 'knex';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 /**
  * This will setup the database with a bunch of posts centered around a single post.
@@ -141,8 +143,7 @@ describe('ReplyChainView', () => {
         });
 
         it('should be able to return the next page of children', async () => {
-            const { ancestors, post, replies, chains } =
-                await setupPosts(fixtureManager);
+            const { post, replies } = await setupPosts(fixtureManager);
 
             const replyChainView = new ReplyChainView(db);
 
@@ -304,7 +305,7 @@ describe('ReplyChainView', () => {
         });
 
         it('should correctly set next cursor when there are more children', async () => {
-            const { post, replies } = await setupPosts(fixtureManager);
+            const { post } = await setupPosts(fixtureManager);
 
             const replyChainView = new ReplyChainView(db);
 
@@ -392,7 +393,7 @@ describe('ReplyChainView', () => {
         });
 
         it('should handle posts in the middle of a chain', async () => {
-            const { replies, chains } = await setupPosts(fixtureManager);
+            const { chains } = await setupPosts(fixtureManager);
 
             const replyChainView = new ReplyChainView(db);
 

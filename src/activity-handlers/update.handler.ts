@@ -1,8 +1,9 @@
+import { type Actor, type Context, isActor, type Update } from '@fedify/fedify';
+
 import type { AccountService } from '@/account/account.service';
 import { mapActorToExternalAccountData } from '@/account/utils';
 import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
-import { type Actor, type Context, type Update, isActor } from '@fedify/fedify';
 
 export class UpdateHandler {
     constructor(private readonly accountService: AccountService) {}

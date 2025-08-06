@@ -1,5 +1,6 @@
-import type { Post } from '@/post/post.entity';
 import type { Knex } from 'knex';
+
+import type { Post } from '@/post/post.entity';
 
 export class ModerationService {
     constructor(private readonly db: Knex) {}

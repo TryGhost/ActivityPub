@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
-import { type Result, error, ok } from '@/core/result';
+
+import { error, ok, type Result } from '@/core/result';
 import type {
     StorageAdapter,
     StorageError,
@@ -48,7 +49,7 @@ export class LocalStorageAdapter implements StorageAdapter {
             const url = new URL(path, this.hostingUrl).toString();
 
             return ok(url);
-        } catch (err) {
+        } catch (_err) {
             return error('error-saving-file');
         }
     }

@@ -37,7 +37,7 @@ async function getKey(
         await jwksCache.set(['cachedJwks', jwksURL.hostname], key);
 
         return key;
-    } catch (err) {
+    } catch (_err) {
         if (retries === 0) {
             return null;
         }

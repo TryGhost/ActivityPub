@@ -1,12 +1,12 @@
+import { Then, When } from '@cucumber/cucumber';
+
 import assert from 'node:assert';
 
-import { Then, When } from '@cucumber/cucumber';
 import { waitForAPObjectInFeed } from '../support/feed.js';
 import { createActivity } from '../support/fixtures.js';
 import { waitForAPObjectInInbox } from '../support/inbox.js';
 import { waitForItemInNotifications } from '../support/notifications.js';
-import { fetchActivityPub } from '../support/request.js';
-import { waitForRequest } from '../support/request.js';
+import { fetchActivityPub, waitForRequest } from '../support/request.js';
 
 When('we repost the object {string}', async function (name) {
     const id = this.objects[name].id;

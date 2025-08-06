@@ -1,4 +1,6 @@
-import { type Result, getValue, isError, ok } from '@/core/result';
+import { v4 as uuidv4 } from 'uuid';
+
+import { getValue, isError, ok, type Result } from '@/core/result';
 import type {
     StorageAdapter,
     StorageError,
@@ -8,7 +10,6 @@ import type {
     ImageProcessor,
     ValidationError,
 } from '@/storage/image-processor';
-import { v4 as uuidv4 } from 'uuid';
 
 export class ImageStorageService {
     constructor(

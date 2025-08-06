@@ -1,5 +1,6 @@
-import type { ExternalAccountData } from '@/account/types';
 import { type Actor, PropertyValue } from '@fedify/fedify';
+
+import type { ExternalAccountData } from '@/account/types';
 
 interface PublicKey {
     id: string;

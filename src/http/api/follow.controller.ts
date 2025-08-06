@@ -1,4 +1,4 @@
-import { type Federation, Follow, Undo, isActor } from '@fedify/fedify';
+import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';

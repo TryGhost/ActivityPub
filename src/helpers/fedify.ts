@@ -11,7 +11,7 @@ export function createFedifyCtxForHost(
 
     try {
         hostUrl = new URL(`https://${host}`);
-    } catch (error) {
+    } catch (_error) {
         throw new Error(`Invalid host URL: https://${host}`);
     }
 

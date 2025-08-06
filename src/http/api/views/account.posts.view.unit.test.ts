@@ -1,10 +1,11 @@
-import type { Account } from '@/account/account.entity';
-import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import { PostType } from '@/post/post.entity';
-import type { Knex } from 'knex';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Knex } from 'knex';
+
+import type { Account } from '@/account/account.entity';
+import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
+import { PostType } from '@/post/post.entity';
 
 // Mock the fedify modules
 vi.mock('@fedify/fedify', () => ({

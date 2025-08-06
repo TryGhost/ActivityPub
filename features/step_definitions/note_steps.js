@@ -1,6 +1,6 @@
-import assert from 'node:assert';
-
 import { Then, When } from '@cucumber/cucumber';
+
+import assert from 'node:assert';
 
 import { fetchActivityPub } from '../support/request.js';
 import { mapPostToActivityPubObject } from '../support/utils.js';

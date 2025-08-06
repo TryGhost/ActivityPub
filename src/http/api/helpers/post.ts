@@ -1,8 +1,7 @@
 import type { Account } from '@/account/account.entity';
 import { getAccountHandle } from '@/account/utils';
-import type { Post } from '@/post/post.entity';
-
 import type { AuthorDTO, PostDTO } from '@/http/api/types';
+import type { Post } from '@/post/post.entity';
 
 function accountToAuthorDTO(
     account: Account,

@@ -1,6 +1,6 @@
-import assert from 'node:assert';
-
 import { Then } from '@cucumber/cucumber';
+
+import assert from 'node:assert';
 
 import { waitForAPObjectInInbox } from '../support/inbox.js';
 

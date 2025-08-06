@@ -1,3 +1,8 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { Logger } from '@logtape/logtape';
+import type { Knex } from 'knex';
+
 import type { Account } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
@@ -11,10 +16,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import type { ImageStorageService } from '@/storage/image-storage.service';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Logger } from '@logtape/logtape';
-import type { Knex } from 'knex';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('GhostPostService', () => {
     let db: Knex;

@@ -1,6 +1,6 @@
-import assert from 'node:assert';
-
 import { Then } from '@cucumber/cucumber';
+
+import assert from 'node:assert';
 
 Then(
     /"([^"]*)" is in the (posts|feed|liked posts)/,
@@ -60,7 +60,7 @@ Then(
 
 Then(
     'post {string} in the {string} response is {string}',
-    async function (postNumber, type, activityOrObjectName) {
+    async function (postNumber, _type, activityOrObjectName) {
         const responseJson = await this.response.clone().json();
         const activity = this.activities[activityOrObjectName];
         const object = this.objects[activityOrObjectName];

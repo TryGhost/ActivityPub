@@ -1,5 +1,7 @@
-import assert from 'node:assert';
 import { Then, When } from '@cucumber/cucumber';
+
+import assert from 'node:assert';
+
 import { publishArticle } from '../support/content.js';
 import { createActivity, createObject } from '../support/fixtures.js';
 import {

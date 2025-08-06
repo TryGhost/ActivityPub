@@ -1,6 +1,7 @@
-import { type Result, error, ok } from '@/core/result';
 import type { Logger } from '@logtape/logtape';
 import sharp from 'sharp';
+
+import { error, ok, type Result } from '@/core/result';
 
 export type ValidationError = 'file-too-large' | 'file-type-not-supported';
 

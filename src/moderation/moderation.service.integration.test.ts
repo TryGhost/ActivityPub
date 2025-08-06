@@ -1,9 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import type { Knex } from 'knex';
+
 import { ModerationService } from '@/moderation/moderation.service';
 import { createTestDb } from '@/test/db';
-import { type FixtureManager, createFixtureManager } from '@/test/fixtures';
-import type { Knex } from 'knex';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('ModerationService', () => {
     let client: Knex;

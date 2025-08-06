@@ -1,6 +1,8 @@
+import { Given, Then, When } from '@cucumber/cucumber';
+
 import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
-import { Given, Then, When } from '@cucumber/cucumber';
+
 import { createWebhookPost, getWebhookSecret } from '../support/fixtures.js';
 import { fetchActivityPub } from '../support/request.js';
 

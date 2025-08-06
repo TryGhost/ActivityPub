@@ -1,9 +1,13 @@
+import { Given, Then, When } from '@cucumber/cucumber';
+
 import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
 
-import { Given, Then, When } from '@cucumber/cucumber';
-import { createActor } from '../support/fixtures.js';
-import { createWebhookPost, getWebhookSecret } from '../support/fixtures.js';
+import {
+    createActor,
+    createWebhookPost,
+    getWebhookSecret,
+} from '../support/fixtures.js';
 
 Given('we are sent invalid @context values to the inbox', async function () {
     const actor = await createActor('Alice');

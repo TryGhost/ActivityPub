@@ -1,7 +1,8 @@
-import type { Account } from '@/account/account.entity';
-import { parseURL } from '@/core/url';
 import type { Recipient } from '@fedify/fedify';
 import type { Knex } from 'knex';
+
+import type { Account } from '@/account/account.entity';
+import { parseURL } from '@/core/url';
 
 export class FollowersService {
     constructor(private readonly client: Knex) {}

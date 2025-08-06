@@ -1,14 +1,14 @@
+import { Then, When } from '@cucumber/cucumber';
+
 import assert from 'node:assert';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-
-import { Then, When } from '@cucumber/cucumber';
 
 import { getCurrentDirectory } from '../support/path.js';
 import { fetchActivityPub } from '../support/request.js';
 
 When(
-    /an authenticated (\"(delete|get|post|put)\"\s)?request is made to "(.*)"$/,
+    /an authenticated ("(delete|get|post|put)"\s)?request is made to "(.*)"$/,
     async function (method, path) {
         const requestMethod = method || 'get';
         let requestPath = path;
@@ -43,7 +43,7 @@ When(
 );
 
 When(
-    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with the data:$/,
+    /^an authenticated ("(post|put)"\s)?request is made to "(.*)" with the data:$/,
     async function (method, path, data) {
         this.response = await fetchActivityPub(`https://self.test${path}`, {
             method: method,
@@ -57,7 +57,7 @@ When(
 );
 
 When(
-    /^an authenticated (\"(post|put)\"\s)?request is made to "(.*)" with an image$/,
+    /^an authenticated ("(post|put)"\s)?request is made to "(.*)" with an image$/,
     async function (method, path) {
         const image = await readFile(
             resolve(getCurrentDirectory(), '../fixtures/dog.jpg'),
