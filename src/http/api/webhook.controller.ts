@@ -6,7 +6,7 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { GhostPostService } from 'ghost/ghost-post.service';
 import type { PostService } from 'post/post.service';
 import type { AppContext } from '../../app';
-import { postToDTO } from './helpers/post';
+import { postDTOToV1, postToDTO } from './helpers/post';
 import { BadRequest, Forbidden } from './helpers/response';
 
 const PostInputSchema = z.object({
@@ -112,8 +112,9 @@ export class WebhookController {
         }
 
         const post = getValue(postResult);
+        const postDTO = postToDTO(post);
 
-        return new Response(JSON.stringify(postToDTO(post)), {
+        return new Response(JSON.stringify(postDTOToV1(postDTO)), {
             headers: {
                 'Content-Type': 'application/json',
             },

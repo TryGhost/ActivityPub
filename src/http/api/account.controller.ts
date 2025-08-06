@@ -8,6 +8,7 @@ import { lookupActorProfile } from 'lookup-helpers';
 import { z } from 'zod';
 import { RequireRoles, Route } from '../decorators/route.decorator';
 import { GhostRole } from '../middleware/role-guard';
+import { postDTOToV1 } from './helpers/post';
 import type { AccountDTO } from './types';
 import type {
     AccountFollows,
@@ -300,7 +301,7 @@ export class AccountController {
 
         return new Response(
             JSON.stringify({
-                posts: accountPosts.results,
+                posts: accountPosts.results.map((post) => postDTOToV1(post)),
                 next: accountPosts.nextCursor,
             }),
             { status: 200 },
@@ -333,7 +334,7 @@ export class AccountController {
 
         return new Response(
             JSON.stringify({
-                posts: results,
+                posts: results.map((post) => postDTOToV1(post)),
                 next: nextCursor,
             }),
             { status: 200 },

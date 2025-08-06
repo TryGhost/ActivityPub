@@ -2,7 +2,7 @@ import type { Account } from 'account/account.entity';
 import type { Post } from 'post/post.entity';
 import { getAccountHandle } from '../../../account/utils';
 
-import type { AuthorDTO, PostDTOV1 } from '../types';
+import type { AuthorDTO, PostDTO, PostDTOV1 } from '../types';
 
 function accountToAuthorDTO(
     account: Account,
@@ -24,18 +24,18 @@ export function postToDTO(
         authoredByMe: boolean;
         likedByMe: boolean;
         repostedByMe: boolean;
-        repostedBy: Account | null;
+        repostedBy: Account[];
         followingAuthor: boolean;
         followingReposter: boolean;
     } = {
         authoredByMe: false,
         likedByMe: false,
         repostedByMe: false,
-        repostedBy: null,
+        repostedBy: [],
         followingAuthor: false,
         followingReposter: false,
     },
-): PostDTOV1 {
+): PostDTO {
     return {
         id: post.apId.href,
         type: post.type,
@@ -62,11 +62,22 @@ export function postToDTO(
         authoredByMe: meta.authoredByMe,
         repostCount: post.repostCount,
         repostedByMe: meta.repostedByMe,
-        repostedBy: meta.repostedBy
-            ? accountToAuthorDTO(meta.repostedBy, meta.followingReposter)
-            : null,
+        repostedBy: meta.repostedBy.map((account) =>
+            accountToAuthorDTO(account, meta.followingReposter),
+        ),
         metadata: post.metadata ?? {
             ghostAuthors: [],
         },
+    };
+}
+
+/*
+ * Mapping function to convert the PostDTO to the PostDTOV1 type for the v1 APIs.
+ * This will be deprecated in v2 and we'll use the PostDTO type instead.
+ */
+export function postDTOToV1(post: PostDTO): PostDTOV1 {
+    return {
+        ...post,
+        repostedBy: post.repostedBy.length === 0 ? null : post.repostedBy[0],
     };
 }

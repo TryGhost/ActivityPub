@@ -119,7 +119,7 @@ describe('Account Posts View', () => {
                 authoredByMe: true,
                 repostCount: 0,
                 repostedByMe: false,
-                repostedBy: null,
+                repostedBy: [],
             });
         });
 
@@ -214,14 +214,16 @@ describe('Account Posts View', () => {
                 authoredByMe: false,
                 repostCount: 1,
                 repostedByMe: true,
-                repostedBy: {
-                    id: 'https://example.com/users/2',
-                    handle: '@reposter@example.com',
-                    name: 'Reposter',
-                    url: 'https://example.com/users/2',
-                    avatarUrl: 'https://example.com/avatar2.jpg',
-                    followedByMe: false,
-                },
+                repostedBy: [
+                    {
+                        id: 'https://example.com/users/2',
+                        handle: '@reposter@example.com',
+                        name: 'Reposter',
+                        url: 'https://example.com/users/2',
+                        avatarUrl: 'https://example.com/avatar2.jpg',
+                        followedByMe: false,
+                    },
+                ],
             });
         });
 
@@ -255,7 +257,7 @@ describe('Account Posts View', () => {
             const result = view.mapActivityToPostDTO(activity);
 
             expect(result.author.followedByMe).toBe(true);
-            expect(result.repostedBy?.followedByMe).toBe(true);
+            expect(result.repostedBy[0].followedByMe).toBe(true);
         });
     });
 
@@ -634,9 +636,11 @@ describe('Account Posts View', () => {
                 author: expect.objectContaining({
                     followedByMe: true, // User follows the original author
                 }),
-                repostedBy: expect.objectContaining({
-                    followedByMe: true, // User follows the reposter
-                }),
+                repostedBy: expect.arrayContaining([
+                    expect.objectContaining({
+                        followedByMe: true, // User follows the reposter
+                    }),
+                ]),
             });
         });
 
@@ -760,9 +764,11 @@ describe('Account Posts View', () => {
                 author: expect.objectContaining({
                     followedByMe: false, // User does not follow the original author
                 }),
-                repostedBy: expect.objectContaining({
-                    followedByMe: true, // User follows the reposter
-                }),
+                repostedBy: expect.arrayContaining([
+                    expect.objectContaining({
+                        followedByMe: true, // User follows the reposter
+                    }),
+                ]),
             });
         });
 
@@ -858,9 +864,11 @@ describe('Account Posts View', () => {
                 author: expect.objectContaining({
                     followedByMe: false, // Author not found, defaults to false
                 }),
-                repostedBy: expect.objectContaining({
-                    followedByMe: false, // Current user does not follow when no account param
-                }),
+                repostedBy: expect.arrayContaining([
+                    expect.objectContaining({
+                        followedByMe: false, // Current user does not follow when no account param
+                    }),
+                ]),
             });
         });
 

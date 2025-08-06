@@ -2,6 +2,7 @@ import { exhaustiveCheck, getError, getValue, isError } from 'core/result';
 import type { AppContext } from '../../app';
 import { RequireRoles, Route } from '../decorators/route.decorator';
 import { GhostRole } from '../middleware/role-guard';
+import { postDTOToV1 } from './helpers/post';
 import { NotFound } from './helpers/response';
 import type { ReplyChainView } from './views/reply.chain.view';
 
@@ -29,7 +30,23 @@ export class ReplyChainController {
             }
         }
 
-        return new Response(JSON.stringify(getValue(replyChainResult)), {
+        const replyChain = getValue(replyChainResult);
+
+        const replyChainV1 = {
+            ancestors: {
+                chain: replyChain.ancestors.chain.map(postDTOToV1),
+                hasMore: replyChain.ancestors.hasMore,
+            },
+            post: postDTOToV1(replyChain.post),
+            children: replyChain.children.map((child) => ({
+                post: postDTOToV1(child.post),
+                chain: child.chain.map(postDTOToV1),
+                hasMore: child.hasMore,
+            })),
+            next: replyChain.next,
+        };
+
+        return new Response(JSON.stringify(replyChainV1), {
             status: 200,
         });
     }

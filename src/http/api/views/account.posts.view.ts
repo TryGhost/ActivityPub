@@ -12,7 +12,7 @@ import { sanitizeHtml } from 'helpers/html';
 import type { Knex } from 'knex';
 import { ContentPreparer } from 'post/content';
 import { type Mention, OutboxType, PostType } from 'post/post.entity';
-import type { PostDTOV1 } from '../types';
+import type { PostDTO } from '../types';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -77,7 +77,7 @@ export type GetProfileDataResultRow =
     | GetProfileDataResultRowWithoutReposted;
 
 export interface AccountPosts {
-    results: PostDTOV1[];
+    results: PostDTO[];
     nextCursor: string | null;
 }
 
@@ -668,7 +668,7 @@ export class AccountPostsView {
     mapToPostDTO(
         result: GetProfileDataResultRow,
         contextAccountId: number,
-    ): PostDTOV1 {
+    ): PostDTO {
         return {
             id: result.post_ap_id,
             type: result.post_type,
@@ -706,27 +706,29 @@ export class AccountPostsView {
             repostCount: result.post_repost_count,
             repostedByMe: result.post_reposted_by_current_user === 1,
             repostedBy: result.reposter_id
-                ? {
-                      id: result.reposter_id.toString(),
-                      handle: getAccountHandle(
-                          result.reposter_url
-                              ? new URL(result.reposter_url).host
-                              : '',
-                          result.reposter_username,
-                      ),
-                      name: result.reposter_name ?? '',
-                      url: result.reposter_url ?? '',
-                      avatarUrl: result.reposter_avatar_url ?? '',
-                      followedByMe:
-                          result.reposter_followed_by_current_user === 1,
-                  }
-                : null,
+                ? [
+                      {
+                          id: result.reposter_id.toString(),
+                          handle: getAccountHandle(
+                              result.reposter_url
+                                  ? new URL(result.reposter_url).host
+                                  : '',
+                              result.reposter_username,
+                          ),
+                          name: result.reposter_name ?? '',
+                          url: result.reposter_url ?? '',
+                          avatarUrl: result.reposter_avatar_url ?? '',
+                          followedByMe:
+                              result.reposter_followed_by_current_user === 1,
+                      },
+                  ]
+                : [],
         };
     }
 
     // TODO: Clean up the any type
     // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-    mapActivityToPostDTO(activity: any): PostDTOV1 {
+    mapActivityToPostDTO(activity: any): PostDTO {
         const object = activity.object;
         const actor = activity.actor;
         const attributedTo = object.attributedTo;
@@ -762,18 +764,20 @@ export class AccountPostsView {
             repostedByMe: object.reposted || false,
             repostedBy:
                 activity.type === 'Announce'
-                    ? {
-                          id: actor.id,
-                          handle: getAccountHandle(
-                              new URL(actor.id).host,
-                              actor.preferredUsername,
-                          ),
-                          name: actor.name || '',
-                          url: actor.id,
-                          avatarUrl: actor.icon?.url || '',
-                          followedByMe: actor.followedByMe || false,
-                      }
-                    : null,
+                    ? [
+                          {
+                              id: actor.id,
+                              handle: getAccountHandle(
+                                  new URL(actor.id).host,
+                                  actor.preferredUsername,
+                              ),
+                              name: actor.name || '',
+                              url: actor.id,
+                              avatarUrl: actor.icon?.url || '',
+                              followedByMe: actor.followedByMe || false,
+                          },
+                      ]
+                    : [],
         };
     }
 

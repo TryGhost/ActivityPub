@@ -3,17 +3,17 @@ import { type Result, error, ok } from 'core/result';
 import type { Knex } from 'knex';
 import { PostType } from 'post/post.entity';
 import z from 'zod';
-import type { PostDTOV1 } from '../types';
+import type { PostDTO } from '../types';
 
 export type ReplyChain = {
     ancestors: {
-        chain: PostDTOV1[];
+        chain: PostDTO[];
         hasMore: boolean;
     };
-    post: PostDTOV1;
+    post: PostDTO;
     children: {
-        post: PostDTOV1;
-        chain: PostDTOV1[];
+        post: PostDTO;
+        chain: PostDTO[];
         hasMore: boolean;
     }[];
     next: string | null;
@@ -68,7 +68,7 @@ export class ReplyChainView {
 
     constructor(private readonly db: Knex) {}
 
-    private mapToPostDTO(result: PostRow, contextAccountId: number): PostDTOV1 {
+    private mapToPostDTO(result: PostRow, contextAccountId: number): PostDTO {
         // If the post is deleted, return it as a tombstone
         if (result.post_deleted_at !== null) {
             return {
@@ -102,7 +102,7 @@ export class ReplyChainView {
                 authoredByMe: result.author_id === contextAccountId,
                 repostCount: result.post_repost_count,
                 repostedByMe: false,
-                repostedBy: null,
+                repostedBy: [],
             };
         }
 
@@ -142,7 +142,7 @@ export class ReplyChainView {
             authoredByMe: result.author_id === contextAccountId,
             repostCount: result.post_repost_count,
             repostedByMe: result.post_reposted_by_current_user === 1,
-            repostedBy: null,
+            repostedBy: [],
         };
     }
 
@@ -387,8 +387,8 @@ export class ReplyChainView {
         );
 
         const allChildren: {
-            post: PostDTOV1;
-            chain: PostDTOV1[];
+            post: PostDTO;
+            chain: PostDTO[];
             next: string | null;
         }[] = [];
         for (const post of childrenAndChains) {

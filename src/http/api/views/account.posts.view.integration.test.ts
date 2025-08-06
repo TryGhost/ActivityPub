@@ -261,7 +261,7 @@ describe('AccountPostsView', () => {
             expect(isError(result)).toBe(false);
             if (!isError(result)) {
                 const accountPosts = getValue(result);
-                expect(accountPosts.results[0].repostedBy).toMatchObject({
+                expect(accountPosts.results[0].repostedBy[0]).toMatchObject({
                     id: reposter.id.toString(),
                 });
             }
@@ -276,7 +276,7 @@ describe('AccountPostsView', () => {
             expect(isError(resultOriginal)).toBe(false);
             if (!isError(resultOriginal)) {
                 const accountPosts = getValue(resultOriginal);
-                expect(accountPosts.results[0].repostedBy).toBeNull();
+                expect(accountPosts.results[0].repostedBy).toHaveLength(0);
             }
         });
 
@@ -477,7 +477,7 @@ describe('AccountPostsView', () => {
                     expect(posts.results).toHaveLength(1);
                     expect(posts.results[0].author.followedByMe).toBe(true); // Original author is followed
                     expect(posts.results[0].repostedBy).toBeDefined();
-                    expect(posts.results[0].repostedBy!.followedByMe).toBe(
+                    expect(posts.results[0].repostedBy[0].followedByMe).toBe(
                         true,
                     ); // Reposter is followed
                 }
@@ -496,7 +496,7 @@ describe('AccountPostsView', () => {
                     expect(posts.results).toHaveLength(1);
                     expect(posts.results[0].author.followedByMe).toBe(true); // Original author is still followed
                     expect(posts.results[0].repostedBy).toBeDefined();
-                    expect(posts.results[0].repostedBy!.followedByMe).toBe(
+                    expect(posts.results[0].repostedBy[0].followedByMe).toBe(
                         false,
                     ); // Reposter is not followed
                 }

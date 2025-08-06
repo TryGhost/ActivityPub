@@ -27,7 +27,7 @@ import { ACTOR_DEFAULT_HANDLE } from '../../constants';
 import { getRelatedActivities } from '../../db';
 import { RequireRoles, Route } from '../decorators/route.decorator';
 import { GhostRole } from '../middleware/role-guard';
-import { postToDTO } from './helpers/post';
+import { postDTOToV1, postToDTO } from './helpers/post';
 import { BadRequest, Conflict, Forbidden, NotFound } from './helpers/response';
 
 /**
@@ -85,36 +85,34 @@ export class PostController {
         const post = getValue(postResult);
 
         const account = ctx.get('account');
+        const postDTO = postToDTO(post, {
+            authoredByMe: post.author.id === account.id,
+            likedByMe:
+                post.id && account.id
+                    ? await this.postService.isLikedByAccount(
+                          post.id,
+                          account.id,
+                      )
+                    : false,
+            repostedByMe:
+                post.id && account.id
+                    ? await this.postService.isRepostedByAccount(
+                          post.id,
+                          account.id,
+                      )
+                    : false,
+            repostedBy: [],
+            followingAuthor:
+                await this.accountService.checkIfAccountIsFollowing(
+                    account.id,
+                    post.author.id,
+                ),
+            followingReposter: false,
+        });
 
-        return new Response(
-            JSON.stringify(
-                postToDTO(post, {
-                    authoredByMe: post.author.id === account.id,
-                    likedByMe:
-                        post.id && account.id
-                            ? await this.postService.isLikedByAccount(
-                                  post.id,
-                                  account.id,
-                              )
-                            : false,
-                    repostedByMe:
-                        post.id && account.id
-                            ? await this.postService.isRepostedByAccount(
-                                  post.id,
-                                  account.id,
-                              )
-                            : false,
-                    repostedBy: null,
-                    followingAuthor:
-                        await this.accountService.checkIfAccountIsFollowing(
-                            account.id,
-                            post.author.id,
-                        ),
-                    followingReposter: false,
-                }),
-            ),
-            { status: 200 },
-        );
+        return new Response(JSON.stringify(postDTOToV1(postDTO)), {
+            status: 200,
+        });
     }
 
     /**
@@ -270,12 +268,12 @@ export class PostController {
             authoredByMe: true,
             likedByMe: false,
             repostedByMe: false,
-            repostedBy: null,
+            repostedBy: [],
             followingAuthor: false,
             followingReposter: false,
         });
 
-        return new Response(JSON.stringify({ post: postDTO }), {
+        return new Response(JSON.stringify({ post: postDTOToV1(postDTO) }), {
             headers: {
                 'Content-Type': 'application/json',
             },
