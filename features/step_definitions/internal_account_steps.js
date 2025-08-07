@@ -345,6 +345,61 @@ When('I repost alices note', async function () {
     );
 });
 
+When('I update my account information', async function () {
+    const updateData = {
+        name: 'Updated User Name',
+        bio: 'Updated bio description',
+        username: 'updatedusername',
+        avatarUrl: 'https://example.com/avatar.jpg',
+        bannerImageUrl: 'https://example.com/banner.jpg',
+    };
+
+    const response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/account',
+        {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+        },
+    );
+
+    assert.strictEqual(
+        response.status,
+        200,
+        'Account update request should return 200',
+    );
+
+    this.updatedAccountData = updateData;
+});
+
+Then('alice can view my updated account information', async function () {
+    const response = await fetchActivityPub(
+        'https://alice.test/.ghost/activitypub/v1/account/@index@self.test',
+        { method: 'GET' },
+    );
+
+    assert.strictEqual(
+        response.status,
+        200,
+        'Account retrieval should return 200',
+    );
+
+    const accountData = await response.json();
+
+    assert.strictEqual(
+        accountData.name,
+        this.updatedAccountData.name,
+        'Account name should be updated',
+    );
+    assert.strictEqual(
+        accountData.bio,
+        this.updatedAccountData.bio,
+        'Account bio should be updated',
+    );
+});
+
 Then('alice receives a repost notification', async function () {
     const notifications = await fetchActivityPub(
         'https://alice.test/.ghost/activitypub/v1/notifications',
