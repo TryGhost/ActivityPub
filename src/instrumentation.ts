@@ -41,12 +41,27 @@ export async function setupInstrumentation() {
                         mysqlErrorCode = String(error.code);
                     }
 
+                    // Normalize SQL for batch operations to avoid duplicate issues
+                    let normalizedSql = queryInfo.sql;
+
+                    if (queryInfo.method === 'insert') {
+                        // For INSERT with multiple value sets, normalize to single value set
+                        // i.e.
+                        //    insert ... values (?, ?, ?), (?, ?, ?), (?, ?, ?)
+                        // becomes
+                        //    insert ... values (?, ?, ?)
+                        normalizedSql = normalizedSql.replace(
+                            /(\bvalues\s*\([^)]+\))(?:\s*,\s*\([^)]+\))*/gi,
+                            '$1',
+                        );
+                    }
+
                     // Set fingerprint to group errors by error code + normalized query
                     // i.e ['sql-error', 'ER_NO_SUCH_TABLE', 'SELECT * FROM a WHERE b = "c"']
                     event.fingerprint = [
                         'sql-error',
                         mysqlErrorCode,
-                        queryInfo.sql,
+                        normalizedSql,
                     ];
 
                     // Add query context for additional debugging
@@ -71,9 +86,9 @@ export async function setupInstrumentation() {
                     // See https://sentry.zendesk.com/hc/en-us/articles/28812955455515-How-to-change-an-Issue-s-title
                     if (event.exception?.values?.[0]) {
                         if (mysqlErrorCode !== '') {
-                            event.exception.values[0].value = `${mysqlErrorCode} - ${queryInfo.sql}`;
+                            event.exception.values[0].value = `${mysqlErrorCode} - ${normalizedSql}`;
                         } else {
-                            event.exception.values[0].value = `Query error: ${queryInfo.sql}`;
+                            event.exception.values[0].value = `Query error: ${normalizedSql}`;
                         }
                     }
                 }
