@@ -9,34 +9,15 @@
 </p>
 &nbsp;
 
-# ActivityPub 🚧
+# ActivityPub
 
-A multitenant ActivityPub server for [Ghost](https://ghost.org/), built with [Fedify](https://fedify.dev/). This service makes it possible for independent websites to publish their content directly to the Fediverse, enabling networked publishing to the open social web.
+A multi-tenant ActivityPub server for [Ghost](https://ghost.org/), built with [Fedify](https://fedify.dev/). This service makes it possible for independent websites to publish their content directly to the Fediverse, enabling networked publishing to the open social web.
 
 This repository is being actively developed and is currently in beta - expect many breaking changes. It is not suitable for production use.
-
-## Subscribe to updates
-We're publishing a weekly build-log about the development of this project. Sign up on [https://activitypub.ghost.org](https://activitypub.ghost.org)
-
-[![image](https://github.com/TryGhost/ActivityPub/assets/120485/b341451c-3281-43b8-a6df-e7e34d75f9b5)](https://activitypub.ghost.org)
-
-&nbsp;
 
 # How it works
 
 All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-known/nodeinfo` are proxied to this ActivityPub service using nginx. All other requests are forwarded to Ghost.
-
-## Current features
-
-- [x] Follow
-- [ ] Unfollow
-- [x] Auto Accept Follows
-- [ ] Manually Accept/Reject Follows
-- [x] Publish Articles to Followers
-- [x] Receive Articles in Inbox
-- [x] Receive Notes in Inbox
-
-&nbsp;
 
 # Running locally for development
 
