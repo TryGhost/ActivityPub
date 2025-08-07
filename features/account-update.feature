@@ -19,3 +19,8 @@ Feature: Update account information
       | bannerImageUrl | https://example.com/banner.jpg               |
       | handle         | @updatedUsername@self.test |
     And a "Update(Us)" activity is sent to "Alice"
+
+  Scenario: Delivering account updates to internal accounts
+    Given I have internal account followers
+    When I update my account information
+    Then alice can view my updated account information
