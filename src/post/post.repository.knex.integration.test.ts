@@ -2301,4 +2301,58 @@ describe('KnexPostRepository', () => {
             expect(row.repost_count).toBe(33);
         });
     });
+
+    it('should handle concurrent updates to the repost count', async () => {
+        const authorAccount = await fixtureManager.createExternalAccount();
+        const reposterAccount = await fixtureManager.createExternalAccount();
+
+        const post = await fixtureManager.createPost(authorAccount);
+
+        // Simulate concurrency by creating a clone of the existing post
+        const postClone = new Post(
+            post.id,
+            post.uuid,
+            authorAccount,
+            post.type,
+            post.audience,
+            post.title,
+            post.excerpt,
+            post.summary,
+            post.content,
+            post.url,
+            post.imageUrl,
+            post.publishedAt,
+            post.metadata,
+            post.likeCount,
+            post.repostCount,
+            post.replyCount,
+            post.inReplyTo,
+            post.threadRoot,
+            null,
+            post.attachments,
+            post.apId,
+            false,
+            post.updatedAt,
+        );
+
+        expect(postClone).toEqual(post);
+
+        // Add a repost to the original post and save
+        post.addRepost(reposterAccount);
+        await postRepository.save(post);
+
+        // Remove the repost from the clone and attempt to save - because the
+        // cloned post has a repost count of 0 (as its not aware of the repost
+        // on the original post). If we are handling concurrency correctly,
+        // this should not throw an error as we use an atomic update to update
+        // the repost count
+        postClone.removeRepost(reposterAccount);
+        await expect(
+            postRepository.save(postClone),
+        ).resolves.not.toThrowError();
+
+        const postRow = await client('posts').where({ id: post.id }).first();
+
+        expect(postRow.repost_count).toBe(0);
+    });
 });
