@@ -118,6 +118,11 @@ export function registerDependencies(
                     maxRetriesPerRequest: 3,
                     enableReadyCheck: true,
                     enableOfflineQueue: true,
+                    tls: process.env.REDIS_TLS_CERT
+                        ? {
+                              ca: process.env.REDIS_TLS_CERT,
+                          }
+                        : undefined,
                 });
 
                 return new RedisKvStore(redis);
