@@ -6,6 +6,13 @@ interface KnexQueryInfo {
     bindings: unknown[];
 }
 
+export interface KnexQueryError extends Error {
+    __knexQueryInfo: KnexQueryInfo;
+    code?: string;
+    errno?: number;
+    sqlMessage?: string;
+}
+
 export const knex = Knex({
     client: 'mysql2',
     connection: process.env.MYSQL_SOCKET_PATH
