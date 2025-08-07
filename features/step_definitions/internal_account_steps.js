@@ -43,7 +43,8 @@ Given('I have internal account followers', async () => {
 });
 
 When('I create a post in ghost', async function () {
-    const body = JSON.stringify(createWebhookPost());
+    this.originalGhostPost = createWebhookPost();
+    const body = JSON.stringify(this.originalGhostPost);
     const timestamp = Date.now();
     const hmac = createHmac('sha256', getWebhookSecret())
         .update(body + timestamp)
@@ -414,4 +415,87 @@ Then('alice receives a repost notification', async function () {
         ),
         'Repost notification is not in notifications',
     );
+});
+
+When('I update the post in ghost', async function () {
+    // Use the original ghost post data and update the fields
+    const updatedPostData = {
+        ...this.originalGhostPost,
+        post: {
+            current: {
+                ...this.originalGhostPost.post.current,
+                title: 'Updated Article Title',
+                html: '<p>This is the updated content of the article.</p>',
+                excerpt: 'Updated excerpt for the article',
+            },
+        },
+    };
+
+    const body = JSON.stringify(updatedPostData);
+    const timestamp = Date.now();
+    const hmac = createHmac('sha256', getWebhookSecret())
+        .update(body + timestamp)
+        .digest('hex');
+
+    const response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/webhooks/post/updated',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Ghost-Signature': `sha256=${hmac}, t=${timestamp}`,
+            },
+            body: body,
+        },
+    );
+
+    assert.strictEqual(
+        response.status,
+        200,
+        'Post update webhook should return 200',
+    );
+
+    this.updatedPostData = updatedPostData.post.current;
+});
+
+Then('the updated article is in my followers feeds', async function () {
+    const feeds = await Promise.all([
+        fetchActivityPub(
+            'https://alice.test/.ghost/activitypub/v1/feed/reader',
+            { method: 'GET' },
+        ),
+        fetchActivityPub('https://bob.test/.ghost/activitypub/v1/feed/reader', {
+            method: 'GET',
+        }),
+        fetchActivityPub(
+            'https://carol.test/.ghost/activitypub/v1/feed/reader',
+            { method: 'GET' },
+        ),
+    ]);
+
+    const articleId = this.article.id;
+
+    for (const feed of feeds) {
+        const json = await feed.json();
+        const updatedArticle = json.posts.find((post) => post.id === articleId);
+        assert(updatedArticle, 'Updated article is not in feed');
+
+        assert.strictEqual(
+            updatedArticle.title,
+            this.updatedPostData.title,
+            'Article title should be updated in feed',
+        );
+
+        assert.strictEqual(
+            updatedArticle.content,
+            this.updatedPostData.html,
+            'Article html should be updated in feed',
+        );
+
+        assert.strictEqual(
+            updatedArticle.excerpt,
+            this.updatedPostData.excerpt,
+            'Article html should be updated in feed',
+        );
+    }
 });
