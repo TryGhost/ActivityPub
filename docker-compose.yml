@@ -32,11 +32,16 @@ services:
       - LOCAL_STORAGE_PATH=/opt/activitypub/content
       # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
       # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FEDIFY_KV_STORE_TYPE=redis
     command: yarn build:watch
     depends_on:
       migrate:
-        condition: service_started
+        condition: service_completed_successfully
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       pubsub:
         condition: service_healthy
@@ -98,6 +103,18 @@ services:
       interval: 1s
       retries: 120
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      retries: 120
+
   pubsub:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:499.0.0-emulators@sha256:38606e0ec8b892ff2be6fb7238c6b98e7b0b69f60ed433fa2b196bdf4646caf9
     command: /bin/bash -c "/opt/activitypub/start-pubsub.sh"
@@ -152,9 +169,16 @@ services:
       - GCS_LOCAL_STORAGE_HOSTING_URL=http://fake-gcs:4443/.ghost/activitypub/gcs
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
+      - REDIS_HOST=redis-testing
+      - REDIS_PORT=6379
+      - FEDIFY_KV_STORE_TYPE=redis
     command: yarn build:watch
     depends_on:
+      migrate-testing:
+        condition: service_completed_successfully
       mysql-testing:
+        condition: service_healthy
+      redis-testing:
         condition: service_healthy
       pubsub-testing:
         condition: service_healthy
@@ -226,6 +250,16 @@ services:
       - MYSQL_DATABASE=activitypub
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
+      interval: 1s
+      retries: 120
+
+  redis-testing:
+    networks:
+      - test_network
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 1s
       retries: 120
 
@@ -328,3 +362,4 @@ volumes:
   dev-content:
   caddy_data:
   caddy_config:
+  redis-data:

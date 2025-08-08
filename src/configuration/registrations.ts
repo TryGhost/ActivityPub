@@ -1,4 +1,5 @@
 import { createFederation, type KvStore } from '@fedify/fedify';
+import { RedisKvStore } from '@fedify/redis';
 import type { PubSub } from '@google-cloud/pubsub';
 import { getLogger, type Logger } from '@logtape/logtape';
 import {
@@ -8,6 +9,7 @@ import {
     asFunction,
     asValue,
 } from 'awilix';
+import Redis from 'ioredis';
 import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -96,9 +98,42 @@ export function registerDependencies(
 
     container.register({
         fedifyKv: asFunction((db: Knex, logging: Logger) => {
+            const kvStoreType = process.env.FEDIFY_KV_STORE_TYPE || 'mysql';
+
+            if (kvStoreType === 'redis') {
+                logging.info('Using Redis KvStore for Fedify');
+                const host = process.env.REDIS_HOST || 'localhost';
+                const port = Number(process.env.REDIS_PORT) || 6379;
+
+                const redis = new Redis({
+                    host,
+                    port,
+                    retryStrategy: (times: number) => {
+                        const delay = Math.min(times * 50, 2000);
+                        logging.warn(
+                            `Redis connection retry attempt ${times}, delay ${delay}ms`,
+                        );
+                        return delay;
+                    },
+                    maxRetriesPerRequest: 3,
+                    enableReadyCheck: true,
+                    enableOfflineQueue: true,
+                    tls: process.env.REDIS_TLS_CERT
+                        ? {
+                              ca: process.env.REDIS_TLS_CERT,
+                          }
+                        : undefined,
+                });
+
+                return new RedisKvStore(redis);
+            }
+
+            logging.info('Using MySQL KvStore for Fedify');
             return KnexKvStore.create(db, 'key_value', logging);
         }).singleton(),
-        globalDb: aliasTo('fedifyKv'),
+        globalDb: asFunction((db: Knex, logging: Logger) => {
+            return KnexKvStore.create(db, 'key_value', logging);
+        }).singleton(),
     });
 
     container.register('events', asValue(new AsyncEvents()));
