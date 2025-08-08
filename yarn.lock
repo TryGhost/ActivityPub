@@ -272,11 +272,6 @@
   dependencies:
     tslib "^2.4.0"
 
-"@es-toolkit/es-toolkit@npm:es-toolkit@^1.38.0":
-  version "1.39.8"
-  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.8.tgz#314aca3988fc1f2c3faa95b49c3029f44c690f50"
-  integrity sha512-A8QO9TfF+rltS8BXpdu8OS+rpGgEdnRhqIVxO/ZmNvnXBYgOdSsxukT55ELyP94gZIntWJ+Li9QRrT2u1Kitpg==
-
 "@esbuild/aix-ppc64@0.21.5":
   version "0.21.5"
   resolved "https://registry.yarnpkg.com/@esbuild/aix-ppc64/-/aix-ppc64-0.21.5.tgz#c7184a326533fcdf1b8ee0733e21c713b975575f"
@@ -537,13 +532,12 @@
   resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.7.8.tgz#22ec4d875f772d152c582e8b37cce2c81978db3c"
   integrity sha512-fP6ZWxQTk5rhsRxS2fFp3hMoTtFlDBQfWLQ8e1i7OUQZWHqfnDuGWuP8GW3AL9ywu7DOJGlpnz36DeybJzWr9w==
 
-"@fedify/fedify@1.7.9":
-  version "1.7.9"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.7.9.tgz#f303ae25bec73ecae7289d7490451781aa5a8935"
-  integrity sha512-jxd3AJDdXGVlv4vkEIJyIjuqpozQK//8qDLhbl7vLPfau03UpYpP7ADxRq9ZeMmTf3nggULXvIeqOsFiOAPaKw==
+"@fedify/fedify@1.8.5":
+  version "1.8.5"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.8.5.tgz#36408583ea4ec3f47edb08e8385443a13916687c"
+  integrity sha512-Bmx28+F8xEgepI4XVRZUiSERAH2kOx8TWRMds9zTihVCsuwN4WuAYUqJ24M5bis3dXsHQjitiUwAVeI/T+FgcA==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
-    "@es-toolkit/es-toolkit" "npm:es-toolkit@^1.38.0"
     "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.5.1"
     "@logtape/logtape" "^1.0.0"
@@ -553,6 +547,7 @@
     "@phensley/language-tag" "^1.9.0"
     asn1js "^3.0.5"
     byte-encodings "^1.0.11"
+    es-toolkit "^1.39.5"
     json-canon "^1.0.1"
     jsonld "^8.3.2"
     multicodec "^3.2.1"
@@ -2533,7 +2528,7 @@ es-set-tostringtag@^2.1.0:
     has-tostringtag "^1.0.2"
     hasown "^2.0.2"
 
-es-toolkit@1.39.8:
+es-toolkit@1.39.8, es-toolkit@^1.39.5:
   version "1.39.8"
   resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.8.tgz#314aca3988fc1f2c3faa95b49c3029f44c690f50"
   integrity sha512-A8QO9TfF+rltS8BXpdu8OS+rpGgEdnRhqIVxO/ZmNvnXBYgOdSsxukT55ELyP94gZIntWJ+Li9QRrT2u1Kitpg==
