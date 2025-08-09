@@ -410,6 +410,13 @@ export class KnexPostRepository {
                     );
 
                     if (insertedRepostsCount - removedRepostsCount !== 0) {
+                        // For external posts with manual count updates we need to
+                        // preserve the manual count while applying the delta.
+                        // For all other cases we should use atomic SQL to
+                        // prevent race conditions with concurrent updates
+                        const shouldUseAtomicUpdate =
+                            post.isInternal || !post.isRepostCountDirty;
+
                         this.logger.info(
                             `Updating repost count for post ${post.id}`,
                             {
@@ -426,12 +433,14 @@ export class KnexPostRepository {
                                 removedRepostsDb,
                                 // What value was used to update the repost count
                                 removedRepostsCount,
+                                // Using atomic update
+                                shouldUseAtomicUpdate,
                             },
                         );
 
                         await transaction('posts')
                             .update({
-                                repost_count: post.isInternal
+                                repost_count: shouldUseAtomicUpdate
                                     ? transaction.raw(
                                           `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
                                       )
