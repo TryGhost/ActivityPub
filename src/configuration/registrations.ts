@@ -48,6 +48,7 @@ import { GhostPostService } from '@/ghost/ghost-post.service';
 import { getSiteSettings } from '@/helpers/ghost';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
+import { ClientConfigController } from '@/http/api/client-config.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
 import { LikeController } from '@/http/api/like.controller';
@@ -461,6 +462,11 @@ export function registerDependencies(
     container.register(
         'notificationController',
         asClass(NotificationController).singleton(),
+    );
+
+    container.register(
+        'clientConfigController',
+        asClass(ClientConfigController).singleton(),
     );
 
     container.register(
