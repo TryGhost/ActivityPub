@@ -121,6 +121,7 @@ export class NotificationController {
     }
 
     @Route('GET', '/.ghost/activitypub/v1/notifications/unread/count')
+    @Route('GET', '/.ghost/activitypub/stable/notifications/unread/count')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetUnreadNotificationsCount(ctx: AppContext) {
         const account = ctx.get('account');
