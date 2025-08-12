@@ -13,7 +13,7 @@ import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
 import { Forbidden } from '@/http/api/helpers/response';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
@@ -26,7 +26,7 @@ export class LikeController {
         private readonly fedify: Federation<ContextData>,
     ) {}
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/like/:id')
+    @APIRoute('POST', 'actions/like/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleLike(ctx: AppContext) {
         const account = ctx.get('account');
@@ -159,7 +159,7 @@ export class LikeController {
         });
     }
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/unlike/:id')
+    @APIRoute('POST', 'actions/unlike/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnlike(ctx: AppContext) {
         const account = ctx.get('account');
