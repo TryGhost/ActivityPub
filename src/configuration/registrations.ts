@@ -10,7 +10,6 @@ import {
 } from 'awilix';
 import Redis from 'ioredis';
 import type { Knex } from 'knex';
-import { RedisKvStore } from 'src/redis.kvstore';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
@@ -74,6 +73,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
+import { RedisKvStore } from '@/redis.kvstore';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
@@ -103,7 +103,7 @@ export function registerDependencies(
             if (kvStoreType === 'redis') {
                 logging.info('Using Redis KvStore for Fedify');
                 const host = process.env.REDIS_HOST || 'localhost';
-                const port = Number(process.env.REDIS_PORT) || 6379;
+                const port = Number(process.env.REDIS_PORT) || 7000;
 
                 const redis = new Redis.Cluster(
                     [
