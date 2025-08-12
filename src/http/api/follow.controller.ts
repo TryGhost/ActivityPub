@@ -11,7 +11,7 @@ import {
     Forbidden,
     NotFound,
 } from '@/http/api/helpers/response';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import {
     lookupActor,
@@ -27,7 +27,7 @@ export class FollowController {
         private readonly fedify: Federation<ContextData>,
     ) {}
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/follow/:handle')
+    @APIRoute('POST', 'actions/follow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
@@ -136,7 +136,7 @@ export class FollowController {
         });
     }
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/unfollow/:handle')
+    @APIRoute('POST', 'actions/unfollow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');

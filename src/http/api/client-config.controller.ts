@@ -1,8 +1,8 @@
 import type { AppContext } from '@/app';
-import { Route } from '@/http/decorators/route.decorator';
+import { APIRoute } from '@/http/decorators/route.decorator';
 
 export class ClientConfigController {
-    @Route('GET', '/.ghost/activitypub/stable/client-config')
+    @APIRoute('GET', 'client-config', 'stable')
     async handleGetClientConfig(_ctx: AppContext) {
         const clientConfig = {
             requiredVersion: '^1.0.0',

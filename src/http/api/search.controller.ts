@@ -5,7 +5,7 @@ import { isHandle } from '@/helpers/activitypub/actor';
 import { isUri } from '@/helpers/uri';
 import type { AccountDTO } from '@/http/api/types';
 import type { AccountView } from '@/http/api/views/account.view';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 
 type AccountSearchResult = Pick<
@@ -45,7 +45,7 @@ export class SearchController {
      *
      * @param ctx App context instance
      */
-    @Route('GET', '/.ghost/activitypub/v1/actions/search')
+    @APIRoute('GET', 'actions/search')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleSearch(ctx: AppContext) {
         // Parse "query" from query parameters

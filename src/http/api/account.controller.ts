@@ -16,7 +16,7 @@ import type {
     AccountPostsView,
 } from '@/http/api/views/account.posts.view';
 import type { AccountView } from '@/http/api/views/account.view';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import { lookupActorProfile } from '@/lookup-helpers';
 
@@ -51,7 +51,7 @@ export class AccountController {
     /**
      * Handle a request for an account
      */
-    @Route('GET', '/.ghost/activitypub/v1/account/:handle')
+    @APIRoute('GET', 'account/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccount(ctx: AppContext) {
         const handle = ctx.req.param('handle');
@@ -97,7 +97,7 @@ export class AccountController {
     /**
      * Handle a request for a list of account follows
      */
-    @Route('GET', '/.ghost/activitypub/v1/account/:handle/follows/:type')
+    @APIRoute('GET', 'account/:handle/follows/:type')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountFollows(ctx: AppContext) {
         const logger = ctx.get('logger');
@@ -202,7 +202,7 @@ export class AccountController {
     /**
      * Handle a request for a list of posts by an account
      */
-    @Route('GET', '/.ghost/activitypub/v1/posts/:handle')
+    @APIRoute('GET', 'posts/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountPosts(ctx: AppContext) {
         const params = validateRequestParams(ctx);
@@ -311,7 +311,7 @@ export class AccountController {
     /**
      * Handle a request for a list of posts liked by an account
      */
-    @Route('GET', '/.ghost/activitypub/v1/posts/:handle/liked')
+    @APIRoute('GET', 'posts/:handle/liked')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountLikedPosts(ctx: AppContext) {
         const params = validateRequestParams(ctx);
@@ -344,7 +344,7 @@ export class AccountController {
     /**
      * Handle a request for an account update
      */
-    @Route('PUT', '/.ghost/activitypub/v1/account')
+    @APIRoute('PUT', 'account')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUpdateAccount(ctx: AppContext) {
         const schema = z.object({
