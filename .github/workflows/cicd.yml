@@ -13,7 +13,11 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'  # Trigger on semantic version tags like v1.0.0
+      - "v*.*.*" # Trigger on semantic version tags like v1.0.0
+
+concurrency:
+  group: ci-${{ github.ref_name == 'main' && 'main' || github.ref_name }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 permissions:
   id-token: write
