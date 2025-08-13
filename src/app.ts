@@ -934,15 +934,38 @@ serve(
     },
 );
 
-process.on('SIGINT', () => process.exit(0));
+let isShuttingDown = false;
+async function gracefulShutdown(signal: 'SIGINT' | 'SIGTERM') {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    globalLogging.info(`Received ${signal}, shutting down gracefully`);
+    try {
+        await new Promise((resolve) => setTimeout(resolve, 9000));
+        await knex.destroy();
+        globalLogging.info('DB connection closed');
+        await Sentry.close(1000);
+    } catch (err) {
+        globalLogging.error(
+            'Error while closing DB connection on {signal}: {error}',
+            {
+                signal: signal,
+                error: err,
+            },
+        );
+    } finally {
+        process.exit(0);
+    }
+}
+
+process.on('SIGINT', () => {
+    if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
+        process.exit(0);
+    }
+    void gracefulShutdown('SIGINT');
+});
 process.on('SIGTERM', () => {
     if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
         process.exit(0);
     }
-
-    globalLogging.info('Received SIGTERM, shutting down gracefully');
-
-    setTimeout(() => {
-        process.exit(0);
-    }, 9000);
+    void gracefulShutdown('SIGTERM');
 });
