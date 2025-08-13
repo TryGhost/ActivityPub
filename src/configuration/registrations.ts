@@ -1,4 +1,4 @@
-import { createFederation, type KvStore } from '@fedify/fedify';
+import { createFederation, type KvKey, type KvStore } from '@fedify/fedify';
 import type { PubSub } from '@google-cloud/pubsub';
 import { getLogger, type Logger } from '@logtape/logtape';
 import {
@@ -100,6 +100,8 @@ export function registerDependencies(
         fedifyKv: asFunction((db: Knex, logging: Logger) => {
             const kvStoreType = process.env.FEDIFY_KV_STORE_TYPE || 'mysql';
 
+            const knexKvStore = KnexKvStore.create(db, 'key_value', logging);
+
             if (kvStoreType === 'redis') {
                 logging.info('Using Redis KvStore for Fedify');
                 const host = process.env.REDIS_HOST || 'localhost';
@@ -133,11 +135,27 @@ export function registerDependencies(
                     },
                 );
 
-                return new RedisKvStore(redis);
+                const redisKvStore = new RedisKvStore(redis);
+
+                // @ts-expect-error
+                redisKvStore._get = redisKvStore.get;
+                redisKvStore.get = async (key: KvKey) => {
+                    // @ts-expect-error
+                    const exists = await redisKvStore._get(key);
+
+                    if (!exists) {
+                        return knexKvStore.get(key);
+                    }
+
+                    return exists;
+                };
+
+                return redisKvStore;
             }
 
             logging.info('Using MySQL KvStore for Fedify');
-            return KnexKvStore.create(db, 'key_value', logging);
+
+            return knexKvStore;
         }).singleton(),
         globalDb: asFunction((db: Knex, logging: Logger) => {
             return KnexKvStore.create(db, 'key_value', logging);
