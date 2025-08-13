@@ -1030,6 +1030,41 @@ describe('KnexPostRepository', () => {
         );
     });
 
+    it('Prevents repost_count from going negative when computing repost count from existing repost_count', async () => {
+        const [[account1], [account2], [account3]] = await Promise.all([
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+            fixtureManager.createInternalAccount(),
+        ]);
+
+        const post = Post.createFromData(account1, {
+            type: PostType.Note,
+            content: 'post content',
+            apId: new URL('https://example.com/posts/abc123'),
+        });
+
+        post.addRepost(account2);
+        post.addRepost(account3);
+
+        await postRepository.save(post);
+
+        // Manually set repost_count to 1 in the database to simulate inconsistency
+        // in the system (i.e something else has changed the repost count)
+        await client('posts')
+            .where({ id: post.id })
+            .update({ repost_count: 1 });
+
+        // Get a fresh instance of the post
+        const postFromDb = await postRepository.getByApId(post.apId);
+
+        // Remove both reposts - this would normally make count go to -1
+        // because it would calculate: 1 + (0 - 2) = -1
+        postFromDb!.removeRepost(account2);
+        postFromDb!.removeRepost(account3);
+
+        await expect(postRepository.save(postFromDb!)).resolves.not.toThrow();
+    });
+
     it('Handles replies to an existing post', async () => {
         const accounts = await Promise.all(
             [
