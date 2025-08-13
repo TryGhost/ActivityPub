@@ -3,7 +3,7 @@ import { getAccountHandle } from '@/account/utils';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import type { NotificationDTO } from '@/http/api/types';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import type { NotificationService } from '@/notification/notification.service';
 
@@ -29,7 +29,7 @@ export class NotificationController {
         private readonly notificationService: NotificationService,
     ) {}
 
-    @Route('GET', '/.ghost/activitypub/v1/notifications')
+    @APIRoute('GET', 'notifications')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetNotifications(ctx: AppContext) {
         const queryCursor = ctx.req.query('next');
@@ -120,7 +120,7 @@ export class NotificationController {
         );
     }
 
-    @Route('GET', '/.ghost/activitypub/v1/notifications/unread/count')
+    @APIRoute('GET', 'notifications/unread/count', 'stable', 'v1')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetUnreadNotificationsCount(ctx: AppContext) {
         const account = ctx.get('account');
@@ -153,7 +153,7 @@ export class NotificationController {
         );
     }
 
-    @Route('PUT', '/.ghost/activitypub/v1/notifications/unread/reset')
+    @APIRoute('PUT', 'notifications/unread/reset')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleResetUnreadNotificationsCount(ctx: AppContext) {
         const account = ctx.get('account');
