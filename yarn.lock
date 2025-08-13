@@ -290,11 +290,6 @@
   dependencies:
     tslib "^2.4.0"
 
-"@es-toolkit/es-toolkit@npm:es-toolkit@^1.38.0":
-  version "1.39.9"
-  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.9.tgz#6c75f868eb7b93da823de69fabf9bcd8384b8a9a"
-  integrity sha512-9OtbkZmTA2Qc9groyA1PUNeb6knVTkvB2RSdr/LcJXDL8IdEakaxwXLHXa7VX/Wj0GmdMJPR3WhnPGhiP3E+qg==
-
 "@esbuild/aix-ppc64@0.21.5":
   version "0.21.5"
   resolved "https://registry.yarnpkg.com/@esbuild/aix-ppc64/-/aix-ppc64-0.21.5.tgz#c7184a326533fcdf1b8ee0733e21c713b975575f"
@@ -578,13 +573,12 @@
     url-template "^3.1.1"
     urlpattern-polyfill "~10.0.0"
 
-"@fedify/fedify@1.7.9":
-  version "1.7.9"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.7.9.tgz#f303ae25bec73ecae7289d7490451781aa5a8935"
-  integrity sha512-jxd3AJDdXGVlv4vkEIJyIjuqpozQK//8qDLhbl7vLPfau03UpYpP7ADxRq9ZeMmTf3nggULXvIeqOsFiOAPaKw==
+"@fedify/fedify@1.8.5":
+  version "1.8.5"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.8.5.tgz#36408583ea4ec3f47edb08e8385443a13916687c"
+  integrity sha512-Bmx28+F8xEgepI4XVRZUiSERAH2kOx8TWRMds9zTihVCsuwN4WuAYUqJ24M5bis3dXsHQjitiUwAVeI/T+FgcA==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
-    "@es-toolkit/es-toolkit" "npm:es-toolkit@^1.38.0"
     "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.5.1"
     "@logtape/logtape" "^1.0.0"
@@ -594,6 +588,7 @@
     "@phensley/language-tag" "^1.9.0"
     asn1js "^3.0.5"
     byte-encodings "^1.0.11"
+    es-toolkit "^1.39.5"
     json-canon "^1.0.1"
     jsonld "^8.3.2"
     multicodec "^3.2.1"
@@ -2605,7 +2600,7 @@ es-set-tostringtag@^2.1.0:
     has-tostringtag "^1.0.2"
     hasown "^2.0.2"
 
-es-toolkit@1.39.9:
+es-toolkit@1.39.9, es-toolkit@^1.39.5:
   version "1.39.9"
   resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.39.9.tgz#6c75f868eb7b93da823de69fabf9bcd8384b8a9a"
   integrity sha512-9OtbkZmTA2Qc9groyA1PUNeb6knVTkvB2RSdr/LcJXDL8IdEakaxwXLHXa7VX/Wj0GmdMJPR3WhnPGhiP3E+qg==
