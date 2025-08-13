@@ -942,7 +942,20 @@ process.on('SIGTERM', () => {
 
     globalLogging.info('Received SIGTERM, shutting down gracefully');
 
-    setTimeout(() => {
+    setTimeout(async () => {
+        await knex
+            .destroy()
+            .then(() => {
+                globalLogging.info('DB connection closed');
+            })
+            .catch((err) => {
+                globalLogging.error(
+                    'Error while closing DB connection: {error}',
+                    {
+                        error: err,
+                    },
+                );
+            });
         process.exit(0);
     }, 9000);
 });
