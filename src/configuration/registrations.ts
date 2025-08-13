@@ -1,5 +1,4 @@
 import { createFederation, type KvStore } from '@fedify/fedify';
-import { RedisKvStore } from '@fedify/redis';
 import type { PubSub } from '@google-cloud/pubsub';
 import { getLogger, type Logger } from '@logtape/logtape';
 import {
@@ -74,6 +73,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
+import { RedisKvStore } from '@/redis.kvstore';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
@@ -103,27 +103,35 @@ export function registerDependencies(
             if (kvStoreType === 'redis') {
                 logging.info('Using Redis KvStore for Fedify');
                 const host = process.env.REDIS_HOST || 'localhost';
-                const port = Number(process.env.REDIS_PORT) || 6379;
+                const port = Number(process.env.REDIS_PORT) || 7000;
 
-                const redis = new Redis({
-                    host,
-                    port,
-                    retryStrategy: (times: number) => {
-                        const delay = Math.min(times * 50, 2000);
-                        logging.warn(
-                            `Redis connection retry attempt ${times}, delay ${delay}ms`,
-                        );
-                        return delay;
+                const redis = new Redis.Cluster(
+                    [
+                        {
+                            host,
+                            port,
+                        },
+                    ],
+                    {
+                        clusterRetryStrategy: (times: number) => {
+                            const delay = Math.min(times * 50, 2000);
+                            logging.warn(
+                                `Redis connection retry attempt ${times}, delay ${delay}ms`,
+                            );
+                            return delay;
+                        },
+                        enableOfflineQueue: true,
+                        redisOptions: {
+                            maxRetriesPerRequest: 3,
+                            enableReadyCheck: true,
+                            tls: process.env.REDIS_TLS_CERT
+                                ? {
+                                      ca: process.env.REDIS_TLS_CERT,
+                                  }
+                                : undefined,
+                        },
                     },
-                    maxRetriesPerRequest: 3,
-                    enableReadyCheck: true,
-                    enableOfflineQueue: true,
-                    tls: process.env.REDIS_TLS_CERT
-                        ? {
-                              ca: process.env.REDIS_TLS_CERT,
-                          }
-                        : undefined,
-                });
+                );
 
                 return new RedisKvStore(redis);
             }
