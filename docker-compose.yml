@@ -34,7 +34,7 @@ services:
       # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
       - REDIS_HOST=redis-1
       - REDIS_PORT=7000
-      - FEDIFY_KV_STORE_TYPE=redis
+      - FEDIFY_KV_STORE_TYPE=mysql
     command: yarn build:watch
     depends_on:
       migrate:
@@ -216,7 +216,7 @@ services:
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
       - REDIS_HOST=redis-testing-1
       - REDIS_PORT=7000
-      - FEDIFY_KV_STORE_TYPE=redis
+      - FEDIFY_KV_STORE_TYPE=mysql
     command: yarn build:watch
     depends_on:
       migrate-testing:
