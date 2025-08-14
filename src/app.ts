@@ -196,10 +196,11 @@ export type FedifyContext = Context<ContextData>;
 
 const globalFedify = container.resolve<Federation<ContextData>>('fedify');
 const globalFedifyKv = container.resolve<KvStore>('fedifyKv');
+const globalKv = container.resolve<KvStore>('kv');
 
 if (process.env.MANUALLY_START_QUEUE === 'true') {
     globalFedify.startQueue({
-        globaldb: globalFedifyKv,
+        globaldb: globalKv,
         logger: globalLogging,
     });
 }
@@ -242,7 +243,7 @@ function ensureCorrectContext<B, R>(
             (ctx as any).data = {};
         }
         if (!ctx.data.globaldb) {
-            ctx.data.globaldb = globalFedifyKv;
+            ctx.data.globaldb = globalKv;
         }
         if (!ctx.data.logger) {
             ctx.data.logger = globalLogging;
@@ -554,7 +555,7 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (ctx, next) => {
-    ctx.set('globaldb', globalFedifyKv);
+    ctx.set('globaldb', globalKv);
 
     return next();
 });
