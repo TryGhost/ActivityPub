@@ -33,7 +33,7 @@ services:
       # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
       # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
       - REDIS_HOST=redis-1
-      - REDIS_PORT=7000
+      - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=mysql
     command: yarn build:watch
     depends_on:
@@ -106,33 +106,33 @@ services:
   redis-1:
     container_name: redis-1
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 7000 --cluster-enabled yes --cluster-announce-ip redis-1 --cluster-announce-port 7000
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-announce-ip redis-1 --cluster-announce-port 6379
     ports:
-      - "7000:7000"
+      - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7000", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
       interval: 1s
       retries: 120
 
   redis-2:
     container_name: redis-2
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 7001 --cluster-enabled yes --cluster-announce-ip redis-2 --cluster-announce-port 7001
+    command: redis-server --port 6380 --cluster-enabled yes --cluster-announce-ip redis-2 --cluster-announce-port 6380
     ports:
-      - "7001:7001"
+      - "6380:6380"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7001", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
       interval: 1s
       retries: 120
 
   redis-3:
     container_name: redis-3
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 7002 --cluster-enabled yes --cluster-announce-ip redis-3 --cluster-announce-port 7002
+    command: redis-server --port 6381 --cluster-enabled yes --cluster-announce-ip redis-3 --cluster-announce-port 6381
     ports:
-      - "7002:7002"
+      - "6381:6381"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7002", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6381", "ping"]
       interval: 1s
       retries: 120
 
@@ -151,12 +151,12 @@ services:
     command:
       - |
         sleep 10
-        if redis-cli -h redis-1 -p 7000 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+        if redis-cli -h redis-1 -p 6379 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
           echo "Cluster already initialized"
         else
           echo "Creating Redis cluster (3 nodes, no replicas)..."
           echo "yes" | redis-cli --cluster create \
-            redis-1:7000 redis-2:7001 redis-3:7002 \
+            redis-1:6379 redis-2:6380 redis-3:6381 \
             --cluster-replicas 0
         fi
 
@@ -215,7 +215,7 @@ services:
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
       - REDIS_HOST=redis-testing-1
-      - REDIS_PORT=7000
+      - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=mysql
     command: yarn build:watch
     depends_on:
@@ -230,7 +230,7 @@ services:
       fake-gcs:
         condition: service_healthy
     healthcheck:
-      test: "if [ ! -f /tmp/health.txt ]; then (wget --spider http://0.0.0.0:8083/ping || exit 1) && touch /tmp/health.txt ; else echo \"healthcheck already executed\"; fi"
+      test: 'if [ ! -f /tmp/health.txt ]; then (wget --spider http://0.0.0.0:8083/ping || exit 1) && touch /tmp/health.txt ; else echo "healthcheck already executed"; fi'
       interval: 1s
       retries: 120
       start_period: 5s
@@ -303,9 +303,9 @@ services:
       - test_network
     container_name: redis-testing-1
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 7000 --cluster-enabled yes --cluster-announce-ip redis-testing-1 --cluster-announce-port 7000
+    command: redis-server --port 6379 --cluster-enabled yes --cluster-announce-ip redis-testing-1 --cluster-announce-port 6379
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7000", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
       interval: 1s
       retries: 120
 
@@ -314,9 +314,9 @@ services:
       - test_network
     container_name: redis-testing-2
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 7001 --cluster-enabled yes --cluster-announce-ip redis-testing-2 --cluster-announce-port 7001
+    command: redis-server --port 6380 --cluster-enabled yes --cluster-announce-ip redis-testing-2 --cluster-announce-port 6380
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7001", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
       interval: 1s
       retries: 120
 
@@ -325,9 +325,9 @@ services:
       - test_network
     container_name: redis-testing-3
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 7002 --cluster-enabled yes --cluster-announce-ip redis-testing-3 --cluster-announce-port 7002
+    command: redis-server --port 6381 --cluster-enabled yes --cluster-announce-ip redis-testing-3 --cluster-announce-port 6381
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7002", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6381", "ping"]
       interval: 1s
       retries: 120
 
@@ -348,12 +348,12 @@ services:
     command:
       - |
         sleep 10
-        if redis-cli -h redis-testing-1 -p 7000 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+        if redis-cli -h redis-testing-1 -p 6379 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
           echo "Testing cluster already initialized"
         else
           echo "Creating Redis testing cluster (3 nodes, no replicas)..."
           echo "yes" | redis-cli --cluster create \
-            redis-testing-1:7000 redis-testing-2:7001 redis-testing-3:7002 \
+            redis-testing-1:6379 redis-testing-2:6380 redis-testing-3:6381 \
             --cluster-replicas 0
         fi
 
@@ -411,13 +411,29 @@ services:
     networks:
       - test_network
     image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
-    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
+    entrypoint:
+      [
+        "/docker-entrypoint.sh",
+        "--global-response-templating",
+        "--disable-gzip",
+        "--verbose",
+        "--port=80",
+        "--https-port=443",
+      ]
 
   external-wiremock:
     networks:
       - test_network
     image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
-    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose", "--port=80", "--https-port=443" ]
+    entrypoint:
+      [
+        "/docker-entrypoint.sh",
+        "--global-response-templating",
+        "--disable-gzip",
+        "--verbose",
+        "--port=80",
+        "--https-port=443",
+      ]
 
   fake-mastodon:
     networks:
@@ -425,7 +441,13 @@ services:
         aliases:
           - fake-mastodon.test
     image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
-    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
+    entrypoint:
+      [
+        "/docker-entrypoint.sh",
+        "--global-response-templating",
+        "--disable-gzip",
+        "--verbose",
+      ]
 
   fake-gcs:
     build: dev/fake-gcs
