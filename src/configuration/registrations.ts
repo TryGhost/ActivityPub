@@ -103,7 +103,7 @@ export function registerDependencies(
             if (kvStoreType === 'redis') {
                 logging.info('Using Redis KvStore for Fedify');
                 const host = process.env.REDIS_HOST || 'localhost';
-                const port = Number(process.env.REDIS_PORT) || 7000;
+                const port = Number(process.env.REDIS_PORT) || 6379;
 
                 const redis = new Redis.Cluster(
                     [
