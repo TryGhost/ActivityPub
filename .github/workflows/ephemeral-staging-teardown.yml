@@ -7,6 +7,8 @@ on:
       - closed
     branches:
       - main
+  schedule:
+    - cron: "0 0 * * *"
 
 permissions:
   id-token: write
@@ -37,11 +39,18 @@ jobs:
           export destroy_prs=""
           for PR_NUMBER in $(gcloud run services list --project ${GCP_PROJECT} --format=json \
             | jq -r '.[] | select(.metadata.name | test("stg-pr-\\d+-api")) | .metadata.name | capture("stg-pr-(?<num>\\d+)-api") | .num'); do
-            PR_STATE=$(gh pr view $PR_NUMBER --json state | jq -r '.state')
-            echo "PR $PR_NUMBER state is $PR_STATE."
-            if [ "$PR_STATE" == "MERGED" ] || [ "$PR_STATE" == "CLOSED" ]; then
-              echo "Deleting PR $PR_NUMBER environment."
+            # For scheduled runs, teardown all PRs
+            if [ "${{ github.event_name }}" == "schedule" ]; then
+              echo "Scheduled run: Deleting PR $PR_NUMBER environment."
               export destroy_prs="$destroy_prs $PR_NUMBER"
+            else
+              # For other triggers, only teardown closed/merged PRs
+              PR_STATE=$(gh pr view $PR_NUMBER --json state | jq -r '.state')
+              echo "PR $PR_NUMBER state is $PR_STATE."
+              if [ "$PR_STATE" == "MERGED" ] || [ "$PR_STATE" == "CLOSED" ]; then
+                echo "Deleting PR $PR_NUMBER environment."
+                export destroy_prs="$destroy_prs $PR_NUMBER"
+              fi
             fi
           done
           echo "destroy_prs=$destroy_prs" >> "$GITHUB_OUTPUT"
@@ -131,6 +140,7 @@ jobs:
           cd activitypub-infra/infrastructure/activitypub-staging-environments
           for PR_NUMBER in ${DESTROY_PRS}; do
             echo "Destroying PR $PR_NUMBER staging environment."
+            git checkout -- terraform.tf
             sed -i 's/REPLACE_ME/'${PR_NUMBER}'/g' terraform.tf
             terraform init
             export TF_VAR_github_pr_number=$PR_NUMBER
