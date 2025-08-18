@@ -33,7 +33,7 @@ services:
       # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
       # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
       - REDIS_HOST=redis-1
-      - REDIS_PORT=6379
+      - REDIS_PORT=6381
       - FEDIFY_KV_STORE_TYPE=mysql
     command: yarn build:watch
     depends_on:
@@ -106,33 +106,33 @@ services:
   redis-1:
     container_name: redis-1
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 6379 --cluster-enabled yes --cluster-announce-ip redis-1 --cluster-announce-port 6379
+    command: redis-server --port 6381 --cluster-enabled yes --cluster-announce-ip redis-1 --cluster-announce-port 6381
     ports:
-      - "6379:6379"
+      - "6381:6381"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6381", "ping"]
       interval: 1s
       retries: 120
 
   redis-2:
     container_name: redis-2
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 6380 --cluster-enabled yes --cluster-announce-ip redis-2 --cluster-announce-port 6380
+    command: redis-server --port 6382 --cluster-enabled yes --cluster-announce-ip redis-2 --cluster-announce-port 6382
     ports:
-      - "6380:6380"
+      - "6382:6382"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6382", "ping"]
       interval: 1s
       retries: 120
 
   redis-3:
     container_name: redis-3
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 6381 --cluster-enabled yes --cluster-announce-ip redis-3 --cluster-announce-port 6381
+    command: redis-server --port 6383 --cluster-enabled yes --cluster-announce-ip redis-3 --cluster-announce-port 6383
     ports:
-      - "6381:6381"
+      - "6383:6383"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6381", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6383", "ping"]
       interval: 1s
       retries: 120
 
@@ -151,12 +151,12 @@ services:
     command:
       - |
         sleep 10
-        if redis-cli -h redis-1 -p 6379 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+        if redis-cli -h redis-1 -p 6381 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
           echo "Cluster already initialized"
         else
           echo "Creating Redis cluster (3 nodes, no replicas)..."
           echo "yes" | redis-cli --cluster create \
-            redis-1:6379 redis-2:6380 redis-3:6381 \
+            redis-1:6381 redis-2:6382 redis-3:6383 \
             --cluster-replicas 0
         fi
 
@@ -215,7 +215,7 @@ services:
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
       - REDIS_HOST=redis-testing-1
-      - REDIS_PORT=6379
+      - REDIS_PORT=6381
       - FEDIFY_KV_STORE_TYPE=mysql
     command: yarn build:watch
     depends_on:
@@ -303,9 +303,9 @@ services:
       - test_network
     container_name: redis-testing-1
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 6379 --cluster-enabled yes --cluster-announce-ip redis-testing-1 --cluster-announce-port 6379
+    command: redis-server --port 6381 --cluster-enabled yes --cluster-announce-ip redis-testing-1 --cluster-announce-port 6381
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6381", "ping"]
       interval: 1s
       retries: 120
 
@@ -314,9 +314,9 @@ services:
       - test_network
     container_name: redis-testing-2
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 6380 --cluster-enabled yes --cluster-announce-ip redis-testing-2 --cluster-announce-port 6380
+    command: redis-server --port 6382 --cluster-enabled yes --cluster-announce-ip redis-testing-2 --cluster-announce-port 6382
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6382", "ping"]
       interval: 1s
       retries: 120
 
@@ -325,9 +325,9 @@ services:
       - test_network
     container_name: redis-testing-3
     image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    command: redis-server --port 6381 --cluster-enabled yes --cluster-announce-ip redis-testing-3 --cluster-announce-port 6381
+    command: redis-server --port 6383 --cluster-enabled yes --cluster-announce-ip redis-testing-3 --cluster-announce-port 6383
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6381", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6383", "ping"]
       interval: 1s
       retries: 120
 
@@ -348,12 +348,12 @@ services:
     command:
       - |
         sleep 10
-        if redis-cli -h redis-testing-1 -p 6379 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+        if redis-cli -h redis-testing-1 -p 6381 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
           echo "Testing cluster already initialized"
         else
           echo "Creating Redis testing cluster (3 nodes, no replicas)..."
           echo "yes" | redis-cli --cluster create \
-            redis-testing-1:6379 redis-testing-2:6380 redis-testing-3:6381 \
+            redis-testing-1:6381 redis-testing-2:6382 redis-testing-3:6383 \
             --cluster-replicas 0
         fi
 
