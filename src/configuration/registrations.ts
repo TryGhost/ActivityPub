@@ -140,7 +140,7 @@ export function registerDependencies(
 
             return KnexKvStore.create(db, 'key_value', logging);
         }).singleton(),
-        globalDb: asFunction((db: Knex, logging: Logger) => {
+        kv: asFunction((db: Knex, logging: Logger) => {
             return KnexKvStore.create(db, 'key_value', logging);
         }).singleton(),
     });
