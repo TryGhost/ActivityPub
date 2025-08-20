@@ -382,7 +382,7 @@ jobs:
           LABELS_JSON=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | .name]')
           for LABEL in $(echo "$LABELS_JSON" | jq -r '.[]'); do
             echo "Adding route for label: $LABEL"
-            yq -i '.pathMatchers[0].routeRules += [{"priority": '$NEXT_PRIORITY', "matchRules": [{"prefixMatch": "/", "headerMatches": [{ "headerName": "X-Forwarded-Host", "exactMatch": "'$LABEL'" }]}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] }, "headerAction": { "requestHeadersToAdd": [ { "headerName": "X-ActivityPub-PR", "headerValue": "${{ github.event.pull_request.number }}" } ] } }]' config.yml
+            yq -i '.pathMatchers[0].routeRules += [{"priority": '$NEXT_PRIORITY', "matchRules": [{"prefixMatch": "/", "headerMatches": [{ "headerName": "X-Forwarded-Host", "exactMatch": "'$LABEL'" }]}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] }, "headerAction": { "requestHeadersToAdd": [ { "headerName": "X-ActivityPub-PR", "headerValue": "${{ github.event.pull_request.number }}" }, { "headerName": "X-ActivityPub-Commit", "headerValue": "${{ github.event.pull_request.head.sha }}" } ] } }]' config.yml
             export NEXT_PRIORITY=$((NEXT_PRIORITY + 1))
           done
           echo "Updating url map with:"
