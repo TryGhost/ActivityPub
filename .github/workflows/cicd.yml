@@ -159,8 +159,28 @@ jobs:
           load: true
           tags: ${{ steps.migrations-docker-metadata.outputs.tags }}
 
+      - name: "Check if skip-tests label is present"
+        id: check-skip-tests
+        if: github.event_name == 'pull_request'
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          if echo "$LABELS" | jq -e '.[] | select(.name == "skip-tests")' > /dev/null; then
+            echo "skip_tests=true" >> "$GITHUB_OUTPUT"
+            echo "skip-tests label found."
+          else
+            echo "skip_tests=false" >> "$GITHUB_OUTPUT"
+            echo "skip-tests label not found."
+          fi
+
       - name: "Run Tests"
+        if: github.event_name != 'pull_request' || steps.check-skip-tests.outputs.skip_tests != 'true'
         run: yarn test
+
+      - name: "Tests Skipped"
+        if: github.event_name == 'pull_request' && steps.check-skip-tests.outputs.skip_tests == 'true'
+        run: |
+          echo "⚠️ Tests skipped due to 'skip-tests' label"
 
       - name: "Authenticate with GCP"
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened' || github.event.action == 'labeled' || github.event.action == 'unlabeled'))
