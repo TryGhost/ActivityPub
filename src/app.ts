@@ -77,6 +77,7 @@ import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
+import { DirectMessageController } from '@/http/api/direct-message.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
 import { BadRequest } from '@/http/api/helpers/response';
@@ -868,6 +869,7 @@ routeRegistry.registerController(
 );
 routeRegistry.registerController('mediaController', MediaController);
 routeRegistry.registerController('blockController', BlockController);
+routeRegistry.registerController('directMessageController', DirectMessageController);
 
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);
