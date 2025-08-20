@@ -869,7 +869,10 @@ routeRegistry.registerController(
 );
 routeRegistry.registerController('mediaController', MediaController);
 routeRegistry.registerController('blockController', BlockController);
-routeRegistry.registerController('directMessageController', DirectMessageController);
+routeRegistry.registerController(
+    'directMessageController',
+    DirectMessageController,
+);
 
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);

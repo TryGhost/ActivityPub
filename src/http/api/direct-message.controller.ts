@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Create, Note, type Federation } from '@fedify/fedify';
+import { Create, type Federation, Note } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
 
 import type { AccountService } from '@/account/account.service';
@@ -24,7 +24,12 @@ export class DirectMessageController {
      * Send a direct message to another ActivityPub actor
      */
     @Route('POST', '/.ghost/activitypub/v1/actions/send-dm')
-    @RequireRoles(GhostRole.Owner, GhostRole.Administrator, GhostRole.Editor, GhostRole.Author)
+    @RequireRoles(
+        GhostRole.Owner,
+        GhostRole.Administrator,
+        GhostRole.Editor,
+        GhostRole.Author,
+    )
     async handleSendDirectMessage(ctx: AppContext) {
         const account = ctx.get('account');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
