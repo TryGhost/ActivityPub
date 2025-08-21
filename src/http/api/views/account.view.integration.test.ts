@@ -8,7 +8,7 @@ import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory'
 import type { ContextData } from '@/app';
 import { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
-import type { AccountDTO } from '@/http/api/types';
+import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
 import { AccountView } from '@/http/api/views/account.view';
 import { lookupActorProfile } from '@/lookup-helpers';
 import { Audience, Post, PostType } from '@/post/post.entity';
@@ -215,6 +215,42 @@ describe('AccountView', () => {
             expect(view!.id).toBe(siteAccount.id);
 
             expect(view!.blockedByMe).toBe(true);
+        });
+
+        it('should include the Bluesky integration data for the request user', async () => {
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(siteAccount);
+
+            const view = (await accountView.viewById(siteAccount.id, {
+                requestUserAccount: siteAccount,
+            })) as AccountDTOWithBluesky;
+
+            expect(view).not.toBeNull();
+            expect(view!.id).toBe(siteAccount.id);
+
+            expect(view!.blueskyEnabled).toBe(true);
+            expect(view!.blueskyHandle).toBe(
+                `@${siteAccount!.username}@bluesky`,
+            );
+        });
+
+        it('should not include the Bluesky integration data when the account is not for the request user', async () => {
+            const [siteAccount] = await fixtureManager.createInternalAccount();
+            const [requestUserAccount] =
+                await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(siteAccount);
+
+            const view = (await accountView.viewById(siteAccount.id, {
+                requestUserAccount: requestUserAccount,
+            })) as AccountDTO;
+
+            expect(view).not.toBeNull();
+            expect(view!.id).toBe(siteAccount.id);
+
+            expect('blueskyEnabled' in view!).toBe(false);
+            expect('blueskyHandle' in view!).toBe(false);
         });
     });
 

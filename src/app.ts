@@ -77,6 +77,7 @@ import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
+import { BlueskyController } from '@/http/api/bluesky.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
 import { BadRequest } from '@/http/api/helpers/response';
@@ -96,6 +97,7 @@ import {
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
+import type { BlueskyService } from '@/integration/bluesky.service';
 import {
     createPushMessageHandler,
     type GCloudPubSubPushMessageQueue,
@@ -206,20 +208,15 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
 }
 
 // Initialize services that need it
+container.resolve<BlueskyService>('blueskyService').init();
 container.resolve<FediverseBridge>('fediverseBridge').init();
-
 container.resolve<FeedUpdateService>('feedUpdateService').init();
-
 container.resolve<NotificationEventService>('notificationEventService').init();
-
 container.resolve<GhostExploreService>('ghostExploreService').init();
-
 container.resolve<GhostPostService>('ghostPostService').init();
-
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')
     .init();
-
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(
@@ -868,6 +865,7 @@ routeRegistry.registerController(
 );
 routeRegistry.registerController('mediaController', MediaController);
 routeRegistry.registerController('blockController', BlockController);
+routeRegistry.registerController('blueskyController', BlueskyController);
 
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);
