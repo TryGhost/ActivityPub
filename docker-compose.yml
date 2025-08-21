@@ -90,7 +90,7 @@ services:
       - activitypub
 
   mysql:
-    image: mysql:8.4.6@sha256:ad394eabaf5d728b88fd79732d94091f2165379e9b43e9748364b8c094f26e14
+    image: mysql:8.4.6@sha256:432966f3bdcbf834ef578226e4c196fab460f0727daa888b039854b5c185e8b8
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
@@ -242,7 +242,7 @@ services:
   mysql-testing:
     networks:
       - test_network
-    image: mysql:8.4.6@sha256:ad394eabaf5d728b88fd79732d94091f2165379e9b43e9748364b8c094f26e14
+    image: mysql:8.4.6@sha256:432966f3bdcbf834ef578226e4c196fab460f0727daa888b039854b5c185e8b8
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=ghost
