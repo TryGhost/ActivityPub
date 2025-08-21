@@ -48,6 +48,7 @@ import { GhostPostService } from '@/ghost/ghost-post.service';
 import { getSiteSettings } from '@/helpers/ghost';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
+import { BlueskyController } from '@/http/api/bluesky.controller';
 import { ClientConfigController } from '@/http/api/client-config.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
@@ -65,6 +66,7 @@ import { BlocksView } from '@/http/api/views/blocks.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
+import { BlueskyService } from '@/integration/bluesky.service';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
@@ -332,6 +334,7 @@ export function registerDependencies(
         'ghostExploreService',
         asClass(GhostExploreService).singleton(),
     );
+    container.register('blueskyService', asClass(BlueskyService).singleton());
 
     container.register('accountView', asClass(AccountView).singleton());
     container.register(
@@ -480,4 +483,9 @@ export function registerDependencies(
     );
 
     container.register('postController', asClass(PostController).singleton());
+
+    container.register(
+        'blueskyController',
+        asClass(BlueskyController).singleton(),
+    );
 }
