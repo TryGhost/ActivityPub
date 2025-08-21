@@ -194,27 +194,6 @@ describe('BlueskyService', () => {
 
             expect(handleMapping).toBeUndefined();
         });
-
-        it('should ensure the correct handle is used when the follower has a www. in their hostname', async () => {
-            const site = await fixtureManager.createSite('www.example.com');
-            const [account] = await fixtureManager.createInternalAccount(site);
-
-            await events.emitAsync(
-                AccountFollowedEvent.getName(),
-                new AccountFollowedEvent(bridgyAccount.id, account.id),
-            );
-
-            const handleMapping = await client(
-                'bluesky_integration_account_handles',
-            )
-                .where('account_id', account.id)
-                .first();
-
-            expect(handleMapping).toBeDefined();
-            expect(handleMapping.handle).toBe(
-                `@${account.username}.${account.url.hostname.replace(/^www\./i, '')}.ap.brid.gy`,
-            );
-        });
     });
 
     describe('disableForAccount', () => {

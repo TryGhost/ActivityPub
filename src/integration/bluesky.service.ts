@@ -179,9 +179,7 @@ export class BlueskyService {
     }
 
     private getHandleForAccount(account: Account) {
-        const host = account.url.hostname.replace(/^www\./i, '');
-
-        return `@${account.username}.${host}.ap.brid.gy`;
+        return `@${account.username}.${account.url.hostname}.ap.brid.gy`;
     }
 
     private async getBridgyAccount() {
