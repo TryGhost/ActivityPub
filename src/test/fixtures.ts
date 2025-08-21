@@ -216,6 +216,21 @@ export class FixtureManager {
         });
     }
 
+    async enableBlueskyIntegration(account: Account) {
+        await this.db('bluesky_integration_account_handles').insert({
+            account_id: account.id,
+            handle: `@${account.username}@bluesky`,
+        });
+    }
+
+    async disableBlueskyIntegration(account: Account) {
+        await this.db('bluesky_integration_account_handles')
+            .where({
+                account_id: account.id,
+            })
+            .delete();
+    }
+
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
         await Promise.all([
@@ -231,6 +246,7 @@ export class FixtureManager {
             this.db('sites').truncate(),
             this.db('outboxes').truncate(),
             this.db('mentions').truncate(),
+            this.db('bluesky_integration_account_handles').truncate(),
         ]);
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 1');
     }
