@@ -32,10 +32,7 @@ This has only been tested on macOS using [Docker for Mac](https://docs.docker.co
     - In the Ghost monorepo, create a `config.local.json` file under `ghost/core/config.local.json`, with the following configuration:
     ```
     {
-        "url": <Tailscale or ngrok URL from step 2>,
-        "labs": {
-            "ActivityPub": true
-        }
+        "url": <Tailscale or ngrok URL from step 2>
     }
     ```
 4. **Start the ActivityPub Service**
