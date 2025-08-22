@@ -1,4 +1,4 @@
-function jsonResponse(message: string | null, status: number) {
+function jsonResponse(message: string, status: number) {
     const body = message ? JSON.stringify({ message }) : null;
 
     return new Response(body, {
@@ -9,7 +9,6 @@ function jsonResponse(message: string | null, status: number) {
     });
 }
 
-export const Ok = (message: string | null = null) => jsonResponse(message, 200);
 export const BadRequest = (message: string) => jsonResponse(message, 400);
 export const Forbidden = (message: string) => jsonResponse(message, 403);
 export const NotFound = (message: string) => jsonResponse(message, 404);

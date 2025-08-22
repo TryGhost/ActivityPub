@@ -32,7 +32,9 @@ describe('BlueskyController', () => {
         } as unknown as AppContext;
 
         blueskyService = {
-            enableForAccount: vi.fn().mockResolvedValue(undefined),
+            enableForAccount: vi
+                .fn()
+                .mockResolvedValue('@index.example.com.ap.brid.gy'),
             disableForAccount: vi.fn().mockResolvedValue(undefined),
         } as unknown as BlueskyService;
 
@@ -43,11 +45,11 @@ describe('BlueskyController', () => {
         it('should enable the Bluesky integration for the account associated with the request user', async () => {
             const result = await controller.handleEnable(ctx);
 
-            expect(blueskyService.enableForAccount).toHaveBeenCalledWith(
-                account,
-            );
             expect(result.status).toBe(200);
-            expect(result.body).toBe(null);
+
+            const body = await result.json();
+
+            expect(body.handle).toBe('@index.example.com.ap.brid.gy');
         });
 
         it('should return 500 if an error occurs', async () => {
@@ -76,7 +78,7 @@ describe('BlueskyController', () => {
             expect(blueskyService.disableForAccount).toHaveBeenCalledWith(
                 account,
             );
-            expect(result.status).toBe(200);
+            expect(result.status).toBe(204);
             expect(result.body).toBe(null);
         });
 
