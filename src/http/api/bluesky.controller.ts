@@ -13,8 +13,10 @@ export class BlueskyController {
         const account = ctx.get('account');
         const logger = ctx.get('logger');
 
+        let handle: string;
+
         try {
-            await this.blueskyService.enableForAccount(account);
+            handle = await this.blueskyService.enableForAccount(account);
         } catch (error) {
             logger.error('Failed to enable Bluesky integration', {
                 error,
@@ -23,7 +25,11 @@ export class BlueskyController {
             return InternalServerError('Failed to enable Bluesky integration');
         }
 
-        return Ok();
+        return new Response(JSON.stringify({ handle }), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
     }
 
     @Route('POST', '/.ghost/activitypub/v1/actions/bluesky/disable')

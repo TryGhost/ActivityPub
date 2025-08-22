@@ -154,6 +154,16 @@ describe('BlueskyService', () => {
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
             expect(fedifyContext.data.globaldb.set).not.toHaveBeenCalled();
         });
+
+        it('should return the handle for the account', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const handle = await blueskyService.enableForAccount(account);
+
+            expect(handle).toBe(
+                `@${account.username}.${account.apId.hostname}.ap.brid.gy`,
+            );
+        });
     });
 
     describe('Handling Account Followed Event', () => {
@@ -173,7 +183,7 @@ describe('BlueskyService', () => {
 
             expect(handleMapping).toBeDefined();
             expect(handleMapping.handle).toBe(
-                `@${account.username}.${account.url.hostname}.ap.brid.gy`,
+                `@${account.username}.${account.apId.hostname}.ap.brid.gy`,
             );
         });
 
