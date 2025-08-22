@@ -1,5 +1,5 @@
 import type { AppContext } from '@/app';
-import { InternalServerError, Ok } from '@/http/api/helpers/response';
+import { InternalServerError } from '@/http/api/helpers/response';
 import { RequireRoles, Route } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import type { BlueskyService } from '@/integration/bluesky.service';
@@ -48,6 +48,11 @@ export class BlueskyController {
             return InternalServerError('Failed to disable Bluesky integration');
         }
 
-        return Ok();
+        return new Response(null, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status: 204,
+        });
     }
 }
