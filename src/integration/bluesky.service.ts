@@ -42,7 +42,7 @@ export class BlueskyService {
                 { id: account.id },
             );
 
-            return;
+            return this.getHandleForAccount(account);
         }
 
         const bridgyAccount = await this.getBridgyAccount();
@@ -68,6 +68,8 @@ export class BlueskyService {
             },
             follow,
         );
+
+        return this.getHandleForAccount(account);
     }
 
     async disableForAccount(account: Account) {
@@ -179,7 +181,7 @@ export class BlueskyService {
     }
 
     private getHandleForAccount(account: Account) {
-        return `@${account.username}.${account.url.hostname}.ap.brid.gy`;
+        return `@${account.username}.${account.apId.hostname}.ap.brid.gy`;
     }
 
     private async getBridgyAccount() {
