@@ -308,9 +308,26 @@ describe('GhostPostService', () => {
         });
 
         it('should handle posts with ghost authors metadata', async () => {
+            const ghostPostUuid = 'ee218320-b2e6-11ef-8a80-0242ac120008';
+
+            // Initial post
+            await ghostPostService.createGhostPost(account, {
+                title: 'Test Article',
+                uuid: ghostPostUuid,
+                html: '<p>Original content</p>',
+                excerpt: 'Original excerpt',
+                custom_excerpt: null,
+                feature_image: null,
+                published_at: new Date().toISOString(),
+                url: 'https://example.com/test-article',
+                visibility: 'public',
+                authors: [],
+            });
+
+            // Update the post
             const ghostPost = {
                 title: 'Test Article with Authors',
-                uuid: 'ee218320-b2e6-11ef-8a80-0242ac120008',
+                uuid: ghostPostUuid,
                 html: '<p>Content with authors</p>',
                 excerpt: 'Test excerpt',
                 custom_excerpt: null,
@@ -326,7 +343,6 @@ describe('GhostPostService', () => {
                     { name: 'Jane Smith', profile_image: null },
                 ],
             };
-
             await ghostPostService.updateArticleFromGhostPost(
                 account,
                 ghostPost,
@@ -338,9 +354,9 @@ describe('GhostPostService', () => {
                 .first();
             expect(apIdForPost).not.toBeNull();
             const apId = new URL(apIdForPost.ap_id);
-            const createdPost = await postRepository.getByApId(apId);
-            expect(createdPost).not.toBeNull();
-            expect(createdPost!.metadata).toEqual({
+            const updatedPost = await postRepository.getByApId(apId);
+            expect(updatedPost).not.toBeNull();
+            expect(updatedPost!.metadata).toEqual({
                 ghostAuthors: [
                     {
                         name: 'John Doe',

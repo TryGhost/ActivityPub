@@ -180,7 +180,7 @@ describe('GhostPostService', () => {
     });
 
     describe('updateArticleFromGhostPost', () => {
-        it('should create a new post when ghost post mapping does not exist', async () => {
+        it('should return early if the post does not exist', async () => {
             mockQueryBuilder.first.mockResolvedValue(null); // No mapping found
 
             const ghostPostData = {
@@ -195,20 +195,17 @@ describe('GhostPostService', () => {
                 visibility: 'public' as const,
                 authors: [],
             };
-            const createGhostPostSpy = vi
-                .spyOn(ghostPostService, 'createGhostPost')
-                .mockResolvedValue(ok(mockPost));
 
             const result = await ghostPostService.updateArticleFromGhostPost(
                 mockAccount,
                 ghostPostData,
             );
 
-            expect(mockDb).toHaveBeenCalledWith('ghost_ap_post_mappings');
-            expect(createGhostPostSpy).toHaveBeenCalledWith(
-                mockAccount,
-                ghostPostData,
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Could not update post: Ghost post with UUID {uuid} was not found.',
+                { uuid: ghostPostData.uuid },
             );
+            expect(mockPostService.updateByApId).not.toHaveBeenCalled();
             expect(result).toBeUndefined();
         });
 
