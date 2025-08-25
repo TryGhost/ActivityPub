@@ -48,6 +48,7 @@ import { GhostPostService } from '@/ghost/ghost-post.service';
 import { getSiteSettings } from '@/helpers/ghost';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
+import { DirectMessageController } from '@/http/api/direct-message.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
 import { LikeController } from '@/http/api/like.controller';
@@ -474,4 +475,9 @@ export function registerDependencies(
     );
 
     container.register('postController', asClass(PostController).singleton());
+
+    container.register(
+        'directMessageController',
+        asClass(DirectMessageController).singleton(),
+    );
 }
