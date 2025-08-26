@@ -43,6 +43,8 @@ describe('BlueskyService', () => {
     beforeEach(async () => {
         await fixtureManager.reset();
 
+        events.removeAllListeners();
+
         const accountRepository = new KnexAccountRepository(client, events);
 
         fedifyContext = {
