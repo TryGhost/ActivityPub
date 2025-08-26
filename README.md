@@ -13,21 +13,15 @@
 
 A multi-tenant ActivityPub server for [Ghost](https://ghost.org/), built with [Fedify](https://fedify.dev/). This service makes it possible for independent websites to publish their content directly to the Fediverse, enabling networked publishing to the open social web.
 
-This repository is being actively developed and is currently in beta - expect many breaking changes. It is not suitable for production use.
-
-# How it works
-
-All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-known/nodeinfo` are proxied to this ActivityPub service using nginx. All other requests are forwarded to Ghost.
-
 # Running locally for development
 
-This has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
+All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-known/nodeinfo` are proxied to this ActivityPub service using nginx. All other requests are forwarded to Ghost. This setup has only been tested on macOS using [Docker for Mac](https://docs.docker.com/desktop/install/mac-install/) and [OrbStack](https://orbstack.dev/).
 
 ## Setup
 
 1. **[Install Ghost](https://ghost.org/docs/install/)** using `Install from source` instructions
-2. **Proxy with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
-    - Use `tailscale funnel 80` or `ngrok http 80` to expose your local port 80
+2. **Expose your local port 80 (nginx) with [Tailscale](https://tailscale.com/kb/1080/cli?q=cli)** (or [ngrok](https://ngrok.com/))
+    - Use `tailscale funnel 80` or `ngrok http 80` to expose your local **port 80** (not 2368!), on which **nginx** will be running
 3. **Configure Ghost**
     - In the Ghost monorepo, create a `config.local.json` file under `ghost/core/config.local.json`, with the following configuration:
     ```
@@ -39,6 +33,7 @@ This has only been tested on macOS using [Docker for Mac](https://docs.docker.co
     - Run `yarn dev && yarn logs` in the root directory of this project
 5. **Start Ghost**
     - Run `yarn dev` in the Ghost monorepo
+    - If you were already running Ghost locally, make sure to restart it!
 
 
 ## Code formatting + linting
