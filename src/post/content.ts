@@ -16,7 +16,7 @@ export const MEMBER_CONTENT_MARKER = '<!--members-only-->';
  * Paid content preview message added to non-public posts
  */
 export const PAID_CONTENT_PREVIEW_HTML = (url: URL) =>
-    `<div class="gh-paid-content-notice"><h3>Upgrade to continue reading</h3><p>Become a paid member to get access to all premium content</p><a class="gh-paid-content-cta" href="${url.href}#/portal/signup">Upgrade</a></div>`;
+    `<div class="gh-paid-content-notice"><h3>This post is for subscribers only</h3><p>Become a member to get access to all content</p><a class="gh-paid-content-cta" href="${url.href}#/portal/signup">Subscribe now</a></div>`;
 
 /**
  * Options for preparing content
