@@ -50,19 +50,11 @@ export class GhostPostService {
         const apIdForPost = await this.getApIdForGhostPost(ghostPost.uuid);
         if (!apIdForPost) {
             this.logger.info(
-                'No apId found for ghost post {uuid}, creating new post',
-                { uuid: ghostPost.uuid },
+                'Could not update post: Ghost post with UUID {uuid} was not found.',
+                {
+                    uuid: ghostPost.uuid,
+                },
             );
-            const newPostResult = await this.createGhostPost(
-                account,
-                ghostPost,
-            );
-            if (isError(newPostResult)) {
-                this.logger.error(
-                    'Failed to create new post with uuid: {uuid}, error: {error}',
-                    { uuid: ghostPost.uuid, error: getError(newPostResult) },
-                );
-            }
             return;
         }
         const apId = new URL(apIdForPost);
@@ -113,26 +105,17 @@ export class GhostPostService {
             const error = getError(updatedPostResult);
             switch (error) {
                 case 'post-not-found': {
-                    this.logger.info(
-                        'Post not found for apId: {apId}, creating new post',
-                        { apId },
-                    );
-                    const newPostResult = await this.createGhostPost(
-                        account,
-                        ghostPost,
-                    );
-                    if (isError(newPostResult)) {
-                        this.logger.error(
-                            'Failed to create new post with apId: {apId}, error: {error}',
-                            { apId, error: getError(newPostResult) },
-                        );
-                    }
+                    this.logger.error('Could not update post: post not found', {
+                        apId,
+                    });
                     return;
                 }
                 case 'not-author':
                     this.logger.error(
-                        'Cannot update post, not authorized for apId: {apId}',
-                        { apId },
+                        'Could not update post: actor is not the author of the post',
+                        {
+                            apId,
+                        },
                     );
                     return;
                 default:
