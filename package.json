@@ -9,6 +9,7 @@
   "scripts": {
     "build": "esbuild src/app.ts --sourcemap --platform=neutral --bundle --packages=external --outfile=dist/app.js",
     "build:watch": "concurrently \"yarn build --watch\" \"node --inspect=0.0.0.0:9229 --watch dist/app.js\"",
+    "predev": "docker compose build migrate fake-gcs",
     "dev": "docker compose up activitypub nginx -d --build",
     "stop": "docker compose stop",
     "db": "docker compose exec mysql mysql -uroot -proot activitypub",
