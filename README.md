@@ -38,7 +38,7 @@ This has only been tested on macOS using [Docker for Mac](https://docs.docker.co
 4. **Start the ActivityPub Service**
     - Run `yarn dev && yarn logs` in the root directory of this project
 5. **Start Ghost**
-    - Run `yarn dev` in the Ghost monorepo
+    - Run `yarn dev` in the Ghost monorepo (note: if you were already running Ghost locally, make sure to restart it)
 
 
 ## Code formatting + linting
