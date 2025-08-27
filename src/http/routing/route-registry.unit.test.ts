@@ -216,7 +216,7 @@ describe('RouteRegistry', () => {
                     requestedVersion: 'v3',
                     supportedVersions: ['v1', 'v2'],
                 },
-                404,
+                410,
             );
             expect(result).toBe(
                 (
@@ -256,7 +256,7 @@ describe('RouteRegistry', () => {
                 expect.objectContaining({
                     supportedVersions: ['v1', 'v2', 'v3'],
                 }),
-                404,
+                410,
             );
         });
 

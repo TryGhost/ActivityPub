@@ -93,7 +93,7 @@ export class RouteRegistry {
                             requestedVersion: requestVersion,
                             supportedVersions: route.versions,
                         },
-                        404,
+                        410,
                     );
                 }
                 return await next();
