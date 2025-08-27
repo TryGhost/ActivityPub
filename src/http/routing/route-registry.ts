@@ -51,6 +51,7 @@ export class RouteRegistry {
                 controllerToken,
                 methodName: route.methodName,
                 requiredRoles: roles,
+                versions: route.versions,
             });
         }
     }
