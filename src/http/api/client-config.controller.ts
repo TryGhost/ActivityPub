@@ -8,7 +8,7 @@ export class ClientConfigController {
         const name = 'admin-x-activitypub';
         const client = {
             name,
-            requiredVersion: `^${major}.0.0`,
+            version: `^${major}.0.0`,
             cdnUrl: `https://cdn.jsdelivr.net/ghost/${name}@${major}/dist/${name}.js`,
         };
 
