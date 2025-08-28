@@ -82,8 +82,8 @@ sequenceDiagram
 
     Note over GA: Ghost version: 6.0.0
 
-    GA->>+APF: What version of the AP frontend app?
-    APF->>-GA: Use version ^1.0.0
+    GA->>+APB: What version of the AP frontend app?
+    APB->>-GA: Use version ^1.0.0
     GA->>APF: load 1.0.0
     APF->>+APB: call /v1/notifications
     APB->>-APF: HTTP 200
@@ -92,8 +92,8 @@ sequenceDiagram
 
     Note over GA: Ghost version: 6.0.0
 
-    GA->>APF: What version of the AP frontend app?
-    APF-->>GA: Use version ^2.0.0
+    GA->>APB: What version of the AP frontend app?
+    APB->>GA: Use version ^2.0.0
     GA->>APF: load 2.0.0
     APF->>+APB: call /v2/notifications
     APB->>-APF: HTTP 200
