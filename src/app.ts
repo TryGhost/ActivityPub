@@ -97,6 +97,7 @@ import {
 import { RouteRegistry } from '@/http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
 import {
+    createDevMiddleware,
     createPushMessageHandler,
     type GCloudPubSubPushMessageQueue,
 } from '@/mq/gcloud-pubsub-push/mq';
@@ -569,8 +570,11 @@ app.post('/.ghost/activitypub/pubsub/ghost/push', async (ctx) => {
     return handler(ctx);
 });
 
+const pubsubFedifyPushPath = '/.ghost/activitypub/pubsub/fedify/push';
+
 app.post(
-    '/.ghost/activitypub/pubsub/fedify/push',
+    pubsubFedifyPushPath,
+    createDevMiddleware(pubsubFedifyPushPath, globalLogging),
     spanWrapper(createPushMessageHandler(globalQueue, globalLogging)),
 );
 
