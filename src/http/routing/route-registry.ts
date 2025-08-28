@@ -18,6 +18,7 @@ interface RouteRegistration {
     controllerToken: string;
     methodName: string;
     requiredRoles?: GhostRole[];
+    versions?: string[];
 }
 
 export class RouteRegistry {
@@ -50,6 +51,7 @@ export class RouteRegistry {
                 controllerToken,
                 methodName: route.methodName,
                 requiredRoles: roles,
+                versions: route.versions,
             });
         }
     }
@@ -76,6 +78,28 @@ export class RouteRegistry {
         const middleware: MiddlewareHandler<{
             Variables: HonoContextVariables;
         }>[] = [];
+
+        if (route.versions && route.versions.length > 0) {
+            middleware.push(async (ctx: AppContext, next: Next) => {
+                const requestVersion = ctx.req.param('version');
+                if (!route.versions) {
+                    throw new Error('RouteRegistration was modified');
+                }
+
+                if (!route.versions.includes(requestVersion)) {
+                    return ctx.json(
+                        {
+                            message: `Version ${requestVersion} is not supported.`,
+                            code: 'INVALID_VERSION',
+                            requestedVersion: requestVersion,
+                            supportedVersions: route.versions,
+                        },
+                        410,
+                    );
+                }
+                return await next();
+            });
+        }
 
         if (route.requiredRoles && route.requiredRoles.length > 0) {
             middleware.push(

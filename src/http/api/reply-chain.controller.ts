@@ -2,13 +2,13 @@ import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { NotFound } from '@/http/api/helpers/response';
 import type { ReplyChainView } from '@/http/api/views/reply.chain.view';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 
 export class ReplyChainController {
     constructor(private readonly replyChainView: ReplyChainView) {}
 
-    @Route('GET', '/.ghost/activitypub/v1/replies/:post_ap_id')
+    @APIRoute('GET', 'replies/:post_ap_id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetReplies(ctx: AppContext) {
         const account = ctx.get('account');
