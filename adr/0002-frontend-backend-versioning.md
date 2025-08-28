@@ -82,17 +82,17 @@ sequenceDiagram
 
     Note over GA: Ghost version: 6.0.0
 
-    GA->>+APB: What version of the AP frontend app?
+    GA->>+APB: What version of the client? (GET /client-config)
     APB->>-GA: Use version ^1.0.0
     GA->>APF: load 1.0.0
     APF->>+APB: call /v1/notifications
     APB->>-APF: HTTP 200
 
-    Note right of APB: Breaking change:<br/>1) Introduce /v2/notifications API endpoint<br/>2) Ship new major version of the frontend<br/>3) Point client-config endpoint to ^2.0.0
+    Note right of APB: Breaking change:<br/>1) Introduce /v2/notifications API endpoint<br/>2) Ship new major version of the frontend<br/>3) Point /client-config endpoint to ^2.0.0
 
     Note over GA: Ghost version: 6.0.0
 
-    GA->>APB: What version of the AP frontend app?
+    GA->>APB: What version of the client? (GET /client-config)
     APB->>GA: Use version ^2.0.0
     GA->>APF: load 2.0.0
     APF->>+APB: call /v2/notifications
@@ -105,9 +105,9 @@ Now, the ActivityPub backend does not need to support multiple versions of the A
 
 1. Ship new version of a backend API endpoint (e.g. `/v2/feed`) with the breaking changes
 2. Ship new major of the frontend app (e.g. `2.0.0`), that consumes the new API endpoint
-3. Point `/client-config` endpoint to the new major version (`^2.0.0`)
+3. Point `/client-config` endpoint to the new major version of the frontend app (`^2.0.0`)
 
-On page refresh, users will now load version ^2.0.0 of the frontend app, that is compatible with the new API endpoint. Users with an old tab open will receive a HTTP 410 Gone from the backend when visiting an outdated API endpoint:
+On page refresh, users will load version `^2.0.0` of the frontend app, that is compatible with the new API endpoint. Users with an old tab open will receive a HTTP 410 Gone from the backend when visiting an outdated API endpoint:
 ```
 {
 	"message": "Version v1 is not supported.",
