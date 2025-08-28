@@ -180,7 +180,7 @@ describe('RouteRegistry', () => {
             expect(mockContext.json).not.toHaveBeenCalled();
         });
 
-        it('should return 404 with INVALID_VERSION when version does not match', async () => {
+        it('should return 410 with INVALID_VERSION when version does not match', async () => {
             const registration = {
                 method: 'GET' as const,
                 path: '/:version/test',
