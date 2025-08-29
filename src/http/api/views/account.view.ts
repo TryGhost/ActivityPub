@@ -7,7 +7,7 @@ import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory'
 import { getError, getValue, isError } from '@/core/result';
 import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
 import { sanitizeHtml } from '@/helpers/html';
-import type { AccountDTO } from '@/http/api/types';
+import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
 import { lookupActorProfile, lookupObject } from '@/lookup-helpers';
 
 /**
@@ -32,7 +32,7 @@ export class AccountView {
     async viewById(
         id: number,
         context: ViewContext = {},
-    ): Promise<AccountDTO | null> {
+    ): Promise<AccountDTO | AccountDTOWithBluesky | null> {
         const accountData = await this.getAccountByQuery(
             (qb: Knex.QueryBuilder) => qb.where('accounts.id', id),
         );
@@ -59,6 +59,20 @@ export class AccountView {
                 ));
         }
 
+        // If the request user is requesting their own account, include
+        // Bluesky integration data
+        const shouldIncludeBlueskyIntegrationData =
+            context.requestUserAccount?.id &&
+            accountData.id === context.requestUserAccount.id;
+
+        let blueskyEnabled: boolean = false;
+        let blueskyHandle: string | null = null;
+
+        if (shouldIncludeBlueskyIntegrationData) {
+            ({ blueskyEnabled, blueskyHandle } =
+                await this.getBlueskyIntegrationData(accountData.id));
+        }
+
         return {
             id: accountData.id,
             apId: accountData.ap_id,
@@ -80,6 +94,12 @@ export class AccountView {
             followsMe,
             blockedByMe,
             domainBlockedByMe,
+            ...(shouldIncludeBlueskyIntegrationData
+                ? {
+                      blueskyEnabled,
+                      blueskyHandle,
+                  }
+                : {}),
         };
     }
 
@@ -339,6 +359,20 @@ export class AccountView {
             followsMe,
             blockedByMe,
             domainBlockedByMe,
+        };
+    }
+
+    private async getBlueskyIntegrationData(requestUserAccountId: number) {
+        const blueskyHandle = await this.db(
+            'bluesky_integration_account_handles',
+        )
+            .where('account_id', requestUserAccountId)
+            .first()
+            .then((row) => row?.handle);
+
+        return {
+            blueskyEnabled: !!blueskyHandle,
+            blueskyHandle: blueskyHandle || null,
         };
     }
 
