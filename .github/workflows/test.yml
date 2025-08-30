@@ -1,0 +1,47 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      skip-tests:
+        description: Skip tests
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check skip-tests
+        id: check-skip-tests
+        run: echo "skip_tests=${{ inputs.skip-tests }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.check-skip-tests.outputs.skip_tests != 'true'
+        uses: actions/checkout@v4
+
+      - name: Download ActivityPub image
+        if: steps.check-skip-tests.outputs.skip_tests != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: activitypub-amd64
+          path: /tmp
+
+      - name: Download Migrations image
+        if: steps.check-skip-tests.outputs.skip_tests != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: activitypub-migrations-amd64
+          path: /tmp
+
+      - name: Load Docker images
+        if: steps.check-skip-tests.outputs.skip_tests != 'true'
+        run: |
+          docker load < /tmp/activitypub-amd64.tar
+          docker load < /tmp/activitypub-migrations-amd64.tar
+
+      - name: Run Tests
+        if: steps.check-skip-tests.outputs.skip_tests != 'true'
+        run: yarn test

@@ -1,0 +1,143 @@
+name: Deploy PR
+
+on:
+  workflow_call:
+
+permissions:
+  id-token: write
+
+jobs:
+  deploy-pr:
+    name: Deploy PR
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Check if any label matches *.ghost.is
+        id: check-labels
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          export LABEL_NAMES=$(echo "$LABELS" | jq -r '[.[] | select(.name | test("\\.ghost\\.is$")) | .name] | join(",")')
+          echo "Label names: $LABEL_NAMES"
+          if [ "$LABEL_NAMES" != "" ]; then
+            echo "Label matching *.ghost.is found."
+            echo "is_ephemeral_staging=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No label matching .*.ghost.is found."
+            echo "is_ephemeral_staging=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout activitypub-infra repo
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: TryGhost/activitypub-infra
+          ssh-key: ${{ secrets.ACTIVITYPUB_INFRA_DEPLOY_KEY }}
+          path: activitypub-infra
+
+      - name: Checkout terraform repo
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: TryGhost/terraform
+          ssh-key: ${{ secrets.TERRAFORM_DEPLOY_KEY }}
+          path: terraform
+
+      - name: Get terraform version
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        id: terraform-version
+        run: |
+          echo "terraform_version=$(cat activitypub-infra/infrastructure/activitypub-staging-environments/.terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup terraform
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.terraform_version }}
+
+      - name: Change github.com url in modules to local directories and add backend prefix
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          sed -i 's/github\.com\/TryGhost/\.\.\/\.\.\/\.\./gI' main.tf
+          sed -i 's/\?ref=main//g' main.tf
+          sed -i 's/REPLACE_ME/${{ github.event.pull_request.number }}/g' terraform.tf
+
+      - name: Authenticate with GCP
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Terraform init
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          terraform init
+
+      - name: Terraform apply
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        run: |
+          cd activitypub-infra/infrastructure/activitypub-staging-environments
+          export TF_VAR_github_pr_number=${{ github.event.pull_request.number }}
+          export TF_VAR_primary_region_name=netherlands
+          export TF_VAR_migrations_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_api_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          export TF_VAR_queue_image=europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:pr-${{ github.event.pull_request.number }}
+          terraform apply -auto-approve
+
+      - name: Deploy Migrations to Cloud Run
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:pr-${{ github.event.pull_request.number }}
+          region: europe-west4
+          job: stg-pr-${{ github.event.pull_request.number }}-migrations
+          flags: --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Destroy Tests databases
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        env:
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~pr_${{ github.event.pull_request.number }}_test*" --format="value(name)" --project ${GCP_PROJECT})
+          for TEST_DATABASE in ${TEST_DATABASES}; do
+            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+          done
+
+      - name: Add route to GCP Load Balancer
+        if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels) }}
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          set -euo pipefail
+          # Get current config
+          gcloud compute url-maps export stg-activitypub --global --project ${GCP_PROJECT} > config.yml
+          # Delete unnecessary fields
+          yq -i 'del(.fingerprint)' config.yml
+          yq -i 'del(.creationTimestamp)' config.yml
+          export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-netherlands-activitypub-api"
+          export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
+          # Add host rules and path matchers if they don't exist
+          yq -i '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "all-paths"}])' config.yml
+          yq -i '.pathMatchers = (.pathMatchers // [{"name": "all-paths", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml
+          # Remove existing route rules for the PR service
+          yq -i '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml
+          # Add new route rules for the PR service
+          export MAX_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "all-paths") | .routeRules[]?.priority] | max // 0' config.yml)
+          export NEXT_PRIORITY=$((MAX_PRIORITY + 1))
+          LABELS_JSON=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | .name]')
+          for LABEL in $(echo "$LABELS_JSON" | jq -r '.[]'); do
+            echo "Adding route for label: $LABEL"
+            yq -i '.pathMatchers[0].routeRules += [{"priority": '$NEXT_PRIORITY', "matchRules": [{"prefixMatch": "/", "headerMatches": [{ "headerName": "X-Forwarded-Host", "exactMatch": "'$LABEL'" }]}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] }, "headerAction": { "requestHeadersToAdd": [ { "headerName": "X-ActivityPub-PR", "headerValue": "${{ github.event.pull_request.number }}" }, { "headerName": "X-ActivityPub-Commit", "headerValue": "${{ github.event.pull_request.head.sha }}" } ] } }]' config.yml
+            export NEXT_PRIORITY=$((NEXT_PRIORITY + 1))
+          done
+          echo "Updating url map with:"
+          cat config.yml
+          gcloud compute url-maps import stg-activitypub --source=config.yml --global --project ${GCP_PROJECT} --quiet
