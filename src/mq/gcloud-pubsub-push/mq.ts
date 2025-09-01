@@ -7,7 +7,7 @@ import type { PubSub } from '@google-cloud/pubsub';
 import type { Logger } from '@logtape/logtape';
 import { context, propagation } from '@opentelemetry/api';
 import * as Sentry from '@sentry/node';
-import type { Context, Next } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 
 import type { AccountService } from '@/account/account.service';
@@ -620,97 +620,5 @@ export function createPushMessageHandler(
             .handleMessage(message, json.deliveryAttempt)
             .then(() => new Response(null, { status: 200 }))
             .catch(() => new Response(null, { status: 500 }));
-    };
-}
-
-/**
- * Create a middleware to augment the request with a delivery attempt count -
- * This is only used in development because the Pub/Sub emulator does not
- * include the delivery attempt count in the request body :/
- *
- * @param path Path to the endpoint to augment
- * @param logger Logger instance
- *
- * @example
- * ```
- * import {
- *  createPushMessageHandler,
- *  createMessageQueue,
- *  createDevMiddleware,
- * } from '@/mq/gcloud-pubsub-push';
- *
- * const queue = await createMessageQueue(...);
- *
- * app.post('/mq', createDevMiddleware('/mq', logging), createPushMessageHandler(queue, logging));
- * ```
- */
-export function createDevMiddleware(path: string, logger: Logger) {
-    const isDev = ['development', 'testing'].includes(
-        process.env.NODE_ENV || '',
-    );
-
-    const EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes
-
-    const deliveryAttempts = new Map<
-        string,
-        { count: number; timestamp: number }
-    >();
-
-    if (isDev) {
-        // Cleanup old entries periodically every minute
-        const interval = setInterval(() => {
-            const now = Date.now();
-
-            for (const [key, entry] of deliveryAttempts.entries()) {
-                if (now - entry.timestamp > EXPIRY_TIME) {
-                    deliveryAttempts.delete(key);
-                }
-            }
-        }, 60 * 1000);
-
-        interval.unref();
-    }
-
-    /**
-     * Augment the request with a delivery attempt count
-     *
-     * @param ctx Hono context instance
-     */
-    return async function devMiddleware(ctx: Context, next: Next) {
-        const pathname = new URL(ctx.req.url).pathname;
-
-        if (isDev === false || pathname !== path) {
-            return next();
-        }
-
-        try {
-            const json = await ctx.req.raw.clone().json();
-
-            if (json.message?.message_id && !json.deliveryAttempt) {
-                const messageId = json.message.message_id;
-
-                const entry = deliveryAttempts.get(messageId);
-                const deliveryAttempt = entry ? entry.count + 1 : 1;
-
-                deliveryAttempts.set(messageId, {
-                    count: deliveryAttempt,
-                    timestamp: Date.now(),
-                });
-
-                json.deliveryAttempt = deliveryAttempt;
-
-                ctx.req.raw = new Request(ctx.req.raw.url, {
-                    method: ctx.req.raw.method,
-                    headers: ctx.req.raw.headers,
-                    body: JSON.stringify(json),
-                });
-            }
-        } catch (error) {
-            logger.error('Failed to augment request with delivery attempt', {
-                error,
-            });
-        }
-
-        return next();
     };
 }
