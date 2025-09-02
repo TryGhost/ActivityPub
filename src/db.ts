@@ -32,8 +32,8 @@ export const knex = Knex({
               timezone: '+00:00',
           },
     pool: {
-        min: 1,
-        max: 200,
+        min: parseInt(process.env.MYSQL_CONN_POOL_MIN ?? '1'),
+        max: parseInt(process.env.MYSQL_CONN_POOL_MAX ?? '200'),
     },
 });
 
