@@ -246,6 +246,14 @@ jobs:
             type=sha
             type=edge,branch=main
 
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        id: gcp-auth
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
       - name: Build cleanup job image
         if: steps.changes.outputs.cleanup == 'true'
         uses: docker/build-push-action@v6
@@ -253,15 +261,7 @@ jobs:
           context: jobs/cleanup-expired-key-value-records
           load: true
           tags: ${{ steps.cleanup-meta.outputs.tags }}
-          outputs: type=docker,dest=/tmp/cleanup-job.tar
-
-      - name: Upload cleanup job image artifact
-        if: steps.changes.outputs.cleanup == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: cleanup-job
-          path: /tmp/cleanup-job.tar
-          retention-days: 1
+          push: true
 
   build-populate-explore-json-job:
     name: Build Populate Explore JSON Job
@@ -292,6 +292,14 @@ jobs:
             type=sha
             type=edge,branch=main
 
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        id: gcp-auth
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
       - name: Build populate explore json job image
         if: steps.changes.outputs.populate-explore-json == 'true'
         uses: docker/build-push-action@v6
@@ -299,12 +307,4 @@ jobs:
           context: jobs/populate-explore-json
           load: true
           tags: ${{ steps.populate-explore-json-meta.outputs.tags }}
-          outputs: type=docker,dest=/tmp/populate-explore-json-job.tar
-
-      - name: Upload populate explore json job image artifact
-        if: steps.changes.outputs.populate-explore-json == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: populate-explore-json-job
-          path: /tmp/populate-explore-json-job.tar
-          retention-days: 1
+          push: true
