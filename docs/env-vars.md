@@ -46,6 +46,10 @@ This ActivityPub service uses a variety of environment variables to configure it
 - `MYSQL_USER`* - MySQL database username
 - `MYSQL_PASSWORD`* - MySQL database password
 - `MYSQL_DATABASE`* - MySQL database name
+- `MYSQL_CONN_POOL_MIN` - Minimum number of connections in the MySQL connection pool
+  - Default: `1`
+- `MYSQL_CONN_POOL_MAX` - Maximum number of connections in the MySQL connection pool
+  - Default: `200`
 
 ## Redis Configuration
 
