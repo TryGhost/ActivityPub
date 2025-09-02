@@ -250,6 +250,7 @@ jobs:
             type=edge,branch=main
 
       - name: Authenticate with GCP
+        if: steps.changes.outputs.cleanup == 'true'
         uses: google-github-actions/auth@v2
         id: gcp-auth
         with:
@@ -296,6 +297,7 @@ jobs:
             type=edge,branch=main
 
       - name: Authenticate with GCP
+        if: steps.changes.outputs.populate-explore-json == 'true'
         uses: google-github-actions/auth@v2
         id: gcp-auth
         with:
