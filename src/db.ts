@@ -13,6 +13,35 @@ export interface KnexQueryError extends Error {
     sqlMessage?: string;
 }
 
+const poolConfig = {
+    min: parseInt(process.env.MYSQL_CONN_POOL_MIN ?? '1', 10),
+    max: parseInt(process.env.MYSQL_CONN_POOL_MAX ?? '200', 10),
+    acquireTimeoutMillis: parseInt(
+        process.env.MYSQL_CONN_POOL_ACQUIRE_TIMEOUT ?? '30000',
+        10,
+    ),
+    createTimeoutMillis: parseInt(
+        process.env.MYSQL_CONN_POOL_CREATE_TIMEOUT ?? '30000',
+        10,
+    ),
+    destroyTimeoutMillis: parseInt(
+        process.env.MYSQL_CONN_POOL_DESTROY_TIMEOUT ?? '5000',
+        10,
+    ),
+    idleTimeoutMillis: parseInt(
+        process.env.MYSQL_CONN_POOL_IDLE_TIMEOUT ?? '30000',
+        10,
+    ),
+    reapIntervalMillis: parseInt(
+        process.env.MYSQL_CONN_POOL_REAP_INTERVAL ?? '1000',
+        10,
+    ),
+    createRetryIntervalMillis: parseInt(
+        process.env.MYSQL_CONN_POOL_CREATE_RETRY_INTERVAL ?? '200',
+        10,
+    ),
+};
+
 export const knex = Knex({
     client: 'mysql2',
     connection: process.env.MYSQL_SOCKET_PATH
@@ -31,10 +60,7 @@ export const knex = Knex({
               database: process.env.MYSQL_DATABASE,
               timezone: '+00:00',
           },
-    pool: {
-        min: parseInt(process.env.MYSQL_CONN_POOL_MIN ?? '1'),
-        max: parseInt(process.env.MYSQL_CONN_POOL_MAX ?? '200'),
-    },
+    pool: poolConfig,
 });
 
 knex.on(
