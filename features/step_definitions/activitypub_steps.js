@@ -303,13 +303,19 @@ Then(
         const inbox = new URL(actor.inbox);
         const activity = this.activities[activityName];
 
-        const found = await waitForRequest('POST', inbox.pathname, (call) => {
-            const json = JSON.parse(call.request.body);
-            return (
-                json.type === activity.type &&
-                json.object.id === activity.object.id
-            );
-        });
+        const found = await waitForRequest(
+            'POST',
+            inbox.pathname,
+            (call) => {
+                const json = JSON.parse(call.request.body);
+                return (
+                    json.type === activity.type &&
+                    json.object.id === activity.object.id
+                );
+            },
+            5000,
+            200,
+        );
 
         assert(found);
     },
