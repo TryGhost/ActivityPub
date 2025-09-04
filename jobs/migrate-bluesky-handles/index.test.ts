@@ -73,17 +73,66 @@ describe('searchBlueskyHandle', () => {
         expect(result).toBeNull();
     });
 
-    it('should throw error when API returns non-200 status', async () => {
+    it('should return null when API returns permanent error status', async () => {
         global.fetch = mock(() =>
             Promise.resolve({
                 ok: false,
-                status: 500,
+                status: 400,
             }),
         ) as unknown as typeof fetch;
 
-        await expect(searchBlueskyHandle('example.com')).rejects.toThrow(
-            'Bluesky API returned status 500 for example.com',
-        );
+        const result = await searchBlueskyHandle('example.com', 1);
+
+        expect(result).toBeNull();
+    });
+
+    it('should retry and return null after max retries', async () => {
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: false,
+                status: 408,
+            }),
+        ) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com', 2);
+
+        expect(result).toBeNull();
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry and succeed on second attempt', async () => {
+        let callCount = 0;
+
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:example',
+                    handle: 'example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                },
+            ],
+        };
+
+        global.fetch = mock(() => {
+            callCount++;
+
+            if (callCount === 1) {
+                return Promise.resolve({
+                    ok: false,
+                    status: 503,
+                });
+            }
+
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+        }) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com', 3);
+
+        expect(result).toBe('example.com.ap.brid.gy');
+        expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('should match handle with exact hostname', async () => {

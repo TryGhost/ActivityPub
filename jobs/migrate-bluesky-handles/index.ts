@@ -22,30 +22,68 @@ interface BlueskySearchResponse {
  */
 export async function searchBlueskyHandle(
     hostname: string,
+    maxRetries: number = 3,
 ): Promise<string | null> {
     const searchUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=${encodeURIComponent(hostname)}`;
 
-    const response = await fetch(searchUrl, {
-        headers: {
-            Accept: 'application/json',
-        },
-    });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(searchUrl, {
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
 
-    if (!response.ok) {
-        throw new Error(
-            `Bluesky API returned status ${response.status} for ${hostname}`,
-        );
-    }
+            // Retry on temporary failures
+            if ([408, 429, 502, 503, 504].includes(response.status)) {
+                if (attempt < maxRetries) {
+                    const delay = Math.min(1000 * 2 ** (attempt - 1), 4000);
 
-    const data: BlueskySearchResponse = await response.json();
+                    console.warn(
+                        `Retrying Bluesky API for ${hostname} after ${delay}ms (${response.status})`,
+                    );
 
-    // Look for an actor whose handle ends with .ap.brid.gy and contains the hostname
-    for (const actor of data.actors) {
-        if (
-            actor.handle.endsWith('.ap.brid.gy') &&
-            actor.handle.includes(hostname)
-        ) {
-            return actor.handle;
+                    await Bun.sleep(delay);
+
+                    continue;
+                }
+
+                // After max retries, return null instead of throwing
+                console.warn(
+                    `Bluesky API failed for ${hostname} after ${maxRetries} attempts (${response.status})`,
+                );
+
+                return null;
+            }
+
+            // For non-retryable errors, log and return null
+            if (!response.ok) {
+                console.warn(
+                    `Failed to search Bluesky API for ${hostname} (${response.status})`,
+                );
+
+                return null;
+            }
+
+            const data: BlueskySearchResponse = await response.json();
+
+            // Look for an actor whose handle ends with .ap.brid.gy and contains the hostname
+            for (const actor of data.actors) {
+                if (
+                    actor.handle.endsWith('.ap.brid.gy') &&
+                    actor.handle.includes(hostname)
+                ) {
+                    return actor.handle;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.warn(
+                `Failed to search Bluesky API for ${hostname}: ${error.message}`,
+            );
+
+            return null;
         }
     }
 
@@ -134,7 +172,7 @@ async function main(bridgyAccountId: number) {
             }
 
             // Add a small delay to avoid rate limiting
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await Bun.sleep(500);
         }
 
         console.log('Bluesky handles migration complete');
