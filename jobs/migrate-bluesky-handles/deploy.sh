@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 IMAGE_NAME="migrate-bluesky-handles-job"
 JOB_NAME="migrate-bluesky-handles"

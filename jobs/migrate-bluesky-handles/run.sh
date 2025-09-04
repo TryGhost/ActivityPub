@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
 JOB_NAME="migrate-bluesky-handles"

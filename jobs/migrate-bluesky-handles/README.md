@@ -1,6 +1,6 @@
 # Migrate Bluesky handles
 
-This job migrates the Bluesky handles for all accounts that are following `https://bsky.brid.gy/bsky.brid.gy`
+This job migrates the Bluesky handles for all accounts that follow [https://bsky.brid.gy/bsky.brid.gy](https://bsky.brid.gy/bsky.brid.gy)
 
 ## Prerequisites
 
@@ -46,7 +46,7 @@ gcloud auth configure-docker
 
 1. In GCP, ensure the relevant environment variables are set on the job
 
-```
+```text
 DB_HOST
 DB_PORT
 DB_USER
@@ -57,7 +57,7 @@ DB_NAME
 These need to be set manually via the UI as we do not know the db host      
 and we need to retrieve the credentials from the secret manager.
 
-1. Ensure you have logged in via `gcloud` and have the correct permissions:
+2. Ensure you have logged in via `gcloud` and have the correct permissions:
 
 ```bash
 gcloud auth login
@@ -73,7 +73,7 @@ gcloud auth login
 
 1. In GCP, ensure the relevant environment variables are set on the job
 
-```
+```text
 DB_HOST
 DB_PORT
 DB_USER
