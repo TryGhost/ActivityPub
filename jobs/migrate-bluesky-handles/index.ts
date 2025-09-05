@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 
-import { SQL } from 'bun';
+/**
+ * We can't use Bun.SQL because it doesn't like using a socket :(
+ */
+import mysql from 'mysql2/promise';
 
 interface BlueskyActor {
     did: string;
@@ -19,30 +22,68 @@ interface BlueskySearchResponse {
  */
 export async function searchBlueskyHandle(
     hostname: string,
+    maxRetries: number = 3,
 ): Promise<string | null> {
     const searchUrl = `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=${encodeURIComponent(hostname)}`;
 
-    const response = await fetch(searchUrl, {
-        headers: {
-            Accept: 'application/json',
-        },
-    });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(searchUrl, {
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
 
-    if (!response.ok) {
-        throw new Error(
-            `Bluesky API returned status ${response.status} for ${hostname}`,
-        );
-    }
+            // Retry on temporary failures
+            if ([408, 429, 502, 503, 504].includes(response.status)) {
+                if (attempt < maxRetries) {
+                    const delay = Math.min(1000 * 2 ** (attempt - 1), 4000);
 
-    const data: BlueskySearchResponse = await response.json();
+                    console.warn(
+                        `Retrying Bluesky API for ${hostname} after ${delay}ms (${response.status})`,
+                    );
 
-    // Look for an actor whose handle ends with .ap.brid.gy and contains the hostname
-    for (const actor of data.actors) {
-        if (
-            actor.handle.endsWith('.ap.brid.gy') &&
-            actor.handle.includes(hostname)
-        ) {
-            return actor.handle;
+                    await Bun.sleep(delay);
+
+                    continue;
+                }
+
+                // After max retries, return null instead of throwing
+                console.warn(
+                    `Bluesky API failed for ${hostname} after ${maxRetries} attempts (${response.status})`,
+                );
+
+                return null;
+            }
+
+            // For non-retryable errors, log and return null
+            if (!response.ok) {
+                console.warn(
+                    `Failed to search Bluesky API for ${hostname} (${response.status})`,
+                );
+
+                return null;
+            }
+
+            const data: BlueskySearchResponse = await response.json();
+
+            // Look for an actor whose handle ends with .ap.brid.gy and contains the hostname
+            for (const actor of data.actors) {
+                if (
+                    actor.handle.endsWith('.ap.brid.gy') &&
+                    actor.handle.includes(hostname)
+                ) {
+                    return actor.handle;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.warn(
+                `Failed to search Bluesky API for ${hostname}: ${error.message}`,
+            );
+
+            return null;
         }
     }
 
@@ -50,30 +91,31 @@ export async function searchBlueskyHandle(
 }
 
 export async function getAccountsFollowingBridgy(
-    sql: SQL,
+    connection: mysql.Connection,
     bridgyAccountId: number,
 ): Promise<{ account_id: number; domain: string }[]> {
-    const accounts = await sql`
-        SELECT a.id as account_id, a.domain as domain
-        FROM follows f
-        JOIN accounts a ON a.id = f.follower_id
-        WHERE f.following_id = ${bridgyAccountId}
-        ORDER BY a.id
-    `;
+    const [rows] = await connection.execute(
+        `SELECT a.id as account_id, a.domain as domain
+         FROM follows f
+         JOIN accounts a ON a.id = f.follower_id
+         WHERE f.following_id = ?
+         ORDER BY a.id`,
+        [bridgyAccountId],
+    );
 
-    return accounts;
+    return rows as { account_id: number; domain: string }[];
 }
 
 export async function saveBlueskyHandle(
-    sql: SQL,
+    connection: mysql.Connection,
     accountId: number,
     handle: string,
 ) {
     try {
-        await sql`
-            INSERT INTO bluesky_integration_account_handles (account_id, handle)
-            VALUES (${accountId}, ${handle})
-        `;
+        await connection.execute(
+            'INSERT INTO bluesky_integration_account_handles (account_id, handle) VALUES (?, ?)',
+            [accountId, handle],
+        );
     } catch (error: unknown) {
         const errorMessage =
             error instanceof Error ? error.message : String(error);
@@ -82,11 +124,10 @@ export async function saveBlueskyHandle(
             errorMessage.includes('UNIQUE') ||
             errorMessage.includes('Duplicate')
         ) {
-            await sql`
-                UPDATE bluesky_integration_account_handles
-                SET handle = ${handle}
-                WHERE account_id = ${accountId}
-            `;
+            await connection.execute(
+                'UPDATE bluesky_integration_account_handles SET handle = ? WHERE account_id = ?',
+                [handle, accountId],
+            );
         } else {
             throw error;
         }
@@ -94,35 +135,50 @@ export async function saveBlueskyHandle(
 }
 
 async function main(bridgyAccountId: number) {
-    console.log('Starting Bluesky handles migration...');
+    const connection = await mysql.createConnection(
+        process.env.DB_SOCKET_PATH
+            ? {
+                  socketPath: process.env.DB_SOCKET_PATH,
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASSWORD,
+                  database: process.env.DB_NAME,
+              }
+            : {
+                  host: process.env.DB_HOST,
+                  port: Number.parseInt(process.env.DB_PORT || '3306'),
+                  user: process.env.DB_USER,
+                  password: process.env.DB_PASSWORD,
+                  database: process.env.DB_NAME,
+              },
+    );
 
-    const sql = new SQL({
-        adapter: 'mysql',
-        host: process.env.DB_HOST,
-        port: parseInt(process.env.DB_PORT || '3306'),
-        username: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-    });
+    try {
+        const accounts = await getAccountsFollowingBridgy(
+            connection,
+            bridgyAccountId,
+        );
 
-    const accounts = await getAccountsFollowingBridgy(sql, bridgyAccountId);
+        console.log(
+            `Found ${accounts.length} accounts following bridgy account`,
+        );
 
-    console.log(`Found ${accounts.length} accounts following bridgy account`);
+        for (const account of accounts) {
+            const handle = await searchBlueskyHandle(account.domain);
 
-    for (const account of accounts) {
-        const handle = await searchBlueskyHandle(account.domain);
+            if (handle) {
+                await saveBlueskyHandle(connection, account.account_id, handle);
+            } else {
+                console.warn(`No Bluesky handle found for ${account.domain}`);
+            }
 
-        if (handle) {
-            await saveBlueskyHandle(sql, account.account_id, handle);
-        } else {
-            console.warn(`No Bluesky handle found for ${account.domain}`);
+            // Add a small delay to avoid rate limiting
+            await Bun.sleep(500);
         }
 
-        // Add a small delay to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        console.log('Bluesky handles migration complete');
+    } finally {
+        await connection.end();
     }
-
-    console.log('Bluesky handles migration complete');
 
     process.exit(0);
 }
