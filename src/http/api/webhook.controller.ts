@@ -9,14 +9,14 @@ import { postToDTO } from '@/http/api/helpers/post';
 import { BadRequest, Forbidden } from '@/http/api/helpers/response';
 
 const PostInputSchema = z.object({
-    uuid: z.string().uuid(),
+    uuid: z.uuid(),
     title: z.string(),
     html: z.string().nullable(),
     excerpt: z.string().nullable(),
     custom_excerpt: z.string().nullable(),
-    feature_image: z.string().url().nullable(),
-    published_at: z.string().datetime(),
-    url: z.string().url(),
+    feature_image: z.url().nullable(),
+    published_at: z.iso.datetime(),
+    url: z.url(),
     visibility: z.enum(['public', 'members', 'paid', 'tiers']),
     authors: z
         .array(
@@ -40,7 +40,7 @@ const PostPublishedWebhookSchema = z.object({
 const PostDeletedWebhookSchema = z.object({
     post: z.object({
         previous: z.object({
-            uuid: z.string().uuid(),
+            uuid: z.uuid(),
         }),
     }),
 });
@@ -48,7 +48,7 @@ const PostDeletedWebhookSchema = z.object({
 const PostUnpublishedWebhookSchema = z.object({
     post: z.object({
         current: z.object({
-            uuid: z.string().uuid(),
+            uuid: z.uuid(),
         }),
     }),
 });

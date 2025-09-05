@@ -491,7 +491,7 @@ const IncomingPushMessageSchema = z.object({
     message: z.object({
         message_id: z.string(),
         data: z.string(),
-        attributes: z.record(z.string()),
+        attributes: z.record(z.string(), z.string()),
     }),
 });
 
