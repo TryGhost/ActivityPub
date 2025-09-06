@@ -210,11 +210,11 @@ export class PostController {
             content: z.string(),
             image: z
                 .object({
-                    url: z.string().url(),
+                    url: z.url(),
                     altText: z.string().optional(),
                 })
                 .optional(),
-            imageUrl: z.string().url().optional(),
+            imageUrl: z.url().optional(),
         });
 
         let data: z.infer<typeof NoteSchema>;
@@ -304,11 +304,11 @@ export class PostController {
             content: z.string(),
             image: z
                 .object({
-                    url: z.string().url(),
+                    url: z.url(),
                     altText: z.string().optional(),
                 })
                 .optional(),
-            imageUrl: z.string().url().optional(),
+            imageUrl: z.url().optional(),
         });
 
         let data: z.infer<typeof ReplyActionSchema>;
