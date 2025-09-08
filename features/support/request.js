@@ -40,8 +40,8 @@ export async function waitForRequest(
     method,
     path,
     matcher,
-    step = 100,
     milliseconds = 1000,
+    step = 100,
 ) {
     const externalActivityPub = getExternalWiremock();
 
@@ -58,5 +58,5 @@ export async function waitForRequest(
 
     await wait(step);
 
-    return waitForRequest(method, path, matcher, step, milliseconds - step);
+    return waitForRequest(method, path, matcher, milliseconds - step, step);
 }

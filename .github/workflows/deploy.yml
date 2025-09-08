@@ -1,0 +1,185 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      github-sha:
+        description: Git Commit SHA
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: [europe-west4, europe-west3]
+        include:
+          - region: europe-west4
+            region_name: netherlands
+          - region: europe-west3
+            region_name: frankfurt
+    steps:
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Destroy Tests databases
+        if: ${{ matrix.region == 'europe-west4' }}
+        env:
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~test*" --format="value(name)" --project ${GCP_PROJECT})
+          for TEST_DATABASE in ${TEST_DATABASES}; do
+            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+          done
+
+      - name: Deploy Migrations to Cloud Run
+        if: ${{ matrix.region == 'europe-west4' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          job: stg-${{ matrix.region_name }}-activitypub-migrations
+          flags: --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub Queue to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub Retry Queue to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-retry-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub External to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-external
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub API to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-activitypub-api
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+  deploy-production:
+    name: Deploy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: [europe-west4, europe-west3]
+        include:
+          - region: europe-west4
+            region_name: netherlands
+          - region: europe-west3
+            region_name: frankfurt
+    steps:
+      - name: Authenticate with GCP
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Deploy Migrations to Cloud Run
+        if: ${{ matrix.region == 'europe-west4' }}
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          job: prd-${{ matrix.region_name }}-activitypub-migrations
+          flags: --wait --execute-now
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub Queue to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub Retry Queue to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-retry-queue
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub External to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-external
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+      - name: Deploy ActivityPub API to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: prd-${{ matrix.region_name }}-activitypub-api
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+  cleanup-staging-tests-dbs:
+    name: Cleanup Staging Tests Databases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Destroy Tests databases
+        env:
+          GCP_PROJECT: ghost-activitypub
+        run: |
+          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~test*" --format="value(name)" --project ${GCP_PROJECT})
+          for TEST_DATABASE in ${TEST_DATABASES}; do
+            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
+          done
