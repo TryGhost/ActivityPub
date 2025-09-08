@@ -2,13 +2,22 @@ import { describe, expect, it, mock } from 'bun:test';
 import { searchBlueskyHandle } from './index';
 
 describe('searchBlueskyHandle', () => {
-    it('should return handle when actor with .ap.brid.gy handle is found', async () => {
+    it('should return handle when actor with bridgy label is found', async () => {
         const mockResponse = {
             actors: [
                 {
                     did: 'did:plc:example',
                     handle: 'example.com.ap.brid.gy',
                     displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
                 },
             ],
         };
@@ -109,6 +118,15 @@ describe('searchBlueskyHandle', () => {
                     did: 'did:plc:example',
                     handle: 'example.com.ap.brid.gy',
                     displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
                 },
             ],
         };
@@ -135,12 +153,76 @@ describe('searchBlueskyHandle', () => {
         expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
-    it('should match handle with exact hostname', async () => {
+    it('should match handle with bridgy label regardless of hostname', async () => {
         const mockResponse = {
             actors: [
                 {
                     did: 'did:plc:example',
-                    handle: 'www.example.com.ap.brid.gy',
+                    handle: 'feed.example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            }),
+        ) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com');
+
+        expect(result).toBe('feed.example.com.ap.brid.gy');
+    });
+
+    it('should not match handles without bridgy label', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:example',
+                    handle: 'example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'some-other-label',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            }),
+        ) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com');
+
+        expect(result).toBeNull();
+    });
+
+    it('should not match handles without labels array', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:example',
+                    handle: 'example.com.ap.brid.gy',
                     displayName: 'Example Site',
                 },
             ],
@@ -153,18 +235,73 @@ describe('searchBlueskyHandle', () => {
             }),
         ) as unknown as typeof fetch;
 
-        const result = await searchBlueskyHandle('www.example.com');
+        const result = await searchBlueskyHandle('example.com');
 
-        expect(result).toBe('www.example.com.ap.brid.gy');
+        expect(result).toBeNull();
     });
 
-    it('should not match handles that contain hostname but are not bridgy handles', async () => {
+    it('should prefer valid handle over handle.invalid', async () => {
         const mockResponse = {
             actors: [
                 {
-                    did: 'did:plc:example',
-                    handle: 'example.com.otherdomain.com',
+                    did: 'did:plc:invalid',
+                    handle: 'handle.invalid',
                     displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:invalid',
+                            uri: 'at://did:plc:invalid/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+                {
+                    did: 'did:plc:valid',
+                    handle: 'example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:valid',
+                            uri: 'at://did:plc:valid/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            }),
+        ) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com');
+
+        expect(result).toBe('example.com.ap.brid.gy');
+    });
+
+    it('should return null when only handle.invalid is found', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:invalid',
+                    handle: 'handle.invalid',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:invalid',
+                            uri: 'at://did:plc:invalid/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
                 },
             ],
         };

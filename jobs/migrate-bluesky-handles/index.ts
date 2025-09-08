@@ -5,11 +5,20 @@
  */
 import mysql from 'mysql2/promise';
 
+interface BlueskyLabel {
+    src: string;
+    uri: string;
+    cid: string;
+    val: string;
+    cts: string;
+}
+
 interface BlueskyActor {
     did: string;
     handle: string;
     displayName?: string;
     description?: string;
+    labels?: BlueskyLabel[];
 }
 
 interface BlueskySearchResponse {
@@ -67,14 +76,26 @@ export async function searchBlueskyHandle(
 
             const data: BlueskySearchResponse = await response.json();
 
-            // Look for an actor whose handle ends with .ap.brid.gy and contains the hostname
-            for (const actor of data.actors) {
-                if (
-                    actor.handle.endsWith('.ap.brid.gy') &&
-                    actor.handle.includes(hostname)
-                ) {
-                    return actor.handle;
+            const bridgyActors = data.actors.filter((actor) => {
+                if (!actor.labels) return false;
+                return actor.labels.some(
+                    (label) =>
+                        label.val === 'bridged-from-bridgy-fed-activitypub',
+                );
+            });
+
+            if (bridgyActors.length > 0) {
+                // Prefer handles without handle.invalid
+                const validHandle = bridgyActors.find(
+                    (actor) => actor.handle !== 'handle.invalid',
+                );
+
+                if (validHandle) {
+                    return validHandle.handle;
                 }
+
+                // If all are handle.invalid, return null
+                return null;
             }
 
             return null;
@@ -106,32 +127,49 @@ export async function getAccountsFollowingBridgy(
     return rows as { account_id: number; domain: string }[];
 }
 
+type BlueskyIntegrationAccountHandlesRow = {
+    account_id: number;
+    handle: string;
+};
+
 export async function saveBlueskyHandle(
     connection: mysql.Connection,
     accountId: number,
     handle: string,
 ) {
-    try {
-        await connection.execute(
-            'INSERT INTO bluesky_integration_account_handles (account_id, handle) VALUES (?, ?)',
-            [accountId, handle],
-        );
-    } catch (error: unknown) {
-        const errorMessage =
-            error instanceof Error ? error.message : String(error);
+    // Check entry with handle for this account already exists
+    const [accountRows] = await connection.execute(
+        'SELECT handle FROM bluesky_integration_account_handles WHERE account_id = ?',
+        [accountId],
+    );
 
-        if (
-            errorMessage.includes('UNIQUE') ||
-            errorMessage.includes('Duplicate')
-        ) {
-            await connection.execute(
-                'UPDATE bluesky_integration_account_handles SET handle = ? WHERE account_id = ?',
-                [handle, accountId],
-            );
-        } else {
-            throw error;
-        }
+    // If so, skip
+    if ((accountRows as BlueskyIntegrationAccountHandlesRow[]).length > 0) {
+        return;
     }
+
+    // Check if the handle has already been assigned to another account
+    const [handleRows] = await connection.execute(
+        'SELECT account_id FROM bluesky_integration_account_handles WHERE handle = ?',
+        [handle],
+    );
+
+    if ((handleRows as BlueskyIntegrationAccountHandlesRow[]).length > 0) {
+        // Handle exists for another account - skip with warning
+        console.warn(
+            `Handle ${handle} already exists for account ${
+                (handleRows as BlueskyIntegrationAccountHandlesRow[])[0]
+                    .account_id
+            }, skipping account ${accountId}`,
+        );
+        return;
+    }
+
+    // Insert entry
+    await connection.execute(
+        'INSERT INTO bluesky_integration_account_handles (account_id, handle) VALUES (?, ?)',
+        [accountId, handle],
+    );
 }
 
 async function main(bridgyAccountId: number) {
