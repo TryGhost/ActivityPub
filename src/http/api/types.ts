@@ -85,6 +85,20 @@ export interface AccountDTO extends Omit<MinimalAccountDTO, 'isFollowing'> {
     followsMe: boolean;
 }
 
+/**
+ * Account returned by the API with Bluesky integration details included
+ */
+export interface AccountDTOWithBluesky extends AccountDTO {
+    /**
+     * Whether the account has the Bluesky integration enabled
+     */
+    blueskyEnabled: boolean;
+    /**
+     * Handle of the Bluesky account (if enabled)
+     */
+    blueskyHandle: string | null;
+}
+
 export type AuthorDTO = Pick<
     AccountDTO,
     'id' | 'handle' | 'avatarUrl' | 'name' | 'url' | 'followedByMe'

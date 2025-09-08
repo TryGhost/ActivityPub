@@ -1,0 +1,103 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      activitypub-private-tags:
+        description: ActivityPub Docker image tags for private registry
+        required: true
+        type: string
+      activitypub-public-tags:
+        description: ActivityPub Docker image tags for public registry
+        required: false
+        type: string
+      activitypub-public-labels:
+        description: ActivityPub Docker image labels for public registry
+        required: false
+        type: string
+      activitypub-migrations-private-tags:
+        description: ActivityPub Migrations Docker image tags for private registry
+        required: true
+        type: string
+      activitypub-migrations-public-tags:
+        description: ActivityPub Migrations Docker image tags for public registry
+        required: false
+        type: string
+      activitypub-migrations-public-labels:
+        description: ActivityPub Migrations Docker image tags for public registry
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  packages: write
+
+jobs:
+  push-main-images:
+    name: Push Docker Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download ActivityPub image
+        uses: actions/download-artifact@v4
+        with:
+          name: activitypub-amd64
+          path: /tmp
+
+      - name: Download Migrations image
+        uses: actions/download-artifact@v4
+        with:
+          name: activitypub-migrations-amd64
+          path: /tmp
+
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        id: gcp-auth
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Login to GCP Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: europe-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: Login to GitHub Container Registry"
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push ActivityPub Docker image to private registry
+        run: |
+          docker load < /tmp/activitypub-amd64.tar
+          echo "${{ inputs.activitypub-private-tags }}" | while read -r tag; do
+            docker push $tag
+          done
+
+      - name: Push ActivityPub Docker image to public registry
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "${{ inputs.activitypub-public-tags }}" | while read -r tag; do
+            docker tag europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:edge $tag
+            docker push $tag
+          done
+
+      - name: Push Migrations Docker image to private registry
+        run: |
+          docker load < /tmp/activitypub-migrations-amd64.tar
+          echo "${{ inputs.activitypub-migrations-private-tags }}" | while read -r tag; do
+            docker push $tag
+          done
+
+      - name: Push Migrations Docker image to public registry
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "${{ inputs.activitypub-migrations-public-tags }}" | while read -r tag; do
+            docker tag europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:edge $tag
+            docker push $tag
+          done

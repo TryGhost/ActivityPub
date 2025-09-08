@@ -1,0 +1,315 @@
+name: Build
+
+on:
+  workflow_call:
+    outputs:
+      activitypub-private-tags:
+        description: ActivityPub Docker image tags for private registry
+        value: ${{ jobs.build-main-images.outputs.activitypub-private-tags }}
+      activitypub-public-tags:
+        description: ActivityPub Docker image tags for public registry
+        value: ${{ jobs.build-main-images.outputs.activitypub-public-tags }}
+      activitypub-public-labels:
+        description: ActivityPub Docker image labels for public registry
+        value: ${{ jobs.build-main-images.outputs.activitypub-public-labels }}
+      activitypub-migrations-private-tags:
+        description: Migrations Docker image tags for private registry
+        value: ${{ jobs.build-main-images.outputs.activitypub-migrations-private-tags }}
+      activitypub-migrations-public-tags:
+        description: Migrations Docker image tags for public registry
+        value: ${{ jobs.build-main-images.outputs.activitypub-migrations-public-tags }}
+      activitypub-migrations-public-labels:
+        description: Migrations docker image labels for public registry
+        value: ${{ jobs.build-main-images.outputs.activitypub-migrations-public-labels }}
+
+permissions:
+  id-token: write
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Biome
+        uses: biomejs/setup-biome@v2
+
+      - name: Run Biome
+        run: biome ci .
+
+  check-yarn-lock:
+    name: Check yarn.lock
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: yarn
+
+      - name: Check yarn.lock
+        run: yarn install --frozen-lockfile
+
+  build-main-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            platform_slug: amd64
+          - platform: linux/arm64
+            platform_slug: arm64
+    outputs:
+      activitypub-private-tags: ${{ steps.activitypub-docker-metadata-private.outputs.tags }}
+      activitypub-public-tags: ${{ steps.activitypub-docker-metadata-public.outputs.tags || '' }}
+      activitypub-public-labels: ${{ steps.activitypub-docker-metadata-public.outputs.labels || '' }}
+      activitypub-migrations-private-tags: ${{ steps.activitypub-migrations-docker-metadata-private.outputs.tags }}
+      activitypub-migrations-public-tags: ${{ steps.activitypub-migrations-docker-metadata-public.outputs.tags || '' }}
+      activitypub-migrations-public-labels: ${{ steps.activitypub-migrations-docker-metadata-public.outputs.labels || '' }}
+    steps:
+      - name: Check if we should build this platform
+        id: should-build
+        run: |
+          if [[ "${{ matrix.platform }}" == "linux/arm64" ]] && [[ ! "${{ github.ref }}" =~ ^refs/tags/ ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping arm64 build for non-tagged release"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Building for platform ${{ matrix.platform }}"
+          fi
+
+      - name: Checkout
+        if: steps.should-build.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        if: steps.should-build.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.platform_slug }}
+
+      - name: Set up Docker Buildx
+        if: steps.should-build.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: ActivityPub Docker metadata for private registry
+        if: steps.should-build.outputs.skip != 'true'
+        id: activitypub-docker-metadata-private
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub
+          tags: |
+            ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
+            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.pull_request.number) || '' }}
+            type=raw,value=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha  }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,priority=1100
+          labels: |
+            org.opencontainers.image.title=Ghost — ActivityPub
+            org.opencontainers.image.description=Federate your Ghost site with ActivityPub to join the world's largest open network.
+            org.opencontainers.image.vendor=Ghost Foundation
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.documentation=https://github.com/TryGhost/ActivityPub
+            org.opencontainers.image.source=https://github.com/TryGhost/ActivityPub
+
+      - name: ActivityPub Docker metadata for public registry
+        id: activitypub-docker-metadata-public
+        if: steps.should-build.outputs.skip != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/tryghost/activitypub
+          tags: |
+            type=edge,branch=main
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,priority=1100
+          labels: |
+            org.opencontainers.image.title=Ghost — ActivityPub
+            org.opencontainers.image.description=Federate your Ghost site with ActivityPub to join the world's largest open network.
+            org.opencontainers.image.vendor=Ghost Foundation
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.documentation=https://github.com/TryGhost/ActivityPub
+            org.opencontainers.image.source=https://github.com/TryGhost/ActivityPub
+
+      - name: Migrations Docker meta for private registry
+        if: steps.should-build.outputs.skip != 'true'
+        id: activitypub-migrations-docker-metadata-private
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations
+          tags: |
+            ${{ github.ref == 'refs/heads/main' && 'type=edge,branch=main' || '' }}
+            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.pull_request.number) || '' }}
+            type=raw,value=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha  }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,priority=1100
+
+      - name: ActivityPub Migrations Docker metadata for public registry
+        id: activitypub-migrations-docker-metadata-public
+        if: steps.should-build.outputs.skip != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/tryghost/activitypub-migrations
+          tags: |
+            type=edge,branch=main
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,priority=1100
+          labels: |
+            org.opencontainers.image.title=Ghost — ActivityPub
+            org.opencontainers.image.description=Federate your Ghost site with ActivityPub to join the world's largest open network.
+            org.opencontainers.image.vendor=Ghost Foundation
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.documentation=https://github.com/TryGhost/ActivityPub
+            org.opencontainers.image.source=https://github.com/TryGhost/ActivityPub
+
+      - name: Build Docker Image for ActivityPub
+        if: steps.should-build.outputs.skip != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          platforms: ${{ matrix.platform }}
+          tags: ${{ steps.activitypub-docker-metadata-private.outputs.tags }}
+          labels: ${{ steps.activitypub-docker-metadata-private.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/activitypub-${{ matrix.platform_slug }}.tar
+
+      - name: Build Docker Image for Migrations
+        if: steps.should-build.outputs.skip != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: migrate
+          load: true
+          platforms: ${{ matrix.platform }}
+          tags: ${{ steps.activitypub-migrations-docker-metadata-private.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/activitypub-migrations-${{ matrix.platform_slug }}.tar
+
+      - name: Upload ActivityPub image artifact
+        if: steps.should-build.outputs.skip != 'true' && matrix.platform == 'linux/amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: activitypub-${{ matrix.platform_slug }}
+          path: /tmp/activitypub-${{ matrix.platform_slug }}.tar
+          retention-days: 1
+
+      - name: Upload Migrations image artifact
+        if: steps.should-build.outputs.skip != 'true' && matrix.platform == 'linux/amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: activitypub-migrations-${{ matrix.platform_slug }}
+          path: /tmp/activitypub-migrations-${{ matrix.platform_slug }}.tar
+          retention-days: 1
+
+  build-cleanup-job:
+    name: Build Cleanup Job Image
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for changes in cleanup job
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            cleanup:
+              - 'jobs/cleanup-expired-key-value-records/**'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        if: steps.changes.outputs.cleanup == 'true'
+        id: cleanup-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/cleanup-expired-key-value-records
+          tags: |
+            type=sha
+            type=edge,branch=main
+
+      - name: Authenticate with GCP
+        if: steps.changes.outputs.cleanup == 'true'
+        uses: google-github-actions/auth@v2
+        id: gcp-auth
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Build cleanup job image
+        if: steps.changes.outputs.cleanup == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: jobs/cleanup-expired-key-value-records
+          load: true
+          tags: ${{ steps.cleanup-meta.outputs.tags }}
+          push: true
+
+  build-populate-explore-json-job:
+    name: Build Populate Explore JSON Job
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for changes in populate explore json job
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            populate-explore-json:
+              - 'jobs/populate-explore-json/**'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        id: populate-explore-json-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/populate-explore-json
+          tags: |
+            type=sha
+            type=edge,branch=main
+
+      - name: Authenticate with GCP
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        uses: google-github-actions/auth@v2
+        id: gcp-auth
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+
+      - name: Build populate explore json job image
+        if: steps.changes.outputs.populate-explore-json == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: jobs/populate-explore-json
+          load: true
+          tags: ${{ steps.populate-explore-json-meta.outputs.tags }}
+          push: true
