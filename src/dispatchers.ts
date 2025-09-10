@@ -23,6 +23,7 @@ import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { ContextData } from '@/app';
+import { ACTIVITYPUB_COLLECTION_PAGE_SIZE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
     buildAnnounceActivityForPost,
@@ -801,14 +802,6 @@ export function createFollowingDispatcher(
     ) {
         ctx.data.logger.info('Following Dispatcher');
 
-        const pageSize = Number.parseInt(
-            process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '',
-        );
-
-        if (Number.isNaN(pageSize)) {
-            throw new Error(`Page size: ${pageSize} is not valid`);
-        }
-
         const offset = Number.parseInt(cursor ?? '0');
         let nextCursor: string | null = null;
 
@@ -827,7 +820,7 @@ export function createFollowingDispatcher(
             siteDefaultAccount,
             {
                 fields: ['ap_id'],
-                limit: pageSize,
+                limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
                 offset,
             },
         );
@@ -836,8 +829,8 @@ export function createFollowingDispatcher(
         );
 
         nextCursor =
-            totalFollowing > offset + pageSize
-                ? (offset + pageSize).toString()
+            totalFollowing > offset + ACTIVITYPUB_COLLECTION_PAGE_SIZE
+                ? (offset + ACTIVITYPUB_COLLECTION_PAGE_SIZE).toString()
                 : null;
 
         ctx.data.logger.info('Following results', { results });
@@ -909,10 +902,6 @@ export function createOutboxDispatcher(
     ) {
         ctx.data.logger.info('Outbox Dispatcher');
 
-        const pageSize = Number.parseInt(
-            process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE || '20',
-        );
-
         const host = ctx.request.headers.get('host')!;
         const site = await siteService.getSiteByHost(host);
         if (!site) {
@@ -924,7 +913,7 @@ export function createOutboxDispatcher(
         const outbox = await postService.getOutboxForAccount(
             siteDefaultAccount.id,
             cursor,
-            pageSize,
+            ACTIVITYPUB_COLLECTION_PAGE_SIZE,
         );
         const outboxItems = await Promise.all(
             outbox.items.map(async (item: { post: Post; type: OutboxType }) => {

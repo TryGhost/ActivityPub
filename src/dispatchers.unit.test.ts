@@ -11,7 +11,10 @@ import type {
 import type { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { ContextData } from '@/app';
-import { ACTOR_DEFAULT_HANDLE } from '@/constants';
+import {
+    ACTIVITYPUB_COLLECTION_PAGE_SIZE,
+    ACTOR_DEFAULT_HANDLE,
+} from '@/constants';
 import {
     createOutboxCounter,
     createOutboxDispatcher,
@@ -98,7 +101,6 @@ describe('dispatchers', () => {
         });
 
         vi.clearAllMocks();
-        process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '2';
         vi.mocked(mockSiteService.getSiteByHost).mockResolvedValue(mockSite);
         vi.mocked(mockAccountService.getAccountForSite).mockResolvedValue(
             mockAccount,
@@ -180,7 +182,7 @@ describe('dispatchers', () => {
             expect(mockPostService.getOutboxForAccount).toHaveBeenCalledWith(
                 1,
                 cursor,
-                2,
+                ACTIVITYPUB_COLLECTION_PAGE_SIZE,
             );
             expect(result.items).toBeDefined();
             expect(result.nextCursor).toBe(nextCursor);
@@ -228,23 +230,6 @@ describe('dispatchers', () => {
 
             expect(result.items).toEqual([]);
             expect(result.nextCursor).toBeNull();
-        });
-
-        it('handles custom page size from environment variable', async () => {
-            process.env.ACTIVITYPUB_COLLECTION_PAGE_SIZE = '5';
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
-
-            await outboxDispatcher(ctx, 'test-handle', cursor);
-
-            expect(mockPostService.getOutboxForAccount).toHaveBeenCalledWith(
-                1,
-                cursor,
-                5,
-            );
         });
 
         it('returns create activity for original posts', async () => {
