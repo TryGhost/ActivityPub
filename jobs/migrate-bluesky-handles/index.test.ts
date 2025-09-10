@@ -1,20 +1,23 @@
-import { file, SQL } from 'bun';
-
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import {
-    getAccountsFollowingBridgy,
-    saveBlueskyHandle,
-    searchBlueskyHandle,
-} from './index';
+import { describe, expect, it, mock } from 'bun:test';
+import { searchBlueskyHandle } from './index';
 
 describe('searchBlueskyHandle', () => {
-    it('should return handle when actor with .ap.brid.gy handle is found', async () => {
+    it('should return handle when actor with bridgy label is found', async () => {
         const mockResponse = {
             actors: [
                 {
                     did: 'did:plc:example',
                     handle: 'example.com.ap.brid.gy',
                     displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
                 },
             ],
         };
@@ -79,26 +82,93 @@ describe('searchBlueskyHandle', () => {
         expect(result).toBeNull();
     });
 
-    it('should throw error when API returns non-200 status', async () => {
+    it('should return null when API returns permanent error status', async () => {
         global.fetch = mock(() =>
             Promise.resolve({
                 ok: false,
-                status: 500,
+                status: 400,
             }),
         ) as unknown as typeof fetch;
 
-        await expect(searchBlueskyHandle('example.com')).rejects.toThrow(
-            'Bluesky API returned status 500 for example.com',
-        );
+        const result = await searchBlueskyHandle('example.com', 1);
+
+        expect(result).toBeNull();
     });
 
-    it('should match handle with exact hostname', async () => {
+    it('should retry and return null after max retries', async () => {
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: false,
+                status: 408,
+            }),
+        ) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com', 2);
+
+        expect(result).toBeNull();
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry and succeed on second attempt', async () => {
+        let callCount = 0;
+
         const mockResponse = {
             actors: [
                 {
                     did: 'did:plc:example',
-                    handle: 'www.example.com.ap.brid.gy',
+                    handle: 'example.com.ap.brid.gy',
                     displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        global.fetch = mock(() => {
+            callCount++;
+
+            if (callCount === 1) {
+                return Promise.resolve({
+                    ok: false,
+                    status: 503,
+                });
+            }
+
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            });
+        }) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com', 3);
+
+        expect(result).toBe('example.com.ap.brid.gy');
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should match handle with bridgy label regardless of hostname', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:example',
+                    handle: 'feed.example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
                 },
             ],
         };
@@ -110,17 +180,49 @@ describe('searchBlueskyHandle', () => {
             }),
         ) as unknown as typeof fetch;
 
-        const result = await searchBlueskyHandle('www.example.com');
+        const result = await searchBlueskyHandle('example.com');
 
-        expect(result).toBe('www.example.com.ap.brid.gy');
+        expect(result).toBe('feed.example.com.ap.brid.gy');
     });
 
-    it('should not match handles that contain hostname but are not bridgy handles', async () => {
+    it('should not match handles without bridgy label', async () => {
         const mockResponse = {
             actors: [
                 {
                     did: 'did:plc:example',
-                    handle: 'example.com.otherdomain.com',
+                    handle: 'example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:example',
+                            uri: 'at://did:plc:example/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'some-other-label',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            }),
+        ) as unknown as typeof fetch;
+
+        const result = await searchBlueskyHandle('example.com');
+
+        expect(result).toBeNull();
+    });
+
+    it('should not match handles without labels array', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:example',
+                    handle: 'example.com.ap.brid.gy',
                     displayName: 'Example Site',
                 },
             ],
@@ -137,124 +239,82 @@ describe('searchBlueskyHandle', () => {
 
         expect(result).toBeNull();
     });
-});
 
-describe('getAccountsFollowingBridgy', () => {
-    let sql: SQL;
-    let dbPath: string;
+    it('should prefer valid handle over handle.invalid', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:invalid',
+                    handle: 'handle.invalid',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:invalid',
+                            uri: 'at://did:plc:invalid/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+                {
+                    did: 'did:plc:valid',
+                    handle: 'example.com.ap.brid.gy',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:valid',
+                            uri: 'at://did:plc:valid/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
 
-    beforeEach(async () => {
-        const randomId = crypto.randomUUID().substring(0, 8);
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            }),
+        ) as unknown as typeof fetch;
 
-        dbPath = `/tmp/test-${randomId}.db`;
-        sql = new SQL({
-            adapter: 'sqlite',
-            filename: dbPath,
-        });
+        const result = await searchBlueskyHandle('example.com');
 
-        await sql`
-            CREATE TABLE accounts (
-                id INTEGER PRIMARY KEY,
-                domain TEXT NOT NULL
-            )
-        `;
-        await sql`
-            CREATE TABLE follows (
-                id INTEGER PRIMARY KEY,
-                follower_id INTEGER NOT NULL,
-                following_id INTEGER NOT NULL,
-                FOREIGN KEY (follower_id) REFERENCES accounts(id),
-                FOREIGN KEY (following_id) REFERENCES accounts(id)
-            )
-        `;
-        await sql`INSERT INTO accounts (id, domain) VALUES (1, 'site1.com')`;
-        await sql`INSERT INTO accounts (id, domain) VALUES (2, 'site2.com')`;
-        await sql`INSERT INTO accounts (id, domain) VALUES (123, 'bridgy.com')`;
-        await sql`INSERT INTO follows (follower_id, following_id) VALUES (1, 123)`;
-        await sql`INSERT INTO follows (follower_id, following_id) VALUES (2, 123)`;
+        expect(result).toBe('example.com.ap.brid.gy');
     });
 
-    afterEach(async () => {
-        const dbFile = file(dbPath);
-        if (await dbFile.exists()) {
-            await dbFile.delete();
-        }
-    });
+    it('should return null when only handle.invalid is found', async () => {
+        const mockResponse = {
+            actors: [
+                {
+                    did: 'did:plc:invalid',
+                    handle: 'handle.invalid',
+                    displayName: 'Example Site',
+                    labels: [
+                        {
+                            src: 'did:plc:invalid',
+                            uri: 'at://did:plc:invalid/app.bsky.actor.profile/self',
+                            cid: 'bafyreih...',
+                            val: 'bridged-from-bridgy-fed-activitypub',
+                            cts: '1970-01-01T00:00:00.000Z',
+                        },
+                    ],
+                },
+            ],
+        };
 
-    it('should get accounts following bridgy account', async () => {
-        const result = await getAccountsFollowingBridgy(sql, 123);
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockResponse),
+            }),
+        ) as unknown as typeof fetch;
 
-        expect(result).toEqual([
-            { account_id: 1, domain: 'site1.com' },
-            { account_id: 2, domain: 'site2.com' },
-        ]);
-    });
-});
+        const result = await searchBlueskyHandle('example.com');
 
-describe('saveBlueskyHandle', () => {
-    let sql: SQL;
-    let dbPath: string;
-
-    beforeEach(async () => {
-        const randomId = crypto.randomUUID().substring(0, 8);
-        dbPath = `/tmp/test-${randomId}.db`;
-        sql = new SQL({
-            adapter: 'sqlite',
-            filename: dbPath,
-        });
-
-        await sql`
-            CREATE TABLE accounts (
-                id INTEGER PRIMARY KEY,
-                domain TEXT NOT NULL
-            )
-        `;
-        await sql`
-            CREATE TABLE bluesky_integration_account_handles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                account_id INTEGER NOT NULL UNIQUE,
-                handle TEXT NOT NULL UNIQUE,
-                FOREIGN KEY (account_id) REFERENCES accounts(id)
-            )
-        `;
-        await sql`INSERT INTO accounts (id, domain) VALUES (123, 'example.com')`;
-    });
-
-    afterEach(async () => {
-        const dbFile = file(dbPath);
-
-        if (await dbFile.exists()) {
-            await dbFile.delete();
-        }
-    });
-
-    it('should insert a new handle mapping', async () => {
-        await saveBlueskyHandle(sql, 123, 'example.com.ap.brid.gy');
-
-        const result = await sql`
-            SELECT * FROM bluesky_integration_account_handles
-            WHERE account_id = 123
-        `;
-
-        expect(result.length).toBe(1);
-        expect(result[0].account_id).toBe(123);
-        expect(result[0].handle).toBe('example.com.ap.brid.gy');
-    });
-
-    it('should update an existing handle mapping', async () => {
-        await sql`
-            INSERT INTO bluesky_integration_account_handles (account_id, handle)
-            VALUES (123, 'old.handle.ap.brid.gy')
-        `;
-
-        await saveBlueskyHandle(sql, 123, 'new.handle.ap.brid.gy');
-
-        const result = await sql`
-            SELECT * FROM bluesky_integration_account_handles
-            WHERE account_id = 123
-        `;
-
-        expect(result.length).toBe(1);
-        expect(result[0].handle).toBe('new.handle.ap.brid.gy');
+        expect(result).toBeNull();
     });
 });

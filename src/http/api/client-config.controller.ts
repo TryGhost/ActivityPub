@@ -4,7 +4,7 @@ import { APIRoute } from '@/http/decorators/route.decorator';
 export class ClientConfigController {
     @APIRoute('GET', 'client-config', 'stable')
     async handleGetClientConfig(_ctx: AppContext) {
-        const major = 0;
+        const major = 1;
         const name = 'admin-x-activitypub';
         const client = {
             name,
