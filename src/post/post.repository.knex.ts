@@ -442,7 +442,7 @@ export class KnexPostRepository {
                             .update({
                                 repost_count: shouldUseAtomicUpdate
                                     ? transaction.raw(
-                                          `repost_count + ${insertedRepostsCount - removedRepostsCount}`,
+                                          `GREATEST(0, CAST(repost_count AS SIGNED) + ${insertedRepostsCount - removedRepostsCount})`,
                                       )
                                     : // If the post is external, we need to
                                       // account for any changes that were
