@@ -656,10 +656,10 @@
     "@grpc/proto-loader" "^0.7.0"
     google-auth-library "^9.0.0"
 
-"@google-cloud/opentelemetry-cloud-trace-propagator@0.20.0":
-  version "0.20.0"
-  resolved "https://registry.yarnpkg.com/@google-cloud/opentelemetry-cloud-trace-propagator/-/opentelemetry-cloud-trace-propagator-0.20.0.tgz#0f2911ae68fadf611bf4b24de438fe4f197c47d3"
-  integrity sha512-yxsgGVkJk38l13gjQyA7D00vXGTkYSnjmIyWoxrl0Tg3yxbPnP2AeG4X0Rjd+SIn43oo+3z7/nxoPypFfLpjNw==
+"@google-cloud/opentelemetry-cloud-trace-propagator@0.21.0":
+  version "0.21.0"
+  resolved "https://registry.yarnpkg.com/@google-cloud/opentelemetry-cloud-trace-propagator/-/opentelemetry-cloud-trace-propagator-0.21.0.tgz#0d247e5ef9d6f8ba7f2edd54d7794a157a4afd85"
+  integrity sha512-Uw+co/tfYAkXFgMFsHdr5xQbxkLG/mRtHu4LL/ffrNj7TYi5UIU0tG+nGKxo4P2Oj8AJLT2D8iGaXYy9vUkSAA==
   dependencies:
     hex2dec "^1.0.1"
 
