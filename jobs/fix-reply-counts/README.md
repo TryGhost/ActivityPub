@@ -16,35 +16,33 @@ Due to a race condition bug (fixed in PR [#1094](https://github.com/TryGhost/Act
 ## Prerequisites
 
 - Globally available `bun`
-- Globally available `gcloud` CLI
+- Globally available `docker`
 
 ## Running locally
 
 ```bash
-cd jobs/fix-reply-counts
-
-bun run index.ts
+DB_HOST=... DB_PORT=... DB_USER=... DB_PASSWORD=... DB_NAME=... bun run index.ts
 ```
 
 ## Running tests
 
 ```bash
-cd jobs/fix-reply-counts
-
 ./run-tests.sh
 ```
 
 ## Production deployment
 
-Deploy as a one-off job in GCP using the Dockerfile
+Build and push the Docker image to GCP:
 
 ```bash
-./gcloud-deploy.sh
+./gcloud-push.sh
 ```
 
 ## Production execution
 
-1. Ensure the relevant environment variables are set on the job (These need to be set manually via the UI):
+Use the [GCP console](https://console.cloud.google.com/run/jobs/create) to setup and execute the job
+
+Ensure the relevant environment variables are set on the job:
 
 ```text
 DB_HOST
@@ -56,15 +54,7 @@ DB_NAME
 
 If using a socket connection, set `DB_SOCKET_PATH` instead of `DB_HOST` and `DB_PORT`
 
-2. Execute the job in GCP
-
-```bash
-./gcloud-run.sh
-```
-
-Alternatively, you can manually execute the job via the GCP console
-
 ## Notes
 
-- This job make take a while to complete so be sure to configure the job timeout to be sufficient
+- This job may take a while to complete so be sure to configure the job timeout to be sufficient
 - The job is idempotent so it can be executed multiple times without causing issues

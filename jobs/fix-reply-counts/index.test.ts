@@ -15,27 +15,20 @@ import {
 } from './index';
 
 describe('fix-reply-counts job', () => {
-    let connection: mysql.Connection;
+    let pool: mysql.Pool;
     let testAccountId: number;
 
     beforeAll(async () => {
-        for (let i = 0; i < 10; i++) {
-            try {
-                connection = await mysql.createConnection({
-                    host: 'localhost',
-                    port: 3308,
-                    user: 'root',
-                    password: 'root',
-                    database: 'fix_reply_job',
-                });
-                break;
-            } catch (error) {
-                if (i === 9) throw error;
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-        }
+        pool = await mysql.createPool({
+            connectionLimit: 10,
+            host: 'localhost',
+            port: 3308,
+            user: 'root',
+            password: 'root',
+            database: 'fix_reply_job',
+        });
 
-        await connection.execute(`
+        await pool.execute(`
             CREATE TABLE IF NOT EXISTS accounts (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(255),
@@ -44,7 +37,7 @@ describe('fix-reply-counts job', () => {
             )
         `);
 
-        await connection.execute(`
+        await pool.execute(`
             CREATE TABLE IF NOT EXISTS posts (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 author_id INT,
@@ -61,24 +54,25 @@ describe('fix-reply-counts job', () => {
     });
 
     afterAll(async () => {
-        await connection.execute('DROP TABLE IF EXISTS posts');
-        await connection.execute('DROP TABLE IF EXISTS accounts');
-        await connection.end();
+        await pool.execute('DROP TABLE IF EXISTS posts');
+        await pool.execute('DROP TABLE IF EXISTS accounts');
+        await pool.end();
     });
 
     beforeEach(async () => {
-        await connection.execute('DELETE FROM posts');
-        await connection.execute('DELETE FROM accounts');
+        await pool.execute('DELETE FROM posts');
+        await pool.execute('DELETE FROM accounts');
 
-        const [accountResult] = await connection.execute(
+        const [accountResult] = await pool.execute(
             'INSERT INTO accounts (username, domain, is_internal) VALUES (?, ?, ?)',
             ['testuser', 'example.com', 1],
         );
+
         testAccountId = (accountResult as any).insertId;
     });
 
     test('findPostsToFix finds posts with reply_count=0 that have active replies', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -90,9 +84,10 @@ describe('fix-reply-counts job', () => {
                 0,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await connection.execute(
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -104,7 +99,8 @@ describe('fix-reply-counts job', () => {
                 '2025-07-21',
             ],
         );
-        await connection.execute(
+
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -117,7 +113,7 @@ describe('fix-reply-counts job', () => {
             ],
         );
 
-        const posts = await findPostsToFix(connection, '2025-07-24', 100);
+        const posts = await findPostsToFix(pool, '2025-07-24', 100);
 
         expect(posts.length).toBe(1);
         expect(posts[0].id).toBe(parentId);
@@ -126,7 +122,7 @@ describe('fix-reply-counts job', () => {
     });
 
     test('findPostsToFix ignores deleted replies when counting', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -138,9 +134,10 @@ describe('fix-reply-counts job', () => {
                 0,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await connection.execute(
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -152,7 +149,8 @@ describe('fix-reply-counts job', () => {
                 '2025-07-21',
             ],
         );
-        await connection.execute(
+
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at, deleted_at)
              VALUES (?, ?, ?, ?, ?, ?, NOW())`,
             [
@@ -165,14 +163,14 @@ describe('fix-reply-counts job', () => {
             ],
         );
 
-        const posts = await findPostsToFix(connection, '2025-07-24', 100);
+        const posts = await findPostsToFix(pool, '2025-07-24', 100);
 
         expect(posts.length).toBe(1);
         expect(posts[0].real_count).toBe(1);
     });
 
     test('findPostsToFix ignores posts created after cutoff date', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -184,9 +182,10 @@ describe('fix-reply-counts job', () => {
                 0,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await connection.execute(
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -199,13 +198,13 @@ describe('fix-reply-counts job', () => {
             ],
         );
 
-        const posts = await findPostsToFix(connection, '2025-07-24', 100);
+        const posts = await findPostsToFix(pool, '2025-07-24', 100);
 
         expect(posts.length).toBe(0);
     });
 
     test('findPostsToFix ignores posts that already have correct reply_count', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -217,9 +216,10 @@ describe('fix-reply-counts job', () => {
                 1,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await connection.execute(
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -232,13 +232,13 @@ describe('fix-reply-counts job', () => {
             ],
         );
 
-        const posts = await findPostsToFix(connection, '2025-07-24', 100);
+        const posts = await findPostsToFix(pool, '2025-07-24', 100);
 
         expect(posts.length).toBe(0);
     });
 
     test('updatePostReplyCount updates the reply count correctly', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -250,19 +250,21 @@ describe('fix-reply-counts job', () => {
                 0,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await updatePostReplyCount(connection, parentId, 5);
+        await updatePostReplyCount(pool, parentId, 5);
 
-        const [updated] = await connection.execute<mysql.RowDataPacket[]>(
+        const [updated] = await pool.execute<mysql.RowDataPacket[]>(
             'SELECT reply_count FROM posts WHERE id = ?',
             [parentId],
         );
+
         expect((updated as any[])[0].reply_count).toBe(5);
     });
 
     test('updatePostReplyCount does not update if reply_count is not 0 (race condition protection)', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -274,19 +276,21 @@ describe('fix-reply-counts job', () => {
                 3,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await updatePostReplyCount(connection, parentId, 5);
+        await updatePostReplyCount(pool, parentId, 5);
 
-        const [notUpdated] = await connection.execute<mysql.RowDataPacket[]>(
+        const [notUpdated] = await pool.execute<mysql.RowDataPacket[]>(
             'SELECT reply_count FROM posts WHERE id = ?',
             [parentId],
         );
+
         expect((notUpdated as any[])[0].reply_count).toBe(3);
     });
 
     test('fixReplyCountsInBatches is idempotent', async () => {
-        const [parentPost] = await connection.execute(
+        const [parentPost] = await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -298,9 +302,10 @@ describe('fix-reply-counts job', () => {
                 0,
             ],
         );
+
         const parentId = (parentPost as any).insertId;
 
-        await connection.execute(
+        await pool.execute(
             `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -314,39 +319,43 @@ describe('fix-reply-counts job', () => {
         );
 
         const firstRunCount = await fixReplyCountsInBatches(
-            connection,
+            pool,
             '2025-07-24',
             100,
             0,
             false,
         );
+
         expect(firstRunCount).toBe(1);
 
-        const [afterFirst] = await connection.execute<mysql.RowDataPacket[]>(
+        const [afterFirst] = await pool.execute<mysql.RowDataPacket[]>(
             'SELECT reply_count FROM posts WHERE id = ?',
             [parentId],
         );
+
         expect((afterFirst as any[])[0].reply_count).toBe(1);
 
         const secondRunCount = await fixReplyCountsInBatches(
-            connection,
+            pool,
             '2025-07-24',
             100,
             0,
             false,
         );
+
         expect(secondRunCount).toBe(0);
 
-        const [afterSecond] = await connection.execute<mysql.RowDataPacket[]>(
+        const [afterSecond] = await pool.execute<mysql.RowDataPacket[]>(
             'SELECT reply_count FROM posts WHERE id = ?',
             [parentId],
         );
+
         expect((afterSecond as any[])[0].reply_count).toBe(1);
     });
 
     test('fixReplyCountsInBatches respects batch size', async () => {
         for (let i = 0; i < 5; i++) {
-            const [parentPost] = await connection.execute(
+            const [parentPost] = await pool.execute(
                 `INSERT INTO posts (author_id, content, url, ap_id, created_at, reply_count)
                  VALUES (?, ?, ?, ?, ?, ?)`,
                 [
@@ -358,9 +367,10 @@ describe('fix-reply-counts job', () => {
                     0,
                 ],
             );
+
             const parentId = (parentPost as any).insertId;
 
-            await connection.execute(
+            await pool.execute(
                 `INSERT INTO posts (author_id, content, url, ap_id, in_reply_to, created_at)
                  VALUES (?, ?, ?, ?, ?, ?)`,
                 [
@@ -375,12 +385,13 @@ describe('fix-reply-counts job', () => {
         }
 
         const totalFixed = await fixReplyCountsInBatches(
-            connection,
+            pool,
             '2025-07-24',
             2,
             0,
             false,
         );
+
         expect(totalFixed).toBe(5);
     });
 });

@@ -2,6 +2,7 @@
 
 import mysql from 'mysql2/promise';
 
+const POOL_SIZE = 10;
 const BATCH_SIZE = 100;
 const DELAY_BETWEEN_BATCHES_MS = 100;
 const CUTOFF_DATE = '2025-07-24';
@@ -13,11 +14,11 @@ interface PostToFix {
 }
 
 export async function findPostsToFix(
-    connection: mysql.Connection,
+    pool: mysql.Pool,
     cutoffDate: string,
     batchSize: number,
 ): Promise<PostToFix[]> {
-    const [rows] = await connection.execute<mysql.RowDataPacket[]>(
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
         `SELECT
             p.id,
             p.reply_count AS current_count,
@@ -39,18 +40,18 @@ export async function findPostsToFix(
 }
 
 export async function updatePostReplyCount(
-    connection: mysql.Connection,
+    pool: mysql.Pool,
     postId: number,
     replyCount: number,
 ): Promise<void> {
-    await connection.execute(
+    await pool.execute(
         'UPDATE posts SET reply_count = ? WHERE id = ? AND reply_count = 0',
         [replyCount, postId],
     );
 }
 
 export async function fixReplyCountsInBatches(
-    connection: mysql.Connection,
+    pool: mysql.Pool,
     cutoffDate: string = CUTOFF_DATE,
     batchSize: number = BATCH_SIZE,
     delayMs: number = DELAY_BETWEEN_BATCHES_MS,
@@ -63,7 +64,7 @@ export async function fixReplyCountsInBatches(
     while (hasMore) {
         batchNumber++;
 
-        const posts = await findPostsToFix(connection, cutoffDate, batchSize);
+        const posts = await findPostsToFix(pool, cutoffDate, batchSize);
 
         if (posts.length === 0) {
             hasMore = false;
@@ -77,15 +78,13 @@ export async function fixReplyCountsInBatches(
         }
 
         const updatePromises = posts.map((post) =>
-            updatePostReplyCount(connection, post.id, post.real_count).then(
-                () => {
-                    if (verbose) {
-                        console.log(
-                            `  - Post ${post.id}: ${post.current_count} → ${post.real_count}`,
-                        );
-                    }
-                },
-            ),
+            updatePostReplyCount(pool, post.id, post.real_count).then(() => {
+                if (verbose) {
+                    console.log(
+                        `  - Post ${post.id}: ${post.current_count} → ${post.real_count}`,
+                    );
+                }
+            }),
         );
 
         await Promise.all(updatePromises);
@@ -109,8 +108,9 @@ export async function fixReplyCountsInBatches(
 }
 
 async function main() {
-    const connection = await mysql.createConnection(
-        process.env.DB_SOCKET_PATH
+    const pool = mysql.createPool({
+        connectionLimit: POOL_SIZE,
+        ...(process.env.DB_SOCKET_PATH
             ? {
                   socketPath: process.env.DB_SOCKET_PATH,
                   user: process.env.DB_USER,
@@ -123,8 +123,8 @@ async function main() {
                   user: process.env.DB_USER,
                   password: process.env.DB_PASSWORD,
                   database: process.env.DB_NAME,
-              },
-    );
+              }),
+    });
 
     try {
         console.log(`Starting fix for reply_count discrepancies...`);
@@ -135,7 +135,7 @@ async function main() {
         console.log(`Delay between batches: ${DELAY_BETWEEN_BATCHES_MS}ms`);
         console.log('---');
 
-        const totalFixed = await fixReplyCountsInBatches(connection);
+        const totalFixed = await fixReplyCountsInBatches(pool);
 
         console.log('---');
         console.log(`✓ Completed! Fixed ${totalFixed} posts`);
@@ -144,7 +144,7 @@ async function main() {
 
         process.exit(1);
     } finally {
-        await connection.end();
+        await pool.end();
     }
 }
 
