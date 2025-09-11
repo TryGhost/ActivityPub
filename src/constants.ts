@@ -8,3 +8,5 @@ export const ACTIVITY_OBJECT_TYPE_ARTICLE = 'Article';
 export const ACTIVITY_OBJECT_TYPE_NOTE = 'Note';
 
 export const HANDLE_REGEX = /@([\w.-]+)@([\w-]+\.[\w.-]+[a-zA-Z])/;
+
+export const ACTIVITYPUB_COLLECTION_PAGE_SIZE = 20;

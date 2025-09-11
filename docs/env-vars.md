@@ -20,8 +20,6 @@ This ActivityPub service uses a variety of environment variables to configure it
 - `SKIP_SIGNATURE_VERIFICATION` - Set to `true` to skip ActivityPub signature verification
   - This is only used in `development` and `testing` environments
   - See [https://github.com/fedify-dev/fedify/issues/110](https://github.com/fedify-dev/fedify/issues/110) for more details
-- `ACTIVITYPUB_COLLECTION_PAGE_SIZE`* - Set the number of items to return per page for an ActivityPub collection
-  - This used by the `outbox` and `following` collections
 - `FEDIFY_KV_STORE_TYPE` - Set to `redis` to use Redis as the [key-value store for Fedify](https://fedify.dev/manual/kv)
   - If not set, MySQL will be used
 - `USE_MQ` - Set to `true` to enable message queue usage
