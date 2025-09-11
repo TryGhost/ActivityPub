@@ -12,3 +12,6 @@ removed once confirmed no longer needed.
 
 Even though the job is one-off, it is still important to ensure that the logic
 is covered by sufficient tests
+
+See the [jobs](../jobs/README.md) documentation for more details on how to 
+create a new job
