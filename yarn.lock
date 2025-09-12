@@ -3079,10 +3079,10 @@ hex2dec@^1.0.1:
   resolved "https://registry.yarnpkg.com/hex2dec/-/hex2dec-1.1.2.tgz#8e1ce4bef36a74f7d5723c3fb3090c2860077338"
   integrity sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==
 
-hono@4.9.6:
-  version "4.9.6"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.9.6.tgz#fe1f37ec78f574b9ddcffa1d79d399b3a8a12d31"
-  integrity sha512-doVjXhSFvYZ7y0dNokjwwSahcrAfdz+/BCLvAMa/vHLzjj8+CFyV5xteThGUsKdkaasgN+gF2mUxao+SGLpUeA==
+hono@4.9.7:
+  version "4.9.7"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.9.7.tgz#8ac244477397de71d7d3d393fad129209b5b631e"
+  integrity sha512-t4Te6ERzIaC48W3x4hJmBwgNlLhmiEdEE5ViYb02ffw4ignHNHa5IBtPjmbKstmtKa8X6C35iWwK4HaqvrzG9w==
 
 hosted-git-info@^7.0.0:
   version "7.0.2"
