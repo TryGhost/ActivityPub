@@ -779,10 +779,10 @@
     protobufjs "^7.2.5"
     yargs "^17.7.2"
 
-"@hono/node-server@1.19.2":
-  version "1.19.2"
-  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.2.tgz#d690efaa25bfa112b3d2f00d96b5e6f305a12453"
-  integrity sha512-lndWsd9De/btN998Aiv6gkeMVV2h9Cc0AR0qwFTmxx/YFh/PbrjgoxTpHaNaRn6F4GAkPiVJwI0W0gQF4Wn8EA==
+"@hono/node-server@1.19.3":
+  version "1.19.3"
+  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.3.tgz#f0483de5471b415dce0799a34171c05bfe30a6fd"
+  integrity sha512-Fjyxfux0rMPXMSob79OmddfpK5ArJa2xLkLCV+zamHkbeXQtSNKOi0keiBKyHZ/hCRKjigjmKGp4AJnDFq8PUw==
 
 "@hugoalh/http-header-link@^1.0.2":
   version "1.0.3"
