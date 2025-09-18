@@ -160,7 +160,7 @@ export class PostService {
 
     /**
      * Get a post by its ActivityPub ID.
-     * @see ADR-0004: Uses error objects for context (not string literals)
+     * TODO: Update to use error objects instead of string literals - @see ADR-0005
      */
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);

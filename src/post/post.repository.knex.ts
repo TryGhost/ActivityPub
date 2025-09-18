@@ -78,8 +78,6 @@ export interface Outbox {
 }
 
 /**
- * Repository for Post entity persistence.
- * @see ADR-0006: Handles all Post data access
  * TODO: Should pull events from Post entity - @see ADR-0003
  */
 export class KnexPostRepository {

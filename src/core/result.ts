@@ -1,7 +1,7 @@
 /**
  * Result type for explicit error handling without exceptions.
- * @see ADR-0004: Use error objects instead of strings
- * 
+ * @see ADR-0005: Use error objects instead of strings
+ *
  * PREFER: Result<T, { type: 'error-name'; context: any }>
  * AVOID: Result<T, 'error-string'>
  */

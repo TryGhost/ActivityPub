@@ -69,12 +69,6 @@ export type AccountEvent = {
     getName(): string;
 };
 
-/**
- * Immutable entity with domain events pattern.
- * @see ADR-0003: Immutable entities with domain events
- * 
- * This is the preferred pattern. All entities should follow this approach.
- */
 export class AccountEntity implements Account {
     constructor(
         public readonly id: number,
@@ -93,10 +87,6 @@ export class AccountEntity implements Account {
         private events: AccountEvent[],
     ) {}
 
-    /**
-     * Pull domain events from entity for repository to dispatch.
-     * @see ADR-0003: Events are created in entities, dispatched by repositories
-     */
     static pullEvents(account: Account): AccountEvent[] {
         if (account instanceof AccountEntity) {
             const events = account.events;
