@@ -36,6 +36,11 @@ interface AccountRow {
     site_id: number | null;
 }
 
+/**
+ * Repository for Account entity persistence.
+ * @see ADR-0006: Repositories handle all data access
+ * @see ADR-0003: Pulls and dispatches domain events from entities
+ */
 export class KnexAccountRepository {
     constructor(
         private readonly db: Knex,
@@ -92,6 +97,7 @@ export class KnexAccountRepository {
             return account;
         });
 
+        // Pull events from entity - @see ADR-0003
         const events = AccountEntity.pullEvents(account);
 
         for (const event of events) {

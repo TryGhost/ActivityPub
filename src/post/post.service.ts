@@ -158,6 +158,10 @@ export class PostService {
         return mentions;
     }
 
+    /**
+     * Get a post by its ActivityPub ID.
+     * @see ADR-0004: Uses error objects for context (not string literals)
+     */
     async getByApId(id: URL): Promise<Result<Post, GetByApIdError>> {
         const post = await this.postRepository.getByApId(id);
         if (post) {

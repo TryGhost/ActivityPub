@@ -4,6 +4,10 @@ import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 import type { PostService } from '@/post/post.service';
 
+/**
+ * Handler for Create activities.
+ * @see ADR-0005: Class-based architecture pattern
+ */
 export class CreateHandler {
     constructor(private readonly postService: PostService) {}
 

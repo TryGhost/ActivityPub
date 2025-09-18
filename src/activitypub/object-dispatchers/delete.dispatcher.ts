@@ -2,6 +2,10 @@ import { Delete, type RequestContext } from '@fedify/fedify';
 
 import type { ContextData } from '@/app';
 
+/**
+ * Dispatcher for Delete objects.
+ * @see ADR-0005: Class-based architecture pattern
+ */
 export class DeleteDispatcher {
     async dispatch(
         ctx: RequestContext<ContextData>,

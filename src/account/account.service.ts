@@ -105,6 +105,10 @@ export class AccountService {
         return this.accountRepository.getByApId(id);
     }
 
+    /**
+     * Get or create an account by ActivityPub ID.
+     * @see ADR-0004: Returns error objects with context
+     */
     async ensureByApId(
         id: URL,
     ): Promise<Result<Account, RemoteAccountFetchError>> {
@@ -504,6 +508,10 @@ export class AccountService {
      *
      * @param account Account
      * @param options Options for the query
+     */
+    /**
+     * Get follower accounts for the provided account.
+     * TODO: Move direct DB query to repository - @see ADR-0006
      */
     async getFollowerAccounts(
         account: { id: Account['id'] },
