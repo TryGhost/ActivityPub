@@ -1,45 +1,20 @@
-# CONTRIBUTING.md
-
-This document outlines internal development practices and conventions for our
-ActivityPub project. It serves as a reference guide for our engineering team to
-maintain consistency and avoid common pitfalls.
-
-## Project Structure
-
-This is the directory structure under `src`
-
-```
-├── account
-├── post
-├── site
-├── feed
-├── notification
-├── activity-handlers # Fedify incoming Activity handlers
-├── activitypub
-│   └── object-dispatchers # Fedify object dispatchers
-├── core
-├── events
-├── helpers
-│   └── activitypub
-├── http
-│   └── api # Where all our API endpoints should be
-│       └── helpers
-├── mq # Implementation of a PubSub backed MessageQueue for Fedify
-├── publishing
-└── test # Helpers for tests
-```
+# Contributing to ActivityPub Service
 
 ## Development Guidelines
 
-This section documents quirks and conventions specific to our implementation.
+For architectural patterns, code standards, and development guidelines, please see the [Architecture & Development Guidelines](README.md#️-architecture--development-guidelines) section in the main README.
 
-### Do's
+## Submitting Changes
 
-- Do model business logic in the Entities
-- Do use services in HTTP handlers & Fedify wirings
+1. Create a feature branch from `main`
+2. Make your changes following the patterns documented in README
+3. Ensure tests pass: `yarn test`
+4. Submit a pull request with a clear description
 
-### Don'ts
+## Code Review Process
 
-- Don't add code to dispatchers.ts
-- Don't add code to handlers.ts
+- All PRs require at least one review
+- Check that new code follows our architectural patterns (see ADRs)
+- Ensure proper error handling with Result types
+- Verify no direct database queries in services
 - Don't use the AccountType in new code

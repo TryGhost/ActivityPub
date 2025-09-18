@@ -35,6 +35,61 @@ All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-kn
     - Run `yarn dev` in the Ghost monorepo
     - If you were already running Ghost locally, make sure to restart it!
 
+## 🏗️ Architecture & Development Guidelines
+
+> **For AI assistants:** See [AGENTS.md](AGENTS.md) for comprehensive guidance with code examples.
+> **For developers:** See Architecture Decision Records in `/adr` for detailed rationale.
+
+### Core Architecture Patterns
+
+This service follows Domain-Driven Design with specific patterns:
+
+- **Immutable Entities with Events** ([ADR-0003](adr/0003-immutable-entities-with-events.md)) - Entities return new instances with domain events
+- **Result Type Pattern** ([ADR-0004](adr/0004-result-type-pattern.md)) - Use Result<T, E> for explicit error handling
+- **Error Objects in Results** ([ADR-0005](adr/0005-result-type-error-objects.md)) - Enhanced Result types with contextual error objects
+- **Class-Based Architecture** ([ADR-0006](adr/0006-class-based-architecture.md)) - All components use classes with dependency injection
+- **Repository Pattern** ([ADR-0007](adr/0007-repository-pattern.md)) - Services orchestrate logic, repositories handle data access
+- **View Pattern for Reads** ([ADR-0008](adr/0008-view-pattern-for-reads.md)) - Optimized read queries separate from write path
+- **Hash-Based Lookups** ([ADR-0009](adr/0009-hash-based-database-lookups.md)) ⚠️ - ActivityPub IDs use SHA256 hashes
+- **Decorator Routing** ([ADR-0010](adr/0010-decorator-based-routing.md)) - Routes defined via decorators
+
+### Project Structure
+```
+src/
+├── account/            # Immutable entities ✓
+├── post/               # Being migrated to immutable
+├── activity-handlers/  # Class-based handlers ✓
+├── http/api/           # REST controllers
+├── core/               # Shared utilities
+└── dispatchers.ts      # Legacy - don't add here
+```
+
+### ⚠️ Critical Gotchas
+
+**1. Database lookups MUST use SHA256 hashes** ([ADR-0009](adr/0009-hash-based-database-lookups.md))
+- Never use `where('ap_id', apId)` - it returns empty results silently!
+- Always use `whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])`
+- Applies to: `ap_id`, `domain` (with LOWER), `ap_inbox_url` (with LOWER)
+
+**2. Result types require helper functions**
+- Use `isError(result)`, `getValue(result)`, `getError(result)`
+- Never destructure directly like `[error, value]`
+
+**3. Services must use repositories**
+- Views can query DB directly (read optimization)
+- Services MUST go through repositories (write path)
+
+**4. Dependency injection names must match**
+- Parameter `accountService` → registered as `'accountService'`
+- Parameter `db` → registered as `'db'`
+
+**5. Avoid these anti-patterns:**
+- Adding to `dispatchers.ts` → create new handler classes
+- Using `AccountType` → use `Account` entity
+- Direct DB queries in services → use repositories
+- String comparisons for AP IDs → use hash lookups
+
+For complete code examples demonstrating correct patterns, see [AGENTS.md](AGENTS.md).
 
 ## Code formatting + linting
 
