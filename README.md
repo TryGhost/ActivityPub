@@ -56,9 +56,9 @@ This service follows Domain-Driven Design with specific patterns:
 ### Project Structure
 ```
 src/
-├── account/            # Immutable entities ✓
+├── account/            # Immutable entities
 ├── post/               # Being migrated to immutable
-├── activity-handlers/  # Class-based handlers ✓
+├── activity-handlers/  # Class-based handlers
 ├── http/api/           # REST controllers
 ├── core/               # Shared utilities
 └── dispatchers.ts      # Legacy - don't add here
