@@ -8,21 +8,29 @@ Accepted
 
 ## Context
 
-The ActivityPub server has ~50+ services, repositories, and controllers with complex interdependencies. Manual dependency management would require extensive boilerplate and make testing difficult.
-
-Key requirements:
-- Singleton lifecycle for stateful services
-- Easy mocking for tests
-- Clear dependency graphs
-- Type safety with TypeScript
+The ActivityPub server requires managing ~50+ services with complex interdependencies. Manual wiring creates boilerplate, tight coupling, and difficult testing. We need automatic lifecycle management, easy mocking for tests, and type-safe dependency resolution.
 
 ## Decision
 
-We will use Awilix as our Dependency Injection (DI) container to manage component lifecycles and dependencies.
+Adopt Awilix for dependency injection to manage component lifecycles and wiring.
 
-### Container Configuration
+### Example Configuration
 
-The container is configured in `/src/configuration/registrations.ts`:
+```typescript
+// /src/configuration/registrations.ts
+container.register({
+    // Infrastructure
+    db: asValue(deps.knex),
+    logging: asFunction(() => getLogger()).singleton(),
+
+    // Services - all singleton
+    accountService: asClass(AccountService).singleton(),
+    postService: asClass(PostService).singleton(),
+
+    // Controllers
+    accountController: asClass(AccountController).singleton()
+});
+```
 
 ```typescript
 export function registerDependencies(
@@ -63,10 +71,10 @@ export class AccountService {
     constructor(
         private accountRepository: KnexAccountRepository,
         private postService: PostService,
-        private fediverseBridge: FediverseBridge,
-        private events: AsyncEvents,
-        private logging: Logger
-    ) {}
+        private events: AsyncEvents
+    ) {
+        // Awilix automatically injects these dependencies
+    }
 
     async createAccount(data: CreateAccountData): Promise<Result<Account, Error>> {
         // Service logic using injected dependencies
@@ -77,81 +85,29 @@ export class AccountService {
 }
 ```
 
-### Resolution at Runtime
-
-Dependencies are resolved from the container:
-
-```typescript
-// In app.ts
-const container = createContainer();
-registerDependencies(container, { knex });
-
-// Resolution
-const accountService = container.resolve<AccountService>('accountService');
-const fedify = container.resolve<Federation>('fedify');
-
-// In routes
-app.get('/account/:id', (ctx) => {
-    const controller = container.resolve<AccountController>('accountController');
-    return controller.getAccount(ctx);
-});
-```
-
 ## Consequences
 
 ### Positive
 
-1. **Loose coupling**: Components depend on abstractions, not implementations
-2. **Testability**: Easy to inject mocks and stubs for testing
-3. **Lifecycle management**: Automatic singleton management
-4. **Lazy loading**: Dependencies created only when needed
-5. **Centralized configuration**: All wiring in one place
-6. **Type safety**: Full TypeScript support with type inference
-7. **Circular dependency detection**: Awilix detects and reports cycles
+- Loose coupling via constructor injection
+- Easy test mocking
+- Automatic singleton lifecycle management
+- Centralized wiring configuration
+- Circular dependency detection
 
 ### Negative
 
-1. **Magic strings**: Resolution uses string keys
-2. **Runtime errors**: Dependency resolution failures happen at runtime
-3. **Container coupling**: Code becomes dependent on Awilix
+- String-based resolution keys
+- Runtime resolution failures
+- Framework lock-in
 
-## Implementation
+## Key Patterns
 
-### Registration Patterns
+- **Singleton services**: `asClass(Service).singleton()`
+- **External values**: `asValue(knex)`
+- **Factory functions**: `asFunction(() => createService()).singleton()`
 
-#### Singleton Services (Most Common)
-```typescript
-container.register({
-    accountService: asClass(AccountService).singleton()
-});
-```
-
-#### Value Registration (External Dependencies)
-```typescript
-container.register({
-    db: asValue(knex),
-    config: asValue(processedConfig)
-});
-```
-
-#### Factory Functions (Complex Initialization)
-```typescript
-container.register({
-    fedify: asFunction((kv: KvStore, queue: Queue) => {
-        return createFederation({ kv, queue });
-    }).singleton()
-});
-```
-
-#### Aliasing
-```typescript
-container.register({
-    logging: asFunction(() => getLogger()).singleton(),
-    logger: aliasTo('logging')  // Alternative name
-});
-```
-
-### Testing Strategy
+### Testing Example
 
 Tests can provide mock implementations:
 
@@ -164,12 +120,11 @@ describe('AccountService', () => {
         container.register({
             accountRepository: asValue(mockRepository),
             postService: asValue(mockPostService),
-            events: asValue(new AsyncEvents()),
-            logging: asValue(mockLogger)
+            events: asValue(new AsyncEvents())
         });
     });
 
-    it('should create account', async () => {
+    it('creates account with injected dependencies', async () => {
         const service = container.resolve<AccountService>('accountService');
         const result = await service.createAccount(data);
         expect(result.ok).toBe(true);
@@ -177,51 +132,25 @@ describe('AccountService', () => {
 });
 ```
 
-### Best Practices
+## Implementation Notes
 
-#### 1. Interface Segregation
-Define minimal interfaces for dependencies:
+- Avoid service locator anti-pattern:
 ```typescript
-interface AccountStore {
-    findById(id: string): Promise<Account | null>;
-    create(data: CreateData): Promise<Account>;
-}
-```
-
-#### 2. Avoid Service Locator Pattern
-❌ **Bad**: Passing container around
-```typescript
+// ❌ Bad
 class Service {
     constructor(private container: AwilixContainer) {
-        // Anti-pattern: service locator
         this.repo = container.resolve('repository');
     }
 }
-```
 
-✅ **Good**: Explicit dependencies
-```typescript
+// ✅ Good
 class Service {
-    constructor(private repository: Repository) {
-        // Dependencies are explicit
-    }
+    constructor(private repository: Repository) {}
 }
 ```
-
-#### 3. Initialization Order
-Services that need initialization should use an `init()` method:
-```typescript
-// Registration
-container.register('service', asClass(Service).singleton());
-
-// After container setup
-container.resolve<Service>('service').init();
-```
-
+- Services needing initialization should implement `init()` method
+- All wiring centralized in `/src/configuration/registrations.ts`
 
 ## References
 
 - [Awilix Documentation](https://github.com/jeffijoe/awilix)
-- [Dependency Injection in TypeScript](https://www.typescriptlang.org/docs/handbook/decorators.html)
-- [SOLID Principles](https://en.wikipedia.org/wiki/SOLID)
-- Current implementation: `/src/configuration/registrations.ts`

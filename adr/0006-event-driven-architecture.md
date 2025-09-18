@@ -8,21 +8,25 @@ Accepted
 
 ## Context
 
-The ActivityPub server needs to handle asynchronous operations like federation activities, notifications, and Ghost webhook processing. Synchronous processing would create performance bottlenecks and tight coupling between components.
-
-Key requirements:
-- Decouple activity processing from HTTP requests
-- Enable horizontal scaling
-- Support retry mechanisms for failed operations
-- Allow both in-process and distributed event processing
+Synchronous processing of federation activities, notifications, and webhooks creates performance bottlenecks and tight coupling. We need asynchronous, decoupled processing with retry support that scales horizontally.
 
 ## Decision
 
-We will use an event-driven architecture with two event bus implementations: AsyncEvents for local development and Google Cloud Pub/Sub for production.
+Implement event-driven architecture with pluggable event bus: AsyncEvents (development) and Google Cloud Pub/Sub (production).
 
 ### Event Definition
 
-Events are classes with serialization support:
+```typescript
+export class PostPublishedEvent {
+    static getName() { return 'post.published'; }
+
+    constructor(
+        public readonly postId: string,
+        public readonly accountId: string,
+        public readonly url: string
+    ) {}
+}
+```
 
 ```typescript
 export class AccountCreatedEvent {
@@ -46,48 +50,7 @@ export class PostPublishedEvent {
 }
 ```
 
-### Event Bus Abstraction
-
-The system uses a common interface with switchable implementations:
-
-```typescript
-// Development: In-process events
-export class AsyncEvents {
-    private handlers = new Map<string, Handler[]>();
-
-    emit(event: Event): Promise<void> {
-        const handlers = this.handlers.get(event.constructor.getName());
-        return Promise.all(handlers?.map(h => h(event)) || []);
-    }
-
-    on(eventName: string, handler: Handler): void {
-        const handlers = this.handlers.get(eventName) || [];
-        handlers.push(handler);
-        this.handlers.set(eventName, handlers);
-    }
-}
-
-// Production: Google Cloud Pub/Sub
-export class PubSubEvents {
-    constructor(
-        private pubsub: PubSub,
-        private topic: string,
-        private serializer: EventSerializer
-    ) {}
-
-    async emit(event: Event): Promise<void> {
-        const message = {
-            type: event.constructor.getName(),
-            data: this.serializer.serialize(event)
-        };
-        await this.pubsub.topic(this.topic).publish(Buffer.from(JSON.stringify(message)));
-    }
-}
-```
-
 ### Service Integration
-
-Services emit events for side effects:
 
 ```typescript
 export class PostService {
@@ -113,23 +76,16 @@ export class PostService {
 
 ### Event Handlers
 
-Handlers process events asynchronously:
-
 ```typescript
 export class FeedUpdateService {
     init() {
         this.events.on('post.published', async (event: PostPublishedEvent) => {
             await this.updateFollowerFeeds(event.accountId, event.postId);
         });
-
-        this.events.on('post.deleted', async (event: PostDeletedEvent) => {
-            await this.removeFromFeeds(event.postId);
-        });
     }
 
     private async updateFollowerFeeds(accountId: string, postId: string) {
         const followers = await this.followersService.getFollowers(accountId);
-        // Update each follower's feed
         await Promise.all(followers.map(f => this.addToFeed(f.id, postId)));
     }
 }
@@ -139,113 +95,68 @@ export class FeedUpdateService {
 
 ### Positive
 
-1. **Loose coupling**: Components communicate via events, not direct calls
-2. **Scalability**: Async processing enables horizontal scaling
-3. **Resilience**: Failed events can be retried
-4. **Flexibility**: Easy to add new event handlers
-5. **Testability**: Can use synchronous events in tests
+- Loose coupling between components
+- Horizontal scaling capability
+- Built-in retry mechanisms
+- Easy handler addition
+- Synchronous testing mode
 
 ### Negative
 
-1. **Eventual consistency**: Async processing means delayed updates
-2. **Debugging complexity**: Event chains harder to trace
-3. **Message ordering**: No guaranteed order in distributed system
+- Eventual consistency
+- Complex debugging of event chains
+- No guaranteed message ordering in distributed mode
 
-## Implementation
+## Implementation Notes
 
-### Event Patterns
+### Event Bus Abstraction
 
-#### 1. Command Events (Imperative)
 ```typescript
-// Triggers specific action
-class SendNotificationCommand {
-    constructor(public userId: string, public message: string) {}
+// Development: In-process events
+export class AsyncEvents {
+    private handlers = new Map<string, Handler[]>();
+
+    emit(event: Event): Promise<void> {
+        const handlers = this.handlers.get(event.constructor.getName());
+        return Promise.all(handlers?.map(h => h(event)) || []);
+    }
+}
+
+// Production: Google Cloud Pub/Sub
+export class PubSubEvents {
+    async emit(event: Event): Promise<void> {
+        const message = {
+            type: event.constructor.getName(),
+            data: this.serializer.serialize(event)
+        };
+        await this.pubsub.topic(this.topic).publish(
+            Buffer.from(JSON.stringify(message))
+        );
+    }
 }
 ```
 
-#### 2. Domain Events (Past Tense)
-```typescript
-// Something that happened
-class AccountFollowedEvent {
-    constructor(public followerId: string, public followeeId: string) {}
-}
-```
-
-### Configuration
-
-Environment-based bus selection:
+### Testing
 
 ```typescript
-// In registrations.ts
-if (process.env.USE_MQ === 'true') {
-    container.register('commandBus', aliasTo('pubSubEvents'));
-} else {
-    container.register('commandBus', asValue(new AsyncEvents()));
-}
-```
+it('emits event on publish', async () => {
+    const emitted: Event[] = [];
+    events.on('post.published', async (e) => emitted.push(e));
 
-### Testing Strategy
+    await service.publishPost(data);
 
-```typescript
-describe('PostService', () => {
-    let events: AsyncEvents;
-    let service: PostService;
-
-    beforeEach(() => {
-        events = new AsyncEvents();
-        service = new PostService(mockRepo, events);
-    });
-
-    it('should emit event on publish', async () => {
-        const emitted: Event[] = [];
-        events.on('post.published', async (e) => emitted.push(e));
-
-        await service.publishPost(data);
-
-        expect(emitted).toHaveLength(1);
-        expect(emitted[0]).toBeInstanceOf(PostPublishedEvent);
-    });
+    expect(emitted[0]).toBeInstanceOf(PostPublishedEvent);
 });
 ```
 
-### Pub/Sub Configuration
+### Key Patterns
 
-Production setup with retry handling:
-
-```typescript
-export class GCloudPubSubPushMessageQueue {
-    constructor(
-        private pubsub: PubSub,
-        private topic: string,
-        private useRetryTopic: boolean,
-        private retryTopic: string,
-        private maxDeliveryAttempts: number
-    ) {}
-
-    async publish(message: Message): Promise<void> {
-        const attributes = {
-            deliveryAttempt: '1',
-            maxAttempts: this.maxDeliveryAttempts.toString()
-        };
-
-        await this.pubsub.topic(this.topic)
-            .publish(Buffer.from(JSON.stringify(message)), attributes);
-    }
-
-    async handleFailure(message: Message, attempt: number): Promise<void> {
-        if (attempt < this.maxDeliveryAttempts && this.useRetryTopic) {
-            // Retry with exponential backoff
-            await this.pubsub.topic(this.retryTopic).publish(message);
-        } else {
-            // Dead letter queue or log
-            this.logging.error('Message failed after max attempts', { message });
-        }
-    }
-}
-```
+- Events are classes with static `getName()` method
+- Domain events use past tense (AccountFollowedEvent)
+- Command events use imperative (SendNotificationCommand)
+- Environment variable `USE_MQ` controls bus selection
 
 ## References
 
 - [Event-Driven Architecture](https://martinfowler.com/articles/201701-event-driven.html)
 - [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs)
-- Current implementation: `/src/events/`, `/src/pubsub.ts`

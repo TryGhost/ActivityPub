@@ -8,21 +8,13 @@ Accepted
 
 ## Context
 
-The ActivityPub server needs to persist and query various domain entities (accounts, posts, notifications) in MySQL. Direct database access from services would create tight coupling to SQL and make testing difficult.
-
-Key requirements:
-- Abstract SQL complexity from business logic
-- Enable unit testing without database
-- Support transactions across operations
-- Maintain type safety with TypeScript
+Direct database access from services creates tight SQL coupling and difficult testing. We need to abstract data access while maintaining type safety and transaction support.
 
 ## Decision
 
-We will use the Repository Pattern to encapsulate all database operations, with Knex.js as the query builder.
+Implement the Repository Pattern with Knex.js to encapsulate database operations. Each aggregate root gets its own repository.
 
-### Repository Implementation
-
-Each aggregate root has its own repository:
+### Repository Example
 
 ```typescript
 export class KnexAccountRepository {
@@ -32,9 +24,7 @@ export class KnexAccountRepository {
         const row = await this.client('accounts')
             .where('id', id)
             .first();
-
-        if (!row) return null;
-        return Account.fromRow(row);
+        return row ? Account.fromRow(row) : null;
     }
 
     async create(data: CreateAccountData): Promise<Account> {
@@ -60,9 +50,7 @@ export class KnexAccountRepository {
 }
 ```
 
-### Service Usage
-
-Services use repositories through dependency injection:
+### Service Integration
 
 ```typescript
 export class AccountService {
@@ -85,24 +73,21 @@ export class AccountService {
 
 ### Transaction Support
 
-Repositories accept transaction clients:
-
 ```typescript
 export class PostService {
     async publishPost(data: PublishData): Promise<Result<Post, Error>> {
         return this.client.transaction(async (trx) => {
-            // Create post
             const post = await this.postRepository.create(data, trx);
-
-            // Update counters
-            await this.accountRepository.incrementPostCount(
-                data.accountId,
-                trx
-            );
-
+            await this.accountRepository.incrementPostCount(data.accountId, trx);
             return { ok: true, value: post };
         });
     }
+}
+
+// Repositories accept optional transaction
+async create(data: CreateData, trx?: Knex.Transaction): Promise<Account> {
+    const client = trx || this.client;
+    return client('accounts').insert(data);
 }
 ```
 
@@ -110,79 +95,43 @@ export class PostService {
 
 ### Positive
 
-1. **Separation of concerns**: Business logic isolated from SQL
-2. **Testability**: Easy to mock repositories in tests
-3. **Type safety**: Full TypeScript support for queries and results
-4. **Query reuse**: Common queries defined once
-5. **Migration path**: Can switch databases without changing services
+- Business logic isolated from SQL
+- Easy mocking for tests
+- Query reuse and type safety
+- Database migration path preserved
 
 ### Negative
 
-1. **Additional abstraction layer**: More code to maintain
-2. **Query limitations**: Complex queries may be awkward
-3. **Performance overhead**: Additional mapping layer
+- Additional abstraction layer
+- Complex queries can be awkward
+- Mapping overhead
 
-## Implementation
+## Key Guidelines
 
-### Repository Guidelines
-
-#### 1. One Repository Per Aggregate
+- One repository per aggregate root:
 ```typescript
-// ✅ Good: Account is the aggregate root
+// ✅ Good: Account is aggregate root
 class KnexAccountRepository {
     async getById(id: string): Promise<Account>;
     async findFollowers(id: string): Promise<Account[]>;
 }
-
-// ❌ Bad: Mixing aggregates
-class UserRepository {
-    async getAccount(): Promise<Account>;
-    async getPost(): Promise<Post>;
-}
 ```
 
-#### 2. Return Domain Entities
-```typescript
-// ✅ Good: Returns domain entity
-async getById(id: string): Promise<Account | null> {
-    const row = await this.client('accounts').where('id', id).first();
-    return row ? Account.fromRow(row) : null;
-}
+- Return domain entities, not database rows
+- Accept optional transaction parameter
 
-// ❌ Bad: Returns database row
-async getById(id: string): Promise<DatabaseRow> {
-    return this.client('accounts').where('id', id).first();
-}
-```
+## View Layer Exception
 
-#### 3. Accept Optional Transaction
-```typescript
-async create(
-    data: CreateData,
-    trx?: Knex.Transaction
-): Promise<Account> {
-    const client = trx || this.client;
-    // Use client for query
-}
-```
-
-### View Layer Exception
-
-Views can bypass repositories for read-only operations:
+Views may query the database directly for performance:
 
 ```typescript
 export class AccountView {
     constructor(private db: Knex) {}
 
-    // Direct query for performance
     async getAccountFeed(accountId: string): Promise<FeedItem[]> {
         return this.db('posts')
             .leftJoin('likes', 'posts.id', 'likes.post_id')
             .where('posts.account_id', accountId)
-            .select(
-                'posts.*',
-                this.db.raw('COUNT(likes.id) as like_count')
-            )
             .groupBy('posts.id');
     }
 }
@@ -191,5 +140,3 @@ export class AccountView {
 ## References
 
 - [Martin Fowler: Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html)
-- [Domain-Driven Design](https://en.wikipedia.org/wiki/Domain-driven_design)
-- Current implementation: `/src/account/account.repository.knex.ts`
