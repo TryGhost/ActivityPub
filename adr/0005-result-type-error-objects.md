@@ -19,20 +19,21 @@ Enhance the Result type pattern by using discriminated union error objects inste
 ## Implementation
 
 ```typescript
-// Error objects with context
+// Define error objects with context
 type AccountError =
   | { type: 'not-found'; accountId: string }
+  | { type: 'suspended'; until: Date }
   | { type: 'network-error'; retryable: boolean }
 
+// Return error objects instead of strings
 async function getAccount(id: string): Promise<Result<Account, AccountError>> {
-  const account = await repository.findById(id);
-  if (!account) {
+  if (!found) {
     return error({ type: 'not-found', accountId: id });
   }
-  return ok(account);
+  // ...
 }
 
-// Exhaustive error handling
+// Handle errors exhaustively with type safety
 const result = await getAccount('123');
 if (isError(result)) {
   const err = getError(result);
@@ -40,11 +41,14 @@ if (isError(result)) {
     case 'not-found':
       log(`Account ${err.accountId} not found`);
       break;
+    case 'suspended':
+      log(`Suspended until ${err.until}`);
+      break;
     case 'network-error':
       if (err.retryable) retry();
       break;
     default:
-      exhaustiveCheck(err);
+      exhaustiveCheck(err);  // Compile-time exhaustiveness check
   }
 }
 

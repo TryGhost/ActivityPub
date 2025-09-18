@@ -19,29 +19,7 @@ Use the Result type pattern for all operations that can fail, forcing explicit e
 ## Implementation
 
 ```typescript
-// Basic Result type definition
-export type Result<T, E = string> = [error: E, value: null] | [error: null, value: T];
-
-// Helper functions force explicit error handling
-export function isError<T, E>(result: Result<T, E>): result is [E, null] {
-  return result[0] !== null;
-}
-
-export function getValue<T, E>(result: Result<T, E>): T {
-  if (isError(result)) {
-    throw new Error('Attempted to get value from error result');
-  }
-  return result[1];
-}
-
-export function getError<T, E>(result: Result<T, E>): E {
-  if (!isError(result)) {
-    throw new Error('Attempted to get error from success result');
-  }
-  return result[0];
-}
-
-// Usage example
+// Return Result from functions that can fail
 async function findAccount(id: string): Promise<Result<Account, string>> {
   const account = await repository.findById(id);
   if (!account) {
@@ -50,13 +28,13 @@ async function findAccount(id: string): Promise<Result<Account, string>> {
   return ok(account);
 }
 
-// Forced explicit handling
+// Always check for errors before accessing values
 const result = await findAccount('123');
 if (isError(result)) {
   console.error(getError(result));  // Type-safe error access
   return;
 }
-const account = getValue(result);  // Type-safe value access
+const account = getValue(result);  // Type-safe value access - guaranteed to exist
 ```
 
 ## Benefits
