@@ -131,6 +131,15 @@ export function isFollowersOnlyPost(post: Post): post is FollowersOnlyPost {
 
 export type CreatePostError = 'private-content' | 'missing-content';
 
+/**
+ * TODO: Migrate to immutable entity pattern
+ * @see ADR-0003: This should follow AccountEntity pattern
+ *
+ * Current issues:
+ * - Mutable state with dirty flags
+ * - Events created in repository, not entity
+ * - Complex change tracking with Sets
+ */
 export class Post extends BaseEntity {
     public readonly uuid: string;
     public readonly apId: URL;

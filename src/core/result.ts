@@ -1,3 +1,10 @@
+/**
+ * Result type for explicit error handling without exceptions.
+ * @see ADR-0005: Use error objects instead of strings
+ *
+ * PREFER: Result<T, { type: 'error-name'; context: any }>
+ * AVOID: Result<T, 'error-string'>
+ */
 export type Ok<T> = [null, T];
 export type Error<E> = [E, null];
 export type Result<T, E> = Ok<T> | Error<E>;

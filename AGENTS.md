@@ -1,6 +1,8 @@
 # ActivityPub AI Assistant Guide
 
-This file provides guidance for AI agents contributing to this repository
+This file provides comprehensive guidance for AI agents contributing to this repository.
+
+> **Note:** This document contains detailed code examples and implementation patterns. For a concise human-readable overview, see [README.md](README.md).
 
 ## Project Overview
 
@@ -234,6 +236,8 @@ Currently unsupported
 
 ## Architecture Patterns
 
+**📚 See `/adr` directory for Architecture Decision Records**
+
 - Dependency injection is heavily used to manage dependencies and facilitate
   testing
 - The `Result` pattern is preferred over throwing errors, with an exhaustive
@@ -250,6 +254,81 @@ Currently unsupported
   - Views can talk directly to the database if necessary
   - Views should not be responsible for any business logic
 
+### Read/Write Separation
+
+The codebase follows a CQRS-inspired pattern:
+
+**Write Path (Commands):**
+- Controller → Service → Repository → Entity
+- Follows strict layering and repository pattern
+- Handles business logic, validations, and domain events
+
+**Read Path (Queries):**
+- Controller → View → Database
+- Views make optimized queries directly to the database
+- Returns DTOs with presentation-ready data
+- Includes user-specific context (e.g., followedByMe, blockedByMe)
+
+---
+
+## Critical Patterns & Gotchas
+
+### Database Lookups Use SHA256 Hashes
+
+⚠️ **Never use direct string comparisons for ActivityPub IDs** - see [ADR-0009](adr/0009-hash-based-database-lookups.md)
+
+```typescript
+// ❌ WRONG - Returns no results!
+await db('accounts').where('ap_id', apId)
+
+// ✅ CORRECT - Use hash lookup
+await db('accounts').whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
+```
+
+### Result Type Usage
+
+Always use the helper functions with Result types:
+
+```typescript
+// ✅ CORRECT - Use helpers
+const result = await someFunction();
+if (isError(result)) {
+  const error = getError(result);
+  // handle error
+} else {
+  const value = getValue(result);
+  // use value
+}
+
+// ❌ WRONG - Don't destructure directly
+const [error, value] = someResult;  // Implementation detail - don't do this!
+```
+
+### Dependency Injection Names Must Match
+
+Awilix uses CLASSIC injection mode - parameter names must match registration names:
+
+```typescript
+constructor(
+  private readonly accountService: AccountService,  // Must be registered as 'accountService'
+  private readonly db: Knex,                       // Must be registered as 'db'
+)
+```
+
+### Routes Use Decorators
+
+Routes are defined using decorators, not direct registration - see [ADR-0010](adr/0010-decorator-based-routing.md)
+
+```typescript
+@APIRoute('GET', 'account/:handle')  // Defines route
+@RequireRoles(GhostRole.Owner)       // Adds role check
+async handleGetAccount() { }
+```
+
+### Legacy Code Warning
+
+`dispatchers.ts` contains 1100+ lines of legacy factory functions. New handlers should follow the class-based pattern in `/activity-handlers/` - see [ADR-0006](adr/0006-class-based-architecture.md)
+
 ---
 
 ## Code Conventions
@@ -261,6 +340,177 @@ Currently unsupported
   in `features/step_definitions/repost_steps.js`
   - This is not necessarily a 1-to-1 mapping between feature files and step
     definition files
+
+---
+
+## Code Patterns
+
+These patterns are based on our architecture decisions (see `/adr` directory):
+
+### Immutable Entities with Domain Events
+
+```typescript
+// ❌ Avoid: Mutable entities with dirty flags
+class Post {
+  private _likeCount: number;
+  private _likeCountDirty: boolean;
+
+  like() {
+    this._likeCount++;
+    this._likeCountDirty = true;
+  }
+}
+
+// ✅ Prefer: Immutable entities that generate events
+class Post {
+  constructor(
+    readonly id: string,
+    readonly likeCount: number,
+    private events: DomainEvent[] = []
+  ) {}
+
+  like(): Post {
+    const newPost = new Post(this.id, this.likeCount + 1);
+    newPost.events.push(new PostLikedEvent(this.id));
+    return newPost;
+  }
+
+  pullEvents(): DomainEvent[] {
+    return [...this.events];
+  }
+}
+```
+
+### Error Objects in Result Types
+
+```typescript
+// ❌ Avoid: String literal errors without context
+Result<Account, 'not-found' | 'network-error'>
+
+// ✅ Prefer: Error objects with context
+type AccountError =
+  | { type: 'not-found'; accountId: string }
+  | { type: 'network-error'; retryable: boolean }
+
+async function getAccount(id: string): Promise<Result<Account, AccountError>> {
+  const account = await repository.findById(id);
+  if (!account) {
+    return error({ type: 'not-found', accountId: id });
+  }
+  return ok(account);
+}
+
+// Usage with exhaustive handling
+const result = await getAccount('123');
+if (isError(result)) {
+  const err = getError(result);
+  switch (err.type) {
+    case 'not-found':
+      log(`Account ${err.accountId} not found`);
+      break;
+    case 'network-error':
+      if (err.retryable) retry();
+      break;
+    default:
+      exhaustiveCheck(err);
+  }
+}
+```
+
+### Class-Based Architecture
+
+```typescript
+// ❌ Avoid: Function factories
+export function createFollowHandler(accountService: AccountService) {
+  return async function handleFollow(ctx: Context, follow: Follow) {
+    // implementation
+  }
+}
+
+// ✅ Prefer: Classes with dependency injection
+export class FollowHandler {
+  constructor(
+    private readonly accountService: AccountService,
+    private readonly notificationService: NotificationService
+  ) {}
+
+  async handle(ctx: Context, follow: Follow) {
+    // implementation
+  }
+}
+
+// Registration with Awilix
+container.register('followHandler', asClass(FollowHandler).singleton())
+```
+
+### Repository Pattern
+
+```typescript
+// ❌ Avoid: Direct database queries in services
+class AccountService {
+  async getFollowers(accountId: number) {
+    return await this.db('follows')
+      .join('accounts', 'accounts.id', 'follows.follower_id')
+      .where('follows.following_id', accountId);
+  }
+}
+
+// ✅ Prefer: Repository handles all data access
+class AccountRepository {
+  async getFollowers(accountId: number) {
+    return await this.db('follows')
+      .join('accounts', 'accounts.id', 'follows.follower_id')
+      .where('follows.following_id', accountId);
+  }
+}
+
+class AccountService {
+  constructor(private readonly accountRepository: AccountRepository) {}
+
+  async getFollowers(accountId: number) {
+    return await this.accountRepository.getFollowers(accountId);
+  }
+}
+```
+
+### View Pattern for Reads
+
+```typescript
+// Views are used for complex read operations that need optimization
+export class AccountView {
+  constructor(private readonly db: Knex) {}
+
+  async viewById(id: number, context: ViewContext): Promise<AccountDTO> {
+    // Direct database query with complex joins and aggregations
+    const accountData = await this.db('accounts')
+      .innerJoin('users', 'users.account_id', 'accounts.id')
+      .select(
+        'accounts.*',
+        this.db.raw('(select count(*) from posts where posts.author_id = accounts.id) as post_count'),
+        this.db.raw('(select count(*) from follows where follows.follower_id = accounts.id) as following_count')
+      )
+      .where('accounts.id', id)
+      .first();
+
+    // Add user-specific context
+    const followedByMe = context.requestUserAccount
+      ? await this.db('follows')
+          .where('follower_id', context.requestUserAccount.id)
+          .where('following_id', id)
+          .first() !== undefined
+      : false;
+
+    // Return presentation-ready DTO
+    return {
+      id: accountData.id,
+      handle: accountData.handle,
+      postCount: accountData.post_count,
+      followingCount: accountData.following_count,
+      followedByMe
+    };
+  }
+}
+```
 
 ---
 

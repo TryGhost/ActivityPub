@@ -77,6 +77,9 @@ export interface Outbox {
     nextCursor: string | null;
 }
 
+/**
+ * TODO: Should pull events from Post entity - @see ADR-0003
+ */
 export class KnexPostRepository {
     constructor(
         private readonly db: Knex,
