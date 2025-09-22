@@ -789,10 +789,10 @@
     protobufjs "^7.5.3"
     yargs "^17.7.2"
 
-"@hono/node-server@1.19.3":
-  version "1.19.3"
-  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.3.tgz#f0483de5471b415dce0799a34171c05bfe30a6fd"
-  integrity sha512-Fjyxfux0rMPXMSob79OmddfpK5ArJa2xLkLCV+zamHkbeXQtSNKOi0keiBKyHZ/hCRKjigjmKGp4AJnDFq8PUw==
+"@hono/node-server@1.19.4":
+  version "1.19.4"
+  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.4.tgz#2721cda094f7c080ee985494ac3e074f16c503eb"
+  integrity sha512-AWKQZ/YkHUBSHeL/5Ld8FWgUs6wFf4TxGYxqp9wLZxRdFuHBpXmgOq+CuDoL4vllkZLzovCf5HBJnypiy3EtHA==
 
 "@hugoalh/http-header-link@^1.0.2":
   version "1.0.3"
@@ -5255,7 +5255,7 @@ yup@1.6.1:
     toposort "^2.0.2"
     type-fest "^2.19.0"
 
-zod@4.1.9:
-  version "4.1.9"
-  resolved "https://registry.yarnpkg.com/zod/-/zod-4.1.9.tgz#c03a0ddb10f5578f13f8f70f1959f89fd09c1c06"
-  integrity sha512-HI32jTq0AUAC125z30E8bQNz0RQ+9Uc+4J7V97gLYjZVKRjeydPgGt6dvQzFrav7MYOUGFqqOGiHpA/fdbd0cQ==
+zod@4.1.11:
+  version "4.1.11"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-4.1.11.tgz#4aab62f76cfd45e6c6166519ba31b2ea019f75f5"
+  integrity sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==
