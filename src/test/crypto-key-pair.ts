@@ -1,13 +1,17 @@
 import { generateCryptoKeyPair } from '@fedify/fedify';
 
-let cachedKeyPair: Promise<CryptoKeyPair> | null = null;
+let cachedKeyPairs: Promise<CryptoKeyPair[]> | null = null;
 
 export async function generateTestCryptoKeyPair() {
-    if (cachedKeyPair !== null) {
-        return cachedKeyPair;
+    if (cachedKeyPairs !== null) {
+        return cachedKeyPairs;
     }
 
-    cachedKeyPair = generateCryptoKeyPair();
+    cachedKeyPairs = (async () => {
+        const ed25519Keys = await generateCryptoKeyPair('Ed25519');
+        const rsaKeys = await generateCryptoKeyPair('RSASSA-PKCS1-v1_5');
+        return [ed25519Keys, rsaKeys];
+    })();
 
-    return cachedKeyPair;
+    return cachedKeyPairs;
 }
