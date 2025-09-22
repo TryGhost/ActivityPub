@@ -505,6 +505,10 @@ export class AccountService {
      * @param account Account
      * @param options Options for the query
      */
+    /**
+     * Get follower accounts for the provided account.
+     * TODO: Move direct DB query to repository - @see ADR-0006
+     */
     async getFollowerAccounts(
         account: { id: Account['id'] },
         options: GetFollowerAccountsOptions, // @TODO: Make this optional
