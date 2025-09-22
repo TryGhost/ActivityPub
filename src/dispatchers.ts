@@ -1,3 +1,10 @@
+/**
+ * TODO: Break this file into separate class-based handlers/dispatchers
+ * @see ADR-0005: Class-based architecture
+ *
+ * This file violates our architectural patterns and should be refactored.
+ */
+
 import {
     Accept,
     Announce,
