@@ -59,9 +59,10 @@ jobs:
     name: Slack Notification on Failure
     needs: [build, test, push, deploy]
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - uses: tryghost/actions/actions/slack-build@main
-        if: always() && failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           status: ${{ job.status }}
         env:
