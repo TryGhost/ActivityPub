@@ -28,7 +28,6 @@ services:
       - GCP_BUCKET_NAME=activitypub
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
       # - GCS_LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/gcs
-      - ACTIVITYPUB_COLLECTION_PAGE_SIZE=20
       - LOCAL_STORAGE_PATH=/opt/activitypub/content
       # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
       # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
@@ -168,7 +167,6 @@ services:
       - GCP_BUCKET_NAME=activitypub
       - GCS_LOCAL_STORAGE_HOSTING_URL=http://fake-gcs:4443/.ghost/activitypub/gcs
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
-      - ACTIVITYPUB_COLLECTION_PAGE_SIZE=2
       - REDIS_HOST=redis-testing
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
