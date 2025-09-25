@@ -220,53 +220,6 @@ jobs:
           path: /tmp/activitypub-migrations-${{ matrix.platform_slug }}.tar
           retention-days: 1
 
-  build-cleanup-job:
-    name: Build Cleanup Job Image
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check for changes in cleanup job
-        id: changes
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            cleanup:
-              - 'jobs/cleanup-expired-key-value-records/**'
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Docker metadata
-        if: steps.changes.outputs.cleanup == 'true'
-        id: cleanup-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: europe-docker.pkg.dev/ghost-activitypub/activitypub/cleanup-expired-key-value-records
-          tags: |
-            type=sha
-            type=edge,branch=main
-
-      - name: Authenticate with GCP
-        if: steps.changes.outputs.cleanup == 'true'
-        uses: google-github-actions/auth@v2
-        id: gcp-auth
-        with:
-          token_format: access_token
-          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
-
-      - name: Build cleanup job image
-        if: steps.changes.outputs.cleanup == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: jobs/cleanup-expired-key-value-records
-          load: true
-          tags: ${{ steps.cleanup-meta.outputs.tags }}
-          push: true
-
   build-populate-explore-json-job:
     name: Build Populate Explore JSON Job
     runs-on: ubuntu-latest

@@ -29,7 +29,7 @@
     },
     {
       // Exclude dependencies in jobs that don't have automated tests
-      "matchPaths": ["jobs/populate-explore-json/**", "jobs/cleanup-expired-key-value-records/**", "jobs/update-external-accounts/**"],
+      "matchPaths": ["jobs/populate-explore-json/**"],
       "enabled": false
     }
   ]
