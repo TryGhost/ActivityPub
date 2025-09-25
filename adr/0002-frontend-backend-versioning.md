@@ -62,9 +62,9 @@ Implement a backend-driven frontend configuration endpoint that tells the JS bun
    ```json
    {
       "client": {
-         "name": "admin-x-activitypub",
+         "name": "activitypub",
          "version": "^1.0.0",
-         "cdnUrl": "https://cdn.jsdelivr.net/ghost/admin-x-activitypub@1/dist/admin-x-activitypub.js"
+         "cdnUrl": "https://cdn.jsdelivr.net/ghost/activitypub@1/dist/activitypub.js"
       }
    }
    ```

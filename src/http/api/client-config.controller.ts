@@ -5,7 +5,7 @@ export class ClientConfigController {
     @APIRoute('GET', 'client-config', 'stable')
     async handleGetClientConfig(_ctx: AppContext) {
         const major = 1;
-        const name = 'admin-x-activitypub';
+        const name = 'activitypub';
         const client = {
             name,
             version: `^${major}.0.0`,
