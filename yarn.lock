@@ -573,10 +573,10 @@
     url-template "^3.1.1"
     urlpattern-polyfill "~10.0.0"
 
-"@fedify/fedify@1.8.8":
-  version "1.8.8"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.8.8.tgz#9343257d7c9d6bea2cca99c258e8aff39a7f099d"
-  integrity sha512-1w5YfKbh8wNbcJ1s0Ttb2l3i4oiWmQ7z5sbKqQJMhBW6odaGGVgEO2bl6ZI5Tg0i5o/LK3ODOKLTlr8F1wibHA==
+"@fedify/fedify@1.8.12":
+  version "1.8.12"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.8.12.tgz#97b3fdf9438f969cedf7c435d437525806ba7b9d"
+  integrity sha512-bdQIfXDtfzvuiftNarOxpd1VPa09lLzDj0bGXktBFEKKM/C5D0DQTSUr+1NHTP8PFgfIqhcCb93csywP9CsaOA==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@hugoalh/http-header-link" "^1.0.2"
