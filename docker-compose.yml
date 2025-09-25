@@ -63,15 +63,6 @@ services:
       mysql:
         condition: service_healthy
 
-  cleanup-expired-key-value-records:
-    build: jobs/cleanup-expired-key-value-records
-    environment:
-      - MYSQL_USER=ghost
-      - MYSQL_PASSWORD=password
-      - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - MYSQL_DATABASE=activitypub
-
   scripts:
     build: dev/scripts
     depends_on:
@@ -199,15 +190,6 @@ services:
     depends_on:
       mysql-testing:
         condition: service_healthy
-
-  cleanup-expired-key-value-records-testing:
-    build: jobs/cleanup-expired-key-value-records
-    environment:
-      - MYSQL_USER=ghost
-      - MYSQL_PASSWORD=password
-      - MYSQL_HOST=mysql-testing
-      - MYSQL_PORT=3306
-      - MYSQL_DATABASE=activitypub
 
   cucumber-tests:
     networks:
