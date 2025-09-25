@@ -428,6 +428,8 @@ Then(
 
                     return json.object.id === object.id;
                 },
+                5000,
+                200,
             );
 
             assert(
