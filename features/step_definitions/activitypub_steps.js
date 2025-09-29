@@ -315,85 +315,68 @@ Then(
     },
 );
 
-Then(
-    'Activity {string} is sent to all followers',
-    async function (activityName) {
-        const followersResponse = await fetchActivityPub(
-            'https://self.test/.ghost/activitypub/followers/index',
-        );
-        const followersResponseJson = await followersResponse.json();
+async function getFollowers() {
+    const followersResponse = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/followers/index',
+    );
+    const followersResponseJson = await followersResponse.json();
 
-        const followers = followersResponseJson.orderedItems;
+    return Promise.all(
+        followersResponseJson.orderedItems.map(async (item) => {
+            const follower = await (await fetchActivityPub(item)).json();
 
-        const activity = this.activities[activityName];
-
-        for (const followerUrl of followers) {
-            const follower = await (await fetchActivityPub(followerUrl)).json();
-            const inbox = new URL(follower.inbox);
-
-            const found = await waitForRequest(
-                'POST',
-                inbox.pathname,
-                (call) => {
-                    const json = JSON.parse(call.request.body);
-
-                    return (
-                        json.type === activity.type &&
-                        json.object.id === activity.object.id
-                    );
-                },
-            );
-
-            assert(
-                found,
-                `Activity "${activityName}" was not sent to "${follower.name}"`,
-            );
-        }
-    },
-);
+            return {
+                inbox: new URL(follower.inbox),
+                name: follower.name,
+            };
+        }),
+    );
+}
 
 Then(
     'A {string} Activity is sent to all followers',
     async function (activityString) {
-        const followersResponse = await fetchActivityPub(
-            'https://self.test/.ghost/activitypub/followers/index',
-        );
-        const followersResponseJson = await followersResponse.json();
-
         const [match, activity, object] = activityString.match(
             /(\w+)\((\w+)\)/,
         ) || [null];
+
         if (!match) {
             throw new Error(`Could not match ${activityString} to an activity`);
         }
 
-        const followers = followersResponseJson.orderedItems;
+        const followers = await getFollowers();
 
-        for (const followerUrl of followers) {
-            const follower = await (await fetchActivityPub(followerUrl)).json();
-            const inbox = new URL(follower.inbox);
+        const results = await Promise.allSettled(
+            followers.map(async (follower) => {
+                return {
+                    followerName: follower.name,
+                    activity: await waitForRequest(
+                        'POST',
+                        follower.inbox.pathname,
+                        (call) => {
+                            const json = JSON.parse(call.request.body);
 
-            const found = await waitForRequest(
-                'POST',
-                inbox.pathname,
-                (call) => {
-                    const json = JSON.parse(call.request.body);
+                            return (
+                                json.type === activity &&
+                                json.object.type === object
+                            );
+                        },
+                    ),
+                };
+            }),
+        );
 
-                    return (
-                        json.type === activity && json.object.type === object
-                    );
-                },
-            );
+        if (!this.found) {
+            this.found = {};
+        }
 
-            if (!this.found) {
-                this.found = {};
-            }
-            this.found[activityString] = found;
-
+        for (const { status, value } of results) {
             assert(
-                found,
-                `Activity "${activityString}" was not sent to "${follower.name}"`,
+                status === 'fulfilled' && value.activity,
+                `Activity "${activityString}" was not sent to "${value.followerName}"`,
             );
+
+            this.found[activityString] = value.activity;
         }
     },
 );
@@ -401,32 +384,31 @@ Then(
 Then(
     'Activity with object {string} is sent to all followers',
     async function (objectName) {
-        const followersResponse = await fetchActivityPub(
-            'https://self.test/.ghost/activitypub/followers/index',
-        );
-        const followersResponseJson = await followersResponse.json();
-
-        const followers = followersResponseJson.orderedItems;
-
         const object = this.objects[objectName];
 
-        for (const followerUrl of followers) {
-            const follower = await (await fetchActivityPub(followerUrl)).json();
-            const inbox = new URL(follower.inbox);
+        const followers = await getFollowers();
 
-            const found = await waitForRequest(
-                'POST',
-                inbox.pathname,
-                (call) => {
-                    const json = JSON.parse(call.request.body);
+        const results = await Promise.allSettled(
+            followers.map(async (follower) => {
+                return {
+                    followerName: follower.name,
+                    activity: await waitForRequest(
+                        'POST',
+                        follower.inbox.pathname,
+                        (call) => {
+                            const json = JSON.parse(call.request.body);
 
-                    return json.object.id === object.id;
-                },
-            );
+                            return json.object.id === object.id;
+                        },
+                    ),
+                };
+            }),
+        );
 
+        for (const { status, value } of results) {
             assert(
-                found,
-                `Activity with object "${objectName}" was not sent to "${follower.name}"`,
+                status === 'fulfilled' && value.activity,
+                `Activity with object "${objectName}" was not sent to "${value.followerName}"`,
             );
         }
     },
