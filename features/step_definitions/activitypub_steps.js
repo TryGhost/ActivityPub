@@ -305,10 +305,13 @@ Then(
 
         const found = await waitForRequest('POST', inbox.pathname, (call) => {
             const json = JSON.parse(call.request.body);
-            return (
-                json.type === activity.type &&
-                json.object.id === activity.object.id
-            );
+
+            if (json.type !== activity.type) return false;
+
+            const objectId =
+                typeof json.object === 'string' ? json.object : json.object?.id;
+
+            return objectId === activity.object.id;
         });
 
         assert(found);
@@ -346,38 +349,30 @@ Then(
 
         const followers = await getFollowers();
 
-        const results = await Promise.allSettled(
-            followers.map(async (follower) => {
-                return {
-                    followerName: follower.name,
-                    activity: await waitForRequest(
-                        'POST',
-                        follower.inbox.pathname,
-                        (call) => {
-                            const json = JSON.parse(call.request.body);
+        const promises = followers.map((follower) =>
+            waitForRequest('POST', follower.inbox.pathname, (call) => {
+                const json = JSON.parse(call.request.body);
 
-                            return (
-                                json.type === activity &&
-                                json.object.type === object
-                            );
-                        },
-                    ),
-                };
-            }),
+                return json.type === activity && json.object.type === object;
+            }).then((activity) => ({ activity })),
         );
+
+        const results = await Promise.allSettled(promises);
 
         if (!this.found) {
             this.found = {};
         }
 
-        for (const { status, value } of results) {
+        results.forEach((result, i) => {
+            const followerName = followers[i].name;
+
             assert(
-                status === 'fulfilled' && value.activity,
-                `Activity "${activityString}" was not sent to "${value.followerName}"`,
+                result.status === 'fulfilled' && result.value.activity,
+                `Activity "${activityString}" was not sent to "${followerName}"`,
             );
 
-            this.found[activityString] = value.activity;
-        }
+            this.found[activityString] = result.value.activity;
+        });
     },
 );
 
@@ -388,29 +383,24 @@ Then(
 
         const followers = await getFollowers();
 
-        const results = await Promise.allSettled(
-            followers.map(async (follower) => {
-                return {
-                    followerName: follower.name,
-                    activity: await waitForRequest(
-                        'POST',
-                        follower.inbox.pathname,
-                        (call) => {
-                            const json = JSON.parse(call.request.body);
+        const promises = followers.map((follower) =>
+            waitForRequest('POST', follower.inbox.pathname, (call) => {
+                const json = JSON.parse(call.request.body);
 
-                            return json.object.id === object.id;
-                        },
-                    ),
-                };
-            }),
+                return json.object.id === object.id;
+            }).then((activity) => ({ activity })),
         );
 
-        for (const { status, value } of results) {
+        const results = await Promise.allSettled(promises);
+
+        results.forEach((result, i) => {
+            const followerName = followers[i].name;
+
             assert(
-                status === 'fulfilled' && value.activity,
-                `Activity with object "${objectName}" was not sent to "${value.followerName}"`,
+                result.status === 'fulfilled' && result.value.activity,
+                `Activity with object "${objectName}" was not sent to "${followerName}"`,
             );
-        }
+        });
     },
 );
 

@@ -50,15 +50,13 @@ export async function waitForRequest(
 
     const calls = await externalActivityPub.getRequestsForAPI(method, path);
 
-    let found;
-
-    try {
-        found = calls.find(matcher);
-    } catch (error) {
-        throw new Error(
-            `Matcher failed for request ${method} ${path}: ${error.message}`,
-        );
-    }
+    const found = calls.find((call) => {
+        try {
+            return matcher(call);
+        } catch {
+            return false;
+        }
+    });
 
     if (found) {
         return found;

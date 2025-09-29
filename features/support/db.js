@@ -24,23 +24,35 @@ export function getClient() {
 export async function reset() {
     const db = getClient();
 
-    await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await db('account_delivery_backoffs').truncate();
-    await db('accounts').truncate();
-    await db('blocks').truncate();
-    await db('bluesky_integration_account_handles').truncate();
-    await db('domain_blocks').truncate();
-    await db('feeds').truncate();
-    await db('follows').truncate();
-    await db('ghost_ap_post_mappings').truncate();
-    await db('key_value').truncate();
-    await db('likes').truncate();
-    await db('mentions').truncate();
-    await db('notifications').truncate();
-    await db('outboxes').truncate();
-    await db('posts').truncate();
-    await db('reposts').truncate();
-    await db('sites').truncate();
-    await db('users').truncate();
-    await db.raw('SET FOREIGN_KEY_CHECKS = 1');
+    const tables = [
+        'account_delivery_backoffs',
+        'accounts',
+        'blocks',
+        'bluesky_integration_account_handles',
+        'domain_blocks',
+        'feeds',
+        'follows',
+        'ghost_ap_post_mappings',
+        'key_value',
+        'likes',
+        'mentions',
+        'notifications',
+        'outboxes',
+        'posts',
+        'reposts',
+        'sites',
+        'users',
+    ];
+
+    await db.transaction(async (trx) => {
+        await trx.raw('SET FOREIGN_KEY_CHECKS = 0');
+
+        try {
+            for (const table of tables) {
+                await trx(table).truncate();
+            }
+        } finally {
+            await trx.raw('SET FOREIGN_KEY_CHECKS = 1');
+        }
+    });
 }
