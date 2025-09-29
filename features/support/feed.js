@@ -2,6 +2,7 @@ import { fetchActivityPub } from './request.js';
 
 export async function waitForItemInFeed(
     itemId,
+    feedUrl = 'https://self.test/.ghost/activitypub/v1/feed/notes',
     options = {
         retryCount: 0,
         delay: 0,
@@ -9,14 +10,11 @@ export async function waitForItemInFeed(
 ) {
     const MAX_RETRIES = 5;
 
-    const response = await fetchActivityPub(
-        'https://self.test/.ghost/activitypub/v1/feed/notes',
-        {
-            headers: {
-                Accept: 'application/ld+json',
-            },
+    const response = await fetchActivityPub(feedUrl, {
+        headers: {
+            Accept: 'application/ld+json',
         },
-    );
+    });
 
     const json = await response.json();
 
@@ -38,7 +36,7 @@ export async function waitForItemInFeed(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    return await waitForItemInFeed(itemId, {
+    return await waitForItemInFeed(itemId, feedUrl, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });
@@ -46,11 +44,11 @@ export async function waitForItemInFeed(
 
 export async function waitForAPObjectInFeed(
     objectId,
+    feedUrl = 'https://self.test/.ghost/activitypub/v1/feed/notes',
     options = {
         retryCount: 0,
         delay: 0,
     },
-    feedUrl = 'https://self.test/.ghost/activitypub/v1/feed/notes',
 ) {
     const MAX_RETRIES = 5;
 
@@ -80,7 +78,7 @@ export async function waitForAPObjectInFeed(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    return await waitForAPObjectInFeed(objectId, {
+    return await waitForAPObjectInFeed(objectId, feedUrl, {
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });
