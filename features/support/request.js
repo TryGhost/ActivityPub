@@ -49,7 +49,16 @@ export async function waitForRequest(
     const externalActivityPub = getExternalWiremock();
 
     const calls = await externalActivityPub.getRequestsForAPI(method, path);
-    const found = calls.find(matcher);
+
+    let found;
+
+    try {
+        found = calls.find(matcher);
+    } catch (error) {
+        throw new Error(
+            `Matcher failed for request ${method} ${path}: ${error.message}`,
+        );
+    }
 
     if (found) {
         return found;
