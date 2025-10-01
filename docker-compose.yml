@@ -31,16 +31,13 @@ services:
       - LOCAL_STORAGE_PATH=/opt/activitypub/content
       # - LOCAL_STORAGE_HOSTING_URL=https://<tailscale-url>/.ghost/activitypub/local-storage
       # - GHOST_PRO_IP_ADDRESSES=100.83.192.90,192.168.65.1
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - FEDIFY_KV_STORE_TYPE=redis
+      - SQLITE_PATH=/tmp/fedifykv.sqlite
+      - FEDIFY_KV_STORE_TYPE=sqlite
     command: yarn build:watch
     depends_on:
       migrate:
         condition: service_completed_successfully
       mysql:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       pubsub:
         condition: service_healthy
@@ -90,18 +87,6 @@ services:
       - "3307:3306"
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
-      interval: 1s
-      retries: 120
-
-  redis:
-    image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    volumes:
-      - ./dev/redis/start.sh:/usr/local/bin/start.sh
-    command: /usr/local/bin/start.sh
-    ports:
-      - "6380:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "cluster", "info"]
       interval: 1s
       retries: 120
 
@@ -158,16 +143,13 @@ services:
       - GCP_BUCKET_NAME=activitypub
       - GCS_LOCAL_STORAGE_HOSTING_URL=http://fake-gcs:4443/.ghost/activitypub/gcs
       - GCP_STORAGE_EMULATOR_HOST=http://fake-gcs:4443
-      - REDIS_HOST=redis-testing
-      - REDIS_PORT=6379
-      - FEDIFY_KV_STORE_TYPE=redis
+      - SQLITE_PATH=":memory:"
+      - FEDIFY_KV_STORE_TYPE=sqlite
     command: yarn build:watch
     depends_on:
       migrate-testing:
         condition: service_completed_successfully
       mysql-testing:
-        condition: service_healthy
-      redis-testing:
         condition: service_healthy
       pubsub-testing:
         condition: service_healthy
@@ -230,18 +212,6 @@ services:
       - MYSQL_DATABASE=activitypub
     healthcheck:
       test: "mysql -ughost -ppassword activitypub -e 'select 1'"
-      interval: 1s
-      retries: 120
-
-  redis-testing:
-    networks:
-      - test_network
-    image: redis:7-alpine@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08
-    volumes:
-      - ./dev/redis/start.sh:/usr/local/bin/start.sh
-    command: /usr/local/bin/start.sh
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "cluster", "info"]
       interval: 1s
       retries: 120
 

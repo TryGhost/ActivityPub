@@ -20,6 +20,8 @@ ENV NODE_ENV=production
 RUN yarn build
 
 RUN apk del python3 g++ make
+# Temporary fix for issue with sqlite npm package
+RUN sed -i '/^[[:space:]]*import { Temporal } from "@js-temporal\/polyfill";$/d' node_modules/@fedify/sqlite/dist/kv.js
 
 EXPOSE 8080
 

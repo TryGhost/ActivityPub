@@ -20,7 +20,7 @@ This ActivityPub service uses a variety of environment variables to configure it
 - `SKIP_SIGNATURE_VERIFICATION` - Set to `true` to skip ActivityPub signature verification
   - This is only used in `development` and `testing` environments
   - See [https://github.com/fedify-dev/fedify/issues/110](https://github.com/fedify-dev/fedify/issues/110) for more details
-- `FEDIFY_KV_STORE_TYPE` - Set to `redis` to use Redis as the [key-value store for Fedify](https://fedify.dev/manual/kv)
+- `FEDIFY_KV_STORE_TYPE` - Set to `sqlite` to use SQLite as the [key-value store for Fedify](https://fedify.dev/manual/kv)
   - If not set, MySQL will be used
 - `USE_MQ` - Set to `true` to enable message queue usage
   - See [https://fedify.dev/manual/mq](https://fedify.dev/manual/mq) for more details
@@ -61,14 +61,11 @@ This ActivityPub service uses a variety of environment variables to configure it
 - `MYSQL_CONN_POOL_CREATE_RETRY_INTERVAL` - Time in milliseconds to wait before retrying a failed connection create
   - Default: `200` (200 milliseconds)
 
-## Redis Configuration
+## SQLite Configuration
 
-Only required if `FEDIFY_KV_STORE_TYPE` is set to `redis`
+Only required if `FEDIFY_KV_STORE_TYPE` is set to `sqlite`
 
-- `REDIS_HOST` - Redis server host
-- `REDIS_PORT` - Redis server port
-- `REDIS_TLS_CERT` - TLS certificate for Redis connection
-  - Only required if Redis is configured to use TLS
+- `SQLITE_PATH` - SQLite path
 
 ## Message Queue Configuration
 

@@ -1,4 +1,5 @@
 import { createFederation, type KvStore } from '@fedify/fedify';
+import { SqliteKvStore } from '@fedify/sqlite';
 import type { PubSub } from '@google-cloud/pubsub';
 import { getLogger, type Logger } from '@logtape/logtape';
 import {
@@ -8,7 +9,7 @@ import {
     asFunction,
     asValue,
 } from 'awilix';
-import Redis from 'ioredis';
+import Database from 'better-sqlite3';
 import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -76,7 +77,6 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
-import { RedisKvStore } from '@/redis.kvstore';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
@@ -103,40 +103,14 @@ export function registerDependencies(
         fedifyKv: asFunction((db: Knex, logging: Logger) => {
             const kvStoreType = process.env.FEDIFY_KV_STORE_TYPE || 'mysql';
 
-            if (kvStoreType === 'redis') {
-                logging.info('Using Redis KvStore for Fedify');
-                const host = process.env.REDIS_HOST || 'localhost';
-                const port = Number(process.env.REDIS_PORT) || 6379;
+            if (kvStoreType === 'sqlite') {
+                logging.info('Using SQLite KvStore for Fedify');
+                const path = process.env.SQLITE_PATH || '/tmp/fedifykv.sqlite';
+                const db = new Database(path);
+                db.pragma('journal_mode = WAL');
+                db.pragma('synchronous = normal');
 
-                const redis = new Redis.Cluster(
-                    [
-                        {
-                            host,
-                            port,
-                        },
-                    ],
-                    {
-                        clusterRetryStrategy: (times: number) => {
-                            const delay = Math.min(times * 50, 2000);
-                            logging.warn(
-                                `Redis connection retry attempt ${times}, delay ${delay}ms`,
-                            );
-                            return delay;
-                        },
-                        enableOfflineQueue: true,
-                        redisOptions: {
-                            maxRetriesPerRequest: 3,
-                            enableReadyCheck: true,
-                            tls: process.env.REDIS_TLS_CERT
-                                ? {
-                                      ca: process.env.REDIS_TLS_CERT,
-                                  }
-                                : undefined,
-                        },
-                    },
-                );
-
-                return new RedisKvStore(redis);
+                return new SqliteKvStore(db);
             }
 
             logging.info('Using MySQL KvStore for Fedify');
@@ -179,7 +153,7 @@ export function registerDependencies(
                     getFullTopic(
                         pubSubClient.projectId,
                         process.env.MQ_PUBSUB_GHOST_TOPIC_NAME ||
-                            'unknown_pubsub_ghost_topic_name',
+                        'unknown_pubsub_ghost_topic_name',
                     ),
                     eventSerializer,
                     logging,
@@ -209,16 +183,16 @@ export function registerDependencies(
                     getFullTopic(
                         pubSubClient.projectId,
                         process.env.MQ_PUBSUB_TOPIC_NAME ||
-                            'unknown_pubsub_topic_name',
+                        'unknown_pubsub_topic_name',
                     ),
                     process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
                     getFullTopic(
                         pubSubClient.projectId,
                         process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
-                            'unknown_pubsub_retry_topic_name',
+                        'unknown_pubsub_retry_topic_name',
                     ),
                     Number(process.env.MQ_PUBSUB_MAX_DELIVERY_ATTEMPTS) ||
-                        Number.POSITIVE_INFINITY,
+                    Number.POSITIVE_INFINITY,
                 );
             },
         ).singleton(),
