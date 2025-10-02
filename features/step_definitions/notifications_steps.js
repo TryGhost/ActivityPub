@@ -86,7 +86,7 @@ Then('we have unread notifications', async () => {
     assert(unreadNotifications);
 });
 
-Then("we don't have unread notifications", async () => {
+Then('all notifications are marked as read', async () => {
     const zeroUnreadNotifications = await waitForZeroUnreadNotifications();
     assert(zeroUnreadNotifications);
 });

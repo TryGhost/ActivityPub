@@ -21,4 +21,4 @@ Feature: Notifications
     And we get a reply notification from "Bob"
     And we have unread notifications
     When we visit the notifications page
-    Then we don't have unread notifications
+    Then all notifications are marked as read
