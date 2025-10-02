@@ -7,14 +7,18 @@ Feature: Notifications
     When an authenticated request is made to "/.ghost/activitypub/v1/notifications?limit=200"
     Then the request is rejected with a 400
 
-  Scenario: Getting unread notifications count
+  Scenario: New notifications are marked as unread
     Given we are following "Alice"
     And we are not following "Bob"
-    And we reset unread notifications count
     When we get a like notification from "Alice"
-    And we get a like notification from "Bob"
-    And we get a reply notification from "Alice"
     And we get a reply notification from "Bob"
-    Then the unread notifications count is 4
-    When we reset unread notifications count
-    Then the unread notifications count is 0
+    Then we have unread notifications
+
+  Scenario: Reading notifications resets the unread count
+    Given we are following "Alice"
+    And we are not following "Bob"
+    And we get a like notification from "Alice"
+    And we get a reply notification from "Bob"
+    And we have unread notifications
+    When we visit the notifications page
+    Then we don't have unread notifications

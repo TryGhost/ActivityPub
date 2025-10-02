@@ -7,13 +7,9 @@ import { createActivity, createObject } from '../support/fixtures.js';
 import {
     waitForItemInNotifications,
     waitForUnreadNotifications,
+    waitForZeroUnreadNotifications,
 } from '../support/notifications.js';
 import { fetchActivityPub } from '../support/request.js';
-
-Then('the unread notifications count is {int}', async (count) => {
-    const found = await waitForUnreadNotifications(count);
-    assert(found);
-});
 
 When('we get a like notification from {string}', async function (actorName) {
     if (!this.articleId) {
@@ -76,11 +72,21 @@ When('we get a reply notification from {string}', async function (actorName) {
     await waitForItemInNotifications(object.id);
 });
 
-When('we reset unread notifications count', async () => {
+When('we visit the notifications page', async () => {
     await fetchActivityPub(
         'https://self.test/.ghost/activitypub/v1/notifications/unread/reset',
         {
             method: 'PUT',
         },
     );
+});
+
+Then('we have unread notifications', async () => {
+    const unreadNotifications = await waitForUnreadNotifications();
+    assert(unreadNotifications);
+});
+
+Then("we don't have unread notifications", async () => {
+    const zeroUnreadNotifications = await waitForZeroUnreadNotifications();
+    assert(zeroUnreadNotifications);
 });

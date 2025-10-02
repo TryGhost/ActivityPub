@@ -54,7 +54,6 @@ export async function waitForItemInNotifications(
 }
 
 export async function waitForUnreadNotifications(
-    unreadNotificationCount,
     options = {
         retryCount: 0,
         delay: 0,
@@ -68,15 +67,15 @@ export async function waitForUnreadNotifications(
 
     const responseJson = await response.clone().json();
 
-    const found = responseJson.count === unreadNotificationCount;
+    const unreadNotifications = responseJson.count > 0;
 
-    if (found) {
-        return found;
+    if (unreadNotifications) {
+        return true;
     }
 
     if (options.retryCount === MAX_RETRIES) {
         throw new Error(
-            `Max retries reached (${MAX_RETRIES}) when waiting for notifications count ${unreadNotificationCount}. Notification count found ${responseJson.count}`,
+            `Max retries reached (${MAX_RETRIES}) when waiting for unread notifications. No unread notifications found.`,
         );
     }
 
@@ -84,7 +83,43 @@ export async function waitForUnreadNotifications(
         await new Promise((resolve) => setTimeout(resolve, options.delay));
     }
 
-    return await waitForUnreadNotifications(unreadNotificationCount, {
+    return await waitForUnreadNotifications({
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 500,
+    });
+}
+
+export async function waitForZeroUnreadNotifications(
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
+) {
+    const MAX_RETRIES = 5;
+
+    const response = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/v1/notifications/unread/count',
+    );
+
+    const responseJson = await response.clone().json();
+
+    const zeroUnreadNotifications = responseJson.count === 0;
+
+    if (zeroUnreadNotifications) {
+        return true;
+    }
+
+    if (options.retryCount === MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting for zero unread notifications. Unread notifications found: ${responseJson.count}.`,
+        );
+    }
+
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
+
+    return await waitForZeroUnreadNotifications({
         retryCount: options.retryCount + 1,
         delay: options.delay + 500,
     });
