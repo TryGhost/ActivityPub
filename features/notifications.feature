@@ -14,7 +14,7 @@ Feature: Notifications
     And we get a reply notification from "Bob"
     Then we have unread notifications
 
-  Scenario: Visiting the notifications marks notifications as read
+  Scenario: Visiting the notifications page marks notifications as read
     Given we are following "Alice"
     And we are not following "Bob"
     And we get a like notification from "Alice"
