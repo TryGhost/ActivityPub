@@ -4,7 +4,6 @@ import { resolve } from 'node:path';
 import jwt from 'jsonwebtoken';
 
 import { getCurrentDirectory } from './path.js';
-import { wait } from './utils.js';
 import { getExternalWiremock } from './wiremock.js';
 
 export async function fetchActivityPub(url, options = {}, auth = true) {
@@ -40,23 +39,41 @@ export async function waitForRequest(
     method,
     path,
     matcher,
-    milliseconds = 1000,
-    step = 100,
+    options = {
+        retryCount: 0,
+        delay: 0,
+    },
 ) {
+    const MAX_RETRIES = 5;
+
     const externalActivityPub = getExternalWiremock();
 
     const calls = await externalActivityPub.getRequestsForAPI(method, path);
-    const found = calls.find(matcher);
+
+    const found = calls.find((call) => {
+        try {
+            return matcher(call);
+        } catch {
+            return false;
+        }
+    });
 
     if (found) {
         return found;
     }
 
-    if (milliseconds <= 0) {
-        return null;
+    if (options.retryCount >= MAX_RETRIES) {
+        throw new Error(
+            `Max retries reached (${MAX_RETRIES}) when waiting for request ${method} ${path}`,
+        );
     }
 
-    await wait(step);
+    if (options.delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, options.delay));
+    }
 
-    return waitForRequest(method, path, matcher, milliseconds - step, step);
+    return waitForRequest(method, path, matcher, {
+        retryCount: options.retryCount + 1,
+        delay: options.delay + 500,
+    });
 }

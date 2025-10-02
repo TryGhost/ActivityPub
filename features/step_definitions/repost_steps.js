@@ -93,18 +93,13 @@ Then('an Undo\\(Announce) is sent to {string}', async function (actorName) {
 
     const inboxUrl = new URL(actor.inbox);
 
-    const foundInInbox = await waitForRequest(
-        'POST',
-        inboxUrl.pathname,
-        (call) => {
-            const body = JSON.parse(call.request.body);
-            return body.type === 'Undo' && body.object.type === 'Announce';
-        },
-    );
+    const found = await waitForRequest('POST', inboxUrl.pathname, (call) => {
+        const body = JSON.parse(call.request.body);
 
-    const foundActivity = JSON.parse(foundInInbox.request.body);
+        return body.type === 'Undo' && body.object.type === 'Announce';
+    });
 
-    assert(foundActivity);
+    assert(found);
 });
 
 Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
@@ -117,29 +112,25 @@ Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
 
     const inboxUrl = new URL(actor.inbox);
 
-    const foundInInbox = await waitForRequest(
-        'POST',
-        inboxUrl.pathname,
-        (call) => {
-            const body = JSON.parse(call.request.body);
-            if (body.type !== 'Announce') {
-                return false;
+    const found = await waitForRequest('POST', inboxUrl.pathname, (call) => {
+        const body = JSON.parse(call.request.body);
+
+        if (body.type !== 'Announce') {
+            return false;
+        }
+
+        if (object) {
+            if (typeof body.object === 'string') {
+                return body.object === object.id;
             }
 
-            if (object) {
-                if (typeof body.object === 'string') {
-                    return body.object === object.id;
-                }
-                return body.object.id === object.id;
-            }
+            return body.object.id === object.id;
+        }
 
-            return body.object.type === 'Note';
-        },
-    );
+        return body.object.type === 'Note';
+    });
 
-    const foundActivity = JSON.parse(foundInInbox.request.body);
-
-    assert(foundActivity);
+    assert(found);
 });
 
 When('{string} reposts our note', async function (actorName) {

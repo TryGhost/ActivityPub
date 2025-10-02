@@ -9,7 +9,7 @@ export function getClient() {
             client: 'mysql2',
             connection: {
                 host: process.env.MYSQL_HOST,
-                port: Number.parseInt(process.env.MYSQL_PORT),
+                port: Number.parseInt(process.env.MYSQL_PORT, 10),
                 user: process.env.MYSQL_USER,
                 password: process.env.MYSQL_PASSWORD,
                 database: process.env.MYSQL_DATABASE,
@@ -24,19 +24,35 @@ export function getClient() {
 export async function reset() {
     const db = getClient();
 
-    await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-    await db('key_value').truncate();
-    await db('notifications').truncate();
-    await db('feeds').truncate();
-    await db('blocks').truncate();
-    await db('follows').truncate();
-    await db('likes').truncate();
-    await db('reposts').truncate();
-    await db('posts').truncate();
-    await db('outboxes').truncate();
-    await db('accounts').truncate();
-    await db('users').truncate();
-    await db('account_delivery_backoffs').truncate();
-    await db('mentions').truncate();
-    await db.raw('SET FOREIGN_KEY_CHECKS = 1');
+    const tables = [
+        'account_delivery_backoffs',
+        'accounts',
+        'blocks',
+        'bluesky_integration_account_handles',
+        'domain_blocks',
+        'feeds',
+        'follows',
+        'ghost_ap_post_mappings',
+        'key_value',
+        'likes',
+        'mentions',
+        'notifications',
+        'outboxes',
+        'posts',
+        'reposts',
+        'sites',
+        'users',
+    ];
+
+    await db.transaction(async (trx) => {
+        await trx.raw('SET FOREIGN_KEY_CHECKS = 0');
+
+        try {
+            for (const table of tables) {
+                await trx(table).truncate();
+            }
+        } finally {
+            await trx.raw('SET FOREIGN_KEY_CHECKS = 1');
+        }
+    });
 }

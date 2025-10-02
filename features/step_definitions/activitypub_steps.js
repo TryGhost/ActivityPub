@@ -303,138 +303,104 @@ Then(
         const inbox = new URL(actor.inbox);
         const activity = this.activities[activityName];
 
-        const found = await waitForRequest(
-            'POST',
-            inbox.pathname,
-            (call) => {
-                const json = JSON.parse(call.request.body);
-                return (
-                    json.type === activity.type &&
-                    json.object.id === activity.object.id
-                );
-            },
-            5000,
-            200,
-        );
+        const found = await waitForRequest('POST', inbox.pathname, (call) => {
+            const json = JSON.parse(call.request.body);
+
+            if (json.type !== activity.type) return false;
+
+            const objectId =
+                typeof json.object === 'string' ? json.object : json.object?.id;
+
+            return objectId === activity.object.id;
+        });
 
         assert(found);
     },
 );
 
-Then(
-    'Activity {string} is sent to all followers',
-    async function (activityName) {
-        const followersResponse = await fetchActivityPub(
-            'https://self.test/.ghost/activitypub/followers/index',
-        );
-        const followersResponseJson = await followersResponse.json();
+async function getFollowers() {
+    const followersResponse = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/followers/index',
+    );
+    const followersResponseJson = await followersResponse.json();
 
-        const followers = followersResponseJson.orderedItems;
+    return Promise.all(
+        followersResponseJson.orderedItems.map(async (item) => {
+            const follower = await (await fetchActivityPub(item)).json();
 
-        const activity = this.activities[activityName];
-
-        for (const followerUrl of followers) {
-            const follower = await (await fetchActivityPub(followerUrl)).json();
-            const inbox = new URL(follower.inbox);
-
-            const found = await waitForRequest(
-                'POST',
-                inbox.pathname,
-                (call) => {
-                    const json = JSON.parse(call.request.body);
-
-                    return (
-                        json.type === activity.type &&
-                        json.object.id === activity.object.id
-                    );
-                },
-            );
-
-            assert(
-                found,
-                `Activity "${activityName}" was not sent to "${follower.name}"`,
-            );
-        }
-    },
-);
+            return {
+                inbox: new URL(follower.inbox),
+                name: follower.name,
+            };
+        }),
+    );
+}
 
 Then(
     'A {string} Activity is sent to all followers',
     async function (activityString) {
-        const followersResponse = await fetchActivityPub(
-            'https://self.test/.ghost/activitypub/followers/index',
-        );
-        const followersResponseJson = await followersResponse.json();
-
         const [match, activity, object] = activityString.match(
             /(\w+)\((\w+)\)/,
         ) || [null];
+
         if (!match) {
             throw new Error(`Could not match ${activityString} to an activity`);
         }
 
-        const followers = followersResponseJson.orderedItems;
+        const followers = await getFollowers();
 
-        for (const followerUrl of followers) {
-            const follower = await (await fetchActivityPub(followerUrl)).json();
-            const inbox = new URL(follower.inbox);
+        const promises = followers.map((follower) =>
+            waitForRequest('POST', follower.inbox.pathname, (call) => {
+                const json = JSON.parse(call.request.body);
 
-            const found = await waitForRequest(
-                'POST',
-                inbox.pathname,
-                (call) => {
-                    const json = JSON.parse(call.request.body);
+                return json.type === activity && json.object.type === object;
+            }).then((activity) => ({ activity })),
+        );
 
-                    return (
-                        json.type === activity && json.object.type === object
-                    );
-                },
-            );
+        const results = await Promise.allSettled(promises);
 
-            if (!this.found) {
-                this.found = {};
-            }
-            this.found[activityString] = found;
+        if (!this.found) {
+            this.found = {};
+        }
+
+        results.forEach((result, i) => {
+            const followerName = followers[i].name;
 
             assert(
-                found,
-                `Activity "${activityString}" was not sent to "${follower.name}"`,
+                result.status === 'fulfilled' && result.value.activity,
+                `Activity "${activityString}" was not sent to "${followerName}"`,
             );
-        }
+
+            this.found[activityString] = result.value.activity;
+        });
     },
 );
 
 Then(
     'Activity with object {string} is sent to all followers',
     async function (objectName) {
-        const followersResponse = await fetchActivityPub(
-            'https://self.test/.ghost/activitypub/followers/index',
-        );
-        const followersResponseJson = await followersResponse.json();
-
-        const followers = followersResponseJson.orderedItems;
-
         const object = this.objects[objectName];
 
-        for (const followerUrl of followers) {
-            const follower = await (await fetchActivityPub(followerUrl)).json();
-            const inbox = new URL(follower.inbox);
+        const followers = await getFollowers();
 
-            const found = await waitForRequest(
-                'POST',
-                inbox.pathname,
-                (call) => {
-                    const json = JSON.parse(call.request.body);
+        const promises = followers.map((follower) =>
+            waitForRequest('POST', follower.inbox.pathname, (call) => {
+                const json = JSON.parse(call.request.body);
 
-                    return json.object.id === object.id;
-                },
-            );
+                return json.object.id === object.id;
+            }).then((activity) => ({ activity })),
+        );
+
+        const results = await Promise.allSettled(promises);
+
+        results.forEach((result, i) => {
+            const followerName = followers[i].name;
 
             assert(
-                found,
-                `Activity with object "${objectName}" was not sent to "${follower.name}"`,
+                result.status === 'fulfilled' && result.value.activity,
+                `Activity with object "${objectName}" was not sent to "${followerName}"`,
             );
-        }
+        });
     },
 );
 
