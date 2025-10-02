@@ -64,7 +64,12 @@ export class AccountService {
         private readonly events: AsyncEvents,
         private readonly accountRepository: KnexAccountRepository,
         private readonly fedifyContextFactory: FedifyContextFactory,
-        private readonly generateKeyPair: () => Promise<CryptoKeyPair> = generateCryptoKeyPair,
+        private readonly generateKeyPair: () => Promise<{ publicKey: CryptoKey, privateKey: CryptoKey }[]> = async () => {
+            // Generate both Ed25519 and RSA for maximum compatibility
+            const ed25519Keys = await generateCryptoKeyPair('Ed25519');
+            const rsaKeys = await generateCryptoKeyPair('RSASSA-PKCS1-v1_5');
+            return [ed25519Keys, rsaKeys];
+        },
     ) {}
 
     /**
@@ -178,7 +183,7 @@ export class AccountService {
         site: Site,
         internalAccountData: InternalAccountData,
     ): Promise<AccountType> {
-        const keyPair = await this.generateKeyPair();
+        const keyPairs = await this.generateKeyPair();
 
         const normalizedHost = site.host.replace(/^www\./, '');
 
@@ -192,9 +197,12 @@ export class AccountService {
             avatarUrl: parseURL(internalAccountData.avatar_url),
             bannerImageUrl: parseURL(internalAccountData.banner_image_url),
             customFields: null,
-            apPublicKey: keyPair.publicKey,
-            apPrivateKey: keyPair.privateKey,
+            apPublicKey: keyPairs[0].publicKey,
+            apPrivateKey: keyPairs[0].privateKey,
         });
+
+        // Attach dual keys for repository to handle
+        (draft as any).dualKeyPairs = keyPairs;
 
         try {
             const account = await this.accountRepository.create(draft);
@@ -241,18 +249,22 @@ export class AccountService {
             )?.ap_private_key;
 
             if (!hasPrivateKey) {
-                const newKeyPair = await this.generateKeyPair();
+                const newKeyPairs = await this.generateKeyPair();
                 await this.db('accounts')
                     .where({
                         id: existingAccount.id,
                     })
                     .update({
-                        ap_public_key: JSON.stringify(
-                            await exportJwk(newKeyPair.publicKey),
-                        ),
-                        ap_private_key: JSON.stringify(
-                            await exportJwk(newKeyPair.privateKey),
-                        ),
+                        ap_public_key: JSON.stringify({
+                            keys: await Promise.all(
+                                newKeyPairs.map(kp => exportJwk(kp.publicKey))
+                            )
+                        }),
+                        ap_private_key: JSON.stringify({
+                            keys: await Promise.all(
+                                newKeyPairs.map(kp => exportJwk(kp.privateKey))
+                            )
+                        }),
                     });
             }
 
