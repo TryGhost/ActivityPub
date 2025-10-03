@@ -7,6 +7,7 @@ services:
       - ./src:/opt/activitypub/src
       - ./dist:/opt/activitypub/dist
       - dev-content:/opt/activitypub/content
+      - ./profiles:/opt/activitypub/profiles
     environment:
       - PORT=8080
       - MYSQL_USER=ghost
@@ -34,6 +35,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-false}
     command: yarn build:watch
     depends_on:
       migrate:
