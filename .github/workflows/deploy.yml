@@ -27,18 +27,8 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           token_format: access_token
-          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
-
-      - name: Destroy Tests databases
-        if: ${{ matrix.region == 'europe-west4' }}
-        env:
-          GCP_PROJECT: ghost-activitypub
-        run: |
-          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~test*" --format="value(name)" --project ${GCP_PROJECT})
-          for TEST_DATABASE in ${TEST_DATABASES}; do
-            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
-          done
+          workload_identity_provider: projects/203831262197/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-terraform-cicd@ghost-activitypub-stg.iam.gserviceaccount.com
 
       - name: Deploy Migrations to Cloud Run
         if: ${{ matrix.region == 'europe-west4' }}
@@ -110,7 +100,7 @@ jobs:
         with:
           token_format: access_token
           workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+          service_account: prd-activitypub-terraform-cicd@ghost-activitypub.iam.gserviceaccount.com
 
       - name: Deploy Migrations to Cloud Run
         if: ${{ matrix.region == 'europe-west4' }}
@@ -163,23 +153,3 @@ jobs:
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
-
-  cleanup-staging-tests-dbs:
-    name: Cleanup Staging Tests Databases
-    runs-on: ubuntu-latest
-    steps:
-      - name: Authenticate with GCP
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: access_token
-          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
-
-      - name: Destroy Tests databases
-        env:
-          GCP_PROJECT: ghost-activitypub
-        run: |
-          TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~test*" --format="value(name)" --project ${GCP_PROJECT})
-          for TEST_DATABASE in ${TEST_DATABASES}; do
-            gcloud sql databases delete ${TEST_DATABASE} --instance=stg-netherlands-activitypub --quiet --project ${GCP_PROJECT}
-          done
