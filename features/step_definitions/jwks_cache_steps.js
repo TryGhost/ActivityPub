@@ -15,7 +15,6 @@ let oldKeyPair;
 let newKeyPair;
 
 Given('the JWKS endpoint is serving an old key', async function () {
-    // Read the existing private key from fixtures and use it as the "old" key
     const privateKeyPem = fs.readFileSync(
         resolve(getCurrentDirectory(), '../fixtures/private.key'),
         'utf8',
@@ -30,7 +29,6 @@ Given('the JWKS endpoint is serving an old key', async function () {
         privateKey: privateKeyPem,
     };
 
-    // Register the JWKS endpoint with the old key
     const ghostActivityPub = getGhostWiremock();
     await ghostActivityPub.register(
         {
@@ -48,21 +46,7 @@ Given('the JWKS endpoint is serving an old key', async function () {
         },
     );
 
-    // Generate a NEW key pair for testing key rotation
-    const newKey = await jose.JWK.createKey('RSA', 2048, {
-        kid: 'new-key-id',
-        use: 'sig',
-        alg: 'RS256',
-    });
-
-    newKeyPair = {
-        publicKey: newKey.toJSON(),
-        privateKey: newKey.toPEM(true), // true = private key
-    };
-
-    // Store keys on the world object so other steps can access them
     this.oldKeyPair = oldKeyPair;
-    this.newKeyPair = newKeyPair;
 });
 
 Given(
@@ -101,7 +85,19 @@ Given(
 );
 
 When('the JWKS endpoint is updated to serve a new key', async function () {
-    // Update the JWKS endpoint to serve the NEW key (simulating key rotation/site migration)
+    const newKey = await jose.JWK.createKey('RSA', 2048, {
+        kid: 'new-key-id',
+        use: 'sig',
+        alg: 'RS256',
+    });
+
+    newKeyPair = {
+        publicKey: newKey.toJSON(),
+        privateKey: newKey.toPEM(true), // true = private key
+    };
+
+    this.newKeyPair = newKeyPair;
+
     const ghostActivityPub = getGhostWiremock();
     await ghostActivityPub.register(
         {
@@ -159,7 +155,6 @@ When(
 
 // Restore the original JWKS configuration after this test
 After({ tags: '@jwks-cache-invalidation' }, async () => {
-    // Restore the original JWKS key configuration that other tests expect
     const privateKeyPem = fs.readFileSync(
         resolve(getCurrentDirectory(), '../fixtures/private.key'),
         'utf8',
