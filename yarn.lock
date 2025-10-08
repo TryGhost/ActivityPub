@@ -740,10 +740,10 @@
     lodash.snakecase "^4.1.1"
     p-defer "^3.0.0"
 
-"@google-cloud/storage@7.17.1":
-  version "7.17.1"
-  resolved "https://registry.yarnpkg.com/@google-cloud/storage/-/storage-7.17.1.tgz#4f998c4b63e0537272ac44f5e7751e046ecaca1d"
-  integrity sha512-2FMQbpU7qK+OtBPaegC6n+XevgZksobUGo6mGKnXNmeZpvLiAo1gTAE3oTKsrMGDV4VtL8Zzpono0YsK/Q7Iqg==
+"@google-cloud/storage@7.17.2":
+  version "7.17.2"
+  resolved "https://registry.yarnpkg.com/@google-cloud/storage/-/storage-7.17.2.tgz#dd6ed7a60c5f917612dd665f292541cb2624b243"
+  integrity sha512-6xN0KNO8L/LIA5zu3CJwHkJiB6n65eykBLOb0E+RooiHYgX8CSao6lvQiKT9TBk2gL5g33LL3fmhDodZnt56rw==
   dependencies:
     "@google-cloud/paginator" "^5.0.0"
     "@google-cloud/projectify" "^4.0.0"
