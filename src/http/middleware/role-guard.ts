@@ -46,6 +46,42 @@ async function getKey(
     }
 }
 
+function processJwtClaims(
+    claims: string | jwt.JwtPayload,
+    logger: any,
+): GhostRole {
+    if (typeof claims === 'string' || typeof claims.role !== 'string') {
+        logger.error('Invalid claims for JWT - using Anonymous', {
+            jwtClaims: claims,
+        });
+        return GhostRole.Anonymous;
+    }
+
+    if (
+        [
+            'Owner',
+            'Administrator',
+            'Editor',
+            'Author',
+            'Contributor',
+        ].includes(claims.role)
+    ) {
+        return GhostRole[
+            claims.role as
+                | 'Owner'
+                | 'Administrator'
+                | 'Editor'
+                | 'Author'
+                | 'Contributor'
+        ];
+    }
+
+    logger.error('Invalid role {role} - using Anonymous', {
+        role: claims.role,
+    });
+    return GhostRole.Anonymous;
+}
+
 export function createRoleMiddleware(jwksCache: KvStore) {
     return async function roleMiddleware(ctx: HonoContext, next: Next) {
         const request = ctx.req;
@@ -127,50 +163,32 @@ export function createRoleMiddleware(jwksCache: KvStore) {
 
         try {
             const claims = jwt.verify(token, key);
-            if (typeof claims === 'string' || typeof claims.role !== 'string') {
-                ctx.get('logger').error(
-                    'Invalid claims for JWT - using Anonymous',
-                    {
-                        jwtClaims: claims,
-                    },
-                );
-                ctx.set('role', GhostRole.Anonymous);
-                return;
-            }
-            if (
-                [
-                    'Owner',
-                    'Administrator',
-                    'Editor',
-                    'Author',
-                    'Contributor',
-                ].includes(claims.role)
-            ) {
-                ctx.set(
-                    'role',
-                    GhostRole[
-                        claims.role as
-                            | 'Owner'
-                            | 'Administrator'
-                            | 'Editor'
-                            | 'Author'
-                            | 'Contributor'
-                    ],
-                );
-            } else {
-                ctx.get('logger').error(
-                    'Invalid role {role} - using Anonymous',
-                    {
-                        role: claims.role,
-                    },
-                );
-                ctx.set('role', GhostRole.Anonymous);
-            }
+            const role = processJwtClaims(claims, ctx.get('logger'));
+            ctx.set('role', role);
         } catch (err) {
-            ctx.get('logger').error('Error verifying JWT', {
+            ctx.get('logger').error('Error verifying JWT - invalidating cache and retrying', {
                 error: err,
             });
-            ctx.set('role', GhostRole.Anonymous);
+
+            // Invalidate the cached key and refetch
+            await jwksCache.delete(['cachedJwks', jwksURL.hostname]);
+            const newKey = await getKey(jwksURL, jwksCache);
+
+            if (!newKey) {
+                ctx.get('logger').error('Failed to refetch key after cache invalidation', { host });
+                ctx.set('role', GhostRole.Anonymous);
+            } else {
+                try {
+                    const claims = jwt.verify(token, newKey);
+                    const role = processJwtClaims(claims, ctx.get('logger'));
+                    ctx.set('role', role);
+                } catch (retryErr) {
+                    ctx.get('logger').error('Error verifying JWT after retry - using Anonymous', {
+                        error: retryErr,
+                    });
+                    ctx.set('role', GhostRole.Anonymous);
+                }
+            }
         }
 
         await next();
