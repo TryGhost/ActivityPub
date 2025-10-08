@@ -27,8 +27,8 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           token_format: access_token
-          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
-          service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
+          workload_identity_provider: projects/203831262197/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-terraform-cicd@ghost-activitypub-stg.iam.gserviceaccount.com
 
       - name: "Check Closed PRs Deployed"
         id: check-closed-prs
