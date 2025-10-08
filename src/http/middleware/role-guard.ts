@@ -58,13 +58,9 @@ function processJwtClaims(
     }
 
     if (
-        [
-            'Owner',
-            'Administrator',
-            'Editor',
-            'Author',
-            'Contributor',
-        ].includes(claims.role)
+        ['Owner', 'Administrator', 'Editor', 'Author', 'Contributor'].includes(
+            claims.role,
+        )
     ) {
         return GhostRole[
             claims.role as
@@ -166,16 +162,22 @@ export function createRoleMiddleware(jwksCache: KvStore) {
             const role = processJwtClaims(claims, ctx.get('logger'));
             ctx.set('role', role);
         } catch (err) {
-            ctx.get('logger').error('Error verifying JWT - invalidating cache and retrying', {
-                error: err,
-            });
+            ctx.get('logger').error(
+                'Error verifying JWT - invalidating cache and retrying',
+                {
+                    error: err,
+                },
+            );
 
             // Invalidate the cached key and refetch
             await jwksCache.delete(['cachedJwks', jwksURL.hostname]);
             const newKey = await getKey(jwksURL, jwksCache);
 
             if (!newKey) {
-                ctx.get('logger').error('Failed to refetch key after cache invalidation', { host });
+                ctx.get('logger').error(
+                    'Failed to refetch key after cache invalidation',
+                    { host },
+                );
                 ctx.set('role', GhostRole.Anonymous);
             } else {
                 try {
@@ -183,9 +185,12 @@ export function createRoleMiddleware(jwksCache: KvStore) {
                     const role = processJwtClaims(claims, ctx.get('logger'));
                     ctx.set('role', role);
                 } catch (retryErr) {
-                    ctx.get('logger').error('Error verifying JWT after retry - using Anonymous', {
-                        error: retryErr,
-                    });
+                    ctx.get('logger').error(
+                        'Error verifying JWT after retry - using Anonymous',
+                        {
+                            error: retryErr,
+                        },
+                    );
                     ctx.set('role', GhostRole.Anonymous);
                 }
             }
