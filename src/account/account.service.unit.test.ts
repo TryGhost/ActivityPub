@@ -13,7 +13,7 @@ describe('AccountService', () => {
     let asyncEvents: AsyncEvents;
     let knexAccountRepository: KnexAccountRepository;
     let fedifyContextFactory: FedifyContextFactory;
-    let generateKeyPair: () => Promise<CryptoKeyPair>;
+    let generateKeyPair: () => Promise<{ publicKey: CryptoKey, privateKey: CryptoKey }[]>;
     let accountService: AccountService;
 
     beforeEach(() => {
