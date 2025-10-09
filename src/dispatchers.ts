@@ -43,6 +43,8 @@ import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { SiteService } from '@/site/site.service';
 
+const keypairCache = new Map<number, CryptoKeyPair>();
+
 export const actorDispatcher = (
     siteService: SiteService,
     accountService: AccountService,
@@ -106,19 +108,25 @@ export const keypairDispatcher = (
             return [];
         }
 
+        const cached = keypairCache.get(account.id);
+        if (cached) {
+            ctx.data.logger.info(`Cache hit for keypair ${account.id}`);
+            return [cached];
+        }
+
         try {
-            return [
-                {
-                    publicKey: await importJwk(
-                        JSON.parse(account.ap_public_key) as JsonWebKey,
-                        'public',
-                    ),
-                    privateKey: await importJwk(
-                        JSON.parse(account.ap_private_key) as JsonWebKey,
-                        'private',
-                    ),
-                },
-            ];
+            const keypair = {
+                publicKey: await importJwk(
+                    JSON.parse(account.ap_public_key) as JsonWebKey,
+                    'public',
+                ),
+                privateKey: await importJwk(
+                    JSON.parse(account.ap_private_key) as JsonWebKey,
+                    'private',
+                ),
+            };
+            keypairCache.set(account.id, keypair);
+            return [keypair];
         } catch (_err) {
             ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
             return [];
