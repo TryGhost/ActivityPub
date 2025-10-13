@@ -122,8 +122,8 @@ jobs:
           # Delete unnecessary fields
           yq -i 'del(.fingerprint)' config.yml
           yq -i 'del(.creationTimestamp)' config.yml
-          export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-netherlands-activitypub-api"
-          export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/ghost-activitypub/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
+          export DEFAULT_SERVICE="https://www.googleapis.com/compute/v1/projects/${GCP_PROJECT}/global/backendServices/stg-netherlands-activitypub-api"
+          export PR_SERVICE="https://www.googleapis.com/compute/v1/projects/${GCP_PROJECT}/global/backendServices/stg-pr-${{ github.event.pull_request.number }}-api"
           # Add host rules and path matchers if they don't exist
           yq -i '.hostRules = (.hostRules // [{"hosts": ["activitypub.ghostinfra.net"], "pathMatcher": "all-paths"}])' config.yml
           yq -i '.pathMatchers = (.pathMatchers // [{"name": "all-paths", "defaultService": "'"$DEFAULT_SERVICE"'", "routeRules": []}])' config.yml
