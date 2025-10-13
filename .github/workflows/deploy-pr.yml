@@ -130,12 +130,12 @@ jobs:
           # Remove existing route rules for the PR service
           yq -i '.pathMatchers[] |= (.routeRules |= map(select((.routeAction.weightedBackendServices // []) | length == 0 or .routeAction.weightedBackendServices[0].backendService != env(PR_SERVICE))))' config.yml
           # Add new route rules for the PR service
-          export MAX_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "all-paths") | .routeRules[]?.priority] | max // 0' config.yml)
-          export NEXT_PRIORITY=$((MAX_PRIORITY + 1))
+          export MIN_PRIORITY=$(yq '[.pathMatchers[] | select(.name == "all-paths") | .routeRules[]?.priority] | min // 0' config.yml)
+          export NEXT_PRIORITY=$((MIN_PRIORITY - 1))
           LABELS_JSON=$(echo "$LABELS" | jq -c '[.[] | select(.name | test("\\.ghost\\.is$")) | .name]')
           for LABEL in $(echo "$LABELS_JSON" | jq -r '.[]'); do
             echo "Adding route for label: $LABEL"
-            yq -i '.pathMatchers[0].routeRules += [{"priority": '$NEXT_PRIORITY', "matchRules": [{"prefixMatch": "/", "headerMatches": [{ "headerName": "X-Forwarded-Host", "exactMatch": "'$LABEL'" }]}], "routeAction": {"weightedBackendServices": [ { "backendService": "'$PR_SERVICE'", "weight": 100 } ] }, "headerAction": { "requestHeadersToAdd": [ { "headerName": "X-ActivityPub-PR", "headerValue": "${{ github.event.pull_request.number }}" }, { "headerName": "X-ActivityPub-Commit", "headerValue": "${{ github.event.pull_request.head.sha }}" } ] } }]' config.yml
+            yq -i '.pathMatchers[0].routeRules = [{"priority": '${NEXT_PRIORITY}', "matchRules": [{"prefixMatch": "/", "headerMatches": [{"headerName": "X-Forwarded-Host", "exactMatch": "'"${LABEL}"'"}]}], "routeAction": {"weightedBackendServices": [{"backendService": "'"${PR_SERVICE}"'", "weight": 100}]}, "headerAction": {"requestHeadersToAdd": [{"headerName": "X-ActivityPub-PR", "headerValue": "${{ github.event.pull_request.number }}"}, {"headerName": "X-ActivityPub-Commit", "headerValue": "${{ github.event.pull_request.head.sha }}"}]}}] + .pathMatchers[0].routeRules' config.yml
             export NEXT_PRIORITY=$((NEXT_PRIORITY + 1))
           done
           echo "Updating url map with:"
