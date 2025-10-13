@@ -103,7 +103,7 @@ jobs:
       - name: Destroy Tests databases
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
         env:
-          GCP_PROJECT: ghost-activitypub
+          GCP_PROJECT: ghost-activitypub-stg
         run: |
           TEST_DATABASES=$(gcloud sql databases list --instance=stg-netherlands-activitypub --filter="name~pr_${{ github.event.pull_request.number }}_test*" --format="value(name)" --project ${GCP_PROJECT})
           for TEST_DATABASE in ${TEST_DATABASES}; do
@@ -114,7 +114,7 @@ jobs:
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
         env:
           LABELS: ${{ toJson(github.event.pull_request.labels) }}
-          GCP_PROJECT: ghost-activitypub
+          GCP_PROJECT: ghost-activitypub-stg
         run: |
           set -euo pipefail
           # Get current config
