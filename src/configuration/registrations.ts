@@ -138,9 +138,7 @@ export function registerDependencies(
                                                     .REDIS_TLS_CERT_B64 ||
                                                 '',
                                                 'base64',
-                                            )
-                                                .toString('utf-8')
-                                                .split('\n'),
+                                            ).toString('utf-8'),
                                     }
                                     : undefined,
                         },
