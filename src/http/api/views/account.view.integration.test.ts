@@ -233,6 +233,7 @@ describe('AccountView', () => {
             expect(view!.blueskyHandle).toBe(
                 `@${siteAccount!.username}@bluesky`,
             );
+            expect(view!.blueskyHandleConfirmed).toBe(true);
         });
 
         it('should not include the Bluesky integration data when the account is not for the request user', async () => {
@@ -251,6 +252,7 @@ describe('AccountView', () => {
 
             expect('blueskyEnabled' in view!).toBe(false);
             expect('blueskyHandle' in view!).toBe(false);
+            expect('blueskyHandleConfirmed' in view!).toBe(false);
         });
     });
 
