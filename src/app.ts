@@ -91,6 +91,7 @@ import { SearchController } from '@/http/api/search.controller';
 import type { SiteController } from '@/http/api/site.controller';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
+import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
 import {
     createRoleMiddleware,
     GhostRole,
@@ -611,6 +612,8 @@ app.use(async (c, next) => {
     }
 });
 
+app.use(createDeploymentHeadersMiddleware(process.env.NODE_ENV || ''));
+
 app.use(async (ctx, next) => {
     if (ctx.req.url.endsWith('/')) {
         return ctx.redirect(ctx.req.url.slice(0, -1));
@@ -802,7 +805,7 @@ function validateWebhook() {
 
         const now = Date.now();
 
-        if (Math.abs(now - Number.parseInt(timestamp)) > 5 * 60 * 1000) {
+        if (Math.abs(now - Number.parseInt(timestamp, 10)) > 5 * 60 * 1000) {
             return new Response(null, {
                 status: 401,
             });
@@ -938,7 +941,7 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
 serve(
     {
         fetch: forceAcceptHeader(behindProxy(app.fetch)),
-        port: Number.parseInt(process.env.PORT || '8080'),
+        port: Number.parseInt(process.env.PORT || '8080', 10),
     },
     (info) => {
         globalLogging.info(
