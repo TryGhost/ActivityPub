@@ -220,10 +220,22 @@ export class FixtureManager {
         });
     }
 
-    async enableBlueskyIntegration(account: Account) {
+    async enableBlueskyIntegration(
+        account: Account,
+        confirmed: boolean = true,
+        handle?: string | null,
+    ) {
+        const resolvedHandle =
+            handle !== undefined
+                ? handle
+                : confirmed
+                  ? `@${account.username}@bluesky`
+                  : null;
+
         await this.db('bluesky_integration_account_handles').insert({
             account_id: account.id,
-            handle: `@${account.username}@bluesky`,
+            handle: resolvedHandle,
+            confirmed,
         });
     }
 
