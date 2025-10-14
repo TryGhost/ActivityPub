@@ -107,6 +107,16 @@ export function registerDependencies(
                 logging.info('Using Redis KvStore for Fedify');
                 const host = process.env.REDIS_HOST || 'localhost';
                 const port = Number(process.env.REDIS_PORT) || 6379;
+                const caFromEnv = process.env.REDIS_TLS_CERT_B64
+                    ? Buffer.from(
+                        process.env.REDIS_TLS_CERT_B64,
+                        'base64',
+                    ).toString('utf8')
+                    : undefined;
+
+                logging.info(
+                    `Connecting to Redis at ${host}:${port} with TLS: ${caFromEnv}`,
+                );
 
                 const redis = new Redis.Cluster(
                     [
@@ -127,20 +137,7 @@ export function registerDependencies(
                         redisOptions: {
                             maxRetriesPerRequest: 3,
                             enableReadyCheck: true,
-                            tls:
-                                process.env.REDIS_TLS_CERT ||
-                                    process.env.REDIS_TLS_CERT_B64
-                                    ? {
-                                        ca: process.env.REDIS_TLS_CERT
-                                            ? process.env.REDIS_TLS_CERT
-                                            : Buffer.from(
-                                                process.env
-                                                    .REDIS_TLS_CERT_B64 ||
-                                                '',
-                                                'base64',
-                                            ).toString('utf-8'),
-                                    }
-                                    : undefined,
+                            tls: caFromEnv ? { ca: caFromEnv } : undefined,
                         },
                     },
                 );
