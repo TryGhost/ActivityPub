@@ -62,7 +62,7 @@ jobs:
     if: always()
     steps:
       - uses: tryghost/actions/actions/slack-build@main
-        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: contains(needs.*.result, 'failure') && github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           status: ${{ job.status }}
         env:
