@@ -74,15 +74,33 @@ async function verifyToken(
     try {
         claims = jwt.verify(token, key);
     } catch (err) {
-        logger.error('Error verifying JWT - invalidating cache and retrying', {
-            error: err,
-        });
+        const shouldInvalidateCache =
+            err instanceof jwt.JsonWebTokenError &&
+            (err.message.includes('invalid signature') ||
+                err.message.includes('invalid algorithm'));
+
+        if (!shouldInvalidateCache) {
+            logger.error('Error verifying JWT', {
+                error: err,
+            });
+
+            return null;
+        }
+
+        logger.error(
+            'Error verifying JWT: invalid signature/algorithm. Invalidating public key cache and retrying',
+            {
+                error: err,
+            },
+        );
 
         await jwksCache.delete(['cachedJwks', jwksURL.hostname]);
         const newKey = await getKey(jwksURL, jwksCache);
 
         if (!newKey) {
-            logger.error('Failed to refetch key after cache invalidation');
+            logger.error(
+                'Failed to fetch new public key after cache invalidation',
+            );
             return null;
         }
 
