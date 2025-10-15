@@ -1,4 +1,5 @@
 import type { KvStore } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import type { Context as HonoContext, Next } from 'hono';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
@@ -61,9 +62,45 @@ async function getKey(
     }
 }
 
-function processJwtClaims(
+async function verifyToken(
+    token: string,
+    key: string,
+    jwksCache: KvStore,
+    jwksURL: URL,
+    logger: Logger,
+): Promise<jwt.JwtPayload | string | null> {
+    let claims: jwt.JwtPayload | string | null = null;
+
+    try {
+        claims = jwt.verify(token, key);
+    } catch (err) {
+        logger.error('Error verifying JWT - invalidating cache and retrying', {
+            error: err,
+        });
+
+        await jwksCache.delete(['cachedJwks', jwksURL.hostname]);
+        const newKey = await getKey(jwksURL, jwksCache);
+
+        if (!newKey) {
+            logger.error('Failed to refetch key after cache invalidation');
+            return null;
+        }
+
+        try {
+            claims = jwt.verify(token, newKey);
+        } catch (retryErr) {
+            logger.error('Error verifying JWT after retry', {
+                error: retryErr,
+            });
+        }
+    }
+
+    return claims;
+}
+
+function getRoleFromClaims(
     claims: string | jwt.JwtPayload,
-    logger: any,
+    logger: Logger,
 ): GhostRole {
     if (typeof claims === 'string' || typeof claims.role !== 'string') {
         logger.error('Invalid claims for JWT - using Anonymous', {
@@ -97,8 +134,10 @@ export function createRoleMiddleware(jwksCache: KvStore) {
     return async function roleMiddleware(ctx: HonoContext, next: Next) {
         const request = ctx.req;
         const host = request.header('host');
+        const logger = ctx.get('logger');
+
         if (!host) {
-            ctx.get('logger').error('No Host header');
+            logger.error('No Host header');
             return new Response(
                 JSON.stringify({
                     error: 'Unauthorized',
@@ -112,10 +151,10 @@ export function createRoleMiddleware(jwksCache: KvStore) {
                 },
             );
         }
+
         ctx.set('role', GhostRole.Anonymous);
 
         const authorization = request.header('authorization');
-
         if (!authorization) {
             return next();
         }
@@ -123,7 +162,7 @@ export function createRoleMiddleware(jwksCache: KvStore) {
         const [match, token] = authorization.match(/Bearer\s+(.*)$/) || [null];
 
         if (!match) {
-            ctx.get('logger').error('Invalid Authorization header', {
+            logger.error('Invalid Authorization header', {
                 headerValue: authorization,
             });
             return new Response(
@@ -144,7 +183,7 @@ export function createRoleMiddleware(jwksCache: KvStore) {
         const key = await getKey(jwksURL, jwksCache);
 
         if (!key) {
-            ctx.get('logger').error('No key found for {host}', { host });
+            logger.error('No key found for {host}', { host });
             return new Response(
                 JSON.stringify({
                     error: 'Unauthorized',
@@ -159,44 +198,21 @@ export function createRoleMiddleware(jwksCache: KvStore) {
             );
         }
 
-        try {
-            const claims = jwt.verify(token, key);
-            const role = processJwtClaims(claims, ctx.get('logger'));
-            ctx.set('role', role);
-        } catch (err) {
-            ctx.get('logger').error(
-                'Error verifying JWT - invalidating cache and retrying',
-                {
-                    error: err,
-                },
-            );
+        const claims = await verifyToken(
+            token,
+            key,
+            jwksCache,
+            jwksURL,
+            logger,
+        );
 
-            // Invalidate the cached key and refetch
-            await jwksCache.delete(['cachedJwks', jwksURL.hostname]);
-            const newKey = await getKey(jwksURL, jwksCache);
-
-            if (!newKey) {
-                ctx.get('logger').error(
-                    'Failed to refetch key after cache invalidation',
-                    { host },
-                );
-                ctx.set('role', GhostRole.Anonymous);
-            } else {
-                try {
-                    const claims = jwt.verify(token, newKey);
-                    const role = processJwtClaims(claims, ctx.get('logger'));
-                    ctx.set('role', role);
-                } catch (retryErr) {
-                    ctx.get('logger').error(
-                        'Error verifying JWT after retry - using Anonymous',
-                        {
-                            error: retryErr,
-                        },
-                    );
-                    ctx.set('role', GhostRole.Anonymous);
-                }
-            }
+        if (!claims) {
+            ctx.set('role', GhostRole.Anonymous);
+            return next();
         }
+
+        const role = getRoleFromClaims(claims, logger);
+        ctx.set('role', role);
 
         await next();
     };
