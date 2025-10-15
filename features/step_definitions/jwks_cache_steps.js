@@ -177,7 +177,7 @@ After({ tags: '@jwks-cache-invalidation' }, async () => {
                 keys: [jwk],
             },
             headers: {
-                'Content-Type': 'application/activity+json',
+                'Content-Type': 'application/json',
             },
         },
     );
