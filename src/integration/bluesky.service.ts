@@ -43,22 +43,20 @@ export class BlueskyService {
         handleConfirmed: boolean;
         handle: string | null;
     }> {
-        if (await this.isEnabledForAccount(account)) {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
+
+        if (existing) {
             this.logger.info(
                 `Bluesky integration already enabled for account {id}`,
                 { id: account.id },
             );
 
-            const existing = await this.db(
-                'bluesky_integration_account_handles',
-            )
-                .where('account_id', account.id)
-                .first();
-
             return {
                 enabled: true,
-                handleConfirmed: existing?.confirmed || false,
-                handle: existing?.handle || null,
+                handleConfirmed: existing.confirmed || false,
+                handle: existing.handle || null,
             };
         }
 
@@ -106,7 +104,11 @@ export class BlueskyService {
     }
 
     async disableForAccount(account: Account) {
-        if (!(await this.isEnabledForAccount(account))) {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
+
+        if (!existing) {
             this.logger.info(
                 `Bluesky integration already disabled for account {id}`,
                 { id: account.id },
@@ -271,13 +273,5 @@ export class BlueskyService {
         }
 
         return getValue(ensureBridgyAccountResult);
-    }
-
-    private async isEnabledForAccount(account: Account) {
-        const result = await this.db('bluesky_integration_account_handles')
-            .where('account_id', account.id)
-            .first();
-
-        return result !== undefined;
     }
 }
