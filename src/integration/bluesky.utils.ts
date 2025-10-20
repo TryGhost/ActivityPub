@@ -13,8 +13,13 @@ export function findValidBridgyHandle(
         return actor.labels.some((label) => label.val === BRIDGY_FED_LABEL);
     });
 
+    // Normalize domain by stripping www. prefix if present
+    const normalizedDomain = domain.startsWith('www.')
+        ? domain.substring(4)
+        : domain;
+
     // Find actors with a handle ending in .{domain}.ap.brid.gy
-    const expectedHandleSuffix = `.${domain}.ap.brid.gy`;
+    const expectedHandleSuffix = `.${normalizedDomain}.ap.brid.gy`;
 
     const matchingActors = bridgyActors.filter((actor) =>
         actor.handle.endsWith(expectedHandleSuffix),

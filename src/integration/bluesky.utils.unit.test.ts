@@ -240,4 +240,54 @@ describe('findValidBridgyHandle', () => {
             expect(result).toBe(expectedHandle);
         });
     });
+
+    describe('www subdomain handling', () => {
+        it('should find handle when domain has www prefix but Bridgy Fed strips it', () => {
+            const wwwDomain = 'www.example.com';
+            const handleWithoutWww = '@test.example.com.ap.brid.gy';
+
+            const actors: Actor[] = [
+                {
+                    handle: handleWithoutWww,
+                    labels: [bridgyLabel],
+                },
+            ];
+
+            const result = findValidBridgyHandle(actors, wwwDomain);
+
+            expect(result).toBe(handleWithoutWww);
+        });
+
+        it('should find handle when domain does not have www prefix', () => {
+            const nonWwwDomain = 'example.com';
+            const handleWithoutWww = '@test.example.com.ap.brid.gy';
+
+            const actors: Actor[] = [
+                {
+                    handle: handleWithoutWww,
+                    labels: [bridgyLabel],
+                },
+            ];
+
+            const result = findValidBridgyHandle(actors, nonWwwDomain);
+
+            expect(result).toBe(handleWithoutWww);
+        });
+
+        it('should handle edge case where www appears in subdomain after normalization', () => {
+            const wwwDomain = 'www.example.com';
+            const handleWithWww = '@test.www.example.com.ap.brid.gy';
+
+            const actors: Actor[] = [
+                {
+                    handle: handleWithWww,
+                    labels: [bridgyLabel],
+                },
+            ];
+
+            const result = findValidBridgyHandle(actors, wwwDomain);
+
+            expect(result).toBe(handleWithWww);
+        });
+    });
 });
