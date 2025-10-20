@@ -1,5 +1,6 @@
 import type { Account } from '@/account/account.entity';
 import { getAccountHandle } from '@/account/utils';
+import { parseURL } from '@/core/url';
 import type { GetFeedDataResultRow } from '@/feed/feed.service';
 
 export function feedResultToPostDTO(
@@ -32,7 +33,7 @@ export function feedResultToPostDTO(
             author: {
                 id: result.author_id.toString(),
                 handle: getAccountHandle(
-                    result.author_url ? new URL(result.author_url).host : '',
+                    parseURL(result.author_url)?.host ?? '',
                     result.author_username,
                 ),
                 name: result.author_name ?? '',
@@ -47,9 +48,7 @@ export function feedResultToPostDTO(
                 ? {
                       id: result.reposter_id.toString(),
                       handle: getAccountHandle(
-                          result.reposter_url
-                              ? new URL(result.reposter_url).host
-                              : '',
+                          parseURL(result.reposter_url)?.host ?? '',
                           result.reposter_username,
                       ),
                       name: result.reposter_name ?? '',
