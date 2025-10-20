@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 
 import type { AppContext } from '@/app';
+import { GLOBAL_FEED_ACCOUNT_ID } from '@/constants';
 import type { FeedService, FeedType } from '@/feed/feed.service';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
@@ -80,6 +81,45 @@ export class FeedController {
                     { error },
                 );
             });
+
+        return new Response(
+            JSON.stringify({
+                posts,
+                next: nextCursor,
+            }),
+            {
+                status: 200,
+            },
+        );
+    }
+
+    @APIRoute('GET', 'feed/global')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async getGlobalFeed(ctx: AppContext) {
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const myAccount = ctx.get('account');
+
+        const { results, nextCursor } = await this.feedService.getFeedData({
+            accountId: GLOBAL_FEED_ACCOUNT_ID,
+            feedType: 'Inbox',
+            limit,
+            cursor,
+        });
+
+        const posts = feedResultToPostDTO(results, myAccount);
 
         return new Response(
             JSON.stringify({
