@@ -1,6 +1,7 @@
 import { chunk } from 'es-toolkit';
 import type { Knex } from 'knex';
 
+import { GLOBAL_FEED_USER_ID } from '@/constants';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
@@ -90,10 +91,21 @@ export interface GetFeedDataResult {
 }
 
 export class FeedService {
+    private globalFeedUserExists = false;
+
     constructor(
         private readonly db: Knex,
         private readonly moderationService: ModerationService,
     ) {}
+
+    async init() {
+        const globalFeedUser = await this.db('users')
+            .where('id', GLOBAL_FEED_USER_ID)
+            .select('id')
+            .first();
+
+        this.globalFeedUserExists = !!globalFeedUser;
+    }
 
     /**
      * Get data for a feed based on the provided options
@@ -315,6 +327,13 @@ export class FeedService {
             post,
             repostedBy ?? undefined,
         );
+
+        // Ensure the post is added to the global feed if the author is a Ghost publisher -
+        // We are assuming that if the post is an Article, the author is a Ghost publisher
+        // https://linear.app/ghost/project/activitypub-global-feed-discovery-ed06ad7be6b7
+        if (this.globalFeedUserExists && post.type === PostType.Article) {
+            userIds.push(GLOBAL_FEED_USER_ID);
+        }
 
         if (userIds.length === 0) {
             return [];
