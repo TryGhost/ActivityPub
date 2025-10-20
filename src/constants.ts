@@ -11,4 +11,5 @@ export const HANDLE_REGEX = /@([\w.-]+)@([\w-]+\.[\w.-]+[a-zA-Z])/;
 
 export const ACTIVITYPUB_COLLECTION_PAGE_SIZE = 20;
 
-export const GLOBAL_FEED_USER_ID = 999999999;
+export const GLOBAL_FEED_AP_ID =
+    'https://ap-global-feed.ghost.io/.ghost/activitypub/users/index';
