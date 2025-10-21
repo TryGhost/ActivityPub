@@ -183,7 +183,7 @@ async function main(bridgyAccountId: number) {
               }
             : {
                   host: process.env.DB_HOST,
-                  port: Number.parseInt(process.env.DB_PORT || '3306'),
+                  port: Number.parseInt(process.env.DB_PORT || '3306', 10),
                   user: process.env.DB_USER,
                   password: process.env.DB_PASSWORD,
                   database: process.env.DB_NAME,
@@ -224,6 +224,7 @@ async function main(bridgyAccountId: number) {
 if (import.meta.main) {
     const bridgyAccountId = parseInt(
         process.env.BRIDGY_ACCOUNT_ID || process.argv[2] || '',
+        10,
     );
 
     if (!bridgyAccountId || Number.isNaN(bridgyAccountId)) {
