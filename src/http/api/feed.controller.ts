@@ -115,24 +115,15 @@ export class FeedController {
             });
         }
 
-        const myAccount = ctx.get('account');
-        const globalFeedAccountId =
-            await this.feedService.getGlobalFeedAccountId();
+        const account = ctx.get('account');
 
-        if (!globalFeedAccountId) {
-            return new Response(null, {
-                status: 404,
-            });
-        }
-
-        const { results, nextCursor } = await this.feedService.getFeedData({
-            accountId: globalFeedAccountId,
-            feedType: 'Inbox',
+        const { results, nextCursor } = await this.feedService.getGlobalFeedData(
+            account.id,
             limit,
             cursor,
-        });
+        );
 
-        const posts = this.mapFeedResultsToPostDTO(results, myAccount);
+        const posts = this.mapFeedResultsToPostDTO(results, account);
 
         return new Response(
             JSON.stringify({

@@ -122,24 +122,6 @@ export class FeedService {
     }
 
     /**
-     * Get the Account ID of the global feed user
-     */
-    async getGlobalFeedAccountId(): Promise<number | null> {
-        const globalFeedUserId = await this.getGlobalFeedUserId();
-
-        if (!globalFeedUserId) {
-            return null;
-        }
-
-        const { account_id: accountId } = await this.db('users')
-            .where('id', globalFeedUserId)
-            .select('account_id')
-            .first();
-
-        return accountId;
-    }
-
-    /**
      * Get data for a feed based on the provided options
      *
      * @param options Options for the query
@@ -272,6 +254,150 @@ export class FeedService {
 
         const hasMore = results.length > options.limit;
         const paginatedResults = results.slice(0, options.limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+
+        return {
+            results: paginatedResults.map((item: BaseGetFeedDataResultRow) => {
+                return {
+                    ...item,
+                    post_content: sanitizeHtml(item.post_content ?? ''),
+                };
+            }),
+            nextCursor: hasMore ? lastResult.feed_published_at : null,
+        };
+    }
+
+    /**
+     * Get data for a feed based on the provided options
+     *
+     * @param options Options for the query
+     */
+
+    async getGlobalFeedData(
+        accountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<GetFeedDataResult> {
+        const postType: PostType = PostType.Article;
+
+        const globalFeedUserId = this.getGlobalFeedUserId;
+
+        const query = this.db('feeds')
+            .select(
+                // Post fields
+                'posts.id as post_id',
+                'posts.type as post_type',
+                'posts.title as post_title',
+                'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
+                'posts.content as post_content',
+                'posts.url as post_url',
+                'posts.image_url as post_image_url',
+                'posts.published_at as post_published_at',
+                'posts.like_count as post_like_count',
+                this.db.raw(`
+                        CASE
+                            WHEN likes.account_id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS post_liked_by_user
+                    `),
+                'posts.reply_count as post_reply_count',
+                'posts.reading_time_minutes as post_reading_time_minutes',
+                'posts.attachments as post_attachments',
+                'posts.repost_count as post_repost_count',
+                this.db.raw(`
+                        CASE
+                            WHEN reposts.account_id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS post_reposted_by_user
+                    `),
+                'posts.ap_id as post_ap_id',
+                // Author fields
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.avatar_url as author_avatar_url',
+                this.db.raw(`
+                        CASE
+                            WHEN follows_author.following_id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS author_followed_by_user
+                    `),
+                // Reposter fields
+                'reposter_account.id as reposter_id',
+                'reposter_account.name as reposter_name',
+                'reposter_account.username as reposter_username',
+                'reposter_account.url as reposter_url',
+                'reposter_account.avatar_url as reposter_avatar_url',
+                this.db.raw(`
+                        CASE
+                            WHEN follows_reposter.following_id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS reposter_followed_by_user
+                    `),
+                // Feed fields
+                'feeds.published_at as feed_published_at',
+            )
+            .innerJoin('posts', 'posts.id', 'feeds.post_id')
+            .innerJoin(
+                'accounts as author_account',
+                'author_account.id',
+                'posts.author_id',
+            )
+            .leftJoin(
+                'accounts as reposter_account',
+                'reposter_account.id',
+                'feeds.reposted_by_id',
+            )
+            .leftJoin('likes', function () {
+                this.on('likes.post_id', 'posts.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .leftJoin('reposts', function () {
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_author', function () {
+                this.on(
+                    'follows_author.following_id',
+                    'author_account.id',
+                ).andOnVal(
+                    'follows_author.follower_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_reposter', function () {
+                this.on(
+                    'follows_reposter.following_id',
+                    'reposter_account.id',
+                ).andOnVal(
+                    'follows_reposter.follower_id',
+                    '=',
+                    accountId.toString(),
+                );
+            })
+            .whereRaw('feeds.user_id = ?', [globalFeedUserId.toString()])
+            .where('feeds.post_type', postType)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('feeds.published_at', '<', cursor);
+                }
+            })
+            .orderBy('feeds.published_at', 'desc')
+            .limit(limit + 1);
+
+        const results = await query;
+
+        const hasMore = results.length > limit;
+        const paginatedResults = results.slice(0, limit);
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
