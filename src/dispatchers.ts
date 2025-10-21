@@ -809,7 +809,7 @@ export function createFollowingDispatcher(
     ) {
         ctx.data.logger.info('Following Dispatcher');
 
-        const offset = Number.parseInt(cursor ?? '0');
+        const offset = Number.parseInt(cursor ?? '0', 10);
         let nextCursor: string | null = null;
 
         const host = ctx.request.headers.get('host')!;
