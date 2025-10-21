@@ -547,7 +547,7 @@ describe('FeedService', () => {
             expect(userId).toBe(null);
         });
 
-        it('should cache the result even if the database record is deleted', async () => {
+        it('should cache the result after first lookup', async () => {
             const feedService = new FeedService(client, moderationService);
 
             const globalAccount = await createInternalAccount(
