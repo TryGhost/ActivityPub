@@ -169,7 +169,7 @@ export class ContentPreparer {
         // Restore URLs
         return preparedContent.replace(
             /__URL_(\d+)__/g,
-            (_, index) => urls[Number.parseInt(index)],
+            (_, index) => urls[Number.parseInt(index, 10)],
         );
     }
 

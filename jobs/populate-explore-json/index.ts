@@ -22,8 +22,14 @@ const config = {
     s3FilePath: process.env.S3_FILE_PATH || 'explore/accounts.json',
     s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
     s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-    maxConcurrent: Number.parseInt(process.env.MAX_CONCURRENT_REQUESTS || '10'),
-    requestTimeout: Number.parseInt(process.env.REQUEST_TIMEOUT_MS || '30000'), // 30 seconds default
+    maxConcurrent: Number.parseInt(
+        process.env.MAX_CONCURRENT_REQUESTS || '10',
+        10,
+    ),
+    requestTimeout: Number.parseInt(
+        process.env.REQUEST_TIMEOUT_MS || '30000',
+        10,
+    ), // 30 seconds default
 };
 
 // AccountDTO interface
