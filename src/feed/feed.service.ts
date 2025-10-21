@@ -91,14 +91,21 @@ export interface GetFeedDataResult {
 }
 
 export class FeedService {
-    private globalFeedUserId: number | null = null;
+    private globalFeedUserId: number | null | undefined = undefined;
 
     constructor(
         private readonly db: Knex,
         private readonly moderationService: ModerationService,
     ) {}
 
-    async init() {
+    /**
+     * Get the ID of the global feed user
+     */
+    async getGlobalFeedUserId(): Promise<number | null> {
+        if (this.globalFeedUserId !== undefined) {
+            return this.globalFeedUserId;
+        }
+
         const globalFeedUser = await this.db('users')
             .innerJoin('accounts', 'accounts.id', 'users.account_id')
             .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
@@ -107,7 +114,11 @@ export class FeedService {
             .select('users.id')
             .first();
 
-        this.globalFeedUserId = globalFeedUser?.id ?? null;
+        const userId = globalFeedUser?.id ?? null;
+
+        this.globalFeedUserId = userId;
+
+        return userId;
     }
 
     /**
@@ -334,8 +345,9 @@ export class FeedService {
         // Ensure the post is added to the global feed if the author is a Ghost publisher -
         // We are assuming that if the post is an Article, the author is a Ghost publisher
         // https://linear.app/ghost/project/activitypub-global-feed-discovery-ed06ad7be6b7
-        if (this.globalFeedUserId !== null && post.type === PostType.Article) {
-            userIds.push(this.globalFeedUserId);
+        const globalFeedUserId = await this.getGlobalFeedUserId();
+        if (globalFeedUserId !== null && post.type === PostType.Article) {
+            userIds.push(globalFeedUserId);
         }
 
         if (userIds.length === 0) {

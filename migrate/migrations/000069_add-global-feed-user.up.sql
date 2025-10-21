@@ -8,8 +8,8 @@ INSERT INTO sites (
 )
 VALUES (
     'ap-global-feed.ghost.io',
-    's3cr3t',
-    0
+    (SELECT LOWER(SHA2('ap-global-feed.ghost.io', 256))),
+    1
 );
 
 SET @site_id := LAST_INSERT_ID();
@@ -40,7 +40,7 @@ VALUES (
     'ActivityPub Global Feed',
     'ActivityPub Global Feed',
     NULL,
-    'https://static.ghost.org/v5.0.0/images/publication-cover.jpg',
+    NULL,
     'https://ap-global-feed.ghost.io/',
     NULL,
     'https://ap-global-feed.ghost.io/.ghost/activitypub/users/index',
@@ -52,7 +52,7 @@ VALUES (
     'https://ap-global-feed.ghost.io/.ghost/activitypub/following/index',
     'https://ap-global-feed.ghost.io/.ghost/activitypub/followers/index',
     'https://ap-global-feed.ghost.io/.ghost/activitypub/liked/index',
-    '1185161e-5a21-43b6-871d-f111f1f2466d',
+    (SELECT UUID()),
     'ap-global-feed.ghost.io'
 );
 

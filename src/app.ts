@@ -72,7 +72,6 @@ import {
 import type { EventSerializer } from '@/events/event';
 import type { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
 import type { GhostExploreService } from '@/explore/ghost-explore.service';
-import type { FeedService } from '@/feed/feed.service';
 import type { FeedUpdateService } from '@/feed/feed-update.service';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
@@ -213,7 +212,6 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
 // Initialize services that need it
 container.resolve<BlueskyService>('blueskyService').init();
 container.resolve<FediverseBridge>('fediverseBridge').init();
-await container.resolve<FeedService>('feedService').init();
 container.resolve<FeedUpdateService>('feedUpdateService').init();
 container.resolve<NotificationEventService>('notificationEventService').init();
 container.resolve<GhostExploreService>('ghostExploreService').init();
