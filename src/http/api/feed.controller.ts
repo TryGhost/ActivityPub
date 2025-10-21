@@ -98,6 +98,53 @@ export class FeedController {
         );
     }
 
+    @APIRoute('GET', 'feed/global')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async getGlobalFeed(ctx: AppContext) {
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const myAccount = ctx.get('account');
+        const globalFeedAccountId =
+            await this.feedService.getGlobalFeedAccountId();
+
+        if (!globalFeedAccountId) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        const { results, nextCursor } = await this.feedService.getFeedData({
+            accountId: globalFeedAccountId,
+            feedType: 'Inbox',
+            limit,
+            cursor,
+        });
+
+        const posts = this.mapFeedResultsToPostDTO(results, myAccount);
+
+        return new Response(
+            JSON.stringify({
+                posts,
+                next: nextCursor,
+            }),
+            {
+                status: 200,
+            },
+        );
+    }
+
     private mapFeedResultsToPostDTO(
         results: GetFeedDataResultRow[],
         myAccount: Account,

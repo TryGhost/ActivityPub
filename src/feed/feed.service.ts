@@ -122,6 +122,24 @@ export class FeedService {
     }
 
     /**
+     * Get the Account ID of the global feed user
+     */
+    async getGlobalFeedAccountId(): Promise<number | null> {
+        const globalFeedUserId = await this.getGlobalFeedUserId();
+
+        if (!globalFeedUserId) {
+            return null;
+        }
+
+        const { account_id: accountId } = await this.db('users')
+            .where('id', globalFeedUserId)
+            .select('account_id')
+            .first();
+
+        return accountId;
+    }
+
+    /**
      * Get data for a feed based on the provided options
      *
      * @param options Options for the query
