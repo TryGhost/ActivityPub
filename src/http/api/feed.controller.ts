@@ -117,11 +117,8 @@ export class FeedController {
 
         const account = ctx.get('account');
 
-        const { results, nextCursor } = await this.feedService.getGlobalFeedData(
-            account.id,
-            limit,
-            cursor,
-        );
+        const { results, nextCursor } =
+            await this.feedService.getGlobalFeedData(account.id, limit, cursor);
 
         const posts = this.mapFeedResultsToPostDTO(results, account);
 
