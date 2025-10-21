@@ -521,6 +521,58 @@ describe('FeedService', () => {
         });
     });
 
+    describe('getGlobalFeedUserId', () => {
+        it('should return the global feed user ID when it exists', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            const expectedUser = await client('users')
+                .where('account_id', globalAccount.id)
+                .select('id')
+                .first();
+
+            const userId = await feedService.getGlobalFeedUserId();
+
+            expect(userId).toBe(expectedUser.id);
+        });
+
+        it('should return null when the global feed user does not exist', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const userId = await feedService.getGlobalFeedUserId();
+
+            expect(userId).toBe(null);
+        });
+
+        it('should cache the result after first lookup', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            // First call - loads from database
+            const userId1 = await feedService.getGlobalFeedUserId();
+            expect(userId1).not.toBe(null);
+
+            // Delete the account from the database
+            await client('users')
+                .where('account_id', globalAccount.id)
+                .delete();
+
+            await client('accounts').where('id', globalAccount.id).delete();
+
+            // Second call - should return cached value, not null
+            const userId2 = await feedService.getGlobalFeedUserId();
+
+            expect(userId2).toBe(userId1); // Still returns the cached ID
+            expect(userId2).not.toBe(null); // Not null even though record is gone
+        });
+    });
+
     describe('addPostToFeeds', () => {
         it('should add a post to the feeds of the users that should see it', async () => {
             const feedService = new FeedService(client, moderationService);
@@ -845,6 +897,58 @@ describe('FeedService', () => {
 
             expect(feedEntry).toBeTruthy();
             expect(feedEntry.published_at).toEqual(originalPublishDate);
+        });
+
+        it('should add Article posts to the global feed user', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create the global feed account
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            // Create an author and an Article post
+            const authorAccount = await createInternalAccount('author.com');
+            const articlePost = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(articlePost);
+
+            // Add the post to feeds
+            await feedService.addPostToFeeds(articlePost as PublicPost);
+
+            // Verify the post was added to the global feed
+            const globalFeed = await getFeedDataForAccount(globalAccount);
+            expect(globalFeed).toHaveLength(1);
+            expect(globalFeed[0]).toMatchObject({
+                post_id: articlePost.id,
+                author_id: authorAccount.id,
+            });
+        });
+
+        it('should NOT add Note posts to the global feed user', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create the global feed account
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            // Create an author and a Note post
+            const authorAccount = await createInternalAccount('author.com');
+            const notePost = await createPost(authorAccount, {
+                type: PostType.Note,
+                audience: Audience.Public,
+            });
+            await postRepository.save(notePost);
+
+            // Add the post to feeds
+            await feedService.addPostToFeeds(notePost as PublicPost);
+
+            // Verify the post was NOT added to the global feed
+            const globalFeed = await getFeedDataForAccount(globalAccount);
+            expect(globalFeed).toHaveLength(0);
         });
     });
 
