@@ -164,13 +164,15 @@ export class FeedService {
     }
 
     /**
-     * Get data for a feed based on the provided options
+     * Get data for a global feed
      *
-     * @param options Options for the query
+     * @param viewerAccountId ID of the account of the user viewing the global feed
+     * @param limit Maximum number of posts to return
+     * @param cursor Cursor to use for pagination
      */
 
     async getGlobalFeedData(
-        accountId: number,
+        viewerAccountId: number,
         limit: number,
         cursor: string | null,
     ): Promise<GetFeedDataResult> {
@@ -187,7 +189,7 @@ export class FeedService {
 
         const query = this.buildFeedQuery(
             globalFeedUserId,
-            accountId,
+            viewerAccountId,
             postType,
             limit,
             cursor,
