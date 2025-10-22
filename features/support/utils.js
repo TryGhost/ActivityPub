@@ -15,3 +15,7 @@ export async function mapPostToActivityPubObject(post) {
                 : null,
     };
 }
+
+export function isInternalAccount(handle) {
+    return handle.endsWith('.Internal');
+}
