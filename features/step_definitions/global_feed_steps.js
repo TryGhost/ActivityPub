@@ -14,32 +14,6 @@ Then(
     },
 );
 
-Then(
-    'the article {string} is not in our global feed',
-    async function (articleName) {
-        const article = this.objects[articleName];
-
-        try {
-            await waitForAPObjectInGlobalFeed(article.id);
-            assert.fail(
-                `Expected article ${article.id} to be not be found in the global feed`,
-            );
-        } catch (error) {
-            assert.equal(
-                error.message,
-                `Max retries reached when waiting on item ${article.id} in the global feed`,
-            );
-        }
-    },
-);
-
-Then('the note {string} is in our global feed', async function (noteName) {
-    const note = this.objects[noteName];
-
-    const found = await waitForAPObjectInGlobalFeed(note.id);
-    assert(found);
-});
-
 Then('the note {string} is not in our global feed', async function (noteName) {
     const note = this.objects[noteName];
 

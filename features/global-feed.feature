@@ -1,4 +1,3 @@
-@global-feed
 Feature: Global Feed
 
   Background:
