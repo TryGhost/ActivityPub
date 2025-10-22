@@ -67,6 +67,7 @@ import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
 import { BlueskyService } from '@/integration/bluesky.service';
+import { BlueskyApiClient } from '@/integration/bluesky-api.client';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
@@ -333,6 +334,10 @@ export function registerDependencies(
     container.register(
         'ghostExploreService',
         asClass(GhostExploreService).singleton(),
+    );
+    container.register(
+        'blueskyApiClient',
+        asClass(BlueskyApiClient).singleton(),
     );
     container.register('blueskyService', asClass(BlueskyService).singleton());
 

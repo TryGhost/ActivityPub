@@ -94,9 +94,13 @@ export interface AccountDTOWithBluesky extends AccountDTO {
      */
     blueskyEnabled: boolean;
     /**
-     * Handle of the Bluesky account (if enabled)
+     * Handle of the Bluesky account (if enabled and confirmed)
      */
     blueskyHandle: string | null;
+    /**
+     * Whether the Bluesky handle has been confirmed via Bluesky API
+     */
+    blueskyHandleConfirmed: boolean;
 }
 
 export type AuthorDTO = Pick<

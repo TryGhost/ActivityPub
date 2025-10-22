@@ -7,10 +7,20 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
-import { AccountFollowedEvent } from '@/account/events';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import type { AsyncEvents } from '@/core/events';
-import { getValue, isError } from '@/core/result';
+import {
+    error,
+    getError,
+    getValue,
+    isError,
+    ok,
+    type Result,
+} from '@/core/result';
+import { findValidBridgyHandle } from '@/integration/bluesky.utils';
+import type {
+    BlueskyApiClient,
+    BlueskyApiError,
+} from '@/integration/bluesky-api.client';
 
 /**
  * @see https://fed.brid.gy/docs
@@ -23,26 +33,31 @@ export class BlueskyService {
         private readonly db: Knex,
         private readonly accountService: AccountService,
         private readonly accountRepository: KnexAccountRepository,
-        private readonly events: AsyncEvents,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly logger: Logger,
+        private readonly blueskyApiClient: BlueskyApiClient,
     ) {}
 
-    init() {
-        this.events.on(
-            AccountFollowedEvent.getName(),
-            this.handleAccountFollowed.bind(this),
-        );
-    }
+    async enableForAccount(account: Account): Promise<{
+        enabled: boolean;
+        handleConfirmed: boolean;
+        handle: string | null;
+    }> {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
 
-    async enableForAccount(account: Account) {
-        if (await this.isEnabledForAccount(account)) {
+        if (existing) {
             this.logger.info(
                 `Bluesky integration already enabled for account {id}`,
                 { id: account.id },
             );
 
-            return this.getHandleForAccount(account);
+            return {
+                enabled: true,
+                handleConfirmed: existing.confirmed || false,
+                handle: existing.handle || null,
+            };
         }
 
         const bridgyAccount = await this.getBridgyAccount();
@@ -69,11 +84,31 @@ export class BlueskyService {
             follow,
         );
 
-        return this.getHandleForAccount(account);
+        // Insert handle → account mapping into the database - handle is null
+        // and confirmed is false until manual confirmation has occurred (see
+        // `confirmHandleForAccount`)
+        await this.db('bluesky_integration_account_handles')
+            .insert({
+                account_id: account.id,
+                handle: null,
+                confirmed: false,
+            })
+            .onConflict('account_id')
+            .merge();
+
+        return {
+            enabled: true,
+            handleConfirmed: false,
+            handle: null,
+        };
     }
 
     async disableForAccount(account: Account) {
-        if (!(await this.isEnabledForAccount(account))) {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
+
+        if (!existing) {
             this.logger.info(
                 `Bluesky integration already disabled for account {id}`,
                 { id: account.id },
@@ -148,40 +183,85 @@ export class BlueskyService {
             .delete();
     }
 
-    private async handleAccountFollowed(event: AccountFollowedEvent) {
-        const bridgyAccount = await this.getBridgyAccount();
+    async confirmHandleForAccount(
+        account: Account,
+    ): Promise<
+        Result<
+            { handleConfirmed: boolean; handle: string | null },
+            BlueskyApiError | { type: 'not-enabled' }
+        >
+    > {
+        const existing = await this.db('bluesky_integration_account_handles')
+            .where('account_id', account.id)
+            .first();
 
-        if (event.getAccountId() !== bridgyAccount.id) {
-            return;
-        }
-
-        const followerAccount = await this.accountService.getAccountById(
-            event.getFollowerId(),
-        );
-
-        if (!followerAccount) {
-            this.logger.warn(
-                'Could not find account {id} to enable Bluesky integration',
-                { id: event.getFollowerId() },
+        if (!existing) {
+            this.logger.debug(
+                'Bluesky integration not enabled for account {id}',
+                { id: account.id },
             );
 
-            return;
+            return error({ type: 'not-enabled' });
         }
 
-        // Insert handle → account mapping into the database
-        const handle = this.getHandleForAccount(followerAccount);
+        // If already confirmed, return existing handle
+        if (existing.confirmed && existing.handle) {
+            this.logger.debug(
+                'Bluesky handle already confirmed for account {id}',
+                { id: account.id, handle: existing.handle },
+            );
 
+            return ok({
+                handleConfirmed: true,
+                handle: existing.handle,
+            });
+        }
+
+        // Query Bluesky API to find the handle
+        const domain = account.apId.hostname;
+        const result = await this.blueskyApiClient.searchActors(domain);
+
+        if (isError(result)) {
+            this.logger.warn('Failed to search Bluesky for account {id}', {
+                id: account.id,
+                error: getError(result),
+            });
+
+            return result;
+        }
+
+        const actors = getValue(result);
+
+        // Find a valid Bridgy Fed handle from the search results
+        const handle = findValidBridgyHandle(actors, domain);
+
+        if (!handle) {
+            this.logger.info(
+                'Bluesky handle not yet available for account {id}',
+                {
+                    id: account.id,
+                    domain,
+                },
+            );
+
+            return ok({
+                handleConfirmed: false,
+                handle: null,
+            });
+        }
+
+        // Update the database with the confirmed handle
         await this.db('bluesky_integration_account_handles')
-            .insert({
-                account_id: followerAccount.id,
+            .where('account_id', account.id)
+            .update({
                 handle,
-            })
-            .onConflict('account_id')
-            .merge();
-    }
+                confirmed: true,
+            });
 
-    private getHandleForAccount(account: Account) {
-        return `@${account.username}.${account.apId.hostname}.ap.brid.gy`;
+        return ok({
+            handleConfirmed: true,
+            handle,
+        });
     }
 
     private async getBridgyAccount() {
@@ -193,13 +273,5 @@ export class BlueskyService {
         }
 
         return getValue(ensureBridgyAccountResult);
-    }
-
-    private async isEnabledForAccount(account: Account) {
-        const result = await this.db('bluesky_integration_account_handles')
-            .where('account_id', account.id)
-            .first();
-
-        return result !== undefined;
     }
 }
