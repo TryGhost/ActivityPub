@@ -241,10 +241,7 @@ export class FollowController {
             unfollow,
         );
 
-        return new Response(JSON.stringify(unfollowJson), {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
+        return new Response(null, {
             status: 202,
         });
     }

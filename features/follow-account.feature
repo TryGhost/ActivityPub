@@ -14,8 +14,8 @@ Feature: Follow accounts from their handle
     And the object "Alice" should be in the "following" collection
     When we unfollow "Alice"
     Then the request is accepted
-    Then the object "Alice" should not be in the "following" collection
-    Then Activity "Unfollow(Alice)" is sent to "Alice"
+    And the object "Alice" should not be in the "following" collection
+    And a "Undo(Follow)" activity is sent to "Alice"
 
   Scenario: We can follow an internal account
     When we follow "Alice.Internal"

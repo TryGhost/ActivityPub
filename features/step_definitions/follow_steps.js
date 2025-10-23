@@ -107,6 +107,7 @@ Given('we follow {string}', async function (name) {
 
 Given('we unfollow {string}', async function (name) {
     const handle = this.actors[name].handle;
+
     this.response = await fetchActivityPub(
         `https://self.test/.ghost/activitypub/v1/actions/unfollow/${handle}`,
         {
@@ -114,12 +115,8 @@ Given('we unfollow {string}', async function (name) {
         },
     );
 
-    // If the account is internal, no federation happens so we don't need
-    // to record the unfollow activity
-    if (this.response.ok && !isInternalAccount(name)) {
-        this.activities[`Unfollow(${name})`] = await this.response
-            .clone()
-            .json();
+    if (!this.response.ok) {
+        throw new Error('Something went wrong');
     }
 });
 
