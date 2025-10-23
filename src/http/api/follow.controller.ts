@@ -2,7 +2,6 @@ import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
-import { mapActorToExternalAccountData } from '@/account/utils';
 import type { AppContext, ContextData } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
@@ -97,7 +96,6 @@ export class FollowController {
             return Conflict('Already following this account');
         }
 
-        // Federate the follow
         const actor = await lookupActor(apCtx, followerAccount.apId.toString());
         const actorToFollow = await lookupActor(
             apCtx,
@@ -108,25 +106,34 @@ export class FollowController {
             return NotFound('Remote account could not be found');
         }
 
-        const followId = apCtx.getObjectUri(Follow, {
-            id: uuidv4(),
-        });
+        // If the account to follow is internal, we can just follow it directly
+        // without federating the follow
+        if (accountToFollow.isInternal) {
+            await this.accountService.followAccount(
+                followerAccount,
+                accountToFollow,
+            );
+        } else {
+            const followId = apCtx.getObjectUri(Follow, {
+                id: uuidv4(),
+            });
 
-        const follow = new Follow({
-            id: followId,
-            actor: actor,
-            object: actorToFollow,
-        });
+            const follow = new Follow({
+                id: followId,
+                actor: actor,
+                object: actorToFollow,
+            });
 
-        const followJson = await follow.toJsonLd();
+            const followJson = await follow.toJsonLd();
 
-        ctx.get('globaldb').set([follow.id!.href], followJson);
+            ctx.get('globaldb').set([follow.id!.href], followJson);
 
-        await apCtx.sendActivity(
-            { username: followerAccount.username },
-            actorToFollow,
-            follow,
-        );
+            await apCtx.sendActivity(
+                { username: followerAccount.username },
+                actorToFollow,
+                follow,
+            );
+        }
 
         return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
             headers: {
@@ -144,6 +151,7 @@ export class FollowController {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
         });
+        const unfollowerAccount = ctx.get('account');
 
         const actorToUnfollow = await lookupObject(apCtx, handle);
 
@@ -153,29 +161,37 @@ export class FollowController {
             });
         }
 
-        const account = await this.accountService.getDefaultAccountForSite(
-            ctx.get('site'),
-        );
-
-        if (actorToUnfollow.id!.href === account.ap_id) {
+        if (actorToUnfollow.id!.href === unfollowerAccount.apId.href) {
             return new Response(null, {
                 status: 400,
             });
         }
 
-        let accountToUnfollow = await this.accountService.getAccountByApId(
-            actorToUnfollow.id!.href,
-        );
-
-        // TODO I think we can exit early here - there is obviously no follow relation if there is no account
-        if (!accountToUnfollow) {
-            accountToUnfollow = await this.accountService.createExternalAccount(
-                await mapActorToExternalAccountData(actorToUnfollow),
+        const getAccountToUnfollowResult =
+            await this.accountService.ensureByApId(
+                new URL(actorToUnfollow.id!.href),
             );
+
+        if (isError(getAccountToUnfollowResult)) {
+            const error = getError(getAccountToUnfollowResult);
+            switch (error) {
+                case 'not-found':
+                    return NotFound('Remote account could not be found');
+                case 'invalid-type':
+                    return BadRequest('Remote account is not an Actor');
+                case 'invalid-data':
+                    return BadRequest('Remote account could not be parsed');
+                case 'network-failure':
+                    return NotFound('Remote account could not be fetched');
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
 
+        const accountToUnfollow = getValue(getAccountToUnfollowResult);
+
         const isFollowing = await this.accountService.checkIfAccountIsFollowing(
-            account.id,
+            unfollowerAccount.id,
             accountToUnfollow.id,
         );
 
@@ -185,20 +201,33 @@ export class FollowController {
             });
         }
 
-        // Need to get the follow
+        await this.accountService.unfollowAccount(
+            unfollowerAccount,
+            accountToUnfollow,
+        );
+
+        // If the account to unfollow is internal, we can just unfollow it directly
+        // without federating the unfollow
+        if (accountToUnfollow.isInternal) {
+            return new Response(null, {
+                status: 202,
+            });
+        }
+
+        // Federate the unfollow by sending an Undo of the original follow activity
         const unfollowId = apCtx.getObjectUri(Undo, {
             id: uuidv4(),
         });
 
         const follow = new Follow({
             id: null,
-            actor: new URL(account.ap_id),
+            actor: new URL(unfollowerAccount.apId),
             object: actorToUnfollow,
         });
 
         const unfollow = new Undo({
             id: unfollowId,
-            actor: new URL(account.ap_id),
+            actor: new URL(unfollowerAccount.apId),
             object: follow,
         });
 
@@ -207,20 +236,12 @@ export class FollowController {
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
         await apCtx.sendActivity(
-            { username: account.username },
+            { username: unfollowerAccount.username },
             actorToUnfollow,
             unfollow,
         );
 
-        await this.accountService.recordAccountUnfollow(
-            accountToUnfollow,
-            account,
-        );
-
-        return new Response(JSON.stringify(unfollowJson), {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
+        return new Response(null, {
             status: 202,
         });
     }

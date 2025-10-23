@@ -10,6 +10,7 @@ import {
 import { waitForFollowingToBeAdded } from '../support/following.js';
 import { fetchActivityPub } from '../support/request.js';
 import { parseActorString } from '../support/steps.js';
+import { isInternalAccount } from '../support/utils.js';
 
 async function getActor(input) {
     const existingActor = this.actors[input];
@@ -62,23 +63,23 @@ Given('we are following {string}', async function (input) {
         throw new Error('Something went wrong');
     }
 
-    const follow = await createActivity('Follow', actor, this.actors.Us);
-
-    const accept = await createActivity('Accept', follow, actor);
-
-    const acceptResponse = await fetchActivityPub(
-        'https://self.test/.ghost/activitypub/inbox/index',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ld+json',
+    if (!isInternalAccount(input)) {
+        const follow = await createActivity('Follow', actor, this.actors.Us);
+        const accept = await createActivity('Accept', follow, actor);
+        const acceptResponse = await fetchActivityPub(
+            'https://self.test/.ghost/activitypub/inbox/index',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/ld+json',
+                },
+                body: JSON.stringify(accept),
             },
-            body: JSON.stringify(accept),
-        },
-    );
+        );
 
-    if (!acceptResponse.ok) {
-        throw new Error('Something went wrong');
+        if (!acceptResponse.ok) {
+            throw new Error('Something went wrong');
+        }
     }
 
     await waitForFollowingToBeAdded(actor.id);
@@ -92,7 +93,10 @@ Given('we follow {string}', async function (name) {
             method: 'POST',
         },
     );
-    if (this.response.ok) {
+
+    // If the account is internal, no federation happens so we don't need
+    // to record the follow activity
+    if (this.response.ok && !isInternalAccount(handle)) {
         this.activities[`Follow(${name})`] = await createActivity(
             'Follow',
             this.actors[name],
@@ -103,16 +107,16 @@ Given('we follow {string}', async function (name) {
 
 Given('we unfollow {string}', async function (name) {
     const handle = this.actors[name].handle;
+
     this.response = await fetchActivityPub(
         `https://self.test/.ghost/activitypub/v1/actions/unfollow/${handle}`,
         {
             method: 'POST',
         },
     );
-    if (this.response.ok) {
-        this.activities[`Unfollow(${name})`] = await this.response
-            .clone()
-            .json();
+
+    if (!this.response.ok) {
+        throw new Error('Something went wrong');
     }
 });
 
@@ -193,4 +197,77 @@ Then('{string} is not in our Followers', async function (actorName) {
 
     const removed = await waitForFollowerToBeRemoved(actor.id);
     assert(removed);
+});
+
+Then('{string} is in our following', async function (actorName) {
+    const initialResponse = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/following/index?cursor=0',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const following = await initialResponse.json();
+    const actor = this.actors[actorName];
+    const found = (following.orderedItems || []).find(
+        (item) => item === actor.id,
+    );
+
+    assert(found);
+});
+
+Then('{string} is not in our following', async function (actorName) {
+    const initialResponse = await fetchActivityPub(
+        'https://self.test/.ghost/activitypub/following/index?cursor=0',
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const following = await initialResponse.json();
+    const actor = this.actors[actorName];
+
+    const found = (following.orderedItems || []).find(
+        (item) => item === actor.id,
+    );
+
+    assert(!found);
+});
+
+Then("we are in {string}'s followers", async function (actorName) {
+    const actor = this.actors[actorName];
+    const initialResponse = await fetchActivityPub(
+        `${actor.followers}?cursor=0`,
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const followers = await initialResponse.json();
+    const found = (followers.orderedItems || []).find(
+        (item) => item === this.actors.Us.id,
+    );
+
+    assert(found);
+});
+
+Then("we are not in {string}'s followers", async function (actorName) {
+    const actor = this.actors[actorName];
+    const initialResponse = await fetchActivityPub(
+        `${actor.followers}?cursor=0`,
+        {
+            headers: {
+                Accept: 'application/ld+json',
+            },
+        },
+    );
+    const followers = await initialResponse.json();
+    const found = (followers.orderedItems || []).find(
+        (item) => item === this.actors.Us.id,
+    );
+
+    assert(!found);
 });

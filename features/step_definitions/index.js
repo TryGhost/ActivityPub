@@ -164,13 +164,31 @@ Before(async function reset() {
 });
 
 Before(async function setupState() {
-    const res = await fetch('https://self.test/.ghost/activitypub/users/index');
-    const actor = await res.json();
+    const [selfActor, aliceActor, bobActor, carolActor] = await Promise.all([
+        fetch('https://self.test/.ghost/activitypub/users/index').then((r) =>
+            r.json(),
+        ),
+        fetch('https://alice.test/.ghost/activitypub/users/index').then((r) =>
+            r.json(),
+        ),
+        fetch('https://bob.test/.ghost/activitypub/users/index').then((r) =>
+            r.json(),
+        ),
+        fetch('https://carol.test/.ghost/activitypub/users/index').then((r) =>
+            r.json(),
+        ),
+    ]);
+
+    const aliceWithHandle = { ...aliceActor, handle: '@index@alice.test' };
+    const bobWithHandle = { ...bobActor, handle: '@index@bob.test' };
+    const carolWithHandle = { ...carolActor, handle: '@index@carol.test' };
 
     this.activities = {};
     this.objects = {};
     this.actors = {
-        Us: actor,
+        Us: { ...selfActor, handle: '@index@self.test' },
+        'Alice.Internal': aliceWithHandle,
+        'Bob.Internal': bobWithHandle,
+        'Carol.Internal': carolWithHandle,
     };
-    this.actors.Us.handle = '@index@self.test';
 });
