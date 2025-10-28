@@ -5,12 +5,21 @@ import assert from 'node:assert';
 import { waitForAPObjectInGlobalFeed } from '../support/global-feed.js';
 
 Then(
-    'the article {string} is in our global feed',
+    'the article {string} is not in our global feed',
     async function (articleName) {
         const article = this.objects[articleName];
 
-        const found = await waitForAPObjectInGlobalFeed(article.id);
-        assert(found);
+        try {
+            await waitForAPObjectInGlobalFeed(article.id);
+            assert.fail(
+                `Expected article ${article.id} to be not be found in the global feed`,
+            );
+        } catch (error) {
+            assert.equal(
+                error.message,
+                `Max retries reached when waiting on item ${article.id} in the global feed`,
+            );
+        }
     },
 );
 
