@@ -1,5 +1,5 @@
 // biome-ignore format: keep array compact
-const TOP_PUBLISHERS = [
+export const TOP_PUBLISHERS = new Set([
     155967,
     10747,
     52035,
@@ -286,8 +286,8 @@ const TOP_PUBLISHERS = [
     276712,
     40049,
     281120
-];
+]);
 
 export function isTopPublisher(accountId: number) {
-    return TOP_PUBLISHERS.includes(accountId);
+    return TOP_PUBLISHERS.has(accountId);
 }
