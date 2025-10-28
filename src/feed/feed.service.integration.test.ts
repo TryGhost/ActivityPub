@@ -23,6 +23,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
+import { TOP_PUBLISHERS } from './top-publishers';
 
 describe('FeedService', () => {
     let events: AsyncEvents;
@@ -899,7 +900,7 @@ describe('FeedService', () => {
             expect(feedEntry.published_at).toEqual(originalPublishDate);
         });
 
-        it('should add Article posts to the global feed user', async () => {
+        it('should add Article posts from top publishers to the global feed', async () => {
             const feedService = new FeedService(client, moderationService);
 
             // Create the global feed account
@@ -907,9 +908,15 @@ describe('FeedService', () => {
                 'ap-global-feed.ghost.io',
             );
 
-            // Create an author and an Article post
-            const authorAccount = await createInternalAccount('author.com');
-            const articlePost = await createPost(authorAccount, {
+            // Create a top publisher
+            const topPublisherAccount =
+                await createInternalAccount('author.com');
+
+            // Add it to the list of top publishers
+            TOP_PUBLISHERS.add(topPublisherAccount.id);
+
+            // Create Article post
+            const articlePost = await createPost(topPublisherAccount, {
                 type: PostType.Article,
                 audience: Audience.Public,
             });
@@ -923,11 +930,41 @@ describe('FeedService', () => {
             expect(globalFeed).toHaveLength(1);
             expect(globalFeed[0]).toMatchObject({
                 post_id: articlePost.id,
+                author_id: topPublisherAccount.id,
+            });
+        });
+
+        it('should NOT add Article posts from other publishers to the global feed', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create the global feed account
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            // Create author
+            const authorAccount = await createInternalAccount('author.com');
+
+            // Create Article post
+            const articlePost = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(articlePost);
+
+            // Add the post to feeds
+            await feedService.addPostToFeeds(articlePost as PublicPost);
+
+            // Verify the post was NOT added to the global feed
+            const globalFeed = await getFeedDataForAccount(globalAccount);
+            expect(globalFeed).toHaveLength(1);
+            expect(globalFeed[0]).toMatchObject({
+                post_id: articlePost.id,
                 author_id: authorAccount.id,
             });
         });
 
-        it('should NOT add Note posts to the global feed user', async () => {
+        it('should NOT add Note posts to the global feed', async () => {
             const feedService = new FeedService(client, moderationService);
 
             // Create the global feed account
