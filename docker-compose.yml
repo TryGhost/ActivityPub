@@ -281,7 +281,7 @@ services:
           - mastodon.social
     image: caddy:2@sha256:786b7527345b82faf39e664ea26c71cc57bcb3a89bb2eada94bf0b2dc5304f0a
     ports:
-      - "443:443"
+      - "444:443"
     volumes:
       - ./dev/caddy-testing/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
