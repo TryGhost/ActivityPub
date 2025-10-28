@@ -932,6 +932,9 @@ describe('FeedService', () => {
                 post_id: articlePost.id,
                 author_id: topPublisherAccount.id,
             });
+
+            // Cleanup
+            TOP_PUBLISHERS.delete(topPublisherAccount.id);
         });
 
         it('should NOT add Article posts from other publishers to the global feed', async () => {
