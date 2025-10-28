@@ -23,6 +23,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
+import { TOP_PUBLISHERS } from './top-publishers';
 
 describe('FeedService', () => {
     let events: AsyncEvents;
@@ -899,7 +900,7 @@ describe('FeedService', () => {
             expect(feedEntry.published_at).toEqual(originalPublishDate);
         });
 
-        it('should add Article posts to the global feed user', async () => {
+        it('should add articles from top publishers to the global feed', async () => {
             const feedService = new FeedService(client, moderationService);
 
             // Create the global feed account
@@ -907,27 +908,61 @@ describe('FeedService', () => {
                 'ap-global-feed.ghost.io',
             );
 
-            // Create an author and an Article post
+            // Create a top publisher
+            const topPublisherAccount = await createInternalAccount(
+                'top-publisher-author-articles.com',
+            );
+            TOP_PUBLISHERS.add(topPublisherAccount.id);
+
+            // Create article
+            const articlePost = await createPost(topPublisherAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(articlePost);
+
+            // Add the article to feeds
+            await feedService.addPostToFeeds(articlePost as PublicPost);
+
+            // Verify the article was added to the global feed
+            const globalFeed = await getFeedDataForAccount(globalAccount);
+            expect(globalFeed).toHaveLength(1);
+            expect(globalFeed[0]).toMatchObject({
+                post_id: articlePost.id,
+                author_id: topPublisherAccount.id,
+            });
+
+            // Cleanup
+            TOP_PUBLISHERS.delete(topPublisherAccount.id);
+        });
+
+        it('should NOT add articles from other publishers to the global feed', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create the global feed account
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            // Create author
             const authorAccount = await createInternalAccount('author.com');
+
+            // Create article
             const articlePost = await createPost(authorAccount, {
                 type: PostType.Article,
                 audience: Audience.Public,
             });
             await postRepository.save(articlePost);
 
-            // Add the post to feeds
+            // Add the article to feeds
             await feedService.addPostToFeeds(articlePost as PublicPost);
 
-            // Verify the post was added to the global feed
+            // Verify the article was NOT added to the global feed
             const globalFeed = await getFeedDataForAccount(globalAccount);
-            expect(globalFeed).toHaveLength(1);
-            expect(globalFeed[0]).toMatchObject({
-                post_id: articlePost.id,
-                author_id: authorAccount.id,
-            });
+            expect(globalFeed).toHaveLength(0);
         });
 
-        it('should NOT add Note posts to the global feed user', async () => {
+        it('should NOT add notes to the global feed', async () => {
             const feedService = new FeedService(client, moderationService);
 
             // Create the global feed account
@@ -935,20 +970,27 @@ describe('FeedService', () => {
                 'ap-global-feed.ghost.io',
             );
 
-            // Create an author and a Note post
-            const authorAccount = await createInternalAccount('author.com');
-            const notePost = await createPost(authorAccount, {
+            // Create a top publisher
+            const topPublisherAccount = await createInternalAccount(
+                'top-publisher-author-notes.com',
+            );
+            TOP_PUBLISHERS.add(topPublisherAccount.id);
+
+            const notePost = await createPost(topPublisherAccount, {
                 type: PostType.Note,
                 audience: Audience.Public,
             });
             await postRepository.save(notePost);
 
-            // Add the post to feeds
+            // Add the note to feeds
             await feedService.addPostToFeeds(notePost as PublicPost);
 
-            // Verify the post was NOT added to the global feed
+            // Verify the note was NOT added to the global feed
             const globalFeed = await getFeedDataForAccount(globalAccount);
             expect(globalFeed).toHaveLength(0);
+
+            // Cleanup
+            TOP_PUBLISHERS.delete(topPublisherAccount.id);
         });
     });
 

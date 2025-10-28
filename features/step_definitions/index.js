@@ -10,11 +10,7 @@ import { resolve } from 'node:path';
 
 import jose from 'node-jose';
 
-import {
-    createGlobalFeedUser,
-    getClient,
-    reset as resetDatabase,
-} from '../support/db.js';
+import { getClient, reset as resetDatabase } from '../support/db.js';
 import { getWebhookSecret } from '../support/fixtures.js';
 import { getCurrentDirectory } from '../support/path.js';
 import { fetchActivityPub } from '../support/request.js';
@@ -154,7 +150,6 @@ async function setupSelfSite() {
 Before(async function reset() {
     await resetWiremock();
     await resetDatabase();
-    await createGlobalFeedUser();
     await await Promise.all([
         setupSelfSite(),
         fetchActivityPub('https://alice.test/.ghost/activitypub/v1/site'),

@@ -10,7 +10,7 @@ import {
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
-
+import { isTopPublisher } from './top-publishers';
 export type FeedType = 'Inbox' | 'Feed';
 
 export interface GetFeedDataOptions {
@@ -408,18 +408,20 @@ export class FeedService {
             targetUserIds.add(follower.user_id);
         }
 
-        // Add the post to the feeds
+        // Add post to the users feeds
         const userIds = await this.moderationService.filterUsersForPost(
             Array.from(targetUserIds).map(Number),
             post,
             repostedBy ?? undefined,
         );
 
-        // Ensure the post is added to the global feed if the author is a Ghost publisher -
-        // We are assuming that if the post is an Article, the author is a Ghost publisher
-        // https://linear.app/ghost/project/activitypub-global-feed-discovery-ed06ad7be6b7
+        // Add post to the global discovery feed if it's long-form and authored by a top publisher
         const globalFeedUserId = await this.getGlobalFeedUserId();
-        if (globalFeedUserId !== null && post.type === PostType.Article) {
+        if (
+            globalFeedUserId !== null &&
+            post.type === PostType.Article &&
+            isTopPublisher(post.author.id)
+        ) {
             userIds.push(globalFeedUserId);
         }
 
