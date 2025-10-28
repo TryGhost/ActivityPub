@@ -992,6 +992,49 @@ describe('FeedService', () => {
             // Cleanup
             TOP_PUBLISHERS.delete(topPublisherAccount.id);
         });
+
+        it('should NOT add reposts to the global feed', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create the global feed account
+            const globalAccount = await createInternalAccount(
+                'ap-global-feed.ghost.io',
+            );
+
+            // Create a top publisher
+            const topPublisherAccount = await createInternalAccount(
+                'top-publisher-reposter.com',
+            );
+            TOP_PUBLISHERS.add(topPublisherAccount.id);
+
+            // Create another account that authors an article
+            const articleAuthor =
+                await createInternalAccount('article-author.com');
+
+            // Create an article
+            const articlePost = await createPost(articleAuthor, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(articlePost);
+
+            // Top publisher reposts the article
+            articlePost.addRepost(topPublisherAccount);
+            await postRepository.save(articlePost);
+
+            // Add the repost to feeds
+            await feedService.addPostToFeeds(
+                articlePost as PublicPost,
+                topPublisherAccount.id,
+            );
+
+            // Verify the repost was NOT added to the global feed
+            const globalFeed = await getFeedDataForAccount(globalAccount);
+            expect(globalFeed).toHaveLength(0);
+
+            // Cleanup
+            TOP_PUBLISHERS.delete(topPublisherAccount.id);
+        });
     });
 
     describe('removePostFromFeeds', () => {

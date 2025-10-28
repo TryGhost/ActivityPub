@@ -415,11 +415,15 @@ export class FeedService {
             repostedBy ?? undefined,
         );
 
-        // Add post to the global discovery feed if it's long-form and authored by a top publisher
+        // Add post to the global discovery feed if:
+        // - it's long-form
+        // - not a repost
+        // - authored by a top publisher
         const globalFeedUserId = await this.getGlobalFeedUserId();
         if (
             globalFeedUserId !== null &&
             post.type === PostType.Article &&
+            repostedBy === null &&
             isTopPublisher(post.author.id)
         ) {
             userIds.push(globalFeedUserId);
