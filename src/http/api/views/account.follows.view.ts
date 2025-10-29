@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
     type Actor,
     CollectionPage,
@@ -312,50 +314,58 @@ export class AccountFollowsView {
         });
         const accounts: MinimalAccountDTO[] = [];
 
+        const followsHrefs = followsList.map((item) => item.href);
+        if (followsHrefs.length === 0) {
+            return [];
+        }
+
+        const accountsData = await this.db('accounts')
+            .select('accounts.*')
+            .select(
+                this.db.raw(`
+                    CASE
+                        WHEN follows.follower_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS followed_by_me
+                `),
+                this.db.raw(`
+                    CASE
+                        WHEN blocks.blocker_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS blocked_by_me
+                `),
+            )
+            .leftJoin('follows', function () {
+                this.on('follows.following_id', '=', 'accounts.id').andOnVal(
+                    'follows.follower_id',
+                    '=',
+                    siteDefaultAccount.id,
+                );
+            })
+            .leftJoin('blocks', function () {
+                this.on('blocks.blocked_id', '=', 'accounts.id').andOnVal(
+                    'blocks.blocker_id',
+                    '=',
+                    siteDefaultAccount.id,
+                );
+            })
+            .whereRaw(
+                `accounts.ap_id_hash IN (${followsHrefs.map(() => 'UNHEX(SHA2(?, 256))').join(', ')})`,
+                followsHrefs,
+            );
+
+        const accountsMap = new Map(
+            accountsData.map((acc) => [
+                Buffer.from(acc.ap_id_hash).toString('hex'),
+                acc,
+            ]),
+        );
+
         for await (const item of followsList) {
             try {
-                const followeeAccount = await this.db('accounts')
-                    .select('accounts.*')
-                    .select(
-                        this.db.raw(`
-                            CASE
-                                WHEN follows.follower_id IS NOT NULL THEN 1
-                                ELSE 0
-                            END AS followed_by_me
-                        `),
-                        this.db.raw(`
-                            CASE
-                                WHEN blocks.blocker_id IS NOT NULL THEN 1
-                                ELSE 0
-                            END AS blocked_by_me
-                        `),
-                    )
-                    .leftJoin('follows', function () {
-                        this.on(
-                            'follows.following_id',
-                            '=',
-                            'accounts.id',
-                        ).andOnVal(
-                            'follows.follower_id',
-                            '=',
-                            siteDefaultAccount.id,
-                        );
-                    })
-                    .leftJoin('blocks', function () {
-                        this.on(
-                            'blocks.blocked_id',
-                            '=',
-                            'accounts.id',
-                        ).andOnVal(
-                            'blocks.blocker_id',
-                            '=',
-                            siteDefaultAccount.id,
-                        );
-                    })
-                    .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
-                        item.href,
-                    ])
-                    .first();
+                const followeeAccount = accountsMap.get(
+                    createHash('sha256').update(item.href).digest('hex'),
+                );
 
                 if (followeeAccount) {
                     const domainBlockedByMe =
