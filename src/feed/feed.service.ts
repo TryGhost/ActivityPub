@@ -212,6 +212,121 @@ export class FeedService {
     }
 
     /**
+     * Get data for a discovery feed by topic
+     *
+     * @param topicId ID of the topic
+     * @param viewerAccountId ID of the account of the user viewing the discovery feed
+     * @param limit Maximum number of posts to return
+     * @param cursor Cursor to use for pagination
+     */
+    async getDiscoveryFeedData(
+        topicId: number,
+        viewerAccountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<GetFeedDataResult> {
+        const postType: PostType = PostType.Article;
+
+        const results = await this.db('discovery_feeds')
+            .select(
+                // Post fields
+                'posts.id as post_id',
+                'posts.type as post_type',
+                'posts.title as post_title',
+                'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
+                'posts.content as post_content',
+                'posts.url as post_url',
+                'posts.image_url as post_image_url',
+                'posts.published_at as post_published_at',
+                'posts.like_count as post_like_count',
+                this.db.raw(`
+                    CASE
+                        WHEN likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_user
+                `),
+                'posts.reply_count as post_reply_count',
+                'posts.reading_time_minutes as post_reading_time_minutes',
+                'posts.attachments as post_attachments',
+                'posts.repost_count as post_repost_count',
+                this.db.raw(`
+                    CASE
+                        WHEN reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_user
+                `),
+                'posts.ap_id as post_ap_id',
+                // Author fields
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.avatar_url as author_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_author.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_followed_by_user
+                `),
+                'discovery_feeds.published_at as feed_published_at',
+            )
+            .innerJoin('posts', 'posts.id', 'discovery_feeds.post_id')
+            .innerJoin(
+                'accounts as author_account',
+                'author_account.id',
+                'posts.author_id',
+            )
+            .leftJoin('likes', function () {
+                this.on('likes.post_id', 'posts.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    viewerAccountId.toString(),
+                );
+            })
+            .leftJoin('reposts', function () {
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    viewerAccountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_author', function () {
+                this.on(
+                    'follows_author.following_id',
+                    'author_account.id',
+                ).andOnVal(
+                    'follows_author.follower_id',
+                    '=',
+                    viewerAccountId.toString(),
+                );
+            })
+            .whereRaw('discovery_feeds.topic_id = ?', [topicId])
+            .where('discovery_feeds.post_type', postType)
+            .modify((query) => {
+                if (cursor) {
+                    query.where('discovery_feeds.published_at', '<', cursor);
+                }
+            })
+            .orderBy('discovery_feeds.published_at', 'desc')
+            .limit(limit + 1);
+
+        const hasMore = results.length > limit;
+        const paginatedResults = results.slice(0, limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+
+        return {
+            results: paginatedResults.map((item: BaseGetFeedDataResultRow) => {
+                return {
+                    ...item,
+                    post_content: sanitizeHtml(item.post_content ?? ''),
+                };
+            }),
+            nextCursor: hasMore ? lastResult.feed_published_at : null,
+        };
+    }
+
+    /**
      * Build database query to get feed data
      *
      * @param feedUserId ID of the user whose feed is requested
