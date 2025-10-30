@@ -99,6 +99,21 @@ export class FeedService {
     ) {}
 
     /**
+     * Get a topic by slug
+     *
+     * @param slug Topic slug
+     * @returns Topic ID or null if not found
+     */
+    async getTopicBySlug(slug: string): Promise<{ id: number } | null> {
+        const topic = await this.db('topics')
+            .where('slug', slug)
+            .select('id')
+            .first();
+
+        return topic ?? null;
+    }
+
+    /**
      * Get the ID of the global feed user
      */
     async getGlobalFeedUserId(): Promise<number | null> {
