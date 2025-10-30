@@ -133,6 +133,57 @@ export class FeedController {
         );
     }
 
+    @APIRoute('GET', 'feed/discover/:slug')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async getDiscoveryFeed(ctx: AppContext) {
+        const slug = ctx.req.param('slug');
+
+        // Check if topic exists
+        const topic = await this.feedService.getTopicBySlug(slug);
+
+        if (!topic) {
+            return new Response(null, {
+                status: 404,
+            });
+        }
+
+        const queryCursor = ctx.req.query('next');
+        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
+
+        const queryLimit = ctx.req.query('limit');
+        const limit = queryLimit
+            ? Number(queryLimit)
+            : DEFAULT_FEED_POSTS_LIMIT;
+
+        if (limit > MAX_FEED_POSTS_LIMIT) {
+            return new Response(null, {
+                status: 400,
+            });
+        }
+
+        const account = ctx.get('account');
+
+        const { results, nextCursor } =
+            await this.feedService.getDiscoveryFeedData(
+                topic.id,
+                account.id,
+                limit,
+                cursor,
+            );
+
+        const posts = this.mapFeedResultsToPostDTO(results, account);
+
+        return new Response(
+            JSON.stringify({
+                posts,
+                next: nextCursor,
+            }),
+            {
+                status: 200,
+            },
+        );
+    }
+
     private mapFeedResultsToPostDTO(
         results: GetFeedDataResultRow[],
         myAccount: Account,

@@ -54,6 +54,7 @@ export class FeedUpdateService {
 
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
             await this.feedService.addPostToFeeds(post);
+            await this.feedService.addPostToDiscoveryFeeds(post);
         }
     }
 

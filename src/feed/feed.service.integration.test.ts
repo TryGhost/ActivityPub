@@ -110,6 +110,9 @@ describe('FeedService', () => {
         // Clean up the database
         await client.raw('SET FOREIGN_KEY_CHECKS = 0');
         await client('feeds').truncate();
+        await client('discovery_feeds').truncate();
+        await client('account_topics').truncate();
+        await client('topics').truncate();
         await client('reposts').truncate();
         await client('posts').truncate();
         await client('follows').truncate();
@@ -519,6 +522,379 @@ describe('FeedService', () => {
             expect(repostByFollowed!.author_followed_by_user).toBe(0); // User does NOT follow the original author
             expect(repostByFollowed!.reposter_id).toBe(followedAccount.id);
             expect(repostByFollowed!.reposter_followed_by_user).toBe(1); // User DOES follow the reposter
+        });
+    });
+
+    describe('getDiscoveryFeedData', () => {
+        it('should render articles for discovery feeds, sorted by most recently published', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const viewerAccount = await createInternalAccount(
+                'discovery-viewer.com',
+            );
+
+            const [technology] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            const [business] = await client('topics').insert({
+                name: 'Business',
+                slug: 'business',
+            });
+
+            // Create 2 authors and 2 posts on the Technology topic
+            const technologyPublisher1 =
+                await createInternalAccount('author1.com');
+            const technologyPublisher2 =
+                await createInternalAccount('author2.com');
+
+            await client('account_topics').insert({
+                account_id: technologyPublisher1.id,
+                topic_id: technology,
+            });
+            await client('account_topics').insert({
+                account_id: technologyPublisher2.id,
+                topic_id: technology,
+            });
+
+            const technologyPost1 = await createPost(technologyPublisher1, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-01T10:00:00Z'),
+            });
+            await postRepository.save(technologyPost1);
+
+            const technologyPost2 = await createPost(technologyPublisher2, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-03T10:00:00Z'),
+            });
+            await postRepository.save(technologyPost2);
+
+            // Create 2 authors and 2 posts on the Business topic
+            const businessPublisher1 =
+                await createInternalAccount('author3.com');
+            const businessPublisher2 =
+                await createInternalAccount('author4.com');
+
+            await client('account_topics').insert({
+                account_id: businessPublisher1.id,
+                topic_id: business,
+            });
+            await client('account_topics').insert({
+                account_id: businessPublisher2.id,
+                topic_id: business,
+            });
+            const businessPost1 = await createPost(businessPublisher1, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-02T10:00:00Z'),
+            });
+            await postRepository.save(businessPost1);
+
+            const businessPost2 = await createPost(businessPublisher2, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: new Date('2024-01-04T10:00:00Z'),
+            });
+            await postRepository.save(businessPost2);
+
+            // Add posts to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(
+                technologyPost1 as PublicPost,
+            );
+            await feedService.addPostToDiscoveryFeeds(
+                technologyPost2 as PublicPost,
+            );
+            await feedService.addPostToDiscoveryFeeds(
+                businessPost1 as PublicPost,
+            );
+            await feedService.addPostToDiscoveryFeeds(
+                businessPost2 as PublicPost,
+            );
+
+            // Get discovery feed for Technology
+            const technologyFeed = await feedService.getDiscoveryFeedData(
+                technology,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            // Should be sorted by most recent first
+            expect(technologyFeed.results).toHaveLength(2);
+            expect(technologyFeed.results[0].post_id).toBe(technologyPost2.id); // Jan 3
+            expect(technologyFeed.results[1].post_id).toBe(technologyPost1.id); // Jan 1
+
+            // Get discovery feed for Business
+            const businessFeed = await feedService.getDiscoveryFeedData(
+                business,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            // Should be sorted by most recent first
+            expect(businessFeed.results).toHaveLength(2);
+            expect(businessFeed.results[0].post_id).toBe(businessPost2.id); // Jan 4
+            expect(businessFeed.results[1].post_id).toBe(businessPost1.id); // Jan 2
+        });
+
+        it('should sanitize posts before rendering in discovery feeds', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const viewerAccount = await createInternalAccount(
+                'sanitize-viewer.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            const author = await createInternalAccount('author.com');
+            await client('account_topics').insert({
+                account_id: author.id,
+                topic_id: topicId,
+            });
+
+            const post = await createPost(author, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Update post content with XSS attempt
+            await client('posts')
+                .update({
+                    content: 'Hello world!<script>alert("xss")</script>',
+                })
+                .where({ id: post.id });
+
+            await feedService.addPostToDiscoveryFeeds(post as PublicPost);
+
+            const feed = await feedService.getDiscoveryFeedData(
+                topicId,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            // Content should be sanitized
+            expect(feed.results).toHaveLength(1);
+            expect(feed.results[0].post_content).toBe(
+                'Hello world!<script></script>',
+            );
+        });
+
+        it('should correctly set post_liked_by_user flag', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const viewerAccount =
+                await createInternalAccount('likes-viewer.com');
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            const author1 = await createInternalAccount('likes-author1.com');
+            const author2 = await createInternalAccount('likes-author2.com');
+
+            await client('account_topics').insert([
+                { account_id: author1.id, topic_id: topicId },
+                { account_id: author2.id, topic_id: topicId },
+            ]);
+
+            const likedPost = await createPost(author1, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(likedPost);
+
+            const unlikedPost = await createPost(author2, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(unlikedPost);
+
+            // Viewer likes the first post
+            await client('likes').insert({
+                account_id: viewerAccount.id,
+                post_id: likedPost.id,
+            });
+
+            await feedService.addPostToDiscoveryFeeds(likedPost as PublicPost);
+            await feedService.addPostToDiscoveryFeeds(
+                unlikedPost as PublicPost,
+            );
+
+            const feed = await feedService.getDiscoveryFeedData(
+                topicId,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results).toHaveLength(2);
+
+            // Find liked post
+            const likedResult = feed.results.find(
+                (r) => r.post_id === likedPost.id,
+            );
+            expect(likedResult).toBeDefined();
+            expect(likedResult!.post_liked_by_user).toBe(1);
+
+            // Find unliked post
+            const unlikedResult = feed.results.find(
+                (r) => r.post_id === unlikedPost.id,
+            );
+            expect(unlikedResult).toBeDefined();
+            expect(unlikedResult!.post_liked_by_user).toBe(0);
+        });
+
+        it('should correctly set post_reposted_by_user flag', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const viewerAccount =
+                await createInternalAccount('reposts-viewer.com');
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            const author1 = await createInternalAccount('reposts-author1.com');
+            const author2 = await createInternalAccount('reposts-author2.com');
+
+            await client('account_topics').insert([
+                { account_id: author1.id, topic_id: topicId },
+                { account_id: author2.id, topic_id: topicId },
+            ]);
+
+            const repostedPost = await createPost(author1, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(repostedPost);
+
+            const notRepostedPost = await createPost(author2, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(notRepostedPost);
+
+            // Viewer reposts the first post
+            await client('reposts').insert({
+                account_id: viewerAccount.id,
+                post_id: repostedPost.id,
+            });
+
+            await feedService.addPostToDiscoveryFeeds(
+                repostedPost as PublicPost,
+            );
+            await feedService.addPostToDiscoveryFeeds(
+                notRepostedPost as PublicPost,
+            );
+
+            const feed = await feedService.getDiscoveryFeedData(
+                topicId,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results).toHaveLength(2);
+
+            // Find reposted post
+            const repostedResult = feed.results.find(
+                (r) => r.post_id === repostedPost.id,
+            );
+            expect(repostedResult).toBeDefined();
+            expect(repostedResult!.post_reposted_by_user).toBe(1);
+
+            // Find not reposted post
+            const notRepostedResult = feed.results.find(
+                (r) => r.post_id === notRepostedPost.id,
+            );
+            expect(notRepostedResult).toBeDefined();
+            expect(notRepostedResult!.post_reposted_by_user).toBe(0);
+        });
+
+        it('should correctly set author_followed_by_user flag', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const viewerAccount =
+                await createInternalAccount('follows-viewer.com');
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            const followedAuthor = await createInternalAccount(
+                'followed-author.com',
+            );
+            const unfollowedAuthor = await createInternalAccount(
+                'unfollowed-author.com',
+            );
+
+            await client('account_topics').insert([
+                { account_id: followedAuthor.id, topic_id: topicId },
+                { account_id: unfollowedAuthor.id, topic_id: topicId },
+            ]);
+
+            // Viewer follows the first author
+            await accountService.recordAccountFollow(
+                followedAuthor as unknown as AccountType,
+                viewerAccount as unknown as AccountType,
+            );
+
+            const followedAuthorPost = await createPost(followedAuthor, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(followedAuthorPost);
+
+            const unfollowedAuthorPost = await createPost(unfollowedAuthor, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(unfollowedAuthorPost);
+
+            // Add posts to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(
+                followedAuthorPost as PublicPost,
+            );
+            await feedService.addPostToDiscoveryFeeds(
+                unfollowedAuthorPost as PublicPost,
+            );
+
+            const feed = await feedService.getDiscoveryFeedData(
+                topicId,
+                viewerAccount.id,
+                10,
+                null,
+            );
+
+            expect(feed.results).toHaveLength(2);
+
+            // Find post from followed author
+            const followedResult = feed.results.find(
+                (r) => r.post_id === followedAuthorPost.id,
+            );
+            expect(followedResult).toBeDefined();
+            expect(followedResult!.author_id).toBe(followedAuthor.id);
+            expect(followedResult!.author_followed_by_user).toBe(1);
+
+            // Find post from unfollowed author
+            const unfollowedResult = feed.results.find(
+                (r) => r.post_id === unfollowedAuthorPost.id,
+            );
+            expect(unfollowedResult).toBeDefined();
+            expect(unfollowedResult!.author_id).toBe(unfollowedAuthor.id);
+            expect(unfollowedResult!.author_followed_by_user).toBe(0);
         });
     });
 
@@ -1034,6 +1410,188 @@ describe('FeedService', () => {
 
             // Cleanup
             TOP_PUBLISHERS.delete(topPublisherAccount.id);
+        });
+    });
+
+    describe('addPostToDiscoveryFeeds', () => {
+        it('should add articles to discovery feeds', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'discovery-author.com',
+            );
+
+            // Create 3 topics
+            const [technologyTopicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            const [programmingTopicId] = await client('topics').insert({
+                name: 'Programming',
+                slug: 'programming',
+            });
+
+            await client('topics').insert({
+                name: 'Business',
+                slug: 'business',
+            });
+
+            // Associate author with first 2 topics: Technology and Programming
+            await client('account_topics').insert([
+                { account_id: authorAccount.id, topic_id: technologyTopicId },
+                { account_id: authorAccount.id, topic_id: programmingTopicId },
+            ]);
+
+            // Create an article
+            const article = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(article);
+
+            // Add article to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(article as PublicPost);
+
+            // Article should be on Technology and Programming topics, but not on Business
+            const discoveryFeeds = await client('discovery_feeds')
+                .where('post_id', article.id)
+                .orderBy('topic_id');
+
+            expect(discoveryFeeds).toHaveLength(2); // Not 3
+            expect(discoveryFeeds[0]).toMatchObject({
+                post_id: article.id,
+                topic_id: technologyTopicId,
+                author_id: authorAccount.id,
+                post_type: PostType.Article,
+            });
+            expect(discoveryFeeds[1]).toMatchObject({
+                post_id: article.id,
+                topic_id: programmingTopicId,
+                author_id: authorAccount.id,
+                post_type: PostType.Article,
+            });
+        });
+
+        it('should NOT add notes to discovery feeds', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'discovery-note-author.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            await client('account_topics').insert({
+                account_id: authorAccount.id,
+                topic_id: topicId,
+            });
+
+            // Create a note
+            const note = await createPost(authorAccount, {
+                type: PostType.Note,
+                audience: Audience.Public,
+            });
+            await postRepository.save(note);
+
+            // Add note to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(note as PublicPost);
+
+            // Verify no entries were created
+            const discoveryFeeds = await client('discovery_feeds').where(
+                'post_id',
+                note.id,
+            );
+
+            expect(discoveryFeeds).toHaveLength(0);
+        });
+
+        it('should NOT add replies to discovery feeds', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            const authorAccount = await createInternalAccount(
+                'discovery-reply-author.com',
+            );
+            const otherAccount = await createInternalAccount(
+                'discovery-other.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            await client('account_topics').insert({
+                account_id: authorAccount.id,
+                topic_id: topicId,
+            });
+
+            // Parent post
+            const originalPost = await createPost(otherAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(originalPost);
+
+            // Reply post
+            const reply = await createPost(authorAccount, {
+                type: PostType.Note,
+                audience: Audience.Public,
+                inReplyTo: originalPost,
+            });
+            await postRepository.save(reply);
+
+            // Add reply to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(reply as PublicPost);
+
+            // Verify no entries were created
+            const discoveryFeeds = await client('discovery_feeds').where(
+                'post_id',
+                reply.id,
+            );
+
+            expect(discoveryFeeds).toHaveLength(0);
+        });
+
+        it('should use post published_at timestamp for discovery feed entries', async () => {
+            const feedService = new FeedService(client, moderationService);
+            const publishDate = new Date('2024-06-15T10:00:00Z');
+
+            const authorAccount = await createInternalAccount(
+                'discovery-timestamp.com',
+            );
+
+            const [topicId] = await client('topics').insert({
+                name: 'Technology',
+                slug: 'technology',
+            });
+
+            await client('account_topics').insert({
+                account_id: authorAccount.id,
+                topic_id: topicId,
+            });
+
+            // Create an article with specific publish date
+            const article = await createPost(authorAccount, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                publishedAt: publishDate,
+            });
+            await postRepository.save(article);
+
+            // Add to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(article as PublicPost);
+
+            // Verify the published_at timestamp matches
+            const discoveryFeed = await client('discovery_feeds')
+                .where('post_id', article.id)
+                .first();
+
+            expect(discoveryFeed).toBeTruthy();
+            expect(discoveryFeed.published_at).toEqual(publishDate);
         });
     });
 
