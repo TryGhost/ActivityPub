@@ -1,10 +1,7 @@
 import { IncomingMessage } from 'node:http';
 
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
-import {
-    BatchSpanProcessor,
-    SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import * as Sentry from '@sentry/node';
 
 import { beforeSend } from '@/sentry';
@@ -60,15 +57,6 @@ export async function setupInstrumentation() {
                 }),
             ],
         });
-
-        if (process.env.K_SERVICE) {
-            const { TraceExporter } = await import(
-                '@google-cloud/opentelemetry-cloud-trace-exporter'
-            );
-            sentryClient?.traceProvider?.addSpanProcessor(
-                new BatchSpanProcessor(new TraceExporter({})),
-            );
-        }
 
         if (process.env.NODE_ENV === 'development') {
             const { OTLPTraceExporter } = await import(
