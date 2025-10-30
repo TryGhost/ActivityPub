@@ -30,6 +30,7 @@ describe('FeedUpdateService', () => {
         events = new EventEmitter();
         feedService = {
             addPostToFeeds: vi.fn(),
+            addPostToDiscoveryFeeds: vi.fn(),
             removePostFromFeeds: vi.fn(),
             removeBlockedAccountPostsFromFeed: vi.fn(),
             removeBlockedDomainPostsFromFeed: vi.fn(),
@@ -63,7 +64,7 @@ describe('FeedUpdateService', () => {
     });
 
     describe('handling a newly created post', () => {
-        it('should add public post to feeds when created', () => {
+        it('should add public post to user and discovery feeds when created', async () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Public,
@@ -71,10 +72,15 @@ describe('FeedUpdateService', () => {
 
             events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
 
+            await vi.runAllTimersAsync();
+
             expect(feedService.addPostToFeeds).toHaveBeenCalledWith(post);
+            expect(feedService.addPostToDiscoveryFeeds).toHaveBeenCalledWith(
+                post,
+            );
         });
 
-        it('should add followers-only post to feeds when created', () => {
+        it('should add followers-only post to user and discovery feeds when created', async () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.FollowersOnly,
@@ -82,10 +88,15 @@ describe('FeedUpdateService', () => {
 
             events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
 
+            await vi.runAllTimersAsync();
+
             expect(feedService.addPostToFeeds).toHaveBeenCalledWith(post);
+            expect(feedService.addPostToDiscoveryFeeds).toHaveBeenCalledWith(
+                post,
+            );
         });
 
-        it('should not add direct post to feeds when created', () => {
+        it('should not add direct post to user nor discovery feeds when created', () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Direct,
@@ -94,13 +105,14 @@ describe('FeedUpdateService', () => {
             events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
 
             expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
+            expect(feedService.addPostToDiscoveryFeeds).not.toHaveBeenCalled();
         });
     });
 
     describe('handling a reposted post', () => {
         const repostedById = 789;
 
-        it('should add public reposted post to feeds', () => {
+        it('should add public reposted post to user feeds', () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Public,
@@ -117,7 +129,7 @@ describe('FeedUpdateService', () => {
             );
         });
 
-        it('should add followers-only reposted post to feeds', () => {
+        it('should add followers-only reposted post to user feeds', () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.FollowersOnly,
@@ -134,7 +146,7 @@ describe('FeedUpdateService', () => {
             );
         });
 
-        it('should not add direct reposted post to feeds', () => {
+        it('should NOT add direct reposted post to user feeds', () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Direct,
@@ -146,6 +158,20 @@ describe('FeedUpdateService', () => {
             );
 
             expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
+        });
+
+        it('should NOT add reposted posts to discovery feeds', () => {
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+
+            events.emit(
+                PostRepostedEvent.getName(),
+                new PostRepostedEvent(post, repostedById),
+            );
+
+            expect(feedService.addPostToDiscoveryFeeds).not.toHaveBeenCalled();
         });
     });
 

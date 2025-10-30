@@ -341,6 +341,57 @@ export class FeedService {
     }
 
     /**
+     * Add a post to discovery feeds based on the author's topics
+     *
+     * @param post Post to add to discovery feeds
+     */
+    async addPostToDiscoveryFeeds(post: PublicPost | FollowersOnlyPost) {
+        // For now, discovery feed only render Articles
+        if (post.type !== PostType.Article) {
+            return [];
+        }
+
+        if (post.inReplyTo) {
+            return [];
+        }
+
+        const topics = await this.db('account_topics')
+            .where('account_id', post.author.id)
+            .select('topic_id');
+
+        if (topics.length === 0) {
+            return [];
+        }
+
+        const discoveryFeedEntries = topics.map((t) => ({
+            post_type: post.type,
+            published_at: post.publishedAt,
+            topic_id: t.topic_id,
+            post_id: post.id,
+            author_id: post.author.id,
+        }));
+
+        const discoveryFeedEntriesChunks = chunk(discoveryFeedEntries, 1000);
+
+        const transaction = await this.db.transaction();
+
+        try {
+            for (const entries of discoveryFeedEntriesChunks) {
+                await transaction('discovery_feeds')
+                    .insert(entries)
+                    .onConflict()
+                    .ignore();
+            }
+
+            await transaction.commit();
+        } catch (err) {
+            await transaction.rollback();
+
+            throw err;
+        }
+    }
+
+    /**
      * Add a post to the feeds of the users that should see it
      *
      * @param post Post to add to feeds
