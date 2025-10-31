@@ -1829,10 +1829,10 @@
   dependencies:
     undici-types "~7.14.0"
 
-"@types/node@20.19.19":
-  version "20.19.19"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.19.19.tgz#18c8982becd5728f92e5f1939f2f3dc85604abcd"
-  integrity sha512-pb1Uqj5WJP7wrcbLU7Ru4QtA0+3kAXrkutGiD26wUKzSMgNNaPARTUDQmElUXp64kh3cWdou3Q0C7qwwxqSFmg==
+"@types/node@20.19.24":
+  version "20.19.24"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.19.24.tgz#6bc35bc96cda1a251000b706c76380b5c843f30b"
+  integrity sha512-FE5u0ezmi6y9OZEzlJfg37mqqf6ZDSF2V/NLjUyGrR9uTZ7Sb9F7bLNZ03S4XVUNRWGA7Ck4c1kK+YnuWjl+DA==
   dependencies:
     undici-types "~6.21.0"
 
