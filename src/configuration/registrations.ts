@@ -107,6 +107,16 @@ export function registerDependencies(
                 logging.info('Using Redis KvStore for Fedify');
                 const host = process.env.REDIS_HOST || 'localhost';
                 const port = Number(process.env.REDIS_PORT) || 6379;
+                const caFromEnv = process.env.REDIS_TLS_CERT_B64
+                    ? Buffer.from(
+                        process.env.REDIS_TLS_CERT_B64,
+                        'base64',
+                    ).toString('utf8')
+                    : undefined;
+
+                logging.info(
+                    `Connecting to Redis at ${host}:${port} with TLS: ${caFromEnv}`,
+                );
 
                 const redis = new Redis.Cluster(
                     [
@@ -127,11 +137,7 @@ export function registerDependencies(
                         redisOptions: {
                             maxRetriesPerRequest: 3,
                             enableReadyCheck: true,
-                            tls: process.env.REDIS_TLS_CERT
-                                ? {
-                                      ca: process.env.REDIS_TLS_CERT,
-                                  }
-                                : undefined,
+                            tls: caFromEnv ? { ca: caFromEnv } : undefined,
                         },
                     },
                 );
@@ -179,7 +185,7 @@ export function registerDependencies(
                     getFullTopic(
                         pubSubClient.projectId,
                         process.env.MQ_PUBSUB_GHOST_TOPIC_NAME ||
-                            'unknown_pubsub_ghost_topic_name',
+                        'unknown_pubsub_ghost_topic_name',
                     ),
                     eventSerializer,
                     logging,
@@ -209,16 +215,16 @@ export function registerDependencies(
                     getFullTopic(
                         pubSubClient.projectId,
                         process.env.MQ_PUBSUB_TOPIC_NAME ||
-                            'unknown_pubsub_topic_name',
+                        'unknown_pubsub_topic_name',
                     ),
                     process.env.MQ_PUBSUB_USE_RETRY_TOPIC === 'true',
                     getFullTopic(
                         pubSubClient.projectId,
                         process.env.MQ_PUBSUB_RETRY_TOPIC_NAME ||
-                            'unknown_pubsub_retry_topic_name',
+                        'unknown_pubsub_retry_topic_name',
                     ),
                     Number(process.env.MQ_PUBSUB_MAX_DELIVERY_ATTEMPTS) ||
-                        Number.POSITIVE_INFINITY,
+                    Number.POSITIVE_INFINITY,
                 );
             },
         ).singleton(),
