@@ -66,6 +66,8 @@ import { BlocksView } from '@/http/api/views/blocks.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
+import { AuthenticationMiddleware } from '@/http/middleware/authentication.middleware';
+import { SiteAccountView } from '@/http/middleware/site-account.view';
 import { BlueskyService } from '@/integration/bluesky.service';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
@@ -347,6 +349,11 @@ export function registerDependencies(
     );
     container.register('blocksView', asClass(BlocksView).singleton());
     container.register('replyChainView', asClass(ReplyChainView).singleton());
+    container.register('siteAccountView', asClass(SiteAccountView).singleton());
+    container.register(
+        'authenticationMiddleware',
+        asClass(AuthenticationMiddleware).singleton(),
+    );
 
     container.register('blockController', asClass(BlockController).singleton());
     container.register(
