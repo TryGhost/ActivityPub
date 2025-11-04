@@ -316,8 +316,30 @@ export class FeedService {
                     viewerAccountId.toString(),
                 );
             })
+            .leftJoin('blocks', function () {
+                this.on(
+                    'blocks.blocked_id',
+                    'discovery_feeds.author_id',
+                ).andOnVal(
+                    'blocks.blocker_id',
+                    '=',
+                    viewerAccountId.toString(),
+                );
+            })
+            .leftJoin('domain_blocks', function () {
+                this.on(
+                    'domain_blocks.domain_hash',
+                    'author_account.domain_hash',
+                ).andOnVal(
+                    'domain_blocks.blocker_id',
+                    '=',
+                    viewerAccountId.toString(),
+                );
+            })
             .whereRaw('discovery_feeds.topic_id = ?', [topicId])
             .where('discovery_feeds.post_type', postType)
+            .whereNull('blocks.id')
+            .whereNull('domain_blocks.id')
             .modify((query) => {
                 if (cursor) {
                     query.where('discovery_feeds.published_at', '<', cursor);
