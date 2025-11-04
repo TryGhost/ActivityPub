@@ -1823,14 +1823,7 @@ describe('FeedService', () => {
             );
 
             // Remove the post from discovery feeds
-            const removedTopicIds =
-                await feedService.removePostFromDiscoveryFeeds(post);
-
-            // Verify the method returned the correct topic IDs
-            expect(removedTopicIds.length).toBe(2);
-            expect(removedTopicIds).toEqual(
-                expect.arrayContaining([topicIds[0][0], topicIds[1][0]]),
-            );
+            await feedService.removePostFromDiscoveryFeeds(post);
 
             // Verify the post is no longer in discovery feeds
             const discoveryFeedsAfterRemoval = await client('discovery_feeds')
@@ -1854,11 +1847,14 @@ describe('FeedService', () => {
             await postRepository.save(post);
 
             // Remove the post from discovery feeds (should not error)
-            const removedTopicIds =
-                await feedService.removePostFromDiscoveryFeeds(post);
+            await feedService.removePostFromDiscoveryFeeds(post);
 
-            // Verify the method returned an empty array
-            expect(removedTopicIds.length).toBe(0);
+            // Verify the post is not in any discovery feeds
+            const discoveryFeeds = await client('discovery_feeds')
+                .where('post_id', post.id)
+                .select('topic_id');
+
+            expect(discoveryFeeds.length).toBe(0);
         });
     });
 
