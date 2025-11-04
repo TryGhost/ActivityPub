@@ -32,6 +32,7 @@ describe('FeedUpdateService', () => {
             addPostToFeeds: vi.fn(),
             addPostToDiscoveryFeeds: vi.fn(),
             removePostFromFeeds: vi.fn(),
+            removePostFromDiscoveryFeeds: vi.fn(),
             removeBlockedAccountPostsFromFeed: vi.fn(),
             removeBlockedDomainPostsFromFeed: vi.fn(),
             removeUnfollowedAccountPostsFromFeed: vi.fn(),
@@ -178,7 +179,7 @@ describe('FeedUpdateService', () => {
     describe('handling a deleted post', () => {
         const deletedById = 789;
 
-        it('should remove post from feeds when deleted', () => {
+        it('should remove post from feeds when deleted', async () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Public,
@@ -189,7 +190,12 @@ describe('FeedUpdateService', () => {
                 new PostDeletedEvent(post, deletedById),
             );
 
+            await vi.runAllTimersAsync();
+
             expect(feedService.removePostFromFeeds).toHaveBeenCalledWith(post);
+            expect(
+                feedService.removePostFromDiscoveryFeeds,
+            ).toHaveBeenCalledWith(post);
         });
     });
 

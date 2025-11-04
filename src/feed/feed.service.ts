@@ -680,6 +680,15 @@ export class FeedService {
         return updatedFeedUserIds;
     }
 
+    /**
+     * Remove a post from discovery feeds
+     *
+     * @param post Post to remove from discovery feeds
+     */
+    async removePostFromDiscoveryFeeds(post: Post) {
+        await this.db('discovery_feeds').where('post_id', post.id).delete();
+    }
+
     async removeBlockedAccountPostsFromFeed(
         feedAccountId: number,
         blockedAccountId: number,
