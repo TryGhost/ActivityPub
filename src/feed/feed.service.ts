@@ -680,6 +680,26 @@ export class FeedService {
         return updatedFeedUserIds;
     }
 
+    /**
+     * Remove a post from discovery feeds
+     *
+     * @param post Post to remove from discovery feeds
+     * @returns IDs of the topics that had their discovery feed updated
+     */
+    async removePostFromDiscoveryFeeds(post: Post) {
+        // Work out which topics have the post in their discovery feeds
+        const updatedTopicIds = (
+            await this.db('discovery_feeds')
+                .where('post_id', post.id)
+                .select('topic_id')
+        ).map((topic: { topic_id: number }) => topic.topic_id);
+
+        // Remove the post from the discovery feeds
+        await this.db('discovery_feeds').where('post_id', post.id).delete();
+
+        return updatedTopicIds;
+    }
+
     async removeBlockedAccountPostsFromFeed(
         feedAccountId: number,
         blockedAccountId: number,

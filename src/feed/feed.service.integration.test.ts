@@ -1781,6 +1781,87 @@ describe('FeedService', () => {
         });
     });
 
+    describe('removePostFromDiscoveryFeeds', () => {
+        it('should remove a post from discovery feeds', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create an internal account
+            const account = await createInternalAccount('test-discovery.com');
+
+            // Create topics and associate them with the account
+            const topicIds = await Promise.all([
+                client('topics').insert({
+                    name: 'Technology',
+                    slug: 'technology',
+                }),
+                client('topics').insert({ name: 'Science', slug: 'science' }),
+            ]);
+
+            await client('account_topics').insert([
+                { account_id: account.id, topic_id: topicIds[0][0] },
+                { account_id: account.id, topic_id: topicIds[1][0] },
+            ]);
+
+            // Create and save a post
+            const post = await createPost(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Add the post to discovery feeds
+            await feedService.addPostToDiscoveryFeeds(post as PublicPost);
+
+            // Verify the post is in discovery feeds for both topics
+            const discoveryFeedsBeforeRemoval = await client('discovery_feeds')
+                .where('post_id', post.id)
+                .select('topic_id');
+
+            expect(discoveryFeedsBeforeRemoval.length).toBe(2);
+            expect(discoveryFeedsBeforeRemoval.map((f) => f.topic_id)).toEqual(
+                expect.arrayContaining([topicIds[0][0], topicIds[1][0]]),
+            );
+
+            // Remove the post from discovery feeds
+            const removedTopicIds =
+                await feedService.removePostFromDiscoveryFeeds(post);
+
+            // Verify the method returned the correct topic IDs
+            expect(removedTopicIds.length).toBe(2);
+            expect(removedTopicIds).toEqual(
+                expect.arrayContaining([topicIds[0][0], topicIds[1][0]]),
+            );
+
+            // Verify the post is no longer in discovery feeds
+            const discoveryFeedsAfterRemoval = await client('discovery_feeds')
+                .where('post_id', post.id)
+                .select('topic_id');
+
+            expect(discoveryFeedsAfterRemoval.length).toBe(0);
+        });
+
+        it('should return empty array when removing a post that is not in any discovery feeds', async () => {
+            const feedService = new FeedService(client, moderationService);
+
+            // Create an internal account without topics
+            const account = await createInternalAccount('test-no-topics.com');
+
+            // Create and save a post
+            const post = await createPost(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+            await postRepository.save(post);
+
+            // Remove the post from discovery feeds (should not error)
+            const removedTopicIds =
+                await feedService.removePostFromDiscoveryFeeds(post);
+
+            // Verify the method returned an empty array
+            expect(removedTopicIds.length).toBe(0);
+        });
+    });
+
     describe('removeBlockedAccountPostsFromFeed', () => {
         it('should remove posts from feeds when an account is blocked', async () => {
             const feedService = new FeedService(client, moderationService);

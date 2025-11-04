@@ -71,6 +71,7 @@ export class FeedUpdateService {
         const post = event.getPost();
 
         await this.feedService.removePostFromFeeds(post);
+        await this.feedService.removePostFromDiscoveryFeeds(post);
     }
 
     private async handlePostDerepostedEvent(event: PostDerepostedEvent) {
