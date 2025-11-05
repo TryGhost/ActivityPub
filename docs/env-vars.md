@@ -120,4 +120,7 @@ If using local storage:
 - `SENTRY_DSN` - Sentry Data Source Name for error tracking
 - `OTEL_DEBUG_LOGGING` - Set to `true` to enable OpenTelemetry debug logging
   - This is only used in `production` environments
-- `ENABLE_CPU_PROFILER` - Set to `true` to enable Google Cloud CPU profiling
+- `ENABLE_GCP_CPU_PROFILER` - Set to `true` to enable Google Cloud CPU profiling
+- `ENABLE_NODE_CPU_PROFILE_FOR` - Set to `5m` (for example) to collect a CPU profile for the specified duration
+- `NODE_CPU_PROFILE_BUCKET_NAME` - Google Cloud Storage bucket name to upload CPU profiles to
+  - Required if `ENABLE_NODE_CPU_PROFILE_FOR` is set

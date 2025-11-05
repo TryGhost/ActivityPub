@@ -109,8 +109,6 @@ import type { PostInteractionCountsService } from '@/post/post-interaction-count
 import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import type { Site, SiteService } from '@/site/site.service';
 
-await setupInstrumentation();
-
 function toLogLevel(level: unknown): LogLevel | null {
     if (typeof level !== 'string') {
         return null;
@@ -176,6 +174,8 @@ export type ContextData = {
 registerDependencies(container, { knex });
 
 const globalLogging = container.resolve<Logger>('logging');
+
+await setupInstrumentation(globalLogging);
 
 // Init queue
 const globalQueue = container.resolve<GCloudPubSubPushMessageQueue>('queue');
