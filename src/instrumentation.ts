@@ -1,12 +1,15 @@
 import { IncomingMessage } from 'node:http';
+import { Session } from 'node:inspector';
 
+import type { Logger } from '@logtape/logtape';
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import * as Sentry from '@sentry/node';
 
 import { beforeSend } from '@/sentry';
+import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 
-export async function setupInstrumentation() {
+export async function setupInstrumentation(logger: Logger) {
     if (process.env.NODE_ENV === 'production') {
         if (process.env.OTEL_DEBUG_LOGGING) {
             diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
@@ -70,17 +73,154 @@ export async function setupInstrumentation() {
                 ),
             );
         }
-
-        if (process.env.ENABLE_CPU_PROFILER === 'true') {
-            const cpuProfiler = await import('@google-cloud/profiler');
-            cpuProfiler.start({
-                serviceContext: {
-                    service: process.env.K_SERVICE || 'activitypub',
-                    version: process.env.K_REVISION || 'unknown',
-                },
-            });
-        }
     }
+
+    if (process.env.ENABLE_GCP_CPU_PROFILER === 'true') {
+        (async () => {
+            try {
+                const cpuProfiler = await import('@google-cloud/profiler');
+                await cpuProfiler.start({
+                    serviceContext: {
+                        service: process.env.K_SERVICE || 'activitypub',
+                        version: process.env.K_REVISION || 'unknown',
+                    },
+                });
+            } catch (error) {
+                logger.error(`Failed to start CPU profiler: ${error}`);
+            }
+        })();
+    }
+
+    if (
+        process.env.ENABLE_NODE_CPU_PROFILE_FOR &&
+        process.env.NODE_CPU_PROFILE_BUCKET_NAME
+    ) {
+        startNodeCpuProfiling(process.env.ENABLE_NODE_CPU_PROFILE_FOR, logger);
+    }
+}
+
+function parseDuration(duration: string): number | null {
+    const match = duration.match(/^(\d+)(s|m|h)$/);
+
+    if (!match) {
+        return null;
+    }
+
+    const value = Number.parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+        case 's':
+            return value * 1000;
+        case 'm':
+            return value * 60 * 1000;
+        case 'h':
+            return value * 60 * 60 * 1000;
+        default:
+            return null;
+    }
+}
+
+function startNodeCpuProfiling(durationStr: string, logger: Logger): void {
+    const durationMs = parseDuration(durationStr);
+
+    if (durationMs === null) {
+        logger.error(
+            `Invalid CPU_PROFILE_FOR format: ${durationStr}. Expected format: 1m, 5m, 30s, etc.`,
+        );
+        return;
+    }
+
+    logger.info(`CPU profiling enabled for ${durationMs}ms`);
+
+    try {
+        const session = new Session();
+        session.connect();
+
+        logger.info('Starting CPU profiling');
+
+        session.post('Profiler.enable', (err) => {
+            if (err) {
+                logger.error('Failed to enable profiler - {error}', {
+                    error: err,
+                });
+                session.disconnect();
+                return;
+            }
+
+            session.post('Profiler.start', (startErr) => {
+                if (startErr) {
+                    logger.error('Failed to start profiler - {error}', {
+                        error: startErr,
+                    });
+                    session.disconnect();
+                    return;
+                }
+
+                setTimeout(() => {
+                    stopAndUploadProfile(session, logger);
+                }, durationMs);
+            });
+        });
+    } catch (error) {
+        logger.error('Failed to initialize CPU profiling - {error}', { error });
+    }
+}
+
+function stopAndUploadProfile(session: Session, logger: Logger): void {
+    session.post('Profiler.stop', (err, result) => {
+        if (err) {
+            logger.error('Failed to stop profiler - {error}', { error: err });
+            session.disconnect();
+            return;
+        }
+
+        const { profile } = result;
+
+        logger.info('Stopping CPU profiling');
+        (async () => {
+            try {
+                const timestamp = new Date()
+                    .toISOString()
+                    .replace(/[:.]/g, '-');
+                const filename = `cpu-profile-${timestamp}.cpuprofile`;
+
+                const profileData = JSON.stringify(profile);
+
+                const bucketName = process.env.NODE_CPU_PROFILE_BUCKET_NAME;
+
+                const storageAdapter = new GCPStorageAdapter(
+                    bucketName || '',
+                    logger,
+                    process.env.GCP_STORAGE_EMULATOR_HOST || '',
+                    process.env.GCS_LOCAL_STORAGE_HOSTING_URL || '',
+                );
+
+                const blob = new Blob([profileData], {
+                    type: 'application/json',
+                });
+                const file = new File([blob], filename, {
+                    type: 'application/json',
+                });
+
+                const result = await storageAdapter.save(file, filename);
+
+                if (result[0]) {
+                    logger.error('Failed to upload CPU profile - {error}', {
+                        error: result[0],
+                    });
+                    return;
+                }
+                logger.info(`CPU profile uploaded to: ${result[1]}`);
+            } catch (error) {
+                logger.error('Failed to process CPU profile - {error}', {
+                    error,
+                });
+            } finally {
+                session.disconnect();
+            }
+        })();
+    });
 }
 
 export function spanWrapper<TArgs extends unknown[], TReturn>(
