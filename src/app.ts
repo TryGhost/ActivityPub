@@ -39,7 +39,6 @@ import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
 
 import type { Account } from '@/account/account.entity';
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
 import type { CreateHandler } from '@/activity-handlers/create.handler';
 import type { DeleteHandler } from '@/activity-handlers/delete.handler';
@@ -91,7 +90,9 @@ import { SearchController } from '@/http/api/search.controller';
 import type { SiteController } from '@/http/api/site.controller';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
+import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
+import { createHostDataContextMiddleware } from '@/http/middleware/host-data-context';
 import {
     createRoleMiddleware,
     GhostRole,
@@ -107,7 +108,7 @@ import {
 import type { NotificationEventService } from '@/notification/notification-event.service';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
-import type { Site, SiteService } from '@/site/site.service';
+import type { Site } from '@/site/site.service';
 
 await setupInstrumentation();
 
@@ -728,61 +729,11 @@ app.delete(
     }),
 );
 
-/**
- * Essentially Auth middleware and also handles the multitenancy
- */
-app.use(async (ctx, next) => {
-    const request = ctx.req;
-    const host = request.header('host');
-    if (!host) {
-        ctx.get('logger').info('No Host header');
-        return new Response('No Host header', {
-            status: 401,
-        });
-    }
-    const siteService = container.resolve<SiteService>('siteService');
-    const site = await siteService.getSiteByHost(host);
-
-    if (!site) {
-        ctx.get('logger').info('No site found for {host}', { host });
-        return new Response(
-            JSON.stringify({
-                error: 'Forbidden',
-                code: 'SITE_MISSING',
-            }),
-            {
-                status: 403,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            },
-        );
-    }
-
-    ctx.set('site', site);
-
-    await next();
-});
-
-app.use(async (ctx, next) => {
-    const site = ctx.get('site');
-
-    try {
-        const accountRepository =
-            container.resolve<KnexAccountRepository>('accountRepository');
-        const account = await accountRepository.getBySite(ctx.get('site'));
-        ctx.set('account', account);
-
-        await next();
-    } catch (_err) {
-        ctx.get('logger').error('No account found for {host}', {
-            host: site.host,
-        });
-        return new Response('No account found', {
-            status: 401,
-        });
-    }
-});
+app.use(
+    createHostDataContextMiddleware(
+        container.resolve<HostDataContextLoader>('hostDataContextLoader'),
+    ),
+);
 
 /** Custom API routes */
 

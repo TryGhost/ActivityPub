@@ -101,6 +101,10 @@ export class KnexAccountRepository {
         return account;
     }
 
+    async createFromRow(row: AccountRow): Promise<Account> {
+        return this.mapRowToAccountEntity(row);
+    }
+
     async save(account: Account): Promise<void> {
         const events = AccountEntity.pullEvents(account);
         await this.db.transaction(async (transaction) => {
