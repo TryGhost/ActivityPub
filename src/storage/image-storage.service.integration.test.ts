@@ -83,8 +83,8 @@ describe('Image Storage Service - GCP Storage Integration', () => {
 
         it('should reject unsupported file types', async () => {
             const buffer = readFileSync(TEST_IMAGE_PATH);
-            const file = new NodeFile([buffer], 'test.gif', {
-                type: 'image/gif',
+            const file = new NodeFile([buffer], 'test.bmp', {
+                type: 'image/bmp',
             });
 
             const result = await service.save(

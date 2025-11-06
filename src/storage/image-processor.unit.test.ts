@@ -29,7 +29,8 @@ async function createMockFile(
         | 'png'
         | 'webp'
         | 'heic'
-        | 'heif';
+        | 'heif'
+        | 'gif';
 
     // For HEIC/HEIF, we'll create a JPEG buffer since Sharp might not support HEIC in tests
     const formatForSharp =
@@ -43,17 +44,57 @@ async function createMockFile(
             background: { r: 255, g: 0, b: 0 },
         },
     })
-        .toFormat(formatForSharp as 'jpeg' | 'png' | 'webp')
+        .toFormat(formatForSharp as 'jpeg' | 'png' | 'webp' | 'gif')
         .toBuffer();
 
-    return new File([buffer], fileName, { type });
+    return new File([new Uint8Array(buffer)], fileName, { type });
 }
 
 describe('ImageProcessor', () => {
     describe('.validate()', () => {
-        it('passes for a valid image', async () => {
+        it('accepts JPEGs', async () => {
             const processor = new ImageProcessor(mockLogger);
             const file = await createMockFile('image/jpeg', 'image.jpg');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts PNGs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/png', 'image.png');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts WebPs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/webp', 'image.webp');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts HEICs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/heic', 'image.heic');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts HEIFs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/heif', 'image.heif');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts GIFs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/gif', 'image.gif');
             const result = processor.validate(file);
 
             expect(isError(result)).toBe(false);
@@ -76,11 +117,14 @@ describe('ImageProcessor', () => {
 
         it('returns an error if the image format is not supported', async () => {
             const processor = new ImageProcessor(mockLogger);
-            const file = await createMockFile('image/gif', 'my-gif.gif');
+            const file = new File(['test'], 'test.bmp', { type: 'image/bmp' });
 
             const result = processor.validate(file);
 
             expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('file-type-not-supported');
+            }
         });
     });
 

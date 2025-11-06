@@ -12,6 +12,7 @@ const ALLOWED_IMAGE_TYPES = [
     'image/webp',
     'image/heic',
     'image/heif',
+    'image/gif',
 ];
 
 export class ImageProcessor {
@@ -76,7 +77,7 @@ export class ImageProcessor {
                 compressedBuffer = fileBuffer;
             }
 
-            return new File([compressedBuffer], targetName, {
+            return new File([new Uint8Array(compressedBuffer)], targetName, {
                 type: targetType,
             });
         } catch (error) {
