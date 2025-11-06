@@ -1,7 +1,6 @@
 import { chunk } from 'es-toolkit';
 import type { Knex } from 'knex';
 
-import { GLOBAL_FEED_AP_ID } from '@/constants';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
@@ -10,7 +9,6 @@ import {
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
-import { isTopPublisher } from './top-publishers';
 export type FeedType = 'Inbox' | 'Feed';
 
 export interface GetFeedDataOptions {
@@ -91,8 +89,6 @@ export interface GetFeedDataResult {
 }
 
 export class FeedService {
-    private globalFeedUserId: number | null | undefined = undefined;
-
     constructor(
         private readonly db: Knex,
         private readonly moderationService: ModerationService,
@@ -111,29 +107,6 @@ export class FeedService {
             .first();
 
         return topic ?? null;
-    }
-
-    /**
-     * Get the ID of the global feed user
-     */
-    async getGlobalFeedUserId(): Promise<number | null> {
-        if (this.globalFeedUserId !== undefined) {
-            return this.globalFeedUserId;
-        }
-
-        const globalFeedUser = await this.db('users')
-            .innerJoin('accounts', 'accounts.id', 'users.account_id')
-            .whereRaw('accounts.ap_id_hash = UNHEX(SHA2(?, 256))', [
-                GLOBAL_FEED_AP_ID,
-            ])
-            .select('users.id')
-            .first();
-
-        const userId = globalFeedUser?.id ?? null;
-
-        this.globalFeedUserId = userId;
-
-        return userId;
     }
 
     /**
@@ -165,54 +138,6 @@ export class FeedService {
 
         const hasMore = results.length > options.limit;
         const paginatedResults = results.slice(0, options.limit);
-        const lastResult = paginatedResults[paginatedResults.length - 1];
-
-        return {
-            results: paginatedResults.map((item: BaseGetFeedDataResultRow) => {
-                return {
-                    ...item,
-                    post_content: sanitizeHtml(item.post_content ?? ''),
-                };
-            }),
-            nextCursor: hasMore ? lastResult.feed_published_at : null,
-        };
-    }
-
-    /**
-     * Get data for a global feed
-     *
-     * @param viewerAccountId ID of the account of the user viewing the global feed
-     * @param limit Maximum number of posts to return
-     * @param cursor Cursor to use for pagination
-     */
-
-    async getGlobalFeedData(
-        viewerAccountId: number,
-        limit: number,
-        cursor: string | null,
-    ): Promise<GetFeedDataResult> {
-        const postType: PostType = PostType.Article;
-
-        const globalFeedUserId = await this.getGlobalFeedUserId();
-
-        if (globalFeedUserId === null) {
-            return {
-                results: [],
-                nextCursor: null,
-            };
-        }
-
-        const query = this.buildFeedQuery(
-            globalFeedUserId,
-            viewerAccountId,
-            postType,
-            limit,
-            cursor,
-        );
-        const results = await query;
-
-        const hasMore = results.length > limit;
-        const paginatedResults = results.slice(0, limit);
         const lastResult = paginatedResults[paginatedResults.length - 1];
 
         return {
@@ -617,20 +542,6 @@ export class FeedService {
             post,
             repostedBy ?? undefined,
         );
-
-        // Add post to the global discovery feed if:
-        // - it's long-form
-        // - not a repost
-        // - authored by a top publisher
-        const globalFeedUserId = await this.getGlobalFeedUserId();
-        if (
-            globalFeedUserId !== null &&
-            post.type === PostType.Article &&
-            repostedBy === null &&
-            isTopPublisher(post.author.id)
-        ) {
-            userIds.push(globalFeedUserId);
-        }
 
         if (userIds.length === 0) {
             return [];

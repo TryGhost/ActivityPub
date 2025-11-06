@@ -10,6 +10,3 @@ export const ACTIVITY_OBJECT_TYPE_NOTE = 'Note';
 export const HANDLE_REGEX = /@([\w.-]+)@([\w-]+\.[\w.-]+[a-zA-Z])/;
 
 export const ACTIVITYPUB_COLLECTION_PAGE_SIZE = 20;
-
-export const GLOBAL_FEED_AP_ID =
-    'https://ap-global-feed.ghost.io/.ghost/activitypub/users/index';
