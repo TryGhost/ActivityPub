@@ -1,5 +1,3 @@
-import mysql from 'mysql2/promise';
-
 import {
     afterAll,
     beforeAll,
@@ -8,6 +6,9 @@ import {
     expect,
     test,
 } from 'bun:test';
+
+import mysql from 'mysql2/promise';
+
 import { doSomething } from './index';
 
 describe('__JOB_NAME__', () => {

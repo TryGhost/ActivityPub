@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from 'bun:test';
+
 import { searchBlueskyHandle } from './index';
 
 describe('searchBlueskyHandle', () => {
