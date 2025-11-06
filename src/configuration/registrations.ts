@@ -66,6 +66,7 @@ import { BlocksView } from '@/http/api/views/blocks.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
+import { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { BlueskyService } from '@/integration/bluesky.service';
 import { KnexKvStore } from '@/knex.kvstore';
 import { ModerationService } from '@/moderation/moderation.service';
@@ -273,6 +274,11 @@ export function registerDependencies(
                 process.env.GCS_LOCAL_STORAGE_HOSTING_URL ?? undefined,
             );
         }).singleton(),
+    );
+
+    container.register(
+        'hostDataContextLoader',
+        asClass(HostDataContextLoader).singleton(),
     );
 
     container.register('imageProcessor', asClass(ImageProcessor).singleton());
