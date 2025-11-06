@@ -1,0 +1,1 @@
+-- No-op: We don't need to re-create the global feed user
