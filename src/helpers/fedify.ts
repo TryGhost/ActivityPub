@@ -18,5 +18,7 @@ export function createFedifyCtxForHost(
     return fedify.createContext(hostUrl, {
         globaldb: ctxData.globaldb,
         logger: ctxData.logger,
+        site: ctxData.site,
+        account: ctxData.account,
     });
 }

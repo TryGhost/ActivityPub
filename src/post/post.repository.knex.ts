@@ -64,7 +64,10 @@ interface PostRow {
     author_ap_id: string;
     author_url: string | null;
     author_ap_followers_url: string | null;
+    author_ap_following_url: string | null;
     author_ap_inbox_url: string | null;
+    author_ap_outbox_url: string | null;
+    author_ap_liked_url: string | null;
     site_id: number | null;
     site_host: string | null;
 }
@@ -128,7 +131,10 @@ export class KnexPostRepository {
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
+                'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_inbox_url as author_ap_inbox_url',
+                'accounts.ap_outbox_url as author_ap_outbox_url',
+                'accounts.ap_liked_url as author_ap_liked_url',
                 'sites.id as site_id',
                 'sites.host as site_host',
             )
@@ -943,7 +949,10 @@ export class KnexPostRepository {
             customFields: row.custom_fields,
             apId: new URL(row.author_ap_id),
             apFollowers: parseURL(row.author_ap_followers_url),
+            apFollowing: parseURL(row.author_ap_following_url),
             apInbox: parseURL(row.author_ap_inbox_url),
+            apOutbox: parseURL(row.author_ap_outbox_url),
+            apLiked: parseURL(row.author_ap_liked_url),
             isInternal: row.site_id !== null,
         });
 
@@ -1034,7 +1043,10 @@ export class KnexPostRepository {
                 'accounts.ap_id as author_ap_id',
                 'accounts.url as author_url',
                 'accounts.ap_followers_url as author_ap_followers_url',
+                'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_inbox_url as author_ap_inbox_url',
+                'accounts.ap_outbox_url as author_ap_outbox_url',
+                'accounts.ap_liked_url as author_ap_liked_url',
                 'sites.id as site_id',
                 'sites.host as site_host',
                 'outboxes.outbox_type',

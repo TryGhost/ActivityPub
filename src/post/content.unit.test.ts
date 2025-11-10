@@ -255,7 +255,10 @@ describe('ContentPreparer', () => {
                 customFields: null,
                 apId: new URL('https://example.xyz/@user'),
                 apFollowers: null,
+                apFollowing: null,
                 apInbox: null,
+                apOutbox: null,
+                apLiked: null,
                 isInternal: false,
             });
             it('should convert mentions to hyperlinks', () => {
@@ -549,7 +552,10 @@ describe('ContentPreparer', () => {
             customFields: null,
             apId: new URL('https://example.xyz/user/@user'),
             apFollowers: null,
+            apFollowing: null,
             apInbox: null,
+            apOutbox: null,
+            apLiked: null,
             isInternal: false,
         });
 
@@ -565,7 +571,10 @@ describe('ContentPreparer', () => {
             customFields: null,
             apId: new URL('https://example.xyz/user/@user2/'),
             apFollowers: null,
+            apFollowing: null,
             apInbox: null,
+            apOutbox: null,
+            apLiked: null,
             isInternal: false,
         });
 
