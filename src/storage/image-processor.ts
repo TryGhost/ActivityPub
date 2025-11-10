@@ -30,7 +30,7 @@ export class ImageProcessor {
         return ok(true);
     }
 
-    async compress(file: File): Promise<File> {
+    async process(file: File): Promise<File> {
         try {
             const fileBuffer = Buffer.from(await file.arrayBuffer());
 
@@ -56,6 +56,7 @@ export class ImageProcessor {
                 case 'image/webp':
                     pipeline = basePipeline.webp({ quality: 75 });
                     break;
+                // Note: HEIC/HEIF are converted to JPEG for web compatibility
                 case 'image/heic':
                 case 'image/heif':
                     pipeline = basePipeline.jpeg({ quality: 75 });
@@ -70,9 +71,9 @@ export class ImageProcessor {
                     return file;
             }
 
-            const compressedBuffer = await pipeline.toBuffer();
+            const processed = await pipeline.toBuffer();
 
-            return new File([new Uint8Array(compressedBuffer)], targetName, {
+            return new File([new Uint8Array(processed)], targetName, {
                 type: targetType,
             });
         } catch (error) {
