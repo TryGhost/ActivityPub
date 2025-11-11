@@ -98,41 +98,6 @@ export class FeedController {
         );
     }
 
-    @APIRoute('GET', 'feed/global')
-    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
-    async getGlobalFeed(ctx: AppContext) {
-        const queryCursor = ctx.req.query('next');
-        const cursor = queryCursor ? decodeURIComponent(queryCursor) : null;
-
-        const queryLimit = ctx.req.query('limit');
-        const limit = queryLimit
-            ? Number(queryLimit)
-            : DEFAULT_FEED_POSTS_LIMIT;
-
-        if (limit > MAX_FEED_POSTS_LIMIT) {
-            return new Response(null, {
-                status: 400,
-            });
-        }
-
-        const account = ctx.get('account');
-
-        const { results, nextCursor } =
-            await this.feedService.getGlobalFeedData(account.id, limit, cursor);
-
-        const posts = this.mapFeedResultsToPostDTO(results, account);
-
-        return new Response(
-            JSON.stringify({
-                posts,
-                next: nextCursor,
-            }),
-            {
-                status: 200,
-            },
-        );
-    }
-
     @APIRoute('GET', 'feed/discover/:slug')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getDiscoveryFeed(ctx: AppContext) {
