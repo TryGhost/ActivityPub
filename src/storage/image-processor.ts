@@ -63,10 +63,10 @@ export class ImageProcessor {
                     targetType = 'image/jpeg';
                     targetName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
                     break;
-                // Note: GIFs are not compressed, as the compression may produce larger files than the input
+                // Note: GIFs are not compressed, as compression may produce larger files than the input
                 // See: https://github.com/lovell/sharp/issues/3610)
                 case 'image/gif':
-                    return file;
+                    break;
                 default:
                     return file;
             }
