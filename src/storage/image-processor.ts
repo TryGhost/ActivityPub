@@ -34,12 +34,14 @@ export class ImageProcessor {
         try {
             const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-            const basePipeline = sharp(fileBuffer).rotate().resize({
-                width: 2000,
-                height: 2000,
-                fit: 'inside',
-                withoutEnlargement: true,
-            });
+            const basePipeline = sharp(fileBuffer, { animated: true })
+                .rotate()
+                .resize({
+                    width: 2000,
+                    height: 2000,
+                    fit: 'inside',
+                    withoutEnlargement: true,
+                });
 
             let pipeline = basePipeline;
             let targetType = file.type;
