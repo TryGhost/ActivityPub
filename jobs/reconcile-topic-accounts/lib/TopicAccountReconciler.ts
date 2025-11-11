@@ -11,8 +11,8 @@ import type mysql from 'mysql2/promise';
 import type { RowDataPacket } from 'mysql2/promise';
 
 interface DataSourceItem {
-    domain: string;
-    topic: string;
+    url: string;
+    categories: string[];
 }
 
 interface Topic {
@@ -26,14 +26,33 @@ export class TopicAccountReconciler {
 
     constructor(readonly db: mysql.Pool) {}
 
+    private extractDomain(url: string): string {
+        try {
+            return new URL(url).hostname;
+        } catch {
+            throw new Error(`Invalid URL: ${url}`);
+        }
+    }
+
     async fetchData(): Promise<DataSourceItem[]> {
         // TODO:  Use a real data source
         return [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'bar.com', topic: 'Technology' },
-            { domain: 'foo.com', topic: 'Finance' },
-            { domain: 'baz.com', topic: 'Design' },
-            { domain: 'qux.com', topic: 'Technology' },
+            {
+                url: 'https://foo.com/',
+                categories: ['Technology', 'Finance'],
+            },
+            {
+                url: 'https://bar.com/',
+                categories: ['Technology'],
+            },
+            {
+                url: 'https://baz.com/',
+                categories: ['Design'],
+            },
+            {
+                url: 'https://qux.com/',
+                categories: ['Technology'],
+            },
         ];
     }
 
@@ -269,8 +288,9 @@ export class TopicAccountReconciler {
         topics: Topic[];
         topicNameToSlug: Map<string, string>;
     }> {
+        // Extract all unique topic names from categories
         const sourceTopicNames = [
-            ...new Set(dataSourceItems.map((item) => item.topic)),
+            ...new Set(dataSourceItems.flatMap((item) => item.categories)),
         ];
 
         // Normalize topics by slug, detecting collisions
@@ -368,47 +388,56 @@ export class TopicAccountReconciler {
         return { topics: allTopics, topicNameToSlug };
     }
 
-    async reconcileAccountsForTopic(
-        dataSourceItems: DataSourceItem[],
-        topic: Topic,
+    async reconcileMappingsForDomain(
+        domain: string,
+        topicNames: string[],
+        topicsBySlug: Map<string, Topic>,
         topicNameToSlug: Map<string, string>,
     ): Promise<void> {
-        // Find all domains associated with this topic (matching by slug via any name variant)
-        const domainsForTopic = dataSourceItems
-            .filter((item) => {
-                const itemSlug = topicNameToSlug.get(item.topic);
-                return itemSlug === topic.slug;
-            })
-            .map((item) => item.domain);
+        // Ensure account exists for domain
+        const accountId = await this.ensureAccountExistsForDomain(domain);
 
-        const accountIds: number[] = [];
+        if (accountId === null) {
+            console.log(
+                `Failed to create account for ${domain}, skipping mappings`,
+            );
 
-        for (const domain of domainsForTopic) {
-            const accountId = await this.ensureAccountExistsForDomain(domain);
-
-            if (accountId !== null) {
-                accountIds.push(accountId);
-            }
+            return;
         }
 
-        // Fetch existing mappings for the topic
+        // Get topic IDs for all categories (using slug mapping to handle variants)
+        const topicIds = topicNames
+            .map((name) => {
+                const slug = topicNameToSlug.get(name);
+
+                return slug ? topicsBySlug.get(slug)?.id : undefined;
+            })
+            .filter((id): id is number => id !== undefined);
+
+        if (topicIds.length === 0) {
+            console.log(`No valid topics found for ${domain}`);
+
+            return;
+        }
+
+        // Fetch existing mappings for this account
         const [existingMappingsRows] = await this.db.execute<RowDataPacket[]>(
-            'SELECT account_id FROM account_topics WHERE topic_id = ?',
-            [topic.id],
+            'SELECT topic_id FROM account_topics WHERE account_id = ?',
+            [accountId],
         );
-        const existingAccountIds = existingMappingsRows.map(
-            (row) => row.account_id,
+        const existingTopicIds = existingMappingsRows.map(
+            (row) => row.topic_id,
         );
 
         // Determine what changes need to be made
-        const existingAccountIdsSet = new Set(existingAccountIds);
-        const newMappings = accountIds.filter(
-            (id) => !existingAccountIdsSet.has(id),
+        const existingTopicIdsSet = new Set(existingTopicIds);
+        const newMappings = topicIds.filter(
+            (id) => !existingTopicIdsSet.has(id),
         );
 
-        const sourceAccountIdsSet = new Set(accountIds);
-        const removedMappings = existingAccountIds.filter(
-            (id) => !sourceAccountIdsSet.has(id),
+        const sourceTopicIdsSet = new Set(topicIds);
+        const removedMappings = existingTopicIds.filter(
+            (id) => !sourceTopicIdsSet.has(id),
         );
 
         // Perform all writes in a transaction to ensure consistency
@@ -419,10 +448,10 @@ export class TopicAccountReconciler {
                 await connection.beginTransaction();
 
                 // Insert new mappings
-                for (const accountId of newMappings) {
+                for (const topicId of newMappings) {
                     await connection.execute(
                         'INSERT IGNORE INTO account_topics (account_id, topic_id) VALUES (?, ?)',
-                        [accountId, topic.id],
+                        [accountId, topicId],
                     );
                 }
 
@@ -435,12 +464,16 @@ export class TopicAccountReconciler {
                         .join(',');
 
                     await connection.execute(
-                        `DELETE FROM account_topics WHERE topic_id = ? AND account_id IN (${placeholders})`,
-                        [topic.id, ...removedMappings],
+                        `DELETE FROM account_topics WHERE account_id = ? AND topic_id IN (${placeholders})`,
+                        [accountId, ...removedMappings],
                     );
                 }
 
                 await connection.commit();
+
+                console.log(
+                    `Domain '${domain}': ${newMappings.length} mappings added, ${removedMappings.length} removed`,
+                );
             } catch (error) {
                 await connection.rollback();
 
@@ -449,10 +482,6 @@ export class TopicAccountReconciler {
                 connection.release();
             }
         }
-
-        console.log(
-            `Topic '${topic.name}': ${newMappings.length} mappings added, ${removedMappings.length} removed`,
-        );
     }
 
     async reconcileAccountsForTopics() {
@@ -467,30 +496,28 @@ export class TopicAccountReconciler {
         const { topics, topicNameToSlug } =
             await this.reconcileTopics(dataSourceItems);
 
-        // Track unique domains processed
-        const processedDomains = new Set<string>();
+        // Build lookup map for topics by slug
+        const topicsBySlug = new Map(topics.map((t) => [t.slug, t]));
 
-        for (const item of dataSourceItems) {
-            processedDomains.add(item.domain);
-        }
-
-        // Process each topic
-        for (let i = 0; i < topics.length; i++) {
-            const topic = topics[i];
+        // Process each domain
+        for (let i = 0; i < dataSourceItems.length; i++) {
+            const item = dataSourceItems[i];
+            const domain = this.extractDomain(item.url);
 
             console.log(
-                `Processing topic ${i + 1}/${topics.length}: ${topic.name}`,
+                `Processing domain ${i + 1}/${dataSourceItems.length}: ${domain}`,
             );
 
-            await this.reconcileAccountsForTopic(
-                dataSourceItems,
-                topic,
+            await this.reconcileMappingsForDomain(
+                domain,
+                item.categories,
+                topicsBySlug,
                 topicNameToSlug,
             );
         }
 
         console.log(
-            `Reconciliation complete: ${processedDomains.size} unique domains processed, ${topics.length} topics active`,
+            `Reconciliation complete: ${dataSourceItems.length} domains processed, ${topics.length} topics active`,
         );
     }
 }

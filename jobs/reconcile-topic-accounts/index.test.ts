@@ -147,8 +147,8 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'bar.com', topic: 'Finance' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
+            { url: 'https://bar.com/', categories: ['Finance'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -176,7 +176,7 @@ describe('reconcile-topic-accounts', () => {
         );
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -196,8 +196,8 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'bar.com', topic: 'Technology' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
+            { url: 'https://bar.com/', categories: ['Technology'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -297,9 +297,8 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'bar.com', topic: 'Technology' },
-            { domain: 'foo.com', topic: 'Finance' },
+            { url: 'https://foo.com/', categories: ['Technology', 'Finance'] },
+            { url: 'https://bar.com/', categories: ['Technology'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -365,7 +364,7 @@ describe('reconcile-topic-accounts', () => {
         );
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -389,8 +388,8 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'failing-site.com', topic: 'Technology' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
+            { url: 'https://failing-site.com/', categories: ['Technology'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) => {
@@ -414,8 +413,8 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'bar.com', topic: 'Finance' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
+            { url: 'https://bar.com/', categories: ['Finance'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -511,8 +510,7 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'foo.com', topic: 'Finance' },
+            { url: 'https://foo.com/', categories: ['Technology', 'Finance'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -532,9 +530,9 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
-            { domain: 'bar.com', topic: 'technology' },
-            { domain: 'baz.com', topic: 'TECHNOLOGY' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
+            { url: 'https://bar.com/', categories: ['technology'] },
+            { url: 'https://baz.com/', categories: ['TECHNOLOGY'] },
         ];
 
         reconciler.fetchActorForDomain = async (domain) =>
@@ -573,7 +571,7 @@ describe('reconcile-topic-accounts', () => {
         const reconciler = new TopicAccountReconciler(pool);
 
         reconciler.fetchData = async () => [
-            { domain: 'foo.com', topic: 'Technology' },
+            { url: 'https://foo.com/', categories: ['Technology'] },
         ];
 
         // Mock an actor where the actor's ID domain differs from input domain
@@ -689,10 +687,13 @@ describe('reconcile-topic-accounts', () => {
         // Use real Ghost sites with ActivityPub enabled
 
         reconciler.fetchData = async () => [
-            { domain: 'activitypub.ghost.org', topic: 'Technology' },
-            { domain: 'main.ghost.org', topic: 'Publishing' },
-            { domain: 'www.404media.co', topic: 'News' },
-            { domain: 'www.platformer.news', topic: 'News' },
+            {
+                url: 'https://activitypub.ghost.org/',
+                categories: ['Technology'],
+            },
+            { url: 'https://main.ghost.org/', categories: ['Publishing'] },
+            { url: 'https://www.404media.co/', categories: ['News'] },
+            { url: 'https://www.platformer.news/', categories: ['News'] },
         ];
 
         // Run the reconciler
