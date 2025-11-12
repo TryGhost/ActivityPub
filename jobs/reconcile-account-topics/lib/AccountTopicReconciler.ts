@@ -10,8 +10,36 @@ import {
 import type mysql from 'mysql2/promise';
 import type { RowDataPacket } from 'mysql2/promise';
 
+interface Topic {
+    id: number;
+    name: string;
+    slug: string;
+}
+
+interface Site {
+    ghost_uuid: string;
+    url: string;
+    title: string;
+    description: string;
+    locale: string;
+    ghost_rank: number;
+    posts_total: number;
+    posts_first: string;
+    posts_last: string;
+    member_count?: number;
+    created_at: string;
+    updated_at: string;
+    categories: Array<{
+        name: string;
+        slug: string;
+    }>;
+    tags: Array<{
+        name: string;
+    }>;
+}
+
 interface ApiResponse {
-    data: string[]; // Array of URLs
+    data: Site[];
     links: {
         first: string;
         last: string;
@@ -28,19 +56,15 @@ interface ApiResponse {
     };
 }
 
-interface Topic {
-    id: number;
-    name: string;
-    slug: string;
-}
-
 export class AccountTopicReconciler {
-    private static readonly API_BASE_URL = 'https://api.example.com';
-    private static readonly API_ENDPOINT = '/some-api/';
     private static readonly MAX_ITEMS_PER_TOPIC = 200;
     private static readonly DEFAULT_USERNAME = 'index';
 
-    constructor(readonly db: mysql.Pool) {}
+    constructor(
+        readonly db: mysql.Pool,
+        private readonly apiEndpoint: string,
+        private readonly apiAuthToken?: string,
+    ) {}
 
     private extractDomain(url: string): string {
         try {
@@ -62,17 +86,22 @@ export class AccountTopicReconciler {
         }));
     }
 
-    async fetchSitesForTopic(topicSlug: string): Promise<string[]> {
-        const sites: string[] = [];
+    async fetchSitesForTopic(topicSlug: string): Promise<Site[]> {
+        const sites: Site[] = [];
 
-        let currentFetchSitesUrl = `${AccountTopicReconciler.API_BASE_URL}${AccountTopicReconciler.API_ENDPOINT}?category=${encodeURIComponent(topicSlug)}&locale=en&sw_enabled=1`;
+        let fetchUrl = `${this.apiEndpoint}?category=${encodeURIComponent(topicSlug)}&sort=top&locale=en`;
 
         try {
             while (
                 sites.length < AccountTopicReconciler.MAX_ITEMS_PER_TOPIC &&
-                currentFetchSitesUrl
+                fetchUrl
             ) {
-                const response = await fetch(currentFetchSitesUrl);
+                const response = await fetch(fetchUrl, {
+                    headers: {
+                        Accept: 'application/json',
+                        Authorization: `Bearer ${this.apiAuthToken}`,
+                    },
+                });
 
                 if (!response.ok) {
                     console.log(
@@ -92,7 +121,7 @@ export class AccountTopicReconciler {
                     break;
                 }
 
-                // Add sites up to the limit
+                // Extract sites from API response
                 const limit =
                     AccountTopicReconciler.MAX_ITEMS_PER_TOPIC - sites.length;
                 const sitesToAdd = data.data.slice(0, limit);
@@ -108,7 +137,7 @@ export class AccountTopicReconciler {
                     break;
                 }
 
-                currentFetchSitesUrl = data.links.next;
+                fetchUrl = data.links.next;
             }
 
             console.log(
@@ -141,7 +170,7 @@ export class AccountTopicReconciler {
             );
 
             if (!selfLink?.href) {
-                console.log(`No resource found for acct:${handle}`);
+                console.log(`No resource found for handle "${handle}"`);
 
                 return null;
             }
@@ -149,14 +178,14 @@ export class AccountTopicReconciler {
             const actor = await lookupObject(selfLink.href);
 
             if (!isActor(actor)) {
-                console.log(`${selfLink.href} is not an actor`);
+                console.log(`Resource "${selfLink.href}" is not an actor`);
 
                 return null;
             }
 
             return actor;
         } catch (error) {
-            console.log(`Actor lookup failed for ${domain}:`, error);
+            console.log(`Actor lookup failed for domain "${domain}":`, error);
 
             return null;
         }
@@ -173,12 +202,14 @@ export class AccountTopicReconciler {
                 return existingAccounts[0].id;
             }
 
-            console.log(`Creating account for ${domain}`);
+            console.log(`Creating account for domain "${domain}"`);
 
             const actor = await this.fetchActorForDomain(domain);
 
             if (!actor) {
-                console.log(`Failed to fetch actor for ${domain}, skipping`);
+                console.log(
+                    `Failed to fetch actor for domain "${domain}", skipping`,
+                );
 
                 return null;
             }
@@ -247,7 +278,7 @@ export class AccountTopicReconciler {
 
             if (!actorId || !inboxUrl) {
                 console.log(
-                    `Actor for ${domain} missing required fields, skipping`,
+                    `Actor for domain "${domain}" missing required fields, skipping`,
                 );
 
                 return null;
@@ -256,7 +287,7 @@ export class AccountTopicReconciler {
             // Warn if actor domain differs from expected domain
             if (actorDomain !== domain) {
                 console.log(
-                    `Warning: Actor domain (${actorDomain}) differs from expected domain (${domain}) for ${actorId}`,
+                    `Warning: Actor domain ("${actorDomain}") differs from expected domain ("${domain}") for actor ID "${actorId}"`,
                 );
             }
 
@@ -298,14 +329,17 @@ export class AccountTopicReconciler {
             );
 
             if (newAccounts.length > 0) {
-                console.log(`Created account for ${domain}`);
+                console.log(`Created account for domain "${domain}"`);
 
                 return newAccounts[0].id;
             }
 
             return null;
         } catch (error) {
-            console.log(`Error ensuring account for ${domain}:`, error);
+            console.log(
+                `Error ensuring account for domain "${domain}":`,
+                error,
+            );
 
             return null;
         }
@@ -368,7 +402,7 @@ export class AccountTopicReconciler {
                 await connection.commit();
 
                 console.log(
-                    `Topic '${topicName}': ${newMappings.length} mappings added, ${removedMappings.length} removed`,
+                    `Topic "${topicName}": ${newMappings.length} mappings added, ${removedMappings.length} removed`,
                 );
             } catch (error) {
                 await connection.rollback();
@@ -397,7 +431,7 @@ export class AccountTopicReconciler {
             const topic = topics[i];
 
             console.log(
-                `Processing topic ${i + 1}/${topics.length}: ${topic.name} (${topic.slug})`,
+                `Processing topic ${i + 1}/${topics.length}: "${topic.name}" (${topic.slug})`,
             );
 
             // Fetch sites for this topic
@@ -415,11 +449,11 @@ export class AccountTopicReconciler {
 
                 try {
                     console.log(
-                        `Processing site ${j + 1}/${sites.length} for topic "${topic.name}": ${site}`,
+                        `Processing site ${j + 1}/${sites.length} for topic "${topic.name}": "${site.url}"`,
                     );
 
                     // Ensure account exists for this domain
-                    const domain = this.extractDomain(site);
+                    const domain = this.extractDomain(site.url);
 
                     const accountId =
                         await this.ensureAccountExistsForDomain(domain);
@@ -428,7 +462,7 @@ export class AccountTopicReconciler {
                         accountIds.push(accountId);
                     }
                 } catch (error) {
-                    console.log(`Error processing site "${site}":`, error);
+                    console.log(`Error processing site "${site.url}":`, error);
                 }
             }
 

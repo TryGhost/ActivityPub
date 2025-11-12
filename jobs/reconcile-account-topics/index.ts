@@ -28,7 +28,22 @@ async function main() {
     try {
         console.log(`Starting reconcile-account-topics...`);
 
-        const accountTopicReconciler = new AccountTopicReconciler(pool);
+        if (!process.env.SITES_API_ENDPOINT) {
+            throw new Error('SITES_API_ENDPOINT is not set');
+        }
+
+        if (!process.env.SITES_API_AUTH_TOKEN) {
+            throw new Error('SITES_API_AUTH_TOKEN is not set');
+        }
+
+        const apiEndpoint = process.env.SITES_API_ENDPOINT || '';
+        const apiAuthToken = process.env.SITES_API_AUTH_TOKEN;
+
+        const accountTopicReconciler = new AccountTopicReconciler(
+            pool,
+            apiEndpoint,
+            apiAuthToken,
+        );
 
         await accountTopicReconciler.run();
 

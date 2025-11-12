@@ -154,14 +154,27 @@ describe('reconcile-account-topics', () => {
 
     function mockApiResponse(urls: string[], hasNext = false) {
         return {
-            data: urls,
+            data: urls.map((url) => ({
+                ghost_uuid: '550e8400-e29b-41d4-a716-446655440000',
+                url,
+                title: 'Example Site',
+                description: 'A great publication',
+                locale: 'en',
+                ghost_rank: 1,
+                posts_total: 150,
+                posts_first: '2020-01-15T10:30:00.000000Z',
+                posts_last: '2025-01-15T10:30:00.000000Z',
+                member_count: 10000,
+                created_at: '2020-01-01T00:00:00.000000Z',
+                updated_at: '2025-01-15T10:30:00.000000Z',
+                categories: [{ name: 'Technology', slug: 'tech' }],
+                tags: [{ name: 'Featured' }],
+            })),
             links: {
-                first: 'https://api.example.com/some-api/?page=1',
-                last: 'https://api.example.com/some-api/?page=1',
+                first: 'https://example.com/api/sites?page=1',
+                last: 'https://example.com/api/sites?page=1',
                 prev: null,
-                next: hasNext
-                    ? 'https://api.example.com/some-api/?page=2'
-                    : null,
+                next: hasNext ? 'https://example.com/api/sites?page=2' : null,
             },
             meta: {
                 current_page: 1,
@@ -175,7 +188,11 @@ describe('reconcile-account-topics', () => {
     }
 
     test('it should exit early if no topics in database', async () => {
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         await reconciler.run();
 
@@ -192,7 +209,11 @@ describe('reconcile-account-topics', () => {
             ['Technology', 'technology', 'Finance', 'finance'],
         );
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock((url: string) => {
             const urlObj = new URL(url);
@@ -244,7 +265,11 @@ describe('reconcile-account-topics', () => {
             'technology',
         ]);
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock((url: string) => {
             if (url.includes('page=2')) {
@@ -282,7 +307,11 @@ describe('reconcile-account-topics', () => {
             'technology',
         ]);
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         // Generate 250 URLs
         const allUrls = Array.from(
@@ -324,7 +353,11 @@ describe('reconcile-account-topics', () => {
             ['Technology', 'technology', 'Finance', 'finance'],
         );
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock((url: string) => {
             const urlObj = new URL(url);
@@ -413,7 +446,11 @@ describe('reconcile-account-topics', () => {
             [accountId, topicId],
         );
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         // Mock API to return empty results for this topic
         global.fetch = mock(() =>
@@ -442,7 +479,11 @@ describe('reconcile-account-topics', () => {
             ['Technology', 'technology', 'Finance', 'finance'],
         );
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock((url: string) => {
             const urlObj = new URL(url);
@@ -486,7 +527,11 @@ describe('reconcile-account-topics', () => {
             'technology',
         ]);
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock(() =>
             Promise.resolve({
@@ -522,7 +567,11 @@ describe('reconcile-account-topics', () => {
             'technology',
         ]);
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock(() =>
             Promise.resolve({
@@ -563,7 +612,11 @@ describe('reconcile-account-topics', () => {
             ['Technology', 'technology', 'Finance', 'finance'],
         );
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock(() =>
             Promise.resolve({
@@ -591,7 +644,11 @@ describe('reconcile-account-topics', () => {
             'technology',
         ]);
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock(() =>
             Promise.resolve({
@@ -618,7 +675,11 @@ describe('reconcile-account-topics', () => {
             'technology',
         ]);
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         global.fetch = mock(() =>
             Promise.resolve({
@@ -690,7 +751,11 @@ describe('reconcile-account-topics', () => {
             ['Technology', 'technology', 'Finance', 'finance'],
         );
 
-        const reconciler = new AccountTopicReconciler(pool);
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
 
         // First run: foo.com appears in BOTH topics
         global.fetch = mock((url: string) => {
