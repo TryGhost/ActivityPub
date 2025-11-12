@@ -2,7 +2,7 @@
 
 import mysql from 'mysql2/promise';
 
-import { TopicAccountReconciler } from './lib/TopicAccountReconciler';
+import { AccountTopicReconciler } from './lib/AccountTopicReconciler';
 
 const POOL_SIZE = 10;
 
@@ -26,11 +26,11 @@ async function main() {
     });
 
     try {
-        console.log(`Starting reconcile-topic-accounts...`);
+        console.log(`Starting reconcile-account-topics...`);
 
-        const topicAccountReconciler = new TopicAccountReconciler(pool);
+        const accountTopicReconciler = new AccountTopicReconciler(pool);
 
-        await topicAccountReconciler.reconcileAccountsForTopics();
+        await accountTopicReconciler.run();
 
         console.log(`Completed!`);
     } catch (error) {

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-IMAGE_NAME="reconcile-topic-accounts-job"
+IMAGE_NAME="reconcile-account-topics-job"
 
 PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
 if [ -z "$PROJECT_ID" ]; then

@@ -1,0 +1,446 @@
+import { randomUUID } from 'bun:crypto';
+
+import {
+    type Actor,
+    isActor,
+    lookupObject,
+    lookupWebFinger,
+    PropertyValue,
+} from '@fedify/fedify';
+import type mysql from 'mysql2/promise';
+import type { RowDataPacket } from 'mysql2/promise';
+
+interface ApiResponse {
+    data: string[]; // Array of URLs
+    links: {
+        first: string;
+        last: string;
+        prev: string | null;
+        next: string | null;
+    };
+    meta: {
+        current_page: number;
+        from: number;
+        last_page: number;
+        per_page: number;
+        to: number;
+        total: number;
+    };
+}
+
+interface Topic {
+    id: number;
+    name: string;
+    slug: string;
+}
+
+export class AccountTopicReconciler {
+    private static readonly API_BASE_URL = 'https://api.example.com';
+    private static readonly API_ENDPOINT = '/some-api/';
+    private static readonly MAX_ITEMS_PER_TOPIC = 200;
+    private static readonly DEFAULT_USERNAME = 'index';
+
+    constructor(readonly db: mysql.Pool) {}
+
+    private extractDomain(url: string): string {
+        try {
+            return new URL(url).hostname;
+        } catch {
+            throw new Error(`Invalid URL: ${url}`);
+        }
+    }
+
+    async fetchTopicsFromDatabase(): Promise<Topic[]> {
+        const [topicsRows] = await this.db.execute<RowDataPacket[]>(
+            'SELECT id, name, slug FROM topics',
+        );
+
+        return topicsRows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            slug: row.slug,
+        }));
+    }
+
+    async fetchSitesForTopic(topicSlug: string): Promise<string[]> {
+        const sites: string[] = [];
+
+        let currentFetchSitesUrl = `${AccountTopicReconciler.API_BASE_URL}${AccountTopicReconciler.API_ENDPOINT}?category=${encodeURIComponent(topicSlug)}&locale=en&sw_enabled=1`;
+
+        try {
+            while (
+                sites.length < AccountTopicReconciler.MAX_ITEMS_PER_TOPIC &&
+                currentFetchSitesUrl
+            ) {
+                const response = await fetch(currentFetchSitesUrl);
+
+                if (!response.ok) {
+                    console.log(
+                        `API request failed for topic "${topicSlug}" (${response.status}): ${response.statusText}`,
+                    );
+
+                    break;
+                }
+
+                const data: ApiResponse = await response.json();
+
+                if (!data.data || !Array.isArray(data.data)) {
+                    console.log(
+                        `Invalid API response for topic "${topicSlug}": missing or invalid 'data' field`,
+                    );
+
+                    break;
+                }
+
+                // Add sites up to the limit
+                const limit =
+                    AccountTopicReconciler.MAX_ITEMS_PER_TOPIC - sites.length;
+                const sitesToAdd = data.data.slice(0, limit);
+
+                sites.push(...sitesToAdd);
+
+                // Check if we've reached the limit or if there's no next page
+                if (
+                    sites.length >=
+                        AccountTopicReconciler.MAX_ITEMS_PER_TOPIC ||
+                    !data.links.next
+                ) {
+                    break;
+                }
+
+                currentFetchSitesUrl = data.links.next;
+            }
+
+            console.log(
+                `Fetched ${sites.length} sites for topic "${topicSlug}"`,
+            );
+
+            return sites;
+        } catch (error) {
+            console.log(
+                `Error fetching sites for topic "${topicSlug}":`,
+                error,
+            );
+
+            return [];
+        }
+    }
+
+    async fetchActorForDomain(domain: string): Promise<Actor | null> {
+        try {
+            const handle = `${AccountTopicReconciler.DEFAULT_USERNAME}@${domain}`;
+
+            const webfingerLookupResult = await lookupWebFinger(
+                `acct:${handle}`,
+            );
+
+            const selfLink = webfingerLookupResult?.links?.find(
+                (link) =>
+                    link.rel === 'self' &&
+                    link.type === 'application/activity+json',
+            );
+
+            if (!selfLink?.href) {
+                console.log(`No resource found for acct:${handle}`);
+
+                return null;
+            }
+
+            const actor = await lookupObject(selfLink.href);
+
+            if (!isActor(actor)) {
+                console.log(`${selfLink.href} is not an actor`);
+
+                return null;
+            }
+
+            return actor;
+        } catch (error) {
+            console.log(`Actor lookup failed for ${domain}:`, error);
+
+            return null;
+        }
+    }
+
+    async ensureAccountExistsForDomain(domain: string): Promise<number | null> {
+        try {
+            const [existingAccounts] = await this.db.execute<RowDataPacket[]>(
+                'SELECT id FROM accounts WHERE domain_hash = UNHEX(SHA2(LOWER(?), 256)) LIMIT 1',
+                [domain],
+            );
+
+            if (existingAccounts.length > 0) {
+                return existingAccounts[0].id;
+            }
+
+            console.log(`Creating account for ${domain}`);
+
+            const actor = await this.fetchActorForDomain(domain);
+
+            if (!actor) {
+                console.log(`Failed to fetch actor for ${domain}, skipping`);
+
+                return null;
+            }
+
+            const actorId = actor.id?.href;
+            const username =
+                actor.preferredUsername ||
+                AccountTopicReconciler.DEFAULT_USERNAME;
+            const inboxUrl = actor.inboxId?.href;
+            const name = actor.name?.toString() || null;
+            const bio = actor.summary?.toString() || null;
+            const url = actor.url?.href || null;
+            const actorDomain = actor.id
+                ? new URL(actor.id.href).hostname
+                : domain;
+            const uuid = randomUUID();
+
+            // Extract avatar and banner
+            const avatarUrl = (await actor.getIcon())?.url?.href || null;
+            const bannerImageUrl = (await actor.getImage())?.url?.href || null;
+
+            // Extract custom fields from attachments
+            const customFields: Record<string, string> = {};
+
+            for await (const attachment of actor.getAttachments()) {
+                if (!(attachment instanceof PropertyValue)) {
+                    continue;
+                }
+
+                const fieldName = attachment.name?.toString() || '';
+                const fieldValue = attachment.value?.toString() || '';
+
+                if (fieldName && fieldValue) {
+                    customFields[fieldName] = fieldValue;
+                }
+            }
+
+            // Extract public key in the correct format (JSON with id, owner, publicKeyPem)
+            let apPublicKey: string | null = null;
+            const publicKey = await actor.getPublicKey();
+
+            if (publicKey) {
+                const jsonLd = (await publicKey.toJsonLd({
+                    format: 'compact',
+                })) as {
+                    id?: string;
+                    owner?: string;
+                    publicKeyPem?: string;
+                };
+
+                if (typeof jsonLd === 'object' && jsonLd !== null) {
+                    apPublicKey = JSON.stringify({
+                        id: jsonLd.id ?? '',
+                        owner: jsonLd.owner ?? '',
+                        publicKeyPem: jsonLd.publicKeyPem ?? '',
+                    });
+                }
+            }
+
+            // Extract AP collection URLs
+            const sharedInboxUrl = actor.endpoints?.sharedInbox?.href || null;
+            const outboxUrl = actor.outboxId?.href || '';
+            const followingUrl = actor.followingId?.href || '';
+            const followersUrl = actor.followersId?.href || '';
+            const likedUrl = actor.likedId?.href || '';
+
+            if (!actorId || !inboxUrl) {
+                console.log(
+                    `Actor for ${domain} missing required fields, skipping`,
+                );
+
+                return null;
+            }
+
+            // Warn if actor domain differs from expected domain
+            if (actorDomain !== domain) {
+                console.log(
+                    `Warning: Actor domain (${actorDomain}) differs from expected domain (${domain}) for ${actorId}`,
+                );
+            }
+
+            // Insert account (INSERT IGNORE handles race conditions)
+            await this.db.execute(
+                `INSERT IGNORE INTO accounts
+                (uuid, username, name, bio, avatar_url, banner_image_url, url, custom_fields,
+                 ap_id, ap_inbox_url, ap_shared_inbox_url, ap_outbox_url, ap_following_url,
+                 ap_followers_url, ap_liked_url, ap_public_key, ap_private_key, domain)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    uuid,
+                    username,
+                    name,
+                    bio,
+                    avatarUrl,
+                    bannerImageUrl,
+                    url,
+                    Object.keys(customFields).length > 0
+                        ? JSON.stringify(customFields)
+                        : null,
+                    actorId,
+                    inboxUrl,
+                    sharedInboxUrl,
+                    outboxUrl,
+                    followingUrl,
+                    followersUrl,
+                    likedUrl,
+                    apPublicKey,
+                    null, // ap_private_key - not used for external accounts
+                    domain, // Use input domain for consistency with lookups
+                ],
+            );
+
+            // Query for account ID (handles race conditions)
+            const [newAccounts] = await this.db.execute<RowDataPacket[]>(
+                'SELECT id FROM accounts WHERE domain_hash = UNHEX(SHA2(LOWER(?), 256)) LIMIT 1',
+                [domain],
+            );
+
+            if (newAccounts.length > 0) {
+                console.log(`Created account for ${domain}`);
+
+                return newAccounts[0].id;
+            }
+
+            return null;
+        } catch (error) {
+            console.log(`Error ensuring account for ${domain}:`, error);
+
+            return null;
+        }
+    }
+
+    async reconcileMappingsForTopic(
+        topicId: number,
+        topicName: string,
+        accountIds: number[],
+    ): Promise<void> {
+        // Fetch existing mappings for this topic
+        const [existingMappingsRows] = await this.db.execute<RowDataPacket[]>(
+            'SELECT account_id FROM account_topics WHERE topic_id = ?',
+            [topicId],
+        );
+        const existingAccountIds = existingMappingsRows.map(
+            (row) => row.account_id,
+        );
+
+        // Determine what changes need to be made
+        const existingAccountIdsSet = new Set(existingAccountIds);
+        const newMappings = accountIds.filter(
+            (id) => !existingAccountIdsSet.has(id),
+        );
+
+        const sourceAccountIdsSet = new Set(accountIds);
+        const removedMappings = existingAccountIds.filter(
+            (id) => !sourceAccountIdsSet.has(id),
+        );
+
+        // Perform all writes in a transaction to ensure consistency
+        if (newMappings.length > 0 || removedMappings.length > 0) {
+            const connection = await this.db.getConnection();
+
+            try {
+                await connection.beginTransaction();
+
+                // Insert new mappings
+                for (const accountId of newMappings) {
+                    await connection.execute(
+                        'INSERT IGNORE INTO account_topics (account_id, topic_id) VALUES (?, ?)',
+                        [accountId, topicId],
+                    );
+                }
+
+                // Remove removed mappings
+                if (removedMappings.length > 0) {
+                    // Note: Dynamic placeholder generation is safe here as we're only
+                    // creating '?' characters, not interpolating user input
+                    const placeholders = removedMappings
+                        .map(() => '?')
+                        .join(',');
+
+                    await connection.execute(
+                        `DELETE FROM account_topics WHERE topic_id = ? AND account_id IN (${placeholders})`,
+                        [topicId, ...removedMappings],
+                    );
+                }
+
+                await connection.commit();
+
+                console.log(
+                    `Topic '${topicName}': ${newMappings.length} mappings added, ${removedMappings.length} removed`,
+                );
+            } catch (error) {
+                await connection.rollback();
+
+                throw error;
+            } finally {
+                connection.release();
+            }
+        }
+    }
+
+    async run() {
+        // Fetch all topics from database
+        const topics = await this.fetchTopicsFromDatabase();
+
+        console.log(`Found ${topics.length} topics in database`);
+
+        if (topics.length === 0) {
+            console.log('No topics found in database, exiting');
+
+            return;
+        }
+
+        // Process each topic
+        for (let i = 0; i < topics.length; i++) {
+            const topic = topics[i];
+
+            console.log(
+                `Processing topic ${i + 1}/${topics.length}: ${topic.name} (${topic.slug})`,
+            );
+
+            // Fetch sites for this topic
+            const sites = await this.fetchSitesForTopic(topic.slug);
+
+            if (sites.length === 0) {
+                console.log(`No sites found for topic "${topic.name}"`);
+            }
+
+            // Collect account IDs for all sites in this topic
+            const accountIds: number[] = [];
+
+            for (let j = 0; j < sites.length; j++) {
+                const site = sites[j];
+
+                try {
+                    console.log(
+                        `Processing site ${j + 1}/${sites.length} for topic "${topic.name}": ${site}`,
+                    );
+
+                    // Ensure account exists for this domain
+                    const domain = this.extractDomain(site);
+
+                    const accountId =
+                        await this.ensureAccountExistsForDomain(domain);
+
+                    if (accountId !== null) {
+                        accountIds.push(accountId);
+                    }
+                } catch (error) {
+                    console.log(`Error processing site "${site}":`, error);
+                }
+            }
+
+            // Reconcile all mappings for this topic in one batch - This is called
+            // even if accountIds is empty to clean up removed mappings
+            await this.reconcileMappingsForTopic(
+                topic.id,
+                topic.name,
+                accountIds,
+            );
+        }
+
+        console.log(`Reconciliation complete!`);
+    }
+}
