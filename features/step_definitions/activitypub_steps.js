@@ -67,6 +67,46 @@ async function activityCreatedByWithContent(
     }
 }
 
+async function activityCreatedByWithMention(
+    activityDef,
+    name,
+    actorName,
+    content,
+    mentionedActorName,
+) {
+    const { activity: activityType, object: objectName } =
+        parseActivityString(activityDef);
+    if (!activityType) {
+        throw new Error(`could not match ${activityDef} to an activity`);
+    }
+
+    const actor = this.actors[actorName];
+    const mentionedActor = this.actors[mentionedActorName];
+    const tags = [
+        {
+            type: 'Mention',
+            name: `@${mentionedActor.username}@${mentionedActor.domain}`,
+            href: mentionedActor.apId,
+        },
+    ];
+    const object =
+        this.actors[objectName] ??
+        this.activities[objectName] ??
+        this.objects[objectName] ??
+        (await createObject(objectName, actor, content, tags));
+
+    const activity = await createActivity(activityType, object, actor);
+
+    const parsed = parseActivityString(name);
+    if (parsed.activity === null || parsed.object === null) {
+        this.activities[name] = activity;
+        this.objects[name] = object;
+    } else {
+        this.activities[parsed.activity] = activity;
+        this.objects[parsed.object] = object;
+    }
+}
+
 Given('a {string} Activity {string} by {string}', activityCreatedBy);
 
 Given(
@@ -77,6 +117,11 @@ Given(
 Given(
     'an {string} Activity {string} is created by {string}',
     activityCreatedBy,
+);
+
+Given(
+    'a {string} Activity {string} by {string} with content {string} that mentions {string}',
+    activityCreatedByWithMention,
 );
 
 Given('an Actor {string}', async function (actorDef) {

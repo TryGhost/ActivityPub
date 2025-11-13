@@ -1,6 +1,7 @@
 Feature: Incoming mentions
 
-    Scenario: We receive a mention from someone
+    Scenario: We receive a Create(Note) with a mention
         Given an Actor "Person(Alice)"
-        When "Alice" sends us a mention
-        Then the mention is in our notifications
+        And a "Create(Note)" Activity "Note" by "Alice" with content "Hello @index@site.com" that mentions "Us"
+        When "Alice" sends "Note" to the Inbox
+        Then the request is accepted

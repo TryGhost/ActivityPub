@@ -39,7 +39,7 @@ export async function waitForItemInNotifications(
 
     if (options.retryCount === MAX_RETRIES) {
         throw new Error(
-            `Max retries reached when waiting on item in notifications`,
+            `Max retries reached (${MAX_RETRIES}) when waiting on item in notifications`,
         );
     }
 
