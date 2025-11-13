@@ -29,7 +29,8 @@ async function createMockFile(
         | 'png'
         | 'webp'
         | 'heic'
-        | 'heif';
+        | 'heif'
+        | 'gif';
 
     // For HEIC/HEIF, we'll create a JPEG buffer since Sharp might not support HEIC in tests
     const formatForSharp =
@@ -43,17 +44,57 @@ async function createMockFile(
             background: { r: 255, g: 0, b: 0 },
         },
     })
-        .toFormat(formatForSharp as 'jpeg' | 'png' | 'webp')
+        .toFormat(formatForSharp as 'jpeg' | 'png' | 'webp' | 'gif')
         .toBuffer();
 
-    return new File([buffer], fileName, { type });
+    return new File([new Uint8Array(buffer)], fileName, { type });
 }
 
 describe('ImageProcessor', () => {
     describe('.validate()', () => {
-        it('passes for a valid image', async () => {
+        it('accepts JPEGs', async () => {
             const processor = new ImageProcessor(mockLogger);
             const file = await createMockFile('image/jpeg', 'image.jpg');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts PNGs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/png', 'image.png');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts WebPs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/webp', 'image.webp');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts HEICs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/heic', 'image.heic');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts HEIFs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/heif', 'image.heif');
+            const result = processor.validate(file);
+
+            expect(isError(result)).toBe(false);
+        });
+
+        it('accepts GIFs', async () => {
+            const processor = new ImageProcessor(mockLogger);
+            const file = await createMockFile('image/gif', 'image.gif');
             const result = processor.validate(file);
 
             expect(isError(result)).toBe(false);
@@ -76,15 +117,18 @@ describe('ImageProcessor', () => {
 
         it('returns an error if the image format is not supported', async () => {
             const processor = new ImageProcessor(mockLogger);
-            const file = await createMockFile('image/gif', 'my-gif.gif');
+            const file = new File(['test'], 'test.bmp', { type: 'image/bmp' });
 
             const result = processor.validate(file);
 
             expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('file-type-not-supported');
+            }
         });
     });
 
-    describe('.compress()', () => {
+    describe('.process()', () => {
         it('compresses a JPEG file and reduces its size to fit 2000x2000', async () => {
             const file = await createMockFile(
                 'image/jpeg',
@@ -95,13 +139,13 @@ describe('ImageProcessor', () => {
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
-            expect(compressedFile.size).toBeLessThan(originalSize);
-            expect(compressedFile.name).toBe('image.jpg');
-            expect(compressedFile.type).toBe('image/jpeg');
+            expect(processedFile.size).toBeLessThan(originalSize);
+            expect(processedFile.name).toBe('image.jpg');
+            expect(processedFile.type).toBe('image/jpeg');
 
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
             const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('jpeg');
             expect(metadata.width).toBeLessThanOrEqual(2000);
@@ -118,13 +162,13 @@ describe('ImageProcessor', () => {
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
-            expect(compressedFile.size).toBeLessThan(originalSize);
-            expect(compressedFile.name).toBe('image.png');
-            expect(compressedFile.type).toBe('image/png');
+            expect(processedFile.size).toBeLessThan(originalSize);
+            expect(processedFile.name).toBe('image.png');
+            expect(processedFile.type).toBe('image/png');
 
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
             const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('png');
             expect(metadata.width).toBeLessThanOrEqual(2000);
@@ -141,13 +185,13 @@ describe('ImageProcessor', () => {
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
-            expect(compressedFile.size).toBeLessThan(originalSize);
-            expect(compressedFile.name).toBe('image.webp');
-            expect(compressedFile.type).toBe('image/webp');
+            expect(processedFile.size).toBeLessThan(originalSize);
+            expect(processedFile.name).toBe('image.webp');
+            expect(processedFile.type).toBe('image/webp');
 
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
             const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('webp');
             expect(metadata.width).toBeLessThanOrEqual(2000);
@@ -166,11 +210,11 @@ describe('ImageProcessor', () => {
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
-            expect(compressedFile.size).toBeLessThan(originalSize);
+            expect(processedFile.size).toBeLessThan(originalSize);
 
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
             const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('webp');
             expect(metadata.width).toBeLessThanOrEqual(2000);
@@ -189,11 +233,11 @@ describe('ImageProcessor', () => {
             const originalSize = file.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
-            expect(compressedFile.size).toBeLessThan(originalSize);
+            expect(processedFile.size).toBeLessThan(originalSize);
 
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
             const metadata = await sharp(buffer).metadata();
             expect(metadata.format).toBe('webp');
             expect(metadata.width).toBeLessThanOrEqual(2000);
@@ -209,14 +253,60 @@ describe('ImageProcessor', () => {
             );
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
             const metadata = await sharp(buffer).metadata();
 
             expect(metadata.width).toEqual(600);
             expect(metadata.height).toEqual(400);
             expect(metadata.format).toBe('jpeg');
+        });
+
+        it('converts HEIC file to JPEG format for web compatibility', async () => {
+            const heicFile = await createMockFile('image/heic', 'photo.heic');
+
+            const processor = new ImageProcessor(mockLogger);
+            const processedFile = await processor.process(heicFile);
+
+            expect(processedFile.name).toBe('photo.jpg');
+            expect(processedFile.type).toBe('image/jpeg');
+
+            // Verify the output is JPEG format
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
+            expect(metadata.format).toBe('jpeg');
+        });
+
+        it('converts HEIF file to JPEG format for web compatibility', async () => {
+            const heifFile = await createMockFile('image/heif', 'photo.heif');
+
+            const processor = new ImageProcessor(mockLogger);
+            const processedFile = await processor.process(heifFile);
+
+            expect(processedFile.name).toBe('photo.jpg');
+            expect(processedFile.type).toBe('image/jpeg');
+
+            // Verify the output is JPEG format
+            const buffer = Buffer.from(await processedFile.arrayBuffer());
+            const metadata = await sharp(buffer).metadata();
+            expect(metadata.format).toBe('jpeg');
+        });
+
+        it('returns original file for GIFs, as commpression may produce larger files than the input', async () => {
+            const gifFile = await createMockFile(
+                'image/gif',
+                'photo.gif',
+                3000,
+                3000,
+            );
+
+            const processor = new ImageProcessor(mockLogger);
+            const processedFile = await processor.process(gifFile);
+
+            expect(processedFile).toBe(gifFile);
+            expect(processedFile.name).toBe('photo.gif');
+            expect(processedFile.type).toBe('image/gif');
         });
 
         it('returns original file for unsupported types', async () => {
@@ -227,44 +317,14 @@ describe('ImageProcessor', () => {
             const originalSize = unsupportedFile.size;
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(unsupportedFile);
+            const processedFile = await processor.process(unsupportedFile);
 
-            expect(compressedFile.size).toEqual(originalSize);
-            expect(compressedFile.name).toBe('test.txt');
-            expect(compressedFile.type).toBe('text/plain');
+            expect(processedFile.size).toEqual(originalSize);
+            expect(processedFile.name).toBe('test.txt');
+            expect(processedFile.type).toBe('text/plain');
 
-            const text = await compressedFile.text();
+            const text = await processedFile.text();
             expect(text).toBe(textContent);
-        });
-
-        it('converts HEIC file to JPEG format', async () => {
-            const heicFile = await createMockFile('image/heic', 'photo.heic');
-
-            const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(heicFile);
-
-            expect(compressedFile.name).toBe('photo.jpg');
-            expect(compressedFile.type).toBe('image/jpeg');
-
-            // Verify the output is JPEG format
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
-            const metadata = await sharp(buffer).metadata();
-            expect(metadata.format).toBe('jpeg');
-        });
-
-        it('converts HEIF file to JPEG format', async () => {
-            const heifFile = await createMockFile('image/heif', 'photo.heif');
-
-            const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(heifFile);
-
-            expect(compressedFile.name).toBe('photo.jpg');
-            expect(compressedFile.type).toBe('image/jpeg');
-
-            // Verify the output is JPEG format
-            const buffer = Buffer.from(await compressedFile.arrayBuffer());
-            const metadata = await sharp(buffer).metadata();
-            expect(metadata.format).toBe('jpeg');
         });
 
         it('returns original file if compression fails', async () => {
@@ -282,14 +342,14 @@ describe('ImageProcessor', () => {
                 });
 
             const processor = new ImageProcessor(mockLogger);
-            const compressedFile = await processor.compress(file);
+            const processedFile = await processor.process(file);
 
             sharpSpy.mockRestore();
 
-            expect(compressedFile).toBeInstanceOf(File);
-            expect(compressedFile).toBe(file);
-            expect(compressedFile.name).toBe('my-img.jpg');
-            expect(compressedFile.type).toBe('image/jpeg');
+            expect(processedFile).toBeInstanceOf(File);
+            expect(processedFile).toBe(file);
+            expect(processedFile.name).toBe('my-img.jpg');
+            expect(processedFile.type).toBe('image/jpeg');
         });
     });
 });

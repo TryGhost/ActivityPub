@@ -12,6 +12,7 @@ const ALLOWED_IMAGE_TYPES = [
     'image/webp',
     'image/heic',
     'image/heif',
+    'image/gif',
 ];
 
 export class ImageProcessor {
@@ -29,54 +30,52 @@ export class ImageProcessor {
         return ok(true);
     }
 
-    async compress(file: File): Promise<File> {
+    async process(file: File): Promise<File> {
         try {
-            const chunks: Buffer[] = [];
+            const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-            for await (const chunk of file.stream()) {
-                if (Buffer.isBuffer(chunk)) {
-                    chunks.push(chunk);
-                } else {
-                    chunks.push(Buffer.from(chunk));
-                }
-            }
-            const fileBuffer = Buffer.concat(chunks);
+            const basePipeline = sharp(fileBuffer, { animated: true })
+                .rotate()
+                .resize({
+                    width: 2000,
+                    height: 2000,
+                    fit: 'inside',
+                    withoutEnlargement: true,
+                });
 
-            const sharpPipeline = sharp(fileBuffer).rotate().resize({
-                width: 2000,
-                height: 2000,
-                fit: 'inside',
-                withoutEnlargement: true,
-            });
-
-            const format = file.type.split('/')[1];
-            let compressedBuffer: Buffer;
+            let pipeline = basePipeline;
             let targetType = file.type;
             let targetName = file.name;
 
-            if (format === 'jpeg' || format === 'jpg') {
-                compressedBuffer = await sharpPipeline
-                    .jpeg({ quality: 75 })
-                    .toBuffer();
-            } else if (format === 'png') {
-                compressedBuffer = await sharpPipeline
-                    .png({ compressionLevel: 9 })
-                    .toBuffer();
-            } else if (format === 'webp') {
-                compressedBuffer = await sharpPipeline
-                    .webp({ quality: 75 })
-                    .toBuffer();
-            } else if (format === 'heic' || format === 'heif') {
-                compressedBuffer = await sharpPipeline
-                    .jpeg({ quality: 75 })
-                    .toBuffer();
-                targetType = 'image/jpeg';
-                targetName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-            } else {
-                compressedBuffer = fileBuffer;
+            switch (file.type) {
+                case 'image/jpeg':
+                case 'image/jpg':
+                    pipeline = basePipeline.jpeg({ quality: 75 });
+                    break;
+                case 'image/png':
+                    pipeline = basePipeline.png({ compressionLevel: 9 });
+                    break;
+                case 'image/webp':
+                    pipeline = basePipeline.webp({ quality: 75 });
+                    break;
+                // Note: HEIC/HEIF are converted to JPEG for web compatibility
+                case 'image/heic':
+                case 'image/heif':
+                    pipeline = basePipeline.jpeg({ quality: 75 });
+                    targetType = 'image/jpeg';
+                    targetName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+                    break;
+                // Note: GIFs are not compressed, as compression may produce larger files than the input
+                // See: https://github.com/lovell/sharp/issues/3610)
+                case 'image/gif':
+                    return file;
+                default:
+                    return file;
             }
 
-            return new File([compressedBuffer], targetName, {
+            const processed = await pipeline.toBuffer();
+
+            return new File([new Uint8Array(processed)], targetName, {
                 type: targetType,
             });
         } catch (error) {
@@ -89,8 +88,6 @@ export class ImageProcessor {
                 },
             );
             return file;
-        } finally {
-            file.stream().cancel();
         }
     }
 }
