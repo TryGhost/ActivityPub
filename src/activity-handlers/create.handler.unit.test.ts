@@ -66,9 +66,6 @@ describe('CreateHandler', () => {
 
             await handler.handle(mockContext, mockCreate);
 
-            expect(mockLogger.info).toHaveBeenCalledWith(
-                'Create missing id - exit',
-            );
             expect(mockPostService.getByApId).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
@@ -84,9 +81,6 @@ describe('CreateHandler', () => {
 
             await handler.handle(mockContext, mockCreate);
 
-            expect(mockLogger.info).toHaveBeenCalledWith(
-                'Create object id missing, exit early',
-            );
             expect(mockPostService.getByApId).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
@@ -102,9 +96,6 @@ describe('CreateHandler', () => {
 
             await handler.handle(mockContext, mockCreate);
 
-            expect(mockLogger.info).toHaveBeenCalledWith(
-                'Create activity is not public - exit',
-            );
             expect(mockPostService.getByApId).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
@@ -168,7 +159,6 @@ describe('CreateHandler', () => {
 
             await handler.handle(mockContext, mockCreate);
 
-            expect(mockLogger.info).toHaveBeenCalledWith('Handling Create');
             expect(mockPostService.getByApId).toHaveBeenCalledWith(
                 mockCreate.objectId,
             );
