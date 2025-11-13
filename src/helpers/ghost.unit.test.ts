@@ -16,6 +16,7 @@ describe('getSiteSettings', () => {
                 title: 'bar',
                 icon: 'https://example.com/baz.png',
                 cover_image: 'https://example.com/qux.png',
+                site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
             },
         };
 
@@ -35,7 +36,12 @@ describe('getSiteSettings', () => {
     it('sets the site description to null if missing', async () => {
         vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
-                site: { title: 'bar', icon: 'https://example.com/baz.png' },
+                site: {
+                    title: 'bar',
+                    icon: 'https://example.com/baz.png',
+                    cover_image: 'https://example.com/qux.png',
+                    site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                },
             }),
         } as ResponsePromise);
 
@@ -46,7 +52,8 @@ describe('getSiteSettings', () => {
                 description: null,
                 title: 'bar',
                 icon: 'https://example.com/baz.png',
-                cover_image: null,
+                cover_image: 'https://example.com/qux.png',
+                site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
             },
         });
     });
@@ -54,7 +61,12 @@ describe('getSiteSettings', () => {
     it('sets the site icon to null if missing', async () => {
         vi.mocked(ky.get).mockReturnValue({
             json: async () => ({
-                site: { description: 'foo', title: 'bar' },
+                site: {
+                    description: 'foo',
+                    title: 'bar',
+                    cover_image: 'https://example.com/qux.png',
+                    site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                },
             }),
         } as ResponsePromise);
 
@@ -65,7 +77,8 @@ describe('getSiteSettings', () => {
                 description: 'foo',
                 title: 'bar',
                 icon: null,
-                cover_image: null,
+                cover_image: 'https://example.com/qux.png',
+                site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
             },
         });
     });
@@ -77,6 +90,7 @@ describe('getSiteSettings', () => {
                     description: 'foo',
                     icon: 'https://example.com/baz.png',
                     cover_image: 'https://example.com/qux.png',
+                    site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
                 },
             }),
         } as ResponsePromise);
@@ -89,6 +103,7 @@ describe('getSiteSettings', () => {
                 title: 'example.com',
                 icon: 'https://example.com/baz.png',
                 cover_image: 'https://example.com/qux.png',
+                site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
             },
         });
     });
@@ -100,6 +115,7 @@ describe('getSiteSettings', () => {
                     description: 'foo',
                     title: 'bar',
                     icon: 'https://example.com/baz.png',
+                    site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
                 },
             }),
         } as ResponsePromise);
@@ -112,6 +128,32 @@ describe('getSiteSettings', () => {
                 title: 'bar',
                 icon: 'https://example.com/baz.png',
                 cover_image: null,
+                site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+            },
+        });
+    });
+
+    it('sets the site uuid to null if missing', async () => {
+        vi.mocked(ky.get).mockReturnValue({
+            json: async () => ({
+                site: {
+                    description: 'foo',
+                    title: 'bar',
+                    icon: 'https://example.com/baz.png',
+                    cover_image: 'https://example.com/qux.png',
+                },
+            }),
+        } as ResponsePromise);
+
+        const result = await getSiteSettings(host);
+
+        expect(result).toEqual({
+            site: {
+                description: 'foo',
+                title: 'bar',
+                icon: 'https://example.com/baz.png',
+                cover_image: 'https://example.com/qux.png',
+                site_uuid: null,
             },
         });
     });

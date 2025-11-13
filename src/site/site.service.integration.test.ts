@@ -60,6 +60,7 @@ describe('SiteService', () => {
                         title: 'Default Title',
                         description: 'Default Description',
                         cover_image: 'https://testing.com/cover.png',
+                        site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
                     },
                 };
             },
@@ -83,6 +84,7 @@ describe('SiteService', () => {
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
         expect(site.id).toBeDefined();
+        expect(site.uuid).toBeDefined();
 
         expect(createInternalAccount.mock.calls).toHaveLength(1);
 
@@ -95,6 +97,7 @@ describe('SiteService', () => {
         expect(siteRow.id).toBe(site.id);
         expect(siteRow.webhook_secret).toBe(site.webhook_secret);
         expect(siteRow.host).toBe(site.host);
+        expect(siteRow.uuid).toBe(site.uuid);
 
         const siteTwo = await service.initialiseSiteForHost('hostname.tld');
 
@@ -115,6 +118,7 @@ describe('SiteService', () => {
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
         expect(site.id).toBeDefined();
+        expect(site.uuid).toBeDefined();
 
         const siteRows = await db('sites').select('*');
 
@@ -126,6 +130,7 @@ describe('SiteService', () => {
         expect(siteRow.webhook_secret).toBe(site.webhook_secret);
         expect(siteRow.host).toBe(site.host);
         expect(siteRow.ghost_pro).toBe(1);
+        expect(siteRow.uuid).toBe(site.uuid);
     });
 
     it('Can disable a site', async () => {

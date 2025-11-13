@@ -117,6 +117,7 @@ describe('hostDataContextMiddleware', () => {
             id: 123,
             host,
             webhook_secret: 's3cr3t',
+            uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
         const mockAccount = {
             id: 456,

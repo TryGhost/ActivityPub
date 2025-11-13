@@ -78,6 +78,7 @@ describe('KnexPostRepository', () => {
                         description: 'A fake site used for testing',
                         icon: 'https://testing.com/favicon.ico',
                         cover_image: 'https://testing.com/cover.png',
+                        site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
                     },
                 };
             },

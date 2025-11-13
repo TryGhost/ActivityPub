@@ -26,10 +26,13 @@ export class FixtureManager {
 
     async createSite(host = faker.internet.domainName()): Promise<Site> {
         const webhook_secret = crypto.randomBytes(32).toString('hex');
+        const uuid = crypto.randomUUID();
+
         const [id] = await this.db
             .insert({
                 host,
                 webhook_secret,
+                uuid,
             })
             .into('sites');
 
@@ -37,6 +40,7 @@ export class FixtureManager {
             id,
             host,
             webhook_secret,
+            uuid,
         };
     }
 
@@ -268,10 +272,11 @@ export function createFixtureManager(
     const siteService = new SiteService(db, accountService, {
         getSiteSettings: async (host) => ({
             site: {
-                description: 'Balbus clibanus bestia suppellex acies armarium.',
-                title: 'Umerus casso venia bestia stultus colligo sonitus cohors.',
-                icon: `https://${host}/avatar/c4863565-3533-43fa-9991-19c5160a4da2.jpg`,
-                cover_image: `https://${host}/cover/cd93c035-7326-4043-aed1-9150fe91b59.jpg`,
+                description: faker.lorem.sentence(),
+                title: faker.lorem.sentence(),
+                icon: `https://${host}/avatar/${faker.string.uuid()}.jpg`,
+                cover_image: `https://${host}/cover/${faker.string.uuid()}.jpg`,
+                site_uuid: crypto.randomUUID(),
             },
         }),
     });

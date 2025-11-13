@@ -5,6 +5,7 @@ export interface Site {
     id: number;
     host: string;
     webhook_secret: string;
+    uuid: string | null; // TODO: Remove null once all sites have a uuid
 }
 
 export interface InternalAccountData {

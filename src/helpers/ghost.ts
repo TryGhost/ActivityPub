@@ -6,6 +6,7 @@ export type SiteSettings = {
         icon: string | null;
         title: string;
         cover_image: string | null;
+        site_uuid: string | null;
     };
 };
 
@@ -21,6 +22,7 @@ export async function getSiteSettings(host: string): Promise<SiteSettings> {
             title: settings?.site?.title || normalizedHost,
             icon: settings?.site?.icon || null,
             cover_image: settings?.site?.cover_image || null,
+            site_uuid: settings?.site?.site_uuid ?? null,
         },
     };
 }

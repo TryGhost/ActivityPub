@@ -129,6 +129,7 @@ describe('Feed API', () => {
             id: 123,
             host: 'example.com',
             webhook_secret: 'secret',
+            uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
 
         const draftData = await createInternalAccountDraftData({
