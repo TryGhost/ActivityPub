@@ -1,4 +1,4 @@
-import type { Context, Create } from '@fedify/fedify';
+import { type Context, type Create, PUBLIC_COLLECTION } from '@fedify/fedify';
 
 import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
@@ -18,6 +18,16 @@ export class CreateHandler {
 
         if (!create.objectId) {
             ctx.data.logger.info('Create object id missing, exit early');
+            return;
+        }
+
+        const recipients = [...create.toIds, ...create.ccIds].map(
+            (id) => id.href,
+        );
+        const isPublic = recipients.includes(PUBLIC_COLLECTION.href);
+
+        if (!isPublic) {
+            ctx.data.logger.info('Create activity is not public - exit');
             return;
         }
 
