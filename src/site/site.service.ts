@@ -10,6 +10,7 @@ export type Site = {
     id: number;
     host: string;
     webhook_secret: string;
+    ghost_uuid: string | null; // TODO: Remove null once all sites have a ghost_uuid
 };
 
 export interface IGhostService {
@@ -23,7 +24,11 @@ export class SiteService {
         private ghostService: IGhostService,
     ) {}
 
-    private async createSite(host: string, isGhostPro: boolean): Promise<Site> {
+    private async createSite(
+        host: string,
+        ghostUuid: string | null = null, // TODO: Remove null once all sites have a ghost_uuid
+        isGhostPro: boolean,
+    ): Promise<Site> {
         const rows = await this.client
             .select('*')
             .from('sites')
@@ -39,6 +44,7 @@ export class SiteService {
                 host,
                 webhook_secret,
                 ghost_pro: isGhostPro,
+                ghost_uuid: ghostUuid,
             })
             .into('sites');
 
@@ -46,6 +52,7 @@ export class SiteService {
             id,
             host,
             webhook_secret,
+            ghost_uuid: ghostUuid,
         };
     }
 
@@ -66,6 +73,7 @@ export class SiteService {
             id: rows[0].id,
             host: rows[0].host,
             webhook_secret: rows[0].webhook_secret,
+            ghost_uuid: rows[0].ghost_uuid || null,
         };
     }
 
@@ -74,10 +82,19 @@ export class SiteService {
         isGhostPro = false,
     ): Promise<Site> {
         const existingSite = await this.getSiteByHost(host);
+        const settings = await this.ghostService.getSiteSettings(host);
+
+        if (!settings?.site?.site_uuid) {
+            throw new Error(`Site ${host} has no site_uuid`);
+        }
 
         let site: Site;
         if (existingSite === null) {
-            site = await this.createSite(host, isGhostPro);
+            site = await this.createSite(
+                host,
+                settings.site.site_uuid,
+                isGhostPro,
+            );
         } else {
             site = existingSite;
         }
@@ -91,8 +108,6 @@ export class SiteService {
             null;
 
         if (existingAccount === null) {
-            const settings = await this.ghostService.getSiteSettings(site.host);
-
             const internalAccountData: InternalAccountData = {
                 username: 'index',
                 name: settings?.site?.title,

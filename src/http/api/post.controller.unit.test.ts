@@ -91,6 +91,7 @@ describe('Post API', () => {
             id: 123,
             host: 'example.com',
             webhook_secret: 'secret',
+            ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
         const draftData = await createInternalAccountDraftData({
             host: new URL('http://example.com'),

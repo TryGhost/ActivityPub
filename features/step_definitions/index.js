@@ -64,12 +64,12 @@ BeforeAll(async function setupWiremock() {
             {
                 status: 200,
                 body: {
-                    settings: {
-                        site: {
-                            title: 'Testing Blog',
-                            icon: 'https://ghost.org/favicon.ico',
-                            description: 'A blog for testing',
-                        },
+                    site: {
+                        title: 'Testing Blog',
+                        description: 'A blog for testing',
+                        icon: 'https://ghost.org/favicon.ico',
+                        cover_image: 'https://ghost.org/cover.png',
+                        site_uuid: "{{randomValue type='UUID'}}",
                     },
                 },
                 headers: {

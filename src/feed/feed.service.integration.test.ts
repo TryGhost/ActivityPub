@@ -170,6 +170,7 @@ describe('FeedService', () => {
                         description: `Site ${host} description`,
                         icon: `https://${host}/favicon.ico`,
                         cover_image: `https://${host}/cover.png`,
+                        site_uuid: crypto.randomUUID(),
                     },
                 };
             },

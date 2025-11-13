@@ -71,13 +71,14 @@ describe('KnexPostRepository', () => {
             generateTestCryptoKeyPair,
         );
         siteService = new SiteService(client, accountService, {
-            async getSiteSettings(_host: string) {
+            async getSiteSettings(host: string) {
                 return {
                     site: {
-                        title: 'Test Site',
-                        description: 'A fake site used for testing',
-                        icon: 'https://testing.com/favicon.ico',
-                        cover_image: 'https://testing.com/cover.png',
+                        title: `Site ${host} title`,
+                        description: `Site ${host} description`,
+                        icon: `https://${host}/favicon.ico`,
+                        cover_image: `https://${host}/cover.png`,
+                        site_uuid: crypto.randomUUID(),
                     },
                 };
             },
