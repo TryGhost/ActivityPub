@@ -115,7 +115,7 @@ describe('AccountService', () => {
         const siteData = {
             host: 'www.example.com',
             webhook_secret: 'secret',
-            uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+            ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
         const [id] = await db('sites').insert(siteData);
 

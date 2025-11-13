@@ -90,7 +90,7 @@ describe('dispatchers', () => {
             id: 1,
             host: 'example.com',
             webhook_secret: 'test-secret',
-            uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+            ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         } as Site;
 
         mockPost = Post.createFromData(mockAccount, {

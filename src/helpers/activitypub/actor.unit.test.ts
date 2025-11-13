@@ -166,7 +166,7 @@ describe('isFollowedByDefaultSiteAccount', () => {
         id: 123,
         host: 'example.com',
         webhook_secret: 'secret',
-        uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+        ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
     } as unknown as Site;
 
     it('should return a boolean indicating if the default account associated with the provided site is following the provided actor', async () => {

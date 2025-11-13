@@ -10,7 +10,7 @@ export type Site = {
     id: number;
     host: string;
     webhook_secret: string;
-    uuid: string | null; // TODO: Remove null once all sites have a uuid
+    ghost_uuid: string | null; // TODO: Remove null once all sites have a ghost_uuid
 };
 
 export interface IGhostService {
@@ -26,7 +26,7 @@ export class SiteService {
 
     private async createSite(
         host: string,
-        uuid: string | null = null, // TODO: Remove null once all sites have a uuid
+        ghost_uuid: string | null = null, // TODO: Remove null once all sites have a ghost_uuid
         isGhostPro: boolean,
     ): Promise<Site> {
         const rows = await this.client
@@ -44,7 +44,7 @@ export class SiteService {
                 host,
                 webhook_secret,
                 ghost_pro: isGhostPro,
-                uuid,
+                ghost_uuid,
             })
             .into('sites');
 
@@ -52,7 +52,7 @@ export class SiteService {
             id,
             host,
             webhook_secret,
-            uuid,
+            ghost_uuid,
         };
     }
 
@@ -73,7 +73,7 @@ export class SiteService {
             id: rows[0].id,
             host: rows[0].host,
             webhook_secret: rows[0].webhook_secret,
-            uuid: rows[0].uuid || null,
+            ghost_uuid: rows[0].ghost_uuid || null,
         };
     }
 

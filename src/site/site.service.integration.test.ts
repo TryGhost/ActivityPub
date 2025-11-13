@@ -84,7 +84,7 @@ describe('SiteService', () => {
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
         expect(site.id).toBeDefined();
-        expect(site.uuid).toBeDefined();
+        expect(site.ghost_uuid).toBeDefined();
 
         expect(createInternalAccount.mock.calls).toHaveLength(1);
 
@@ -97,7 +97,7 @@ describe('SiteService', () => {
         expect(siteRow.id).toBe(site.id);
         expect(siteRow.webhook_secret).toBe(site.webhook_secret);
         expect(siteRow.host).toBe(site.host);
-        expect(siteRow.uuid).toBe(site.uuid);
+        expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
 
         const siteTwo = await service.initialiseSiteForHost('hostname.tld');
 
@@ -118,7 +118,7 @@ describe('SiteService', () => {
         expect(site.host).toBe('hostname.tld');
         expect(site.webhook_secret).toBeDefined();
         expect(site.id).toBeDefined();
-        expect(site.uuid).toBeDefined();
+        expect(site.ghost_uuid).toBeDefined();
 
         const siteRows = await db('sites').select('*');
 
@@ -130,7 +130,7 @@ describe('SiteService', () => {
         expect(siteRow.webhook_secret).toBe(site.webhook_secret);
         expect(siteRow.host).toBe(site.host);
         expect(siteRow.ghost_pro).toBe(1);
-        expect(siteRow.uuid).toBe(site.uuid);
+        expect(siteRow.ghost_uuid).toBe(site.ghost_uuid);
     });
 
     it('Can disable a site', async () => {
