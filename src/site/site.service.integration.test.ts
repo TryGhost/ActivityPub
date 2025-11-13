@@ -156,4 +156,19 @@ describe('SiteService', () => {
 
         expect(siteRows).toHaveLength(1);
     });
+
+    it('Throws an error when a site does not have a site_uuid', async () => {
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: '',
+                title: 'Default Title',
+                description: 'Default Description',
+                cover_image: 'https://testing.com/cover.png',
+            },
+        });
+
+        await expect(
+            service.initialiseSiteForHost('hostname.tld'),
+        ).rejects.toThrow('Site hostname.tld has no site_uuid');
+    });
 });

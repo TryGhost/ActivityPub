@@ -26,7 +26,7 @@ export class SiteService {
 
     private async createSite(
         host: string,
-        ghost_uuid: string | null = null, // TODO: Remove null once all sites have a ghost_uuid
+        ghostUuid: string | null = null, // TODO: Remove null once all sites have a ghost_uuid
         isGhostPro: boolean,
     ): Promise<Site> {
         const rows = await this.client
@@ -44,7 +44,7 @@ export class SiteService {
                 host,
                 webhook_secret,
                 ghost_pro: isGhostPro,
-                ghost_uuid,
+                ghost_uuid: ghostUuid,
             })
             .into('sites');
 
@@ -52,7 +52,7 @@ export class SiteService {
             id,
             host,
             webhook_secret,
-            ghost_uuid,
+            ghost_uuid: ghostUuid,
         };
     }
 
@@ -84,11 +84,15 @@ export class SiteService {
         const existingSite = await this.getSiteByHost(host);
         const settings = await this.ghostService.getSiteSettings(host);
 
+        if (!settings?.site?.site_uuid) {
+            throw new Error(`Site ${host} has no site_uuid`);
+        }
+
         let site: Site;
         if (existingSite === null) {
             site = await this.createSite(
                 host,
-                settings?.site?.site_uuid,
+                settings.site.site_uuid,
                 isGhostPro,
             );
         } else {
