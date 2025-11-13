@@ -55,7 +55,7 @@ describe('CreateHandler', () => {
     });
 
     describe('handle', () => {
-        it('should exit early when Create activity has no id', async () => {
+        it('should ignore Create activities with no id', async () => {
             const mockCreate = {
                 id: null,
                 objectId: new URL('https://example.com/post/123'),
@@ -73,7 +73,7 @@ describe('CreateHandler', () => {
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
 
-        it('should exit early when Create activity has no objectId', async () => {
+        it('should ignore Create activities with no objectId', async () => {
             const mockCreate = {
                 id: new URL('https://example.com/create/123'),
                 objectId: null,
@@ -91,11 +91,11 @@ describe('CreateHandler', () => {
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
 
-        it('should exit early when Create activity is not public (no PUBLIC_COLLECTION in to: nor cc:)', async () => {
+        it('should ignore private / unlisted Create activities', async () => {
             const mockCreate = {
                 id: new URL('https://example.com/create/123'),
                 objectId: new URL('https://example.com/post/123'),
-                toIds: [new URL('https://example.com/users/specific-user')],
+                toIds: [new URL('https://example.com/users/specific-user')], // Not addressed to PUBLIC_COLLECTION
                 ccIds: [],
                 toJsonLd: vi.fn(),
             } as unknown as Create;
