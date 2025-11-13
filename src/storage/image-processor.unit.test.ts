@@ -263,7 +263,7 @@ describe('ImageProcessor', () => {
             expect(metadata.format).toBe('jpeg');
         });
 
-        it('converts HEIC file to JPEG format', async () => {
+        it('converts HEIC file to JPEG format for web compatibility', async () => {
             const heicFile = await createMockFile('image/heic', 'photo.heic');
 
             const processor = new ImageProcessor(mockLogger);
@@ -278,7 +278,7 @@ describe('ImageProcessor', () => {
             expect(metadata.format).toBe('jpeg');
         });
 
-        it('converts HEIF file to JPEG format', async () => {
+        it('converts HEIF file to JPEG format for web compatibility', async () => {
             const heifFile = await createMockFile('image/heif', 'photo.heif');
 
             const processor = new ImageProcessor(mockLogger);
@@ -293,27 +293,20 @@ describe('ImageProcessor', () => {
             expect(metadata.format).toBe('jpeg');
         });
 
-        it('resizes GIFs to fit 2000x2000, but does not compress them', async () => {
+        it('returns original file for GIFs, as commpression may produce larger files than the input', async () => {
             const gifFile = await createMockFile(
                 'image/gif',
                 'photo.gif',
                 3000,
                 3000,
             );
-            const originalSize = gifFile.size;
 
             const processor = new ImageProcessor(mockLogger);
             const processedFile = await processor.process(gifFile);
 
-            expect(processedFile.size).toBeLessThanOrEqual(originalSize);
+            expect(processedFile).toBe(gifFile);
             expect(processedFile.name).toBe('photo.gif');
             expect(processedFile.type).toBe('image/gif');
-
-            const buffer = Buffer.from(await processedFile.arrayBuffer());
-            const metadata = await sharp(buffer).metadata();
-            expect(metadata.format).toBe('gif');
-            expect(metadata.width).toBeLessThanOrEqual(2000);
-            expect(metadata.height).toBeLessThanOrEqual(2000);
         });
 
         it('returns original file for unsupported types', async () => {

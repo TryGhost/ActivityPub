@@ -68,7 +68,7 @@ export class ImageProcessor {
                 // Note: GIFs are not compressed, as compression may produce larger files than the input
                 // See: https://github.com/lovell/sharp/issues/3610)
                 case 'image/gif':
-                    break;
+                    return file;
                 default:
                     return file;
             }
