@@ -16,6 +16,7 @@ export async function getSiteSettings(host: string): Promise<SiteSettings> {
         .json<Partial<SiteSettings>>();
 
     const normalizedHost = host.replace(/^www\./, '');
+
     return {
         site: {
             description: settings?.site?.description || null,
