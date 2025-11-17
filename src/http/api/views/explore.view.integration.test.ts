@@ -39,6 +39,46 @@ describe('ExploreView', () => {
     }
 
     describe('getAccountsInTopic', () => {
+        it('should return empty array for non-existent topic', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            const { accounts, next } = await exploreView.getAccountsInTopic(
+                'non-existent-topic',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(0);
+            expect(next).toBeNull();
+        });
+
+        it('shoudl return expected fields for accounts', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const topic = await createTopic('Technology', 'technology');
+            await addAccountToTopic(account.id, topic.id);
+
+            const { accounts } = await exploreView.getAccountsInTopic(
+                topic.slug,
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].apId).toBe(account.apId.toString());
+            expect(accounts[0].name).toBe(account.name);
+            expect(accounts[0].handle).toBe(
+                `@${account.username}@${account.apId.host}`,
+            );
+            expect(accounts[0].avatarUrl).toBe(
+                account.avatarUrl ? account.avatarUrl.toString() : null,
+            );
+            expect(accounts[0].bio).toBe(account.bio);
+            expect(accounts[0].url).toBe(
+                account.url ? account.url.toString() : null,
+            );
+            expect(accounts[0].followedByMe).toBe(false);
+        });
+
         it('should filter out blocked accounts', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [accountOne] = await fixtureManager.createInternalAccount();
@@ -46,7 +86,7 @@ describe('ExploreView', () => {
             const [blockedAccount] =
                 await fixtureManager.createInternalAccount();
 
-            const topic = await createTopic('Technology', 'technology');
+            const topic = await createTopic('News', 'news');
 
             await addAccountToTopic(accountOne.id, topic.id);
             await addAccountToTopic(accountTwo.id, topic.id);
@@ -213,18 +253,6 @@ describe('ExploreView', () => {
             // Verify all accounts are included across both pages
             const allReturnedIds = [...firstPageIds, ...secondPageIds];
             expect(allReturnedIds).toHaveLength(25);
-        });
-
-        it('should return empty array for non-existent topic', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-
-            const { accounts, next } = await exploreView.getAccountsInTopic(
-                'non-existent-topic',
-                viewer.id,
-            );
-
-            expect(accounts).toHaveLength(0);
-            expect(next).toBeNull();
         });
     });
 });

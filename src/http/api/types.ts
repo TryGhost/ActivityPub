@@ -106,14 +106,7 @@ export type AuthorDTO = Pick<
 
 export type ExploreAccountDTO = Pick<
     AccountDTO,
-    | 'id'
-    | 'apId'
-    | 'name'
-    | 'handle'
-    | 'avatarUrl'
-    | 'bio'
-    | 'url'
-    | 'followedByMe'
+    'apId' | 'name' | 'handle' | 'avatarUrl' | 'bio' | 'url' | 'followedByMe'
 >;
 
 /**

@@ -18,7 +18,7 @@ export class ExploreController {
         if (Number.isNaN(offset) || offset < 0) {
             return new Response(
                 JSON.stringify({
-                    error: 'Invalid next parameter, expected a positive integer',
+                    error: 'Invalid next parameter, expected a non-negative integer',
                 }),
                 {
                     headers: {

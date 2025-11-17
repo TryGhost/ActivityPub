@@ -74,6 +74,7 @@ export class ExploreView {
             .whereNull('domain_blocks.id')
 
             // Pagination
+            .orderBy('accounts.id', 'asc')
             .limit(limit + 1)
             .offset(offset);
 
@@ -82,7 +83,6 @@ export class ExploreView {
         const next = hasMore ? (offset + limit).toString() : null;
 
         const accounts = paginatedResults.map((result) => ({
-            id: result.id,
             apId: result.ap_id,
             name: result.name || '',
             handle: getAccountHandle(result.domain, result.username),
