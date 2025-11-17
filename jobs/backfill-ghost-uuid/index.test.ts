@@ -300,5 +300,63 @@ describe('backfill-ghost-uuid', () => {
                 '506b2854-7d2d-40a4-98bd-ed0fb21fc4b2',
             );
         });
+
+        test('should return "duplicate" when UUID already exists on another site', async () => {
+            await connection.execute(
+                'INSERT INTO sites (host, webhook_secret, ghost_uuid) VALUES (?, ?, ?), (?, ?, ?)',
+                [
+                    'site1.com',
+                    'secret1',
+                    '506b2854-7d2d-40a4-98bd-ed0fb21fc4b2',
+                    'site2.com',
+                    'secret2',
+                    null,
+                ],
+            );
+
+            const [rows] = await connection.execute<RowDataPacket[]>(
+                'SELECT id FROM sites WHERE host = ?',
+                ['site2.com'],
+            );
+
+            const siteId = rows[0].id;
+
+            const result = await updateSiteGhostUUID(
+                connection,
+                siteId,
+                '506b2854-7d2d-40a4-98bd-ed0fb21fc4b2',
+            );
+
+            expect(result).toBe('duplicate');
+
+            const [updated] = await connection.execute<RowDataPacket[]>(
+                'SELECT ghost_uuid FROM sites WHERE id = ?',
+                [siteId],
+            );
+
+            expect(updated[0].ghost_uuid).toBeNull();
+        });
+
+        test('should return "success" when update succeeds', async () => {
+            await connection.execute(
+                'INSERT INTO sites (host, webhook_secret, ghost_uuid) VALUES (?, ?, ?)',
+                ['site1.com', 'secret1', null],
+            );
+
+            const [rows] = await connection.execute<RowDataPacket[]>(
+                'SELECT id FROM sites WHERE host = ?',
+                ['site1.com'],
+            );
+
+            const siteId = rows[0].id;
+
+            const result = await updateSiteGhostUUID(
+                connection,
+                siteId,
+                '506b2854-7d2d-40a4-98bd-ed0fb21fc4b2',
+            );
+
+            expect(result).toBe('success');
+        });
     });
 });

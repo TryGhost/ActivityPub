@@ -79,11 +79,26 @@ export async function updateSiteGhostUUID(
     connection: mysql.Connection,
     siteId: number,
     ghostUuid: string,
-): Promise<void> {
-    await connection.execute('UPDATE sites SET ghost_uuid = ? WHERE id = ?', [
-        ghostUuid,
-        siteId,
-    ]);
+): Promise<'success' | 'duplicate'> {
+    try {
+        await connection.execute(
+            'UPDATE sites SET ghost_uuid = ? WHERE id = ?',
+            [ghostUuid, siteId],
+        );
+
+        return 'success';
+    } catch (error: unknown) {
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            error.code === 'ER_DUP_ENTRY'
+        ) {
+            return 'duplicate';
+        }
+
+        throw error;
+    }
 }
 
 async function main() {
@@ -119,6 +134,7 @@ async function main() {
 
         let updated = 0;
         let skipped = 0;
+        let duplicates = 0;
 
         for (let i = 0; i < sites.length; i++) {
             const site = sites[i];
@@ -130,11 +146,25 @@ async function main() {
             const ghostUuid = await fetchSiteGhostUUID(site.host);
 
             if (ghostUuid) {
-                await updateSiteGhostUUID(connection, site.id, ghostUuid);
+                const result = await updateSiteGhostUUID(
+                    connection,
+                    site.id,
+                    ghostUuid,
+                );
 
-                console.log(`Updated site ${site.id} with UUID ${ghostUuid}`);
+                if (result === 'success') {
+                    console.log(
+                        `Updated site ${site.id} with UUID ${ghostUuid}`,
+                    );
 
-                updated++;
+                    updated++;
+                } else if (result === 'duplicate') {
+                    console.warn(
+                        `Duplicate UUID ${ghostUuid} for ${site.host} (site ${site.id})`,
+                    );
+
+                    duplicates++;
+                }
             } else {
                 console.warn(`Failed to fetch UUID for ${site.host}`);
 
@@ -146,7 +176,7 @@ async function main() {
         }
 
         console.log(
-            `Completed! Updated ${updated} sites, skipped ${skipped} sites`,
+            `Completed! Updated ${updated} sites, skipped ${skipped} sites (fetch failed), ${duplicates} sites (duplicate UUID)`,
         );
     } finally {
         await connection.end();
