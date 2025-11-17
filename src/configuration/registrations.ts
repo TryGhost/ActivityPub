@@ -50,6 +50,7 @@ import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
 import { BlueskyController } from '@/http/api/bluesky.controller';
 import { ClientConfigController } from '@/http/api/client-config.controller';
+import { ExploreController } from '@/http/api/explore.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
 import { LikeController } from '@/http/api/like.controller';
@@ -63,6 +64,7 @@ import { AccountFollowsView } from '@/http/api/views/account.follows.view';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
+import { ExploreView } from '@/http/api/views/explore.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
@@ -493,5 +495,11 @@ export function registerDependencies(
     container.register(
         'blueskyController',
         asClass(BlueskyController).singleton(),
+    );
+
+    container.register('exploreView', asClass(ExploreView).singleton());
+    container.register(
+        'exploreController',
+        asClass(ExploreController).singleton(),
     );
 }
