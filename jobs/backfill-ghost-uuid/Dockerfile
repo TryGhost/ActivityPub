@@ -3,7 +3,6 @@ FROM oven/bun:1.3.0-alpine@sha256:37e6b1cbe053939bccf6ae4507977ed957eaa6e7f27567
 WORKDIR /opt/job
 
 COPY index.ts .
-COPY lib ./lib
 
 ENTRYPOINT ["bun", "run", "index.ts"]
 CMD []
