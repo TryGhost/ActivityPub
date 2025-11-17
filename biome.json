@@ -23,7 +23,7 @@
             "groups": [
               ["vitest", "@cucumber/cucumber"],
               ":BLANK_LINE:",
-              ":NODE:",
+              [":NODE:", ":BUN:"],
               ":BLANK_LINE:",
               ":PACKAGE:",
               ":BLANK_LINE:",
