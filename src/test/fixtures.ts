@@ -235,6 +235,18 @@ export class FixtureManager {
             .delete();
     }
 
+    async createTopic(name: string, slug: string) {
+        const [id] = await this.db('topics').insert({ name, slug });
+        return { id, name, slug };
+    }
+
+    async addAccountToTopic(accountId: number, topicId: number) {
+        await this.db('account_topics').insert({
+            account_id: accountId,
+            topic_id: topicId,
+        });
+    }
+
     async reset() {
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 0');
         await Promise.all([
@@ -251,6 +263,8 @@ export class FixtureManager {
             this.db('outboxes').truncate(),
             this.db('mentions').truncate(),
             this.db('bluesky_integration_account_handles').truncate(),
+            this.db('account_topics').truncate(),
+            this.db('topics').truncate(),
         ]);
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 1');
     }

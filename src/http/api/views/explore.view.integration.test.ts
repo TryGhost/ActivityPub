@@ -26,18 +26,6 @@ describe('ExploreView', () => {
         await db.destroy();
     });
 
-    async function createTopic(name: string, slug: string) {
-        const [id] = await db('topics').insert({ name, slug });
-        return { id, name, slug };
-    }
-
-    async function addAccountToTopic(accountId: number, topicId: number) {
-        await db('account_topics').insert({
-            account_id: accountId,
-            topic_id: topicId,
-        });
-    }
-
     describe('getAccountsInTopic', () => {
         it('should return empty array for non-existent topic', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
@@ -51,12 +39,15 @@ describe('ExploreView', () => {
             expect(next).toBeNull();
         });
 
-        it('shoudl return expected fields for accounts', async () => {
+        it('should return expected fields for accounts', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [account] = await fixtureManager.createInternalAccount();
 
-            const topic = await createTopic('Technology', 'technology');
-            await addAccountToTopic(account.id, topic.id);
+            const topic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+            await fixtureManager.addAccountToTopic(account.id, topic.id);
 
             const { accounts } = await exploreView.getAccountsInTopic(
                 topic.slug,
@@ -64,7 +55,7 @@ describe('ExploreView', () => {
             );
 
             expect(accounts).toHaveLength(1);
-            expect(accounts[0].apId).toBe(account.apId.toString());
+            expect(accounts[0].id).toBe(account.apId.toString());
             expect(accounts[0].name).toBe(account.name);
             expect(accounts[0].handle).toBe(
                 `@${account.username}@${account.apId.host}`,
@@ -86,11 +77,11 @@ describe('ExploreView', () => {
             const [blockedAccount] =
                 await fixtureManager.createInternalAccount();
 
-            const topic = await createTopic('News', 'news');
+            const topic = await fixtureManager.createTopic('News', 'news');
 
-            await addAccountToTopic(accountOne.id, topic.id);
-            await addAccountToTopic(accountTwo.id, topic.id);
-            await addAccountToTopic(blockedAccount.id, topic.id);
+            await fixtureManager.addAccountToTopic(accountOne.id, topic.id);
+            await fixtureManager.addAccountToTopic(accountTwo.id, topic.id);
+            await fixtureManager.addAccountToTopic(blockedAccount.id, topic.id);
 
             // Viewer blocks one account
             await fixtureManager.createBlock(viewer, blockedAccount);
@@ -101,13 +92,13 @@ describe('ExploreView', () => {
             );
 
             expect(accounts).toHaveLength(2);
-            expect(accounts.map((a) => a.apId)).toContain(
+            expect(accounts.map((a) => a.id)).toContain(
                 accountOne.apId.toString(),
             );
-            expect(accounts.map((a) => a.apId)).toContain(
+            expect(accounts.map((a) => a.id)).toContain(
                 accountTwo.apId.toString(),
             );
-            expect(accounts.map((a) => a.apId)).not.toContain(
+            expect(accounts.map((a) => a.id)).not.toContain(
                 blockedAccount.apId.toString(),
             );
             expect(next).toBeNull();
@@ -120,10 +111,16 @@ describe('ExploreView', () => {
                 'https://blocked-domain.com/',
             );
 
-            const topic = await createTopic('Science', 'science');
+            const topic = await fixtureManager.createTopic(
+                'Science',
+                'science',
+            );
 
-            await addAccountToTopic(accountOne.id, topic.id);
-            await addAccountToTopic(externalAccount.id, topic.id);
+            await fixtureManager.addAccountToTopic(accountOne.id, topic.id);
+            await fixtureManager.addAccountToTopic(
+                externalAccount.id,
+                topic.id,
+            );
 
             // Viewer blocks the external domain
             await fixtureManager.createDomainBlock(
@@ -137,8 +134,8 @@ describe('ExploreView', () => {
             );
 
             expect(accounts).toHaveLength(1);
-            expect(accounts[0].apId).toBe(accountOne.apId.toString());
-            expect(accounts.map((a) => a.apId)).not.toContain(
+            expect(accounts[0].id).toBe(accountOne.apId.toString());
+            expect(accounts.map((a) => a.id)).not.toContain(
                 externalAccount.apId.toString(),
             );
             expect(next).toBeNull();
@@ -149,11 +146,11 @@ describe('ExploreView', () => {
             const [accountOne] = await fixtureManager.createInternalAccount();
             const [accountTwo] = await fixtureManager.createInternalAccount();
 
-            const topic = await createTopic('Art', 'art');
+            const topic = await fixtureManager.createTopic('Art', 'art');
 
-            await addAccountToTopic(viewer.id, topic.id);
-            await addAccountToTopic(accountOne.id, topic.id);
-            await addAccountToTopic(accountTwo.id, topic.id);
+            await fixtureManager.addAccountToTopic(viewer.id, topic.id);
+            await fixtureManager.addAccountToTopic(accountOne.id, topic.id);
+            await fixtureManager.addAccountToTopic(accountTwo.id, topic.id);
 
             const { accounts, next } = await exploreView.getAccountsInTopic(
                 topic.slug,
@@ -161,13 +158,13 @@ describe('ExploreView', () => {
             );
 
             expect(accounts).toHaveLength(2);
-            expect(accounts.map((a) => a.apId)).not.toContain(
+            expect(accounts.map((a) => a.id)).not.toContain(
                 viewer.apId.toString(),
             );
-            expect(accounts.map((a) => a.apId)).toContain(
+            expect(accounts.map((a) => a.id)).toContain(
                 accountOne.apId.toString(),
             );
-            expect(accounts.map((a) => a.apId)).toContain(
+            expect(accounts.map((a) => a.id)).toContain(
                 accountTwo.apId.toString(),
             );
             expect(next).toBeNull();
@@ -180,10 +177,16 @@ describe('ExploreView', () => {
             const [notFollowedAccount] =
                 await fixtureManager.createInternalAccount();
 
-            const topic = await createTopic('Music', 'music');
+            const topic = await fixtureManager.createTopic('Music', 'music');
 
-            await addAccountToTopic(followedAccount.id, topic.id);
-            await addAccountToTopic(notFollowedAccount.id, topic.id);
+            await fixtureManager.addAccountToTopic(
+                followedAccount.id,
+                topic.id,
+            );
+            await fixtureManager.addAccountToTopic(
+                notFollowedAccount.id,
+                topic.id,
+            );
 
             // Viewer follows one account
             await fixtureManager.createFollow(viewer, followedAccount);
@@ -196,10 +199,10 @@ describe('ExploreView', () => {
             expect(accounts).toHaveLength(2);
 
             const followedAccountDTO = accounts.find(
-                (a) => a.apId === followedAccount.apId.toString(),
+                (a) => a.id === followedAccount.apId.toString(),
             );
             const notFollowedAccountDTO = accounts.find(
-                (a) => a.apId === notFollowedAccount.apId.toString(),
+                (a) => a.id === notFollowedAccount.apId.toString(),
             );
 
             expect(followedAccountDTO?.followedByMe).toBe(true);
@@ -209,14 +212,14 @@ describe('ExploreView', () => {
 
         it('should paginate results correctly', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
-            const topic = await createTopic('Gaming', 'gaming');
+            const topic = await fixtureManager.createTopic('Gaming', 'gaming');
 
             // Create 25 accounts in the topic
             const accounts: Account[] = [];
             for (let i = 0; i < 25; i++) {
                 const [account] = await fixtureManager.createInternalAccount();
                 accounts.push(account);
-                await addAccountToTopic(account.id, topic.id);
+                await fixtureManager.addAccountToTopic(account.id, topic.id);
             }
 
             // First page - should return 20 accounts and next cursor
@@ -242,8 +245,8 @@ describe('ExploreView', () => {
             expect(secondPage.next).toBeNull();
 
             // Verify no overlap between pages
-            const firstPageIds = firstPage.accounts.map((a) => a.apId);
-            const secondPageIds = secondPage.accounts.map((a) => a.apId);
+            const firstPageIds = firstPage.accounts.map((a) => a.id);
+            const secondPageIds = secondPage.accounts.map((a) => a.id);
 
             const overlap = firstPageIds.filter((id) =>
                 secondPageIds.includes(id),

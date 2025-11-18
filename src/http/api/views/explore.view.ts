@@ -83,7 +83,7 @@ export class ExploreView {
         const next = hasMore ? (offset + limit).toString() : null;
 
         const accounts = paginatedResults.map((result) => ({
-            apId: result.ap_id,
+            id: result.ap_id, // Note: we expose the ActivityPub ID as identifier to the client, instead of the internal ID
             name: result.name || '',
             handle: getAccountHandle(result.domain, result.username),
             avatarUrl: result.avatar_url || null,
