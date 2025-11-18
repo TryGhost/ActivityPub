@@ -9,7 +9,7 @@ export class ExploreView {
     constructor(private readonly db: Knex) {}
 
     async getAccountsInTopic(
-        slug: string,
+        topicSlug: string,
         viewerAccountId: number,
         offset = 0,
         limit = DEFAULT_EXPLORE_LIMIT,
@@ -30,7 +30,7 @@ export class ExploreView {
                 'accounts.id',
             )
             .innerJoin('topics', 'topics.id', 'account_topics.topic_id')
-            .where('topics.slug', slug)
+            .where('topics.slug', topicSlug)
 
             // Filter out the viewer account
             .whereNot('accounts.id', viewerAccountId)

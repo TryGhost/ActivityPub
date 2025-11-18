@@ -6,10 +6,10 @@ import { GhostRole } from '@/http/middleware/role-guard';
 export class ExploreController {
     constructor(private readonly exploreView: ExploreView) {}
 
-    @APIRoute('GET', 'explore/:slug')
+    @APIRoute('GET', 'explore/:topic_slug')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getAccountsPerTopic(ctx: AppContext) {
-        const slug = ctx.req.param('slug');
+        const topicSlug = ctx.req.param('topic_slug');
         const viewerAccountId = ctx.get('account').id;
 
         const nextParam = ctx.req.query('next');
@@ -30,7 +30,7 @@ export class ExploreController {
         }
 
         const { accounts, next } = await this.exploreView.getAccountsInTopic(
-            slug,
+            topicSlug,
             viewerAccountId,
             offset,
         );
