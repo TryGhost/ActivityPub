@@ -104,6 +104,11 @@ export type AuthorDTO = Pick<
     'id' | 'handle' | 'avatarUrl' | 'name' | 'url' | 'followedByMe'
 >;
 
+export type ExploreAccountDTO = Pick<
+    AccountDTO,
+    'id' | 'handle' | 'avatarUrl' | 'name' | 'url' | 'bio' | 'followedByMe'
+>;
+
 /**
  * Post returned by the API - Anywhere a post is returned via the API,
  * it should be this shape, or a partial version of it

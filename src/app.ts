@@ -78,6 +78,7 @@ import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
 import { BlueskyController } from '@/http/api/bluesky.controller';
 import { ClientConfigController } from '@/http/api/client-config.controller';
+import { ExploreController } from '@/http/api/explore.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
 import { BadRequest } from '@/http/api/helpers/response';
@@ -837,6 +838,7 @@ routeRegistry.registerController(
     ClientConfigController,
 );
 routeRegistry.registerController('blueskyController', BlueskyController);
+routeRegistry.registerController('exploreController', ExploreController);
 
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);
