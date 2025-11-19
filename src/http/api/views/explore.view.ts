@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 
 import { getAccountHandle } from '@/account/utils';
+import { sanitizeHtml } from '@/helpers/html';
 import type { ExploreAccountDTO } from '@/http/api/types';
 
 const DEFAULT_EXPLORE_LIMIT = 20;
@@ -90,7 +91,7 @@ export class ExploreView {
             name: result.name || '',
             handle: getAccountHandle(result.domain, result.username),
             avatarUrl: result.avatar_url || null,
-            bio: result.bio || null,
+            bio: sanitizeHtml(result.bio || ''),
             url: result.url || null,
             followedByMe: result.followed_by_me === 1,
         }));

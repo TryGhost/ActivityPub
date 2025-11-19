@@ -70,6 +70,46 @@ describe('ExploreView', () => {
             expect(accounts[0].followedByMe).toBe(false);
         });
 
+        it('should sanitize HTML in bio field', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            // Create an account with HTML in bio
+            const bioWithHtml =
+                '<p>Hello <strong>world</strong>!</p><script>alert("xss")</script><img src=x onerror="alert(1)">';
+
+            const [accountId] = await db('accounts').insert({
+                ap_id: 'https://example.com/users/testuser',
+                username: 'testuser',
+                domain: 'example.com',
+                ap_inbox_url: 'https://example.com/users/testuser/inbox',
+                name: 'Test User',
+                bio: bioWithHtml,
+            });
+
+            const topic = await fixtureManager.createTopic('Tech', 'tech');
+            await fixtureManager.addAccountToTopic(accountId, topic.id);
+
+            const { accounts } = await exploreView.getAccountsInTopic(
+                topic.slug,
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+
+            // Bio should have allowed HTML preserved
+            expect(accounts[0].bio).toContain('<p>');
+            expect(accounts[0].bio).toContain('<strong>');
+            expect(accounts[0].bio).toContain('Hello');
+            expect(accounts[0].bio).toContain('world');
+
+            // Dangerous content inside script tags should be removed
+            expect(accounts[0].bio).not.toContain('alert("xss")');
+
+            // Event handlers should be removed
+            expect(accounts[0].bio).not.toContain('onerror');
+            expect(accounts[0].bio).not.toContain('alert(1)');
+        });
+
         it('should filter out blocked accounts', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [accountOne] = await fixtureManager.createInternalAccount();
