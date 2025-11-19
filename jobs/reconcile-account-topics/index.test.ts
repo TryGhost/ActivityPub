@@ -236,6 +236,39 @@ describe('reconcile-account-topics', () => {
         await reconciler.run();
     });
 
+    test('it should use empty category for "top" slug', async () => {
+        await pool.execute('INSERT INTO topics (name, slug) VALUES (?, ?)', [
+            'Top',
+            'top',
+        ]);
+
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
+
+        global.fetch = mock((url: string) => {
+            const urlObj = new URL(url);
+
+            // Verify category parameter is empty for "top" slug
+            expect(urlObj.searchParams.get('ap')).toBe('1');
+            expect(urlObj.searchParams.get('category')).toBe('');
+            expect(urlObj.searchParams.get('sort')).toBe('top');
+            expect(urlObj.searchParams.get('locale')).toBe('en');
+
+            return Promise.resolve({
+                ok: true,
+                json: async () => mockApiResponse([]),
+            } as Response);
+        });
+
+        reconciler.fetchActorForDomain = async (domain) =>
+            createMockActor(domain);
+
+        await reconciler.run();
+    });
+
     test('it should fetch URLs from API and create accounts', async () => {
         await pool.execute(
             'INSERT INTO topics (name, slug) VALUES (?, ?), (?, ?)',

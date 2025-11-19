@@ -59,6 +59,9 @@ interface ApiResponse {
 export class AccountTopicReconciler {
     private static readonly MAX_ITEMS_PER_TOPIC = 200;
     private static readonly DEFAULT_USERNAME = 'index';
+    private static readonly CATEGORY_OVERRIDE: Record<string, string> = {
+        top: '',
+    };
 
     constructor(
         readonly db: mysql.Pool,
@@ -89,7 +92,10 @@ export class AccountTopicReconciler {
     async fetchSitesForTopic(topicSlug: string): Promise<Site[]> {
         const sites: Site[] = [];
 
-        let fetchUrl = `${this.apiEndpoint}?ap=1&category=${encodeURIComponent(topicSlug)}&sort=top&locale=en`;
+        const categorySlug =
+            AccountTopicReconciler.CATEGORY_OVERRIDE[topicSlug] ?? topicSlug;
+
+        let fetchUrl = `${this.apiEndpoint}?ap=1&category=${encodeURIComponent(categorySlug)}&sort=top&locale=en`;
 
         try {
             while (
