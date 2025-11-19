@@ -39,6 +39,15 @@ export class SiteService {
         }
 
         const webhook_secret = crypto.randomBytes(32).toString('hex');
+
+        // If a site already exists with this ghost_uuid, nullify it
+        // This handles the case where a site changes domains and re-registers
+        if (ghostUuid !== null) {
+            await this.client('sites')
+                .where({ ghost_uuid: ghostUuid })
+                .update({ ghost_uuid: null });
+        }
+
         const [id] = await this.client
             .insert({
                 host,
