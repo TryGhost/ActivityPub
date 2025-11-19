@@ -381,30 +381,17 @@ export class AccountTopicReconciler {
         );
 
         // Determine what changes need to be made
-        const existingAccountIdsSet = new Set(existingAccountIds);
-        const newMappings = accountIds.filter(
-            (id) => !existingAccountIdsSet.has(id),
-        );
-
         const sourceAccountIdsSet = new Set(accountIds);
         const removedMappings = existingAccountIds.filter(
             (id) => !sourceAccountIdsSet.has(id),
         );
 
         // Perform all writes in a transaction to ensure consistency
-        if (newMappings.length > 0 || removedMappings.length > 0) {
+        if (accountIds.length > 0 || removedMappings.length > 0) {
             const connection = await this.db.getConnection();
 
             try {
                 await connection.beginTransaction();
-
-                // Insert new mappings
-                for (const accountId of newMappings) {
-                    await connection.execute(
-                        'INSERT IGNORE INTO account_topics (account_id, topic_id) VALUES (?, ?)',
-                        [accountId, topicId],
-                    );
-                }
 
                 // Remove removed mappings
                 if (removedMappings.length > 0) {
@@ -420,7 +407,36 @@ export class AccountTopicReconciler {
                     );
                 }
 
+                // Insert new mappings and update ranks for existing ones
+                // Uses batch INSERT with ON DUPLICATE KEY UPDATE to handle both cases in one query
+                if (accountIds.length > 0) {
+                    // Build VALUES clause: (accountId, topicId, rank) for each account
+                    // Rank is 1-indexed based on position in array (first site = rank 1)
+                    const placeholders = accountIds
+                        .map(() => '(?, ?, ?)')
+                        .join(',');
+
+                    const values: number[] = [];
+
+                    for (let i = 0; i < accountIds.length; i++) {
+                        values.push(accountIds[i], topicId, i + 1);
+                    }
+
+                    await connection.execute(
+                        `INSERT INTO account_topics (account_id, topic_id, rank_in_topic)
+                         VALUES ${placeholders} AS new
+                         ON DUPLICATE KEY UPDATE rank_in_topic = new.rank_in_topic`,
+                        values,
+                    );
+                }
+
                 await connection.commit();
+
+                // Calculate new mappings for logging
+                const existingAccountIdsSet = new Set(existingAccountIds);
+                const newMappings = accountIds.filter(
+                    (id) => !existingAccountIdsSet.has(id),
+                );
 
                 console.log(
                     `Topic "${topicName}": ${newMappings.length} mappings added, ${removedMappings.length} removed`,
