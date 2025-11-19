@@ -203,6 +203,39 @@ describe('reconcile-account-topics', () => {
         expect(accounts[0].count).toBe(0);
     });
 
+    test('it should construct API URL with correct parameters', async () => {
+        await pool.execute('INSERT INTO topics (name, slug) VALUES (?, ?)', [
+            'Technology',
+            'tech',
+        ]);
+
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
+
+        global.fetch = mock((url: string) => {
+            const urlObj = new URL(url);
+
+            // Verify all URL parameters are present and correct
+            expect(urlObj.searchParams.get('ap')).toBe('1');
+            expect(urlObj.searchParams.get('category')).toBe('tech');
+            expect(urlObj.searchParams.get('sort')).toBe('top');
+            expect(urlObj.searchParams.get('locale')).toBe('en');
+
+            return Promise.resolve({
+                ok: true,
+                json: async () => mockApiResponse([]),
+            } as Response);
+        });
+
+        reconciler.fetchActorForDomain = async (domain) =>
+            createMockActor(domain);
+
+        await reconciler.run();
+    });
+
     test('it should fetch URLs from API and create accounts', async () => {
         await pool.execute(
             'INSERT INTO topics (name, slug) VALUES (?, ?), (?, ?)',

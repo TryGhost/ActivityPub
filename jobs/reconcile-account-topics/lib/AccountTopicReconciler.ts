@@ -89,7 +89,7 @@ export class AccountTopicReconciler {
     async fetchSitesForTopic(topicSlug: string): Promise<Site[]> {
         const sites: Site[] = [];
 
-        let fetchUrl = `${this.apiEndpoint}?category=${encodeURIComponent(topicSlug)}&sort=top&locale=en`;
+        let fetchUrl = `${this.apiEndpoint}?ap=1&category=${encodeURIComponent(topicSlug)}&sort=top&locale=en`;
 
         try {
             while (
