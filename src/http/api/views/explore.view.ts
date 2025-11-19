@@ -73,8 +73,11 @@ export class ExploreView {
             .whereNull('blocks.id')
             .whereNull('domain_blocks.id')
 
-            // Pagination
+            // Order by rank in topic, and fallback to ordering by account creation if needed
+            .orderBy('account_topics.rank_in_topic', 'asc')
             .orderBy('accounts.id', 'asc')
+
+            // Pagination
             .limit(limit + 1)
             .offset(offset);
 

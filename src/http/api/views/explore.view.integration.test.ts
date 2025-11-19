@@ -210,6 +210,100 @@ describe('ExploreView', () => {
             expect(next).toBeNull();
         });
 
+        it('should sort by accounts.id when rank_in_topic is not set (defaults to 0)', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const topic = await fixtureManager.createTopic('Sports', 'sports');
+
+            const [account1] = await fixtureManager.createInternalAccount();
+            const [account2] = await fixtureManager.createInternalAccount();
+            const [account3] = await fixtureManager.createInternalAccount();
+
+            // Add accounts to topic without specifying rank (defaults to 0)
+            await fixtureManager.addAccountToTopic(account1.id, topic.id);
+            await fixtureManager.addAccountToTopic(account2.id, topic.id);
+            await fixtureManager.addAccountToTopic(account3.id, topic.id);
+
+            const { accounts } = await exploreView.getAccountsInTopic(
+                topic.slug,
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(3);
+
+            // All accounts have rank 0, so they should be sorted by accounts.id
+            const sortedAccounts = [account1, account2, account3].sort(
+                (a, b) => a.id - b.id,
+            );
+
+            expect(accounts[0].id).toBe(sortedAccounts[0].apId.toString());
+            expect(accounts[1].id).toBe(sortedAccounts[1].apId.toString());
+            expect(accounts[2].id).toBe(sortedAccounts[2].apId.toString());
+        });
+
+        it('should sort by rank_in_topic ascending when set', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const topic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+
+            const [accountRank1] = await fixtureManager.createInternalAccount();
+            const [accountRank2A] =
+                await fixtureManager.createInternalAccount();
+            const [accountRank2B] =
+                await fixtureManager.createInternalAccount();
+            const [accountRank3] = await fixtureManager.createInternalAccount();
+
+            // Add accounts to topic with ranking
+            await fixtureManager.addAccountToTopic(
+                accountRank1.id,
+                topic.id,
+                1,
+            );
+            await fixtureManager.addAccountToTopic(
+                accountRank2A.id,
+                topic.id,
+                2,
+            );
+            await fixtureManager.addAccountToTopic(
+                accountRank2B.id,
+                topic.id,
+                2,
+            );
+            await fixtureManager.addAccountToTopic(
+                accountRank3.id,
+                topic.id,
+                3,
+            );
+
+            const { accounts } = await exploreView.getAccountsInTopic(
+                topic.slug,
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(4);
+
+            // First account should have rank 1
+            expect(accounts[0].id).toBe(accountRank1.apId.toString());
+
+            // Second and third accounts should have rank 2, ordered by account id
+            const rank2Accounts = [accounts[1], accounts[2]];
+            expect(rank2Accounts.map((a) => a.id)).toEqual(
+                accountRank2A.id < accountRank2B.id
+                    ? [
+                          accountRank2A.apId.toString(),
+                          accountRank2B.apId.toString(),
+                      ]
+                    : [
+                          accountRank2B.apId.toString(),
+                          accountRank2A.apId.toString(),
+                      ],
+            );
+
+            // Fourth account should have rank 3
+            expect(accounts[3].id).toBe(accountRank3.apId.toString());
+        });
+
         it('should paginate results correctly', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const topic = await fixtureManager.createTopic('Gaming', 'gaming');

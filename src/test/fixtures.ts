@@ -240,10 +240,15 @@ export class FixtureManager {
         return { id, name, slug };
     }
 
-    async addAccountToTopic(accountId: number, topicId: number) {
+    async addAccountToTopic(
+        accountId: number,
+        topicId: number,
+        rank: number = 0,
+    ) {
         await this.db('account_topics').insert({
             account_id: accountId,
             topic_id: topicId,
+            rank_in_topic: rank,
         });
     }
 
