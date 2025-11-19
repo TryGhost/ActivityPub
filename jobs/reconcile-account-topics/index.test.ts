@@ -81,9 +81,11 @@ describe('reconcile-account-topics', () => {
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 account_id INT UNSIGNED NOT NULL,
                 topic_id INT UNSIGNED NOT NULL,
+                rank_in_topic INT UNSIGNED NOT NULL DEFAULT 0,
                 FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
                 FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE,
-                UNIQUE KEY unique_account_topic (account_id, topic_id)
+                UNIQUE KEY unique_account_topic (account_id, topic_id),
+                INDEX idx_account_topics_topic_id_rank_in_topic (topic_id, rank_in_topic)
             )
         `);
 
@@ -903,5 +905,263 @@ describe('reconcile-account-topics', () => {
         );
 
         expect(accounts[0].count).toBe(1);
+    });
+
+    test('it should assign rank_in_topic based on API order', async () => {
+        await pool.execute('INSERT INTO topics (name, slug) VALUES (?, ?)', [
+            'Technology',
+            'technology',
+        ]);
+
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
+
+        // API returns sites in specific order
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: async () =>
+                    mockApiResponse([
+                        'https://first.com/',
+                        'https://second.com/',
+                        'https://third.com/',
+                    ]),
+            } as Response),
+        );
+
+        reconciler.fetchActorForDomain = async (domain) =>
+            createMockActor(domain);
+
+        await reconciler.run();
+
+        const [mappings] = await pool.execute<RowDataPacket[]>(
+            `SELECT a.domain, at.rank_in_topic
+             FROM account_topics at
+             JOIN accounts a ON a.id = at.account_id
+             JOIN topics t ON t.id = at.topic_id
+             WHERE t.slug = 'technology'
+             ORDER BY at.rank_in_topic`,
+        );
+
+        expect(mappings.length).toBe(3);
+        expect(mappings[0].domain).toBe('first.com');
+        expect(mappings[0].rank_in_topic).toBe(1);
+        expect(mappings[1].domain).toBe('second.com');
+        expect(mappings[1].rank_in_topic).toBe(2);
+        expect(mappings[2].domain).toBe('third.com');
+        expect(mappings[2].rank_in_topic).toBe(3);
+    });
+
+    test('it should update rank_in_topic when order changes', async () => {
+        await pool.execute('INSERT INTO topics (name, slug) VALUES (?, ?)', [
+            'Technology',
+            'technology',
+        ]);
+
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
+
+        // First run: initial order
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: async () =>
+                    mockApiResponse([
+                        'https://first.com/',
+                        'https://second.com/',
+                        'https://third.com/',
+                    ]),
+            } as Response),
+        );
+
+        reconciler.fetchActorForDomain = async (domain) =>
+            createMockActor(domain);
+
+        await reconciler.run();
+
+        // Second run: order changed
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: async () =>
+                    mockApiResponse([
+                        'https://third.com/', // Now first
+                        'https://first.com/', // Now second
+                        'https://second.com/', // Now third
+                    ]),
+            } as Response),
+        );
+
+        await reconciler.run();
+
+        const [mappings] = await pool.execute<RowDataPacket[]>(
+            `SELECT a.domain, at.rank_in_topic
+             FROM account_topics at
+             JOIN accounts a ON a.id = at.account_id
+             JOIN topics t ON t.id = at.topic_id
+             WHERE t.slug = 'technology'
+             ORDER BY at.rank_in_topic`,
+        );
+
+        expect(mappings.length).toBe(3);
+        expect(mappings[0].domain).toBe('third.com');
+        expect(mappings[0].rank_in_topic).toBe(1);
+        expect(mappings[1].domain).toBe('first.com');
+        expect(mappings[1].rank_in_topic).toBe(2);
+        expect(mappings[2].domain).toBe('second.com');
+        expect(mappings[2].rank_in_topic).toBe(3);
+    });
+
+    test('it should assign correct ranks when adding and removing sites', async () => {
+        await pool.execute('INSERT INTO topics (name, slug) VALUES (?, ?)', [
+            'Technology',
+            'technology',
+        ]);
+
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
+
+        // First run: initial sites
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: async () =>
+                    mockApiResponse([
+                        'https://first.com/',
+                        'https://second.com/',
+                    ]),
+            } as Response),
+        );
+
+        reconciler.fetchActorForDomain = async (domain) =>
+            createMockActor(domain);
+
+        await reconciler.run();
+
+        // Second run: remove first.com, add third.com and fourth.com
+        global.fetch = mock(() =>
+            Promise.resolve({
+                ok: true,
+                json: async () =>
+                    mockApiResponse([
+                        'https://second.com/', // Still present, now rank 1
+                        'https://third.com/', // New, rank 2
+                        'https://fourth.com/', // New, rank 3
+                    ]),
+            } as Response),
+        );
+
+        await reconciler.run();
+
+        const [mappings] = await pool.execute<RowDataPacket[]>(
+            `SELECT a.domain, at.rank_in_topic
+             FROM account_topics at
+             JOIN accounts a ON a.id = at.account_id
+             JOIN topics t ON t.id = at.topic_id
+             WHERE t.slug = 'technology'
+             ORDER BY at.rank_in_topic`,
+        );
+
+        expect(mappings.length).toBe(3);
+        expect(mappings[0].domain).toBe('second.com');
+        expect(mappings[0].rank_in_topic).toBe(1);
+        expect(mappings[1].domain).toBe('third.com');
+        expect(mappings[1].rank_in_topic).toBe(2);
+        expect(mappings[2].domain).toBe('fourth.com');
+        expect(mappings[2].rank_in_topic).toBe(3);
+
+        // Verify first.com was removed
+        const [removedAccount] = await pool.execute<RowDataPacket[]>(
+            `SELECT COUNT(*) as count
+             FROM account_topics at
+             JOIN accounts a ON a.id = at.account_id
+             WHERE a.domain = 'first.com'`,
+        );
+
+        expect(removedAccount[0].count).toBe(0);
+    });
+
+    test('it should assign ranks across multiple topics independently', async () => {
+        await pool.execute(
+            'INSERT INTO topics (name, slug) VALUES (?, ?), (?, ?)',
+            ['Technology', 'technology', 'Finance', 'finance'],
+        );
+
+        const reconciler = new AccountTopicReconciler(
+            pool,
+            'https://example.com/api/sites',
+            'some-api-auth-token',
+        );
+
+        global.fetch = mock((url: string) => {
+            const urlObj = new URL(url);
+            const category = urlObj.searchParams.get('category');
+
+            if (category === 'technology') {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () =>
+                        mockApiResponse([
+                            'https://foo.com/', // Rank 1 in Technology
+                            'https://bar.com/', // Rank 2 in Technology
+                        ]),
+                } as Response);
+            }
+
+            if (category === 'finance') {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () =>
+                        mockApiResponse([
+                            'https://bar.com/', // Rank 1 in Finance (different from Technology!)
+                            'https://baz.com/', // Rank 2 in Finance
+                        ]),
+                } as Response);
+            }
+
+            return Promise.resolve({ ok: false } as Response);
+        });
+
+        reconciler.fetchActorForDomain = async (domain) =>
+            createMockActor(domain);
+
+        await reconciler.run();
+
+        const [mappings] = await pool.execute<RowDataPacket[]>(
+            `SELECT a.domain, t.name, at.rank_in_topic
+             FROM account_topics at
+             JOIN accounts a ON a.id = at.account_id
+             JOIN topics t ON t.id = at.topic_id
+             ORDER BY t.name, at.rank_in_topic`,
+        );
+
+        expect(mappings.length).toBe(4);
+
+        // Finance topic
+        expect(mappings[0].name).toBe('Finance');
+        expect(mappings[0].domain).toBe('bar.com');
+        expect(mappings[0].rank_in_topic).toBe(1);
+
+        expect(mappings[1].name).toBe('Finance');
+        expect(mappings[1].domain).toBe('baz.com');
+        expect(mappings[1].rank_in_topic).toBe(2);
+
+        // Technology topic
+        expect(mappings[2].name).toBe('Technology');
+        expect(mappings[2].domain).toBe('foo.com');
+        expect(mappings[2].rank_in_topic).toBe(1);
+
+        expect(mappings[3].name).toBe('Technology');
+        expect(mappings[3].domain).toBe('bar.com');
+        expect(mappings[3].rank_in_topic).toBe(2);
     });
 });
