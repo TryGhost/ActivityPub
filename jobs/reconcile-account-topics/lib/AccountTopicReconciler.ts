@@ -104,8 +104,24 @@ export class AccountTopicReconciler {
                 });
 
                 if (!response.ok) {
+                    let errorDetails = response.statusText;
+
+                    try {
+                        const errorBody = await response.json();
+
+                        if (errorBody.message) {
+                            errorDetails = errorBody.message;
+
+                            if (errorBody.errors) {
+                                errorDetails += ` - ${JSON.stringify(errorBody.errors)}`;
+                            }
+                        }
+                    } catch {
+                        // If we can't parse JSON, just use statusText
+                    }
+
                     console.log(
-                        `API request failed for topic "${topicSlug}" (${response.status}): ${response.statusText}`,
+                        `API request failed for topic "${topicSlug}" (${response.status}): ${errorDetails}`,
                     );
 
                     break;
@@ -474,7 +490,5 @@ export class AccountTopicReconciler {
                 accountIds,
             );
         }
-
-        console.log(`Reconciliation complete!`);
     }
 }
