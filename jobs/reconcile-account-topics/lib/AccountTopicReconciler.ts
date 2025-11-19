@@ -237,21 +237,20 @@ export class AccountTopicReconciler {
             }
 
             const actorId = actor.id?.href;
-            const username =
-                actor.preferredUsername ||
-                AccountTopicReconciler.DEFAULT_USERNAME;
+            const username = actor.preferredUsername?.toString() ?? '';
             const inboxUrl = actor.inboxId?.href;
             const name = actor.name?.toString() || null;
             const bio = actor.summary?.toString() || null;
-            const url = actor.url?.href || null;
+            const url = actor.url?.toString() ?? null;
             const actorDomain = actor.id
                 ? new URL(actor.id.href).hostname
                 : domain;
             const uuid = randomUUID();
 
             // Extract avatar and banner
-            const avatarUrl = (await actor.getIcon())?.url?.href || null;
-            const bannerImageUrl = (await actor.getImage())?.url?.href || null;
+            const avatarUrl = (await actor.getIcon())?.url?.toString() ?? null;
+            const bannerImageUrl =
+                (await actor.getImage())?.url?.toString() ?? null;
 
             // Extract custom fields from attachments
             const customFields: Record<string, string> = {};
@@ -338,7 +337,7 @@ export class AccountTopicReconciler {
                     followingUrl,
                     followersUrl,
                     likedUrl,
-                    apPublicKey,
+                    apPublicKey || '',
                     null, // ap_private_key - not used for external accounts
                     domain, // Use input domain for consistency with lookups
                 ],
