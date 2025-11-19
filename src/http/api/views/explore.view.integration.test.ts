@@ -73,7 +73,6 @@ describe('ExploreView', () => {
         it('should sanitize HTML in bio field', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
-            // Create an account with HTML in bio
             const bioWithHtml =
                 '<p>Hello <strong>world</strong>!</p><script>alert("xss")</script><img src=x onerror="alert(1)">';
 
