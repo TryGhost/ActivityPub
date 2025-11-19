@@ -3083,10 +3083,10 @@ hex2dec@^1.0.1:
   resolved "https://registry.yarnpkg.com/hex2dec/-/hex2dec-1.1.2.tgz#8e1ce4bef36a74f7d5723c3fb3090c2860077338"
   integrity sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==
 
-hono@4.10.3:
-  version "4.10.3"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.10.3.tgz#4e4063eebaac2b735ca4c7455b4d7a6339afc251"
-  integrity sha512-2LOYWUbnhdxdL8MNbNg9XZig6k+cZXm5IjHn2Aviv7honhBMOHb+jxrKIeJRZJRmn+htUCKhaicxwXuUDlchRA==
+hono@4.10.6:
+  version "4.10.6"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.10.6.tgz#b80cf3903b3d12b02c472dadf28d046874e89e5a"
+  integrity sha512-BIdolzGpDO9MQ4nu3AUuDwHZZ+KViNm+EZ75Ae55eMXMqLVhDFqEMXxtUe9Qh8hjL+pIna/frs2j6Y2yD5Ua/g==
 
 hosted-git-info@^7.0.0:
   version "7.0.2"
