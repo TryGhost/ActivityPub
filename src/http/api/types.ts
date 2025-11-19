@@ -50,7 +50,7 @@ export interface AccountDTO extends Omit<MinimalAccountDTO, 'isFollowing'> {
     /**
      * Bio of the account
      */
-    bio: string | null;
+    bio: string;
     /**
      * Public URL of the account
      */
