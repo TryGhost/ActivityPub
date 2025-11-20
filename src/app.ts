@@ -169,6 +169,8 @@ await configure({
 export type ContextData = {
     globaldb: KvStore;
     logger: Logger;
+    site?: Site;
+    account?: Account;
 };
 
 // Register all dependencies
@@ -692,20 +694,6 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-app.use(async (ctx, next) => {
-    const globaldb = ctx.get('globaldb');
-    const logger = ctx.get('logger');
-
-    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
-        globaldb,
-        logger,
-    });
-
-    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
-        'fedifyContextFactory',
-    );
-    await fedifyContextFactory.registerContext(fedifyContext, next);
-});
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
@@ -733,6 +721,25 @@ app.use(
         container.resolve<HostDataContextLoader>('hostDataContextLoader'),
     ),
 );
+
+app.use(async (ctx, next) => {
+    const globaldb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
+    const site = ctx.get('site');
+    const account = ctx.get('account');
+
+    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
+        globaldb,
+        logger,
+        site,
+        account,
+    });
+
+    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
+        'fedifyContextFactory',
+    );
+    await fedifyContextFactory.registerContext(fedifyContext, next);
+});
 
 /** Custom API routes */
 
@@ -851,6 +858,8 @@ app.use(
             return {
                 globaldb: ctx.get('globaldb'),
                 logger: ctx.get('logger'),
+                site: ctx.get('site'),
+                account: ctx.get('account'),
             };
         },
     ),

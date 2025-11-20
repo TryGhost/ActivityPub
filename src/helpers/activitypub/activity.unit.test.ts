@@ -333,7 +333,10 @@ describe('Build activity', () => {
             customFields: null,
             apId: new URL('https://example.com/user/testuser'),
             apFollowers: new URL('https://example.com/user/testuser/followers'),
+            apFollowing: new URL('https://example.com/user/testuser/following'),
             apInbox: new URL('https://example.com/user/testuser/inbox'),
+            apOutbox: new URL('https://example.com/user/testuser/outbox'),
+            apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: false,
         });
 
@@ -349,7 +352,10 @@ describe('Build activity', () => {
             customFields: null,
             apId: new URL('https://example.com/user/author'),
             apFollowers: new URL('https://example.com/user/author/followers'),
+            apFollowing: new URL('https://example.com/user/author/following'),
             apInbox: new URL('https://example.com/user/author/inbox'),
+            apOutbox: new URL('https://example.com/user/author/outbox'),
+            apLiked: new URL('https://example.com/user/author/liked'),
             isInternal: false,
         });
 
