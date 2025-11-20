@@ -299,7 +299,7 @@ services:
   ghost-wiremock:
     networks:
       - test_network
-    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
+    image: wiremock/wiremock:3.13.2-1@sha256:8bdd64a25db911ba521a38aebf1590d96767c2d29f3e941e2f496a760bbdf47d
     entrypoint:
       [
         "/docker-entrypoint.sh",
@@ -313,7 +313,7 @@ services:
   external-wiremock:
     networks:
       - test_network
-    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
+    image: wiremock/wiremock:3.13.2-1@sha256:8bdd64a25db911ba521a38aebf1590d96767c2d29f3e941e2f496a760bbdf47d
     entrypoint:
       [
         "/docker-entrypoint.sh",
@@ -329,7 +329,7 @@ services:
       test_network:
         aliases:
           - fake-mastodon.test
-    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
+    image: wiremock/wiremock:3.13.2-1@sha256:8bdd64a25db911ba521a38aebf1590d96767c2d29f3e941e2f496a760bbdf47d
     entrypoint:
       [
         "/docker-entrypoint.sh",
