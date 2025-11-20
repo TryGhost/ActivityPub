@@ -10,7 +10,7 @@ export type Site = {
     id: number;
     host: string;
     webhook_secret: string;
-    ghost_uuid: string | null; // TODO: Remove null once all sites have a ghost_uuid
+    ghost_uuid: string | null;
 };
 
 export interface IGhostService {
@@ -26,7 +26,7 @@ export class SiteService {
 
     private async createSite(
         host: string,
-        ghostUuid: string | null = null, // TODO: Remove null once all sites have a ghost_uuid
+        ghostUuid: string | null = null,
         isGhostPro: boolean,
     ): Promise<Site> {
         const rows = await this.client
