@@ -63,7 +63,7 @@ export class HostDataContextLoader {
             id: result.site_id,
             host: result.site_host,
             webhook_secret: result.site_webhook_secret,
-            ghost_uuid: result.site_uuid ?? null, // TODO: Remove null once all sites have a ghost_uuid
+            ghost_uuid: result.site_uuid ?? null,
         };
 
         const account = await this.accountRepository.createFromRow({
