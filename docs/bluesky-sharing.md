@@ -2,17 +2,17 @@
 
 ## Overview
 
-The Bluesky sharing feature enables Ghost sites to publish content to Bluesky 
-via [Bridgy Fed](https://fed.brid.gy/) - a bridge service that connects 
+The Bluesky sharing feature enables Ghost sites to publish content to Bluesky
+via [Bridgy Fed](https://fed.brid.gy/) - a bridge service that connects
 ActivityPub accounts to the Bluesky network
 
 ## Enabling Bluesky Sharing
 
-To enable Bluesky sharing for a site, the client should make an empty POST 
+To enable Bluesky sharing for a site, the client should make an empty POST
 request to:
 
 ```
-/.ghost/activitypub/v1/actions/bluesky/enable
+/.ghost/activitypub/v2/actions/bluesky/enable
 ```
 
 This will return a `200 OK` response with the following body:
@@ -32,11 +32,11 @@ process which means we do not know the exact handle used for the Bluesky account
 Bridgy Fed determines the handle used for the Bluesky account based on the site's
 domain setup. The logic for this is complex so we do not try and compute the handle
 on our side. We instead wait for Bridgy Fed to create the Bluesky account and
-then we manually confirm the handle used for the Bluesky account by making an 
+then we manually confirm the handle used for the Bluesky account by making an
 empty POST request to:
 
 ```
-/.ghost/activitypub/v1/actions/bluesky/confirm-handle
+/.ghost/activitypub/v2/actions/bluesky/confirm-handle
 ```
 
 This will return a `200 OK` response with the following body:
@@ -74,20 +74,21 @@ regarding the status of the Bluesky sharing feature:
 
 ## Disabling Bluesky Sharing
 
-To disable Bluesky sharing for a site, the client should make an empty POST 
+To disable Bluesky sharing for a site, the client should make an empty POST
 request to:
 
 ```
-/.ghost/activitypub/v1/actions/bluesky/disable
+/.ghost/activitypub/v2/actions/bluesky/disable
 ```
 
 This will return a `204 No Content` response with an empty body
 
 ## Notes
 
-- The handle confirmation process is done by querying the Bluesky API for the 
+- The handle confirmation process is done by querying the Bluesky API for the
 handle using the domain of the site's ActivityPub account when a request is made
-to the `/.ghost/activitypub/v1/actions/bluesky/confirm-handle` endpoint
+to the `/.ghost/activitypub/v2/actions/bluesky/confirm-handle` endpoint
+    - i.e. `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=activitypub.ghost.org`
 - All endpoints are idempotent and safe to retry
 - Calling `/enable` when already enabled returns the current status
 - Calling `/disable` when already disabled succeeds with no changes
@@ -103,7 +104,7 @@ to the `/.ghost/activitypub/v1/actions/bluesky/confirm-handle` endpoint
 
       Note over Client,Bluesky: Enabling Bluesky Sharing
 
-      Client->>ActivityPub: POST /.ghost/activitypub/v1/actions/bluesky/enable
+      Client->>ActivityPub: POST /.ghost/activitypub/v2/actions/bluesky/enable
       ActivityPub->>Bridgy Fed: Send follow request
       ActivityPub->>Client: 200 OK (enabled: true, handleConfirmed: false, handle: null)
 
@@ -113,14 +114,14 @@ to the `/.ghost/activitypub/v1/actions/bluesky/confirm-handle` endpoint
 
       Note over Client,Bluesky: Confirming the Handle
 
-      Client->>ActivityPub: POST /.ghost/activitypub/v1/actions/bluesky/confirm-handle
+      Client->>ActivityPub: POST /.ghost/activitypub/v2/actions/bluesky/confirm-handle
       ActivityPub->>Bluesky: Query for actor by domain
       Bluesky->>ActivityPub: Return actor
       ActivityPub->>Client: 200 OK (enabled: true, handleConfirmed: true, handle: "@test.example.com.ap.brid.gy")
 
       Note over Client,Bluesky: Disabling Bluesky Sharing
 
-      Client->>ActivityPub: POST /.ghost/activitypub/v1/actions/bluesky/disable
+      Client->>ActivityPub: POST /.ghost/activitypub/v2/actions/bluesky/disable
       ActivityPub->>Bridgy Fed: Send "stop" DM
       ActivityPub->>Bridgy Fed: Send unfollow activity
       ActivityPub->>Client: 204 No Content

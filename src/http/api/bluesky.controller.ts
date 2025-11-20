@@ -1,14 +1,14 @@
 import type { AppContext } from '@/app';
 import { getError, getValue, isError } from '@/core/result';
 import { InternalServerError } from '@/http/api/helpers/response';
-import { RequireRoles, Route } from '@/http/decorators/route.decorator';
+import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import type { BlueskyService } from '@/integration/bluesky.service';
 
 export class BlueskyController {
     constructor(private readonly blueskyService: BlueskyService) {}
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/bluesky/enable')
+    @APIRoute('POST', 'actions/bluesky/enable', 'v2')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleEnable(ctx: AppContext) {
         const account = ctx.get('account');
@@ -37,7 +37,7 @@ export class BlueskyController {
         });
     }
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/bluesky/disable')
+    @APIRoute('POST', 'actions/bluesky/disable', 'v2')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleDisable(ctx: AppContext) {
         const account = ctx.get('account');
@@ -61,7 +61,7 @@ export class BlueskyController {
         });
     }
 
-    @Route('POST', '/.ghost/activitypub/v1/actions/bluesky/confirm-handle')
+    @APIRoute('POST', 'actions/bluesky/confirm-handle', 'v2')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleConfirmHandle(ctx: AppContext) {
         const account = ctx.get('account');
