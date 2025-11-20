@@ -27,7 +27,7 @@
       "automerge": true
     },
     {
-      "matchPackageNames": ["@fedify/fedify", "@fedify/cli"],
+      "matchPackagePatterns": ["^@fedify/"],
       "automerge": false
     },
     {

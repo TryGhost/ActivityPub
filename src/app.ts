@@ -20,7 +20,7 @@ import {
     Undo,
     Update,
 } from '@fedify/fedify';
-import { federation } from '@fedify/fedify/x/hono';
+import { federation } from '@fedify/hono';
 import { serve } from '@hono/node-server';
 import {
     configure,
@@ -279,10 +279,12 @@ globalFedify
         ),
     );
 
-const inboxListener = globalFedify.setInboxListeners(
-    '/.ghost/activitypub/inbox/{identifier}',
-    '/.ghost/activitypub/inbox',
-);
+const inboxListener = globalFedify
+    .setInboxListeners(
+        '/.ghost/activitypub/inbox/{identifier}',
+        '/.ghost/activitypub/inbox',
+    )
+    .withIdempotency('per-inbox');
 
 inboxListener
     .on(
