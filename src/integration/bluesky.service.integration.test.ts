@@ -8,12 +8,20 @@ import type { Knex } from 'knex';
 import type { Account } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
-import { AccountFollowedEvent } from '@/account/events';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FedifyContext } from '@/app';
 import { AsyncEvents } from '@/core/events';
-import { error, ok } from '@/core/result';
+import {
+    error,
+    getError,
+    getValue,
+    isError,
+    type Ok,
+    ok,
+    type Error as ResultError,
+} from '@/core/result';
 import { BlueskyService, BRIDGY_AP_ID } from '@/integration/bluesky.service';
+import type { BlueskyApiClient } from '@/integration/bluesky-api.client';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
@@ -26,6 +34,7 @@ describe('BlueskyService', () => {
     let fedifyContextFactory: FedifyContextFactory;
     let logger: Logger;
     let accountService: AccountService;
+    let blueskyApiClient: BlueskyApiClient;
     let blueskyService: BlueskyService;
 
     const bridgyAccount = {
@@ -67,6 +76,8 @@ describe('BlueskyService', () => {
         logger = {
             info: vi.fn(),
             error: vi.fn(),
+            debug: vi.fn(),
+            warn: vi.fn(),
         } as unknown as Logger;
 
         accountService = new AccountService(
@@ -89,16 +100,18 @@ describe('BlueskyService', () => {
                 );
             });
 
+        blueskyApiClient = {
+            searchActors: vi.fn(),
+        } as unknown as BlueskyApiClient;
+
         blueskyService = new BlueskyService(
             client,
             accountService,
             accountRepository,
-            events,
             fedifyContextFactory,
             logger,
+            blueskyApiClient,
         );
-
-        blueskyService.init();
 
         vi.clearAllMocks();
     });
@@ -136,14 +149,16 @@ describe('BlueskyService', () => {
                 await followActivity.toJsonLd(),
             );
 
-            // Verify no handle mapping was created (this happens when Bridgy follows back)
+            // Verify handle mapping was created with null handle and unconfirmed status
             const handleMapping = await client(
                 'bluesky_integration_account_handles',
             )
                 .where('account_id', account.id)
                 .first();
 
-            expect(handleMapping).toBeUndefined();
+            expect(handleMapping).toBeDefined();
+            expect(handleMapping.handle).toBeNull();
+            expect(handleMapping.confirmed).toBe(0);
         });
 
         it('should not send a follow request to brid.gy if the Bluesky integration is already enabled for the account', async () => {
@@ -157,54 +172,16 @@ describe('BlueskyService', () => {
             expect(fedifyContext.data.globaldb.set).not.toHaveBeenCalled();
         });
 
-        it('should return the handle for the account', async () => {
+        it('should return details about the Bluesky integration', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 
-            const handle = await blueskyService.enableForAccount(account);
+            const result = await blueskyService.enableForAccount(account);
 
-            expect(handle).toBe(
-                `@${account.username}.${account.apId.hostname}.ap.brid.gy`,
-            );
-        });
-    });
-
-    describe('Handling Account Followed Event', () => {
-        it('should create a handle mapping when brid.gy accepts a follow request', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-
-            await events.emitAsync(
-                AccountFollowedEvent.getName(),
-                new AccountFollowedEvent(bridgyAccount.id, account.id),
-            );
-
-            const handleMapping = await client(
-                'bluesky_integration_account_handles',
-            )
-                .where('account_id', account.id)
-                .first();
-
-            expect(handleMapping).toBeDefined();
-            expect(handleMapping.handle).toBe(
-                `@${account.username}.${account.apId.hostname}.ap.brid.gy`,
-            );
-        });
-
-        it('should not create a handle mapping when the account followed is not brid.gy', async () => {
-            const [account] = await fixtureManager.createInternalAccount();
-            const [otherAccount] = await fixtureManager.createInternalAccount();
-
-            await events.emitAsync(
-                AccountFollowedEvent.getName(),
-                new AccountFollowedEvent(otherAccount.id, account.id),
-            );
-
-            const handleMapping = await client(
-                'bluesky_integration_account_handles',
-            )
-                .where('account_id', account.id)
-                .first();
-
-            expect(handleMapping).toBeUndefined();
+            expect(result).toEqual({
+                enabled: true,
+                handleConfirmed: false,
+                handle: null,
+            });
         });
     });
 
@@ -313,6 +290,155 @@ describe('BlueskyService', () => {
 
             expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
             expect(fedifyContext.data.globaldb.set).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('confirmHandleForAccount', () => {
+        it('should return the existing handle if already confirmed', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const handle = '@test.example.com.ap.brid.gy';
+
+            await fixtureManager.enableBlueskyIntegration(
+                account,
+                true,
+                handle,
+            );
+
+            const result =
+                await blueskyService.confirmHandleForAccount(account);
+
+            expect(isError(result)).toBe(false);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                handleConfirmed: true,
+                handle,
+            });
+
+            expect(blueskyApiClient.searchActors).not.toHaveBeenCalled();
+        });
+
+        it('should return an error if the Bluesky integration is not enabled', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const result =
+                await blueskyService.confirmHandleForAccount(account);
+
+            expect(isError(result)).toBe(true);
+
+            expect(getError(result as ResultError<unknown>)).toEqual({
+                type: 'not-enabled',
+            });
+        });
+
+        it('should query the Bluesky API and update the database when a handle is found', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const expectedHandle = `@test.${account.apId.hostname}.ap.brid.gy`;
+
+            await fixtureManager.enableBlueskyIntegration(account, false);
+
+            vi.mocked(blueskyApiClient.searchActors).mockResolvedValue(
+                ok([
+                    {
+                        handle: expectedHandle,
+                        labels: [
+                            {
+                                val: 'bridged-from-bridgy-fed-activitypub',
+                            },
+                        ],
+                    },
+                    {
+                        handle: 'other.bsky.social',
+                    },
+                ]),
+            );
+
+            const result =
+                await blueskyService.confirmHandleForAccount(account);
+
+            expect(blueskyApiClient.searchActors).toHaveBeenCalledWith(
+                account.apId.hostname,
+            );
+
+            expect(isError(result)).toBe(false);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                handleConfirmed: true,
+                handle: expectedHandle,
+            });
+
+            const row = await client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .first();
+
+            expect(row.confirmed).toBe(1);
+            expect(row.handle).toBe(expectedHandle);
+        });
+
+        it('should return an unconfirmed status when a handle is not found', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account, false);
+
+            (
+                blueskyApiClient.searchActors as ReturnType<typeof vi.fn>
+            ).mockResolvedValue(
+                ok([
+                    {
+                        handle: 'other.bsky.social',
+                    },
+                    {
+                        handle: 'different.domain.ap.brid.gy',
+                        labels: [
+                            {
+                                val: 'bridged-from-bridgy-fed-activitypub',
+                            },
+                        ],
+                    },
+                ]),
+            );
+
+            const result =
+                await blueskyService.confirmHandleForAccount(account);
+
+            expect(blueskyApiClient.searchActors).toHaveBeenCalledWith(
+                account.apId.hostname,
+            );
+
+            expect(isError(result)).toBe(false);
+
+            expect(getValue(result as Ok<unknown>)).toEqual({
+                handleConfirmed: false,
+                handle: null,
+            });
+
+            const row = await client('bluesky_integration_account_handles')
+                .where('account_id', account.id)
+                .first();
+
+            expect(row.confirmed).toBe(0);
+            expect(row.handle).toBeNull();
+        });
+
+        it('should return an error when the Bluesky API fails', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            await fixtureManager.enableBlueskyIntegration(account, false);
+
+            const apiError = {
+                type: 'network-error' as const,
+                message: 'Connection timeout',
+            };
+
+            vi.mocked(blueskyApiClient.searchActors).mockResolvedValue(
+                error(apiError),
+            );
+
+            const result =
+                await blueskyService.confirmHandleForAccount(account);
+
+            expect(isError(result)).toBe(true);
+
+            expect(getError(result as ResultError<unknown>)).toEqual(apiError);
         });
     });
 });

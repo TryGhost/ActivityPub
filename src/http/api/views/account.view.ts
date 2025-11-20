@@ -67,9 +67,10 @@ export class AccountView {
 
         let blueskyEnabled: boolean = false;
         let blueskyHandle: string | null = null;
+        let blueskyHandleConfirmed: boolean = false;
 
         if (shouldIncludeBlueskyIntegrationData) {
-            ({ blueskyEnabled, blueskyHandle } =
+            ({ blueskyEnabled, blueskyHandle, blueskyHandleConfirmed } =
                 await this.getBlueskyIntegrationData(accountData.id));
         }
 
@@ -98,6 +99,7 @@ export class AccountView {
                 ? {
                       blueskyEnabled,
                       blueskyHandle,
+                      blueskyHandleConfirmed,
                   }
                 : {}),
         };
@@ -363,16 +365,14 @@ export class AccountView {
     }
 
     private async getBlueskyIntegrationData(requestUserAccountId: number) {
-        const blueskyHandle = await this.db(
-            'bluesky_integration_account_handles',
-        )
+        const row = await this.db('bluesky_integration_account_handles')
             .where('account_id', requestUserAccountId)
-            .first()
-            .then((row) => row?.handle);
+            .first();
 
         return {
-            blueskyEnabled: !!blueskyHandle,
-            blueskyHandle: blueskyHandle || null,
+            blueskyEnabled: !!row,
+            blueskyHandle: row?.handle || null,
+            blueskyHandleConfirmed: !!row?.confirmed,
         };
     }
 

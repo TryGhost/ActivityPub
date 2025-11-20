@@ -101,7 +101,6 @@ import {
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
-import type { BlueskyService } from '@/integration/bluesky.service';
 import {
     createPushMessageHandler,
     type GCloudPubSubPushMessageQueue,
@@ -212,7 +211,6 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
 }
 
 // Initialize services that need it
-container.resolve<BlueskyService>('blueskyService').init();
 container.resolve<FediverseBridge>('fediverseBridge').init();
 container.resolve<FeedUpdateService>('feedUpdateService').init();
 container.resolve<NotificationEventService>('notificationEventService').init();
