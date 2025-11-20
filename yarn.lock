@@ -573,15 +573,14 @@
     url-template "^3.1.1"
     urlpattern-polyfill "~10.0.0"
 
-"@fedify/fedify@1.8.8":
-  version "1.8.8"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.8.8.tgz#9343257d7c9d6bea2cca99c258e8aff39a7f099d"
-  integrity sha512-1w5YfKbh8wNbcJ1s0Ttb2l3i4oiWmQ7z5sbKqQJMhBW6odaGGVgEO2bl6ZI5Tg0i5o/LK3ODOKLTlr8F1wibHA==
+"@fedify/fedify@1.9.1":
+  version "1.9.1"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.9.1.tgz#3c3ecdab8c09ea7459da71a886031bf44b8b636c"
+  integrity sha512-MvR8E4hQGxkWPOhQfQeGVPPPJ3jC+crIin7WOA4O6HjAk1rPT8H/9rALuMEhoyDbly3xKVBi11Qo9XLHHGiUiA==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
-    "@hugoalh/http-header-link" "^1.0.2"
     "@js-temporal/polyfill" "^0.5.1"
-    "@logtape/logtape" "^1.0.0"
+    "@logtape/logtape" "^1.1.1"
     "@multiformats/base-x" "^4.0.1"
     "@opentelemetry/api" "^1.9.0"
     "@opentelemetry/semantic-conventions" "^1.27.0"
@@ -594,7 +593,7 @@
     multicodec "^3.2.1"
     pkijs "^3.2.4"
     structured-field-values "^2.0.4"
-    uri-template-router "^0.0.17"
+    uri-template-router "^1.0.0"
     url-template "^3.1.1"
     urlpattern-polyfill "^10.1.0"
 
@@ -1016,10 +1015,10 @@
   resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.9.2.tgz#eb716a88c0264e260c6cb9f1a3eada9c67af8719"
   integrity sha512-ehmMe+Oe7ldApaAytWguHI5O74TVeCqWFdW5FYVfu7ytdcUzbO79qTFHBm2aoM0ELt7j1zSFcxqNCozxieCQCw==
 
-"@logtape/logtape@^1.0.0":
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-1.1.1.tgz#0cdec2c80f8a56613003a1164a934193021c125c"
-  integrity sha512-/zpMuB2BZnL3LnBsy6PfFJp/4qP/60U9hE5j6eFwk25wBVtLpd7/bF3B1j7cnMD37R02fFyDyyHEmRSOz6+Qfg==
+"@logtape/logtape@^1.1.1":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-1.2.0.tgz#f77a1b5b57f479294ff3708c55050aa2ba5edcec"
+  integrity sha512-L7aXBYrxpSUQcsZm/hCuh5REN+dckxmPmH7x7eCROiLAHUSPzc7AhbsxsZLDsXMM4ggtbmS3sUQVa+blfF4sZA==
 
 "@mapbox/node-pre-gyp@^1.0.9":
   version "1.0.11"
@@ -4951,6 +4950,11 @@ uri-template-router@^0.0.17:
   version "0.0.17"
   resolved "https://registry.yarnpkg.com/uri-template-router/-/uri-template-router-0.0.17.tgz#acfe22b3b19e1660c2c24c0b5c8330e2ca4de5df"
   integrity sha512-5h2I/eSN+XFRAFaSR72KTFWg5rf8GB6Ur5+yWHjtwEqmn6cfZqoWsoWTh6NhxW8pIlFq144G2J23OCg3CeAaSg==
+
+uri-template-router@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/uri-template-router/-/uri-template-router-1.0.0.tgz#b29c5bcbf96863dfb7fa17b88e9ae14e85aa671e"
+  integrity sha512-WKcL9ZSIEhHE3f5P4Z47Tf0nWbcgV1ISb/OBuF8YKEYi0SQOyTLCzM6B/gAKFWZhRhqA+C/Ks8UXe2qU5W0FVg==
 
 url-regex@5.0.0:
   version "5.0.0"
