@@ -10,7 +10,7 @@ export type Site = {
     id: number;
     host: string;
     webhook_secret: string;
-    ghost_uuid: string | null; // TODO: Remove null once all sites have a ghost_uuid
+    ghost_uuid: string | null;
 };
 
 export interface IGhostService {
@@ -26,34 +26,49 @@ export class SiteService {
 
     private async createSite(
         host: string,
-        ghostUuid: string | null = null, // TODO: Remove null once all sites have a ghost_uuid
+        ghostUuid: string | null = null,
         isGhostPro: boolean,
     ): Promise<Site> {
-        const rows = await this.client
+        const hostExists = await this.client
             .select('*')
             .from('sites')
-            .where({ host });
+            .where({ host })
+            .first();
 
-        if (rows && rows.length !== 0) {
+        if (hostExists) {
             throw new Error(`Site already exists for ${host}`);
         }
 
         const webhook_secret = crypto.randomBytes(32).toString('hex');
-        const [id] = await this.client
-            .insert({
+
+        return await this.client.transaction(async (trx) => {
+            if (ghostUuid !== null) {
+                const uuidExists = await trx('sites')
+                    .select('*')
+                    .where({ ghost_uuid: ghostUuid })
+                    .first();
+
+                if (uuidExists) {
+                    await trx('sites')
+                        .where({ ghost_uuid: ghostUuid })
+                        .update({ ghost_uuid: null });
+                }
+            }
+
+            const [id] = await trx('sites').insert({
                 host,
                 webhook_secret,
                 ghost_pro: isGhostPro,
                 ghost_uuid: ghostUuid,
-            })
-            .into('sites');
+            });
 
-        return {
-            id,
-            host,
-            webhook_secret,
-            ghost_uuid: ghostUuid,
-        };
+            return {
+                id,
+                host,
+                webhook_secret,
+                ghost_uuid: ghostUuid,
+            };
+        });
     }
 
     public async getSiteByHost(host: string): Promise<Site | null> {

@@ -171,4 +171,52 @@ describe('SiteService', () => {
             service.initialiseSiteForHost('hostname.tld'),
         ).rejects.toThrow('Site hostname.tld has no site_uuid');
     });
+
+    it('Handles duplicate ghost_uuid when a site changes domains', async () => {
+        const ghostUUID = 'some-ghost-uuid';
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: 'https://domain-a.tld/icon.png',
+                title: 'Site A title',
+                description: 'Site A description',
+                cover_image: 'https://domain-a.tld/cover.png',
+                site_uuid: ghostUUID,
+            },
+        });
+
+        const siteA = await service.initialiseSiteForHost('domain-a.tld');
+
+        expect(siteA.host).toBe('domain-a.tld');
+        expect(siteA.ghost_uuid).toBe(ghostUUID);
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: 'https://domain-b.tld/icon.png',
+                title: 'Site B title',
+                description: 'Site B description',
+                cover_image: 'https://domain-b.tld/cover.png',
+                site_uuid: ghostUUID,
+            },
+        });
+
+        const siteB = await service.initialiseSiteForHost('domain-b.tld');
+
+        expect(siteB.host).toBe('domain-b.tld');
+        expect(siteB.ghost_uuid).toBe(ghostUUID);
+
+        // Verify both sites exist
+        const allSites = await db('sites').select('*').orderBy('id', 'asc');
+        expect(allSites).toHaveLength(2);
+
+        // Verify old site has null ghost_uuid
+        const oldSite = allSites.find((s) => s.host === 'domain-a.tld');
+        expect(oldSite).toBeDefined();
+        expect(oldSite?.ghost_uuid).toBeNull();
+
+        // Verify new site has the ghost_uuid
+        const newSite = allSites.find((s) => s.host === 'domain-b.tld');
+        expect(newSite).toBeDefined();
+        expect(newSite?.ghost_uuid).toBe(ghostUUID);
+    });
 });
