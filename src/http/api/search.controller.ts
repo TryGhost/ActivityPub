@@ -4,11 +4,12 @@ import type { AppContext } from '@/app';
 import { isHandle } from '@/helpers/activitypub/actor';
 import { isUri } from '@/helpers/uri';
 import type { AccountDTO } from '@/http/api/types';
+import type { AccountSearchView } from '@/http/api/views/account.search.view';
 import type { AccountView } from '@/http/api/views/account.view';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 
-type AccountSearchResult = Pick<
+export type AccountSearchResult = Pick<
     AccountDTO,
     | 'id'
     | 'name'
@@ -38,7 +39,10 @@ interface SearchResults {
 }
 
 export class SearchController {
-    constructor(private readonly accountView: AccountView) {}
+    constructor(
+        private readonly accountView: AccountView,
+        private readonly accountSearchView: AccountSearchView,
+    ) {}
 
     /**
      * Handle a search request
@@ -53,30 +57,60 @@ export class SearchController {
         const queryQuery = ctx.req.query('query');
         const query = queryQuery ? decodeURIComponent(queryQuery) : '';
 
-        // Init search results - At the moment we only support searching for an actor (account)
+        // Init search results
         const results: SearchResults = {
             accounts: [],
         };
 
+        const account = ctx.get('account');
         const requestUserContext = {
-            requestUserAccount: ctx.get('account'),
+            requestUserAccount: account,
         };
 
-        let dto: AccountDTO | null = null;
-
+        // Account handle search (exact match, single result)
         if (isHandle(query)) {
-            dto = await this.accountView.viewByHandle(
+            const dto = await this.accountView.viewByHandle(
                 query,
                 requestUserContext,
             );
+
+            if (dto !== null) {
+                results.accounts.push(toSearchResult(dto));
+            }
+
+            return new Response(JSON.stringify(results), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            });
         }
 
+        // Account URI search (exact match, single result)
         if (isUri(query)) {
-            dto = await this.accountView.viewByApId(query, requestUserContext);
+            const dto = await this.accountView.viewByApId(
+                query,
+                requestUserContext,
+            );
+
+            if (dto !== null) {
+                results.accounts.push(toSearchResult(dto));
+            }
+
+            return new Response(JSON.stringify(results), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            });
         }
 
-        if (dto !== null) {
-            results.accounts.push(toSearchResult(dto));
+        // Account name search (partial match, multiple results)
+        if (query.trim().length >= 2) {
+            results.accounts = await this.accountSearchView.searchByName(
+                query,
+                account.id,
+            );
         }
 
         return new Response(JSON.stringify(results), {
