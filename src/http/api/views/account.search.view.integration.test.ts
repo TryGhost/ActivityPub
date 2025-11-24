@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
 
@@ -20,10 +20,6 @@ describe('AccountSearchView', () => {
         await fixtureManager.reset();
 
         accountSearchView = new AccountSearchView(db);
-    });
-
-    afterAll(async () => {
-        await db.destroy();
     });
 
     describe('searchByName', () => {
