@@ -12,6 +12,11 @@ export class AccountSearchView {
         query: string,
         viewerAccountId: number,
     ): Promise<AccountSearchResult[]> {
+        // Return empty results for empty or whitespace-only queries
+        if (query.trim().length === 0) {
+            return [];
+        }
+
         // Sanitize query to escape SQL wildcards (%, _, \)
         const sanitizedQuery = query.replace(/[%_\\]/g, '\\$&');
 

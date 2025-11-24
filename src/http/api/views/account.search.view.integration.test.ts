@@ -36,6 +36,48 @@ describe('AccountSearchView', () => {
             expect(accounts).toHaveLength(0);
         });
 
+        it('should return empty array for empty query', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert({
+                ap_id: 'https://example.com/users/alice',
+                username: 'alice',
+                domain: 'example.com',
+                ap_inbox_url: 'https://example.com/users/alice/inbox',
+                name: 'Alice Smith',
+            });
+
+            const accounts = await accountSearchView.searchByName(
+                '',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(0);
+        });
+
+        it('should return empty array for whitespace-only query', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert({
+                ap_id: 'https://example.com/users/alice',
+                username: 'alice',
+                domain: 'example.com',
+                ap_inbox_url: 'https://example.com/users/alice/inbox',
+                name: 'Alice Smith',
+            });
+
+            const whitespaceQueries = ['   ', '\t', '\n', '  \t\n  '];
+
+            for (const query of whitespaceQueries) {
+                const accounts = await accountSearchView.searchByName(
+                    query,
+                    viewer.id,
+                );
+
+                expect(accounts).toHaveLength(0);
+            }
+        });
+
         it('should return accounts matching query in name field (contains)', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
