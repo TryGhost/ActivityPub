@@ -63,6 +63,7 @@ import { SearchController } from '@/http/api/search.controller';
 import { SiteController } from '@/http/api/site.controller';
 import { AccountFollowsView } from '@/http/api/views/account.follows.view';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
+import { AccountSearchView } from '@/http/api/views/account.search.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
@@ -357,6 +358,10 @@ export function registerDependencies(
     container.register(
         'accountPostsView',
         asClass(AccountPostsView).singleton(),
+    );
+    container.register(
+        'accountSearchView',
+        asClass(AccountSearchView).singleton(),
     );
     container.register('blocksView', asClass(BlocksView).singleton());
     container.register('replyChainView', asClass(ReplyChainView).singleton());
