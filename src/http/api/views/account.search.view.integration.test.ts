@@ -275,7 +275,7 @@ describe('AccountSearchView', () => {
             expect(notFollowedAccountDTO?.followedByMe).toBe(false);
         });
 
-        it('should escape SQL wildcards in query', async () => {
+        it('should escape SQL wildcards in query (underscore)', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
             await db('accounts').insert([
@@ -302,7 +302,64 @@ describe('AccountSearchView', () => {
 
             expect(accounts).toHaveLength(1);
             expect(accounts[0].name).toBe('Test_Account');
-            expect(accounts[0].name).not.toBe('TestXAccount');
+        });
+
+        it('should escape SQL wildcards in query (percent)', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'Test%Account',
+                },
+                {
+                    ap_id: 'https://example.com/users/bob',
+                    username: 'bob',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/bob/inbox',
+                    name: 'TestAnything',
+                },
+            ]);
+
+            const accounts = await accountSearchView.searchByName(
+                'Test%',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].name).toBe('Test%Account');
+        });
+
+        it('should escape SQL wildcards in query (backslash)', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'Test\\Account',
+                },
+                {
+                    ap_id: 'https://example.com/users/bob',
+                    username: 'bob',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/bob/inbox',
+                    name: 'TestAccount',
+                },
+            ]);
+
+            const accounts = await accountSearchView.searchByName(
+                'Test\\',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].name).toBe('Test\\Account');
         });
 
         it('should sort results alphabetically by name', async () => {

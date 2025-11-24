@@ -23,8 +23,10 @@ export class AccountSearchView {
                 'accounts.domain',
                 'accounts.avatar_url',
             )
-            // Partial match on name field
-            .where('accounts.name', 'like', `%${sanitizedQuery}%`)
+            // Partial match on name field with proper escape clause
+            .whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
+                `%${sanitizedQuery}%`,
+            ])
             // Filter out the viewer account
             .whereNot('accounts.id', viewerAccountId)
             // Compute followerCount
