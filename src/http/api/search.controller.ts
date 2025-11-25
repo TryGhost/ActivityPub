@@ -89,15 +89,16 @@ export class SearchController {
         if (isUri(query)) {
             const domain = new URL(query).hostname;
 
-            // Search by domain name, if the account can be identified by its domain
-            // Example: Ghost sites have individual domain, e.g. https://404media.co
+            // Search by domain name first, for accounts that can be identified by a domain
+            // Example: Ghost sites each have an individual domain (1 domain = 1 account)
             const domainMatch = await this.accountSearchView.searchByDomain(
                 domain,
                 account.id,
-                2, // Search for more than one result
+                2, // Search for more than one account
             );
 
             if (domainMatch.length === 1) {
+                // Only use the domain match if the search query returned exactly one account
                 results.accounts = [domainMatch[0]];
                 return new Response(JSON.stringify(results), {
                     headers: {
@@ -107,7 +108,7 @@ export class SearchController {
                 });
             }
 
-            // Fallback to searching by AP ID
+            // Fallback to searching by AP ID for accounts that cannot be identified by a domain (1 domain = multiple accounts)
             // Example: https://mastodon.social/users/ghostexplore
             const apIdMatch = await this.accountView.viewByApId(
                 query,
