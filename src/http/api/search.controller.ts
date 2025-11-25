@@ -86,15 +86,37 @@ export class SearchController {
             });
         }
 
-        // Account URI search (exact match, single result)
         if (isUri(query)) {
-            const dto = await this.accountView.viewByApId(
+            const domain = new URL(query).hostname;
+
+            // Search by domain name first, for accounts that can be identified by a domain
+            // Example: Ghost sites each have an individual domain (1 domain = 1 account)
+            const domainMatch = await this.accountSearchView.searchByDomain(
+                domain,
+                account.id,
+                2, // Search for more than one account
+            );
+
+            if (domainMatch.length === 1) {
+                // Only use the domain match if the search query returned exactly one account
+                results.accounts = [domainMatch[0]];
+                return new Response(JSON.stringify(results), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    status: 200,
+                });
+            }
+
+            // Fallback to searching by AP ID for accounts that cannot be identified by a domain (1 domain = multiple accounts)
+            // Example: https://mastodon.social/users/ghostexplore
+            const apIdMatch = await this.accountView.viewByApId(
                 query,
                 requestUserContext,
             );
 
-            if (dto !== null) {
-                results.accounts.push(toSearchResult(dto));
+            if (apIdMatch !== null) {
+                results.accounts.push(toSearchResult(apIdMatch));
             }
 
             return new Response(JSON.stringify(results), {
