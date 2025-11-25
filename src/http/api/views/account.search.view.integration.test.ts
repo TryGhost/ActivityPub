@@ -78,7 +78,7 @@ describe('AccountSearchView', () => {
             }
         });
 
-        it('should return accounts matching query in name field (contains)', async () => {
+        it('should return accounts with a name starting with the query', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
             await db('accounts').insert([
@@ -101,42 +101,17 @@ describe('AccountSearchView', () => {
                     username: 'charlie',
                     domain: 'example.com',
                     ap_inbox_url: 'https://example.com/users/charlie/inbox',
-                    name: 'Charlie Smith',
+                    name: 'Charlie Alice',
                 },
             ]);
 
             const accounts = await accountSearchView.searchByName(
-                'Smith',
+                'Alice',
                 viewer.id,
             );
 
-            expect(accounts).toHaveLength(2);
+            expect(accounts).toHaveLength(1);
             expect(accounts.map((a) => a.name)).toContain('Alice Smith');
-            expect(accounts.map((a) => a.name)).toContain('Charlie Smith');
-        });
-
-        it('should match query anywhere in name field', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-
-            await db('accounts').insert({
-                ap_id: 'https://example.com/users/alice',
-                username: 'alice',
-                domain: 'example.com',
-                ap_inbox_url: 'https://example.com/users/alice/inbox',
-                name: 'Alice Smith',
-            });
-
-            const queries = ['alice', 'smith', 'ali', 'ith', 'ce smi'];
-
-            for (const query of queries) {
-                const accounts = await accountSearchView.searchByName(
-                    query,
-                    viewer.id,
-                );
-
-                expect(accounts).toHaveLength(1);
-                expect(accounts[0].name).toBe('Alice Smith');
-            }
         });
 
         it('should be case-insensitive', async () => {
@@ -150,7 +125,7 @@ describe('AccountSearchView', () => {
                 name: 'Alice Smith',
             });
 
-            const queries = ['alice', 'Alice', 'ALICE', 'aLice'];
+            const queries = ['alice', 'Alice', 'ALICE', 'aLice', 'ALI'];
 
             for (const query of queries) {
                 const accounts = await accountSearchView.searchByName(
@@ -413,21 +388,21 @@ describe('AccountSearchView', () => {
                     username: 'charlie',
                     domain: 'example.com',
                     ap_inbox_url: 'https://example.com/users/charlie/inbox',
-                    name: 'Charlie Test',
+                    name: 'Test Charlie',
                 },
                 {
                     ap_id: 'https://example.com/users/alice',
                     username: 'alice',
                     domain: 'example.com',
                     ap_inbox_url: 'https://example.com/users/alice/inbox',
-                    name: 'Alice Test',
+                    name: 'Test Alice',
                 },
                 {
                     ap_id: 'https://example.com/users/bob',
                     username: 'bob',
                     domain: 'example.com',
                     ap_inbox_url: 'https://example.com/users/bob/inbox',
-                    name: 'Bob Test',
+                    name: 'Test Bob',
                 },
             ]);
 
@@ -437,9 +412,9 @@ describe('AccountSearchView', () => {
             );
 
             expect(accounts).toHaveLength(3);
-            expect(accounts[0].name).toBe('Alice Test');
-            expect(accounts[1].name).toBe('Bob Test');
-            expect(accounts[2].name).toBe('Charlie Test');
+            expect(accounts[0].name).toBe('Test Alice');
+            expect(accounts[1].name).toBe('Test Bob');
+            expect(accounts[2].name).toBe('Test Charlie');
         });
 
         it('should limit results to maximum', async () => {
