@@ -28,9 +28,9 @@ export class AccountSearchView {
                 'accounts.domain',
                 'accounts.avatar_url',
             )
-            // Partial match on name field with proper escape clause
+            // Match on "name starts with"
             .whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
-                `%${sanitizedQuery}%`,
+                `${sanitizedQuery}%`,
             ])
             // Filter out the viewer account
             .whereNot('accounts.id', viewerAccountId)
