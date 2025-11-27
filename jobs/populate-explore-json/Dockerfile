@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile --production
+RUN yarn install --ignore-scripts --frozen-lockfile --production
 
 # Copy source
 COPY index.ts ./
