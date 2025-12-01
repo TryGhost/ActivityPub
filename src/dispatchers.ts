@@ -26,7 +26,6 @@ import {
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { ContextData } from '@/app';
@@ -43,40 +42,34 @@ import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { SiteService } from '@/site/site.service';
 
-export const actorDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const actorDispatcher = () =>
     async function actorDispatcher(
         ctx: RequestContext<ContextData>,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return null;
-
-        const account = await accountService.getDefaultAccountForSite(site);
+        const account = ctx.data.account!;
 
         const person = new Person({
-            id: new URL(account.ap_id),
+            id: new URL(account.apId),
             name: account.name,
             summary: account.bio,
             preferredUsername: account.username,
-            icon: account.avatar_url
+            icon: account.avatarUrl
                 ? new Image({
-                      url: new URL(account.avatar_url),
+                      url: new URL(account.avatarUrl),
                   })
                 : null,
-            image: account.banner_image_url
+            image: account.bannerImageUrl
                 ? new Image({
-                      url: new URL(account.banner_image_url),
+                      url: new URL(account.bannerImageUrl),
                   })
                 : null,
-            inbox: new URL(account.ap_inbox_url),
-            outbox: new URL(account.ap_outbox_url),
-            following: new URL(account.ap_following_url),
-            followers: new URL(account.ap_followers_url),
-            liked: new URL(account.ap_liked_url),
-            url: new URL(account.url || account.ap_id),
+            inbox: account.apInbox,
+            outbox: account.apOutbox,
+            following: account.apFollowing,
+            followers: account.apFollowers,
+            liked: account.apLiked,
+            url: account.url || account.apId,
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
@@ -85,16 +78,13 @@ export const actorDispatcher = (
         return person;
     };
 
-export const keypairDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const keypairDispatcher = (accountService: AccountService) =>
     async function keypairDispatcher(
         ctx: Context<ContextData>,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return [];
+        const site = ctx.data.site!;
+        if (!site) return [];
 
         const account = await accountService.getDefaultAccountForSite(site);
 
@@ -188,7 +178,6 @@ export function createAcceptHandler(accountService: AccountService) {
 export async function handleAnnouncedCreate(
     ctx: Context<ContextData>,
     announce: Announce,
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
 ) {
@@ -204,11 +193,7 @@ export async function handleAnnouncedCreate(
         return;
     }
 
-    const site = await siteService.getSiteByHost(ctx.host);
-
-    if (!site) {
-        throw new Error(`Site not found for host: ${ctx.host}`);
-    }
+    const site = ctx.data.site!;
 
     // Validate that the group is followed
     if (
@@ -478,7 +463,6 @@ export const createUndoHandler = (
     };
 
 export function createAnnounceHandler(
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
     postRepository: KnexPostRepository,
@@ -512,7 +496,6 @@ export function createAnnounceHandler(
             return handleAnnouncedCreate(
                 ctx,
                 announce,
-                siteService,
                 accountService,
                 postService,
             );
@@ -587,12 +570,6 @@ export function createAnnounceHandler(
         }
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
-
-        const site = await siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
 
         // This will save the account if it doesn't already exist
         const senderAccount = await accountService.getByApId(sender.id);
@@ -774,21 +751,12 @@ export async function inboxErrorHandler(
     });
 }
 
-export function createFollowersDispatcher(
-    siteService: SiteService,
-    accountRepository: KnexAccountRepository,
-    followersService: FollowersService,
-) {
+export function createFollowersDispatcher(followersService: FollowersService) {
     return async function dispatchFollowers(
         ctx: Context<ContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
-        const account = await accountRepository.getBySite(site);
+        const account = ctx.data.account!;
 
         const followers = await followersService.getFollowers(account.id);
 
@@ -798,10 +766,7 @@ export function createFollowersDispatcher(
     };
 }
 
-export function createFollowingDispatcher(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowingDispatcher(accountService: AccountService) {
     return async function dispatchFollowing(
         ctx: RequestContext<ContextData>,
         _handle: string,
@@ -812,16 +777,8 @@ export function createFollowingDispatcher(
         const offset = Number.parseInt(cursor ?? '0', 10);
         let nextCursor: string | null = null;
 
-        const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${host}`);
-        }
-
         // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const siteDefaultAccount = ctx.data.account!;
 
         const results = await accountService.getFollowingAccounts(
             siteDefaultAccount,
@@ -849,21 +806,13 @@ export function createFollowingDispatcher(
     };
 }
 
-export function createFollowersCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowersCounter(accountService: AccountService) {
     return async function countFollowers(
         ctx: RequestContext<ContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
         // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const siteDefaultAccount = ctx.data.account!;
 
         return await accountService.getFollowerAccountsCount(
             siteDefaultAccount.id,
@@ -871,21 +820,13 @@ export function createFollowersCounter(
     };
 }
 
-export function createFollowingCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowingCounter(accountService: AccountService) {
     return async function countFollowing(
         ctx: RequestContext<ContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
         // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const siteDefaultAccount = ctx.data.account!;
 
         return await accountService.getFollowingAccountsCount(
             siteDefaultAccount.id,

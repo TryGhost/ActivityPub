@@ -24,7 +24,10 @@ export interface Account {
     readonly bannerImageUrl: URL | null;
     readonly apId: URL;
     readonly apFollowers: URL | null;
+    readonly apFollowing: URL | null;
     readonly apInbox: URL | null;
+    readonly apOutbox: URL | null;
+    readonly apLiked: URL | null;
     readonly isInternal: boolean;
     readonly customFields: Record<string, string> | null;
     unblock(account: Account): Account;
@@ -81,7 +84,10 @@ export class AccountEntity implements Account {
         public readonly bannerImageUrl: URL | null,
         public readonly apId: URL,
         public readonly apFollowers: URL | null,
+        public readonly apFollowing: URL | null,
         public readonly apInbox: URL | null,
+        public readonly apOutbox: URL | null,
+        public readonly apLiked: URL | null,
         public readonly isInternal: boolean,
         public readonly customFields: Record<string, string> | null,
         private events: AccountEvent[],
@@ -108,7 +114,10 @@ export class AccountEntity implements Account {
             data.bannerImageUrl,
             data.apId,
             data.apFollowers,
+            data.apFollowing,
             data.apInbox,
+            data.apOutbox,
+            data.apLiked,
             data.isInternal,
             data.customFields,
             events,
@@ -128,7 +137,10 @@ export class AccountEntity implements Account {
             draft.bannerImageUrl,
             draft.apId,
             draft.apFollowers,
+            draft.apFollowing,
             draft.apInbox,
+            draft.apOutbox,
+            draft.apLiked,
             draft.isInternal,
             draft.customFields,
             events,
