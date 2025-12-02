@@ -49,6 +49,15 @@ export class AccountSearchView {
                 END AS followed_by_me
             `),
             )
+            // Compute is_ghost_site (has associated user record)
+            .select(
+                this.db.raw(`
+                CASE
+                    WHEN users.account_id IS NOT NULL THEN 1
+                    ELSE 0
+                END AS is_ghost_site
+            `),
+            )
             .leftJoin('follows', function () {
                 this.on('follows.following_id', 'accounts.id').andOnVal(
                     'follows.follower_id',
@@ -56,6 +65,8 @@ export class AccountSearchView {
                     viewerAccountId.toString(),
                 );
             })
+            // Join users table to detect Ghost sites (internal accounts)
+            .leftJoin('users', 'users.account_id', 'accounts.id')
             // Filter out blocked accounts
             .leftJoin('blocks', function () {
                 this.on('blocks.blocked_id', 'accounts.id').andOnVal(
@@ -76,7 +87,8 @@ export class AccountSearchView {
             })
             .whereNull('blocks.id')
             .whereNull('domain_blocks.id')
-            // Order by name alphabetically
+            // Order by Ghost sites first, then alphabetically by name
+            .orderBy('is_ghost_site', 'desc')
             .orderBy('accounts.name', 'asc')
             // Limit results
             .limit(SEARCH_RESULT_LIMIT);
@@ -127,6 +139,15 @@ export class AccountSearchView {
                 END AS followed_by_me
             `),
             )
+            // Compute is_ghost_site (has associated user record)
+            .select(
+                this.db.raw(`
+                CASE
+                    WHEN users.account_id IS NOT NULL THEN 1
+                    ELSE 0
+                END AS is_ghost_site
+            `),
+            )
             .leftJoin('follows', function () {
                 this.on('follows.following_id', 'accounts.id').andOnVal(
                     'follows.follower_id',
@@ -134,6 +155,8 @@ export class AccountSearchView {
                     viewerAccountId.toString(),
                 );
             })
+            // Join users table to detect Ghost sites (internal accounts)
+            .leftJoin('users', 'users.account_id', 'accounts.id')
             // Filter out blocked accounts
             .leftJoin('blocks', function () {
                 this.on('blocks.blocked_id', 'accounts.id').andOnVal(
@@ -154,6 +177,9 @@ export class AccountSearchView {
             })
             .whereNull('blocks.id')
             .whereNull('domain_blocks.id')
+            // Order by Ghost sites first, then alphabetically by name
+            .orderBy('is_ghost_site', 'desc')
+            .orderBy('accounts.name', 'asc')
             // Limit results
             .limit(limit);
 

@@ -417,6 +417,49 @@ describe('AccountSearchView', () => {
             expect(accounts[2].name).toBe('Test Charlie');
         });
 
+        it('should prioritize Ghost sites (internal accounts) over external accounts', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            // Create an internal account (Ghost site) - has user record
+            // Use a name starting with Z to ensure alphabetical sort would put it last
+            const [ghostSite] = await fixtureManager.createInternalAccount();
+
+            await db('accounts')
+                .where('id', ghostSite.id)
+                .update({ name: 'Test Zebra Ghost Site' });
+
+            // Create external accounts - no user record
+            // Use names starting with A and B to ensure alphabetical sort would put them first
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'Test Alice External',
+                },
+                {
+                    ap_id: 'https://example.com/users/bob',
+                    username: 'bob',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/bob/inbox',
+                    name: 'Test Bob External',
+                },
+            ]);
+
+            const accounts = await accountSearchView.searchByName(
+                'Test',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(3);
+            // Ghost site should appear first despite having name starting with Z
+            expect(accounts[0].name).toBe('Test Zebra Ghost Site');
+            // External accounts should be sorted alphabetically after Ghost sites
+            expect(accounts[1].name).toBe('Test Alice External');
+            expect(accounts[2].name).toBe('Test Bob External');
+        });
+
         it('should limit results to maximum', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
@@ -798,6 +841,51 @@ describe('AccountSearchView', () => {
 
             expect(accounts).toHaveLength(1);
             expect(accounts[0].handle).toBe('@alice@example.com');
+        });
+
+        it('should prioritize Ghost sites (internal accounts) over external accounts', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            // Create an internal account (Ghost site)
+            // Use a name starting with Z to ensure alphabetical sort would put it last
+            const [ghostSite] = await fixtureManager.createInternalAccount();
+            await db('accounts')
+                .where('id', ghostSite.id)
+                .update({ name: 'Zebra Ghost Site' });
+
+            const ghostSiteDomain = new URL(ghostSite.apId.toString()).hostname;
+
+            // Create external accounts on the same domain as the ghost site - no user record
+            // Use names starting with A and B to ensure alphabetical sort would put them first
+            await db('accounts').insert([
+                {
+                    ap_id: `https://${ghostSiteDomain}/users/alice`,
+                    username: 'alice',
+                    domain: ghostSiteDomain,
+                    ap_inbox_url: `https://${ghostSiteDomain}/users/alice/inbox`,
+                    name: 'Alice External',
+                },
+                {
+                    ap_id: `https://${ghostSiteDomain}/users/bob`,
+                    username: 'bob',
+                    domain: ghostSiteDomain,
+                    ap_inbox_url: `https://${ghostSiteDomain}/users/bob/inbox`,
+                    name: 'Bob External',
+                },
+            ]);
+
+            const accounts = await accountSearchView.searchByDomain(
+                ghostSiteDomain,
+                viewer.id,
+            );
+
+            // Should have 3 accounts (ghostSite + 2 external)
+            expect(accounts).toHaveLength(3);
+            // Ghost site should appear first despite having name starting with Z
+            expect(accounts[0].name).toBe('Zebra Ghost Site');
+            // External accounts should be sorted alphabetically after Ghost sites
+            expect(accounts[1].name).toBe('Alice External');
+            expect(accounts[2].name).toBe('Bob External');
         });
     });
 });
