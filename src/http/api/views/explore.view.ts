@@ -33,9 +33,6 @@ export class ExploreView {
             .innerJoin('topics', 'topics.id', 'account_topics.topic_id')
             .where('topics.slug', topicSlug)
 
-            // Filter out the viewer account
-            .whereNot('accounts.id', viewerAccountId)
-
             // Compute followedByMe
             .select(
                 this.db.raw(`
