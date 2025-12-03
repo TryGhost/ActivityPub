@@ -32,8 +32,6 @@ export class AccountSearchView {
             .whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
                 `${sanitizedQuery}%`,
             ])
-            // Filter out the viewer account
-            .whereNot('accounts.id', viewerAccountId)
             // Compute followerCount
             .select(
                 this.db.raw(
@@ -122,8 +120,7 @@ export class AccountSearchView {
             .whereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
                 domain,
             ])
-            // Filter out the viewer account
-            .whereNot('accounts.id', viewerAccountId)
+
             // Compute followerCount
             .select(
                 this.db.raw(

@@ -226,37 +226,6 @@ describe('AccountSearchView', () => {
             expect(accounts[0].id).toBe(accountOne.apId.toString());
         });
 
-        it('should filter out the viewer account', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [accountOne] = await fixtureManager.createInternalAccount();
-            const [accountTwo] = await fixtureManager.createInternalAccount();
-
-            await db('accounts')
-                .where('id', viewer.id)
-                .update({ name: 'Test Account Viewer' });
-
-            await db('accounts')
-                .where('id', accountOne.id)
-                .update({ name: 'Test Account One' });
-
-            await db('accounts')
-                .where('id', accountTwo.id)
-                .update({ name: 'Test Account Two' });
-
-            const accounts = await accountSearchView.searchByName(
-                'Test Account',
-                viewer.id,
-            );
-
-            expect(accounts).toHaveLength(2);
-            expect(accounts.map((a) => a.id)).toContain(
-                accountOne.apId.toString(),
-            );
-            expect(accounts.map((a) => a.id)).toContain(
-                accountTwo.apId.toString(),
-            );
-        });
-
         it('should set followedByMe field correctly', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [followedAccount] =
@@ -621,35 +590,6 @@ describe('AccountSearchView', () => {
             );
 
             expect(accounts).toHaveLength(0);
-        });
-
-        it('should filter out the viewer account', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-
-            const viewerDomain = new URL(viewer.apId.toString()).hostname;
-
-            // Create another account on the same domain as the viewer
-            await db('accounts').insert({
-                ap_id: `https://${viewerDomain}/users/other`,
-                username: 'other',
-                domain: viewerDomain,
-                ap_inbox_url: `https://${viewerDomain}/users/other/inbox`,
-                name: 'Other Account',
-            });
-
-            const accounts = await accountSearchView.searchByDomain(
-                viewerDomain,
-                viewer.id,
-            );
-
-            // Should only return the other account, not the viewer
-            expect(accounts.map((a) => a.id)).not.toContain(
-                viewer.apId.toString(),
-            );
-            expect(accounts.length).toBeGreaterThan(0);
-            expect(
-                accounts.some((a) => a.handle === `@other@${viewerDomain}`),
-            ).toBe(true);
         });
 
         it('should filter out blocked accounts', async () => {

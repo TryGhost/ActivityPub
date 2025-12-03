@@ -64,19 +64,36 @@ describe('AccountView', () => {
 
     describe('viewById', () => {
         it('should be able to view an internal account by its ID', async () => {
-            const [account] = await fixtureManager.createInternalAccount(
-                null,
-                'eggs.food',
-            );
+            const [account] = await fixtureManager.createInternalAccount();
 
             const view = await accountView.viewById(account.id!);
 
             expect(view).not.toBeNull();
             expect(view!.id).toBe(account.id);
-
-            await expect(view).toMatchFileSnapshot(
-                '../__snapshots__/views/AccountView.viewById.no-context.json',
+            expect(view!.apId).toBe(account.apId.toString());
+            expect(view!.name).toBe(account.name);
+            expect(view!.handle).toBe(
+                `@${account.username}@${account.apId.host}`,
             );
+            expect(view!.avatarUrl).toBe(
+                account.avatarUrl ? account.avatarUrl.toString() : null,
+            );
+            expect(view!.bannerImageUrl).toBe(
+                account.bannerImageUrl
+                    ? account.bannerImageUrl.toString()
+                    : null,
+            );
+            expect(view!.bio).toBe(account.bio);
+            expect(view!.url).toBe(account.url.toString());
+            expect(view!.followerCount).toBe(0);
+            expect(view!.followingCount).toBe(0);
+            expect(view!.postCount).toBe(0);
+            expect(view!.likedCount).toBe(0);
+            expect(view!.followedByMe).toBe(false);
+            expect(view!.followsMe).toBe(false);
+            expect(view!.blockedByMe).toBe(false);
+            expect(view!.domainBlockedByMe).toBe(false);
+            expect(view!.customFields).toEqual(account.customFields || {});
         });
 
         it('should not be able to view an external account by its ID', async () => {
@@ -317,19 +334,36 @@ describe('AccountView', () => {
 
     describe('viewByApId', () => {
         it('should be able to view an internal account by its AP ID', async () => {
-            const [account] = await fixtureManager.createInternalAccount(
-                null,
-                'billy-elliot.dance',
-            );
+            const [account] = await fixtureManager.createInternalAccount();
 
             const view = await accountView.viewByApId(account.apId.toString());
 
             expect(view).not.toBeNull();
             expect(view!.id).toBe(account.id);
-
-            await expect(view).toMatchFileSnapshot(
-                '../__snapshots__/views/AccountView.viewByApId.internal-no-context.json',
+            expect(view!.apId).toBe(account.apId.toString());
+            expect(view!.name).toBe(account.name);
+            expect(view!.handle).toBe(
+                `@${account.username}@${account.apId.host}`,
             );
+            expect(view!.avatarUrl).toBe(
+                account.avatarUrl ? account.avatarUrl.toString() : null,
+            );
+            expect(view!.bannerImageUrl).toBe(
+                account.bannerImageUrl
+                    ? account.bannerImageUrl.toString()
+                    : null,
+            );
+            expect(view!.bio).toBe(account.bio);
+            expect(view!.url).toBe(account.url.toString());
+            expect(view!.followerCount).toBe(0);
+            expect(view!.followingCount).toBe(0);
+            expect(view!.postCount).toBe(0);
+            expect(view!.likedCount).toBe(0);
+            expect(view!.followedByMe).toBe(false);
+            expect(view!.followsMe).toBe(false);
+            expect(view!.blockedByMe).toBe(false);
+            expect(view!.domainBlockedByMe).toBe(false);
+            expect(view!.customFields).toEqual(account.customFields || {});
         });
 
         it('should include the number of posts for the account', async () => {

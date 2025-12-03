@@ -180,35 +180,6 @@ describe('ExploreView', () => {
             expect(next).toBeNull();
         });
 
-        it('should filter out the viewer account', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [accountOne] = await fixtureManager.createInternalAccount();
-            const [accountTwo] = await fixtureManager.createInternalAccount();
-
-            const topic = await fixtureManager.createTopic('Art', 'art');
-
-            await fixtureManager.addAccountToTopic(viewer.id, topic.id);
-            await fixtureManager.addAccountToTopic(accountOne.id, topic.id);
-            await fixtureManager.addAccountToTopic(accountTwo.id, topic.id);
-
-            const { accounts, next } = await exploreView.getAccountsInTopic(
-                topic.slug,
-                viewer.id,
-            );
-
-            expect(accounts).toHaveLength(2);
-            expect(accounts.map((a) => a.id)).not.toContain(
-                viewer.apId.toString(),
-            );
-            expect(accounts.map((a) => a.id)).toContain(
-                accountOne.apId.toString(),
-            );
-            expect(accounts.map((a) => a.id)).toContain(
-                accountTwo.apId.toString(),
-            );
-            expect(next).toBeNull();
-        });
-
         it('should set followedByMe field correctly', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [followedAccount] =
