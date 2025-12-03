@@ -172,6 +172,26 @@ describe('SiteService', () => {
         ).rejects.toThrow('Site hostname.tld has no site_uuid');
     });
 
+    it('Creates account with settings when site exists but account does not', async () => {
+        // Manually create site without account
+        await db('sites').insert({
+            host: 'hostname.tld',
+            webhook_secret: 'secret',
+            ghost_uuid: 'some-uuid',
+        });
+
+        const site = await service.initialiseSiteForHost('hostname.tld');
+
+        // Verify account was created with settings from Ghost
+        const account = await db('accounts')
+            .join('users', 'accounts.id', 'users.account_id')
+            .where('users.site_id', site.id)
+            .first();
+
+        expect(account).toBeDefined();
+        expect(account.name).toBe('Default Title');
+    });
+
     it('Handles duplicate ghost_uuid when a site changes domains', async () => {
         const ghostUUID = 'some-ghost-uuid';
 
