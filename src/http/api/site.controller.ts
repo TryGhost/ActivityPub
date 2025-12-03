@@ -8,10 +8,11 @@ export class SiteController {
     ) {}
 
     async handleGetSiteData(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const request = ctx.req;
         const host = request.header('host');
         if (!host) {
-            ctx.get('logger').info('No Host header');
+            logger.info('No Host header');
             return new Response(JSON.stringify({ error: 'No Host header' }), {
                 status: 401,
             });
@@ -31,6 +32,7 @@ export class SiteController {
                 },
             });
         } catch (error) {
+            logger.error('Failed to get site data', { error });
             return new Response(
                 error instanceof Error ? error.message : 'Unknown error',
                 {
