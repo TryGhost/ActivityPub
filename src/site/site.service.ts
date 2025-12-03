@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
-import type { getSiteSettings } from '@/helpers/ghost';
+import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
 
 export type Site = {
     id: number;
@@ -97,14 +97,13 @@ export class SiteService {
         isGhostPro = false,
     ): Promise<Site> {
         const existingSite = await this.getSiteByHost(host);
-        const settings = await this.ghostService.getSiteSettings(host);
-
-        if (!settings?.site?.site_uuid) {
-            throw new Error(`Site ${host} has no site_uuid`);
-        }
 
         let site: Site;
+        let settings: SiteSettings | undefined;
+
         if (existingSite === null) {
+            settings = await this.getSiteSettings(host);
+
             site = await this.createSite(
                 host,
                 settings.site.site_uuid,
@@ -123,12 +122,14 @@ export class SiteService {
             null;
 
         if (existingAccount === null) {
+            settings ??= await this.getSiteSettings(host);
+
             const internalAccountData: InternalAccountData = {
                 username: 'index',
-                name: settings?.site?.title,
-                bio: settings?.site?.description || null,
-                avatar_url: settings?.site?.icon || null,
-                banner_image_url: settings?.site?.cover_image || null,
+                name: settings.site.title,
+                bio: settings.site.description,
+                avatar_url: settings.site.icon,
+                banner_image_url: settings.site.cover_image,
             };
 
             await this.accountService.createInternalAccount(
@@ -144,5 +145,15 @@ export class SiteService {
         const result = await this.client.delete().from('sites').where({ host });
 
         return result === 1;
+    }
+
+    private async getSiteSettings(host: string): Promise<SiteSettings> {
+        const settings = await this.ghostService.getSiteSettings(host);
+
+        if (!settings?.site?.site_uuid) {
+            throw new Error(`Site ${host} has no site_uuid`);
+        }
+
+        return settings;
     }
 }
