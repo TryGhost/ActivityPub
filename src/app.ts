@@ -89,6 +89,7 @@ import { PostController } from '@/http/api/post.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import type { SiteController } from '@/http/api/site.controller';
+import { TopicController } from '@/http/api/topic.controller';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
@@ -839,6 +840,7 @@ routeRegistry.registerController(
 );
 routeRegistry.registerController('blueskyController', BlueskyController);
 routeRegistry.registerController('exploreController', ExploreController);
+routeRegistry.registerController('topicController', TopicController);
 
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);
