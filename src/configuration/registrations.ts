@@ -61,6 +61,7 @@ import { PostController } from '@/http/api/post.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import { SiteController } from '@/http/api/site.controller';
+import { TopicController } from '@/http/api/topic.controller';
 import { AccountFollowsView } from '@/http/api/views/account.follows.view';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { AccountSearchView } from '@/http/api/views/account.search.view';
@@ -68,6 +69,7 @@ import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
+import { TopicView } from '@/http/api/views/topic.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
 import { WebhookController } from '@/http/api/webhook.controller';
 import { HostDataContextLoader } from '@/http/host-data-context-loader';
@@ -512,4 +514,7 @@ export function registerDependencies(
         'exploreController',
         asClass(ExploreController).singleton(),
     );
+
+    container.register('topicView', asClass(TopicView).singleton());
+    container.register('topicController', asClass(TopicController).singleton());
 }

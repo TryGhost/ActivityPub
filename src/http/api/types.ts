@@ -276,3 +276,17 @@ export interface BlockedDomainDTO {
      */
     url: string;
 }
+
+/**
+ * DTO for a topic
+ */
+export interface TopicDTO {
+    /**
+     * Slug of the topic (used as identifier in URLs)
+     */
+    slug: string;
+    /**
+     * Display name of the topic
+     */
+    name: string;
+}
