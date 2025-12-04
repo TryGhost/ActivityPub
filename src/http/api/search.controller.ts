@@ -127,9 +127,9 @@ export class SearchController {
             });
         }
 
-        // Account name search (partial match, multiple results)
+        // Account search (partial match across multiple fields, multiple results)
         if (query.trim().length >= 2) {
-            results.accounts = await this.accountSearchView.searchByName(
+            results.accounts = await this.accountSearchView.search(
                 query,
                 account.id,
             );

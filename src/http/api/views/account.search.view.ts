@@ -5,28 +5,71 @@ import type { AccountSearchResult } from '@/http/api/search.controller';
 
 const SEARCH_RESULT_LIMIT = 20;
 
+const RELEVANCE_WEIGHTS = {
+    NAME_STARTS_WITH: 100,
+    NAME_CONTAINS: 80,
+    HANDLE_STARTS_WITH: 60,
+    HANDLE_CONTAINS: 50,
+    DOMAIN_STARTS_WITH: 40,
+    DOMAIN_CONTAINS: 30,
+    BIO_CONTAINS: 20,
+};
+
 export class AccountSearchView {
     constructor(private readonly db: Knex) {}
 
-    async searchByName(
+    async search(
         query: string,
         viewerAccountId: number,
     ): Promise<AccountSearchResult[]> {
-        // Return empty results for empty or whitespace-only queries
-        if (query.trim().length === 0) {
+        // Split on @ to extract search terms (e.g., "@foo@bar" → ["foo", "bar"])
+        const terms = query
+            .split('@')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0);
+
+        if (terms.length === 0) {
             return [];
         }
 
-        // Sanitize query to escape SQL wildcards (%, _, \)
-        const sanitizedQuery = query.replace(/[%_\\]/g, '\\$&');
+        // Sanitize each term:
+        // 1. Remove FULLTEXT boolean operators (+, -, <, >, ~, *, ", (, ))
+        // 2. Escape SQL LIKE wildcards (%, _, \)
+        const sanitizedTerms = terms
+            .map(
+                (t) =>
+                    t
+                        .replace(/[+\-<>~*"()]/g, '') // Strip FULLTEXT operators
+                        .replace(/[%_\\]/g, '\\$&'), // Escape LIKE wildcards
+            )
+            .filter((t) => t.length > 0); // Remove empty terms after sanitization
+
+        if (sanitizedTerms.length === 0) {
+            return [];
+        }
 
         return this.searchByQuery(
             viewerAccountId,
-            (qb) =>
-                qb.whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
-                    `${sanitizedQuery}%`,
-                ]),
+            (qb) => {
+                // All terms must match (AND logic)
+                // Each term can match in either index (OR logic within term)
+                for (const term of sanitizedTerms) {
+                    qb.where(function () {
+                        // Standard FULLTEXT on name / bio (word-prefix matching)
+                        this.whereRaw(
+                            'MATCH(accounts.name, accounts.bio) AGAINST(? IN BOOLEAN MODE)',
+                            [`${term}*`],
+                        );
+                        // N-gram FULLTEXT on username / domain (substring matching)
+                        this.orWhereRaw(
+                            'MATCH(accounts.username, accounts.domain) AGAINST(? IN BOOLEAN MODE)',
+                            [term],
+                        );
+                    });
+                }
+            },
             SEARCH_RESULT_LIMIT,
+            this.buildRelevanceScoreExpression(sanitizedTerms[0]), // Score based on first term
         );
     }
 
@@ -50,8 +93,9 @@ export class AccountSearchView {
         viewerAccountId: number,
         whereClause: Knex.QueryCallback,
         limit: number,
+        relevanceScoreExpression?: Knex.Raw,
     ): Promise<AccountSearchResult[]> {
-        const results = await this.db('accounts')
+        const query = this.db('accounts')
             .select(
                 'accounts.ap_id',
                 'accounts.name',
@@ -112,12 +156,24 @@ export class AccountSearchView {
                 );
             })
             .whereNull('blocks.id')
-            .whereNull('domain_blocks.id')
-            // Order by Ghost sites first, then alphabetically by name
-            .orderBy('is_ghost_site', 'desc')
-            .orderBy('accounts.name', 'asc')
-            // Limit results
-            .limit(limit);
+            .whereNull('domain_blocks.id');
+
+        // Add relevance score if provided
+        if (relevanceScoreExpression) {
+            query.select(relevanceScoreExpression);
+
+            // Order by relevance score first, and then by other criteria
+            query.orderBy('relevance_score', 'desc');
+        }
+
+        // Order by Ghost sites first, then alphabetically by name
+        query.orderBy('is_ghost_site', 'desc');
+        query.orderBy('accounts.name', 'asc');
+
+        // Limit results
+        query.limit(limit);
+
+        const results = await query;
 
         return results.map((result) => ({
             id: result.ap_id,
@@ -130,5 +186,40 @@ export class AccountSearchView {
             blockedByMe: false,
             domainBlockedByMe: false,
         }));
+    }
+
+    private buildRelevanceScoreExpression(term: string): Knex.Raw {
+        const normalizedTerm = term.toLowerCase();
+
+        return this.db.raw(
+            `
+            CASE
+                WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
+                WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
+                WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
+                WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
+                WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
+                WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
+                WHEN LOWER(accounts.bio) LIKE ? ESCAPE '\\\\' THEN ?
+                ELSE 0
+            END AS relevance_score
+            `,
+            [
+                `${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.NAME_STARTS_WITH,
+                `%${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.NAME_CONTAINS,
+                `${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.HANDLE_STARTS_WITH,
+                `%${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.HANDLE_CONTAINS,
+                `${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.DOMAIN_STARTS_WITH,
+                `%${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.DOMAIN_CONTAINS,
+                `%${normalizedTerm}%`,
+                RELEVANCE_WEIGHTS.BIO_CONTAINS,
+            ],
+        );
     }
 }
