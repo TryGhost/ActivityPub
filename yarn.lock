@@ -3403,10 +3403,10 @@ ky-universal@^0.11.0:
     abort-controller "^3.0.0"
     node-fetch "^3.2.10"
 
-ky@1.11.0:
-  version "1.11.0"
-  resolved "https://registry.yarnpkg.com/ky/-/ky-1.11.0.tgz#85e80fab76034a7fc0790ee1e3d0897f69d882ab"
-  integrity sha512-NEyo0ICpS0cqSuyoJFMCnHOZJILqXsKhIZlHJGDYaH8OB5IFrGzuBpEwyoMZG6gUKMPrazH30Ax5XKaujvD8ag==
+ky@1.14.0:
+  version "1.14.0"
+  resolved "https://registry.yarnpkg.com/ky/-/ky-1.14.0.tgz#0ca331409bcdcd894a85478de08e3d72aabda1c4"
+  integrity sha512-Rczb6FMM6JT0lvrOlP5WUOCB7s9XKxzwgErzhKlKde1bEV90FXplV1o87fpt4PU/asJFiqjYJxAJyzJhcrxOsQ==
 
 ky@^0.33.3:
   version "0.33.3"
