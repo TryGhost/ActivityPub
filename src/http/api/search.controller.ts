@@ -67,25 +67,6 @@ export class SearchController {
             requestUserAccount: account,
         };
 
-        // Account handle search (exact match, single result)
-        if (isHandle(query)) {
-            const dto = await this.accountView.viewByHandle(
-                query,
-                requestUserContext,
-            );
-
-            if (dto !== null) {
-                results.accounts.push(toSearchResult(dto));
-            }
-
-            return new Response(JSON.stringify(results), {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                status: 200,
-            });
-        }
-
         if (isUri(query)) {
             const domain = new URL(query).hostname;
 
@@ -133,6 +114,18 @@ export class SearchController {
                 query,
                 account.id,
             );
+        }
+
+        // If no results and query looks like a handle, try exact handle lookup (WebFinger)
+        if (results.accounts.length === 0 && isHandle(query)) {
+            const dto = await this.accountView.viewByHandle(
+                query,
+                requestUserContext,
+            );
+
+            if (dto !== null) {
+                results.accounts.push(toSearchResult(dto));
+            }
         }
 
         return new Response(JSON.stringify(results), {

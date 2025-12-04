@@ -5,13 +5,25 @@ import type { AccountSearchResult } from '@/http/api/search.controller';
 
 const SEARCH_RESULT_LIMIT = 20;
 
-const RELEVANCE_WEIGHTS = {
+// Normal query weights - prioritizes name matches (e.g., "ghost", "john smith")
+const NORMAL_WEIGHTS = {
     NAME_STARTS_WITH: 100,
     NAME_CONTAINS: 80,
-    HANDLE_STARTS_WITH: 60,
-    HANDLE_CONTAINS: 50,
+    USERNAME_STARTS_WITH: 60,
+    USERNAME_CONTAINS: 50,
     DOMAIN_STARTS_WITH: 40,
     DOMAIN_CONTAINS: 30,
+    BIO_CONTAINS: 20,
+};
+
+// Handle query weights - prioritizes username/domain matches (e.g., "@ghost@", "@john@john")
+const HANDLE_WEIGHTS = {
+    USERNAME_STARTS_WITH: 100,
+    USERNAME_CONTAINS: 80,
+    DOMAIN_STARTS_WITH: 60,
+    DOMAIN_CONTAINS: 50,
+    NAME_STARTS_WITH: 40,
+    NAME_CONTAINS: 30,
     BIO_CONTAINS: 20,
 };
 
@@ -22,6 +34,9 @@ export class AccountSearchView {
         query: string,
         viewerAccountId: number,
     ): Promise<AccountSearchResult[]> {
+        // Detect if query looks like a handle (starts with @)
+        const isHandleQuery = query.trimStart().startsWith('@');
+
         // Split on @ to extract search terms (e.g., "@foo@bar" → ["foo", "bar"])
         const terms = query
             .split('@')
@@ -36,40 +51,62 @@ export class AccountSearchView {
         // 1. Remove FULLTEXT boolean operators (+, -, <, >, ~, *, ", (, ))
         // 2. Escape SQL LIKE wildcards (%, _, \)
         const sanitizedTerms = terms
-            .map(
-                (t) =>
-                    t
-                        .replace(/[+\-<>~*"()]/g, '') // Strip FULLTEXT operators
-                        .replace(/[%_\\]/g, '\\$&'), // Escape LIKE wildcards
+            .map((term) =>
+                term.replace(/[+\-<>~*"()]/g, '').replace(/[%_\\]/g, '\\$&'),
             )
-            .filter((t) => t.length > 0); // Remove empty terms after sanitization
+            .filter((term) => term.length > 0);
 
         if (sanitizedTerms.length === 0) {
             return [];
         }
 
+        // Separate terms into long (4+ chars, use FULLTEXT) and short (< 4 chars, use LIKE)
+        const longTerms = sanitizedTerms.filter((term) => term.length >= 4);
+        const shortTerms = sanitizedTerms.filter((term) => term.length < 4);
+
+        // Build FULLTEXT query for long terms: "+term1 +term2"
+        const usernameDomainfullTextQuery = longTerms
+            .map((term) => `+${term}`)
+            .join(' ');
+
         return this.searchByQuery(
             viewerAccountId,
             (qb) => {
-                // All terms must match (AND logic)
-                // Each term can match in either index (OR logic within term)
-                for (const term of sanitizedTerms) {
-                    qb.where(function () {
-                        // Standard FULLTEXT on name / bio (word-prefix matching)
-                        this.whereRaw(
-                            'MATCH(accounts.name, accounts.bio) AGAINST(? IN BOOLEAN MODE)',
-                            [`${term}*`],
-                        );
-                        // N-gram FULLTEXT on username / domain (substring matching)
-                        this.orWhereRaw(
-                            'MATCH(accounts.username, accounts.domain) AGAINST(? IN BOOLEAN MODE)',
-                            [term],
-                        );
+                qb.where(function () {
+                    // Option 1: username / domain search - best for @user@domain queries
+                    // Only use this path if we have at least one long term (for FULLTEXT anchor)
+                    if (longTerms.length > 0) {
+                        this.where(function () {
+                            // FULLTEXT for long terms (fast n-gram index lookup)
+                            this.whereRaw(
+                                'MATCH(accounts.username, accounts.domain) AGAINST(? IN BOOLEAN MODE)',
+                                [usernameDomainfullTextQuery],
+                            );
+                            // LIKE for short terms (runs on FULLTEXT-filtered set, so fast)
+                            for (const term of shortTerms) {
+                                const lowerTerm = term.toLowerCase();
+
+                                this.whereRaw(
+                                    '(LOWER(accounts.username) LIKE ? OR LOWER(accounts.domain) LIKE ?)',
+                                    [`%${lowerTerm}%`, `%${lowerTerm}%`],
+                                );
+                            }
+                        });
+                    }
+
+                    // Option 2: name / bio search - for word based queries
+                    this.orWhere(function () {
+                        for (const term of sanitizedTerms) {
+                            this.whereRaw(
+                                'MATCH(accounts.name, accounts.bio) AGAINST(? IN BOOLEAN MODE)',
+                                [`${term}*`],
+                            );
+                        }
                     });
-                }
+                });
             },
             SEARCH_RESULT_LIMIT,
-            this.buildRelevanceScoreExpression(sanitizedTerms[0]), // Score based on first term
+            this.buildRelevanceScoreExpression(sanitizedTerms, isHandleQuery),
         );
     }
 
@@ -188,38 +225,96 @@ export class AccountSearchView {
         }));
     }
 
-    private buildRelevanceScoreExpression(term: string): Knex.Raw {
-        const normalizedTerm = term.toLowerCase();
+    private buildRelevanceScoreExpression(
+        terms: string[],
+        isHandleQuery: boolean,
+    ): Knex.Raw {
+        const weights = isHandleQuery ? HANDLE_WEIGHTS : NORMAL_WEIGHTS;
+
+        // Build score for a single term
+        // CASE returns first match, so order must match weight priority
+        const buildTermScore = (term: string): { sql: string; params: unknown[] } => {
+            const lowerTerm = term.toLowerCase();
+
+            if (isHandleQuery) {
+                // Handle query: username → domain → name → bio
+                const sql = `
+                    CASE
+                        WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
+                        WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
+                        WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
+                        WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
+                        WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
+                        WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
+                        WHEN LOWER(accounts.bio) LIKE ? ESCAPE '\\\\' THEN ?
+                        ELSE 0
+                    END`;
+                const params = [
+                    `${lowerTerm}%`,
+                    weights.USERNAME_STARTS_WITH,
+                    `%${lowerTerm}%`,
+                    weights.USERNAME_CONTAINS,
+                    `${lowerTerm}%`,
+                    weights.DOMAIN_STARTS_WITH,
+                    `%${lowerTerm}%`,
+                    weights.DOMAIN_CONTAINS,
+                    `${lowerTerm}%`,
+                    weights.NAME_STARTS_WITH,
+                    `%${lowerTerm}%`,
+                    weights.NAME_CONTAINS,
+                    `%${lowerTerm}%`,
+                    weights.BIO_CONTAINS,
+                ];
+                return { sql, params };
+            }
+
+            // Normal query: name → username → domain → bio
+            const sql = `
+                CASE
+                    WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
+                    WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
+                    WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
+                    WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
+                    WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
+                    WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
+                    WHEN LOWER(accounts.bio) LIKE ? ESCAPE '\\\\' THEN ?
+                    ELSE 0
+                END`;
+            const params = [
+                `${lowerTerm}%`,
+                weights.NAME_STARTS_WITH,
+                `%${lowerTerm}%`,
+                weights.NAME_CONTAINS,
+                `${lowerTerm}%`,
+                weights.USERNAME_STARTS_WITH,
+                `%${lowerTerm}%`,
+                weights.USERNAME_CONTAINS,
+                `${lowerTerm}%`,
+                weights.DOMAIN_STARTS_WITH,
+                `%${lowerTerm}%`,
+                weights.DOMAIN_CONTAINS,
+                `%${lowerTerm}%`,
+                weights.BIO_CONTAINS,
+            ];
+            return { sql, params };
+        };
+
+        // Score first term
+        const firstTermScore = buildTermScore(terms[0]);
+
+        if (terms.length === 1) {
+            return this.db.raw(
+                `(${firstTermScore.sql}) AS relevance_score`,
+                firstTermScore.params,
+            );
+        }
+
+        // For two terms, sum the scores (second term typically matches domain)
+        const secondTermScore = buildTermScore(terms[1]);
 
         return this.db.raw(
-            `
-            CASE
-                WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
-                WHEN LOWER(accounts.name) LIKE ? ESCAPE '\\\\' THEN ?
-                WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
-                WHEN LOWER(accounts.username) LIKE ? ESCAPE '\\\\' THEN ?
-                WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
-                WHEN LOWER(accounts.domain) LIKE ? ESCAPE '\\\\' THEN ?
-                WHEN LOWER(accounts.bio) LIKE ? ESCAPE '\\\\' THEN ?
-                ELSE 0
-            END AS relevance_score
-            `,
-            [
-                `${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.NAME_STARTS_WITH,
-                `%${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.NAME_CONTAINS,
-                `${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.HANDLE_STARTS_WITH,
-                `%${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.HANDLE_CONTAINS,
-                `${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.DOMAIN_STARTS_WITH,
-                `%${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.DOMAIN_CONTAINS,
-                `%${normalizedTerm}%`,
-                RELEVANCE_WEIGHTS.BIO_CONTAINS,
-            ],
+            `((${firstTermScore.sql}) + (${secondTermScore.sql})) AS relevance_score`,
+            [...firstTermScore.params, ...secondTermScore.params],
         );
     }
 }
