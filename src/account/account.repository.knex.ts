@@ -59,10 +59,24 @@ export class KnexAccountRepository {
                 ap_outbox_url: draft.apOutbox?.href ?? null,
                 ap_following_url: draft.apFollowing?.href ?? null,
                 ap_liked_url: draft.apLiked?.href ?? null,
-                ap_public_key: JSON.stringify(
-                    await exportJwk(draft.apPublicKey),
-                ),
-                ap_private_key: draft.apPrivateKey
+                ap_public_key: (draft as any).dualKeyPairs
+                    ? JSON.stringify({
+                          keys: await Promise.all(
+                              (draft as any).dualKeyPairs.map((kp: { publicKey: CryptoKey, privateKey: CryptoKey }) =>
+                                  exportJwk(kp.publicKey)
+                              )
+                          )
+                      })
+                    : JSON.stringify(await exportJwk(draft.apPublicKey)),
+                ap_private_key: (draft as any).dualKeyPairs
+                    ? JSON.stringify({
+                          keys: await Promise.all(
+                              (draft as any).dualKeyPairs.map((kp: { publicKey: CryptoKey, privateKey: CryptoKey }) =>
+                                  exportJwk(kp.privateKey)
+                              )
+                          )
+                      })
+                    : draft.apPrivateKey
                     ? JSON.stringify(await exportJwk(draft.apPrivateKey))
                     : null,
                 custom_fields: draft.customFields
