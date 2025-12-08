@@ -29,12 +29,45 @@ describe('RecommendationsView', () => {
         it('should return empty array no topics exist', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
 
             expect(accounts).toHaveLength(0);
+        });
+
+        it('should return expected fields for accounts', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const topic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+
+            await fixtureManager.addAccountToTopic(viewer.id, topic.id);
+            await fixtureManager.addAccountToTopic(account.id, topic.id);
+
+            const accounts = await recommendationsView.getRecommendations(
+                viewer.id,
+                20,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].id).toBe(account.apId.toString());
+            expect(accounts[0].name).toBe(account.name);
+            expect(accounts[0].handle).toBe(
+                `@${account.username}@${account.apId.host}`,
+            );
+            expect(accounts[0].avatarUrl).toBe(
+                account.avatarUrl ? account.avatarUrl.toString() : null,
+            );
+            expect(accounts[0].bio).toBe(account.bio);
+            expect(accounts[0].url).toBe(
+                account.url ? account.url.toString() : null,
+            );
+            expect(accounts[0].followedByMe).toBe(false);
         });
 
         it('should return accounts from viewers topic', async () => {
@@ -52,7 +85,7 @@ describe('RecommendationsView', () => {
             await fixtureManager.addAccountToTopic(accountOne.id, topic.id);
             await fixtureManager.addAccountToTopic(accountTwo.id, topic.id);
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
@@ -61,6 +94,138 @@ describe('RecommendationsView', () => {
             const ids = accounts.map((a) => a.id);
             expect(ids).toContain(accountOne.apId.toString());
             expect(ids).toContain(accountTwo.apId.toString());
+        });
+
+        it('should return accounts from multiple viewer topics', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [techAccount] = await fixtureManager.createInternalAccount();
+            const [scienceAccount] =
+                await fixtureManager.createInternalAccount();
+
+            const techTopic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+            const scienceTopic = await fixtureManager.createTopic(
+                'Science',
+                'science',
+            );
+
+            // Viewer is in both topics
+            await fixtureManager.addAccountToTopic(viewer.id, techTopic.id);
+            await fixtureManager.addAccountToTopic(viewer.id, scienceTopic.id);
+
+            // Each topic has one account
+            await fixtureManager.addAccountToTopic(
+                techAccount.id,
+                techTopic.id,
+            );
+            await fixtureManager.addAccountToTopic(
+                scienceAccount.id,
+                scienceTopic.id,
+            );
+
+            const accounts = await recommendationsView.getRecommendations(
+                viewer.id,
+                20,
+            );
+
+            expect(accounts).toHaveLength(2);
+
+            const ids = accounts.map((a) => a.id);
+            expect(ids).toContain(techAccount.apId.toString());
+            expect(ids).toContain(scienceAccount.apId.toString());
+        });
+
+        it('should fallback to "top" topic when viewer has no topic', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [topAccount] = await fixtureManager.createInternalAccount();
+
+            const topTopic = await fixtureManager.createTopic('Top', 'top');
+            await fixtureManager.addAccountToTopic(topAccount.id, topTopic.id);
+
+            // Viewer is NOT in any topic
+            const accounts = await recommendationsView.getRecommendations(
+                viewer.id,
+                20,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].id).toBe(topAccount.apId.toString());
+        });
+
+        it('should use the default topic "top" to fill remaining slots when viewers topic has few accounts', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [viewerTopicAccount] =
+                await fixtureManager.createInternalAccount();
+            const [topAccount] = await fixtureManager.createInternalAccount();
+
+            const viewerTopic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+            const topTopic = await fixtureManager.createTopic('Top', 'top');
+
+            await fixtureManager.addAccountToTopic(viewer.id, viewerTopic.id);
+            await fixtureManager.addAccountToTopic(
+                viewerTopicAccount.id,
+                viewerTopic.id,
+            );
+            await fixtureManager.addAccountToTopic(topAccount.id, topTopic.id);
+
+            const accounts = await recommendationsView.getRecommendations(
+                viewer.id,
+                20,
+            );
+
+            expect(accounts).toHaveLength(2);
+
+            const ids = accounts.map((a) => a.id);
+            expect(ids).toContain(viewerTopicAccount.apId.toString());
+            expect(ids).toContain(topAccount.apId.toString());
+        });
+
+        it('should de-duplicate results', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [sharedAccount] =
+                await fixtureManager.createInternalAccount();
+
+            const techTopic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+            const scienceTopic = await fixtureManager.createTopic(
+                'Science',
+                'science',
+            );
+            const topTopic = await fixtureManager.createTopic('Top', 'top');
+
+            // Viewer is in Science, Technology
+            await fixtureManager.addAccountToTopic(viewer.id, techTopic.id);
+            await fixtureManager.addAccountToTopic(viewer.id, scienceTopic.id);
+
+            // Account is in Science, Technology and Top
+            await fixtureManager.addAccountToTopic(
+                sharedAccount.id,
+                scienceTopic.id,
+            );
+            await fixtureManager.addAccountToTopic(
+                sharedAccount.id,
+                techTopic.id,
+            );
+            await fixtureManager.addAccountToTopic(
+                sharedAccount.id,
+                topTopic.id,
+            );
+
+            const accounts = await recommendationsView.getRecommendations(
+                viewer.id,
+                20,
+            );
+
+            // Should only appear once
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].id).toBe(sharedAccount.apId.toString());
         });
 
         it('should exclude the viewer from recommendations', async () => {
@@ -73,7 +238,7 @@ describe('RecommendationsView', () => {
 
             await fixtureManager.addAccountToTopic(viewer.id, topic.id);
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
@@ -106,7 +271,7 @@ describe('RecommendationsView', () => {
             // Viewer follows one account
             await fixtureManager.createFollow(viewer, followedAccount);
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
@@ -134,7 +299,7 @@ describe('RecommendationsView', () => {
             // Viewer blocks one account
             await fixtureManager.createBlock(viewer, blockedAccount);
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
@@ -169,46 +334,13 @@ describe('RecommendationsView', () => {
                 new URL('https://blocked-domain.com'),
             );
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
 
             expect(accounts).toHaveLength(1);
             expect(accounts[0].id).toBe(normalAccount.apId.toString());
-        });
-
-        it('should return expected fields for accounts', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [account] = await fixtureManager.createInternalAccount();
-
-            const topic = await fixtureManager.createTopic(
-                'Technology',
-                'technology',
-            );
-
-            await fixtureManager.addAccountToTopic(viewer.id, topic.id);
-            await fixtureManager.addAccountToTopic(account.id, topic.id);
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-                20,
-            );
-
-            expect(accounts).toHaveLength(1);
-            expect(accounts[0].id).toBe(account.apId.toString());
-            expect(accounts[0].name).toBe(account.name);
-            expect(accounts[0].handle).toBe(
-                `@${account.username}@${account.apId.host}`,
-            );
-            expect(accounts[0].avatarUrl).toBe(
-                account.avatarUrl ? account.avatarUrl.toString() : null,
-            );
-            expect(accounts[0].bio).toBe(account.bio);
-            expect(accounts[0].url).toBe(
-                account.url ? account.url.toString() : null,
-            );
-            expect(accounts[0].followedByMe).toBe(false);
         });
 
         it('should sanitize HTML in bio field', async () => {
@@ -234,7 +366,7 @@ describe('RecommendationsView', () => {
             await fixtureManager.addAccountToTopic(viewer.id, topic.id);
             await fixtureManager.addAccountToTopic(accountId, topic.id);
 
-            const { accounts } = await recommendationsView.getRecommendations(
+            const accounts = await recommendationsView.getRecommendations(
                 viewer.id,
                 20,
             );
@@ -251,157 +383,6 @@ describe('RecommendationsView', () => {
             // Event handlers should be removed
             expect(accounts[0].bio).not.toContain('onerror');
             expect(accounts[0].bio).not.toContain('alert(1)');
-        });
-
-        it('should fallback to "top" topic when viewer has no topic', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [topAccount] = await fixtureManager.createInternalAccount();
-
-            const topTopic = await fixtureManager.createTopic('Top', 'top');
-            await fixtureManager.addAccountToTopic(topAccount.id, topTopic.id);
-
-            // Viewer is NOT in any topic
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-            );
-
-            expect(accounts).toHaveLength(1);
-            expect(accounts[0].id).toBe(topAccount.apId.toString());
-        });
-
-        it('should use "top" topic to fill remaining slots when viewers topic has few accounts', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [viewerTopicAccount] =
-                await fixtureManager.createInternalAccount();
-            const [topAccount] = await fixtureManager.createInternalAccount();
-
-            const viewerTopic = await fixtureManager.createTopic(
-                'Technology',
-                'technology',
-            );
-            const topTopic = await fixtureManager.createTopic('Top', 'top');
-
-            await fixtureManager.addAccountToTopic(viewer.id, viewerTopic.id);
-            await fixtureManager.addAccountToTopic(
-                viewerTopicAccount.id,
-                viewerTopic.id,
-            );
-            await fixtureManager.addAccountToTopic(topAccount.id, topTopic.id);
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-                20,
-            );
-
-            expect(accounts).toHaveLength(2);
-
-            const ids = accounts.map((a) => a.id);
-            expect(ids).toContain(viewerTopicAccount.apId.toString());
-            expect(ids).toContain(topAccount.apId.toString());
-        });
-
-        it('should not duplicate accounts from viewers topic when filling from "top"', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [sharedAccount] =
-                await fixtureManager.createInternalAccount();
-
-            const viewerTopic = await fixtureManager.createTopic(
-                'Technology',
-                'technology',
-            );
-            const topTopic = await fixtureManager.createTopic('Top', 'top');
-
-            // Account is in both viewer's topic AND the "top" topic
-            await fixtureManager.addAccountToTopic(viewer.id, viewerTopic.id);
-            await fixtureManager.addAccountToTopic(
-                sharedAccount.id,
-                viewerTopic.id,
-            );
-            await fixtureManager.addAccountToTopic(
-                sharedAccount.id,
-                topTopic.id,
-            );
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-                20,
-            );
-
-            // Should only appear once
-            expect(accounts).toHaveLength(1);
-            expect(accounts[0].id).toBe(sharedAccount.apId.toString());
-        });
-
-        it('should exclude followed accounts from "top" topic fallback too', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [followedInTop] =
-                await fixtureManager.createInternalAccount();
-            const [notFollowedInTop] =
-                await fixtureManager.createInternalAccount();
-
-            const topTopic = await fixtureManager.createTopic('Top', 'top');
-
-            await fixtureManager.addAccountToTopic(
-                followedInTop.id,
-                topTopic.id,
-            );
-            await fixtureManager.addAccountToTopic(
-                notFollowedInTop.id,
-                topTopic.id,
-            );
-
-            // Viewer follows one account in the "top" topic
-            await fixtureManager.createFollow(viewer, followedInTop);
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-                20,
-            );
-
-            expect(accounts).toHaveLength(1);
-            expect(accounts[0].id).toBe(notFollowedInTop.apId.toString());
-        });
-
-        it('should return accounts from multiple viewer topics', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const [techAccount] = await fixtureManager.createInternalAccount();
-            const [scienceAccount] =
-                await fixtureManager.createInternalAccount();
-
-            const techTopic = await fixtureManager.createTopic(
-                'Technology',
-                'technology',
-            );
-            const scienceTopic = await fixtureManager.createTopic(
-                'Science',
-                'science',
-            );
-
-            // Viewer is in both topics
-            await fixtureManager.addAccountToTopic(viewer.id, techTopic.id);
-            await fixtureManager.addAccountToTopic(viewer.id, scienceTopic.id);
-
-            // Each topic has one account
-            await fixtureManager.addAccountToTopic(
-                techAccount.id,
-                techTopic.id,
-            );
-            await fixtureManager.addAccountToTopic(
-                scienceAccount.id,
-                scienceTopic.id,
-            );
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-                20,
-            );
-
-            expect(accounts).toHaveLength(2);
-
-            const ids = accounts.map((a) => a.id);
-            expect(ids).toContain(techAccount.apId.toString());
-            expect(ids).toContain(scienceAccount.apId.toString());
         });
     });
 });
