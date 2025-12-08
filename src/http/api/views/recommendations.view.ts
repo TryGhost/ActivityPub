@@ -4,7 +4,6 @@ import { getAccountHandle } from '@/account/utils';
 import { sanitizeHtml } from '@/helpers/html';
 import type { ExploreAccountDTO } from '@/http/api/types';
 
-const DEFAULT_RECOMMENDATIONS_LIMIT = 20;
 const TOP_TOPIC_SLUG = 'top';
 
 export class RecommendationsView {
@@ -12,7 +11,7 @@ export class RecommendationsView {
 
     async getRecommendations(
         viewerAccountId: number,
-        limit = DEFAULT_RECOMMENDATIONS_LIMIT,
+        limit: number,
     ): Promise<{ accounts: ExploreAccountDTO[] }> {
         const viewerTopics = await this.db('account_topics')
             .select('topic_id')

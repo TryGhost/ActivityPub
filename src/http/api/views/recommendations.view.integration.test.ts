@@ -31,6 +31,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(0);
@@ -53,6 +54,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(2);
@@ -73,6 +75,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(0);
@@ -105,6 +108,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(1);
@@ -132,6 +136,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(1);
@@ -166,6 +171,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(1);
@@ -186,6 +192,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(1);
@@ -229,6 +236,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(1);
@@ -243,28 +251,6 @@ describe('RecommendationsView', () => {
             // Event handlers should be removed
             expect(accounts[0].bio).not.toContain('onerror');
             expect(accounts[0].bio).not.toContain('alert(1)');
-        });
-
-        it('should return up to 20 accounts when no limit is provided', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-            const topic = await fixtureManager.createTopic(
-                'Technology',
-                'technology',
-            );
-
-            await fixtureManager.addAccountToTopic(viewer.id, topic.id);
-
-            // Create 25 accounts
-            for (let i = 0; i < 25; i++) {
-                const [account] = await fixtureManager.createInternalAccount();
-                await fixtureManager.addAccountToTopic(account.id, topic.id);
-            }
-
-            const { accounts } = await recommendationsView.getRecommendations(
-                viewer.id,
-            );
-
-            expect(accounts).toHaveLength(20);
         });
 
         it('should fallback to "top" topic when viewer has no topic', async () => {
@@ -305,6 +291,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(2);
@@ -338,6 +325,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             // Should only appear once
@@ -368,6 +356,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(1);
@@ -405,6 +394,7 @@ describe('RecommendationsView', () => {
 
             const { accounts } = await recommendationsView.getRecommendations(
                 viewer.id,
+                20,
             );
 
             expect(accounts).toHaveLength(2);
