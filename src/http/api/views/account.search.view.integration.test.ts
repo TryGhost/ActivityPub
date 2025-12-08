@@ -130,6 +130,30 @@ describe('AccountSearchView', () => {
             }
         });
 
+        it('should trim whitespace from query', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert({
+                ap_id: 'https://example.com/users/alice',
+                username: 'alice',
+                domain: 'example.com',
+                ap_inbox_url: 'https://example.com/users/alice/inbox',
+                name: 'Alice Smith',
+            });
+
+            const queries = [' alice', 'alice ', ' alice ', '  alice  '];
+
+            for (const query of queries) {
+                const accounts = await accountSearchView.search(
+                    query,
+                    viewer.id,
+                );
+
+                expect(accounts).toHaveLength(1);
+                expect(accounts[0].name).toBe('Alice Smith');
+            }
+        });
+
         it('should return expected fields for accounts', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [account] = await fixtureManager.createInternalAccount();

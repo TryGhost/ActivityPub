@@ -17,7 +17,7 @@ export class AccountSearchView {
         }
 
         // Sanitize query to escape SQL wildcards (%, _, \)
-        const sanitizedQuery = query.replace(/[%_\\]/g, '\\$&');
+        const sanitizedQuery = query.trim().replace(/[%_\\]/g, '\\$&');
 
         // Rank order:
         // 0. name starts with
