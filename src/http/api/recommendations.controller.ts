@@ -24,10 +24,16 @@ export class RecommendationsController {
             ? Number(queryLimit)
             : DEFAULT_RECOMMENDATIONS_LIMIT;
 
-        if (limit > MAX_RECOMMENDATIONS_LIMIT) {
-            return new Response(null, {
-                status: 400,
-            });
+        if (Number.isNaN(limit) || limit < 1 || limit > MAX_RECOMMENDATIONS_LIMIT) {
+            return new Response(
+                JSON.stringify({
+                    error: `Invalid limit parameter, expected a positive number below ${MAX_RECOMMENDATIONS_LIMIT}`,
+                    code: 'BAD_REQUEST',
+                }),
+                {
+                    status: 400,
+                },
+            );
         }
 
         const viewerAccountId = ctx.get('account').id;
