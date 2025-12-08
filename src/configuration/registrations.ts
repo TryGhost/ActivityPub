@@ -58,6 +58,7 @@ import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
 import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
+import { RecommendationsController } from '@/http/api/recommendations.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import { SiteController } from '@/http/api/site.controller';
@@ -68,6 +69,7 @@ import { AccountSearchView } from '@/http/api/views/account.search.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
+import { RecommendationsView } from '@/http/api/views/recommendations.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { TopicView } from '@/http/api/views/topic.view';
 import { WebFingerController } from '@/http/api/webfinger.controller';
@@ -513,6 +515,15 @@ export function registerDependencies(
     container.register(
         'exploreController',
         asClass(ExploreController).singleton(),
+    );
+
+    container.register(
+        'recommendationsView',
+        asClass(RecommendationsView).singleton(),
+    );
+    container.register(
+        'recommendationsController',
+        asClass(RecommendationsController).singleton(),
     );
 
     container.register('topicView', asClass(TopicView).singleton());

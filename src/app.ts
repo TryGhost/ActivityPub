@@ -86,6 +86,7 @@ import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
 import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
+import { RecommendationsController } from '@/http/api/recommendations.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import type { SiteController } from '@/http/api/site.controller';
@@ -841,7 +842,10 @@ routeRegistry.registerController(
 routeRegistry.registerController('blueskyController', BlueskyController);
 routeRegistry.registerController('exploreController', ExploreController);
 routeRegistry.registerController('topicController', TopicController);
-
+routeRegistry.registerController(
+    'recommendationsController',
+    RecommendationsController,
+);
 // Mount all registered routes
 routeRegistry.mountRoutes(app, container);
 
