@@ -15,7 +15,6 @@ export type AccountSearchResult = Pick<
     | 'name'
     | 'handle'
     | 'avatarUrl'
-    | 'followerCount'
     | 'followedByMe'
     | 'blockedByMe'
     | 'domainBlockedByMe'
@@ -27,7 +26,6 @@ function toSearchResult(dto: AccountDTO): AccountSearchResult {
         'name',
         'handle',
         'avatarUrl',
-        'followerCount',
         'followedByMe',
         'blockedByMe',
         'domainBlockedByMe',
