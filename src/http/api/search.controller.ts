@@ -67,25 +67,6 @@ export class SearchController {
             requestUserAccount: account,
         };
 
-        // Account handle search (exact match, single result)
-        if (isHandle(query)) {
-            const dto = await this.accountView.viewByHandle(
-                query,
-                requestUserContext,
-            );
-
-            if (dto !== null) {
-                results.accounts.push(toSearchResult(dto));
-            }
-
-            return new Response(JSON.stringify(results), {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                status: 200,
-            });
-        }
-
         if (isUri(query)) {
             const domain = new URL(query).hostname;
 
@@ -100,6 +81,7 @@ export class SearchController {
             if (domainMatch.length === 1) {
                 // Only use the domain match if the search query returned exactly one account
                 results.accounts = [domainMatch[0]];
+
                 return new Response(JSON.stringify(results), {
                     headers: {
                         'Content-Type': 'application/json',
@@ -127,12 +109,31 @@ export class SearchController {
             });
         }
 
-        // Account name search (partial match, multiple results)
+        // Account search (partial match on name, handle, domain)
         if (query.trim().length >= 2) {
-            results.accounts = await this.accountSearchView.searchByName(
+            results.accounts = await this.accountSearchView.search(
                 query,
                 account.id,
             );
+        }
+
+        // External account handle search (exact match, single result)
+        if (isHandle(query) && results.accounts.length === 0) {
+            const dto = await this.accountView.viewByHandle(
+                query,
+                requestUserContext,
+            );
+
+            if (dto !== null) {
+                results.accounts.push(toSearchResult(dto));
+            }
+
+            return new Response(JSON.stringify(results), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            });
         }
 
         return new Response(JSON.stringify(results), {

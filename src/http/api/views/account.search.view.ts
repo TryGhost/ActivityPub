@@ -8,25 +8,62 @@ const SEARCH_RESULT_LIMIT = 20;
 export class AccountSearchView {
     constructor(private readonly db: Knex) {}
 
-    async searchByName(
+    async search(
         query: string,
         viewerAccountId: number,
     ): Promise<AccountSearchResult[]> {
-        // Return empty results for empty or whitespace-only queries
         if (query.trim().length === 0) {
             return [];
         }
 
         // Sanitize query to escape SQL wildcards (%, _, \)
-        const sanitizedQuery = query.replace(/[%_\\]/g, '\\$&');
+        const sanitizedQuery = query.trim().replace(/[%_\\]/g, '\\$&');
+
+        // Rank order:
+        // 0. name starts with
+        // 1. name contains
+        // 2. handle starts with
+        // 3. handle contains
+        // 4. domain starts with
+        // 5. domain contains
+        const rankExpression = this.db.raw(
+            `CASE
+                WHEN accounts.name LIKE ? ESCAPE '\\\\' THEN 0
+                WHEN accounts.name LIKE ? ESCAPE '\\\\' THEN 1
+                WHEN CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\' THEN 2
+                WHEN CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\' THEN 3
+                WHEN accounts.domain LIKE ? ESCAPE '\\\\' THEN 4
+                WHEN accounts.domain LIKE ? ESCAPE '\\\\' THEN 5
+                ELSE 6
+            END as search_rank`,
+            [
+                `${sanitizedQuery}%`,
+                `%${sanitizedQuery}%`,
+                `${sanitizedQuery}%`,
+                `%${sanitizedQuery}%`,
+                `${sanitizedQuery}%`,
+                `%${sanitizedQuery}%`,
+            ],
+        );
 
         return this.searchByQuery(
             viewerAccountId,
+            // Match names, handles, or domains that contain the search term
             (qb) =>
-                qb.whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
-                    `${sanitizedQuery}%`,
-                ]),
+                qb.where(function () {
+                    this.whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
+                        `%${sanitizedQuery}%`,
+                    ])
+                        .orWhereRaw(
+                            "CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\'",
+                            [`%${sanitizedQuery}%`],
+                        )
+                        .orWhereRaw("accounts.domain LIKE ? ESCAPE '\\\\'", [
+                            `%${sanitizedQuery}%`,
+                        ]);
+                }),
             SEARCH_RESULT_LIMIT,
+            rankExpression,
         );
     }
 
@@ -50,8 +87,9 @@ export class AccountSearchView {
         viewerAccountId: number,
         whereClause: Knex.QueryCallback,
         limit: number,
+        rankExpression?: Knex.Raw,
     ): Promise<AccountSearchResult[]> {
-        const results = await this.db('accounts')
+        const query = this.db('accounts')
             .select(
                 'accounts.ap_id',
                 'accounts.name',
@@ -112,11 +150,19 @@ export class AccountSearchView {
                 );
             })
             .whereNull('blocks.id')
-            .whereNull('domain_blocks.id')
-            // Order by Ghost sites first, then alphabetically by name
+            .whereNull('domain_blocks.id');
+
+        // Add search_rank column and order by it if provided
+        if (rankExpression) {
+            query.select(rankExpression);
+
+            query.orderBy('search_rank', 'asc');
+        }
+
+        // Default ordering and limit
+        const results = await query
             .orderBy('is_ghost_site', 'desc')
             .orderBy('accounts.name', 'asc')
-            // Limit results
             .limit(limit);
 
         return results.map((result) => ({

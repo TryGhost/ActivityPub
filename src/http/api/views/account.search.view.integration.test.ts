@@ -22,16 +22,13 @@ describe('AccountSearchView', () => {
         accountSearchView = new AccountSearchView(db);
     });
 
-    describe('searchByName', () => {
+    describe('search', () => {
         it('should return empty array for query with no matches', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
             await fixtureManager.createInternalAccount();
 
-            const accounts = await accountSearchView.searchByName(
-                'foo',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('foo', viewer.id);
 
             expect(accounts).toHaveLength(0);
         });
@@ -47,10 +44,7 @@ describe('AccountSearchView', () => {
                 name: 'Alice Smith',
             });
 
-            const accounts = await accountSearchView.searchByName(
-                '',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('', viewer.id);
 
             expect(accounts).toHaveLength(0);
         });
@@ -69,7 +63,7 @@ describe('AccountSearchView', () => {
             const whitespaceQueries = ['   ', '\t', '\n', '  \t\n  '];
 
             for (const query of whitespaceQueries) {
-                const accounts = await accountSearchView.searchByName(
+                const accounts = await accountSearchView.search(
                     query,
                     viewer.id,
                 );
@@ -78,7 +72,7 @@ describe('AccountSearchView', () => {
             }
         });
 
-        it('should return accounts with a name starting with the query', async () => {
+        it('should return accounts with a name containing the query', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
             await db('accounts').insert([
@@ -105,13 +99,11 @@ describe('AccountSearchView', () => {
                 },
             ]);
 
-            const accounts = await accountSearchView.searchByName(
-                'Alice',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('Alice', viewer.id);
 
-            expect(accounts).toHaveLength(1);
+            expect(accounts).toHaveLength(2);
             expect(accounts.map((a) => a.name)).toContain('Alice Smith');
+            expect(accounts.map((a) => a.name)).toContain('Charlie Alice');
         });
 
         it('should be case-insensitive', async () => {
@@ -128,7 +120,31 @@ describe('AccountSearchView', () => {
             const queries = ['alice', 'Alice', 'ALICE', 'aLice', 'ALI'];
 
             for (const query of queries) {
-                const accounts = await accountSearchView.searchByName(
+                const accounts = await accountSearchView.search(
+                    query,
+                    viewer.id,
+                );
+
+                expect(accounts).toHaveLength(1);
+                expect(accounts[0].name).toBe('Alice Smith');
+            }
+        });
+
+        it('should trim whitespace from query', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert({
+                ap_id: 'https://example.com/users/alice',
+                username: 'alice',
+                domain: 'example.com',
+                ap_inbox_url: 'https://example.com/users/alice/inbox',
+                name: 'Alice Smith',
+            });
+
+            const queries = [' alice', 'alice ', ' alice ', '  alice  '];
+
+            for (const query of queries) {
+                const accounts = await accountSearchView.search(
                     query,
                     viewer.id,
                 );
@@ -142,7 +158,7 @@ describe('AccountSearchView', () => {
             const [viewer] = await fixtureManager.createInternalAccount();
             const [account] = await fixtureManager.createInternalAccount();
 
-            const accounts = await accountSearchView.searchByName(
+            const accounts = await accountSearchView.search(
                 account.name!,
                 viewer.id,
             );
@@ -183,7 +199,7 @@ describe('AccountSearchView', () => {
 
             await fixtureManager.createBlock(viewer, blockedAccount);
 
-            const accounts = await accountSearchView.searchByName(
+            const accounts = await accountSearchView.search(
                 'Test Account',
                 viewer.id,
             );
@@ -217,7 +233,7 @@ describe('AccountSearchView', () => {
                 new URL('https://blocked-domain.com'),
             );
 
-            const accounts = await accountSearchView.searchByName(
+            const accounts = await accountSearchView.search(
                 'Test Account',
                 viewer.id,
             );
@@ -243,7 +259,7 @@ describe('AccountSearchView', () => {
 
             await fixtureManager.createFollow(viewer, followedAccount);
 
-            const accounts = await accountSearchView.searchByName(
+            const accounts = await accountSearchView.search(
                 'Test Account',
                 viewer.id,
             );
@@ -281,10 +297,7 @@ describe('AccountSearchView', () => {
                 },
             ]);
 
-            const accounts = await accountSearchView.searchByName(
-                'Test_',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('Test_', viewer.id);
 
             expect(accounts).toHaveLength(1);
             expect(accounts[0].name).toBe('Test_Account');
@@ -310,10 +323,7 @@ describe('AccountSearchView', () => {
                 },
             ]);
 
-            const accounts = await accountSearchView.searchByName(
-                'Test%',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('Test%', viewer.id);
 
             expect(accounts).toHaveLength(1);
             expect(accounts[0].name).toBe('Test%Account');
@@ -339,7 +349,7 @@ describe('AccountSearchView', () => {
                 },
             ]);
 
-            const accounts = await accountSearchView.searchByName(
+            const accounts = await accountSearchView.search(
                 'Test\\',
                 viewer.id,
             );
@@ -375,10 +385,7 @@ describe('AccountSearchView', () => {
                 },
             ]);
 
-            const accounts = await accountSearchView.searchByName(
-                'Test',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('Test', viewer.id);
 
             expect(accounts).toHaveLength(3);
             expect(accounts[0].name).toBe('Test Alice');
@@ -416,10 +423,7 @@ describe('AccountSearchView', () => {
                 },
             ]);
 
-            const accounts = await accountSearchView.searchByName(
-                'Test',
-                viewer.id,
-            );
+            const accounts = await accountSearchView.search('Test', viewer.id);
 
             expect(accounts).toHaveLength(3);
             // Ghost site should appear first despite having name starting with Z
@@ -444,7 +448,7 @@ describe('AccountSearchView', () => {
             }
 
             // Should return maximum of 20 results
-            const accounts = await accountSearchView.searchByName(
+            const accounts = await accountSearchView.search(
                 'Test Account',
                 viewer.id,
             );
@@ -452,7 +456,7 @@ describe('AccountSearchView', () => {
             expect(accounts).toHaveLength(20);
         });
 
-        it('should handle empty name field gracefully', async () => {
+        it('should handle empty name field gracefully but still match by handle', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 
             await db('accounts').insert({
@@ -463,12 +467,272 @@ describe('AccountSearchView', () => {
                 name: null,
             });
 
-            const accounts = await accountSearchView.searchByName(
-                'alice',
+            // Searching for the handle should still find the account
+            const accounts = await accountSearchView.search(
+                '@alice@example.com',
                 viewer.id,
             );
 
-            expect(accounts).toHaveLength(0);
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].handle).toBe('@alice@example.com');
+        });
+
+        it('should return accounts matching by handle', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'First User',
+                },
+                {
+                    ap_id: 'https://other.com/users/bob',
+                    username: 'bob',
+                    domain: 'other.com',
+                    ap_inbox_url: 'https://other.com/users/bob/inbox',
+                    name: 'Second User',
+                },
+            ]);
+
+            const accounts = await accountSearchView.search(
+                '@alice',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].handle).toBe('@alice@example.com');
+        });
+
+        it('should return accounts matching by partial handle', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'First User',
+                },
+                {
+                    ap_id: 'https://other.com/users/bob',
+                    username: 'bob',
+                    domain: 'other.com',
+                    ap_inbox_url: 'https://other.com/users/bob/inbox',
+                    name: 'Second User',
+                },
+            ]);
+
+            // Searching for partial handle without @ prefix
+            const accounts = await accountSearchView.search(
+                'alice@example',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].handle).toBe('@alice@example.com');
+        });
+
+        it('should return accounts matching by domain', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://mastodon.social/users/alice',
+                    username: 'alice',
+                    domain: 'mastodon.social',
+                    ap_inbox_url: 'https://mastodon.social/users/alice/inbox',
+                    name: 'First User',
+                },
+                {
+                    ap_id: 'https://other.com/users/bob',
+                    username: 'bob',
+                    domain: 'other.com',
+                    ap_inbox_url: 'https://other.com/users/bob/inbox',
+                    name: 'Second User',
+                },
+            ]);
+
+            const accounts = await accountSearchView.search(
+                'mastodon.social',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].handle).toBe('@alice@mastodon.social');
+        });
+
+        it('should return accounts matching by partial domain', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://mastodon.social/users/alice',
+                    username: 'alice',
+                    domain: 'mastodon.social',
+                    ap_inbox_url: 'https://mastodon.social/users/alice/inbox',
+                    name: 'First User',
+                },
+                {
+                    ap_id: 'https://other.com/users/bob',
+                    username: 'bob',
+                    domain: 'other.com',
+                    ap_inbox_url: 'https://other.com/users/bob/inbox',
+                    name: 'Second User',
+                },
+            ]);
+
+            const accounts = await accountSearchView.search(
+                'mastodon',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].handle).toBe('@alice@mastodon.social');
+        });
+
+        it('should rank name "starts with" matches higher than "contains" matches', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/contains',
+                    username: 'contains',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/contains/inbox',
+                    name: 'User Alice Here',
+                },
+                {
+                    ap_id: 'https://example.com/users/startswith',
+                    username: 'startswith',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/startswith/inbox',
+                    name: 'Alice User',
+                },
+            ]);
+
+            const accounts = await accountSearchView.search('Alice', viewer.id);
+
+            expect(accounts).toHaveLength(2);
+            // "Alice User" should come first (name starts with)
+            expect(accounts[0].name).toBe('Alice User');
+            // "User Alice Here" should come second (name contains)
+            expect(accounts[1].name).toBe('User Alice Here');
+        });
+
+        it('should rank name matches higher than handle matches', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'Some Other Name',
+                },
+                {
+                    ap_id: 'https://example.com/users/bob',
+                    username: 'bob',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/bob/inbox',
+                    name: 'Alice Jones',
+                },
+            ]);
+
+            const accounts = await accountSearchView.search('alice', viewer.id);
+
+            expect(accounts).toHaveLength(2);
+            // "Alice Jones" should come first (name starts with)
+            expect(accounts[0].name).toBe('Alice Jones');
+            // "Some Other Name" should come second (handle contains)
+            expect(accounts[1].name).toBe('Some Other Name');
+        });
+
+        it('should rank handle "starts with" matches higher than "contains" matches', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://example.com/users/alice',
+                    username: 'alice',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/alice/inbox',
+                    name: 'Alice User',
+                },
+                {
+                    ap_id: 'https://alice.social/users/bob',
+                    username: 'bob',
+                    domain: 'alice.social',
+                    ap_inbox_url: 'https://alice.social/users/bob/inbox',
+                    name: 'Bob User',
+                },
+            ]);
+
+            // Query starting with @ triggers "handle starts with" ranking
+            const accounts = await accountSearchView.search(
+                '@alice',
+                viewer.id,
+            );
+
+            expect(accounts).toHaveLength(2);
+            // @alice@example.com matches "handle starts with @alice" (rank 2)
+            expect(accounts[0].name).toBe('Alice User');
+            expect(accounts[0].handle).toBe('@alice@example.com');
+            // @bob@alice.social matches "handle contains @alice" (rank 3)
+            expect(accounts[1].name).toBe('Bob User');
+            expect(accounts[1].handle).toBe('@bob@alice.social');
+        });
+
+        it('should return accounts from multiple match types with proper ranking', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+
+            await db('accounts').insert([
+                {
+                    ap_id: 'https://test.com/users/user1',
+                    username: 'user1',
+                    domain: 'test.com',
+                    ap_inbox_url: 'https://test.com/users/user1/inbox',
+                    name: 'Domain Match',
+                },
+                {
+                    ap_id: 'https://example.com/users/test',
+                    username: 'test',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/test/inbox',
+                    name: 'Handle Match',
+                },
+                {
+                    ap_id: 'https://example.com/users/user2',
+                    username: 'user2',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/user2/inbox',
+                    name: 'Test Name Starts',
+                },
+                {
+                    ap_id: 'https://example.com/users/user3',
+                    username: 'user3',
+                    domain: 'example.com',
+                    ap_inbox_url: 'https://example.com/users/user3/inbox',
+                    name: 'Name Contains Test',
+                },
+            ]);
+
+            const accounts = await accountSearchView.search('test', viewer.id);
+
+            expect(accounts).toHaveLength(4);
+            // Rank 0: Name starts with "test"
+            expect(accounts[0].name).toBe('Test Name Starts');
+            // Rank 1: Name contains "test"
+            expect(accounts[1].name).toBe('Name Contains Test');
+            // Rank 3: Handle contains "test" - both remaining accounts match here
+            // since handle includes domain (@user1@test.com and @test@example.com)
+            // They sort alphabetically by name after rank: "Domain Match" < "Handle Match"
+            expect(accounts[2].name).toBe('Domain Match');
+            expect(accounts[3].name).toBe('Handle Match');
         });
     });
 
