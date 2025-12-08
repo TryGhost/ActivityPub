@@ -6,6 +6,17 @@ import type { ExploreAccountDTO } from '@/http/api/types';
 
 const DEFAULT_TOPIC_SLUG = 'top';
 
+type RecommendationRow = {
+    id: number;
+    ap_id: string;
+    name: string | null;
+    username: string;
+    domain: string;
+    avatar_url: string | null;
+    bio: string | null;
+    url: string | null;
+};
+
 export class RecommendationsView {
     constructor(private readonly db: Knex) {}
 
@@ -19,11 +30,11 @@ export class RecommendationsView {
 
         const viewerTopicIds = viewerTopics.map((t) => t.topic_id);
 
-        let recommendations: ExploreAccountDTO[] = [];
+        let results: RecommendationRow[] = [];
 
         // Try to get recommendations from viewer's topic(s) first
         if (viewerTopicIds.length > 0) {
-            recommendations = await this.getRecommendationsFromTopics(
+            results = await this.getRecommendationsFromTopics(
                 viewerAccountId,
                 viewerTopicIds,
                 [],
@@ -32,9 +43,9 @@ export class RecommendationsView {
         }
 
         // If we need more recommendations, fallback to default topic
-        if (recommendations.length < limit) {
-            const remaining = limit - recommendations.length;
-            const existingIds = recommendations.map((a) => a.id);
+        if (results.length < limit) {
+            const remaining = limit - results.length;
+            const existingIds = results.map((r) => r.id);
 
             const defaultTopic = await this.db('topics')
                 .select('id')
@@ -42,7 +53,7 @@ export class RecommendationsView {
                 .first();
 
             if (defaultTopic) {
-                const defaultTopicRecommendations =
+                const defaultTopicResults =
                     await this.getRecommendationsFromTopics(
                         viewerAccountId,
                         [defaultTopic.id],
@@ -50,24 +61,22 @@ export class RecommendationsView {
                         remaining,
                     );
 
-                recommendations = [
-                    ...recommendations,
-                    ...defaultTopicRecommendations,
-                ];
+                results = [...results, ...defaultTopicResults];
             }
         }
 
-        return recommendations;
+        return this.mapResultsToDTO(results);
     }
 
     private async getRecommendationsFromTopics(
         viewerAccountId: number,
         topicIds: number[],
-        excludeApIds: string[],
+        excludeIds: number[],
         limit: number,
-    ) {
+    ): Promise<RecommendationRow[]> {
         const query = this.db('accounts')
             .select(
+                'accounts.id',
                 'accounts.ap_id',
                 'accounts.name',
                 'accounts.username',
@@ -76,7 +85,7 @@ export class RecommendationsView {
                 'accounts.bio',
                 'accounts.url',
             )
-            .distinct('accounts.ap_id')
+            .distinct('accounts.id')
 
             // Filter accounts by topics
             .innerJoin(
@@ -125,26 +134,14 @@ export class RecommendationsView {
             .orderByRaw('RAND()')
             .limit(limit);
 
-        if (excludeApIds.length > 0) {
-            query.whereNotIn('accounts.ap_id', excludeApIds);
+        if (excludeIds.length > 0) {
+            query.whereNotIn('accounts.id', excludeIds);
         }
 
-        const results = await query;
-
-        return this.mapResultsToDTO(results);
+        return await query;
     }
 
-    private mapResultsToDTO(
-        results: Array<{
-            ap_id: string;
-            name: string | null;
-            username: string;
-            domain: string;
-            avatar_url: string | null;
-            bio: string | null;
-            url: string | null;
-        }>,
-    ): ExploreAccountDTO[] {
+    private mapResultsToDTO(results: RecommendationRow[]): ExploreAccountDTO[] {
         return results.map((result) => ({
             id: result.ap_id,
             name: result.name || '',
