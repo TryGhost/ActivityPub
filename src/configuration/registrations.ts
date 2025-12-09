@@ -41,7 +41,6 @@ import {
 import { EventSerializer } from '@/events/event';
 import { PubSubEvents } from '@/events/pubsub';
 import { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
-import { GhostExploreService } from '@/explore/ghost-explore.service';
 import { FeedService } from '@/feed/feed.service';
 import { FeedUpdateService } from '@/feed/feed-update.service';
 import { FlagService } from '@/flag/flag.service';
@@ -343,10 +342,6 @@ export function registerDependencies(
     container.register(
         'notificationEventService',
         asClass(NotificationEventService).singleton(),
-    );
-    container.register(
-        'ghostExploreService',
-        asClass(GhostExploreService).singleton(),
     );
     container.register(
         'blueskyApiClient',

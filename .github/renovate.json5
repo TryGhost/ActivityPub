@@ -29,11 +29,6 @@
     {
       "matchPackagePatterns": ["^@fedify/"],
       "automerge": false
-    },
-    {
-      // Exclude dependencies in jobs that don't have automated tests
-      "matchPaths": ["jobs/populate-explore-json/**"],
-      "enabled": false
     }
   ]
 }
