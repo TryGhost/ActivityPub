@@ -68,6 +68,7 @@ export class AccountController {
 
         const viewContext = {
             requestUserAccount: siteDefaultAccount,
+            includeCounts: true,
         };
 
         if (handle === CURRENT_USER_KEYWORD) {

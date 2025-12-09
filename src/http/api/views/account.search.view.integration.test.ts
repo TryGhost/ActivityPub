@@ -172,7 +172,6 @@ describe('AccountSearchView', () => {
             expect(accounts[0].avatarUrl).toBe(
                 account.avatarUrl ? account.avatarUrl.toString() : null,
             );
-            expect(accounts[0].followerCount).toBe(0);
             expect(accounts[0].followedByMe).toBe(false);
             expect(accounts[0].blockedByMe).toBe(false);
             expect(accounts[0].domainBlockedByMe).toBe(false);
@@ -762,7 +761,6 @@ describe('AccountSearchView', () => {
             expect(result!.avatarUrl).toBe(
                 account.avatarUrl ? account.avatarUrl.toString() : null,
             );
-            expect(result!.followerCount).toBeGreaterThanOrEqual(0);
             expect(result!.followedByMe).toBe(false);
             expect(result!.blockedByMe).toBe(false);
             expect(result!.domainBlockedByMe).toBe(false);

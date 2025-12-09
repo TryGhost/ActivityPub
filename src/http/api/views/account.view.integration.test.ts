@@ -104,6 +104,33 @@ describe('AccountView', () => {
             expect(view).toBeNull();
         });
 
+        it('should return zero counts when includeCounts is false', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+            const [otherAccount] = await fixtureManager.createInternalAccount();
+
+            const post = Post.createFromData(account, {
+                type: PostType.Article,
+                audience: Audience.Public,
+            });
+
+            post.addLike(account); // will cause likeCount to be 1
+
+            await postRepository.save(post); // will cause postCount to be 1
+
+            await fixtureManager.createFollow(otherAccount, account); // will cause followerCount to be 1
+            await fixtureManager.createFollow(account, otherAccount); // will cause followingCount to be 1
+
+            const view = await accountView.viewById(account.id!, {
+                includeCounts: false,
+            });
+
+            expect(view).not.toBeNull();
+            expect(view!.postCount).toBe(0);
+            expect(view!.followerCount).toBe(0);
+            expect(view!.followingCount).toBe(0);
+            expect(view!.likedCount).toBe(0);
+        });
+
         it('should include the number of posts for the account', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 
@@ -114,7 +141,9 @@ describe('AccountView', () => {
                 }),
             );
 
-            const view = await accountView.viewById(account.id!);
+            const view = await accountView.viewById(account.id!, {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.postCount).toBe(1);
@@ -130,7 +159,9 @@ describe('AccountView', () => {
             post.addLike(account);
             await postRepository.save(post);
 
-            const view = await accountView.viewById(account.id!);
+            const view = await accountView.viewById(account.id!, {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.likedCount).toBe(1);
@@ -146,7 +177,9 @@ describe('AccountView', () => {
             post.addRepost(account);
             await postRepository.save(post);
 
-            const view = await accountView.viewById(account.id!);
+            const view = await accountView.viewById(account.id!, {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.postCount).toBe(2);
@@ -158,7 +191,9 @@ describe('AccountView', () => {
 
             await fixtureManager.createFollow(site2Account, siteAccount);
 
-            const view = await accountView.viewById(siteAccount.id!);
+            const view = await accountView.viewById(siteAccount.id!, {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.id).toBe(siteAccount.id);
@@ -172,7 +207,9 @@ describe('AccountView', () => {
 
             await fixtureManager.createFollow(siteAccount, site2Account);
 
-            const view = await accountView.viewById(siteAccount.id!);
+            const view = await accountView.viewById(siteAccount.id!, {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.id).toBe(siteAccount.id);
@@ -189,6 +226,7 @@ describe('AccountView', () => {
 
             const view = await accountView.viewById(siteAccount.id!, {
                 requestUserAccount: requestUserAccount!,
+                includeCounts: true,
             });
 
             expect(view).not.toBeNull();
@@ -207,6 +245,7 @@ describe('AccountView', () => {
 
             const view = await accountView.viewById(siteAccount.id!, {
                 requestUserAccount: requestUserAccount!,
+                includeCounts: true,
             });
 
             expect(view).not.toBeNull();
@@ -376,7 +415,9 @@ describe('AccountView', () => {
                 }),
             );
 
-            const view = await accountView.viewByApId(account.apId.toString());
+            const view = await accountView.viewByApId(account.apId.toString(), {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.postCount).toBe(1);
@@ -392,7 +433,9 @@ describe('AccountView', () => {
             post.addLike(account);
             await postRepository.save(post);
 
-            const view = await accountView.viewByApId(account.apId.toString());
+            const view = await accountView.viewByApId(account.apId.toString(), {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.likedCount).toBe(1);
@@ -408,7 +451,9 @@ describe('AccountView', () => {
             post.addRepost(account);
             await postRepository.save(post);
 
-            const view = await accountView.viewByApId(account.apId.toString());
+            const view = await accountView.viewByApId(account.apId.toString(), {
+                includeCounts: true,
+            });
 
             expect(view).not.toBeNull();
             expect(view!.postCount).toBe(2);
@@ -422,6 +467,7 @@ describe('AccountView', () => {
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
+                { includeCounts: true },
             );
 
             expect(view).not.toBeNull();
@@ -438,6 +484,7 @@ describe('AccountView', () => {
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
+                { includeCounts: true },
             );
 
             expect(view).not.toBeNull();
@@ -455,7 +502,10 @@ describe('AccountView', () => {
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
-                { requestUserAccount: requestUserAccount! },
+                {
+                    requestUserAccount: requestUserAccount!,
+                    includeCounts: true,
+                },
             );
 
             expect(view).not.toBeNull();
@@ -474,7 +524,10 @@ describe('AccountView', () => {
 
             const view = await accountView.viewByApId(
                 siteAccount.apId.toString(),
-                { requestUserAccount: requestUserAccount! },
+                {
+                    requestUserAccount: requestUserAccount!,
+                    includeCounts: true,
+                },
             );
 
             expect(view).not.toBeNull();

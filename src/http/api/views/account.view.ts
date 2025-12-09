@@ -18,6 +18,12 @@ interface ViewContext {
      * The account associated with the user making the request
      */
     requestUserAccount?: Account;
+    /**
+     * Should collection counts be computed / queried
+     *
+     * When false or undefined, counts will be returned as 0
+     */
+    includeCounts?: boolean;
 }
 
 export class AccountView {
@@ -35,6 +41,7 @@ export class AccountView {
     ): Promise<AccountDTO | AccountDTOWithBluesky | null> {
         const accountData = await this.getAccountByQuery(
             (qb: Knex.QueryBuilder) => qb.where('accounts.id', id),
+            context.includeCounts,
         );
 
         if (!accountData) {
@@ -87,10 +94,11 @@ export class AccountView {
             avatarUrl: accountData.avatar_url || '',
             bannerImageUrl: accountData.banner_image_url || '',
             customFields: accountData.custom_fields || {},
-            postCount: accountData.post_count + accountData.repost_count,
-            likedCount: accountData.like_count,
-            followingCount: accountData.following_count,
-            followerCount: accountData.follower_count,
+            postCount:
+                (accountData.post_count ?? 0) + (accountData.repost_count ?? 0),
+            likedCount: accountData.like_count ?? 0,
+            followingCount: accountData.following_count ?? 0,
+            followerCount: accountData.follower_count ?? 0,
             followedByMe,
             followsMe,
             blockedByMe,
@@ -146,6 +154,7 @@ export class AccountView {
         const accountData = await this.getAccountByQuery(
             (qb: Knex.QueryBuilder) =>
                 qb.whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId]),
+            context.includeCounts,
         );
 
         if (!accountData) {
@@ -183,10 +192,11 @@ export class AccountView {
             avatarUrl: accountData.avatar_url || '',
             bannerImageUrl: accountData.banner_image_url || '',
             customFields: accountData.custom_fields || {},
-            postCount: accountData.post_count + accountData.repost_count,
-            likedCount: accountData.like_count,
-            followingCount: accountData.following_count,
-            followerCount: accountData.follower_count,
+            postCount:
+                (accountData.post_count ?? 0) + (accountData.repost_count ?? 0),
+            likedCount: accountData.like_count ?? 0,
+            followingCount: accountData.following_count ?? 0,
+            followerCount: accountData.follower_count ?? 0,
             followedByMe,
             followsMe,
             blockedByMe,
@@ -238,13 +248,20 @@ export class AccountView {
         const icon = await actor.getIcon();
         const image = await actor.getImage();
 
-        const [postCount, likedPostCount, followerCount, followingCount] =
-            await Promise.all([
-                this.getActorCollectionCount(actor, 'outbox'),
-                this.getActorCollectionCount(actor, 'liked'),
-                this.getActorCollectionCount(actor, 'followers'),
-                this.getActorCollectionCount(actor, 'following'),
-            ]);
+        let postCount = 0;
+        let likedPostCount = 0;
+        let followerCount = 0;
+        let followingCount = 0;
+
+        if (context.includeCounts) {
+            [postCount, likedPostCount, followerCount, followingCount] =
+                await Promise.all([
+                    this.getActorCollectionCount(actor, 'outbox'),
+                    this.getActorCollectionCount(actor, 'liked'),
+                    this.getActorCollectionCount(actor, 'followers'),
+                    this.getActorCollectionCount(actor, 'following'),
+                ]);
+        }
 
         return {
             id: actor.id?.toString() || '',
@@ -278,40 +295,47 @@ export class AccountView {
         };
     }
 
-    private async getAccountByQuery(query: Knex.QueryCallback) {
-        return (
-            this.db('accounts')
-                // Join the users table to ensure we are getting an internal account
-                .innerJoin('users', 'users.account_id', 'accounts.id')
-                .select(
-                    'accounts.id',
-                    'accounts.username',
-                    'accounts.name',
-                    'accounts.bio',
-                    'accounts.avatar_url',
-                    'accounts.banner_image_url',
-                    'accounts.url',
-                    'accounts.custom_fields',
-                    'accounts.ap_id',
-                    this.db.raw(
-                        '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
-                    ),
-                    this.db.raw(
-                        '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
-                    ),
-                    this.db.raw(
-                        '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
-                    ),
-                    this.db.raw(
-                        '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
-                    ),
-                    this.db.raw(
-                        '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
-                    ),
-                )
-                .where(query)
-                .first()
-        );
+    private async getAccountByQuery(
+        query: Knex.QueryCallback,
+        includeCounts: boolean = false,
+    ) {
+        const baseSelect = [
+            'accounts.id',
+            'accounts.username',
+            'accounts.name',
+            'accounts.bio',
+            'accounts.avatar_url',
+            'accounts.banner_image_url',
+            'accounts.url',
+            'accounts.custom_fields',
+            'accounts.ap_id',
+        ];
+
+        const countSelects = includeCounts
+            ? [
+                  this.db.raw(
+                      '(select count(*) from posts where posts.author_id = accounts.id) as post_count',
+                  ),
+                  this.db.raw(
+                      '(select count(*) from likes where likes.account_id = accounts.id) as like_count',
+                  ),
+                  this.db.raw(
+                      '(select count(*) from reposts where reposts.account_id = accounts.id) as repost_count',
+                  ),
+                  this.db.raw(
+                      '(select count(*) from follows where follows.follower_id = accounts.id) as following_count',
+                  ),
+                  this.db.raw(
+                      '(select count(*) from follows where follows.following_id = accounts.id) as follower_count',
+                  ),
+              ]
+            : [];
+
+        return this.db('accounts')
+            .innerJoin('users', 'users.account_id', 'accounts.id')
+            .select(...baseSelect, ...countSelects)
+            .where(query)
+            .first();
     }
 
     private async getRequestUserContextData(

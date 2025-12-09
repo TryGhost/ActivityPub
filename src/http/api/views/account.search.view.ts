@@ -98,12 +98,6 @@ export class AccountSearchView {
                 'accounts.avatar_url',
             )
             .where(whereClause)
-            // Compute followerCount
-            .select(
-                this.db.raw(
-                    '(SELECT COUNT(*) FROM follows WHERE follows.following_id = accounts.id) as follower_count',
-                ),
-            )
             // Compute followedByMe
             .select(
                 this.db.raw(`
@@ -170,7 +164,6 @@ export class AccountSearchView {
             name: result.name || '',
             handle: getAccountHandle(result.domain, result.username),
             avatarUrl: result.avatar_url || null,
-            followerCount: Number(result.follower_count),
             followedByMe: result.followed_by_me === 1,
             // blockedByMe and domainBlockedByMe are always false since we filter them out
             blockedByMe: false,
