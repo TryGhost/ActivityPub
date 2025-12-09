@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { Knex } from 'knex';
 
-import { TopicView } from '@/http/api/views/topic.view';
+import { DEFAULT_TOPIC_SLUG, TopicView } from '@/http/api/views/topic.view';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
@@ -129,6 +129,54 @@ describe('TopicView', () => {
             expect(topics[0].name).toBe('Apples');
             expect(topics[1].name).toBe('Music');
             expect(topics[2].name).toBe('Zebras');
+        });
+
+        it(`should render "${DEFAULT_TOPIC_SLUG}" topic first regardless of account count`, async () => {
+            const [account1] = await fixtureManager.createInternalAccount();
+            const [account2] = await fixtureManager.createInternalAccount();
+            const [account3] = await fixtureManager.createInternalAccount();
+
+            // Create default topic with only 1 account
+            const topTopic = await fixtureManager.createTopic(
+                'Default',
+                DEFAULT_TOPIC_SLUG,
+            );
+            await fixtureManager.addAccountToTopic(account1.id, topTopic.id);
+
+            // Create other topics with more accounts
+            const popularTopic = await fixtureManager.createTopic(
+                'Popular',
+                'popular',
+            );
+            await fixtureManager.addAccountToTopic(
+                account1.id,
+                popularTopic.id,
+            );
+            await fixtureManager.addAccountToTopic(
+                account2.id,
+                popularTopic.id,
+            );
+            await fixtureManager.addAccountToTopic(
+                account3.id,
+                popularTopic.id,
+            );
+
+            const techTopic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+            await fixtureManager.addAccountToTopic(account1.id, techTopic.id);
+            await fixtureManager.addAccountToTopic(account2.id, techTopic.id);
+
+            const topics = await topicView.getTopics();
+
+            expect(topics).toHaveLength(3);
+            // "top" should be first, even though it has fewer accounts
+            expect(topics[0].slug).toBe(DEFAULT_TOPIC_SLUG);
+
+            // Then ordered by account count
+            expect(topics[1].slug).toBe('popular');
+            expect(topics[2].slug).toBe('technology');
         });
     });
 });
