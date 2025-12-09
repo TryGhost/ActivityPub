@@ -79,41 +79,41 @@ describe('TopicView', () => {
             });
         });
 
-        it('should order topics by account count descending, then by name ascending', async () => {
-            const [account1] = await fixtureManager.createInternalAccount();
-            const [account2] = await fixtureManager.createInternalAccount();
-            const [account3] = await fixtureManager.createInternalAccount();
+        it('should order topics by display_order first, then by name', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
 
-            // Topic with 1 account
-            const topicA = await fixtureManager.createTopic('Apples', 'apples');
-            await fixtureManager.addAccountToTopic(account1.id, topicA.id);
+            const topicA = await fixtureManager.createTopic(
+                'Apples',
+                'apples',
+                1,
+            );
+            const topicZ = await fixtureManager.createTopic(
+                'Zebras',
+                'zebras',
+                3,
+            );
+            const topicM = await fixtureManager.createTopic(
+                'Music',
+                'music',
+                2,
+            );
 
-            // Topic with 3 accounts (most popular)
-            const topicZ = await fixtureManager.createTopic('Zebras', 'zebras');
-            await fixtureManager.addAccountToTopic(account1.id, topicZ.id);
-            await fixtureManager.addAccountToTopic(account2.id, topicZ.id);
-            await fixtureManager.addAccountToTopic(account3.id, topicZ.id);
-
-            // Topic with 2 accounts
-            const topicM = await fixtureManager.createTopic('Music', 'music');
-            await fixtureManager.addAccountToTopic(account1.id, topicM.id);
-            await fixtureManager.addAccountToTopic(account2.id, topicM.id);
+            await fixtureManager.addAccountToTopic(account.id, topicA.id);
+            await fixtureManager.addAccountToTopic(account.id, topicZ.id);
+            await fixtureManager.addAccountToTopic(account.id, topicM.id);
 
             const topics = await topicView.getTopics();
 
             expect(topics).toHaveLength(3);
-            // First: Zebras (3 accounts)
-            expect(topics[0].name).toBe('Zebras');
-            // Second: Music (2 accounts)
-            expect(topics[1].name).toBe('Music');
-            // Third: Apples (1 account)
-            expect(topics[2].name).toBe('Apples');
+            expect(topics[0].name).toBe('Apples'); // display_order=1
+            expect(topics[1].name).toBe('Music'); // display_order=2
+            expect(topics[2].name).toBe('Zebras'); // display_order=3
         });
 
-        it('should order topics with same account count by name ascending', async () => {
+        it('should order topics by name when display_order is the same', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 
-            // All topics have 1 account each
+            // All topics have display_order=0 (default)
             const topicZ = await fixtureManager.createTopic('Zebras', 'zebras');
             const topicA = await fixtureManager.createTopic('Apples', 'apples');
             const topicM = await fixtureManager.createTopic('Music', 'music');
@@ -125,7 +125,6 @@ describe('TopicView', () => {
             const topics = await topicView.getTopics();
 
             expect(topics).toHaveLength(3);
-            // When account counts are equal, order by name ascending
             expect(topics[0].name).toBe('Apples');
             expect(topics[1].name).toBe('Music');
             expect(topics[2].name).toBe('Zebras');

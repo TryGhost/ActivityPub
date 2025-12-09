@@ -247,9 +247,13 @@ export class FixtureManager {
             .delete();
     }
 
-    async createTopic(name: string, slug: string) {
-        const [id] = await this.db('topics').insert({ name, slug });
-        return { id, name, slug };
+    async createTopic(name: string, slug: string, displayOrder: number = 0) {
+        const [id] = await this.db('topics').insert({
+            name,
+            slug,
+            display_order: displayOrder,
+        });
+        return { id, name, slug, displayOrder };
     }
 
     async addAccountToTopic(
