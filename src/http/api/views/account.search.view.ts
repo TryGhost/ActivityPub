@@ -26,6 +26,7 @@ export class AccountSearchView {
         // 3. handle contains
         // 4. domain starts with
         // 5. domain contains
+        // 6. no match (will be filtered out via HAVING)
         const rankExpression = this.db.raw(
             `CASE
                 WHEN accounts.name LIKE ? ESCAPE '\\\\' THEN 0
@@ -48,20 +49,6 @@ export class AccountSearchView {
 
         return this.searchByQuery(
             viewerAccountId,
-            // Match names, handles, or domains that contain the search term
-            (qb) =>
-                qb.where(function () {
-                    this.whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
-                        `%${sanitizedQuery}%`,
-                    ])
-                        .orWhereRaw(
-                            "CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\'",
-                            [`%${sanitizedQuery}%`],
-                        )
-                        .orWhereRaw("accounts.domain LIKE ? ESCAPE '\\\\'", [
-                            `%${sanitizedQuery}%`,
-                        ]);
-                }),
             SEARCH_RESULT_LIMIT,
             rankExpression,
         );
@@ -72,22 +59,18 @@ export class AccountSearchView {
         viewerAccountId: number,
         limit: number = SEARCH_RESULT_LIMIT,
     ): Promise<AccountSearchResult[]> {
-        return this.searchByQuery(
-            viewerAccountId,
-            (qb) =>
-                qb.whereRaw(
-                    'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
-                    [domain],
-                ),
-            limit,
+        return this.searchByQuery(viewerAccountId, limit, undefined, (qb) =>
+            qb.whereRaw('accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
+                domain,
+            ]),
         );
     }
 
     private async searchByQuery(
         viewerAccountId: number,
-        whereClause: Knex.QueryCallback,
         limit: number,
         rankExpression?: Knex.Raw,
+        whereClause?: Knex.QueryCallback,
     ): Promise<AccountSearchResult[]> {
         const query = this.db('accounts')
             .select(
@@ -97,7 +80,6 @@ export class AccountSearchView {
                 'accounts.domain',
                 'accounts.avatar_url',
             )
-            .where(whereClause)
             // Compute followedByMe
             .select(
                 this.db.raw(`
@@ -120,36 +102,36 @@ export class AccountSearchView {
                 this.on('follows.following_id', 'accounts.id').andOnVal(
                     'follows.follower_id',
                     '=',
-                    viewerAccountId.toString(),
+                    viewerAccountId,
                 );
             })
-            // Join users table to detect Ghost sites (internal accounts)
             .leftJoin('users', 'users.account_id', 'accounts.id')
-            // Filter out blocked accounts
-            .leftJoin('blocks', function () {
-                this.on('blocks.blocked_id', 'accounts.id').andOnVal(
-                    'blocks.blocker_id',
-                    '=',
-                    viewerAccountId.toString(),
-                );
+            // Filter out blocked accounts using NOT EXISTS (more efficient than LEFT JOIN + WHERE NULL)
+            .whereNotExists(function () {
+                this.select(1)
+                    .from('blocks')
+                    .whereRaw('blocks.blocked_id = accounts.id')
+                    .andWhere('blocks.blocker_id', viewerAccountId);
             })
-            .leftJoin('domain_blocks', function () {
-                this.on(
-                    'domain_blocks.domain_hash',
-                    'accounts.domain_hash',
-                ).andOnVal(
-                    'domain_blocks.blocker_id',
-                    '=',
-                    viewerAccountId.toString(),
-                );
-            })
-            .whereNull('blocks.id')
-            .whereNull('domain_blocks.id');
+            // Filter out domain-blocked accounts using NOT EXISTS (more efficient than LEFT JOIN + WHERE NULL)
+            .whereNotExists(function () {
+                this.select(1)
+                    .from('domain_blocks')
+                    .whereRaw(
+                        'domain_blocks.domain_hash = accounts.domain_hash',
+                    )
+                    .andWhere('domain_blocks.blocker_id', viewerAccountId);
+            });
 
-        // Add search_rank column and order by it if provided
+        // Apply additional WHERE clause if provided (used by searchByDomain)
+        if (whereClause) {
+            query.where(whereClause);
+        }
+
+        // Add search_rank column and order by it if provided, and filter out non-matches (rank 6) using HAVING
         if (rankExpression) {
             query.select(rankExpression);
-
+            query.having('search_rank', '<', 6);
             query.orderBy('search_rank', 'asc');
         }
 
