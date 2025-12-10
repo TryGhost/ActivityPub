@@ -302,61 +302,6 @@ describe('AccountSearchView', () => {
             expect(accounts[0].name).toBe('Test_Account');
         });
 
-        it('should escape SQL wildcards in query (percent)', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-
-            await db('accounts').insert([
-                {
-                    ap_id: 'https://example.com/users/alice',
-                    username: 'alice',
-                    domain: 'example.com',
-                    ap_inbox_url: 'https://example.com/users/alice/inbox',
-                    name: 'Test%Account',
-                },
-                {
-                    ap_id: 'https://example.com/users/bob',
-                    username: 'bob',
-                    domain: 'example.com',
-                    ap_inbox_url: 'https://example.com/users/bob/inbox',
-                    name: 'TestAnything',
-                },
-            ]);
-
-            const accounts = await accountSearchView.search('Test%', viewer.id);
-
-            expect(accounts).toHaveLength(1);
-            expect(accounts[0].name).toBe('Test%Account');
-        });
-
-        it('should escape SQL wildcards in query (backslash)', async () => {
-            const [viewer] = await fixtureManager.createInternalAccount();
-
-            await db('accounts').insert([
-                {
-                    ap_id: 'https://example.com/users/alice',
-                    username: 'alice',
-                    domain: 'example.com',
-                    ap_inbox_url: 'https://example.com/users/alice/inbox',
-                    name: 'Test\\Account',
-                },
-                {
-                    ap_id: 'https://example.com/users/bob',
-                    username: 'bob',
-                    domain: 'example.com',
-                    ap_inbox_url: 'https://example.com/users/bob/inbox',
-                    name: 'TestAccount',
-                },
-            ]);
-
-            const accounts = await accountSearchView.search(
-                'Test\\',
-                viewer.id,
-            );
-
-            expect(accounts).toHaveLength(1);
-            expect(accounts[0].name).toBe('Test\\Account');
-        });
-
         it('should sort results alphabetically by name', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 

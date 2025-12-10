@@ -12,12 +12,32 @@ export class AccountSearchView {
         query: string,
         viewerAccountId: number,
     ): Promise<AccountSearchResult[]> {
-        if (query.trim().length === 0) {
+        const trimmedQuery = query.trim();
+
+        if (trimmedQuery.length === 0) {
             return [];
         }
 
-        // Sanitize query to escape SQL wildcards (%, _, \)
-        const sanitizedQuery = query.trim().replace(/[%_\\]/g, '\\$&');
+        // Sanitize query for LIKE patterns (escape %, _, \)
+        const sanitizedQuery = trimmedQuery.replace(/[%_\\]/g, '\\$&');
+
+        // Prepare query for FULLTEXT boolean mode:
+        const fulltextQuery = trimmedQuery
+            // Strip TLD suffix (e.g., .com, .it) as they are often MySQL stopwords
+            .replace(/\.[a-z]{2,}$/i, '')
+            // Replace special characters that have meaning in boolean mode or act as word separators with spaces
+            .replace(/[+\-><()~*"@.\\/]/g, ' ')
+            // Split into words and filter empty terms
+            .split(/\s+/)
+            .filter((term) => term.length > 0)
+            // Prefix each with + (required) and suffix with * (prefix match)
+            .map((term) => `+${term}*`)
+            .join(' ');
+
+        // If no valid search terms remain after sanitization, return empty
+        if (fulltextQuery.length === 0) {
+            return [];
+        }
 
         // Rank order:
         // 0. name starts with
@@ -48,20 +68,11 @@ export class AccountSearchView {
 
         return this.searchByQuery(
             viewerAccountId,
-            // Match names, handles, or domains that contain the search term
             (qb) =>
-                qb.where(function () {
-                    this.whereRaw("accounts.name LIKE ? ESCAPE '\\\\'", [
-                        `%${sanitizedQuery}%`,
-                    ])
-                        .orWhereRaw(
-                            "CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\'",
-                            [`%${sanitizedQuery}%`],
-                        )
-                        .orWhereRaw("accounts.domain LIKE ? ESCAPE '\\\\'", [
-                            `%${sanitizedQuery}%`,
-                        ]);
-                }),
+                qb.whereRaw(
+                    'MATCH(accounts.name, accounts.username, accounts.domain) AGAINST(? IN BOOLEAN MODE)',
+                    [fulltextQuery],
+                ),
             SEARCH_RESULT_LIMIT,
             rankExpression,
         );
