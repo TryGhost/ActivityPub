@@ -15,7 +15,6 @@ import { getWebhookSecret } from '../support/fixtures.js';
 import { getCurrentDirectory } from '../support/path.js';
 import { fetchActivityPub } from '../support/request.js';
 import {
-    getExternalWiremock,
     getGhostWiremock,
     reset as resetWiremock,
 } from '../support/wiremock.js';
@@ -28,7 +27,6 @@ AfterAll(async () => {
 
 BeforeAll(async function setupWiremock() {
     const ghostActivityPub = getGhostWiremock();
-    const externalActivityPub = getExternalWiremock();
 
     const publicKey = fs.readFileSync(
         resolve(getCurrentDirectory(), '../fixtures/private.key'),
@@ -75,57 +73,6 @@ BeforeAll(async function setupWiremock() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-            },
-        ),
-        // Stub Ghost Explore actor on mastodon.social
-        externalActivityPub.register(
-            {
-                method: 'GET',
-                endpoint: '/users/ghostexplore',
-            },
-            {
-                status: 200,
-                body: {
-                    '@context': [
-                        'https://www.w3.org/ns/activitystreams',
-                        'https://w3id.org/security/data-integrity/v1',
-                    ],
-                    id: 'https://mastodon.social/users/ghostexplore',
-                    url: 'https://mastodon.social/@ghostexplore',
-                    type: 'Service',
-                    preferredUsername: 'ghostexplore',
-                    name: 'Ghost Explore',
-                    summary:
-                        '<p>An aggregator of Ghost publications in the Fediverse</p>',
-                    inbox: 'https://mastodon.social/users/ghostexplore/inbox',
-                    outbox: 'https://mastodon.social/users/ghostexplore/outbox',
-                    followers:
-                        'https://mastodon.social/users/ghostexplore/followers',
-                    following:
-                        'https://mastodon.social/users/ghostexplore/following',
-                    liked: 'https://mastodon.social/users/ghostexplore/liked',
-                    'https://w3id.org/security#publicKey': {
-                        id: 'https://mastodon.social/users/ghostexplore#main-key',
-                        type: 'https://w3id.org/security#Key',
-                        'https://w3id.org/security#owner': {
-                            id: 'https://mastodon.social/users/ghostexplore',
-                        },
-                        'https://w3id.org/security#publicKeyPem':
-                            '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
-                    },
-                },
-                headers: {
-                    'Content-Type': 'application/activity+json',
-                },
-            },
-        ),
-        externalActivityPub.register(
-            {
-                method: 'POST',
-                endpoint: '/users/ghostexplore/inbox',
-            },
-            {
-                status: 202,
             },
         ),
     ]);
