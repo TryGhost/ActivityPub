@@ -1,0 +1,754 @@
+[
+  {
+    "name": "@levelsio (Pieter Levels)",
+    "username": "index",
+    "domain": "levels.io"
+  },
+  {
+    "name": "1inch Network Blog | Web 3, DeFi & Crypto news",
+    "username": "index",
+    "domain": "blog.1inch.io"
+  },
+  { "name": "404 Media", "username": "feed", "domain": "www.404media.co" },
+  {
+    "name": "48 Hills",
+    "username": "index",
+    "domain": "newsletters.48hills.org"
+  },
+  { "name": "7k Today", "username": "index", "domain": "www.sevenktoday.com" },
+  {
+    "name": "AI Weirdness",
+    "username": "blog",
+    "domain": "www.aiweirdness.com"
+  },
+  { "name": "AInvest Labs", "username": "index", "domain": "labs.ainvest.com" },
+  { "name": "Apify Blog", "username": "index", "domain": "blog.apify.com" },
+  { "name": "Arete News", "username": "staff", "domain": "www.aretenews.com" },
+  {
+    "name": "ArtAsiaPacific",
+    "username": "index",
+    "domain": "www.artasiapacific.com"
+  },
+  {
+    "name": "Atlas News",
+    "username": "index",
+    "domain": "www.theatlasnews.com"
+  },
+  {
+    "name": "Bad Faith Times",
+    "username": "dennycarter",
+    "domain": "badfaithtimes.com"
+  },
+  {
+    "name": "Bambu Lab Blog",
+    "username": "index",
+    "domain": "blog.bambulab.com"
+  },
+  {
+    "name": "Bark & Whiskers",
+    "username": "index",
+    "domain": "www.barkandwhiskers.com"
+  },
+  {
+    "name": "Basket Under Review",
+    "username": "index",
+    "domain": "www.basketunderreview.com"
+  },
+  {
+    "name": "BetterUp Product Blog",
+    "username": "index",
+    "domain": "build.betterup.com"
+  },
+  { "name": "Bklyner", "username": "index", "domain": "bklyner.com" },
+  {
+    "name": "Blockscout | Multichain Block Explorer For EVM Chains",
+    "username": "index",
+    "domain": "www.blog.blockscout.com"
+  },
+  {
+    "name": "Blueshirt Banter",
+    "username": "index",
+    "domain": "www.blueshirtbanter.com"
+  },
+  {
+    "name": "BOURBON & BANTER",
+    "username": "index",
+    "domain": "www.bourbonbanter.com"
+  },
+  {
+    "name": "Broadband Breakfast",
+    "username": "index",
+    "domain": "broadbandbreakfast.com"
+  },
+  {
+    "name": "Broadway News",
+    "username": "index",
+    "domain": "www.broadwaynews.com"
+  },
+  {
+    "name": "Bubblemaps Updates",
+    "username": "index",
+    "domain": "blog.bubblemaps.io"
+  },
+  {
+    "name": "Building Shepherd",
+    "username": "index",
+    "domain": "building.shepherd.com"
+  },
+  {
+    "name": "Character.AI Blog",
+    "username": "index",
+    "domain": "blog.character.ai"
+  },
+  {
+    "name": "Cisco Talos Blog",
+    "username": "index",
+    "domain": "blog.talosintelligence.com"
+  },
+  {
+    "name": "CMU | the music business explained",
+    "username": "index",
+    "domain": "completemusicupdate.com"
+  },
+  {
+    "name": "Coding Horror",
+    "username": "index",
+    "domain": "blog.codinghorror.com"
+  },
+  {
+    "name": "Compact Magazine",
+    "username": "compact",
+    "domain": "www.compactmag.com"
+  },
+  {
+    "name": "Confidential Daily",
+    "username": "index",
+    "domain": "www.confidentialdaily.com"
+  },
+  {
+    "name": "Continue Blog",
+    "username": "index",
+    "domain": "blog.continue.dev"
+  },
+  {
+    "name": "Core77 Members",
+    "username": "index",
+    "domain": "members.core77.com"
+  },
+  { "name": "CrewAI", "username": "index", "domain": "blog.crewai.com" },
+  {
+    "name": "Cup of Coffee",
+    "username": "index",
+    "domain": "www.cupofcoffeenews.com"
+  },
+  {
+    "name": "CurseForge Blog",
+    "username": "index",
+    "domain": "blog.curseforge.com"
+  },
+  { "name": "Curve News", "username": "index", "domain": "news.curve.finance" },
+  {
+    "name": "Daily Detroit",
+    "username": "index",
+    "domain": "www.dailydetroit.com"
+  },
+  {
+    "name": "Daniel Herndon",
+    "username": "me",
+    "domain": "danielkherndon.com"
+  },
+  { "name": "Discourse", "username": "index", "domain": "blog.discourse.org" },
+  {
+    "name": "District Essential by ClassDojo",
+    "username": "index",
+    "domain": "essential.classdojo.com"
+  },
+  {
+    "name": "Drowned in Sound",
+    "username": "index",
+    "domain": "www.drownedinsound.org"
+  },
+  {
+    "name": "Dublin InQuirer",
+    "username": "index",
+    "domain": "www.dublininquirer.com"
+  },
+  {
+    "name": "Duolingo Blog",
+    "username": "index",
+    "domain": "blog.duolingo.com"
+  },
+  {
+    "name": "Ed Zitron's Where's Your Ed At",
+    "username": "index",
+    "domain": "www.wheresyoured.at"
+  },
+  { "name": "EIR News", "username": "news", "domain": "eir.news" },
+  {
+    "name": "Emojipedia - The Latest Emoji News",
+    "username": "index",
+    "domain": "blog.emojipedia.org"
+  },
+  { "name": "Epigram", "username": "index", "domain": "epigram.org.uk" },
+  {
+    "name": "Everything in Moderation*",
+    "username": "index",
+    "domain": "www.everythinginmoderation.co"
+  },
+  {
+    "name": "fal.ai Blog | Generative AI Model Releases & Tutorials",
+    "username": "index",
+    "domain": "blog.fal.ai"
+  },
+  {
+    "name": "Fireside Blog",
+    "username": "index",
+    "domain": "blog.fireside.fm"
+  },
+  {
+    "name": "Funda Engineering blog",
+    "username": "index",
+    "domain": "blog.funda.nl"
+  },
+  {
+    "name": "Gabrielius Landsbergis",
+    "username": "gabrielius",
+    "domain": "landsbergis.com"
+  },
+  {
+    "name": "Get technical",
+    "username": "index",
+    "domain": "engineering.ripple.com"
+  },
+  { "name": "Gitter", "username": "index", "domain": "blog.gitter.im" },
+  {
+    "name": "Gone With The Wynns",
+    "username": "index",
+    "domain": "www.gonewiththewynns.com"
+  },
+  {
+    "name": "Grandview Independent",
+    "username": "index",
+    "domain": "www.grandviewindependent.com"
+  },
+  { "name": "Halaxy Blog", "username": "index", "domain": "blog.halaxy.com" },
+  {
+    "name": "Harri Developer Portal",
+    "username": "index",
+    "domain": "developer.harri.com"
+  },
+  {
+    "name": "Hearing Things",
+    "username": "feed",
+    "domain": "www.hearingthings.co"
+  },
+  {
+    "name": "Hello Partner",
+    "username": "index",
+    "domain": "hellopartner.com"
+  },
+  {
+    "name": "HelpDocs Bookmarked",
+    "username": "index",
+    "domain": "blog.helpdocs.io"
+  },
+  {
+    "name": "Henrico Citizen",
+    "username": "index",
+    "domain": "www.henricocitizen.com"
+  },
+  {
+    "name": "HOA Express Blog",
+    "username": "index",
+    "domain": "blog.hoa-express.com"
+  },
+  {
+    "name": "Hudson River Blue",
+    "username": "index",
+    "domain": "www.hudsonriverblue.com"
+  },
+  { "name": "In Colour", "username": "index", "domain": "www.colourhive.com" },
+  { "name": "indi.ca", "username": "indi", "domain": "indi.ca" },
+  { "name": "It's FOSS", "username": "index", "domain": "itsfoss.com" },
+  { "name": "John O'Nolan", "username": "john", "domain": "john.onolan.org" },
+  {
+    "name": "Jom - A weekly magazine about Singapore",
+    "username": "index",
+    "domain": "www.jom.media"
+  },
+  {
+    "name": "Kickstarter Blog: Crowdfunding Tips, Stories & Insights",
+    "username": "index",
+    "domain": "updates.kickstarter.com"
+  },
+  {
+    "name": "Lamestream",
+    "username": "news",
+    "domain": "www.lamestream.com.au"
+  },
+  {
+    "name": "Leicester Gazette",
+    "username": "leicestergazette",
+    "domain": "www.leicester.news"
+  },
+  { "name": "Lib Fails", "username": "libfails", "domain": "www.libfails.co" },
+  {
+    "name": "Lived-In Style Magazine : Vintage Inspiration from Ki Nassauer",
+    "username": "index",
+    "domain": "www.lived-instyle.com"
+  },
+  { "name": "LMArena Blog", "username": "index", "domain": "news.lmarena.ai" },
+  {
+    "name": "Long Beach Watchdog",
+    "username": "index",
+    "domain": "lbwatchdog.com"
+  },
+  { "name": "LOOKOUT", "username": "index", "domain": "www.lookoutnews.org" },
+  {
+    "name": "Loyalty & Reward Program Insights from Smile.io",
+    "username": "index",
+    "domain": "blog.smile.io"
+  },
+  { "name": "Lulu Blog", "username": "index", "domain": "blog.lulu.com" },
+  {
+    "name": "M.App Enterprise",
+    "username": "index",
+    "domain": "mae.hexagon.com"
+  },
+  {
+    "name": "Maker Stations",
+    "username": "index",
+    "domain": "www.makerstations.io"
+  },
+  {
+    "name": "Mat-Su Sentinel",
+    "username": "index",
+    "domain": "www.matsusentinel.com"
+  },
+  {
+    "name": "Media Center",
+    "username": "index",
+    "domain": "press.outschool.com"
+  },
+  { "name": "MinIO Blog", "username": "index", "domain": "blog.min.io" },
+  { "name": "MLQ.ai", "username": "index", "domain": "blog.mlq.ai" },
+  { "name": "MoeGo", "username": "index", "domain": "wiki.moego.pet" },
+  {
+    "name": "Momento360 Blog",
+    "username": "index",
+    "domain": "blog2.momento360.com"
+  },
+  { "name": "Mozilla.ai", "username": "index", "domain": "blog.mozilla.ai" },
+  {
+    "name": "Murray Bridge News",
+    "username": "stories",
+    "domain": "www.murraybridge.news"
+  },
+  { "name": "n8n Blog", "username": "index", "domain": "blog.n8n.io" },
+  {
+    "name": "NewBostonPost",
+    "username": "index",
+    "domain": "www.newbostonpost.com"
+  },
+  {
+    "name": "No Depression: Roots Music and Culture Journalism",
+    "username": "index",
+    "domain": "nodepression.org"
+  },
+  { "name": "NO MORE", "username": "index", "domain": "www.nomore.org" },
+  {
+    "name": "Northern Journal",
+    "username": "index",
+    "domain": "www.northernjournal.com"
+  },
+  {
+    "name": "Notes on the Crises",
+    "username": "index",
+    "domain": "www.crisesnotes.com"
+  },
+  {
+    "name": "Open Collective",
+    "username": "index",
+    "domain": "blog.opencollective.com"
+  },
+  {
+    "name": "Organizing My Thoughts",
+    "username": "index",
+    "domain": "organizingmythoughts.org"
+  },
+  {
+    "name": "Payday Report",
+    "username": "index",
+    "domain": "paydayreport.com"
+  },
+  {
+    "name": "Pete Matheson",
+    "username": "index",
+    "domain": "www.petematheson.com"
+  },
+  {
+    "name": "Physical Computation Laboratory",
+    "username": "index",
+    "domain": "physcomp.eng.cam.ac.uk"
+  },
+  { "name": "Platformer", "username": "feed", "domain": "www.platformer.news" },
+  {
+    "name": "PPP Leafs",
+    "username": "index",
+    "domain": "www.pensionplanpuppets.com"
+  },
+  {
+    "name": "Product Marketing Alliance",
+    "username": "index",
+    "domain": "www.productmarketingalliance.com"
+  },
+  {
+    "name": "Project Optimist",
+    "username": "index",
+    "domain": "www.projectoptimist.us"
+  },
+  {
+    "name": "Promethean Action",
+    "username": "index",
+    "domain": "www.prometheanaction.com"
+  },
+  {
+    "name": "Prospects Live",
+    "username": "scouting",
+    "domain": "www.prospectslive.com"
+  },
+  {
+    "name": "QNX Developer Blog",
+    "username": "index",
+    "domain": "devblog.qnx.com"
+  },
+  { "name": "QueerAF", "username": "index", "domain": "www.wearequeeraf.com" },
+  {
+    "name": "QuickNode Blog",
+    "username": "index",
+    "domain": "blog.quicknode.com"
+  },
+  {
+    "name": "Readymag Blog",
+    "username": "index",
+    "domain": "blog.readymag.com"
+  },
+  { "name": "RiftTV", "username": "index", "domain": "www.rifttv.com" },
+  {
+    "name": "Roboflow Blog",
+    "username": "index",
+    "domain": "blog.roboflow.com"
+  },
+  {
+    "name": "Rockton-Roscoe News",
+    "username": "news",
+    "domain": "roscoenews.com"
+  },
+  {
+    "name": "Rough Trade Blog",
+    "username": "index",
+    "domain": "blog.roughtrade.com"
+  },
+  { "name": "Ruby Central", "username": "index", "domain": "rubycentral.org" },
+  { "name": "SaaS 102", "username": "index", "domain": "teddy.aftership.com" },
+  { "name": "Salina311", "username": "index", "domain": "salina311.com" },
+  {
+    "name": "SCOOP by SmartHER News",
+    "username": "index",
+    "domain": "www.scoop.smarthernews.com"
+  },
+  { "name": "SCOUTED", "username": "index", "domain": "scoutedftbl.com" },
+  {
+    "name": "Sheffield Tribune",
+    "username": "index",
+    "domain": "www.sheffieldtribune.co.uk"
+  },
+  { "name": "Short.io Blog", "username": "index", "domain": "blog.short.io" },
+  {
+    "name": "Silver Seven",
+    "username": "index",
+    "domain": "www.silversevensens.com"
+  },
+  {
+    "name": "Sioux Falls Simplified",
+    "username": "index",
+    "domain": "www.sfsimplified.com"
+  },
+  { "name": "Skeptic", "username": "index", "domain": "www.skeptic.com" },
+  { "name": "Sludge", "username": "index", "domain": "readsludge.com" },
+  {
+    "name": "Snake Charmers",
+    "username": "index",
+    "domain": "snakecharmers.ethereum.org"
+  },
+  {
+    "name": "Sounder at Heart",
+    "username": "News",
+    "domain": "www.sounderatheart.com"
+  },
+  {
+    "name": "South Dakota News Watch",
+    "username": "sdnewswatch",
+    "domain": "www.sdnewswatch.org"
+  },
+  {
+    "name": "Speaker Deck Blog",
+    "username": "index",
+    "domain": "blog.speakerdeck.com"
+  },
+  { "name": "Spyglass", "username": "mg", "domain": "spyglass.org" },
+  {
+    "name": "Stanford CIS",
+    "username": "stanfordcis",
+    "domain": "cyberlaw.stanford.edu"
+  },
+  {
+    "name": "StockCharts.com Articles and Market Commentary",
+    "username": "index",
+    "domain": "articles.stockcharts.com"
+  },
+  {
+    "name": "StockSnap Blog",
+    "username": "index",
+    "domain": "blog.stocksnap.io"
+  },
+  {
+    "name": "Streamline",
+    "username": "index",
+    "domain": "blog.streamlinehq.com"
+  },
+  {
+    "name": "Sunday Paper PLUS",
+    "username": "index",
+    "domain": "www.mariashriversundaypaper.com"
+  },
+  {
+    "name": "Superhuman Blog",
+    "username": "index",
+    "domain": "blog.superhuman.com"
+  },
+  {
+    "name": "tablehopper",
+    "username": "index",
+    "domain": "www.tablehopper.com"
+  },
+  { "name": "Tally's blog", "username": "index", "domain": "blog.tally.so" },
+  {
+    "name": "Tangle",
+    "username": "tangle_news",
+    "domain": "www.readtangle.com"
+  },
+  {
+    "name": "Texas Signal Media Foundation",
+    "username": "index",
+    "domain": "texassignal.com"
+  },
+  { "name": "The 51st", "username": "socialweb", "domain": "51st.news" },
+  {
+    "name": "The B Square Bulletin",
+    "username": "index",
+    "domain": "bsquarebulletin.com"
+  },
+  {
+    "name": "The Bell",
+    "username": "index",
+    "domain": "www.glasgowbell.co.uk"
+  },
+  {
+    "name": "The Berkeley Scanner",
+    "username": "index",
+    "domain": "www.berkeleyscanner.com"
+  },
+  { "name": "The Browser", "username": "index", "domain": "thebrowser.com" },
+  {
+    "name": "The Christchurch Call",
+    "username": "index",
+    "domain": "www.christchurchcall.org"
+  },
+  {
+    "name": "The Citizens Dispatch",
+    "username": "index",
+    "domain": "dispatch.the-citizens.com"
+  },
+  {
+    "name": "The Dink Pickleball",
+    "username": "index",
+    "domain": "www.thedinkpickleball.com"
+  },
+  {
+    "name": "The Dispatch",
+    "username": "index",
+    "domain": "www.birminghamdispatch.co.uk"
+  },
+  {
+    "name": "The Dissenter",
+    "username": "index",
+    "domain": "thedissenter.org"
+  },
+  {
+    "name": "The Ecosia Blog",
+    "username": "index",
+    "domain": "blog.ecosia.org"
+  },
+  {
+    "name": "The Geopolitical Desk",
+    "username": "news",
+    "domain": "www.thegeopoliticaldesk.com"
+  },
+  { "name": "THE GOOD OIL", "username": "index", "domain": "goodoil.news" },
+  {
+    "name": "The Ice Garden",
+    "username": "index",
+    "domain": "www.theicegarden.com"
+  },
+  {
+    "name": "The Ingleside Light",
+    "username": "index",
+    "domain": "www.inglesidelight.com"
+  },
+  { "name": "The Lever", "username": "news", "domain": "www.levernews.com" },
+  {
+    "name": "The Maple",
+    "username": "index",
+    "domain": "www.readthemaple.com"
+  },
+  { "name": "The Mill", "username": "index", "domain": "manchestermill.co.uk" },
+  {
+    "name": "The Morning News",
+    "username": "index",
+    "domain": "themorningnews.org"
+  },
+  {
+    "name": "The NLnet Labs Blog",
+    "username": "nlnetlabs",
+    "domain": "blog.nlnetlabs.nl"
+  },
+  {
+    "name": "The Observer",
+    "username": "newsroom",
+    "domain": "www.observerxtra.com"
+  },
+  {
+    "name": "The Persistent",
+    "username": "index",
+    "domain": "www.thepersistent.com"
+  },
+  { "name": "The Post", "username": "index", "domain": "www.livpost.co.uk" },
+  {
+    "name": "The Pragmatic Engineer",
+    "username": "index",
+    "domain": "blog.pragmaticengineer.com"
+  },
+  {
+    "name": "The Public Interest Technologist",
+    "username": "index",
+    "domain": "technologist.mit.edu"
+  },
+  { "name": "The Race", "username": "index", "domain": "www.the-race.com" },
+  {
+    "name": "The Raincross Gazette",
+    "username": "index",
+    "domain": "www.raincrossgazette.com"
+  },
+  {
+    "name": "The Richmonder",
+    "username": "index",
+    "domain": "www.richmonder.org"
+  },
+  {
+    "name": "The Sentinel-Intelligence",
+    "username": "index",
+    "domain": "www.the-sentinel-intelligence.net"
+  },
+  { "name": "The Signal", "username": "index", "domain": "www.thesgnl.com" },
+  {
+    "name": "The Stack",
+    "username": "index",
+    "domain": "www.thestack.technology"
+  },
+  {
+    "name": "The Stanford Review",
+    "username": "index",
+    "domain": "stanfordreview.org"
+  },
+  { "name": "The Sui Blog", "username": "index", "domain": "blog.sui.io" },
+  {
+    "name": "The Vallejo Sun",
+    "username": "index",
+    "domain": "www.vallejosun.com"
+  },
+  {
+    "name": "The Vietnamese Magazine",
+    "username": "index",
+    "domain": "www.thevietnamese.org"
+  },
+  { "name": "thirdweb", "username": "index", "domain": "blog.thirdweb.com" },
+  { "name": "Throne Blog", "username": "index", "domain": "blog.throne.com" },
+  {
+    "name": "Tiny News Collective",
+    "username": "index",
+    "domain": "www.tinynewsco.org"
+  },
+  {
+    "name": "Tiny News Collective Member Portal",
+    "username": "index",
+    "domain": "members.tinynewsco.org"
+  },
+  { "name": "tippinsights", "username": "index", "domain": "tippinsights.com" },
+  {
+    "name": "Tomorrow's Briefing",
+    "username": "index",
+    "domain": "www.tomorrowsbriefing.news"
+  },
+  { "name": "Top.gg Blog", "username": "index", "domain": "blog.top.gg" },
+  { "name": "Torched", "username": "feed", "domain": "www.torched.la" },
+  {
+    "name": "Trans Journalists Association",
+    "username": "index",
+    "domain": "www.transjournalists.org"
+  },
+  { "name": "Troy Hunt", "username": "index", "domain": "www.troyhunt.com" },
+  {
+    "name": "TrustedSite Blog",
+    "username": "index",
+    "domain": "blog.trustedsite.com"
+  },
+  {
+    "name": "Untapped New York",
+    "username": "index",
+    "domain": "www.untappedcities.com"
+  },
+  {
+    "name": "Utah Political Watch",
+    "username": "index",
+    "domain": "www.utahpoliticalwatch.news"
+  },
+  {
+    "name": "Vote For Anthony",
+    "username": "index",
+    "domain": "www.vote4anthony.com"
+  },
+  { "name": "Warp News", "username": "index", "domain": "www.warpnews.org" },
+  {
+    "name": "World Coffee Portal",
+    "username": "news",
+    "domain": "www.worldcoffeeportal.com"
+  },
+  { "name": "Xoxoday", "username": "index", "domain": "blog.xoxoday.com" },
+  {
+    "name": "Yacht Racing Life",
+    "username": "index",
+    "domain": "www.yachtracinglife.com"
+  },
+  {
+    "name": "Yancey Strickler",
+    "username": "index",
+    "domain": "www.ystrickler.com"
+  },
+  {
+    "name": "Yardeni QuickTakes",
+    "username": "index",
+    "domain": "www.yardeniquicktakes.com"
+  },
+  { "name": "Zitamar News", "username": "index", "domain": "www.zitamar.com" }
+]
