@@ -276,7 +276,7 @@ services:
           - self.test
           - alice.test
           - bob.test
-          - carol.test
+          - charlie.test
           - fake-external-activitypub.test
           - mastodon.social
     image: caddy:2@sha256:dedfbbeb703b2ce9ff4a98fc06aa9c7c7d9a42f0b7d778738c1dd3ef11dcc767

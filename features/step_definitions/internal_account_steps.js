@@ -27,7 +27,7 @@ Given('I have internal account followers', async () => {
             { method: 'POST' },
         ),
         fetchActivityPub(
-            'https://carol.test/.ghost/activitypub/v1/actions/follow/@index@self.test',
+            'https://charlie.test/.ghost/activitypub/v1/actions/follow/@index@self.test',
             { method: 'POST' },
         ),
     ]);
@@ -78,7 +78,7 @@ Then('the article is in my followers feeds', async function () {
         ),
         waitForItemInFeed(
             this.article.id,
-            'https://carol.test/.ghost/activitypub/v1/feed/reader',
+            'https://charlie.test/.ghost/activitypub/v1/feed/reader',
         ),
     ]);
 
@@ -118,7 +118,7 @@ Then('the note is in my followers feeds', async function () {
         ),
         waitForAPObjectInFeed(
             this.note.id,
-            'https://carol.test/.ghost/activitypub/v1/feed/notes',
+            'https://charlie.test/.ghost/activitypub/v1/feed/notes',
         ),
     ]);
 
@@ -184,7 +184,7 @@ Then('the reply is not in my followers feeds', async function () {
             method: 'GET',
         }),
         fetchActivityPub(
-            'https://carol.test/.ghost/activitypub/v1/feed/notes',
+            'https://charlie.test/.ghost/activitypub/v1/feed/notes',
             { method: 'GET' },
         ),
     ]);
@@ -253,7 +253,7 @@ Then('the note is not in my followers feeds', async function () {
             method: 'GET',
         }),
         fetchActivityPub(
-            'https://carol.test/.ghost/activitypub/v1/feed/notes',
+            'https://charlie.test/.ghost/activitypub/v1/feed/notes',
             { method: 'GET' },
         ),
     ]);
@@ -461,7 +461,7 @@ Then('the updated article is in my followers feeds', async function () {
             method: 'GET',
         }),
         fetchActivityPub(
-            'https://carol.test/.ghost/activitypub/v1/feed/reader',
+            'https://charlie.test/.ghost/activitypub/v1/feed/reader',
             { method: 'GET' },
         ),
     ]);
