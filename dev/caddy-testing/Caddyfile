@@ -6,7 +6,6 @@
     local_certs
 }
 
-# Main test domains
 self.test {
     tls internal
 
@@ -66,7 +65,7 @@ bob.test {
     }
 }
 
-carol.test {
+charlie.test {
         tls internal
 
     handle /.ghost/activitypub/* {

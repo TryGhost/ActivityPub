@@ -101,12 +101,12 @@ Before(async function reset() {
         setupSelfSite(),
         fetchActivityPub('https://alice.test/.ghost/activitypub/v1/site'),
         fetchActivityPub('https://bob.test/.ghost/activitypub/v1/site'),
-        fetchActivityPub('https://carol.test/.ghost/activitypub/v1/site'),
+        fetchActivityPub('https://charlie.test/.ghost/activitypub/v1/site'),
     ]);
 });
 
 Before(async function setupState() {
-    const [selfActor, aliceActor, bobActor, carolActor] = await Promise.all([
+    const [selfActor, aliceActor, bobActor, charlieActor] = await Promise.all([
         fetch('https://self.test/.ghost/activitypub/users/index').then((r) =>
             r.json(),
         ),
@@ -116,14 +116,17 @@ Before(async function setupState() {
         fetch('https://bob.test/.ghost/activitypub/users/index').then((r) =>
             r.json(),
         ),
-        fetch('https://carol.test/.ghost/activitypub/users/index').then((r) =>
+        fetch('https://charlie.test/.ghost/activitypub/users/index').then((r) =>
             r.json(),
         ),
     ]);
 
     const aliceWithHandle = { ...aliceActor, handle: '@index@alice.test' };
     const bobWithHandle = { ...bobActor, handle: '@index@bob.test' };
-    const carolWithHandle = { ...carolActor, handle: '@index@carol.test' };
+    const charlieWithHandle = {
+        ...charlieActor,
+        handle: '@index@charlie.test',
+    };
 
     this.activities = {};
     this.objects = {};
@@ -131,6 +134,6 @@ Before(async function setupState() {
         Us: { ...selfActor, handle: '@index@self.test' },
         'Alice.Internal': aliceWithHandle,
         'Bob.Internal': bobWithHandle,
-        'Carol.Internal': carolWithHandle,
+        'Charlie.Internal': charlieWithHandle,
     };
 });
