@@ -31,12 +31,6 @@ Google Cloud Pub/Sub emulator configuration
 
 - `start.sh` - Startup script for the Pub/Sub emulator
 
-### `/scripts`
-
-Development and utility scripts
-
-- Various helper scripts for development tasks
-
 ### `/wiremock`
 
 WireMock configurations for mocking external services during testing

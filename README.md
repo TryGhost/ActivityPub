@@ -103,12 +103,6 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 - Run `yarn test` to execute tests within a Docker Compose stack.
 
-## Populating the DB
-
-The below command will populate the DB with ~5000 followers for the `activitypub` host
-
-- Run `docker compose run scripts populate-activitypub-db`
-
 ## Migrations
 
 `docker compose run migrate` or `docker compose run migrate-testing` will run the `up` migrations against your dev or testing db respectively.

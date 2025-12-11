@@ -63,12 +63,6 @@ services:
       mysql:
         condition: service_healthy
 
-  scripts:
-    build: dev/scripts
-    depends_on:
-      - activitypub
-      - fake-mastodon
-
   nginx:
     build: dev/nginx
     ports:
@@ -321,20 +315,6 @@ services:
         "--verbose",
         "--port=80",
         "--https-port=443",
-      ]
-
-  fake-mastodon:
-    networks:
-      test_network:
-        aliases:
-          - fake-mastodon.test
-    image: wiremock/wiremock:3.13.1-1@sha256:d61e7720f89483fdef5366843b58d1dfd06bcce5828179c9f2f54de5c28354b0
-    entrypoint:
-      [
-        "/docker-entrypoint.sh",
-        "--global-response-templating",
-        "--disable-gzip",
-        "--verbose",
       ]
 
   fake-gcs:
