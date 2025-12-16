@@ -34,6 +34,8 @@ export class LikeController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            site: ctx.get('site'),
+            account: ctx.get('account'),
         });
 
         const objectToLike = await lookupObject(apCtx, id);
@@ -167,6 +169,8 @@ export class LikeController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            site: ctx.get('site'),
+            account: ctx.get('account'),
         });
 
         const objectToLike = await lookupObject(apCtx, id);
