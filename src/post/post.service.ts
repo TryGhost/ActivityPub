@@ -42,6 +42,8 @@ export type GetByApIdError = 'upstream-error' | 'not-a-post' | 'missing-author';
 
 export type InteractionError = 'cannot-interact';
 
+export type LikePostError = InteractionError | 'already-liked';
+
 export type GetPostsError =
     | 'invalid-next-parameter'
     | 'error-getting-outbox'
@@ -386,7 +388,7 @@ export class PostService {
     async likePost(
         account: Account,
         post: Post,
-    ): Promise<Result<Post, InteractionError>> {
+    ): Promise<Result<Post, LikePostError>> {
         const canInteract = await this.moderationService.canInteractWithAccount(
             account.id,
             post.author.id,
@@ -394,6 +396,11 @@ export class PostService {
 
         if (!canInteract) {
             return error('cannot-interact');
+        }
+
+        const alreadyLiked = await this.isLikedByAccount(post.id!, account.id);
+        if (alreadyLiked) {
+            return error('already-liked');
         }
 
         post.addLike(account);

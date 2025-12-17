@@ -21,6 +21,7 @@ import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
+import { PostUnlikedEvent } from '@/post/post-unliked.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 
 interface PostRow {
@@ -518,6 +519,13 @@ export class KnexPostRepository {
                 await this.events.emitAsync(
                     PostLikedEvent.getName(),
                     new PostLikedEvent(post, accountId),
+                );
+            }
+
+            for (const accountId of likesToRemove) {
+                await this.events.emitAsync(
+                    PostUnlikedEvent.getName(),
+                    new PostUnlikedEvent(post, accountId),
                 );
             }
 

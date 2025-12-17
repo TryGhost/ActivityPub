@@ -517,7 +517,7 @@ describe('FollowController', () => {
             expect(response.status).toBe(409);
         });
 
-        it('should unfollow external account and send federated Undo activity', async () => {
+        it('should unfollow external account (federation handled by FediverseBridge)', async () => {
             const ctx = getMockContext('@external@external.com');
             const mockActor = {
                 id: externalAccountToFollow.apId,
@@ -541,21 +541,12 @@ describe('FollowController', () => {
 
             expect(response.status).toBe(202);
 
-            // Verify unfollowAccount was called
+            // Verify unfollowAccount was called - federation is handled by
+            // FediverseBridge via AccountUnfollowedEvent
             expect(accountService.unfollowAccount).toHaveBeenCalledWith(
                 followerAccount,
                 externalAccountToFollow,
             );
-
-            // Verify Undo(Follow) activity was sent
-            expect(mockApCtx.sendActivity).toHaveBeenCalledWith(
-                { username: followerAccount.username },
-                mockActor,
-                expect.any(Undo),
-            );
-
-            // Verify activity was stored in globaldb
-            expect(mockGlobalDb.set).toHaveBeenCalled();
         });
 
         it('should unfollow internal account without federating', async () => {

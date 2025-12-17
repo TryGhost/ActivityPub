@@ -1,4 +1,4 @@
-import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
+import { type Federation, Follow, isActor } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
@@ -206,41 +206,7 @@ export class FollowController {
             accountToUnfollow,
         );
 
-        // If the account to unfollow is internal, we can just unfollow it directly
-        // without federating the unfollow
-        if (accountToUnfollow.isInternal) {
-            return new Response(null, {
-                status: 202,
-            });
-        }
-
-        // Federate the unfollow by sending an Undo of the original follow activity
-        const unfollowId = apCtx.getObjectUri(Undo, {
-            id: uuidv4(),
-        });
-
-        const follow = new Follow({
-            id: null,
-            actor: new URL(unfollowerAccount.apId),
-            object: actorToUnfollow,
-        });
-
-        const unfollow = new Undo({
-            id: unfollowId,
-            actor: new URL(unfollowerAccount.apId),
-            object: follow,
-        });
-
-        const unfollowJson = await unfollow.toJsonLd();
-
-        await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
-
-        await apCtx.sendActivity(
-            { username: unfollowerAccount.username },
-            actorToUnfollow,
-            unfollow,
-        );
-
+        // Federation is handled by FediverseBridge via AccountUnfollowedEvent
         return new Response(null, {
             status: 202,
         });

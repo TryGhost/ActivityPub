@@ -6,8 +6,10 @@ import {
     Create,
     Note as FedifyNote,
     Image,
+    Like,
     Mention,
     PUBLIC_COLLECTION,
+    Undo,
     Update,
 } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
@@ -145,4 +147,74 @@ export async function buildAnnounceActivityForPost(
     });
 
     return announce;
+}
+
+export function buildLikeActivityForPost(
+    account: Account,
+    post: Post,
+    ctx: FedifyContext,
+): Like {
+    const likeId = ctx.getObjectUri(Like, {
+        id: createHash('sha256').update(post.apId.href).digest('hex'),
+    });
+
+    return new Like({
+        id: likeId,
+        actor: account.apId,
+        object: post.apId,
+        to: PUBLIC_COLLECTION,
+        cc: account.apFollowers,
+    });
+}
+
+export function buildUndoLikeActivityForPost(
+    account: Account,
+    post: Post,
+    ctx: FedifyContext,
+): Undo {
+    const likeId = ctx.getObjectUri(Like, {
+        id: createHash('sha256').update(post.apId.href).digest('hex'),
+    });
+
+    const undoId = ctx.getObjectUri(Undo, {
+        id: createHash('sha256').update(likeId.href).digest('hex'),
+    });
+
+    return new Undo({
+        id: undoId,
+        actor: account.apId,
+        object: new Like({
+            id: likeId,
+            actor: account.apId,
+            object: post.apId,
+        }),
+        to: PUBLIC_COLLECTION,
+        cc: account.apFollowers,
+    });
+}
+
+export function buildUndoAnnounceActivityForPost(
+    account: Account,
+    post: Post,
+    ctx: FedifyContext,
+): Undo {
+    const announceId = ctx.getObjectUri(Announce, {
+        id: createHash('sha256').update(post.apId.href).digest('hex'),
+    });
+
+    const undoId = ctx.getObjectUri(Undo, {
+        id: createHash('sha256').update(announceId.href).digest('hex'),
+    });
+
+    return new Undo({
+        id: undoId,
+        actor: account.apId,
+        object: new Announce({
+            id: announceId,
+            actor: account.apId,
+            object: post.apId,
+        }),
+        to: PUBLIC_COLLECTION,
+        cc: account.apFollowers,
+    });
 }

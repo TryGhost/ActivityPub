@@ -1,21 +1,12 @@
-import { createHash } from 'node:crypto';
-
-import {
-    type Actor,
-    type Federation,
-    Like,
-    PUBLIC_COLLECTION,
-    Undo,
-} from '@fedify/fedify';
+import type { Federation } from '@fedify/fedify';
 
 import type { AppContext, ContextData } from '@/app';
-import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
-import { Forbidden } from '@/http/api/helpers/response';
+import { Conflict, Forbidden } from '@/http/api/helpers/response';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
-import { lookupActor, lookupObject } from '@/lookup-helpers';
+import { lookupObject } from '@/lookup-helpers';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 
@@ -40,20 +31,15 @@ export class LikeController {
         if (!objectToLike) {
             return new Response(
                 JSON.stringify({ error: 'Object to like not found' }),
-                {
-                    status: 404,
-                },
+                { status: 404 },
             );
         }
 
         const idAsUrl = parseURL(id);
-
         if (!idAsUrl) {
             return new Response(
                 JSON.stringify({ error: 'ID should be a valid URL' }),
-                {
-                    status: 400,
-                },
+                { status: 400 },
             );
         }
 
@@ -83,78 +69,32 @@ export class LikeController {
                 default:
                     return exhaustiveCheck(error);
             }
-        } else {
-            const post = getValue(postResult);
 
-            const likePostResult = await this.postService.likePost(
-                account,
-                post,
-            );
+            // Return success even if we couldn't track the like locally
+            // The user's intent was to like, and lookup succeeded
+            return new Response(JSON.stringify({ liked: true }), {
+                headers: { 'Content-Type': 'application/json' },
+                status: 200,
+            });
+        }
 
-            if (isError(likePostResult)) {
-                const error = getError(likePostResult);
+        const post = getValue(postResult);
+        const likePostResult = await this.postService.likePost(account, post);
 
-                switch (error) {
-                    case 'cannot-interact':
-                        return Forbidden('Cannot interact with this account');
-                    default:
-                        return exhaustiveCheck(error);
-                }
+        if (isError(likePostResult)) {
+            const error = getError(likePostResult);
+            switch (error) {
+                case 'cannot-interact':
+                    return Forbidden('Cannot interact with this account');
+                case 'already-liked':
+                    return Conflict('Post already liked');
+                default:
+                    return exhaustiveCheck(error);
             }
         }
 
-        const likeId = apCtx.getObjectUri(Like, {
-            id: createHash('sha256')
-                .update(objectToLike.id!.href)
-                .digest('hex'),
-        });
-
-        if (await ctx.get('globaldb').get([likeId.href])) {
-            return new Response(
-                JSON.stringify({ error: 'Post already liked' }),
-                {
-                    status: 409,
-                },
-            );
-        }
-
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
-        const like = new Like({
-            id: likeId,
-            actor: actor,
-            object: objectToLike,
-            to: PUBLIC_COLLECTION,
-            cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
-        });
-        const likeJson = await like.toJsonLd();
-        await ctx.get('globaldb').set([like.id!.href], likeJson);
-
-        let attributionActor: Actor | null = null;
-        if (objectToLike.attributionId) {
-            attributionActor = await lookupActor(
-                apCtx,
-                objectToLike.attributionId.href,
-            );
-        }
-        if (attributionActor) {
-            apCtx.sendActivity(
-                { username: account.username },
-                attributionActor,
-                like,
-                {
-                    preferSharedInbox: true,
-                },
-            );
-        }
-
-        apCtx.sendActivity({ username: account.username }, 'followers', like, {
-            preferSharedInbox: true,
-        });
-        return new Response(JSON.stringify(likeJson), {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
+        return new Response(JSON.stringify({ liked: true }), {
+            headers: { 'Content-Type': 'application/json' },
             status: 200,
         });
     }
@@ -169,44 +109,19 @@ export class LikeController {
             logger: ctx.get('logger'),
         });
 
-        const objectToLike = await lookupObject(apCtx, id);
-        if (!objectToLike) {
+        const objectToUnlike = await lookupObject(apCtx, id);
+        if (!objectToUnlike) {
             return new Response(
-                JSON.stringify({ error: 'Object to like not found' }),
-                {
-                    status: 404,
-                },
-            );
-        }
-
-        const likeId = apCtx.getObjectUri(Like, {
-            id: createHash('sha256')
-                .update(objectToLike.id!.href)
-                .digest('hex'),
-        });
-
-        const undoId = apCtx.getObjectUri(Undo, {
-            id: createHash('sha256').update(likeId.href).digest('hex'),
-        });
-
-        const likeToUndoJson = await ctx.get('globaldb').get([likeId.href]);
-        if (!likeToUndoJson) {
-            return new Response(
-                JSON.stringify({ error: 'Like activity not found' }),
-                {
-                    status: 409,
-                },
+                JSON.stringify({ error: 'Object to unlike not found' }),
+                { status: 404 },
             );
         }
 
         const idAsUrl = parseURL(id);
-
         if (!idAsUrl) {
             return new Response(
                 JSON.stringify({ error: 'ID should be a valid URL' }),
-                {
-                    status: 400,
-                },
+                { status: 400 },
             );
         }
 
@@ -236,53 +151,19 @@ export class LikeController {
                 default:
                     return exhaustiveCheck(error);
             }
-        } else {
-            const post = getValue(postResult);
-            post.removeLike(account);
-            await this.postRepository.save(post);
+
+            return new Response(JSON.stringify({ unliked: true }), {
+                headers: { 'Content-Type': 'application/json' },
+                status: 200,
+            });
         }
 
-        const likeToUndo = await Like.fromJsonLd(likeToUndoJson);
+        const post = getValue(postResult);
+        post.removeLike(account);
+        await this.postRepository.save(post);
 
-        const actor = await apCtx.getActor(ACTOR_DEFAULT_HANDLE); // TODO This should be the actor making the request
-
-        const undo = new Undo({
-            id: undoId,
-            actor: actor,
-            object: likeToUndo,
-            to: PUBLIC_COLLECTION,
-            cc: apCtx.getFollowersUri(ACTOR_DEFAULT_HANDLE),
-        });
-        const undoJson = await undo.toJsonLd();
-
-        await ctx.get('globaldb').set([undo.id!.href], undoJson);
-        await ctx.get('globaldb').delete([likeId!.href]);
-
-        let attributionActor: Actor | null = null;
-        if (objectToLike.attributionId) {
-            attributionActor = await lookupActor(
-                apCtx,
-                objectToLike.attributionId.href,
-            );
-        }
-        if (attributionActor) {
-            apCtx.sendActivity(
-                { username: account.username },
-                attributionActor,
-                undo,
-                {
-                    preferSharedInbox: true,
-                },
-            );
-        }
-
-        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
-            preferSharedInbox: true,
-        });
-        return new Response(JSON.stringify(undoJson), {
-            headers: {
-                'Content-Type': 'application/activity+json',
-            },
+        return new Response(JSON.stringify({ unliked: true }), {
+            headers: { 'Content-Type': 'application/json' },
             status: 200,
         });
     }
