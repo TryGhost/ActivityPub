@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import { AccountBlockedEvent, AccountUpdatedEvent } from '@/account/events';
+import type { ActivitySender } from '@/activitypub/activity-sender';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import {
     buildCreateActivityAndObjectFromPost,
@@ -28,6 +29,7 @@ export class FediverseBridge {
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
+        private readonly activitySender: ActivitySender,
     ) {}
 
     async init() {
@@ -58,14 +60,9 @@ export class FediverseBridge {
         recipient: Account,
         activity: Activity,
     ) {
-        const ctx = this.fedifyContextFactory.getFedifyContext();
-
-        await ctx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: account.username },
-            {
-                id: recipient.apId,
-                inboxId: recipient.apInbox,
-            },
+            { id: recipient.apId, inboxId: recipient.apInbox },
             activity,
         );
     }
@@ -74,15 +71,9 @@ export class FediverseBridge {
         account: Account,
         activity: Activity,
     ) {
-        const ctx = this.fedifyContextFactory.getFedifyContext();
-
-        await ctx.sendActivity(
+        await this.activitySender.sendActivityToFollowers(
             { username: account.username },
-            'followers',
             activity,
-            {
-                preferSharedInbox: true,
-            },
         );
     }
 

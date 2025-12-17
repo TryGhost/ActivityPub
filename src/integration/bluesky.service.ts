@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
+import type { ActivitySender } from '@/activitypub/activity-sender';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import {
     error,
@@ -36,6 +37,7 @@ export class BlueskyService {
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly logger: Logger,
         private readonly blueskyApiClient: BlueskyApiClient,
+        private readonly activitySender: ActivitySender,
     ) {}
 
     async enableForAccount(account: Account): Promise<{
@@ -75,12 +77,9 @@ export class BlueskyService {
 
         await ctx.data.globaldb.set([follow.id!.href], await follow.toJsonLd());
 
-        await ctx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: account.username },
-            {
-                id: bridgyAccount.apId,
-                inboxId: bridgyAccount.apInbox,
-            },
+            { id: bridgyAccount.apId, inboxId: bridgyAccount.apInbox },
             follow,
         );
 
@@ -140,12 +139,9 @@ export class BlueskyService {
         await ctx.data.globaldb.set([note.id!.href], await note.toJsonLd());
         await ctx.data.globaldb.set([create.id!.href], await create.toJsonLd());
 
-        await ctx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: account.username },
-            {
-                id: bridgyAccount.apId,
-                inboxId: bridgyAccount.apInbox,
-            },
+            { id: bridgyAccount.apId, inboxId: bridgyAccount.apInbox },
             create,
         );
 
@@ -168,12 +164,9 @@ export class BlueskyService {
 
         await ctx.data.globaldb.set([undo.id!.href], await undo.toJsonLd());
 
-        await ctx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: account.username },
-            {
-                id: bridgyAccount.apId,
-                inboxId: bridgyAccount.apInbox,
-            },
+            { id: bridgyAccount.apId, inboxId: bridgyAccount.apInbox },
             undo,
         );
 

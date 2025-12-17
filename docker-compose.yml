@@ -17,7 +17,7 @@ services:
       - NODE_ENV=development
       - ALLOW_PRIVATE_ADDRESS=true
       - SKIP_SIGNATURE_VERIFICATION=true
-      - USE_MQ=true
+      - USE_MQ=false
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic
@@ -141,7 +141,7 @@ services:
       - SKIP_SIGNATURE_VERIFICATION=true
       - ALLOW_PRIVATE_ADDRESS=true
       - NODE_TLS_REJECT_UNAUTHORIZED=0
-      - USE_MQ=true
+      - USE_MQ=false
       - MQ_PUBSUB_PROJECT_ID=activitypub
       - MQ_PUBSUB_HOST=pubsub-testing:8085
       - MQ_PUBSUB_TOPIC_NAME=fedify-topic

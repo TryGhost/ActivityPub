@@ -121,12 +121,17 @@ describe('Post API', () => {
         accountRepository = {} as unknown as KnexAccountRepository;
         postRepository = {} as unknown as KnexPostRepository;
         fedify = {} as unknown as Federation<ContextData>;
+        const mockActivitySender = {
+            sendActivityToFollowers: vi.fn(),
+            sendActivityToRecipient: vi.fn(),
+        };
         postController = new PostController(
             postService,
             accountService,
             accountRepository,
             postRepository,
             fedify,
+            mockActivitySender as any,
         );
     });
 

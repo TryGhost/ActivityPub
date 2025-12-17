@@ -8,6 +8,7 @@ import {
     Undo,
 } from '@fedify/fedify';
 
+import type { ActivitySender } from '@/activitypub/activity-sender';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -24,16 +25,18 @@ export class LikeController {
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
+        private readonly activitySender: ActivitySender,
     ) {}
 
     @APIRoute('POST', 'actions/like/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleLike(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const account = ctx.get('account');
         const id = ctx.req.param('id');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger,
         });
 
         const objectToLike = await lookupObject(apCtx, id);
@@ -138,19 +141,17 @@ export class LikeController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity(
+            await this.activitySender.sendActivityToRecipient(
                 { username: account.username },
                 attributionActor,
                 like,
-                {
-                    preferSharedInbox: true,
-                },
             );
         }
 
-        apCtx.sendActivity({ username: account.username }, 'followers', like, {
-            preferSharedInbox: true,
-        });
+        await this.activitySender.sendActivityToFollowers(
+            { username: account.username },
+            like,
+        );
         return new Response(JSON.stringify(likeJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
@@ -162,11 +163,12 @@ export class LikeController {
     @APIRoute('POST', 'actions/unlike/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnlike(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const account = ctx.get('account');
         const id = ctx.req.param('id');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger,
         });
 
         const objectToLike = await lookupObject(apCtx, id);
@@ -216,22 +218,19 @@ export class LikeController {
             const error = getError(postResult);
             switch (error) {
                 case 'upstream-error':
-                    ctx.get('logger').info(
-                        'Upstream error fetching post for unliking',
-                        { postId: idAsUrl.href },
-                    );
+                    logger.info('Upstream error fetching post for unliking', {
+                        postId: idAsUrl.href,
+                    });
                     break;
                 case 'not-a-post':
-                    ctx.get('logger').info(
-                        'Resource for unliking is not a post',
-                        { postId: idAsUrl.href },
-                    );
+                    logger.info('Resource for unliking is not a post', {
+                        postId: idAsUrl.href,
+                    });
                     break;
                 case 'missing-author':
-                    ctx.get('logger').info(
-                        'Post for unliking has missing author',
-                        { postId: idAsUrl.href },
-                    );
+                    logger.info('Post for unliking has missing author', {
+                        postId: idAsUrl.href,
+                    });
                     break;
                 default:
                     return exhaustiveCheck(error);
@@ -266,19 +265,17 @@ export class LikeController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity(
+            await this.activitySender.sendActivityToRecipient(
                 { username: account.username },
                 attributionActor,
                 undo,
-                {
-                    preferSharedInbox: true,
-                },
             );
         }
 
-        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
-            preferSharedInbox: true,
-        });
+        await this.activitySender.sendActivityToFollowers(
+            { username: account.username },
+            undo,
+        );
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',

@@ -18,6 +18,7 @@ import { CreateHandler } from '@/activity-handlers/create.handler';
 import { DeleteHandler } from '@/activity-handlers/delete.handler';
 import { FollowHandler } from '@/activity-handlers/follow.handler';
 import { UpdateHandler } from '@/activity-handlers/update.handler';
+import { ActivitySender } from '@/activitypub/activity-sender';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import { FollowersService } from '@/activitypub/followers.service';
@@ -259,6 +260,19 @@ export function registerDependencies(
     container.register(
         'fedifyContextFactory',
         asClass(FedifyContextFactory).singleton(),
+    );
+
+    container.register(
+        'activitySender',
+        asFunction(
+            (fedifyContextFactory: FedifyContextFactory, logging: Logger) => {
+                return new ActivitySender(
+                    fedifyContextFactory,
+                    logging,
+                    process.env.USE_MQ === 'true',
+                );
+            },
+        ).singleton(),
     );
 
     container.register(

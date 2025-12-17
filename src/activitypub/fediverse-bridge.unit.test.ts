@@ -2,14 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
-import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
+import { Follow, Reject } from '@fedify/fedify';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import { AccountBlockedEvent } from '@/account/events';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
-import type { UriBuilder } from '@/activitypub/uri';
 import type { FedifyContext } from '@/app';
 import { Post, PostType } from '@/post/post.entity';
 import { PostCreatedEvent } from '@/post/post-created.event';
@@ -31,7 +30,10 @@ describe('FediverseBridge', () => {
     let accountService: AccountService;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
-    let mockUriBuilder: UriBuilder<FedifyObject>;
+    let mockActivitySender: {
+        sendActivityToFollowers: ReturnType<typeof vi.fn>;
+        sendActivityToRecipient: ReturnType<typeof vi.fn>;
+    };
     let bridge: FediverseBridge;
 
     beforeEach(() => {
@@ -39,22 +41,12 @@ describe('FediverseBridge', () => {
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
-        mockUriBuilder = {
-            buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
+        context = {
+            getObjectUri: vi.fn().mockImplementation((object, { id }) => {
                 return new URL(
                     `https://example.com/${object.name.toLowerCase()}/${id}`,
                 );
             }),
-            buildFollowersCollectionUri: vi
-                .fn()
-                .mockImplementation((handle) => {
-                    return new URL(
-                        `https://example.com/user/${handle}/followers`,
-                    );
-                }),
-        } as UriBuilder<FedifyObject>;
-        context = {
-            getObjectUri: mockUriBuilder.buildObjectUri,
             async sendActivity() {},
             data: {
                 globaldb: {
@@ -71,17 +63,20 @@ describe('FediverseBridge', () => {
                 return context;
             },
         } as FedifyContextFactory;
+        mockActivitySender = {
+            sendActivityToFollowers: vi.fn(),
+            sendActivityToRecipient: vi.fn(),
+        };
         bridge = new FediverseBridge(
             events,
             fedifyContextFactory,
             accountService,
+            mockActivitySender as any,
         );
     });
 
     it('Sends delete activities on the PostDeletedEvent', async () => {
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const author = Object.create(AccountEntity);
         author.id = 123;
@@ -98,15 +93,15 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
-        expect(sendActivity.mock.lastCall).toBeDefined();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).toHaveBeenCalledOnce();
 
         expect(context.data.globaldb.set).toHaveBeenCalledOnce();
     });
 
     it('Does not send delete activities on the PostDeletedEvent for external accounts', async () => {
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const author = Object.create(AccountEntity);
         author.id = 123;
@@ -123,7 +118,9 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
-        expect(sendActivity.mock.lastCall).not.toBeDefined();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).not.toHaveBeenCalled();
 
         expect(context.data.globaldb.set).not.toHaveBeenCalledOnce();
     });
@@ -163,10 +160,9 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            mockActivitySender as any,
         );
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const event = new AccountBlockedEvent(
             blockedAccount.id,
@@ -178,26 +174,24 @@ describe('FediverseBridge', () => {
         // Wait for the event to be processed
         await nextTick();
 
-        // Assert that the activity was sent with the correct parameters
-        const sendActivityMockCall = sendActivity.mock.lastCall;
-        expect(sendActivityMockCall).toBeDefined();
-        expect(sendActivityMockCall!.length).toBe(3);
+        // Assert that sendActivityToRecipient was called
+        expect(
+            mockActivitySender.sendActivityToRecipient,
+        ).toHaveBeenCalledOnce();
 
-        expect(sendActivityMockCall![0]).toMatchObject({
-            username: 'blocker',
-        });
-
-        // Assert that the activity was sent to the correct account
-        expect(sendActivityMockCall![1]).toMatchObject({
+        const call = mockActivitySender.sendActivityToRecipient.mock.calls[0];
+        expect(call[0]).toMatchObject({ username: 'blocker' });
+        expect(call[1]).toMatchObject({
             id: blockedAccount.apId,
             inboxId: blockedAccount.apInbox,
         });
 
         // Assert that the activity is a rejection of a follow activity
-        expect(sendActivityMockCall![2]).toBeInstanceOf(Reject);
-        expect(sendActivityMockCall![2].actorId).toBe(blockerAccount.apId);
+        const activity = call[2];
+        expect(activity).toBeInstanceOf(Reject);
+        expect(activity.actorId).toBe(blockerAccount.apId);
 
-        const rejectedFollow = await sendActivityMockCall![2].getObject();
+        const rejectedFollow = await activity.getObject();
         expect(rejectedFollow).toBeInstanceOf(Follow);
 
         const followJsonLd = (await rejectedFollow!.toJsonLd()) as {
@@ -246,10 +240,9 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            mockActivitySender as any,
         );
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const event = new AccountBlockedEvent(
             blockedAccount.id,
@@ -262,7 +255,9 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         // Assert that the activity was not sent
-        expect(sendActivity.mock.lastCall).not.toBeDefined();
+        expect(
+            mockActivitySender.sendActivityToRecipient,
+        ).not.toHaveBeenCalled();
 
         // Assert that the activity was not saved to the database
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
@@ -291,10 +286,9 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            mockActivitySender as any,
         );
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const event = new AccountBlockedEvent(blockedAccount.id, 123);
 
@@ -304,7 +298,9 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         // Assert that the activity was not sent
-        expect(sendActivity.mock.lastCall).not.toBeDefined();
+        expect(
+            mockActivitySender.sendActivityToRecipient,
+        ).not.toHaveBeenCalled();
 
         // Assert that the activity was not saved to the database
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
@@ -333,10 +329,9 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            mockActivitySender as any,
         );
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const event = new AccountBlockedEvent(987, blockerAccount.id);
 
@@ -346,7 +341,9 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         // Assert that the activity was not sent
-        expect(sendActivity.mock.lastCall).not.toBeDefined();
+        expect(
+            mockActivitySender.sendActivityToRecipient,
+        ).not.toHaveBeenCalled();
 
         // Assert that the activity was not saved to the database
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
@@ -355,7 +352,6 @@ describe('FediverseBridge', () => {
     it('should create and send a Note activity for internal accounts on the PostCreatedEvent', async () => {
         await bridge.init();
 
-        const sendActivity = vi.spyOn(context, 'sendActivity');
         const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
 
         const author = Object.create(AccountEntity);
@@ -380,7 +376,9 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
-        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalled();
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
@@ -430,7 +428,6 @@ describe('FediverseBridge', () => {
     it('should create and send an Article activity for internal accounts on the PostCreatedEvent', async () => {
         await bridge.init();
 
-        const sendActivity = vi.spyOn(context, 'sendActivity');
         const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
 
         const author = Object.create(AccountEntity);
@@ -458,7 +455,9 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
-        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalled();
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
@@ -469,8 +468,6 @@ describe('FediverseBridge', () => {
 
     it('should not create or send activities for external accounts on the PostCreatedEvent', async () => {
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const author = Object.create(AccountEntity);
         author.id = 123;
@@ -488,14 +485,15 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
-        expect(sendActivity).not.toHaveBeenCalled();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
 
     it('should send update activities on the PostUpdatedEvent for internal accounts', async () => {
         await bridge.init();
 
-        const sendActivity = vi.spyOn(context, 'sendActivity');
         const globalDbSet = vi.spyOn(context.data.globaldb, 'set');
 
         const author = Object.create(AccountEntity);
@@ -519,7 +517,9 @@ describe('FediverseBridge', () => {
         events.emit(PostUpdatedEvent.getName(), event);
 
         await nextTick();
-        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalledTimes(2);
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
@@ -530,8 +530,6 @@ describe('FediverseBridge', () => {
 
     it('should not send update activities on the PostUpdatedEvent for external accounts', async () => {
         await bridge.init();
-
-        const sendActivity = vi.spyOn(context, 'sendActivity');
 
         const author = Object.create(AccountEntity);
         author.id = 123;
@@ -551,7 +549,9 @@ describe('FediverseBridge', () => {
         events.emit(PostUpdatedEvent.getName(), event);
 
         await nextTick();
-        expect(sendActivity).not.toHaveBeenCalled();
+        expect(
+            mockActivitySender.sendActivityToFollowers,
+        ).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
 });

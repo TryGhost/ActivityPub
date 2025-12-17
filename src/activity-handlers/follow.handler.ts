@@ -8,6 +8,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
+import type { ActivitySender } from '@/activitypub/activity-sender';
 import type { ContextData } from '@/app';
 import { getValue, isError } from '@/core/result';
 import type { ModerationService } from '@/moderation/moderation.service';
@@ -16,6 +17,7 @@ export class FollowHandler {
     constructor(
         private readonly accountService: AccountService,
         private readonly moderationService: ModerationService,
+        private readonly activitySender: ActivitySender,
     ) {}
 
     async handle(ctx: Context<ContextData>, follow: Follow) {
@@ -78,7 +80,12 @@ export class FollowHandler {
                 `${followerAccount.apId} is not allowed to follow ${accountToFollow.apId}, sending reject`,
             );
 
-            await this.sendReject(ctx, follow, parsed.handle, sender);
+            await this.sendReject(
+                ctx,
+                follow,
+                accountToFollow.username,
+                sender,
+            );
 
             return;
         }
@@ -89,7 +96,7 @@ export class FollowHandler {
             accountToFollow,
         );
 
-        await this.sendAccept(ctx, follow, parsed.identifier, sender);
+        await this.sendAccept(ctx, follow, accountToFollow.username, sender);
     }
 
     private async persistActivity(
@@ -111,7 +118,7 @@ export class FollowHandler {
     private async sendAccept(
         ctx: Context<ContextData>,
         follow: Follow,
-        identifier: string,
+        username: string,
         sender: Actor,
     ): Promise<void> {
         const acceptId = ctx.getObjectUri(Accept, { id: uuidv4() });
@@ -124,13 +131,17 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([accept.id!.href], acceptJson);
 
-        await ctx.sendActivity({ identifier }, sender, accept);
+        await this.activitySender.sendActivityToRecipient(
+            { username },
+            sender,
+            accept,
+        );
     }
 
     private async sendReject(
         ctx: Context<ContextData>,
         follow: Follow,
-        identifier: string,
+        username: string,
         sender: Actor,
     ): Promise<void> {
         const rejectId = ctx.getObjectUri(Reject, { id: uuidv4() });
@@ -143,6 +154,10 @@ export class FollowHandler {
 
         await ctx.data.globaldb.set([reject.id!.href], rejectJson);
 
-        await ctx.sendActivity({ identifier }, sender, reject);
+        await this.activitySender.sendActivityToRecipient(
+            { username },
+            sender,
+            reject,
+        );
     }
 }

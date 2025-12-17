@@ -2,6 +2,7 @@ import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
+import type { ActivitySender } from '@/activitypub/activity-sender';
 import type { AppContext, ContextData } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
@@ -24,15 +25,17 @@ export class FollowController {
         private readonly accountService: AccountService,
         private readonly moderationService: ModerationService,
         private readonly fedify: Federation<ContextData>,
+        private readonly activitySender: ActivitySender,
     ) {}
 
     @APIRoute('POST', 'actions/follow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleFollow(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const handle = ctx.req.param('handle');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger,
         });
         const followerAccount = ctx.get('account');
 
@@ -40,7 +43,7 @@ export class FollowController {
         const lookupResult = await lookupActorProfile(apCtx, handle);
 
         if (isError(lookupResult)) {
-            ctx.get('logger').error(
+            logger.error(
                 `Failed to lookup apId for handle: ${handle}, error: ${getError(lookupResult)}`,
             );
             return NotFound('Remote account could not be found');
@@ -128,7 +131,7 @@ export class FollowController {
 
             ctx.get('globaldb').set([follow.id!.href], followJson);
 
-            await apCtx.sendActivity(
+            await this.activitySender.sendActivityToRecipient(
                 { username: followerAccount.username },
                 actorToFollow,
                 follow,
@@ -146,10 +149,11 @@ export class FollowController {
     @APIRoute('POST', 'actions/unfollow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnfollow(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const handle = ctx.req.param('handle');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger,
         });
         const unfollowerAccount = ctx.get('account');
 
@@ -235,7 +239,7 @@ export class FollowController {
 
         await ctx.get('globaldb').set([unfollow.id!.href], unfollowJson);
 
-        await apCtx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: unfollowerAccount.username },
             actorToUnfollow,
             unfollow,

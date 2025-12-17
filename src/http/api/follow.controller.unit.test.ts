@@ -106,6 +106,10 @@ describe('FollowController', () => {
         error: ReturnType<typeof vi.fn>;
         info: ReturnType<typeof vi.fn>;
     };
+    let mockActivitySender: {
+        sendActivityToFollowers: ReturnType<typeof vi.fn>;
+        sendActivityToRecipient: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(async () => {
         followerAccount = await createTestInternalAccount(1, {
@@ -189,10 +193,16 @@ describe('FollowController', () => {
             createContext: vi.fn().mockReturnValue(mockApCtx),
         } as unknown as Federation<ContextData>;
 
+        mockActivitySender = {
+            sendActivityToFollowers: vi.fn(),
+            sendActivityToRecipient: vi.fn(),
+        };
+
         controller = new FollowController(
             accountService,
             moderationService,
             fedify,
+            mockActivitySender as any,
         );
 
         vi.mocked(isActor).mockReturnValue(true);
@@ -367,7 +377,9 @@ describe('FollowController', () => {
             expect(response.status).toBe(200);
 
             // Verify Follow activity was sent
-            expect(mockApCtx.sendActivity).toHaveBeenCalledWith(
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenCalledWith(
                 { username: followerAccount.username },
                 mockActorToFollow,
                 expect.any(Follow),
@@ -426,7 +438,9 @@ describe('FollowController', () => {
             );
 
             // Should NOT send federated activity for internal accounts
-            expect(mockApCtx.sendActivity).not.toHaveBeenCalled();
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
     });
@@ -548,7 +562,9 @@ describe('FollowController', () => {
             );
 
             // Verify Undo(Follow) activity was sent
-            expect(mockApCtx.sendActivity).toHaveBeenCalledWith(
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenCalledWith(
                 { username: followerAccount.username },
                 mockActor,
                 expect.any(Undo),
@@ -589,7 +605,9 @@ describe('FollowController', () => {
             );
 
             // Should NOT send federated activity for internal accounts
-            expect(mockApCtx.sendActivity).not.toHaveBeenCalled();
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
         });
 

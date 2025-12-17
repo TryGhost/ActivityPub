@@ -5,12 +5,10 @@ import {
     Article,
     Create,
     Note as FedifyNote,
-    type Object as FedifyObject,
     Update,
 } from '@fedify/fedify';
 
 import { AccountEntity } from '@/account/account.entity';
-import type { UriBuilder } from '@/activitypub/uri';
 import type { FedifyContext } from '@/app';
 import {
     buildAnnounceActivityForPost,
@@ -29,25 +27,14 @@ vi.mock('node:crypto', async (importOriginal) => {
 
 describe('Build activity', () => {
     let context: FedifyContext;
-    let mockUriBuilder: UriBuilder<FedifyObject>;
+
     beforeEach(() => {
-        mockUriBuilder = {
-            buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
+        context = {
+            getObjectUri: vi.fn().mockImplementation((object, { id }) => {
                 return new URL(
                     `https://example.com/${object.name.toLowerCase()}/${id}`,
                 );
             }),
-            buildFollowersCollectionUri: vi
-                .fn()
-                .mockImplementation((handle) => {
-                    return new URL(
-                        `https://example.com/user/${handle}/followers`,
-                    );
-                }),
-        } as UriBuilder<FedifyObject>;
-
-        context = {
-            getObjectUri: mockUriBuilder.buildObjectUri,
             data: {
                 globaldb: {
                     set: vi.fn(),

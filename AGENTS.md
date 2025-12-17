@@ -329,6 +329,33 @@ async handleGetAccount() { }
 
 `dispatchers.ts` contains 1100+ lines of legacy factory functions. New handlers should follow the class-based pattern in `/activity-handlers/` - see [ADR-0006](adr/0006-class-based-architecture.md)
 
+### Best-Effort Activity Delivery
+
+⚠️ **Always use the `ActivitySender` class from `@/activitypub/activity-sender`** - see [ADR-0011](adr/0011-best-effort-activity-delivery.md)
+
+```typescript
+// Inject via constructor (Awilix auto-injects by parameter name)
+constructor(
+    private readonly activitySender: ActivitySender,
+) {}
+
+// ✅ CORRECT - Use ActivitySender methods
+await this.activitySender.sendActivityToRecipient(
+    { username: account.username },
+    recipient,
+    activity,
+);
+await this.activitySender.sendActivityToFollowers(
+    { username: account.username },
+    activity,
+);
+
+// ❌ WRONG - Don't call ctx.sendActivity directly
+await ctx.sendActivity(sender, recipient, activity, options);
+```
+
+Federation is best-effort - delivery failures are logged but don't fail user actions.
+
 ---
 
 ## Code Conventions

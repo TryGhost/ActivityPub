@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
+import type { ActivitySender } from '@/activitypub/activity-sender';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -47,6 +48,7 @@ export class PostController {
         private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
+        private readonly activitySender: ActivitySender,
     ) {}
 
     /**
@@ -537,29 +539,16 @@ export class PostController {
         await ctx.get('globaldb').set([create.id!.href], activityJson);
         await ctx.get('globaldb').set([reply.id!.href], await reply.toJsonLd());
 
-        apCtx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: account.username },
             attributionActor,
             create,
-            {
-                preferSharedInbox: true,
-            },
         );
 
-        try {
-            await apCtx.sendActivity(
-                { username: account.username },
-                'followers',
-                create,
-                {
-                    preferSharedInbox: true,
-                },
-            );
-        } catch (err) {
-            logger.error('Error sending reply activity - {error}', {
-                error: err,
-            });
-        }
+        await this.activitySender.sendActivityToFollowers(
+            { username: account.username },
+            create,
+        );
 
         return new Response(JSON.stringify(activityJson), {
             headers: {
@@ -582,9 +571,10 @@ export class PostController {
             return BadRequest('Could not parse id as URL');
         }
 
+        const logger = ctx.get('logger');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger,
         });
 
         const account = ctx.get('account');
@@ -621,25 +611,15 @@ export class PostController {
         // Add announce activity to the database
         await ctx.get('globaldb').set([announce.id!.href], announceJson);
 
-        await apCtx.sendActivity(
+        await this.activitySender.sendActivityToRecipient(
             { username: account.username },
-            {
-                id: post.author.apId,
-                inboxId: post.author.apInbox,
-            },
+            { id: post.author.apId, inboxId: post.author.apInbox },
             announce,
-            {
-                preferSharedInbox: true,
-            },
         );
 
-        await apCtx.sendActivity(
+        await this.activitySender.sendActivityToFollowers(
             { username: account.username },
-            'followers',
             announce,
-            {
-                preferSharedInbox: true,
-            },
         );
 
         return new Response(JSON.stringify(announceJson), {
@@ -656,11 +636,12 @@ export class PostController {
     @APIRoute('POST', 'actions/derepost/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleDerepost(ctx: AppContext) {
+        const logger = ctx.get('logger');
         const account = ctx.get('account');
         const id = ctx.req.param('id');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
-            logger: ctx.get('logger'),
+            logger,
         });
 
         const post = await lookupObject(apCtx, id);
@@ -712,22 +693,22 @@ export class PostController {
             const error = getError(originalPostResult);
             switch (error) {
                 case 'upstream-error':
-                    ctx.get('logger').info(
+                    logger.info(
                         'Upstream error fetching post for dereposting',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'not-a-post':
-                    ctx.get('logger').info(
-                        'Resource for dereposting is not a post',
-                        { postId: idAsUrl.href },
-                    );
+                    logger.info('Resource for dereposting is not a post', {
+                        postId: idAsUrl.href,
+                    });
                     break;
                 case 'missing-author':
-                    ctx.get('logger').info(
-                        'Post for dereposting has missing author',
-                        { postId: idAsUrl.href },
-                    );
+                    logger.info('Post for dereposting has missing author', {
+                        postId: idAsUrl.href,
+                    });
                     break;
                 default:
                     return exhaustiveCheck(error);
@@ -762,19 +743,17 @@ export class PostController {
             );
         }
         if (attributionActor) {
-            apCtx.sendActivity(
+            await this.activitySender.sendActivityToRecipient(
                 { username: account.username },
                 attributionActor,
                 undo,
-                {
-                    preferSharedInbox: true,
-                },
             );
         }
 
-        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
-            preferSharedInbox: true,
-        });
+        await this.activitySender.sendActivityToFollowers(
+            { username: account.username },
+            undo,
+        );
 
         return new Response(JSON.stringify(undoJson), {
             headers: {

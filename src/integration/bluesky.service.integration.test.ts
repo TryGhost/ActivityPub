@@ -36,6 +36,10 @@ describe('BlueskyService', () => {
     let accountService: AccountService;
     let blueskyApiClient: BlueskyApiClient;
     let blueskyService: BlueskyService;
+    let mockActivitySender: {
+        sendActivityToFollowers: ReturnType<typeof vi.fn>;
+        sendActivityToRecipient: ReturnType<typeof vi.fn>;
+    };
 
     const bridgyAccount = {
         id: 123,
@@ -104,6 +108,11 @@ describe('BlueskyService', () => {
             searchActors: vi.fn(),
         } as unknown as BlueskyApiClient;
 
+        mockActivitySender = {
+            sendActivityToFollowers: vi.fn(),
+            sendActivityToRecipient: vi.fn(),
+        };
+
         blueskyService = new BlueskyService(
             client,
             accountService,
@@ -111,6 +120,7 @@ describe('BlueskyService', () => {
             fedifyContextFactory,
             logger,
             blueskyApiClient,
+            mockActivitySender as any,
         );
 
         vi.clearAllMocks();
@@ -122,9 +132,13 @@ describe('BlueskyService', () => {
 
             await blueskyService.enableForAccount(account);
 
-            // Verify sendActivity was called with the expected arguments
-            expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(1);
-            expect(fedifyContext.sendActivity).toHaveBeenCalledWith(
+            // Verify sendActivityToRecipient was called with the expected arguments
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenCalledWith(
                 { username: account.username },
                 {
                     id: bridgyAccount.apId,
@@ -134,8 +148,8 @@ describe('BlueskyService', () => {
             );
 
             // Verify the Follow activity is correct
-            const followActivity = vi.mocked(fedifyContext.sendActivity).mock
-                .calls[0][2];
+            const followActivity =
+                mockActivitySender.sendActivityToRecipient.mock.calls[0][2];
             expect(followActivity).toBeInstanceOf(Follow);
             expect(followActivity.id).toBeInstanceOf(URL);
             expect(followActivity.id!.href).toContain('/follow/');
@@ -168,7 +182,9 @@ describe('BlueskyService', () => {
 
             await blueskyService.enableForAccount(account);
 
-            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).not.toHaveBeenCalled();
             expect(fedifyContext.data.globaldb.set).not.toHaveBeenCalled();
         });
 
@@ -193,11 +209,15 @@ describe('BlueskyService', () => {
 
             await blueskyService.disableForAccount(account);
 
-            // Verify sendActivity was called twice (once for DM, once for unfollow)
-            expect(fedifyContext.sendActivity).toHaveBeenCalledTimes(2);
+            // Verify sendActivityToRecipient was called twice (once for DM, once for unfollow)
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenCalledTimes(2);
 
             // Verify the first call sends a Create activity with a Note containing "stop"
-            expect(fedifyContext.sendActivity).toHaveBeenNthCalledWith(
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenNthCalledWith(
                 1,
                 { username: account.username },
                 {
@@ -208,8 +228,8 @@ describe('BlueskyService', () => {
             );
 
             // Verify the Create activity structure
-            const createActivity = vi.mocked(fedifyContext.sendActivity).mock
-                .calls[0][2];
+            const createActivity =
+                mockActivitySender.sendActivityToRecipient.mock.calls[0][2];
             expect(createActivity).toBeInstanceOf(Create);
             expect(createActivity.id).toBeInstanceOf(URL);
             expect(createActivity.id!.href).toContain('/create/');
@@ -228,7 +248,9 @@ describe('BlueskyService', () => {
             expect(createActivityObject!.toId).toEqual(bridgyAccount.apId);
 
             // Verify the second call sends an Undo activity for the Follow
-            expect(fedifyContext.sendActivity).toHaveBeenNthCalledWith(
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).toHaveBeenNthCalledWith(
                 2,
                 { username: account.username },
                 {
@@ -239,8 +261,8 @@ describe('BlueskyService', () => {
             );
 
             // Verify the Undo activity structure
-            const undoActivity = vi.mocked(fedifyContext.sendActivity).mock
-                .calls[1][2];
+            const undoActivity =
+                mockActivitySender.sendActivityToRecipient.mock.calls[1][2];
             expect(undoActivity).toBeInstanceOf(Undo);
             expect(undoActivity.id).toBeInstanceOf(URL);
             expect(undoActivity.id!.href).toContain('/undo/');
@@ -288,7 +310,9 @@ describe('BlueskyService', () => {
 
             await blueskyService.disableForAccount(account);
 
-            expect(fedifyContext.sendActivity).not.toHaveBeenCalled();
+            expect(
+                mockActivitySender.sendActivityToRecipient,
+            ).not.toHaveBeenCalled();
             expect(fedifyContext.data.globaldb.set).not.toHaveBeenCalled();
         });
     });
