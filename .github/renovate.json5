@@ -8,26 +8,10 @@
     // See: https://docs.renovatebot.com/presets-docker/#dockerdisablemajor
     "docker:disableMajor"
   ],
-  // Automerge only on Monday, Tuesday, Wednesday and Thursday mornings UTC (08:00 - 11:59 UTC)
-  // Why? Merging to main ships to production, so we want to avoid automerging when no engineer is online
-  // Notes:
-  // - this doesn't restrict when the PRs are opened by Renovate, only when they are merged
-  // - this works only if we're using Renovate automerge over platform automerge (Github)
-  "platformAutomerge": false,
-  "automergeSchedule": ["* 8-11 * * 1,2,3,4"],
-  // Automerge lock file updates, whenever available
-  // Note: the base config file has this enabled, but on a weekly basis only
-  "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true
-  },
   "packageRules": [
     {
-      "matchDatasources": ["docker"],
-      "automerge": true
-    },
-    {
-      "matchPackagePatterns": ["^@fedify/"],
+      "description": "Temporarily disable automerge (code freeze)",
+      "matchPackagePatterns": ["*"],
       "automerge": false
     }
   ]
