@@ -118,28 +118,25 @@ export class AccountFollowsView {
                 ? (next + FOLLOWS_LIMIT).toString()
                 : null;
 
+        const blockedDomains = await this.moderationService.getBlockedDomains(
+            siteDefaultAccount.id,
+        );
+
         const accounts: MinimalAccountDTO[] = [];
 
         for (const result of results) {
-            const domainBlockedByMe =
-                await this.moderationService.domainIsBlocked(
-                    siteDefaultAccount.id,
-                    new URL(result.ap_id),
-                );
+            const apIdUrl = new URL(result.ap_id);
 
             accounts.push({
                 id: result.ap_id,
                 apId: result.ap_id,
                 name: result.name || '',
-                handle: getAccountHandle(
-                    new URL(result.ap_id).host,
-                    result.username,
-                ),
+                handle: getAccountHandle(apIdUrl.host, result.username),
                 avatarUrl: result.avatar_url || '',
                 isFollowing: !!result.followed_by_me,
                 followedByMe: !!result.followed_by_me,
                 blockedByMe: !!result.blocked_by_me,
-                domainBlockedByMe,
+                domainBlockedByMe: blockedDomains.has(apIdUrl.hostname),
             });
         }
 
@@ -361,6 +358,10 @@ export class AccountFollowsView {
             ]),
         );
 
+        const blockedDomains = await this.moderationService.getBlockedDomains(
+            siteDefaultAccount.id,
+        );
+
         for await (const item of followsList) {
             try {
                 const followeeAccount = accountsMap.get(
@@ -368,25 +369,21 @@ export class AccountFollowsView {
                 );
 
                 if (followeeAccount) {
-                    const domainBlockedByMe =
-                        await this.moderationService.domainIsBlocked(
-                            siteDefaultAccount.id,
-                            new URL(followeeAccount.ap_id),
-                        );
+                    const apIdUrl = new URL(followeeAccount.ap_id);
 
                     accounts.push({
                         id: followeeAccount.ap_id,
                         apId: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
                         handle: getAccountHandle(
-                            new URL(followeeAccount.ap_id).host,
+                            apIdUrl.host,
                             followeeAccount.username,
                         ),
                         avatarUrl: followeeAccount.avatar_url || '',
                         isFollowing: !!followeeAccount.followed_by_me,
                         followedByMe: !!followeeAccount.followed_by_me,
                         blockedByMe: !!followeeAccount.blocked_by_me,
-                        domainBlockedByMe,
+                        domainBlockedByMe: blockedDomains.has(apIdUrl.hostname),
                     });
                 } else {
                     const followsActorObj = await lookupObject(item.href, {
@@ -405,12 +402,6 @@ export class AccountFollowsView {
                         continue;
                     }
 
-                    const domainBlockedByMe =
-                        await this.moderationService.domainIsBlocked(
-                            siteDefaultAccount.id,
-                            item,
-                        );
-
                     accounts.push({
                         id: followsActor.id,
                         apId: followsActor.id,
@@ -423,7 +414,7 @@ export class AccountFollowsView {
                         isFollowing: false,
                         followedByMe: false,
                         blockedByMe: false,
-                        domainBlockedByMe,
+                        domainBlockedByMe: blockedDomains.has(item.hostname),
                     });
                 }
             } catch (_err) {

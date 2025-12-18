@@ -124,17 +124,11 @@ export class ModerationService {
         return domainBlock === undefined;
     }
 
-    async domainIsBlocked(
-        targetAccountId: number,
-        domain: URL,
-    ): Promise<boolean> {
-        const block = await this.db('domain_blocks')
-            .where('blocker_id', targetAccountId)
-            .whereRaw('domain_hash = UNHEX(SHA2(LOWER(?), 256))', [
-                domain.hostname,
-            ])
-            .first();
+    async getBlockedDomains(accountId: number): Promise<Set<string>> {
+        const blocks = await this.db('domain_blocks')
+            .where('blocker_id', accountId)
+            .select('domain');
 
-        return block !== undefined;
+        return new Set(blocks.map((block) => block.domain.toLowerCase()));
     }
 }
