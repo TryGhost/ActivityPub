@@ -22,6 +22,7 @@ import {
 } from '@fedify/fedify';
 import { federation } from '@fedify/hono';
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import {
     configure,
     getAnsiColorFormatter,
@@ -527,6 +528,41 @@ app.get('/ping', (_ctx) => {
         status: 200,
     });
 });
+
+/** Static file serving for local dev */
+
+if (process.env.NODE_ENV === 'development') {
+    if (process.env.LOCAL_STORAGE_PATH) {
+        app.use(
+            '/.ghost/activitypub/local-storage/*',
+            serveStatic({
+                root: process.env.LOCAL_STORAGE_PATH,
+                rewriteRequestPath: (path) =>
+                    path.replace('/.ghost/activitypub/local-storage', ''),
+            }),
+        );
+    }
+
+    if (process.env.GCP_STORAGE_EMULATOR_HOST) {
+        const gcsBucket = process.env.GCP_BUCKET_NAME!;
+
+        app.get('/.ghost/activitypub/gcs/*', async (ctx) => {
+            const gcsPath = ctx.req.path.replace(
+                '/.ghost/activitypub/gcs/',
+                '',
+            );
+            // fake-gcs-server serves objects at /download/storage/v1/b/{bucket}/o/{object}
+            const gcsUrl = `${process.env.GCP_STORAGE_EMULATOR_HOST}/download/storage/v1/b/${gcsBucket}/o/${encodeURIComponent(gcsPath)}?alt=media`;
+
+            const response = await fetch(gcsUrl);
+
+            return new Response(response.body, {
+                status: response.status,
+                headers: response.headers,
+            });
+        });
+    }
+}
 
 /** Middleware */
 
