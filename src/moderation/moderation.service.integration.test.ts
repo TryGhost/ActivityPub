@@ -317,62 +317,106 @@ describe('ModerationService', () => {
         });
     });
 
-    describe('domainIsBlocked', () => {
-        it('should return true when a domain is blocked', async () => {
-            const [[aliceAccount], [bobAccount]] = await Promise.all([
-                fixtureManager.createInternalAccount(),
-                fixtureManager.createInternalAccount(
-                    null,
-                    'blocked-domain.com',
-                ),
-            ]);
-
-            // Alice blocks bob's domain
-            await fixtureManager.createDomainBlock(
-                aliceAccount,
-                bobAccount.apId,
-            );
-
-            const isBlocked = await moderationService.domainIsBlocked(
-                aliceAccount.id,
-                bobAccount.apId,
-            );
-
-            expect(isBlocked).toBe(true);
-        });
-
-        it('should return false when a domain is not blocked', async () => {
-            const [[aliceAccount], [bobAccount], [charlieAccount]] =
+    describe('getBlockedDomains', () => {
+        it('should return blocked domains for an account', async () => {
+            const [[aliceAccount], bobAccount, charlieAccount] =
                 await Promise.all([
                     fixtureManager.createInternalAccount(),
-                    fixtureManager.createInternalAccount(
-                        null,
-                        'blocked-domain.com',
+                    fixtureManager.createExternalAccount(
+                        'https://blocked-domain.com/users/bob',
                     ),
-                    fixtureManager.createInternalAccount(
-                        null,
-                        'not-blocked-domain.com',
+                    fixtureManager.createExternalAccount(
+                        'https://another-blocked.org/users/charlie',
                     ),
                 ]);
 
-            // Alice blocks bob's domain
+            await Promise.all([
+                fixtureManager.createDomainBlock(aliceAccount, bobAccount.apId),
+                fixtureManager.createDomainBlock(
+                    aliceAccount,
+                    charlieAccount.apId,
+                ),
+            ]);
+
+            const blockedDomains = await moderationService.getBlockedDomains(
+                aliceAccount.id,
+            );
+
+            expect(blockedDomains.size).toBe(2);
+            expect(blockedDomains.has('blocked-domain.com')).toBe(true);
+            expect(blockedDomains.has('another-blocked.org')).toBe(true);
+        });
+
+        it('should return empty set when no domains are blocked', async () => {
+            const [[aliceAccount]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const blockedDomains = await moderationService.getBlockedDomains(
+                aliceAccount.id,
+            );
+
+            expect(blockedDomains.size).toBe(0);
+        });
+
+        it('should return domains in lowercase for case-insensitive matching', async () => {
+            const [[aliceAccount], bobAccount] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createExternalAccount(
+                    'https://example.com/users/bob',
+                ),
+            ]);
+
             await fixtureManager.createDomainBlock(
                 aliceAccount,
                 bobAccount.apId,
             );
 
-            const notBlockedDomain = await moderationService.domainIsBlocked(
+            const blockedDomains = await moderationService.getBlockedDomains(
                 aliceAccount.id,
+            );
+
+            // Domains are lowercased to match URL.hostname (which is always lowercase per URL standard)
+            expect(blockedDomains.has('example.com')).toBe(true);
+
+            // Verify that URL.hostname lookups work correctly (simulating caller behavior)
+            const ucDomainUrl = new URL('https://EXAMPLE.COM/users/test');
+
+            expect(blockedDomains.has(ucDomainUrl.hostname)).toBe(true);
+        });
+
+        it('should only return domains blocked by the specified account', async () => {
+            const [[aliceAccount], [bobAccount], charlieAccount] =
+                await Promise.all([
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createInternalAccount(),
+                    fixtureManager.createExternalAccount(
+                        'https://blocked-domain.com/users/charlie',
+                    ),
+                ]);
+
+            // Only alice blocks the domain
+            await fixtureManager.createDomainBlock(
+                aliceAccount,
                 charlieAccount.apId,
             );
 
-            expect(notBlockedDomain).toBe(false);
+            const aliceBlockedDomains =
+                await moderationService.getBlockedDomains(aliceAccount.id);
+            const bobBlockedDomains = await moderationService.getBlockedDomains(
+                bobAccount.id,
+            );
+
+            expect(aliceBlockedDomains.size).toBe(1);
+            expect(bobBlockedDomains.size).toBe(0);
         });
 
-        it('should handle different subdomains correctly', async () => {
-            const [[aliceAccount], [bobAccount]] = await Promise.all([
+        it('should treat subdomains as distinct from parent domains', async () => {
+            const [[aliceAccount], bobAccount] = await Promise.all([
                 fixtureManager.createInternalAccount(),
-                fixtureManager.createInternalAccount(null, 'example.com'),
+                fixtureManager.createExternalAccount(
+                    'https://example.com/users/bob',
+                ),
             ]);
 
             // Alice blocks example.com
@@ -381,70 +425,19 @@ describe('ModerationService', () => {
                 bobAccount.apId,
             );
 
-            // Test with different subdomains
-            const subdomain1 = new URL('https://sub1.example.com');
-            const subdomain2 = new URL('https://sub2.example.com');
-            const differentDomain = new URL('https://different.org');
-
-            // Since we're explicitly checking the domain host property,
-            // subdomains will be treated as different domains
-            const isDomainBlocked = await moderationService.domainIsBlocked(
+            const blockedDomains = await moderationService.getBlockedDomains(
                 aliceAccount.id,
-                bobAccount.apId,
-            );
-            const isSubdomain1Blocked = await moderationService.domainIsBlocked(
-                aliceAccount.id,
-                subdomain1,
-            );
-            const isSubdomain2Blocked = await moderationService.domainIsBlocked(
-                aliceAccount.id,
-                subdomain2,
-            );
-            const isDifferentDomainBlocked =
-                await moderationService.domainIsBlocked(
-                    aliceAccount.id,
-                    differentDomain,
-                );
-
-            expect(isDomainBlocked).toBe(true);
-            expect(isSubdomain1Blocked).toBe(false);
-            expect(isSubdomain2Blocked).toBe(false);
-            expect(isDifferentDomainBlocked).toBe(false);
-        });
-
-        it('should handle case insensitivity', async () => {
-            const [[aliceAccount], [bobAccount]] = await Promise.all([
-                fixtureManager.createInternalAccount(),
-                fixtureManager.createInternalAccount(null, 'Example.COM'),
-            ]);
-
-            // Alice blocks Example.COM
-            await fixtureManager.createDomainBlock(
-                aliceAccount,
-                bobAccount.apId,
             );
 
-            // Test with different case variations
-            const lowercase = new URL('https://example.com');
-            const uppercase = new URL('https://EXAMPLE.COM');
-            const mixedCase = new URL('https://ExAmPlE.cOm');
+            // The exact domain should be blocked
+            expect(blockedDomains.has('example.com')).toBe(true);
 
-            const isLowercaseBlocked = await moderationService.domainIsBlocked(
-                aliceAccount.id,
-                lowercase,
-            );
-            const isUppercaseBlocked = await moderationService.domainIsBlocked(
-                aliceAccount.id,
-                uppercase,
-            );
-            const isMixedCaseBlocked = await moderationService.domainIsBlocked(
-                aliceAccount.id,
-                mixedCase,
-            );
+            // Subdomains should NOT be blocked (they are distinct domains)
+            expect(blockedDomains.has('sub1.example.com')).toBe(false);
+            expect(blockedDomains.has('sub2.example.com')).toBe(false);
 
-            expect(isLowercaseBlocked).toBe(true);
-            expect(isUppercaseBlocked).toBe(true);
-            expect(isMixedCaseBlocked).toBe(true);
+            // Other domains should NOT be blocked
+            expect(blockedDomains.has('different.org')).toBe(false);
         });
     });
 });
