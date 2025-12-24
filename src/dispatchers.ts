@@ -56,6 +56,9 @@ export const actorDispatcher = (
 
         const account = await accountService.getDefaultAccountForSite(site);
 
+        // Get key pairs for proper attachment
+        const keyPairs = await ctx.getActorKeyPairs(identifier);
+
         const person = new Person({
             id: new URL(account.ap_id),
             name: account.name,
@@ -77,9 +80,9 @@ export const actorDispatcher = (
             followers: new URL(account.ap_followers_url),
             liked: new URL(account.ap_liked_url),
             url: new URL(account.url || account.ap_id),
-            publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
-                (key) => key.cryptographicKey,
-            ),
+            // FIX: Use correct Fedify properties for keys
+            publicKey: keyPairs[0]?.cryptographicKey, // For HTTP Signatures
+            assertionMethods: keyPairs.map((kp) => kp.multikey), // For Object Integrity Proofs
         });
 
         return person;
@@ -107,16 +110,32 @@ export const keypairDispatcher = (
         }
 
         try {
+            const publicKeys = JSON.parse(account.ap_public_key);
+            const privateKeys = JSON.parse(account.ap_private_key);
+
+            // Handle dual-key format
+            if (publicKeys.keys && privateKeys.keys) {
+                const keyPairs = [];
+                for (let i = 0; i < publicKeys.keys.length; i++) {
+                    keyPairs.push({
+                        publicKey: await importJwk(
+                            publicKeys.keys[i] as JsonWebKey,
+                            'public',
+                        ),
+                        privateKey: await importJwk(
+                            privateKeys.keys[i] as JsonWebKey,
+                            'private',
+                        ),
+                    });
+                }
+                return keyPairs;
+            }
+
+            // Fallback for single key format (backwards compatibility)
             return [
                 {
-                    publicKey: await importJwk(
-                        JSON.parse(account.ap_public_key) as JsonWebKey,
-                        'public',
-                    ),
-                    privateKey: await importJwk(
-                        JSON.parse(account.ap_private_key) as JsonWebKey,
-                        'private',
-                    ),
+                    publicKey: await importJwk(publicKeys as JsonWebKey, 'public'),
+                    privateKey: await importJwk(privateKeys as JsonWebKey, 'private'),
                 },
             ];
         } catch (_err) {
