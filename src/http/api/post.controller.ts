@@ -325,6 +325,8 @@ export class PostController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger,
+            site: ctx.get('site'),
+            account: ctx.get('account'),
         });
 
         const inReplyToId = parseURL(decodeURIComponent(id));
@@ -585,6 +587,8 @@ export class PostController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            site: ctx.get('site'),
+            account: ctx.get('account'),
         });
 
         const account = ctx.get('account');
@@ -661,6 +665,8 @@ export class PostController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            site: ctx.get('site'),
+            account: ctx.get('account'),
         });
 
         const post = await lookupObject(apCtx, id);
