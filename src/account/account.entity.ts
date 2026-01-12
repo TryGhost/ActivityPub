@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { exportJwk } from '@fedify/fedify';
+
 import {
     AccountBlockedEvent,
     AccountCreatedEvent,
@@ -25,6 +27,11 @@ export interface Account {
     readonly apId: URL;
     readonly apFollowers: URL | null;
     readonly apInbox: URL | null;
+    readonly apOutbox: URL | null;
+    readonly apFollowing: URL | null;
+    readonly apLiked: URL | null;
+    readonly apPublicKey: string;
+    readonly apPrivateKey: string | null;
     readonly isInternal: boolean;
     readonly customFields: Record<string, string> | null;
     unblock(account: Account): Account;
@@ -82,6 +89,11 @@ export class AccountEntity implements Account {
         public readonly apId: URL,
         public readonly apFollowers: URL | null,
         public readonly apInbox: URL | null,
+        public readonly apOutbox: URL | null,
+        public readonly apFollowing: URL | null,
+        public readonly apLiked: URL | null,
+        public readonly apPublicKey: string,
+        public readonly apPrivateKey: string | null,
         public readonly isInternal: boolean,
         public readonly customFields: Record<string, string> | null,
         private events: AccountEvent[],
@@ -109,13 +121,21 @@ export class AccountEntity implements Account {
             data.apId,
             data.apFollowers,
             data.apInbox,
+            data.apOutbox,
+            data.apFollowing,
+            data.apLiked,
+            data.apPublicKey,
+            data.apPrivateKey,
             data.isInternal,
             data.customFields,
             events,
         );
     }
 
-    static fromDraft(draft: AccountDraft, id: number): AccountEntity {
+    static async fromDraft(
+        draft: AccountDraft,
+        id: number,
+    ): Promise<AccountEntity> {
         const events: AccountEvent[] = [new AccountCreatedEvent(id)];
         return new AccountEntity(
             id,
@@ -129,6 +149,13 @@ export class AccountEntity implements Account {
             draft.apId,
             draft.apFollowers,
             draft.apInbox,
+            draft.apOutbox,
+            draft.apFollowing,
+            draft.apLiked,
+            JSON.stringify(await exportJwk(draft.apPublicKey)),
+            draft.apPrivateKey
+                ? JSON.stringify(await exportJwk(draft.apPrivateKey))
+                : null,
             draft.isInternal,
             draft.customFields,
             events,
@@ -343,7 +370,9 @@ type ExternalAccountDraftData = {
     apPublicKey: CryptoKey;
 };
 
-type AccountDraftData = InternalAccountDraftData | ExternalAccountDraftData;
+export type AccountDraftData =
+    | InternalAccountDraftData
+    | ExternalAccountDraftData;
 
 type Data<T> = {
     // biome-ignore lint/suspicious/noExplicitAny: These anys are internal and don't leak to our code

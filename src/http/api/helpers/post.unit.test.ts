@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { AccountEntity } from '@/account/account.entity';
 import { postToDTO } from '@/http/api/helpers/post';
 import { Post, PostType } from '@/post/post.entity';
-import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
+import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
 
-async function createAuthor() {
-    const draftData = await createInternalAccountDraftData({
+function createAuthor() {
+    return createTestInternalAccount(123, {
         host: new URL('http://foobar.com'),
         username: 'foobar',
         name: 'Foo Bar',
@@ -15,13 +14,6 @@ async function createAuthor() {
         avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
         bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
         customFields: null,
-    });
-
-    const draft = AccountEntity.draft(draftData);
-
-    return AccountEntity.create({
-        id: 123,
-        ...draft,
     });
 }
 

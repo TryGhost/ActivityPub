@@ -1,3 +1,5 @@
+import { exportJwk } from '@fedify/fedify';
+
 import { AccountEntity } from '@/account/account.entity';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 
@@ -83,9 +85,16 @@ export async function createTestInternalAccount(
     const draftData = await createInternalAccountDraftData(overrides);
     const draft = AccountEntity.draft(draftData);
 
+    const apPublicKey = JSON.stringify(await exportJwk(draft.apPublicKey));
+    const apPrivateKey = draft.apPrivateKey
+        ? JSON.stringify(await exportJwk(draft.apPrivateKey))
+        : null;
+
     return AccountEntity.create({
         id,
         ...draft,
+        apPublicKey,
+        apPrivateKey,
     });
 }
 
@@ -111,8 +120,12 @@ export async function createTestExternalAccount(
     const draftData = await createExternalAccountDraftData(overrides);
     const draft = AccountEntity.draft(draftData);
 
+    const apPublicKey = JSON.stringify(await exportJwk(draft.apPublicKey));
+
     return AccountEntity.create({
         id,
         ...draft,
+        apPublicKey,
+        apPrivateKey: null, // External accounts don't have private keys
     });
 }

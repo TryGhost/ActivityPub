@@ -17,7 +17,11 @@ import {
     buildCreateActivityAndObjectFromPost,
     buildUpdateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
-import { Post, PostType } from '@/post/post.entity';
+import { Audience, Post, PostType } from '@/post/post.entity';
+import {
+    createTestExternalAccount,
+    createTestInternalAccount,
+} from '@/test/account-entity-test-helpers';
 
 vi.mock('node:crypto', async (importOriginal) => {
     const actual = await importOriginal<typeof import('node:crypto')>();
@@ -321,63 +325,43 @@ describe('Build activity', () => {
     });
 
     describe('buildAnnounceActivityForPost', () => {
-        const account = AccountEntity.create({
-            id: 123,
-            uuid: 'test-uuid-123',
-            username: 'testuser',
-            name: 'Test User',
-            bio: 'Test bio',
-            url: new URL('https://example.com/user/testuser'),
-            avatarUrl: null,
-            bannerImageUrl: null,
-            customFields: null,
-            apId: new URL('https://example.com/user/testuser'),
-            apFollowers: new URL('https://example.com/user/testuser/followers'),
-            apInbox: new URL('https://example.com/user/testuser/inbox'),
-            isInternal: false,
-        });
+        let account: AccountEntity;
+        let author: AccountEntity;
+        let post: Post;
 
-        const author = AccountEntity.create({
-            id: 456,
-            uuid: 'author-uuid-456',
-            username: 'author',
-            name: 'Author',
-            bio: null,
-            url: new URL('https://example.com/user/author'),
-            avatarUrl: null,
-            bannerImageUrl: null,
-            customFields: null,
-            apId: new URL('https://example.com/user/author'),
-            apFollowers: new URL('https://example.com/user/author/followers'),
-            apInbox: new URL('https://example.com/user/author/inbox'),
-            isInternal: false,
-        });
+        beforeEach(async () => {
+            account = await createTestExternalAccount(123, {
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: new URL('https://example.com/user/testuser'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+                apId: new URL('https://example.com/user/testuser'),
+                apFollowers: new URL(
+                    'https://example.com/user/testuser/followers',
+                ),
+                apInbox: new URL('https://example.com/user/testuser/inbox'),
+            });
 
-        const post = new Post(
-            123,
-            'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4',
-            author,
-            PostType.Note,
-            0,
-            null,
-            null,
-            null,
-            'Test post content',
-            new URL('https://example.com/note/post-123'),
-            null,
-            new Date('2025-01-17T10:30:00Z'),
-            null,
-            0,
-            0,
-            0,
-            null,
-            null,
-            null,
-            [],
-            new URL('https://example.com/note/post-123'),
-            false,
-            null,
-        );
+            author = await createTestInternalAccount(456, {
+                host: new URL('https://example.com'),
+                username: 'author',
+                name: 'Author',
+                bio: null,
+                url: new URL('https://example.com/user/author'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            post = Post.createFromData(author, {
+                type: PostType.Note,
+                audience: Audience.Public,
+                content: 'Test post content',
+            });
+        });
 
         it('should build an Announce activity with correct properties', async () => {
             const result = await buildAnnounceActivityForPost(
@@ -411,31 +395,11 @@ describe('Build activity', () => {
         });
 
         it('should build an Announce activity with correct properties for an Article', async () => {
-            const articlePost = new Post(
-                123,
-                'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4',
-                post.author,
-                PostType.Article,
-                0,
-                null,
-                null,
-                null,
-                'Test article content',
-                new URL('https://example.com/article/post-123'),
-                new URL('https://example.com/img/post-123_feature.jpg'),
-                new Date('2025-01-17T10:30:00Z'),
-                null,
-                0,
-                0,
-                0,
-                null,
-                null,
-                null,
-                [],
-                new URL('https://example.com/article/post-123'),
-                false,
-                null,
-            );
+            const articlePost = Post.createFromData(author, {
+                type: PostType.Article,
+                audience: Audience.Public,
+                content: 'Test article content',
+            });
 
             const result = await buildAnnounceActivityForPost(
                 account,

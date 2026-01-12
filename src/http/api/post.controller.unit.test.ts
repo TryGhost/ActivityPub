@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Federation } from '@fedify/fedify';
 
-import { AccountEntity } from '@/account/account.entity';
+import type { AccountEntity } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
@@ -18,7 +18,7 @@ import {
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { Site } from '@/site/site.service';
-import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
+import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
 
 describe('Post API', () => {
     let site: Site;
@@ -93,7 +93,8 @@ describe('Post API', () => {
             webhook_secret: 'secret',
             ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
-        const draftData = await createInternalAccountDraftData({
+
+        account = await createTestInternalAccount(456, {
             host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -102,13 +103,6 @@ describe('Post API', () => {
             avatarUrl: new URL('http://example.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
             customFields: null,
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        account = AccountEntity.create({
-            id: 456,
-            ...draft,
         });
         postService = {
             getByApId: vi.fn().mockResolvedValue(error('not-a-post')),
