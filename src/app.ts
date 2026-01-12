@@ -50,6 +50,7 @@ import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
+import { getValue, isError } from '@/core/result';
 import { knex } from '@/db';
 import {
     acceptDispatcher,
@@ -168,9 +169,11 @@ await configure({
     ],
 });
 
-export type ContextData = {
+export type FedifyContextData = {
     globaldb: KvStore;
     logger: Logger;
+    hostSite: Site | null;
+    hostAccount: Account | null;
 };
 
 // Register all dependencies
@@ -198,10 +201,10 @@ if (process.env.USE_MQ === 'true') {
  *
  * @see https://fedify.dev/manual/context
  */
-export type FedifyRequestContext = RequestContext<ContextData>;
-export type FedifyContext = Context<ContextData>;
+export type FedifyRequestContext = RequestContext<FedifyContextData>;
+export type FedifyContext = Context<FedifyContextData>;
 
-const globalFedify = container.resolve<Federation<ContextData>>('fedify');
+const globalFedify = container.resolve<Federation<FedifyContextData>>('fedify');
 const globalFedifyKv = container.resolve<KvStore>('fedifyKv');
 const globalKv = container.resolve<KvStore>('kv');
 
@@ -209,6 +212,8 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
     globalFedify.startQueue({
         globaldb: globalKv,
         logger: globalLogging,
+        hostSite: null,
+        hostAccount: null,
     });
 }
 
@@ -234,9 +239,9 @@ container
  * for example in the context of the Inbox Queue - so we need to wrap handlers with this.
  */
 function ensureCorrectContext<B, R>(
-    fn: (ctx: Context<ContextData>, b: B) => Promise<R>,
+    fn: (ctx: Context<FedifyContextData>, b: B) => Promise<R>,
 ) {
-    return async (ctx: Context<ContextData>, b: B) => {
+    return async (ctx: Context<FedifyContextData>, b: B) => {
         if (!ctx.data) {
             // TODO: Clean up the any type
             // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
@@ -247,6 +252,18 @@ function ensureCorrectContext<B, R>(
         }
         if (!ctx.data.logger) {
             ctx.data.logger = globalLogging;
+        }
+        if (!ctx.data.hostSite || !ctx.data.hostAccount) {
+            const hostDataLoader = container.resolve<HostDataContextLoader>(
+                'hostDataContextLoader',
+            );
+            const result = await hostDataLoader.loadDataForHost(ctx.host);
+
+            if (!isError(result)) {
+                const { site, account } = getValue(result);
+                ctx.data.hostSite = site;
+                ctx.data.hostAccount = account;
+            }
         }
 
         const fedifyContextFactory = container.resolve<FedifyContextFactory>(
@@ -262,21 +279,25 @@ globalFedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher(
         '/.ghost/activitypub/users/{identifier}',
-        spanWrapper((ctx: RequestContext<ContextData>, identifier: string) => {
-            const actorDispatcher = container.resolve('actorDispatcher');
-            return actorDispatcher(ctx, identifier);
-        }),
+        spanWrapper(
+            (ctx: RequestContext<FedifyContextData>, identifier: string) => {
+                const actorDispatcher = container.resolve('actorDispatcher');
+                return actorDispatcher(ctx, identifier);
+            },
+        ),
     )
     .mapHandle(async () => {
         return 'index'; // All identifiers are 'index'
     })
     .setKeyPairsDispatcher(
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, identifier: string) => {
-                const keypairDispatcher =
-                    container.resolve('keypairDispatcher');
-                return keypairDispatcher(ctx, identifier);
-            }),
+            spanWrapper(
+                (ctx: Context<FedifyContextData>, identifier: string) => {
+                    const keypairDispatcher =
+                        container.resolve('keypairDispatcher');
+                    return keypairDispatcher(ctx, identifier);
+                },
+            ),
         ),
     );
 
@@ -291,7 +312,7 @@ inboxListener
     .on(
         Follow,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Follow) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Follow) => {
                 const followHandler =
                     container.resolve<FollowHandler>('followHandler');
                 return followHandler.handle(ctx, activity);
@@ -302,7 +323,7 @@ inboxListener
     .on(
         Accept,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Accept) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Accept) => {
                 const acceptHandler = container.resolve('acceptHandler');
                 return acceptHandler(ctx, activity);
             }),
@@ -312,7 +333,7 @@ inboxListener
     .on(
         Create,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Create) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Create) => {
                 const createHandler =
                     container.resolve<CreateHandler>('createHandler');
                 return createHandler.handle(ctx, activity);
@@ -323,7 +344,7 @@ inboxListener
     .on(
         Delete,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Delete) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Delete) => {
                 const deleteHandler =
                     container.resolve<DeleteHandler>('deleteHandler');
                 return deleteHandler.handle(ctx, activity);
@@ -334,17 +355,20 @@ inboxListener
     .on(
         Announce,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Announce) => {
-                const announceHandler = container.resolve('announceHandler');
-                return announceHandler(ctx, activity);
-            }),
+            spanWrapper(
+                (ctx: Context<FedifyContextData>, activity: Announce) => {
+                    const announceHandler =
+                        container.resolve('announceHandler');
+                    return announceHandler(ctx, activity);
+                },
+            ),
         ),
     )
     .onError(inboxErrorHandler)
     .on(
         Like,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Like) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Like) => {
                 const likeHandler = container.resolve('likeHandler');
                 return likeHandler(ctx, activity);
             }),
@@ -354,7 +378,7 @@ inboxListener
     .on(
         Undo,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Undo) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Undo) => {
                 const undoHandler = container.resolve('undoHandler');
                 return undoHandler(ctx, activity);
             }),
@@ -364,7 +388,7 @@ inboxListener
     .on(
         Update,
         ensureCorrectContext(
-            spanWrapper((ctx: Context<ContextData>, activity: Update) => {
+            spanWrapper((ctx: Context<FedifyContextData>, activity: Update) => {
                 const updateHandler =
                     container.resolve<UpdateHandler>('updateHandler');
                 return updateHandler.handle(ctx, activity);
@@ -376,24 +400,26 @@ inboxListener
 globalFedify
     .setFollowersDispatcher(
         '/.ghost/activitypub/followers/{identifier}',
-        spanWrapper((ctx: Context<ContextData>, identifier: string) => {
+        spanWrapper((ctx: Context<FedifyContextData>, identifier: string) => {
             const followersDispatcher = container.resolve(
                 'followersDispatcher',
             );
             return followersDispatcher(ctx, identifier);
         }),
     )
-    .setCounter((ctx: RequestContext<ContextData>, identifier: string) => {
-        const followersCounter = container.resolve('followersCounter');
-        return followersCounter(ctx, identifier);
-    });
+    .setCounter(
+        (ctx: RequestContext<FedifyContextData>, identifier: string) => {
+            const followersCounter = container.resolve('followersCounter');
+            return followersCounter(ctx, identifier);
+        },
+    );
 
 globalFedify
     .setFollowingDispatcher(
         '/.ghost/activitypub/following/{identifier}',
         spanWrapper(
             (
-                ctx: RequestContext<ContextData>,
+                ctx: RequestContext<FedifyContextData>,
                 identifier: string,
                 cursor: string | null,
             ) => {
@@ -404,10 +430,12 @@ globalFedify
             },
         ),
     )
-    .setCounter((ctx: RequestContext<ContextData>, identifier: string) => {
-        const followingCounter = container.resolve('followingCounter');
-        return followingCounter(ctx, identifier);
-    })
+    .setCounter(
+        (ctx: RequestContext<FedifyContextData>, identifier: string) => {
+            const followingCounter = container.resolve('followingCounter');
+            return followingCounter(ctx, identifier);
+        },
+    )
     .setFirstCursor(followingFirstCursor);
 
 globalFedify
@@ -415,7 +443,7 @@ globalFedify
         '/.ghost/activitypub/outbox/{identifier}',
         spanWrapper(
             (
-                ctx: RequestContext<ContextData>,
+                ctx: RequestContext<FedifyContextData>,
                 identifier: string,
                 cursor: string | null,
             ) => {
@@ -424,7 +452,7 @@ globalFedify
             },
         ),
     )
-    .setCounter((ctx: RequestContext<ContextData>) => {
+    .setCounter((ctx: RequestContext<FedifyContextData>) => {
         const outboxCounter = container.resolve('outboxCounter');
         return outboxCounter(ctx);
     })
@@ -492,7 +520,10 @@ globalFedify.setObjectDispatcher(
     Delete,
     '/.ghost/activitypub/delete/{id}',
     spanWrapper(
-        (ctx: RequestContext<ContextData>, data: Record<'id', string>) => {
+        (
+            ctx: RequestContext<FedifyContextData>,
+            data: Record<'id', string>,
+        ) => {
             const deleteDispatcher =
                 container.resolve<DeleteDispatcher>('deleteDispatcher');
             return deleteDispatcher.dispatch(ctx, data);
@@ -730,20 +761,6 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-app.use(async (ctx, next) => {
-    const globaldb = ctx.get('globaldb');
-    const logger = ctx.get('logger');
-
-    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
-        globaldb,
-        logger,
-    });
-
-    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
-        'fedifyContextFactory',
-    );
-    await fedifyContextFactory.registerContext(fedifyContext, next);
-});
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
@@ -771,6 +788,25 @@ app.use(
         container.resolve<HostDataContextLoader>('hostDataContextLoader'),
     ),
 );
+
+app.use(async (ctx, next) => {
+    const globaldb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
+    const hostSite = ctx.get('site');
+    const hostAccount = ctx.get('account');
+
+    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
+        globaldb,
+        logger,
+        hostSite,
+        hostAccount,
+    });
+
+    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
+        'fedifyContextFactory',
+    );
+    await fedifyContextFactory.registerContext(fedifyContext, next);
+});
 
 /** Custom API routes */
 
@@ -889,10 +925,12 @@ app.use(
         globalFedify,
         (
             ctx: HonoContext<{ Variables: HonoContextVariables }>,
-        ): ContextData => {
+        ): FedifyContextData => {
             return {
                 globaldb: ctx.get('globaldb'),
                 logger: ctx.get('logger'),
+                hostSite: ctx.get('site'),
+                hostAccount: ctx.get('account'),
             };
         },
     ),

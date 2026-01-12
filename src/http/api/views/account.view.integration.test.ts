@@ -5,7 +5,7 @@ import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
 import type { AccountDTO, AccountDTOWithBluesky } from '@/http/api/types';
@@ -33,7 +33,7 @@ describe('AccountView', () => {
                 warn: vi.fn(),
             },
         },
-    } as unknown as Context<ContextData>;
+    } as unknown as Context<FedifyContextData>;
     let fixtureManager: FixtureManager;
 
     beforeAll(async () => {

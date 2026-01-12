@@ -1,10 +1,10 @@
 import { Delete, type RequestContext } from '@fedify/fedify';
 
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 
 export class DeleteDispatcher {
     async dispatch(
-        ctx: RequestContext<ContextData>,
+        ctx: RequestContext<FedifyContextData>,
         data: Record<'id', string>,
     ) {
         const id = ctx.getObjectUri(Delete, data);

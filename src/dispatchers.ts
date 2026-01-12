@@ -26,10 +26,9 @@ import {
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import { ACTIVITYPUB_COLLECTION_PAGE_SIZE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
@@ -41,42 +40,40 @@ import { lookupActor, lookupObject } from '@/lookup-helpers';
 import { OutboxType, type Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import type { SiteService } from '@/site/site.service';
 
-export const actorDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const actorDispatcher = () =>
     async function actorDispatcher(
-        ctx: RequestContext<ContextData>,
+        ctx: RequestContext<FedifyContextData>,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return null;
-
-        const account = await accountService.getDefaultAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) return null;
 
         const person = new Person({
-            id: new URL(account.ap_id),
-            name: account.name,
-            summary: account.bio,
-            preferredUsername: account.username,
-            icon: account.avatar_url
+            id: new URL(hostAccount.apId),
+            name: hostAccount.name ?? '',
+            summary: hostAccount.bio,
+            preferredUsername: hostAccount.username,
+            icon: hostAccount.avatarUrl
                 ? new Image({
-                      url: new URL(account.avatar_url),
+                      url: new URL(hostAccount.avatarUrl),
                   })
                 : null,
-            image: account.banner_image_url
+            image: hostAccount.bannerImageUrl
                 ? new Image({
-                      url: new URL(account.banner_image_url),
+                      url: new URL(hostAccount.bannerImageUrl),
                   })
                 : null,
-            inbox: new URL(account.ap_inbox_url),
-            outbox: new URL(account.ap_outbox_url),
-            following: new URL(account.ap_following_url),
-            followers: new URL(account.ap_followers_url),
-            liked: new URL(account.ap_liked_url),
-            url: new URL(account.url || account.ap_id),
+            inbox: hostAccount.apInbox ? new URL(hostAccount.apInbox) : null,
+            outbox: hostAccount.apOutbox ? new URL(hostAccount.apOutbox) : null,
+            following: hostAccount.apFollowing
+                ? new URL(hostAccount.apFollowing)
+                : null,
+            followers: hostAccount.apFollowers
+                ? new URL(hostAccount.apFollowers)
+                : null,
+            liked: hostAccount.apLiked ? new URL(hostAccount.apLiked) : null,
+            url: hostAccount.url ? new URL(hostAccount.url) : null,
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
@@ -85,36 +82,47 @@ export const actorDispatcher = (
         return person;
     };
 
-export const keypairDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const keypairDispatcher = (accountService: AccountService) =>
     async function keypairDispatcher(
-        ctx: Context<ContextData>,
+        ctx: Context<FedifyContextData>,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return [];
-
-        const account = await accountService.getDefaultAccountForSite(site);
-
-        if (!account.ap_public_key) {
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
             return [];
         }
 
-        if (!account.ap_private_key) {
-            return [];
+        const result = await accountService.getKeyPair(hostAccount.id);
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'account-not-found':
+                    ctx.data.logger.error(
+                        `Account not found for ${identifier}`,
+                    );
+                    return [];
+                case 'not-internal-account':
+                    ctx.data.logger.error(
+                        `Account is not internal for ${identifier}`,
+                    );
+                    return [];
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
+
+        const { publicKey, privateKey } = getValue(result);
 
         try {
             return [
                 {
                     publicKey: await importJwk(
-                        JSON.parse(account.ap_public_key) as JsonWebKey,
+                        JSON.parse(publicKey) as JsonWebKey,
                         'public',
                     ),
                     privateKey: await importJwk(
-                        JSON.parse(account.ap_private_key) as JsonWebKey,
+                        JSON.parse(privateKey) as JsonWebKey,
                         'private',
                     ),
                 },
@@ -127,7 +135,7 @@ export const keypairDispatcher = (
 
 export function createAcceptHandler(accountService: AccountService) {
     return async function handleAccept(
-        ctx: Context<ContextData>,
+        ctx: Context<FedifyContextData>,
         accept: Accept,
     ) {
         ctx.data.logger.info('Handling Accept');
@@ -186,9 +194,8 @@ export function createAcceptHandler(accountService: AccountService) {
 }
 
 export async function handleAnnouncedCreate(
-    ctx: Context<ContextData>,
+    ctx: Context<FedifyContextData>,
     announce: Announce,
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
 ) {
@@ -204,15 +211,18 @@ export async function handleAnnouncedCreate(
         return;
     }
 
-    const site = await siteService.getSiteByHost(ctx.host);
-
-    if (!site) {
+    const hostSite = ctx.data.hostSite;
+    if (!hostSite) {
         throw new Error(`Site not found for host: ${ctx.host}`);
     }
 
     // Validate that the group is followed
     if (
-        !(await isFollowedByDefaultSiteAccount(announcer, site, accountService))
+        !(await isFollowedByDefaultSiteAccount(
+            announcer,
+            hostSite,
+            accountService,
+        ))
     ) {
         ctx.data.logger.info('Group is not followed, exit early');
 
@@ -379,7 +389,7 @@ export const createUndoHandler = (
     postRepository: KnexPostRepository,
     postService: PostService,
 ) =>
-    async function handleUndo(ctx: Context<ContextData>, undo: Undo) {
+    async function handleUndo(ctx: Context<FedifyContextData>, undo: Undo) {
         ctx.data.logger.info('Handling Undo');
 
         if (!undo.id) {
@@ -478,13 +488,12 @@ export const createUndoHandler = (
     };
 
 export function createAnnounceHandler(
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
     postRepository: KnexPostRepository,
 ) {
     return async function handleAnnounce(
-        ctx: Context<ContextData>,
+        ctx: Context<FedifyContextData>,
         announce: Announce,
     ) {
         ctx.data.logger.info('Handling Announce');
@@ -512,7 +521,6 @@ export function createAnnounceHandler(
             return handleAnnouncedCreate(
                 ctx,
                 announce,
-                siteService,
                 accountService,
                 postService,
             );
@@ -588,9 +596,8 @@ export function createAnnounceHandler(
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
-        const site = await siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
@@ -645,7 +652,10 @@ export function createLikeHandler(
     postRepository: KnexPostRepository,
     postService: PostService,
 ) {
-    return async function handleLike(ctx: Context<ContextData>, like: Like) {
+    return async function handleLike(
+        ctx: Context<FedifyContextData>,
+        like: Like,
+    ) {
         ctx.data.logger.info('Handling Like');
 
         // Validate like
@@ -763,7 +773,7 @@ export function createLikeHandler(
 }
 
 export async function inboxErrorHandler(
-    ctx: Context<ContextData>,
+    ctx: Context<FedifyContextData>,
     error: unknown,
 ) {
     if (process.env.USE_MQ !== 'true') {
@@ -774,23 +784,22 @@ export async function inboxErrorHandler(
     });
 }
 
-export function createFollowersDispatcher(
-    siteService: SiteService,
-    accountRepository: KnexAccountRepository,
-    followersService: FollowersService,
-) {
+export function createFollowersDispatcher(followersService: FollowersService) {
     return async function dispatchFollowers(
-        ctx: Context<ContextData>,
+        ctx: Context<FedifyContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        const account = await accountRepository.getBySite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        const followers = await followersService.getFollowers(account.id);
+        const followers = await followersService.getFollowers(hostAccount.id);
 
         return {
             items: followers,
@@ -798,12 +807,9 @@ export function createFollowersDispatcher(
     };
 }
 
-export function createFollowingDispatcher(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowingDispatcher(accountService: AccountService) {
     return async function dispatchFollowing(
-        ctx: RequestContext<ContextData>,
+        ctx: RequestContext<FedifyContextData>,
         _handle: string,
         cursor: string | null,
     ) {
@@ -813,26 +819,24 @@ export function createFollowingDispatcher(
         let nextCursor: string | null = null;
 
         const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
 
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${host}`);
+        }
 
-        const results = await accountService.getFollowingAccounts(
-            siteDefaultAccount,
-            {
-                fields: ['ap_id'],
-                limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
-                offset,
-            },
-        );
+        const results = await accountService.getFollowingAccounts(hostAccount, {
+            fields: ['ap_id'],
+            limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
+            offset,
+        });
         const totalFollowing = await accountService.getFollowingAccountsCount(
-            siteDefaultAccount.id,
+            hostAccount.id,
         );
 
         nextCursor =
@@ -849,47 +853,41 @@ export function createFollowingDispatcher(
     };
 }
 
-export function createFollowersCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowersCounter(accountService: AccountService) {
     return async function countFollowers(
-        ctx: RequestContext<ContextData>,
+        ctx: RequestContext<FedifyContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        return await accountService.getFollowerAccountsCount(
-            siteDefaultAccount.id,
-        );
+        return await accountService.getFollowerAccountsCount(hostAccount.id);
     };
 }
 
-export function createFollowingCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowingCounter(accountService: AccountService) {
     return async function countFollowing(
-        ctx: RequestContext<ContextData>,
+        ctx: RequestContext<FedifyContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        return await accountService.getFollowingAccountsCount(
-            siteDefaultAccount.id,
-        );
+        return await accountService.getFollowingAccountsCount(hostAccount.id);
     };
 }
 
@@ -897,28 +895,28 @@ export function followingFirstCursor() {
     return '0';
 }
 
-export function createOutboxDispatcher(
-    accountService: AccountService,
-    postService: PostService,
-    siteService: SiteService,
-) {
+export function createOutboxDispatcher(postService: PostService) {
     return async function outboxDispatcher(
-        ctx: RequestContext<ContextData>,
+        ctx: RequestContext<FedifyContextData>,
         _handle: string,
         cursor: string | null,
     ) {
         ctx.data.logger.info('Outbox Dispatcher');
 
         const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
-        if (!site) {
+
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${host}`);
         }
 
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${host}`);
+        }
 
         const outbox = await postService.getOutboxForAccount(
-            siteDefaultAccount.id,
+            hostAccount.id,
             cursor,
             ACTIVITYPUB_COLLECTION_PAGE_SIZE,
         );
@@ -933,7 +931,7 @@ export function createOutboxDispatcher(
                     return createActivity;
                 }
                 const announceActivity = await buildAnnounceActivityForPost(
-                    siteDefaultAccount,
+                    hostAccount,
                     item.post,
                     ctx,
                 );
@@ -948,20 +946,21 @@ export function createOutboxDispatcher(
     };
 }
 
-export function createOutboxCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-    postService: PostService,
-) {
-    return async function countOutboxItems(ctx: RequestContext<ContextData>) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+export function createOutboxCounter(postService: PostService) {
+    return async function countOutboxItems(
+        ctx: RequestContext<FedifyContextData>,
+    ) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        return await postService.getOutboxItemCount(siteDefaultAccount.id);
+        return await postService.getOutboxItemCount(hostAccount.id);
     };
 }
 
@@ -970,7 +969,7 @@ export function outboxFirstCursor() {
 }
 
 export async function likedDispatcher(
-    _ctx: RequestContext<ContextData>,
+    _ctx: RequestContext<FedifyContextData>,
     _handle: string,
     _cursor: string | null,
 ) {
@@ -981,7 +980,7 @@ export async function likedDispatcher(
 }
 
 export async function likedCounter(
-    _ctx: RequestContext<ContextData>,
+    _ctx: RequestContext<FedifyContextData>,
     _handle: string,
 ) {
     return 0;
@@ -992,7 +991,7 @@ export function likedFirstCursor() {
 }
 
 export async function articleDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Article, data);
@@ -1004,7 +1003,7 @@ export async function articleDispatcher(
 }
 
 export async function followDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Follow, data);
@@ -1016,7 +1015,7 @@ export async function followDispatcher(
 }
 
 export async function acceptDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Accept, data);
@@ -1028,7 +1027,7 @@ export async function acceptDispatcher(
 }
 
 export async function createDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Create, data);
@@ -1040,7 +1039,7 @@ export async function createDispatcher(
 }
 
 export async function updateDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Update, data);
@@ -1052,7 +1051,7 @@ export async function updateDispatcher(
 }
 
 export async function noteDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Note, data);
@@ -1064,7 +1063,7 @@ export async function noteDispatcher(
 }
 
 export async function likeDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Like, data);
@@ -1076,7 +1075,7 @@ export async function likeDispatcher(
 }
 
 export async function announceDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Announce, data);
@@ -1088,7 +1087,7 @@ export async function announceDispatcher(
 }
 
 export async function undoDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: RequestContext<FedifyContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Undo, data);
@@ -1099,7 +1098,9 @@ export async function undoDispatcher(
     return Undo.fromJsonLd(exists);
 }
 
-export async function nodeInfoDispatcher(_ctx: RequestContext<ContextData>) {
+export async function nodeInfoDispatcher(
+    _ctx: RequestContext<FedifyContextData>,
+) {
     return {
         software: {
             name: 'ghost',

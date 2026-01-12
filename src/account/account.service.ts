@@ -731,6 +731,22 @@ export class AccountService {
         return await this.accountRepository.getById(id);
     }
 
+    /**
+     * Get the public/private key pair for an account
+     *
+     * @param accountId id of the account
+     */
+    async getKeyPair(
+        accountId: number,
+    ): Promise<
+        Result<
+            { publicKey: string; privateKey: string },
+            'account-not-found' | 'not-internal-account'
+        >
+    > {
+        return this.accountRepository.getKeyPair(accountId);
+    }
+
     async blockDomain(
         account: Account,
         domain: URL,

@@ -4,7 +4,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import {
     PUBSUB_MESSAGE_ATTR_EVENT_HOST,
     PUBSUB_MESSAGE_ATTR_EVENT_NAME,
@@ -21,7 +21,7 @@ const IncomingMessagePayloadSchema = z.object({
 
 export function createIncomingPubSubMessageHandler(
     pubSubEvents: PubSubEvents,
-    fedify: Federation<ContextData>,
+    fedify: Federation<FedifyContextData>,
     fedifyContextFactory: FedifyContextFactory,
 ) {
     return async function handleIncomingPubSubMessage(
@@ -59,6 +59,11 @@ export function createIncomingPubSubMessageHandler(
                 {
                     globaldb: ctx.get('globaldb'),
                     logger: ctx.get('logger'),
+
+                    // Note: host site and account data could be loaded here by calling HostDataContextLoader's loadDataForHost
+                    // However, we currently don't need that data in the pub/sub event handler, and therefore avoid making the additional database query
+                    hostSite: null,
+                    hostAccount: null,
                 },
             );
 

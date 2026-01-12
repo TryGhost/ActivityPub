@@ -1,13 +1,13 @@
 import { type Context, type Create, PUBLIC_COLLECTION } from '@fedify/fedify';
 
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 import type { PostService } from '@/post/post.service';
 
 export class CreateHandler {
     constructor(private readonly postService: PostService) {}
 
-    async handle(ctx: Context<ContextData>, create: Create) {
+    async handle(ctx: Context<FedifyContextData>, create: Create) {
         ctx.data.logger.info('Handling Create');
         const parsed = ctx.parseUri(create.objectId);
         ctx.data.logger.info('Parsed create object', { parsed });

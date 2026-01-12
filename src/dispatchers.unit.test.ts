@@ -9,8 +9,7 @@ import type {
 } from '@fedify/fedify';
 
 import type { AccountEntity } from '@/account/account.entity';
-import type { AccountService } from '@/account/account.service';
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
     ACTOR_DEFAULT_HANDLE,
@@ -27,7 +26,7 @@ import {
 } from '@/helpers/activitypub/activity';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
 import type { PostService } from '@/post/post.service';
-import type { Site, SiteService } from '@/site/site.service';
+import type { Site } from '@/site/site.service';
 
 vi.mock('@/app', () => ({
     fedify: {
@@ -51,29 +50,7 @@ describe('dispatchers', () => {
         getOutboxItemCount: vi.fn(),
     } as unknown as PostService;
 
-    const mockAccountService = {
-        getAccountForSite: vi.fn(),
-    } as unknown as AccountService;
-
-    const mockSiteService = {
-        getSiteByHost: vi.fn(),
-    } as unknown as SiteService;
-
-    const ctx = {
-        data: {
-            logger: {
-                info: vi.fn(),
-                error: vi.fn(),
-            },
-        },
-        request: {
-            headers: {
-                get: vi.fn().mockReturnValue('example.com'),
-            },
-        },
-        getObjectUri: vi.fn(),
-        host: 'example.com',
-    } as unknown as RequestContext<ContextData>;
+    let ctx: RequestContext<FedifyContextData>;
 
     const cursor = new Date().toISOString();
 
@@ -93,6 +70,24 @@ describe('dispatchers', () => {
             ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         } as Site;
 
+        ctx = {
+            data: {
+                logger: {
+                    info: vi.fn(),
+                    error: vi.fn(),
+                },
+                hostSite: mockSite,
+                hostAccount: mockAccount,
+            },
+            request: {
+                headers: {
+                    get: vi.fn().mockReturnValue('example.com'),
+                },
+            },
+            getObjectUri: vi.fn(),
+            host: 'example.com',
+        } as unknown as RequestContext<FedifyContextData>;
+
         mockPost = Post.createFromData(mockAccount, {
             type: PostType.Article,
             title: 'Test Post',
@@ -102,10 +97,6 @@ describe('dispatchers', () => {
         });
 
         vi.clearAllMocks();
-        vi.mocked(mockSiteService.getSiteByHost).mockResolvedValue(mockSite);
-        vi.mocked(mockAccountService.getAccountForSite).mockResolvedValue(
-            mockAccount,
-        );
         vi.mocked(mockPostService.getOutboxForAccount).mockResolvedValue({
             items: [{ post: mockPost, type: OutboxType.Original }],
             nextCursor: null,
@@ -143,7 +134,7 @@ describe('dispatchers', () => {
                         },
                     },
                 },
-            } as unknown as RequestContext<ContextData>;
+            } as unknown as RequestContext<FedifyContextData>;
 
             const result = await likedDispatcher(
                 ctx,
@@ -166,20 +157,10 @@ describe('dispatchers', () => {
                 ],
                 nextCursor: nextCursor,
             });
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
+            const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
-            expect(mockSiteService.getSiteByHost).toHaveBeenCalledWith(
-                'example.com',
-            );
-            expect(mockAccountService.getAccountForSite).toHaveBeenCalledWith(
-                mockSite,
-            );
             expect(mockPostService.getOutboxForAccount).toHaveBeenCalledWith(
                 1,
                 cursor,
@@ -191,11 +172,7 @@ describe('dispatchers', () => {
 
         it('returns null nextCursor when no more items', async () => {
             vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(1);
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
+            const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
@@ -203,15 +180,17 @@ describe('dispatchers', () => {
         });
 
         it('throws error when site not found', async () => {
-            vi.mocked(mockSiteService.getSiteByHost).mockResolvedValue(null);
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
+            const ctxWithoutSite = {
+                ...ctx,
+                data: {
+                    ...ctx.data,
+                    hostSite: null,
+                },
+            } as unknown as RequestContext<FedifyContextData>;
+            const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             await expect(
-                outboxDispatcher(ctx, 'test-handle', '0'),
+                outboxDispatcher(ctxWithoutSite, 'test-handle', '0'),
             ).rejects.toThrow('Site not found for host: example.com');
         });
 
@@ -221,11 +200,7 @@ describe('dispatchers', () => {
                 nextCursor: null,
             });
             vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(0);
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
+            const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
@@ -247,11 +222,7 @@ describe('dispatchers', () => {
                 nextCursor: null,
             });
 
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
+            const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
@@ -293,11 +264,7 @@ describe('dispatchers', () => {
                 nextCursor: null,
             });
 
-            const outboxDispatcher = createOutboxDispatcher(
-                mockAccountService,
-                mockPostService,
-                mockSiteService,
-            );
+            const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             const result = await outboxDispatcher(ctx, 'test-handle', cursor);
 
@@ -313,44 +280,32 @@ describe('dispatchers', () => {
 
     describe('countOutboxItems', () => {
         it('returns correct count of outbox items', async () => {
-            const countOutboxItems = createOutboxCounter(
-                mockSiteService,
-                mockAccountService,
-                mockPostService,
-            );
+            const countOutboxItems = createOutboxCounter(mockPostService);
 
             const result = await countOutboxItems(ctx);
 
-            expect(mockSiteService.getSiteByHost).toHaveBeenCalledWith(
-                'example.com',
-            );
-            expect(mockAccountService.getAccountForSite).toHaveBeenCalledWith(
-                mockSite,
-            );
             expect(mockPostService.getOutboxItemCount).toHaveBeenCalledWith(1);
             expect(result).toBe(5);
         });
 
         it('throws error when site not found', async () => {
-            vi.mocked(mockSiteService.getSiteByHost).mockResolvedValue(null);
-            const countOutboxItems = createOutboxCounter(
-                mockSiteService,
-                mockAccountService,
-                mockPostService,
-            );
+            const ctxWithoutSite = {
+                ...ctx,
+                data: {
+                    ...ctx.data,
+                    hostSite: null,
+                },
+            } as unknown as RequestContext<FedifyContextData>;
+            const countOutboxItems = createOutboxCounter(mockPostService);
 
-            await expect(countOutboxItems(ctx)).rejects.toThrow(
+            await expect(countOutboxItems(ctxWithoutSite)).rejects.toThrow(
                 'Site not found for host: example.com',
             );
         });
 
         it('handles zero count correctly', async () => {
             vi.mocked(mockPostService.getOutboxItemCount).mockResolvedValue(0);
-            const countOutboxItems = createOutboxCounter(
-                mockSiteService,
-                mockAccountService,
-                mockPostService,
-            );
+            const countOutboxItems = createOutboxCounter(mockPostService);
 
             const result = await countOutboxItems(ctx);
 

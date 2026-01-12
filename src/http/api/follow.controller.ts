@@ -2,7 +2,7 @@ import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
-import type { AppContext, ContextData } from '@/app';
+import type { AppContext, FedifyContextData } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
     BadRequest,
@@ -23,7 +23,7 @@ export class FollowController {
     constructor(
         private readonly accountService: AccountService,
         private readonly moderationService: ModerationService,
-        private readonly fedify: Federation<ContextData>,
+        private readonly fedify: Federation<FedifyContextData>,
     ) {}
 
     @APIRoute('POST', 'actions/follow/:handle')
@@ -33,6 +33,8 @@ export class FollowController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
         const followerAccount = ctx.get('account');
 
@@ -150,6 +152,8 @@ export class FollowController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
         const unfollowerAccount = ctx.get('account');
 

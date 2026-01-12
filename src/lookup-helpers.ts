@@ -9,13 +9,13 @@ import {
     type Note,
 } from '@fedify/fedify';
 
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import { error, ok, type Result } from '@/core/result';
 
 export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
 export async function lookupActor(
-    ctx: Context<ContextData>,
+    ctx: Context<FedifyContextData>,
     url: string,
 ): Promise<Actor | null> {
     try {
@@ -51,7 +51,7 @@ export async function lookupActor(
 }
 
 export async function lookupObject(
-    ctx: Context<ContextData>,
+    ctx: Context<FedifyContextData>,
     identifier: string | URL,
 ) {
     let documentLoader = null;
@@ -69,7 +69,7 @@ export async function lookupObject(
 }
 
 export async function lookupActorProfile(
-    ctx: Context<ContextData>,
+    ctx: Context<FedifyContextData>,
     handle: string,
 ): Promise<Result<URL, LookupError>> {
     try {

@@ -22,7 +22,7 @@ import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import { FollowersService } from '@/activitypub/followers.service';
 import { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
-import type { ContextData } from '@/app';
+import type { FedifyContextData } from '@/app';
 import { AsyncEvents } from '@/core/events';
 import {
     actorDispatcher,
@@ -237,7 +237,7 @@ export function registerDependencies(
     container.register(
         'fedify',
         asFunction((fedifyKv: KvStore, queue: GCloudPubSubPushMessageQueue) => {
-            return createFederation<ContextData>({
+            return createFederation<FedifyContextData>({
                 kv: fedifyKv,
                 queue: process.env.USE_MQ === 'true' ? queue : undefined,
                 manuallyStartQueue: process.env.MANUALLY_START_QUEUE === 'true',

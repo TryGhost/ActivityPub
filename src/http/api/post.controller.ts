@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
-import type { AppContext, ContextData } from '@/app';
+import type { AppContext, FedifyContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
@@ -46,7 +46,7 @@ export class PostController {
         private readonly accountService: AccountService,
         private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
-        private readonly fedify: Federation<ContextData>,
+        private readonly fedify: Federation<FedifyContextData>,
     ) {}
 
     /**
@@ -325,6 +325,8 @@ export class PostController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger,
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
 
         const inReplyToId = parseURL(decodeURIComponent(id));
@@ -585,6 +587,8 @@ export class PostController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
 
         const account = ctx.get('account');
@@ -661,6 +665,8 @@ export class PostController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
 
         const post = await lookupObject(apCtx, id);

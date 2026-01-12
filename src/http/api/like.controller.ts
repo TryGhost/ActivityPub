@@ -8,7 +8,7 @@ import {
     Undo,
 } from '@fedify/fedify';
 
-import type { AppContext, ContextData } from '@/app';
+import type { AppContext, FedifyContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
@@ -23,7 +23,7 @@ export class LikeController {
     constructor(
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
-        private readonly fedify: Federation<ContextData>,
+        private readonly fedify: Federation<FedifyContextData>,
     ) {}
 
     @APIRoute('POST', 'actions/like/:id')
@@ -34,6 +34,8 @@ export class LikeController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
 
         const objectToLike = await lookupObject(apCtx, id);
@@ -167,6 +169,8 @@ export class LikeController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
 
         const objectToLike = await lookupObject(apCtx, id);
