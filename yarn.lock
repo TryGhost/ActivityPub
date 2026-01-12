@@ -3021,10 +3021,10 @@ hex2dec@^1.0.1:
   resolved "https://registry.yarnpkg.com/hex2dec/-/hex2dec-1.1.2.tgz#8e1ce4bef36a74f7d5723c3fb3090c2860077338"
   integrity sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==
 
-hono@4.10.7:
-  version "4.10.7"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.10.7.tgz#b72d1c7bb3f10a2afcf8a234fe9638a0c556c7a9"
-  integrity sha512-icXIITfw/07Q88nLSkB9aiUrd8rYzSweK681Kjo/TSggaGbOX4RRyxxm71v+3PC8C/j+4rlxGeoTRxQDkaJkUw==
+hono@4.11.3:
+  version "4.11.3"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.11.3.tgz#4ddd985d50944b527feea930c6d0a6e80fdebc66"
+  integrity sha512-PmQi306+M/ct/m5s66Hrg+adPnkD5jiO6IjA7WhWw0gSBSo1EcRegwuI1deZ+wd5pzCGynCcn2DprnE4/yEV4w==
 
 hosted-git-info@^7.0.0:
   version "7.0.2"
