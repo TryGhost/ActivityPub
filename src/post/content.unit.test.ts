@@ -261,7 +261,7 @@ describe('ContentPreparer', () => {
                 });
             });
 
-            it('should convert mentions to hyperlinks', async () => {
+            it('should convert mentions to hyperlinks', () => {
                 const content = 'Hello @user@example.xyz, how are you?';
                 const result = preparer.prepare(content, {
                     ...allOptionsDisabled,
@@ -279,7 +279,7 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should not convert mentions to hyperlinks if they are part of a link', async () => {
+            it('should not convert mentions to hyperlinks if they are part of a link', () => {
                 const content =
                     'Hello @user@example.xyz and https://example.xyz/@user@example.xyz';
                 const result = preparer.prepare(content, {
@@ -299,7 +299,7 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should not convert mentions to hyperlinks if they are part of a URL in HTML content', async () => {
+            it('should not convert mentions to hyperlinks if they are part of a URL in HTML content', () => {
                 const content =
                     '<p>Hello @user@example.xyz and https://example.xyz/@user@example.xyz</p>';
                 const result = preparer.prepare(content, {
@@ -318,7 +318,7 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should handle multiple mentions in the same content', async () => {
+            it('should handle multiple mentions in the same content', () => {
                 const content =
                     'Hello @user@example.xyz and @newUser@example.co.uk!';
                 const result = preparer.prepare(content, {
@@ -342,7 +342,7 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should handle repeated mentions in the content', async () => {
+            it('should handle repeated mentions in the content', () => {
                 const content =
                     'Hello @user@example.xyz, @user@example.xyz, and @user@example.xyz!';
                 const result = preparer.prepare(content, {
@@ -361,7 +361,7 @@ describe('ContentPreparer', () => {
                 );
             });
 
-            it('should reject partially matching mentions', async () => {
+            it('should reject partially matching mentions', () => {
                 const content = 'Hello @user@example.xyz and @user@exampleXxyz';
                 const result = preparer.prepare(content, {
                     ...allOptionsDisabled,
@@ -571,7 +571,7 @@ describe('ContentPreparer', () => {
             });
         });
 
-        it('should add data-profile and rel to links matching account.apId', async () => {
+        it('should add data-profile and rel to links matching account.apId', () => {
             const content =
                 '<p>Hey there! <span class="h-card"><a href="https://example.xyz/user/@user">@user@example.xyz</a></span> How are you?</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -587,7 +587,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should add data-profile and rel to links matching account.url', async () => {
+        it('should add data-profile and rel to links matching account.url', () => {
             const content =
                 '<p>Check out <span class="mention"><a href="https://example.xyz/@user">@user@example.xyz</a></span> profile!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -603,7 +603,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should add data-profile and rel to mentions that are not complete handles', async () => {
+        it('should add data-profile and rel to mentions that are not complete handles', () => {
             const content =
                 '<p>Check out <span class="mention"><a href="https://example.xyz/@user">@user</a></span> profile!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -619,7 +619,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should add data-profile and rel to links with no rel attribute', async () => {
+        it('should add data-profile and rel to links with no rel attribute', () => {
             const content =
                 '<p>Welcome <span class="h-card"><a href="https://example.xyz/@user" class="mention">@user@example.xyz</a></span> to our platform!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -635,7 +635,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should replace any existing rel with rel="nofollow noopener noreferrer"', async () => {
+        it('should replace any existing rel with rel="nofollow noopener noreferrer"', () => {
             const content =
                 '<p>Hello <span class="h-card"><a href="https://example.xyz/@user" rel="nofollow">@user@example.xyz</a></span> nice to meet you!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -651,7 +651,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle multiple links in the same content', async () => {
+        it('should handle multiple links in the same content', () => {
             const content =
                 '<p>Check out <span class="h-card"><a href="https://example.xyz/@user">@user@example.xyz</a></span>, <span class="h-card"><a href="https://example.xyz/@user">@user@example.xyz</a></span> and <span class="h-card"><a href="https://example.xyz/@user2">@user2@example.xyz</a></span> profiles!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -672,7 +672,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle links with different quote types', async () => {
+        it('should handle links with different quote types', () => {
             const content =
                 '<p>Welcome <span class="h-card"><a href=\'https://example.xyz/@user\'>@user@example.xyz</a></span> to our community!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -688,7 +688,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle empty link content', async () => {
+        it('should handle empty link content', () => {
             const content =
                 '<p>Hey <a href="https://example.xyz/@user"></a>, how are you?</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -704,7 +704,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle links with existing data-profile', async () => {
+        it('should handle links with existing data-profile', () => {
             const content =
                 '<p>Hello <span class="h-card"><a href="https://example.xyz/@user" data-profile="@user@example.xyz">@user@example.xyz</a></span> welcome back!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -720,7 +720,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should not modify non-matching links', async () => {
+        it('should not modify non-matching links', () => {
             const content =
                 '<p>Check out <span class="h-card"><a href="https://other-domain.com/@user">@user@other-domain.com</a></span> and <span class="h-card"><a href="https://example.xyz/@user">@user@example.xyz</a></span> profiles!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -736,7 +736,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle links with nested spans in their content', async () => {
+        it('should handle links with nested spans in their content', () => {
             const content =
                 '<p>Hello check <span class="h-card" translate="no"><a href="https://example.xyz/@user" class="u-url mention">@<span>user</span></a></span> <span class="h-card" translate="no"><a href="https://other-domain.com/" class="u-url mention">@<span>other</span></a></span></p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -752,7 +752,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle links with complex nested HTML structure', async () => {
+        it('should handle links with complex nested HTML structure', () => {
             const content =
                 '<p>Check out <span class="h-card"><a href="https://example.xyz/@user" class="mention">@<span class="username"><strong>user</strong><em>@example.xyz</em></span><img src="avatar.jpg" alt="avatar" ></a></span> profile!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -768,7 +768,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle URLs with trailing slashes', async () => {
+        it('should handle URLs with trailing slashes', () => {
             const content =
                 '<p>Check out <span class="h-card"><a href="https://example.xyz/@user/">@user@example.xyz</a></span> profile!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -784,7 +784,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should handle href attribute in any position within the tag', async () => {
+        it('should handle href attribute in any position within the tag', () => {
             const content =
                 '<p>Check out <span class="h-card"><a class="mention" href="https://example.xyz/@user" data-other="value">@<span>user</span></a></span> profile!</p>';
             const result = ContentPreparer.updateMentions(content, [
@@ -800,7 +800,7 @@ describe('ContentPreparer', () => {
             );
         });
 
-        it('should not do anything if the content is not valid HTML', async () => {
+        it('should not do anything if the content is not valid HTML', () => {
             const content = 'This is plain text with @user@example.xyz mention';
             const result = ContentPreparer.updateMentions(content, [
                 {
@@ -813,7 +813,7 @@ describe('ContentPreparer', () => {
             expect(result).toEqual(content);
         });
 
-        it('should not do anything if the mention is not wrapped in hyperlink', async () => {
+        it('should not do anything if the mention is not wrapped in hyperlink', () => {
             const content = '<p>Check out @user@example.xyz profile!</p>';
             const result = ContentPreparer.updateMentions(content, [
                 {

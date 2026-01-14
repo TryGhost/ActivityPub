@@ -86,7 +86,7 @@ describe('AccountEntity', () => {
 
             const draft = AccountEntity.draft(draftData);
             const id = 42;
-            const account = await AccountEntity.fromDraft(draft, id);
+            const account = AccountEntity.fromDraft(draft, id);
 
             expect(account).toBeInstanceOf(AccountEntity);
             expect(account.id).toBe(id);
@@ -116,7 +116,7 @@ describe('AccountEntity', () => {
             });
 
             const draft = AccountEntity.draft(draftData);
-            const account = await AccountEntity.fromDraft(draft, 123);
+            const account = AccountEntity.fromDraft(draft, 123);
 
             const events = AccountEntity.pullEvents(account);
             expect(events).toHaveLength(1);
@@ -136,7 +136,7 @@ describe('AccountEntity', () => {
             });
 
             const draft = AccountEntity.draft(draftData);
-            const account = await AccountEntity.fromDraft(draft, 999);
+            const account = AccountEntity.fromDraft(draft, 999);
 
             expect(account.bio).toBeNull();
             expect(account.avatarUrl).toBeNull();

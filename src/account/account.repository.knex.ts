@@ -35,8 +35,6 @@ interface AccountRow {
     ap_outbox_url: string | null;
     ap_following_url: string | null;
     ap_liked_url: string | null;
-    ap_public_key: string;
-    ap_private_key: string | null;
     custom_fields: Record<string, string> | null;
     site_id: number | null;
 }
@@ -92,7 +90,7 @@ export class KnexAccountRepository {
                 });
             }
 
-            const account = await AccountEntity.fromDraft(draft, accountId);
+            const account = AccountEntity.fromDraft(draft, accountId);
 
             return account;
         });
@@ -385,8 +383,6 @@ export class KnexAccountRepository {
             apOutbox: parseURL(row.ap_outbox_url),
             apFollowing: parseURL(row.ap_following_url),
             apLiked: parseURL(row.ap_liked_url),
-            apPublicKey: row.ap_public_key,
-            apPrivateKey: row.ap_private_key,
             isInternal: row.site_id !== null,
             customFields: row.custom_fields,
         });

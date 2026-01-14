@@ -68,8 +68,6 @@ interface PostRow {
     author_ap_outbox_url: string | null;
     author_ap_following_url: string | null;
     author_ap_liked_url: string | null;
-    author_ap_public_key: string;
-    author_ap_private_key: string | null;
     site_id: number | null;
     site_host: string | null;
 }
@@ -137,8 +135,6 @@ export class KnexPostRepository {
                 'accounts.ap_outbox_url as author_ap_outbox_url',
                 'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_liked_url as author_ap_liked_url',
-                'accounts.ap_public_key as author_ap_public_key',
-                'accounts.ap_private_key as author_ap_private_key',
                 'sites.id as site_id',
                 'sites.host as site_host',
             )
@@ -957,8 +953,6 @@ export class KnexPostRepository {
             apOutbox: parseURL(row.author_ap_outbox_url),
             apFollowing: parseURL(row.author_ap_following_url),
             apLiked: parseURL(row.author_ap_liked_url),
-            apPublicKey: row.author_ap_public_key,
-            apPrivateKey: row.author_ap_private_key,
             isInternal: row.site_id !== null,
         });
 
@@ -1053,8 +1047,6 @@ export class KnexPostRepository {
                 'accounts.ap_outbox_url as author_ap_outbox_url',
                 'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_liked_url as author_ap_liked_url',
-                'accounts.ap_public_key as author_ap_public_key',
-                'accounts.ap_private_key as author_ap_private_key',
                 'sites.id as site_id',
                 'sites.host as site_host',
                 'outboxes.outbox_type',

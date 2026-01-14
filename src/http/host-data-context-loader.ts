@@ -44,8 +44,6 @@ export class HostDataContextLoader {
                 'accounts.ap_outbox_url as account_ap_outbox_url',
                 'accounts.ap_following_url as account_ap_following_url',
                 'accounts.ap_liked_url as account_ap_liked_url',
-                'accounts.ap_public_key as account_ap_public_key',
-                'accounts.ap_private_key as account_ap_private_key',
                 'accounts.custom_fields as account_custom_fields',
             )
             .where('sites.host', host);
@@ -86,8 +84,6 @@ export class HostDataContextLoader {
             ap_outbox_url: result.account_ap_outbox_url,
             ap_following_url: result.account_ap_following_url,
             ap_liked_url: result.account_ap_liked_url,
-            ap_public_key: result.account_ap_public_key,
-            ap_private_key: result.account_ap_private_key,
             custom_fields: result.account_custom_fields,
             site_id: result.site_id,
         });
