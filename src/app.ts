@@ -40,6 +40,7 @@ import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
 
 import type { Account } from '@/account/account.entity';
+import { AccountCreatedEvent } from '@/account/events/account-created.event';
 import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
 import type { CreateHandler } from '@/activity-handlers/create.handler';
 import type { DeleteHandler } from '@/activity-handlers/delete.handler';
@@ -226,6 +227,9 @@ container
         PostInteractionCountsUpdateRequestedEvent.getName(),
         PostInteractionCountsUpdateRequestedEvent,
     );
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(AccountCreatedEvent.getName(), AccountCreatedEvent);
 
 /** Fedify */
 
