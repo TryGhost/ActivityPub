@@ -262,6 +262,9 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.ap_outbox_url',
+                'accounts.ap_following_url',
+                'accounts.ap_liked_url',
                 'accounts.custom_fields',
             )
             .first();
@@ -289,6 +292,9 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.ap_outbox_url',
+                'accounts.ap_following_url',
+                'accounts.ap_liked_url',
                 'accounts.custom_fields',
                 'users.site_id',
             )
@@ -318,6 +324,9 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.ap_outbox_url',
+                'accounts.ap_following_url',
+                'accounts.ap_liked_url',
                 'users.site_id',
             )
             .first();
@@ -348,6 +357,9 @@ export class KnexAccountRepository {
                 'accounts.ap_id',
                 'accounts.ap_followers_url',
                 'accounts.ap_inbox_url',
+                'accounts.ap_outbox_url',
+                'accounts.ap_following_url',
+                'accounts.ap_liked_url',
                 'accounts.custom_fields',
                 'users.site_id',
             )
