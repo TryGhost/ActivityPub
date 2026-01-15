@@ -2,7 +2,7 @@ import type { Actor, Context, Delete } from '@fedify/fedify';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 import { getRelatedActivities } from '@/db';
 import type { PostService } from '@/post/post.service';
@@ -13,7 +13,7 @@ export class DeleteHandler {
         private readonly accountService: AccountService,
     ) {}
 
-    async handle(ctx: Context<FedifyContextData>, deleteActivity: Delete) {
+    async handle(ctx: Context<ContextData>, deleteActivity: Delete) {
         ctx.data.logger.info('Handling Delete');
         const parsed = ctx.parseUri(deleteActivity.objectId);
         ctx.data.logger.info('Parsed delete object', { parsed });

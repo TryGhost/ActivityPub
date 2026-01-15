@@ -1,9 +1,9 @@
 import { Reject, type RequestContext } from '@fedify/fedify';
 
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 
 export async function dispatchRejectActivity(
-    ctx: RequestContext<FedifyContextData>,
+    ctx: RequestContext<ContextData>,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Reject, data);

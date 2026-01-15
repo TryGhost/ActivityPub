@@ -8,7 +8,7 @@ import {
     Undo,
 } from '@fedify/fedify';
 
-import type { AppContext, FedifyContextData } from '@/app';
+import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
@@ -23,7 +23,7 @@ export class LikeController {
     constructor(
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
-        private readonly fedify: Federation<FedifyContextData>,
+        private readonly fedify: Federation<ContextData>,
     ) {}
 
     @APIRoute('POST', 'actions/like/:id')

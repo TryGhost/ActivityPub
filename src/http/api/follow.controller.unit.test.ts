@@ -10,7 +10,7 @@ import { Follow, isActor, Undo } from '@fedify/fedify';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import type { AppContext, FedifyContextData } from '@/app';
+import type { AppContext, ContextData } from '@/app';
 import { error, ok } from '@/core/result';
 import { FollowController } from '@/http/api/follow.controller';
 import * as lookupHelpers from '@/lookup-helpers';
@@ -92,12 +92,12 @@ vi.mock('@/lookup-helpers', () => ({
 describe('FollowController', () => {
     let accountService: AccountService;
     let moderationService: ModerationService;
-    let fedify: Federation<FedifyContextData>;
+    let fedify: Federation<ContextData>;
     let controller: FollowController;
     let followerAccount: Account;
     let externalAccountToFollow: Account;
     let internalAccountToFollow: Account;
-    let mockApCtx: Context<FedifyContextData>;
+    let mockApCtx: Context<ContextData>;
     let mockGlobalDb: {
         get: ReturnType<typeof vi.fn>;
         set: ReturnType<typeof vi.fn>;
@@ -183,11 +183,11 @@ describe('FollowController', () => {
                 globaldb: mockGlobalDb,
                 logger: mockLogger,
             },
-        } as unknown as Context<FedifyContextData>;
+        } as unknown as Context<ContextData>;
 
         fedify = {
             createContext: vi.fn().mockReturnValue(mockApCtx),
-        } as unknown as Federation<FedifyContextData>;
+        } as unknown as Federation<ContextData>;
 
         controller = new FollowController(
             accountService,

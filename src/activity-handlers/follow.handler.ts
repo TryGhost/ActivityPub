@@ -8,7 +8,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import { getValue, isError } from '@/core/result';
 import type { ModerationService } from '@/moderation/moderation.service';
 
@@ -18,7 +18,7 @@ export class FollowHandler {
         private readonly moderationService: ModerationService,
     ) {}
 
-    async handle(ctx: Context<FedifyContextData>, follow: Follow) {
+    async handle(ctx: Context<ContextData>, follow: Follow) {
         ctx.data.logger.info('Handling Follow');
 
         // Validate activity data
@@ -93,7 +93,7 @@ export class FollowHandler {
     }
 
     private async persistActivity(
-        ctx: Context<FedifyContextData>,
+        ctx: Context<ContextData>,
         follow: Follow,
         sender: Actor,
     ) {
@@ -109,7 +109,7 @@ export class FollowHandler {
     }
 
     private async sendAccept(
-        ctx: Context<FedifyContextData>,
+        ctx: Context<ContextData>,
         follow: Follow,
         identifier: string,
         sender: Actor,
@@ -128,7 +128,7 @@ export class FollowHandler {
     }
 
     private async sendReject(
-        ctx: Context<FedifyContextData>,
+        ctx: Context<ContextData>,
         follow: Follow,
         identifier: string,
         sender: Actor,

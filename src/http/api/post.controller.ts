@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
-import type { AppContext, FedifyContextData } from '@/app';
+import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
@@ -46,7 +46,7 @@ export class PostController {
         private readonly accountService: AccountService,
         private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
-        private readonly fedify: Federation<FedifyContextData>,
+        private readonly fedify: Federation<ContextData>,
     ) {}
 
     /**

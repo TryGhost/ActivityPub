@@ -4,7 +4,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import {
     PUBSUB_MESSAGE_ATTR_EVENT_HOST,
     PUBSUB_MESSAGE_ATTR_EVENT_NAME,
@@ -21,7 +21,7 @@ const IncomingMessagePayloadSchema = z.object({
 
 export function createIncomingPubSubMessageHandler(
     pubSubEvents: PubSubEvents,
-    fedify: Federation<FedifyContextData>,
+    fedify: Federation<ContextData>,
     fedifyContextFactory: FedifyContextFactory,
 ) {
     return async function handleIncomingPubSubMessage(

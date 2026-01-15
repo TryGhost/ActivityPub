@@ -1,11 +1,11 @@
 import type { Federation } from '@fedify/fedify';
 
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 
 export function createFedifyCtxForHost(
-    fedify: Federation<FedifyContextData>,
+    fedify: Federation<ContextData>,
     host: string,
-    ctxData: FedifyContextData,
+    ctxData: ContextData,
 ) {
     let hostUrl: URL;
 

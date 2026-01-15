@@ -9,7 +9,7 @@ import type {
 } from '@fedify/fedify';
 
 import type { AccountEntity } from '@/account/account.entity';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
     ACTOR_DEFAULT_HANDLE,
@@ -50,7 +50,7 @@ describe('dispatchers', () => {
         getOutboxItemCount: vi.fn(),
     } as unknown as PostService;
 
-    let ctx: RequestContext<FedifyContextData>;
+    let ctx: RequestContext<ContextData>;
 
     const cursor = new Date().toISOString();
 
@@ -86,7 +86,7 @@ describe('dispatchers', () => {
             },
             getObjectUri: vi.fn(),
             host: 'example.com',
-        } as unknown as RequestContext<FedifyContextData>;
+        } as unknown as RequestContext<ContextData>;
 
         mockPost = Post.createFromData(mockAccount, {
             type: PostType.Article,
@@ -134,7 +134,7 @@ describe('dispatchers', () => {
                         },
                     },
                 },
-            } as unknown as RequestContext<FedifyContextData>;
+            } as unknown as RequestContext<ContextData>;
 
             const result = await likedDispatcher(
                 ctx,
@@ -186,7 +186,7 @@ describe('dispatchers', () => {
                     ...ctx.data,
                     hostSite: null,
                 },
-            } as unknown as RequestContext<FedifyContextData>;
+            } as unknown as RequestContext<ContextData>;
             const outboxDispatcher = createOutboxDispatcher(mockPostService);
 
             await expect(
@@ -295,7 +295,7 @@ describe('dispatchers', () => {
                     ...ctx.data,
                     hostSite: null,
                 },
-            } as unknown as RequestContext<FedifyContextData>;
+            } as unknown as RequestContext<ContextData>;
             const countOutboxItems = createOutboxCounter(mockPostService);
 
             await expect(countOutboxItems(ctxWithoutSite)).rejects.toThrow(

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Delete, type RequestContext } from '@fedify/fedify';
 
 import { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 
 describe('DeleteDispatcher', () => {
     describe('dispatch', () => {
@@ -21,7 +21,7 @@ describe('DeleteDispatcher', () => {
                         },
                     },
                 },
-            } as unknown as RequestContext<FedifyContextData>;
+            } as unknown as RequestContext<ContextData>;
             const data = {
                 id: 'not-found',
             };
@@ -55,7 +55,7 @@ describe('DeleteDispatcher', () => {
                         },
                     },
                 },
-            } as unknown as RequestContext<FedifyContextData>;
+            } as unknown as RequestContext<ContextData>;
             const data = {
                 id: 'found',
             };

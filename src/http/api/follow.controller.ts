@@ -2,7 +2,7 @@ import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
-import type { AppContext, FedifyContextData } from '@/app';
+import type { AppContext, ContextData } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
     BadRequest,
@@ -23,7 +23,7 @@ export class FollowController {
     constructor(
         private readonly accountService: AccountService,
         private readonly moderationService: ModerationService,
-        private readonly fedify: Federation<FedifyContextData>,
+        private readonly fedify: Federation<ContextData>,
     ) {}
 
     @APIRoute('POST', 'actions/follow/:handle')

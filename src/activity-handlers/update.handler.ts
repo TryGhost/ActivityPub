@@ -2,13 +2,13 @@ import { type Actor, type Context, isActor, type Update } from '@fedify/fedify';
 
 import type { AccountService } from '@/account/account.service';
 import { mapActorToExternalAccountData } from '@/account/utils';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 
 export class UpdateHandler {
     constructor(private readonly accountService: AccountService) {}
 
-    async handle(ctx: Context<FedifyContextData>, update: Update) {
+    async handle(ctx: Context<ContextData>, update: Update) {
         ctx.data.logger.info('Handling Update');
 
         if (!update.id) {

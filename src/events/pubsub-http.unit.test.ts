@@ -6,7 +6,7 @@ import * as Sentry from '@sentry/node';
 import type { Context } from 'hono';
 
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import type { PubSubEvents } from '@/events/pubsub';
 import { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
 
@@ -53,7 +53,7 @@ describe('handleIncomingPubSubMessage', () => {
         pubSubEvents = {
             handleIncomingMessage: vi.fn().mockResolvedValue(true),
         } as unknown as PubSubEvents;
-        const fedify = {} as unknown as Federation<FedifyContextData>;
+        const fedify = {} as unknown as Federation<ContextData>;
         const fedifyContextFactory = {
             registerContext: vi.fn().mockImplementation(async (_ctx, fn) => {
                 return await fn();

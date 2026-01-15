@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type Context, lookupWebFinger } from '@fedify/fedify';
 
-import type { FedifyContextData } from '@/app';
+import type { ContextData } from '@/app';
 import { error, ok } from '@/core/result';
 import { lookupActorProfile } from '@/lookup-helpers';
 
@@ -40,7 +40,7 @@ describe('lookupActorProfile', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupActorProfile(
-            mockCtx as unknown as Context<FedifyContextData>,
+            mockCtx as unknown as Context<ContextData>,
             '@user@example.com',
         );
 
@@ -60,7 +60,7 @@ describe('lookupActorProfile', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupActorProfile(
-            mockCtx as unknown as Context<FedifyContextData>,
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
@@ -83,7 +83,7 @@ describe('lookupActorProfile', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupActorProfile(
-            mockCtx as unknown as Context<FedifyContextData>,
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
@@ -96,7 +96,7 @@ describe('lookupActorProfile', () => {
         ).mockRejectedValue(new Error('WebFinger lookup failed'));
 
         const result = await lookupActorProfile(
-            mockCtx as unknown as Context<FedifyContextData>,
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
@@ -124,7 +124,7 @@ describe('lookupActorProfile', () => {
         ).mockResolvedValue(mockWebFingerResponse);
 
         const result = await lookupActorProfile(
-            mockCtx as unknown as Context<FedifyContextData>,
+            mockCtx as unknown as Context<ContextData>,
             'user@example.com',
         );
 
