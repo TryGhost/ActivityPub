@@ -731,11 +731,6 @@ export class AccountService {
         return await this.accountRepository.getById(id);
     }
 
-    /**
-     * Get the public/private key pair for an account
-     *
-     * @param accountId id of the account
-     */
     async getKeyPair(
         accountId: number,
     ): Promise<
@@ -744,7 +739,20 @@ export class AccountService {
             'account-not-found' | 'not-internal-account'
         >
     > {
-        return this.accountRepository.getKeyPair(accountId);
+        const account = await this.accountRepository.getKeyPair(accountId);
+
+        if (!account) {
+            return error('account-not-found');
+        }
+
+        if (!account.publicKey || !account.privateKey) {
+            return error('not-internal-account');
+        }
+
+        return ok({
+            publicKey: account.publicKey,
+            privateKey: account.privateKey,
+        });
     }
 
     async blockDomain(

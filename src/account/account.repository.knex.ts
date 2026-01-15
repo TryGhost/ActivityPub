@@ -17,7 +17,6 @@ import {
     DomainUnblockedEvent,
 } from '@/account/events';
 import type { AsyncEvents } from '@/core/events';
-import { error, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
 import type { Site } from '@/site/site.service';
 
@@ -375,29 +374,20 @@ export class KnexAccountRepository {
 
     async getKeyPair(
         accountId: number,
-    ): Promise<
-        Result<
-            { publicKey: string; privateKey: string },
-            'account-not-found' | 'not-internal-account'
-        >
-    > {
+    ): Promise<{ publicKey: string | null; privateKey: string | null } | null> {
         const row = await this.db('accounts')
             .select('ap_public_key', 'ap_private_key')
             .where({ id: accountId })
             .first();
 
         if (!row) {
-            return error('account-not-found');
+            return null;
         }
 
-        if (!row.ap_public_key || !row.ap_private_key) {
-            return error('not-internal-account');
-        }
-
-        return ok({
+        return {
             publicKey: row.ap_public_key,
             privateKey: row.ap_private_key,
-        });
+        };
     }
 
     private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {
