@@ -64,16 +64,12 @@ export const actorDispatcher = () =>
                       url: new URL(hostAccount.bannerImageUrl),
                   })
                 : null,
-            inbox: hostAccount.apInbox ? new URL(hostAccount.apInbox) : null,
-            outbox: hostAccount.apOutbox ? new URL(hostAccount.apOutbox) : null,
-            following: hostAccount.apFollowing
-                ? new URL(hostAccount.apFollowing)
-                : null,
-            followers: hostAccount.apFollowers
-                ? new URL(hostAccount.apFollowers)
-                : null,
-            liked: hostAccount.apLiked ? new URL(hostAccount.apLiked) : null,
-            url: hostAccount.url ? new URL(hostAccount.url) : null,
+            inbox: hostAccount.apInbox,
+            outbox: hostAccount.apOutbox,
+            following: hostAccount.apFollowing,
+            followers: hostAccount.apFollowers,
+            liked: hostAccount.apLiked,
+            url: hostAccount.url,
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
