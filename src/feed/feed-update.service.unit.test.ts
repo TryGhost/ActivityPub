@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventEmitter } from 'node:events';
 
-import { AccountEntity } from '@/account/account.entity';
+import type { AccountEntity } from '@/account/account.entity';
 import {
     AccountBlockedEvent,
     AccountUnfollowedEvent,
@@ -15,7 +15,7 @@ import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
+import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
 
 describe('FeedUpdateService', () => {
     let events: EventEmitter;
@@ -38,7 +38,7 @@ describe('FeedUpdateService', () => {
             removeUnfollowedAccountPostsFromFeed: vi.fn(),
         } as unknown as FeedService;
 
-        const draftData = await createInternalAccountDraftData({
+        account = await createTestInternalAccount(456, {
             host: new URL('https://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -47,13 +47,6 @@ describe('FeedUpdateService', () => {
             bannerImageUrl: new URL('https://example.com/banners/foobar.png'),
             url: new URL('https://example.com/users/456'),
             customFields: null,
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        account = AccountEntity.create({
-            id: 456,
-            ...draft,
         });
 
         feedUpdateService = new FeedUpdateService(events, feedService);
@@ -222,7 +215,7 @@ describe('FeedUpdateService', () => {
 
     describe('handling a blocked account', () => {
         it('should remove blocked account posts from feeds', async () => {
-            const draftData = await createInternalAccountDraftData({
+            const blockedAccount = await createTestInternalAccount(789, {
                 host: new URL('https://example.com'),
                 username: 'bazqux',
                 name: 'Baz Qux',
@@ -233,13 +226,6 @@ describe('FeedUpdateService', () => {
                 ),
                 url: new URL('https://blocked.com/users/789'),
                 customFields: null,
-            });
-
-            const draft = AccountEntity.draft(draftData);
-
-            const blockedAccount = AccountEntity.create({
-                id: 789,
-                ...draft,
             });
 
             events.emit(

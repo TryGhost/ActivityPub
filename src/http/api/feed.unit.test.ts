@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as Sentry from '@sentry/node';
 
-import { AccountEntity } from '@/account/account.entity';
+import type { AccountEntity } from '@/account/account.entity';
 import type { AppContext } from '@/app';
 import type { FeedService } from '@/feed/feed.service';
 import { FeedController } from '@/http/api/feed.controller';
 import { PostType } from '@/post/post.entity';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import type { Site } from '@/site/site.service';
-import { createInternalAccountDraftData } from '@/test/account-entity-test-helpers';
+import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
 
 vi.mock('@sentry/node', () => {
     return {
@@ -132,7 +132,7 @@ describe('Feed API', () => {
             ghost_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
         };
 
-        const draftData = await createInternalAccountDraftData({
+        account = await createTestInternalAccount(456, {
             host: new URL('http://example.com'),
             username: 'foobar',
             name: 'Foo Bar',
@@ -141,13 +141,6 @@ describe('Feed API', () => {
             avatarUrl: new URL('http://example.com/avatar/foobar.png'),
             bannerImageUrl: new URL('http://example.com/banner/foobar.png'),
             customFields: null,
-        });
-
-        const draft = AccountEntity.draft(draftData);
-
-        account = AccountEntity.create({
-            id: 456,
-            ...draft,
         });
 
         postInteractionCountsService = {

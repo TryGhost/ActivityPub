@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AccountEntity } from '@/account/account.entity';
+import type { AccountEntity } from '@/account/account.entity';
 import {
     ContentPreparer,
     MEMBER_CONTENT_MARKER,
     PAID_CONTENT_PREVIEW_HTML,
 } from '@/post/content';
+import { createTestExternalAccount } from '@/test/account-entity-test-helpers';
 
 describe('ContentPreparer', () => {
     const preparer = new ContentPreparer();
@@ -243,21 +244,23 @@ describe('ContentPreparer', () => {
         });
 
         describe('Adding mentions', () => {
-            const account = AccountEntity.create({
-                id: 1,
-                uuid: 'test-uuid',
-                username: 'user',
-                name: 'Test User',
-                bio: null,
-                url: new URL('https://example.xyz/@user'),
-                avatarUrl: null,
-                bannerImageUrl: null,
-                customFields: null,
-                apId: new URL('https://example.xyz/@user'),
-                apFollowers: null,
-                apInbox: null,
-                isInternal: false,
+            let account: AccountEntity;
+
+            beforeEach(async () => {
+                account = await createTestExternalAccount(1, {
+                    username: 'user',
+                    name: 'Test User',
+                    bio: null,
+                    url: new URL('https://example.xyz/@user'),
+                    avatarUrl: null,
+                    bannerImageUrl: null,
+                    customFields: null,
+                    apId: new URL('https://example.xyz/@user'),
+                    apFollowers: null,
+                    apInbox: null,
+                });
             });
+
             it('should convert mentions to hyperlinks', () => {
                 const content = 'Hello @user@example.xyz, how are you?';
                 const result = preparer.prepare(content, {
@@ -537,36 +540,35 @@ describe('ContentPreparer', () => {
     });
 
     describe('updateMentions', () => {
-        const account = AccountEntity.create({
-            id: 1,
-            uuid: 'test-uuid',
-            username: 'user',
-            name: 'Test User',
-            bio: null,
-            url: new URL('https://example.xyz/@user'),
-            avatarUrl: null,
-            bannerImageUrl: null,
-            customFields: null,
-            apId: new URL('https://example.xyz/user/@user'),
-            apFollowers: null,
-            apInbox: null,
-            isInternal: false,
-        });
+        let account: AccountEntity;
+        let account2: AccountEntity;
 
-        const account2 = AccountEntity.create({
-            id: 2,
-            uuid: 'test-uuid-2',
-            username: 'user2',
-            name: 'Test User 2',
-            bio: null,
-            url: new URL('https://example.xyz/@user2/'),
-            avatarUrl: null,
-            bannerImageUrl: null,
-            customFields: null,
-            apId: new URL('https://example.xyz/user/@user2/'),
-            apFollowers: null,
-            apInbox: null,
-            isInternal: false,
+        beforeEach(async () => {
+            account = await createTestExternalAccount(1, {
+                username: 'user',
+                name: 'Test User',
+                bio: null,
+                url: new URL('https://example.xyz/@user'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+                apId: new URL('https://example.xyz/user/@user'),
+                apFollowers: null,
+                apInbox: null,
+            });
+
+            account2 = await createTestExternalAccount(2, {
+                username: 'user2',
+                name: 'Test User 2',
+                bio: null,
+                url: new URL('https://example.xyz/@user2/'),
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+                apId: new URL('https://example.xyz/user/@user2/'),
+                apFollowers: null,
+                apInbox: null,
+            });
         });
 
         it('should add data-profile and rel to links matching account.apId', () => {
