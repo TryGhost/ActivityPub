@@ -47,7 +47,12 @@ export const actorDispatcher = () =>
         identifier: string,
     ) {
         const hostAccount = ctx.data.hostAccount;
-        if (!hostAccount) return null;
+        if (!hostAccount) {
+            ctx.data.logger.error('Account not found for host {host}', {
+                host: ctx.host,
+            });
+            return null;
+        }
 
         const person = new Person({
             id: new URL(hostAccount.apId),
@@ -85,6 +90,9 @@ export const keypairDispatcher = (accountService: AccountService) =>
     ) {
         const hostAccount = ctx.data.hostAccount;
         if (!hostAccount) {
+            ctx.data.logger.error('Account not found for host {host}', {
+                host: ctx.host,
+            });
             return [];
         }
 
@@ -95,12 +103,14 @@ export const keypairDispatcher = (accountService: AccountService) =>
             switch (error) {
                 case 'account-not-found':
                     ctx.data.logger.error(
-                        `Account not found for ${identifier}`,
+                        'Account with ID {id} not found for host {host}',
+                        { id: hostAccount.id, host: ctx.host },
                     );
                     return [];
                 case 'not-internal-account':
                     ctx.data.logger.error(
-                        `Account is not internal for ${identifier}`,
+                        'Account with ID {id} is not internal for host {host}',
+                        { id: hostAccount.id, host: ctx.host },
                     );
                     return [];
                 default:

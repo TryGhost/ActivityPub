@@ -50,7 +50,7 @@ import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
-import { getValue, isError } from '@/core/result';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { knex } from '@/db';
 import {
     acceptDispatcher,
@@ -259,7 +259,31 @@ function ensureCorrectContext<B, R>(
             );
             const result = await hostDataLoader.loadDataForHost(ctx.host);
 
-            if (!isError(result)) {
+            if (isError(result)) {
+                const error = getError(result);
+                switch (error) {
+                    case 'site-not-found':
+                        ctx.data.logger.error(
+                            'Site not found for host {host}',
+                            { host: ctx.host },
+                        );
+                        break;
+                    case 'account-not-found':
+                        ctx.data.logger.error(
+                            'Account not found for host {host}',
+                            { host: ctx.host },
+                        );
+                        break;
+                    case 'multiple-users-for-site':
+                        ctx.data.logger.error(
+                            'Multiple users found for host {host}',
+                            { host: ctx.host },
+                        );
+                        break;
+                    default:
+                        exhaustiveCheck(error);
+                }
+            } else {
                 const { site, account } = getValue(result);
                 ctx.data.hostSite = site;
                 ctx.data.hostAccount = account;
