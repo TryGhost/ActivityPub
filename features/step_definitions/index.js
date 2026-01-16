@@ -97,7 +97,7 @@ async function setupSelfSite() {
 Before(async function reset() {
     await resetWiremock();
     await resetDatabase();
-    await await Promise.all([
+    await Promise.all([
         setupSelfSite(),
         fetchActivityPub('https://alice.test/.ghost/activitypub/v1/site'),
         fetchActivityPub('https://bob.test/.ghost/activitypub/v1/site'),

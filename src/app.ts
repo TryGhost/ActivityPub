@@ -50,6 +50,7 @@ import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { knex } from '@/db';
 import {
     acceptDispatcher,
@@ -171,6 +172,8 @@ await configure({
 export type ContextData = {
     globaldb: KvStore;
     logger: Logger;
+    hostSite: Site | null;
+    hostAccount: Account | null;
 };
 
 // Register all dependencies
@@ -209,6 +212,8 @@ if (process.env.MANUALLY_START_QUEUE === 'true') {
     globalFedify.startQueue({
         globaldb: globalKv,
         logger: globalLogging,
+        hostSite: null,
+        hostAccount: null,
     });
 }
 
@@ -247,6 +252,39 @@ function ensureCorrectContext<B, R>(
         }
         if (!ctx.data.logger) {
             ctx.data.logger = globalLogging;
+        }
+
+        const hostDataLoader = container.resolve<HostDataContextLoader>(
+            'hostDataContextLoader',
+        );
+        const result = await hostDataLoader.loadDataForHost(ctx.host);
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for host {host}', {
+                        host: ctx.host,
+                    });
+                    break;
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for host {host}', {
+                        host: ctx.host,
+                    });
+                    break;
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error(
+                        'Multiple users found for host {host}',
+                        { host: ctx.host },
+                    );
+                    break;
+                default:
+                    exhaustiveCheck(error);
+            }
+        } else {
+            const { site, account } = getValue(result);
+            ctx.data.hostSite = site;
+            ctx.data.hostAccount = account;
         }
 
         const fedifyContextFactory = container.resolve<FedifyContextFactory>(
@@ -730,20 +768,6 @@ app.use(async (ctx, next) => {
     await next();
 });
 
-app.use(async (ctx, next) => {
-    const globaldb = ctx.get('globaldb');
-    const logger = ctx.get('logger');
-
-    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
-        globaldb,
-        logger,
-    });
-
-    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
-        'fedifyContextFactory',
-    );
-    await fedifyContextFactory.registerContext(fedifyContext, next);
-});
 // This needs to go before the middleware which loads the site
 // Because the site doesn't always exist - this is how it's created
 app.get(
@@ -771,6 +795,25 @@ app.use(
         container.resolve<HostDataContextLoader>('hostDataContextLoader'),
     ),
 );
+
+app.use(async (ctx, next) => {
+    const globaldb = ctx.get('globaldb');
+    const logger = ctx.get('logger');
+    const hostSite = ctx.get('site');
+    const hostAccount = ctx.get('account');
+
+    const fedifyContext = globalFedify.createContext(ctx.req.raw as Request, {
+        globaldb,
+        logger,
+        hostSite,
+        hostAccount,
+    });
+
+    const fedifyContextFactory = container.resolve<FedifyContextFactory>(
+        'fedifyContextFactory',
+    );
+    await fedifyContextFactory.registerContext(fedifyContext, next);
+});
 
 /** Custom API routes */
 
@@ -893,6 +936,8 @@ app.use(
             return {
                 globaldb: ctx.get('globaldb'),
                 logger: ctx.get('logger'),
+                hostSite: ctx.get('site'),
+                hostAccount: ctx.get('account'),
             };
         },
     ),

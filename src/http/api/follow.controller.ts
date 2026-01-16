@@ -33,6 +33,8 @@ export class FollowController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
         const followerAccount = ctx.get('account');
 
@@ -150,6 +152,8 @@ export class FollowController {
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
+            hostSite: ctx.get('site'),
+            hostAccount: ctx.get('account'),
         });
         const unfollowerAccount = ctx.get('account');
 

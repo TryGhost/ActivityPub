@@ -372,6 +372,24 @@ export class KnexAccountRepository {
         return this.mapRowToAccountEntity(accountRow);
     }
 
+    async getKeyPair(
+        accountId: number,
+    ): Promise<{ publicKey: string | null; privateKey: string | null } | null> {
+        const row = await this.db('accounts')
+            .select('ap_public_key', 'ap_private_key')
+            .where({ id: accountId })
+            .first();
+
+        if (!row) {
+            return null;
+        }
+
+        return {
+            publicKey: row.ap_public_key,
+            privateKey: row.ap_private_key,
+        };
+    }
+
     private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {
         if (!row.uuid) {
             row.uuid = randomUUID();

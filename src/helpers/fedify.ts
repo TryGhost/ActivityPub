@@ -15,8 +15,5 @@ export function createFedifyCtxForHost(
         throw new Error(`Invalid host URL: https://${host}`);
     }
 
-    return fedify.createContext(hostUrl, {
-        globaldb: ctxData.globaldb,
-        logger: ctxData.logger,
-    });
+    return fedify.createContext(hostUrl, ctxData);
 }

@@ -26,7 +26,6 @@ import {
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { ContextData } from '@/app';
@@ -41,42 +40,41 @@ import { lookupActor, lookupObject } from '@/lookup-helpers';
 import { OutboxType, type Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import type { SiteService } from '@/site/site.service';
 
-export const actorDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const actorDispatcher = () =>
     async function actorDispatcher(
         ctx: RequestContext<ContextData>,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return null;
-
-        const account = await accountService.getDefaultAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            ctx.data.logger.error('Account not found for host {host}', {
+                host: ctx.host,
+            });
+            return null;
+        }
 
         const person = new Person({
-            id: new URL(account.ap_id),
-            name: account.name,
-            summary: account.bio,
-            preferredUsername: account.username,
-            icon: account.avatar_url
+            id: new URL(hostAccount.apId),
+            name: hostAccount.name ?? '',
+            summary: hostAccount.bio,
+            preferredUsername: hostAccount.username,
+            icon: hostAccount.avatarUrl
                 ? new Image({
-                      url: new URL(account.avatar_url),
+                      url: new URL(hostAccount.avatarUrl),
                   })
                 : null,
-            image: account.banner_image_url
+            image: hostAccount.bannerImageUrl
                 ? new Image({
-                      url: new URL(account.banner_image_url),
+                      url: new URL(hostAccount.bannerImageUrl),
                   })
                 : null,
-            inbox: new URL(account.ap_inbox_url),
-            outbox: new URL(account.ap_outbox_url),
-            following: new URL(account.ap_following_url),
-            followers: new URL(account.ap_followers_url),
-            liked: new URL(account.ap_liked_url),
-            url: new URL(account.url || account.ap_id),
+            inbox: hostAccount.apInbox,
+            outbox: hostAccount.apOutbox,
+            following: hostAccount.apFollowing,
+            followers: hostAccount.apFollowers,
+            liked: hostAccount.apLiked,
+            url: hostAccount.url,
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
@@ -85,36 +83,52 @@ export const actorDispatcher = (
         return person;
     };
 
-export const keypairDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const keypairDispatcher = (accountService: AccountService) =>
     async function keypairDispatcher(
         ctx: Context<ContextData>,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return [];
-
-        const account = await accountService.getDefaultAccountForSite(site);
-
-        if (!account.ap_public_key) {
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            ctx.data.logger.error('Account not found for host {host}', {
+                host: ctx.host,
+            });
             return [];
         }
 
-        if (!account.ap_private_key) {
-            return [];
+        const result = await accountService.getKeyPair(hostAccount.id);
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'account-not-found':
+                    ctx.data.logger.error(
+                        'Account with ID {id} not found for host {host}',
+                        { id: hostAccount.id, host: ctx.host },
+                    );
+                    return [];
+                case 'not-internal-account':
+                    ctx.data.logger.error(
+                        'Account with ID {id} is not internal for host {host}',
+                        { id: hostAccount.id, host: ctx.host },
+                    );
+                    return [];
+                default:
+                    return exhaustiveCheck(error);
+            }
         }
+
+        const { publicKey, privateKey } = getValue(result);
 
         try {
             return [
                 {
                     publicKey: await importJwk(
-                        JSON.parse(account.ap_public_key) as JsonWebKey,
+                        JSON.parse(publicKey) as JsonWebKey,
                         'public',
                     ),
                     privateKey: await importJwk(
-                        JSON.parse(account.ap_private_key) as JsonWebKey,
+                        JSON.parse(privateKey) as JsonWebKey,
                         'private',
                     ),
                 },
@@ -188,7 +202,6 @@ export function createAcceptHandler(accountService: AccountService) {
 export async function handleAnnouncedCreate(
     ctx: Context<ContextData>,
     announce: Announce,
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
 ) {
@@ -204,15 +217,18 @@ export async function handleAnnouncedCreate(
         return;
     }
 
-    const site = await siteService.getSiteByHost(ctx.host);
-
-    if (!site) {
+    const hostSite = ctx.data.hostSite;
+    if (!hostSite) {
         throw new Error(`Site not found for host: ${ctx.host}`);
     }
 
     // Validate that the group is followed
     if (
-        !(await isFollowedByDefaultSiteAccount(announcer, site, accountService))
+        !(await isFollowedByDefaultSiteAccount(
+            announcer,
+            hostSite,
+            accountService,
+        ))
     ) {
         ctx.data.logger.info('Group is not followed, exit early');
 
@@ -478,7 +494,6 @@ export const createUndoHandler = (
     };
 
 export function createAnnounceHandler(
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
     postRepository: KnexPostRepository,
@@ -512,7 +527,6 @@ export function createAnnounceHandler(
             return handleAnnouncedCreate(
                 ctx,
                 announce,
-                siteService,
                 accountService,
                 postService,
             );
@@ -588,9 +602,8 @@ export function createAnnounceHandler(
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
-        const site = await siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
@@ -774,23 +787,22 @@ export async function inboxErrorHandler(
     });
 }
 
-export function createFollowersDispatcher(
-    siteService: SiteService,
-    accountRepository: KnexAccountRepository,
-    followersService: FollowersService,
-) {
+export function createFollowersDispatcher(followersService: FollowersService) {
     return async function dispatchFollowers(
         ctx: Context<ContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        const account = await accountRepository.getBySite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        const followers = await followersService.getFollowers(account.id);
+        const followers = await followersService.getFollowers(hostAccount.id);
 
         return {
             items: followers,
@@ -798,10 +810,7 @@ export function createFollowersDispatcher(
     };
 }
 
-export function createFollowingDispatcher(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowingDispatcher(accountService: AccountService) {
     return async function dispatchFollowing(
         ctx: RequestContext<ContextData>,
         _handle: string,
@@ -813,26 +822,24 @@ export function createFollowingDispatcher(
         let nextCursor: string | null = null;
 
         const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
 
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${host}`);
+        }
 
-        const results = await accountService.getFollowingAccounts(
-            siteDefaultAccount,
-            {
-                fields: ['ap_id'],
-                limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
-                offset,
-            },
-        );
+        const results = await accountService.getFollowingAccounts(hostAccount, {
+            fields: ['ap_id'],
+            limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
+            offset,
+        });
         const totalFollowing = await accountService.getFollowingAccountsCount(
-            siteDefaultAccount.id,
+            hostAccount.id,
         );
 
         nextCursor =
@@ -849,47 +856,41 @@ export function createFollowingDispatcher(
     };
 }
 
-export function createFollowersCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowersCounter(accountService: AccountService) {
     return async function countFollowers(
         ctx: RequestContext<ContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        return await accountService.getFollowerAccountsCount(
-            siteDefaultAccount.id,
-        );
+        return await accountService.getFollowerAccountsCount(hostAccount.id);
     };
 }
 
-export function createFollowingCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-) {
+export function createFollowingCounter(accountService: AccountService) {
     return async function countFollowing(
         ctx: RequestContext<ContextData>,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        return await accountService.getFollowingAccountsCount(
-            siteDefaultAccount.id,
-        );
+        return await accountService.getFollowingAccountsCount(hostAccount.id);
     };
 }
 
@@ -897,11 +898,7 @@ export function followingFirstCursor() {
     return '0';
 }
 
-export function createOutboxDispatcher(
-    accountService: AccountService,
-    postService: PostService,
-    siteService: SiteService,
-) {
+export function createOutboxDispatcher(postService: PostService) {
     return async function outboxDispatcher(
         ctx: RequestContext<ContextData>,
         _handle: string,
@@ -910,15 +907,19 @@ export function createOutboxDispatcher(
         ctx.data.logger.info('Outbox Dispatcher');
 
         const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
-        if (!site) {
+
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${host}`);
         }
 
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${host}`);
+        }
 
         const outbox = await postService.getOutboxForAccount(
-            siteDefaultAccount.id,
+            hostAccount.id,
             cursor,
             ACTIVITYPUB_COLLECTION_PAGE_SIZE,
         );
@@ -933,7 +934,7 @@ export function createOutboxDispatcher(
                     return createActivity;
                 }
                 const announceActivity = await buildAnnounceActivityForPost(
-                    siteDefaultAccount,
+                    hostAccount,
                     item.post,
                     ctx,
                 );
@@ -948,20 +949,19 @@ export function createOutboxDispatcher(
     };
 }
 
-export function createOutboxCounter(
-    siteService: SiteService,
-    accountService: AccountService,
-    postService: PostService,
-) {
+export function createOutboxCounter(postService: PostService) {
     return async function countOutboxItems(ctx: RequestContext<ContextData>) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
+        const hostSite = ctx.data.hostSite;
+        if (!hostSite) {
             throw new Error(`Site not found for host: ${ctx.host}`);
         }
 
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const hostAccount = ctx.data.hostAccount;
+        if (!hostAccount) {
+            throw new Error(`Account not found for host: ${ctx.host}`);
+        }
 
-        return await postService.getOutboxItemCount(siteDefaultAccount.id);
+        return await postService.getOutboxItemCount(hostAccount.id);
     };
 }
 

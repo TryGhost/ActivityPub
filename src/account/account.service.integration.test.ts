@@ -1397,4 +1397,34 @@ describe('AccountService', () => {
             expect(backoff).toBeNull();
         });
     });
+
+    describe('getKeyPair', () => {
+        it('returns keypair with both keys for an internal account', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const result = await service.getKeyPair(account.id);
+
+            expect(result).toStrictEqual([
+                null,
+                {
+                    publicKey: expect.any(String),
+                    privateKey: expect.any(String),
+                },
+            ]);
+        });
+
+        it('returns not-internal-account error for an external account', async () => {
+            const account = await fixtureManager.createExternalAccount();
+
+            const result = await service.getKeyPair(account.id);
+
+            expect(result).toStrictEqual(['not-internal-account', null]);
+        });
+
+        it('returns account-not-found error when account does not exist', async () => {
+            const result = await service.getKeyPair(999999);
+
+            expect(result).toStrictEqual(['account-not-found', null]);
+        });
+    });
 });

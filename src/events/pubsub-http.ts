@@ -59,6 +59,11 @@ export function createIncomingPubSubMessageHandler(
                 {
                     globaldb: ctx.get('globaldb'),
                     logger: ctx.get('logger'),
+
+                    // Note: host site and account data could be loaded here by calling HostDataContextLoader's loadDataForHost
+                    // However, we currently don't need that data in the pub/sub event handler, and therefore avoid making the additional database query
+                    hostSite: null,
+                    hostAccount: null,
                 },
             );
 
