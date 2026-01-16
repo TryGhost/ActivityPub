@@ -253,41 +253,38 @@ function ensureCorrectContext<B, R>(
         if (!ctx.data.logger) {
             ctx.data.logger = globalLogging;
         }
-        if (!ctx.data.hostSite || !ctx.data.hostAccount) {
-            const hostDataLoader = container.resolve<HostDataContextLoader>(
-                'hostDataContextLoader',
-            );
-            const result = await hostDataLoader.loadDataForHost(ctx.host);
 
-            if (isError(result)) {
-                const error = getError(result);
-                switch (error) {
-                    case 'site-not-found':
-                        ctx.data.logger.error(
-                            'Site not found for host {host}',
-                            { host: ctx.host },
-                        );
-                        break;
-                    case 'account-not-found':
-                        ctx.data.logger.error(
-                            'Account not found for host {host}',
-                            { host: ctx.host },
-                        );
-                        break;
-                    case 'multiple-users-for-site':
-                        ctx.data.logger.error(
-                            'Multiple users found for host {host}',
-                            { host: ctx.host },
-                        );
-                        break;
-                    default:
-                        exhaustiveCheck(error);
-                }
-            } else {
-                const { site, account } = getValue(result);
-                ctx.data.hostSite = site;
-                ctx.data.hostAccount = account;
+        const hostDataLoader = container.resolve<HostDataContextLoader>(
+            'hostDataContextLoader',
+        );
+        const result = await hostDataLoader.loadDataForHost(ctx.host);
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for host {host}', {
+                        host: ctx.host,
+                    });
+                    break;
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for host {host}', {
+                        host: ctx.host,
+                    });
+                    break;
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error(
+                        'Multiple users found for host {host}',
+                        { host: ctx.host },
+                    );
+                    break;
+                default:
+                    exhaustiveCheck(error);
             }
+        } else {
+            const { site, account } = getValue(result);
+            ctx.data.hostSite = site;
+            ctx.data.hostAccount = account;
         }
 
         const fedifyContextFactory = container.resolve<FedifyContextFactory>(
