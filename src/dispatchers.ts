@@ -116,19 +116,28 @@ export const keypairDispatcher = (
             const error = getError(accountResult);
             switch (error) {
                 case 'site-not-found':
-                    ctx.data.logger.error('Site not found for {host}', {
-                        host: ctx.host,
-                    });
+                    ctx.data.logger.error(
+                        'Site not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                        },
+                    );
                     return [];
                 case 'account-not-found':
-                    ctx.data.logger.error('Account not found for {host}', {
-                        host: ctx.host,
-                    });
+                    ctx.data.logger.error(
+                        'Account not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                        },
+                    );
                     return [];
                 case 'multiple-users-for-site':
-                    ctx.data.logger.error('Multiple users found for {host}', {
-                        host: ctx.host,
-                    });
+                    ctx.data.logger.error(
+                        'Multiple users found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                        },
+                    );
                     return [];
                 default:
                     exhaustiveCheck(error);
@@ -143,14 +152,21 @@ export const keypairDispatcher = (
             const error = getError(keyPairResult);
             switch (error) {
                 case 'account-not-found':
-                    ctx.data.logger.error('Account not found for {host}', {
-                        host: ctx.host,
-                    });
+                    ctx.data.logger.error(
+                        'Account not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                            identifier,
+                        },
+                    );
                     return [];
                 case 'key-pair-not-found':
-                    ctx.data.logger.error('Key pair not found for {host}', {
-                        host: ctx.host,
-                    });
+                    ctx.data.logger.error(
+                        'Key pair not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                        },
+                    );
                     return [];
                 default:
                     exhaustiveCheck(error);
@@ -174,10 +190,11 @@ export const keypairDispatcher = (
             ];
         } catch (error) {
             ctx.data.logger.error(
-                'Could not parse keypair for {host}: {error}',
+                'Could not parse keypair for {host} (identifier: {identifier}): {error}',
                 {
                     host: ctx.host,
                     error,
+                    identifier,
                 },
             );
             return [];
