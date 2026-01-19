@@ -244,9 +244,9 @@ export function createAcceptHandler(accountService: AccountService) {
 export async function handleAnnouncedCreate(
     ctx: FedifyContext,
     announce: Announce,
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     ctx.data.logger.info('Handling Announced Create');
 
@@ -260,11 +260,31 @@ export async function handleAnnouncedCreate(
         return;
     }
 
-    const site = await siteService.getSiteByHost(ctx.host);
-
-    if (!site) {
-        throw new Error(`Site not found for host: ${ctx.host}`);
+    const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+    if (isError(hostData)) {
+        const error = getError(hostData);
+        switch (error) {
+            case 'site-not-found':
+                ctx.data.logger.error('Site not found for {host}', {
+                    host: ctx.host,
+                });
+                return;
+            case 'account-not-found':
+                ctx.data.logger.error('Account not found for {host}', {
+                    host: ctx.host,
+                });
+                return;
+            case 'multiple-users-for-site':
+                ctx.data.logger.error('Multiple users found for {host}', {
+                    host: ctx.host,
+                });
+                return;
+            default:
+                exhaustiveCheck(error);
+        }
     }
+
+    const { site } = getValue(hostData);
 
     // Validate that the group is followed
     if (
@@ -538,6 +558,7 @@ export function createAnnounceHandler(
     accountService: AccountService,
     postService: PostService,
     postRepository: KnexPostRepository,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function handleAnnounce(
         ctx: FedifyContext,
@@ -568,9 +589,9 @@ export function createAnnounceHandler(
             return handleAnnouncedCreate(
                 ctx,
                 announce,
-                siteService,
                 accountService,
                 postService,
+                hostDataContextLoader,
             );
         }
 
