@@ -116,6 +116,7 @@ export const keypairDispatcher = (
                         'Site not found for {host} (identifier: {identifier})',
                         {
                             host: ctx.host,
+                            identifier,
                         },
                     );
                     return [];
@@ -124,6 +125,7 @@ export const keypairDispatcher = (
                         'Account not found for {host} (identifier: {identifier})',
                         {
                             host: ctx.host,
+                            identifier,
                         },
                     );
                     return [];
@@ -132,6 +134,7 @@ export const keypairDispatcher = (
                         'Multiple users found for {host} (identifier: {identifier})',
                         {
                             host: ctx.host,
+                            identifier,
                         },
                     );
                     return [];
@@ -161,6 +164,7 @@ export const keypairDispatcher = (
                         'Key pair not found for {host} (identifier: {identifier})',
                         {
                             host: ctx.host,
+                            identifier,
                         },
                     );
                     return [];
@@ -189,8 +193,8 @@ export const keypairDispatcher = (
                 'Could not parse keypair for {host} (identifier: {identifier}): {error}',
                 {
                     host: ctx.host,
-                    error,
                     identifier,
+                    error,
                 },
             );
             return [];
