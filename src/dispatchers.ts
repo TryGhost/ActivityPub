@@ -104,38 +104,82 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
     };
 
 export const keypairDispatcher = (
-    siteService: SiteService,
     accountService: AccountService,
+    hostDataContextLoader: HostDataContextLoader,
 ) =>
     async function keypairDispatcher(ctx: FedifyContext, identifier: string) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return [];
+        const accountResult = await hostDataContextLoader.loadDataForHost(
+            ctx.host,
+        );
 
-        const account = await accountService.getDefaultAccountForSite(site);
-
-        if (!account.ap_public_key) {
-            return [];
+        if (isError(accountResult)) {
+            const error = getError(accountResult);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return [];
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return [];
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    return [];
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        if (!account.ap_private_key) {
-            return [];
+        const { account } = getValue(accountResult);
+
+        const keyPairResult = await accountService.getKeyPair(account.id);
+
+        if (isError(keyPairResult)) {
+            const error = getError(keyPairResult);
+            switch (error) {
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return [];
+                case 'key-pair-not-found':
+                    ctx.data.logger.error('Key pair not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return [];
+                default:
+                    exhaustiveCheck(error);
+            }
         }
+
+        const { publicKey, privateKey } = getValue(keyPairResult);
 
         try {
             return [
                 {
                     publicKey: await importJwk(
-                        JSON.parse(account.ap_public_key) as JsonWebKey,
+                        JSON.parse(publicKey) as JsonWebKey,
                         'public',
                     ),
                     privateKey: await importJwk(
-                        JSON.parse(account.ap_private_key) as JsonWebKey,
+                        JSON.parse(privateKey) as JsonWebKey,
                         'private',
                     ),
                 },
             ];
-        } catch (_err) {
-            ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
+        } catch (error) {
+            ctx.data.logger.error(
+                'Could not parse keypair for {host}: {error}',
+                {
+                    host: ctx.host,
+                    error,
+                },
+            );
             return [];
         }
     };

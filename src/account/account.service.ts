@@ -873,7 +873,7 @@ export class AccountService {
     ): Promise<
         Result<
             { publicKey: string; privateKey: string },
-            'account-not-found' | 'not-internal-account'
+            'account-not-found' | 'key-pair-not-found'
         >
     > {
         const account = await this.accountRepository.getKeyPair(accountId);
@@ -883,7 +883,7 @@ export class AccountService {
         }
 
         if (!account.publicKey || !account.privateKey) {
-            return error('not-internal-account');
+            return error('key-pair-not-found');
         }
 
         return ok({

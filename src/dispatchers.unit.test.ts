@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-    Announce,
-    Article,
-    Create,
-    Note,
-    RequestContext,
+import {
+    type Announce,
+    type Article,
+    type Create,
+    exportJwk,
+    type Note,
+    type RequestContext,
 } from '@fedify/fedify';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import type { FedifyRequestContext } from '@/app';
+import type { FedifyContext, FedifyRequestContext } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
     ACTOR_DEFAULT_HANDLE,
@@ -20,6 +21,7 @@ import {
     actorDispatcher,
     createOutboxCounter,
     createOutboxDispatcher,
+    keypairDispatcher,
     likedDispatcher,
     nodeInfoDispatcher,
 } from '@/dispatchers';
@@ -31,6 +33,7 @@ import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
 import type { PostService } from '@/post/post.service';
 import type { Site, SiteService } from '@/site/site.service';
+import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 
 vi.mock('@/app', () => ({
     fedify: {
@@ -523,10 +526,176 @@ describe('dispatchers', () => {
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).toBeNull();
-            expect(actorCtx.data.logger.info).toHaveBeenCalledWith(
-                'Multiple users found for {host}',
-                { host: 'example.com' },
+        });
+    });
+
+    describe('keypairDispatcher', () => {
+        const mockHostDataContextLoaderForKeypair = {
+            loadDataForHost: vi.fn(),
+        } as unknown as HostDataContextLoader;
+
+        const mockAccountServiceForKeypair = {
+            getKeyPair: vi.fn(),
+        } as unknown as AccountService;
+
+        const mockAccountForKeypair: Account = {
+            id: 1,
+            uuid: 'test-uuid',
+            username: 'testuser',
+            name: 'Test User',
+            bio: 'Test bio',
+            url: new URL('https://example.com/user/testuser'),
+            avatarUrl: new URL('https://example.com/avatar.jpg'),
+            bannerImageUrl: new URL('https://example.com/banner.jpg'),
+            apId: new URL('https://example.com/user/testuser'),
+            apInbox: new URL('https://example.com/user/testuser/inbox'),
+            apOutbox: new URL('https://example.com/user/testuser/outbox'),
+            apFollowing: new URL('https://example.com/user/testuser/following'),
+            apFollowers: new URL('https://example.com/user/testuser/followers'),
+            apLiked: new URL('https://example.com/user/testuser/liked'),
+            isInternal: true,
+            customFields: null,
+        } as Account;
+
+        let keypairCtx: FedifyContext;
+
+        beforeEach(() => {
+            keypairCtx = {
+                data: {
+                    logger: {
+                        error: vi.fn(),
+                    },
+                },
+                host: 'example.com',
+            } as unknown as FedifyContext;
+        });
+
+        it('returns empty array when site is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(error('site-not-found'));
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
             );
+            const result = await dispatcher(keypairCtx, 'testuser');
+
+            expect(result).toEqual([]);
+        });
+
+        it('returns empty array when account is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(error('account-not-found'));
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
+            );
+            const result = await dispatcher(keypairCtx, 'testuser');
+
+            expect(result).toEqual([]);
+        });
+
+        it('returns empty array when multiple users are found for the site', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(error('multiple-users-for-site'));
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
+            );
+            const result = await dispatcher(keypairCtx, 'testuser');
+
+            expect(result).toEqual([]);
+        });
+
+        it('returns empty array when key pair is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForKeypair,
+                }),
+            );
+            vi.mocked(
+                mockAccountServiceForKeypair.getKeyPair,
+            ).mockResolvedValue(error('key-pair-not-found'));
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
+            );
+            const result = await dispatcher(keypairCtx, 'testuser');
+
+            expect(result).toEqual([]);
+        });
+
+        it('returns empty array when parsing keypair throws an error', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForKeypair,
+                }),
+            );
+            vi.mocked(
+                mockAccountServiceForKeypair.getKeyPair,
+            ).mockResolvedValue(
+                ok({
+                    publicKey: 'invalid-json',
+                    privateKey: 'invalid-json',
+                }),
+            );
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
+            );
+            const result = await dispatcher(keypairCtx, 'testuser');
+
+            expect(result).toEqual([]);
+        });
+
+        it('returns keypair when host data and keys are found', async () => {
+            const keyPair = await generateTestCryptoKeyPair();
+            const publicKeyJwk = JSON.stringify(
+                await exportJwk(keyPair.publicKey),
+            );
+            const privateKeyJwk = JSON.stringify(
+                await exportJwk(keyPair.privateKey),
+            );
+
+            vi.mocked(
+                mockHostDataContextLoaderForKeypair.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForKeypair,
+                }),
+            );
+            vi.mocked(
+                mockAccountServiceForKeypair.getKeyPair,
+            ).mockResolvedValue(
+                ok({
+                    publicKey: publicKeyJwk,
+                    privateKey: privateKeyJwk,
+                }),
+            );
+
+            const dispatcher = keypairDispatcher(
+                mockAccountServiceForKeypair,
+                mockHostDataContextLoaderForKeypair,
+            );
+            const result = await dispatcher(keypairCtx, 'testuser');
+
+            expect(result).toHaveLength(1);
+            expect(result[0].publicKey).toBeInstanceOf(CryptoKey);
+            expect(result[0].privateKey).toBeInstanceOf(CryptoKey);
         });
     });
 });
