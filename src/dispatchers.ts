@@ -286,17 +286,17 @@ export async function handleAnnouncedCreate(
                 ctx.data.logger.error('Site not found for {host}', {
                     host: ctx.host,
                 });
-                return;
+                throw new Error(`Site not found for host: ${ctx.host}`);
             case 'account-not-found':
                 ctx.data.logger.error('Account not found for {host}', {
                     host: ctx.host,
                 });
-                return;
+                throw new Error(`Account not found for host: ${ctx.host}`);
             case 'multiple-users-for-site':
                 ctx.data.logger.error('Multiple users found for {host}', {
                     host: ctx.host,
                 });
-                return;
+                throw new Error(`Multiple users found for host: ${ctx.host}`);
             default:
                 exhaustiveCheck(error);
         }
