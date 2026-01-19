@@ -10,7 +10,7 @@ import type {
 
 import type { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import type { ContextData } from '@/app';
+import type { FedifyRequestContext } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
     ACTOR_DEFAULT_HANDLE,
@@ -73,7 +73,7 @@ describe('dispatchers', () => {
         },
         getObjectUri: vi.fn(),
         host: 'example.com',
-    } as unknown as RequestContext<ContextData>;
+    } as unknown as FedifyRequestContext;
 
     const cursor = new Date().toISOString();
 
@@ -143,7 +143,7 @@ describe('dispatchers', () => {
                         },
                     },
                 },
-            } as unknown as RequestContext<ContextData>;
+            } as unknown as FedifyRequestContext;
 
             const result = await likedDispatcher(
                 ctx,

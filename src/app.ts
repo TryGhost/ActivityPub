@@ -262,7 +262,7 @@ globalFedify
     // actorDispatcher uses RequestContext so doesn't need the ensureCorrectContext wrapper
     .setActorDispatcher(
         '/.ghost/activitypub/users/{identifier}',
-        spanWrapper((ctx: RequestContext<ContextData>, identifier: string) => {
+        spanWrapper((ctx: FedifyRequestContext, identifier: string) => {
             const actorDispatcher = container.resolve('actorDispatcher');
             return actorDispatcher(ctx, identifier);
         }),
@@ -383,7 +383,7 @@ globalFedify
             return followersDispatcher(ctx, identifier);
         }),
     )
-    .setCounter((ctx: RequestContext<ContextData>, identifier: string) => {
+    .setCounter((ctx: FedifyRequestContext, identifier: string) => {
         const followersCounter = container.resolve('followersCounter');
         return followersCounter(ctx, identifier);
     });
@@ -393,7 +393,7 @@ globalFedify
         '/.ghost/activitypub/following/{identifier}',
         spanWrapper(
             (
-                ctx: RequestContext<ContextData>,
+                ctx: FedifyRequestContext,
                 identifier: string,
                 cursor: string | null,
             ) => {
@@ -404,7 +404,7 @@ globalFedify
             },
         ),
     )
-    .setCounter((ctx: RequestContext<ContextData>, identifier: string) => {
+    .setCounter((ctx: FedifyRequestContext, identifier: string) => {
         const followingCounter = container.resolve('followingCounter');
         return followingCounter(ctx, identifier);
     })
@@ -415,7 +415,7 @@ globalFedify
         '/.ghost/activitypub/outbox/{identifier}',
         spanWrapper(
             (
-                ctx: RequestContext<ContextData>,
+                ctx: FedifyRequestContext,
                 identifier: string,
                 cursor: string | null,
             ) => {
@@ -424,7 +424,7 @@ globalFedify
             },
         ),
     )
-    .setCounter((ctx: RequestContext<ContextData>) => {
+    .setCounter((ctx: FedifyRequestContext) => {
         const outboxCounter = container.resolve('outboxCounter');
         return outboxCounter(ctx);
     })
@@ -491,13 +491,11 @@ globalFedify.setObjectDispatcher(
 globalFedify.setObjectDispatcher(
     Delete,
     '/.ghost/activitypub/delete/{id}',
-    spanWrapper(
-        (ctx: RequestContext<ContextData>, data: Record<'id', string>) => {
-            const deleteDispatcher =
-                container.resolve<DeleteDispatcher>('deleteDispatcher');
-            return deleteDispatcher.dispatch(ctx, data);
-        },
-    ),
+    spanWrapper((ctx: FedifyRequestContext, data: Record<'id', string>) => {
+        const deleteDispatcher =
+            container.resolve<DeleteDispatcher>('deleteDispatcher');
+        return deleteDispatcher.dispatch(ctx, data);
+    }),
 );
 globalFedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',

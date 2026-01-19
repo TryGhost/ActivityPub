@@ -19,7 +19,6 @@ import {
     Note,
     Person,
     type Protocol,
-    type RequestContext,
     Undo,
     Update,
     verifyObject,
@@ -29,7 +28,7 @@ import * as Sentry from '@sentry/node';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
-import type { ContextData } from '@/app';
+import type { ContextData, FedifyRequestContext } from '@/app';
 import { ACTIVITYPUB_COLLECTION_PAGE_SIZE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
@@ -48,7 +47,7 @@ export const actorDispatcher = (
     accountService: AccountService,
 ) =>
     async function actorDispatcher(
-        ctx: RequestContext<ContextData>,
+        ctx: FedifyRequestContext,
         identifier: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
@@ -803,7 +802,7 @@ export function createFollowingDispatcher(
     accountService: AccountService,
 ) {
     return async function dispatchFollowing(
-        ctx: RequestContext<ContextData>,
+        ctx: FedifyRequestContext,
         _handle: string,
         cursor: string | null,
     ) {
@@ -854,7 +853,7 @@ export function createFollowersCounter(
     accountService: AccountService,
 ) {
     return async function countFollowers(
-        ctx: RequestContext<ContextData>,
+        ctx: FedifyRequestContext,
         _handle: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
@@ -876,7 +875,7 @@ export function createFollowingCounter(
     accountService: AccountService,
 ) {
     return async function countFollowing(
-        ctx: RequestContext<ContextData>,
+        ctx: FedifyRequestContext,
         _handle: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
@@ -903,7 +902,7 @@ export function createOutboxDispatcher(
     siteService: SiteService,
 ) {
     return async function outboxDispatcher(
-        ctx: RequestContext<ContextData>,
+        ctx: FedifyRequestContext,
         _handle: string,
         cursor: string | null,
     ) {
@@ -953,7 +952,7 @@ export function createOutboxCounter(
     accountService: AccountService,
     postService: PostService,
 ) {
-    return async function countOutboxItems(ctx: RequestContext<ContextData>) {
+    return async function countOutboxItems(ctx: FedifyRequestContext) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (!site) {
             throw new Error(`Site not found for host: ${ctx.host}`);
@@ -970,7 +969,7 @@ export function outboxFirstCursor() {
 }
 
 export async function likedDispatcher(
-    _ctx: RequestContext<ContextData>,
+    _ctx: FedifyRequestContext,
     _handle: string,
     _cursor: string | null,
 ) {
@@ -981,7 +980,7 @@ export async function likedDispatcher(
 }
 
 export async function likedCounter(
-    _ctx: RequestContext<ContextData>,
+    _ctx: FedifyRequestContext,
     _handle: string,
 ) {
     return 0;
@@ -992,7 +991,7 @@ export function likedFirstCursor() {
 }
 
 export async function articleDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Article, data);
@@ -1004,7 +1003,7 @@ export async function articleDispatcher(
 }
 
 export async function followDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Follow, data);
@@ -1016,7 +1015,7 @@ export async function followDispatcher(
 }
 
 export async function acceptDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Accept, data);
@@ -1028,7 +1027,7 @@ export async function acceptDispatcher(
 }
 
 export async function createDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Create, data);
@@ -1040,7 +1039,7 @@ export async function createDispatcher(
 }
 
 export async function updateDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Update, data);
@@ -1052,7 +1051,7 @@ export async function updateDispatcher(
 }
 
 export async function noteDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Note, data);
@@ -1064,7 +1063,7 @@ export async function noteDispatcher(
 }
 
 export async function likeDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Like, data);
@@ -1076,7 +1075,7 @@ export async function likeDispatcher(
 }
 
 export async function announceDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Announce, data);
@@ -1088,7 +1087,7 @@ export async function announceDispatcher(
 }
 
 export async function undoDispatcher(
-    ctx: RequestContext<ContextData>,
+    ctx: FedifyRequestContext,
     data: Record<'id', string>,
 ) {
     const id = ctx.getObjectUri(Undo, data);
@@ -1099,7 +1098,7 @@ export async function undoDispatcher(
     return Undo.fromJsonLd(exists);
 }
 
-export async function nodeInfoDispatcher(_ctx: RequestContext<ContextData>) {
+export async function nodeInfoDispatcher(_ctx: FedifyRequestContext) {
     return {
         software: {
             name: 'ghost',
