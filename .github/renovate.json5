@@ -14,6 +14,7 @@
   // - this doesn't restrict when the PRs are opened by Renovate, only when they are merged
   // - this works only if we're using Renovate automerge over platform automerge (Github)
   "platformAutomerge": false,
+  "schedule": ["* 8-11 * * 1,2,3,4"],
   "automergeSchedule": ["* 8-11 * * 1,2,3,4"],
   // Automerge lock file updates, whenever available
   // Note: the base config file has this enabled, but on a weekly basis only
