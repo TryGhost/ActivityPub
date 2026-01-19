@@ -3,19 +3,18 @@ import {
     Object as APObject,
     type Article,
     type Collection,
-    type Context,
     isActor,
     lookupWebFinger,
     type Note,
 } from '@fedify/fedify';
 
-import type { ContextData } from '@/app';
+import type { FedifyContext } from '@/app';
 import { error, ok, type Result } from '@/core/result';
 
 export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
 export async function lookupActor(
-    ctx: Context<ContextData>,
+    ctx: FedifyContext,
     url: string,
 ): Promise<Actor | null> {
     try {
@@ -51,7 +50,7 @@ export async function lookupActor(
 }
 
 export async function lookupObject(
-    ctx: Context<ContextData>,
+    ctx: FedifyContext,
     identifier: string | URL,
 ) {
     let documentLoader = null;
@@ -69,7 +68,7 @@ export async function lookupObject(
 }
 
 export async function lookupActorProfile(
-    ctx: Context<ContextData>,
+    ctx: FedifyContext,
     handle: string,
 ): Promise<Result<URL, LookupError>> {
     try {

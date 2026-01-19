@@ -1,16 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-    Actor,
-    Object as APObject,
-    Context,
-    Federation,
-} from '@fedify/fedify';
+import type { Actor, Object as APObject, Federation } from '@fedify/fedify';
 import { Follow, isActor, Undo } from '@fedify/fedify';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import type { AppContext, ContextData } from '@/app';
+import type { AppContext, ContextData, FedifyContext } from '@/app';
 import { error, ok } from '@/core/result';
 import { FollowController } from '@/http/api/follow.controller';
 import * as lookupHelpers from '@/lookup-helpers';
@@ -97,7 +92,7 @@ describe('FollowController', () => {
     let followerAccount: Account;
     let externalAccountToFollow: Account;
     let internalAccountToFollow: Account;
-    let mockApCtx: Context<ContextData>;
+    let mockApCtx: FedifyContext;
     let mockGlobalDb: {
         get: ReturnType<typeof vi.fn>;
         set: ReturnType<typeof vi.fn>;
@@ -183,7 +178,7 @@ describe('FollowController', () => {
                 globaldb: mockGlobalDb,
                 logger: mockLogger,
             },
-        } as unknown as Context<ContextData>;
+        } as unknown as FedifyContext;
 
         fedify = {
             createContext: vi.fn().mockReturnValue(mockApCtx),

@@ -9,7 +9,6 @@ import {
     Accept,
     Announce,
     Article,
-    type Context,
     Create,
     Follow,
     Group,
@@ -28,7 +27,7 @@ import * as Sentry from '@sentry/node';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
-import type { ContextData, FedifyRequestContext } from '@/app';
+import type { FedifyContext, FedifyRequestContext } from '@/app';
 import { ACTIVITYPUB_COLLECTION_PAGE_SIZE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import {
@@ -88,10 +87,7 @@ export const keypairDispatcher = (
     siteService: SiteService,
     accountService: AccountService,
 ) =>
-    async function keypairDispatcher(
-        ctx: Context<ContextData>,
-        identifier: string,
-    ) {
+    async function keypairDispatcher(ctx: FedifyContext, identifier: string) {
         const site = await siteService.getSiteByHost(ctx.host);
         if (site === null) return [];
 
@@ -125,10 +121,7 @@ export const keypairDispatcher = (
     };
 
 export function createAcceptHandler(accountService: AccountService) {
-    return async function handleAccept(
-        ctx: Context<ContextData>,
-        accept: Accept,
-    ) {
+    return async function handleAccept(ctx: FedifyContext, accept: Accept) {
         ctx.data.logger.info('Handling Accept');
         const parsed = ctx.parseUri(accept.objectId);
         ctx.data.logger.info('Parsed accept object', { parsed });
@@ -185,7 +178,7 @@ export function createAcceptHandler(accountService: AccountService) {
 }
 
 export async function handleAnnouncedCreate(
-    ctx: Context<ContextData>,
+    ctx: FedifyContext,
     announce: Announce,
     siteService: SiteService,
     accountService: AccountService,
@@ -378,7 +371,7 @@ export const createUndoHandler = (
     postRepository: KnexPostRepository,
     postService: PostService,
 ) =>
-    async function handleUndo(ctx: Context<ContextData>, undo: Undo) {
+    async function handleUndo(ctx: FedifyContext, undo: Undo) {
         ctx.data.logger.info('Handling Undo');
 
         if (!undo.id) {
@@ -483,7 +476,7 @@ export function createAnnounceHandler(
     postRepository: KnexPostRepository,
 ) {
     return async function handleAnnounce(
-        ctx: Context<ContextData>,
+        ctx: FedifyContext,
         announce: Announce,
     ) {
         ctx.data.logger.info('Handling Announce');
@@ -644,7 +637,7 @@ export function createLikeHandler(
     postRepository: KnexPostRepository,
     postService: PostService,
 ) {
-    return async function handleLike(ctx: Context<ContextData>, like: Like) {
+    return async function handleLike(ctx: FedifyContext, like: Like) {
         ctx.data.logger.info('Handling Like');
 
         // Validate like
@@ -761,10 +754,7 @@ export function createLikeHandler(
     };
 }
 
-export async function inboxErrorHandler(
-    ctx: Context<ContextData>,
-    error: unknown,
-) {
+export async function inboxErrorHandler(ctx: FedifyContext, error: unknown) {
     if (process.env.USE_MQ !== 'true') {
         Sentry.captureException(error);
     }
@@ -779,7 +769,7 @@ export function createFollowersDispatcher(
     followersService: FollowersService,
 ) {
     return async function dispatchFollowers(
-        ctx: Context<ContextData>,
+        ctx: FedifyContext,
         _handle: string,
     ) {
         const site = await siteService.getSiteByHost(ctx.host);
