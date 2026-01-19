@@ -8,14 +8,16 @@ import type {
     RequestContext,
 } from '@fedify/fedify';
 
-import type { AccountEntity } from '@/account/account.entity';
+import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { FedifyRequestContext } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
     ACTOR_DEFAULT_HANDLE,
 } from '@/constants';
+import { error, ok } from '@/core/result';
 import {
+    actorDispatcher,
     createOutboxCounter,
     createOutboxDispatcher,
     likedDispatcher,
@@ -25,6 +27,7 @@ import {
     buildAnnounceActivityForPost,
     buildCreateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
+import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
 import type { PostService } from '@/post/post.service';
 import type { Site, SiteService } from '@/site/site.service';
@@ -381,6 +384,149 @@ describe('dispatchers', () => {
                     localComments: 0,
                 },
             });
+        });
+    });
+
+    describe('actorDispatcher', () => {
+        const mockHostDataContextLoader = {
+            loadDataForHost: vi.fn(),
+        } as unknown as HostDataContextLoader;
+
+        const mockAccountForActor: Account = {
+            id: 1,
+            uuid: 'test-uuid',
+            username: 'testuser',
+            name: 'Test User',
+            bio: 'Test bio',
+            url: new URL('https://example.com/user/testuser'),
+            avatarUrl: new URL('https://example.com/avatar.jpg'),
+            bannerImageUrl: new URL('https://example.com/banner.jpg'),
+            apId: new URL('https://example.com/user/testuser'),
+            apInbox: new URL('https://example.com/user/testuser/inbox'),
+            apOutbox: new URL('https://example.com/user/testuser/outbox'),
+            apFollowing: new URL('https://example.com/user/testuser/following'),
+            apFollowers: new URL('https://example.com/user/testuser/followers'),
+            apLiked: new URL('https://example.com/user/testuser/liked'),
+            isInternal: true,
+            customFields: null,
+        } as Account;
+
+        let actorCtx: FedifyRequestContext;
+
+        beforeEach(() => {
+            actorCtx = {
+                data: {
+                    logger: {
+                        error: vi.fn(),
+                    },
+                },
+                host: 'example.com',
+                getActorKeyPairs: vi.fn().mockResolvedValue([]),
+            } as unknown as FedifyRequestContext;
+        });
+
+        it('returns a Person when host data is found', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForActor,
+                }),
+            );
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+
+            expect(result).not.toBeNull();
+            expect(result?.id?.href).toBe('https://example.com/user/testuser');
+            expect(result?.name?.toString()).toBe('Test User');
+            expect(result?.preferredUsername?.toString()).toBe('testuser');
+            expect(result?.summary?.toString()).toBe('Test bio');
+            expect(
+                mockHostDataContextLoader.loadDataForHost,
+            ).toHaveBeenCalledWith('example.com');
+        });
+
+        it('returns a Person without icon when avatarUrl is null', async () => {
+            const accountWithoutAvatar = {
+                ...mockAccountForActor,
+                avatarUrl: null,
+            } as Account;
+
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: accountWithoutAvatar,
+                }),
+            );
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+
+            expect(result).not.toBeNull();
+            expect(result?.iconId).toBeNull();
+        });
+
+        it('returns a Person without image when bannerImageUrl is null', async () => {
+            const accountWithoutBanner = {
+                ...mockAccountForActor,
+                bannerImageUrl: null,
+            } as Account;
+
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: accountWithoutBanner,
+                }),
+            );
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+
+            expect(result).not.toBeNull();
+            expect(result?.imageId).toBeNull();
+        });
+
+        it('returns null when site is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(error('site-not-found'));
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null when account is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(error('account-not-found'));
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null when multiple users are found for the site', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(error('multiple-users-for-site'));
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+
+            expect(result).toBeNull();
+            expect(actorCtx.data.logger.info).toHaveBeenCalledWith(
+                'Multiple users found for {host}',
+                { host: 'example.com' },
+            );
         });
     });
 });

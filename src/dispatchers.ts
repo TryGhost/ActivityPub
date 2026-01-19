@@ -35,46 +35,66 @@ import {
     buildCreateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
 import { isFollowedByDefaultSiteAccount } from '@/helpers/activitypub/actor';
+import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
 import { OutboxType, type Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { SiteService } from '@/site/site.service';
 
-export const actorDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
     async function actorDispatcher(
         ctx: FedifyRequestContext,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return null;
+        const result = await hostDataContextLoader.loadDataForHost(ctx.host);
 
-        const account = await accountService.getDefaultAccountForSite(site);
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return null;
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return null;
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    return null;
+                default:
+                    exhaustiveCheck(error);
+            }
+        }
+
+        const { account } = getValue(result);
 
         const person = new Person({
-            id: new URL(account.ap_id),
+            id: new URL(account.apId),
             name: account.name,
             summary: account.bio,
             preferredUsername: account.username,
-            icon: account.avatar_url
+            icon: account.avatarUrl
                 ? new Image({
-                      url: new URL(account.avatar_url),
+                      url: new URL(account.avatarUrl),
                   })
                 : null,
-            image: account.banner_image_url
+            image: account.bannerImageUrl
                 ? new Image({
-                      url: new URL(account.banner_image_url),
+                      url: new URL(account.bannerImageUrl),
                   })
                 : null,
-            inbox: new URL(account.ap_inbox_url),
-            outbox: new URL(account.ap_outbox_url),
-            following: new URL(account.ap_following_url),
-            followers: new URL(account.ap_followers_url),
-            liked: new URL(account.ap_liked_url),
-            url: new URL(account.url || account.ap_id),
+            inbox: account.apInbox,
+            outbox: account.apOutbox,
+            following: account.apFollowing,
+            followers: account.apFollowers,
+            liked: account.apLiked,
+            url: account.url || account.apId,
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
