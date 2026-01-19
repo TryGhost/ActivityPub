@@ -568,7 +568,6 @@ export const createUndoHandler = (
     };
 
 export function createAnnounceHandler(
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
     postRepository: KnexPostRepository,
