@@ -11,6 +11,7 @@ import {
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
+import type { FollowersService } from '@/activitypub/followers.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
@@ -19,6 +20,7 @@ import {
 import { error, ok } from '@/core/result';
 import {
     actorDispatcher,
+    createFollowersDispatcher,
     createOutboxCounter,
     createOutboxDispatcher,
     keypairDispatcher,
@@ -696,6 +698,125 @@ describe('dispatchers', () => {
             expect(result).toHaveLength(1);
             expect(result[0].publicKey).toBeInstanceOf(CryptoKey);
             expect(result[0].privateKey).toBeInstanceOf(CryptoKey);
+        });
+    });
+
+    describe('createFollowersDispatcher', () => {
+        const mockHostDataContextLoaderForFollowers = {
+            loadDataForHost: vi.fn(),
+        } as unknown as HostDataContextLoader;
+
+        const mockFollowersService = {
+            getFollowers: vi.fn(),
+        } as unknown as FollowersService;
+
+        const mockAccountForFollowers: Account = {
+            id: 1,
+            uuid: 'test-uuid',
+            username: 'testuser',
+            name: 'Test User',
+            bio: 'Test bio',
+            url: new URL('https://example.com/user/testuser'),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            apId: new URL('https://example.com/user/testuser'),
+            apInbox: new URL('https://example.com/user/testuser/inbox'),
+            apOutbox: new URL('https://example.com/user/testuser/outbox'),
+            apFollowing: new URL('https://example.com/user/testuser/following'),
+            apFollowers: new URL('https://example.com/user/testuser/followers'),
+            apLiked: new URL('https://example.com/user/testuser/liked'),
+            isInternal: true,
+            customFields: null,
+        } as Account;
+
+        let followersCtx: FedifyContext;
+
+        beforeEach(() => {
+            followersCtx = {
+                data: {
+                    logger: {
+                        info: vi.fn(),
+                        error: vi.fn(),
+                    },
+                },
+                host: 'example.com',
+            } as unknown as FedifyContext;
+        });
+
+        it('returns followers when host data is found', async () => {
+            const mockFollowers = [
+                {
+                    id: new URL('https://remote.com/user/follower1'),
+                    inboxId: new URL('https://remote.com/user/follower1/inbox'),
+                    endpoints: { sharedInbox: null },
+                },
+            ];
+
+            vi.mocked(
+                mockHostDataContextLoaderForFollowers.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: mockAccountForFollowers,
+                }),
+            );
+            vi.mocked(mockFollowersService.getFollowers).mockResolvedValue(
+                mockFollowers,
+            );
+
+            const dispatcher = createFollowersDispatcher(
+                mockFollowersService,
+                mockHostDataContextLoaderForFollowers,
+            );
+            const result = await dispatcher(followersCtx, 'testuser');
+
+            expect(result).toEqual({ items: mockFollowers });
+            expect(mockFollowersService.getFollowers).toHaveBeenCalledWith(1);
+        });
+
+        it('throws error when site is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForFollowers.loadDataForHost,
+            ).mockResolvedValue(error('site-not-found'));
+
+            const dispatcher = createFollowersDispatcher(
+                mockFollowersService,
+                mockHostDataContextLoaderForFollowers,
+            );
+
+            await expect(dispatcher(followersCtx, 'testuser')).rejects.toThrow(
+                'Site not found for host: example.com',
+            );
+        });
+
+        it('throws error when account is not found', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForFollowers.loadDataForHost,
+            ).mockResolvedValue(error('account-not-found'));
+
+            const dispatcher = createFollowersDispatcher(
+                mockFollowersService,
+                mockHostDataContextLoaderForFollowers,
+            );
+
+            await expect(dispatcher(followersCtx, 'testuser')).rejects.toThrow(
+                'Site not found for host: example.com',
+            );
+        });
+
+        it('throws error when multiple users are found for the site', async () => {
+            vi.mocked(
+                mockHostDataContextLoaderForFollowers.loadDataForHost,
+            ).mockResolvedValue(error('multiple-users-for-site'));
+
+            const dispatcher = createFollowersDispatcher(
+                mockFollowersService,
+                mockHostDataContextLoaderForFollowers,
+            );
+
+            await expect(dispatcher(followersCtx, 'testuser')).rejects.toThrow(
+                'Site not found for host: example.com',
+            );
         });
     });
 });

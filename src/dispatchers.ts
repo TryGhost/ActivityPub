@@ -24,7 +24,6 @@ import {
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
@@ -108,9 +107,7 @@ export const keypairDispatcher = (
     hostDataContextLoader: HostDataContextLoader,
 ) =>
     async function keypairDispatcher(ctx: FedifyContext, identifier: string) {
-        const hostData = await hostDataContextLoader.loadDataForHost(
-            ctx.host,
-        );
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
 
         if (isError(hostData)) {
             const error = getError(hostData);
@@ -860,20 +857,39 @@ export async function inboxErrorHandler(ctx: FedifyContext, error: unknown) {
 }
 
 export function createFollowersDispatcher(
-    siteService: SiteService,
-    accountRepository: KnexAccountRepository,
     followersService: FollowersService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function dispatchFollowers(
         ctx: FedifyContext,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        const account = await accountRepository.getBySite(site);
+        const { account } = getValue(hostData);
 
         const followers = await followersService.getFollowers(account.id);
 
