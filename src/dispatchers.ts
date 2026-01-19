@@ -47,10 +47,10 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
         ctx: FedifyRequestContext,
         identifier: string,
     ) {
-        const result = await hostDataContextLoader.loadDataForHost(ctx.host);
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
 
-        if (isError(result)) {
-            const error = getError(result);
+        if (isError(hostData)) {
+            const error = getError(hostData);
             switch (error) {
                 case 'site-not-found':
                     ctx.data.logger.error('Site not found for {host}', {
@@ -72,7 +72,7 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
             }
         }
 
-        const { account } = getValue(result);
+        const { account } = getValue(hostData);
 
         const person = new Person({
             id: new URL(account.apId),
@@ -108,12 +108,12 @@ export const keypairDispatcher = (
     hostDataContextLoader: HostDataContextLoader,
 ) =>
     async function keypairDispatcher(ctx: FedifyContext, identifier: string) {
-        const accountResult = await hostDataContextLoader.loadDataForHost(
+        const hostData = await hostDataContextLoader.loadDataForHost(
             ctx.host,
         );
 
-        if (isError(accountResult)) {
-            const error = getError(accountResult);
+        if (isError(hostData)) {
+            const error = getError(hostData);
             switch (error) {
                 case 'site-not-found':
                     ctx.data.logger.error(
@@ -144,12 +144,12 @@ export const keypairDispatcher = (
             }
         }
 
-        const { account } = getValue(accountResult);
+        const { account } = getValue(hostData);
 
-        const keyPairResult = await accountService.getKeyPair(account.id);
+        const keyPair = await accountService.getKeyPair(account.id);
 
-        if (isError(keyPairResult)) {
-            const error = getError(keyPairResult);
+        if (isError(keyPair)) {
+            const error = getError(keyPair);
             switch (error) {
                 case 'account-not-found':
                     ctx.data.logger.error(
@@ -173,7 +173,7 @@ export const keypairDispatcher = (
             }
         }
 
-        const { publicKey, privateKey } = getValue(keyPairResult);
+        const { publicKey, privateKey } = getValue(keyPair);
 
         try {
             return [
