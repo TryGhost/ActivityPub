@@ -682,12 +682,6 @@ export function createAnnounceHandler(
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
-        const site = await siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
-
         // This will save the account if it doesn't already exist
         const senderAccount = await accountService.getByApId(sender.id);
 
