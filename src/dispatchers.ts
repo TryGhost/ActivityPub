@@ -274,6 +274,7 @@ export async function handleAnnouncedCreate(
     }
 
     const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+
     if (isError(hostData)) {
         const error = getError(hostData);
         switch (error) {
@@ -913,28 +914,27 @@ export function createFollowingDispatcher(
         const offset = Number.parseInt(cursor ?? '0', 10);
         let nextCursor: string | null = null;
 
-        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+        const host = ctx.request.headers.get('host')!;
+        const hostData = await hostDataContextLoader.loadDataForHost(host);
 
         if (isError(hostData)) {
             const error = getError(hostData);
             switch (error) {
                 case 'site-not-found':
                     ctx.data.logger.error('Site not found for {host}', {
-                        host: ctx.host,
+                        host,
                     });
-                    throw new Error(`Site not found for host: ${ctx.host}`);
+                    throw new Error(`Site not found for host: ${host}`);
                 case 'account-not-found':
                     ctx.data.logger.error('Account not found for {host}', {
-                        host: ctx.host,
+                        host,
                     });
-                    throw new Error(`Account not found for host: ${ctx.host}`);
+                    throw new Error(`Account not found for host: ${host}`);
                 case 'multiple-users-for-site':
                     ctx.data.logger.error('Multiple users found for {host}', {
-                        host: ctx.host,
+                        host,
                     });
-                    throw new Error(
-                        `Multiple users found for host: ${ctx.host}`,
-                    );
+                    throw new Error(`Multiple users found for host: ${host}`);
                 default:
                     exhaustiveCheck(error);
             }
@@ -1062,28 +1062,27 @@ export function createOutboxDispatcher(
     ) {
         ctx.data.logger.info('Outbox Dispatcher');
 
-        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+        const host = ctx.request.headers.get('host')!;
+        const hostData = await hostDataContextLoader.loadDataForHost(host);
 
         if (isError(hostData)) {
             const error = getError(hostData);
             switch (error) {
                 case 'site-not-found':
                     ctx.data.logger.error('Site not found for {host}', {
-                        host: ctx.host,
+                        host,
                     });
-                    throw new Error(`Site not found for host: ${ctx.host}`);
+                    throw new Error(`Site not found for host: ${host}`);
                 case 'account-not-found':
                     ctx.data.logger.error('Account not found for {host}', {
-                        host: ctx.host,
+                        host,
                     });
-                    throw new Error(`Account not found for host: ${ctx.host}`);
+                    throw new Error(`Account not found for host: ${host}`);
                 case 'multiple-users-for-site':
                     ctx.data.logger.error('Multiple users found for {host}', {
-                        host: ctx.host,
+                        host,
                     });
-                    throw new Error(
-                        `Multiple users found for host: ${ctx.host}`,
-                    );
+                    throw new Error(`Multiple users found for host: ${host}`);
                 default:
                     exhaustiveCheck(error);
             }

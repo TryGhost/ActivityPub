@@ -116,6 +116,11 @@ describe('dispatchers', () => {
                     },
                 },
                 host: 'example.com',
+                request: {
+                    headers: {
+                        get: vi.fn().mockReturnValue('example.com'),
+                    },
+                },
                 getObjectUri: vi
                     .fn()
                     .mockReturnValue(new URL('https://example.com/object/123')),
@@ -908,7 +913,7 @@ describe('dispatchers', () => {
             );
 
             await expect(dispatcher(followersCtx, 'testuser')).rejects.toThrow(
-                'Site not found for host: example.com',
+                'Account not found for host: example.com',
             );
         });
 
@@ -923,7 +928,7 @@ describe('dispatchers', () => {
             );
 
             await expect(dispatcher(followersCtx, 'testuser')).rejects.toThrow(
-                'Site not found for host: example.com',
+                'Multiple users found for host: example.com',
             );
         });
     });
@@ -968,6 +973,11 @@ describe('dispatchers', () => {
                     },
                 },
                 host: 'example.com',
+                request: {
+                    headers: {
+                        get: vi.fn().mockReturnValue('example.com'),
+                    },
+                },
             } as unknown as FedifyRequestContext;
         });
 
