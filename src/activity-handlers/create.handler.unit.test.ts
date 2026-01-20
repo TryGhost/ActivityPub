@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type Context, type Create, PUBLIC_COLLECTION } from '@fedify/fedify';
+import { type Create, PUBLIC_COLLECTION } from '@fedify/fedify';
 
-import type { ContextData } from '@/app';
+import type { FedifyContext } from '@/app';
 import { ok } from '@/core/result';
 import {
     Audience,
@@ -18,7 +18,7 @@ import { CreateHandler } from './create.handler';
 describe('CreateHandler', () => {
     let handler: CreateHandler;
     let mockPostService: PostService;
-    let mockContext: Context<ContextData>;
+    let mockContext: FedifyContext;
     let mockLogger: {
         info: ReturnType<typeof vi.fn>;
         error: ReturnType<typeof vi.fn>;
@@ -49,7 +49,7 @@ describe('CreateHandler', () => {
                 globaldb: mockGlobalDb,
             },
             parseUri: vi.fn((url) => ({ type: 'object', id: url?.href })),
-        } as unknown as Context<ContextData>;
+        } as unknown as FedifyContext;
 
         handler = new CreateHandler(mockPostService);
     });

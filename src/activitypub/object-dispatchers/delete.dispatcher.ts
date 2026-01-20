@@ -1,12 +1,9 @@
-import { Delete, type RequestContext } from '@fedify/fedify';
+import { Delete } from '@fedify/fedify';
 
-import type { ContextData } from '@/app';
+import type { FedifyRequestContext } from '@/app';
 
 export class DeleteDispatcher {
-    async dispatch(
-        ctx: RequestContext<ContextData>,
-        data: Record<'id', string>,
-    ) {
+    async dispatch(ctx: FedifyRequestContext, data: Record<'id', string>) {
         const id = ctx.getObjectUri(Delete, data);
         const exists = await ctx.data.globaldb.get([id.href]);
         if (!exists) {
