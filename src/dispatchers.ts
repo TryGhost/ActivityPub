@@ -24,7 +24,6 @@ import {
 } from '@fedify/fedify';
 import * as Sentry from '@sentry/node';
 
-import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
@@ -35,46 +34,65 @@ import {
     buildCreateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
 import { isFollowedByDefaultSiteAccount } from '@/helpers/activitypub/actor';
+import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
 import { OutboxType, type Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
-import type { SiteService } from '@/site/site.service';
 
-export const actorDispatcher = (
-    siteService: SiteService,
-    accountService: AccountService,
-) =>
+export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
     async function actorDispatcher(
         ctx: FedifyRequestContext,
         identifier: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return null;
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
 
-        const account = await accountService.getDefaultAccountForSite(site);
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return null;
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    return null;
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    return null;
+                default:
+                    exhaustiveCheck(error);
+            }
+        }
+
+        const { account } = getValue(hostData);
 
         const person = new Person({
-            id: new URL(account.ap_id),
+            id: new URL(account.apId),
             name: account.name,
             summary: account.bio,
             preferredUsername: account.username,
-            icon: account.avatar_url
+            icon: account.avatarUrl
                 ? new Image({
-                      url: new URL(account.avatar_url),
+                      url: new URL(account.avatarUrl),
                   })
                 : null,
-            image: account.banner_image_url
+            image: account.bannerImageUrl
                 ? new Image({
-                      url: new URL(account.banner_image_url),
+                      url: new URL(account.bannerImageUrl),
                   })
                 : null,
-            inbox: new URL(account.ap_inbox_url),
-            outbox: new URL(account.ap_outbox_url),
-            following: new URL(account.ap_following_url),
-            followers: new URL(account.ap_followers_url),
-            liked: new URL(account.ap_liked_url),
-            url: new URL(account.url || account.ap_id),
+            inbox: account.apInbox,
+            outbox: account.apOutbox,
+            following: account.apFollowing,
+            followers: account.apFollowers,
+            liked: account.apLiked,
+            url: account.url || account.apId,
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),
@@ -84,38 +102,101 @@ export const actorDispatcher = (
     };
 
 export const keypairDispatcher = (
-    siteService: SiteService,
     accountService: AccountService,
+    hostDataContextLoader: HostDataContextLoader,
 ) =>
     async function keypairDispatcher(ctx: FedifyContext, identifier: string) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (site === null) return [];
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
 
-        const account = await accountService.getDefaultAccountForSite(site);
-
-        if (!account.ap_public_key) {
-            return [];
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error(
+                        'Site not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                            identifier,
+                        },
+                    );
+                    return [];
+                case 'account-not-found':
+                    ctx.data.logger.error(
+                        'Account not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                            identifier,
+                        },
+                    );
+                    return [];
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error(
+                        'Multiple users found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                            identifier,
+                        },
+                    );
+                    return [];
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        if (!account.ap_private_key) {
-            return [];
+        const { account } = getValue(hostData);
+
+        const keyPair = await accountService.getKeyPair(account.id);
+
+        if (isError(keyPair)) {
+            const error = getError(keyPair);
+            switch (error) {
+                case 'account-not-found':
+                    ctx.data.logger.error(
+                        'Account not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                            identifier,
+                        },
+                    );
+                    return [];
+                case 'key-pair-not-found':
+                    ctx.data.logger.error(
+                        'Key pair not found for {host} (identifier: {identifier})',
+                        {
+                            host: ctx.host,
+                            identifier,
+                        },
+                    );
+                    return [];
+                default:
+                    exhaustiveCheck(error);
+            }
         }
+
+        const { publicKey, privateKey } = getValue(keyPair);
 
         try {
             return [
                 {
                     publicKey: await importJwk(
-                        JSON.parse(account.ap_public_key) as JsonWebKey,
+                        JSON.parse(publicKey) as JsonWebKey,
                         'public',
                     ),
                     privateKey: await importJwk(
-                        JSON.parse(account.ap_private_key) as JsonWebKey,
+                        JSON.parse(privateKey) as JsonWebKey,
                         'private',
                     ),
                 },
             ];
-        } catch (_err) {
-            ctx.data.logger.warn(`Could not parse keypair for ${identifier}`);
+        } catch (error) {
+            ctx.data.logger.error(
+                'Could not parse keypair for {host} (identifier: {identifier}): {error}',
+                {
+                    host: ctx.host,
+                    identifier,
+                    error,
+                },
+            );
             return [];
         }
     };
@@ -180,9 +261,9 @@ export function createAcceptHandler(accountService: AccountService) {
 export async function handleAnnouncedCreate(
     ctx: FedifyContext,
     announce: Announce,
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     ctx.data.logger.info('Handling Announced Create');
 
@@ -196,11 +277,32 @@ export async function handleAnnouncedCreate(
         return;
     }
 
-    const site = await siteService.getSiteByHost(ctx.host);
+    const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
 
-    if (!site) {
-        throw new Error(`Site not found for host: ${ctx.host}`);
+    if (isError(hostData)) {
+        const error = getError(hostData);
+        switch (error) {
+            case 'site-not-found':
+                ctx.data.logger.error('Site not found for {host}', {
+                    host: ctx.host,
+                });
+                throw new Error(`Site not found for host: ${ctx.host}`);
+            case 'account-not-found':
+                ctx.data.logger.error('Account not found for {host}', {
+                    host: ctx.host,
+                });
+                throw new Error(`Account not found for host: ${ctx.host}`);
+            case 'multiple-users-for-site':
+                ctx.data.logger.error('Multiple users found for {host}', {
+                    host: ctx.host,
+                });
+                throw new Error(`Multiple users found for host: ${ctx.host}`);
+            default:
+                exhaustiveCheck(error);
+        }
     }
+
+    const { site } = getValue(hostData);
 
     // Validate that the group is followed
     if (
@@ -470,10 +572,10 @@ export const createUndoHandler = (
     };
 
 export function createAnnounceHandler(
-    siteService: SiteService,
     accountService: AccountService,
     postService: PostService,
     postRepository: KnexPostRepository,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function handleAnnounce(
         ctx: FedifyContext,
@@ -504,9 +606,9 @@ export function createAnnounceHandler(
             return handleAnnouncedCreate(
                 ctx,
                 announce,
-                siteService,
                 accountService,
                 postService,
+                hostDataContextLoader,
             );
         }
 
@@ -579,12 +681,6 @@ export function createAnnounceHandler(
         }
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
-
-        const site = await siteService.getSiteByHost(ctx.host);
-
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
-        }
 
         // This will save the account if it doesn't already exist
         const senderAccount = await accountService.getByApId(sender.id);
@@ -764,20 +860,41 @@ export async function inboxErrorHandler(ctx: FedifyContext, error: unknown) {
 }
 
 export function createFollowersDispatcher(
-    siteService: SiteService,
-    accountRepository: KnexAccountRepository,
     followersService: FollowersService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function dispatchFollowers(
         ctx: FedifyContext,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Account not found for host: ${ctx.host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(
+                        `Multiple users found for host: ${ctx.host}`,
+                    );
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        const account = await accountRepository.getBySite(site);
+        const { account } = getValue(hostData);
 
         const followers = await followersService.getFollowers(account.id);
 
@@ -788,8 +905,8 @@ export function createFollowersDispatcher(
 }
 
 export function createFollowingDispatcher(
-    siteService: SiteService,
     accountService: AccountService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function dispatchFollowing(
         ctx: FedifyRequestContext,
@@ -802,26 +919,40 @@ export function createFollowingDispatcher(
         let nextCursor: string | null = null;
 
         const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
+        const hostData = await hostDataContextLoader.loadDataForHost(host);
 
-        if (!site) {
-            throw new Error(`Site not found for host: ${host}`);
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host,
+                    });
+                    throw new Error(`Site not found for host: ${host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host,
+                    });
+                    throw new Error(`Account not found for host: ${host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host,
+                    });
+                    throw new Error(`Multiple users found for host: ${host}`);
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount =
-            await accountService.getDefaultAccountForSite(site);
+        const { account } = getValue(hostData);
 
-        const results = await accountService.getFollowingAccounts(
-            siteDefaultAccount,
-            {
-                fields: ['ap_id'],
-                limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
-                offset,
-            },
-        );
+        const results = await accountService.getFollowingAccounts(account, {
+            fields: ['ap_id'],
+            limit: ACTIVITYPUB_COLLECTION_PAGE_SIZE,
+            offset,
+        });
         const totalFollowing = await accountService.getFollowingAccountsCount(
-            siteDefaultAccount.id,
+            account.id,
         );
 
         nextCursor =
@@ -839,46 +970,84 @@ export function createFollowingDispatcher(
 }
 
 export function createFollowersCounter(
-    siteService: SiteService,
     accountService: AccountService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function countFollowers(
         ctx: FedifyRequestContext,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Account not found for host: ${ctx.host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(
+                        `Multiple users found for host: ${ctx.host}`,
+                    );
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const { account } = getValue(hostData);
 
-        return await accountService.getFollowerAccountsCount(
-            siteDefaultAccount.id,
-        );
+        return await accountService.getFollowerAccountsCount(account.id);
     };
 }
 
 export function createFollowingCounter(
-    siteService: SiteService,
     accountService: AccountService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function countFollowing(
         ctx: FedifyRequestContext,
         _handle: string,
     ) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Account not found for host: ${ctx.host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(
+                        `Multiple users found for host: ${ctx.host}`,
+                    );
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        // @TODO: Get account by provided handle instead of default account?
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const { account } = getValue(hostData);
 
-        return await accountService.getFollowingAccountsCount(
-            siteDefaultAccount.id,
-        );
+        return await accountService.getFollowingAccountsCount(account.id);
     };
 }
 
@@ -887,9 +1056,8 @@ export function followingFirstCursor() {
 }
 
 export function createOutboxDispatcher(
-    accountService: AccountService,
     postService: PostService,
-    siteService: SiteService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function outboxDispatcher(
         ctx: FedifyRequestContext,
@@ -899,15 +1067,35 @@ export function createOutboxDispatcher(
         ctx.data.logger.info('Outbox Dispatcher');
 
         const host = ctx.request.headers.get('host')!;
-        const site = await siteService.getSiteByHost(host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${host}`);
+        const hostData = await hostDataContextLoader.loadDataForHost(host);
+
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host,
+                    });
+                    throw new Error(`Site not found for host: ${host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host,
+                    });
+                    throw new Error(`Account not found for host: ${host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host,
+                    });
+                    throw new Error(`Multiple users found for host: ${host}`);
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const { account } = getValue(hostData);
 
         const outbox = await postService.getOutboxForAccount(
-            siteDefaultAccount.id,
+            account.id,
             cursor,
             ACTIVITYPUB_COLLECTION_PAGE_SIZE,
         );
@@ -922,7 +1110,7 @@ export function createOutboxDispatcher(
                     return createActivity;
                 }
                 const announceActivity = await buildAnnounceActivityForPost(
-                    siteDefaultAccount,
+                    account,
                     item.post,
                     ctx,
                 );
@@ -938,19 +1126,40 @@ export function createOutboxDispatcher(
 }
 
 export function createOutboxCounter(
-    siteService: SiteService,
-    accountService: AccountService,
     postService: PostService,
+    hostDataContextLoader: HostDataContextLoader,
 ) {
     return async function countOutboxItems(ctx: FedifyRequestContext) {
-        const site = await siteService.getSiteByHost(ctx.host);
-        if (!site) {
-            throw new Error(`Site not found for host: ${ctx.host}`);
+        const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
+
+        if (isError(hostData)) {
+            const error = getError(hostData);
+            switch (error) {
+                case 'site-not-found':
+                    ctx.data.logger.error('Site not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Site not found for host: ${ctx.host}`);
+                case 'account-not-found':
+                    ctx.data.logger.error('Account not found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(`Account not found for host: ${ctx.host}`);
+                case 'multiple-users-for-site':
+                    ctx.data.logger.error('Multiple users found for {host}', {
+                        host: ctx.host,
+                    });
+                    throw new Error(
+                        `Multiple users found for host: ${ctx.host}`,
+                    );
+                default:
+                    exhaustiveCheck(error);
+            }
         }
 
-        const siteDefaultAccount = await accountService.getAccountForSite(site);
+        const { account } = getValue(hostData);
 
-        return await postService.getOutboxItemCount(siteDefaultAccount.id);
+        return await postService.getOutboxItemCount(account.id);
     };
 }
 

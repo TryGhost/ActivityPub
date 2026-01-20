@@ -867,4 +867,28 @@ export class AccountService {
             backoffSeconds: backoff.backoff_seconds,
         };
     }
+
+    async getKeyPair(
+        accountId: number,
+    ): Promise<
+        Result<
+            { publicKey: string; privateKey: string },
+            'account-not-found' | 'key-pair-not-found'
+        >
+    > {
+        const account = await this.accountRepository.getKeyPair(accountId);
+
+        if (!account) {
+            return error('account-not-found');
+        }
+
+        if (!account.publicKey || !account.privateKey) {
+            return error('key-pair-not-found');
+        }
+
+        return ok({
+            publicKey: account.publicKey,
+            privateKey: account.privateKey,
+        });
+    }
 }
