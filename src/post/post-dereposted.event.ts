@@ -32,6 +32,7 @@ export class PostDerepostedEvent implements SerializableEvent {
         if (typeof data.accountId !== 'number') {
             throw new Error('accountId must be a number');
         }
+
         return new PostDerepostedEvent(data.postId, data.accountId);
     }
 }
