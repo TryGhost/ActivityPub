@@ -43,6 +43,7 @@ import type { Account } from '@/account/account.entity';
 import { AccountBlockedEvent } from '@/account/events/account-blocked.event';
 import { AccountCreatedEvent } from '@/account/events/account-created.event';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
+import { AccountUnblockedEvent } from '@/account/events/account-unblocked.event';
 import { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
 import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
 import type { CreateHandler } from '@/activity-handlers/create.handler';
@@ -242,6 +243,9 @@ container
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(AccountBlockedEvent.getName(), AccountBlockedEvent);
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(AccountUnblockedEvent.getName(), AccountUnblockedEvent);
 
 /** Fedify */
 
