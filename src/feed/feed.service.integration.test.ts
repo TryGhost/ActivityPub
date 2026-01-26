@@ -1786,9 +1786,7 @@ describe('FeedService', () => {
 
             // Remove followedAccountPost from the feeds of the users that can
             // already see it
-            await feedService.removePostFromFeeds(
-                followedAccountPost as PublicPost,
-            );
+            await feedService.removePostFromFeeds(followedAccountPost.id!);
 
             // Assert feeds for each account are as expected
 
@@ -1854,10 +1852,7 @@ describe('FeedService', () => {
             });
 
             // Remove repost from feeds
-            await feedService.removePostFromFeeds(
-                post as PublicPost,
-                followedAccount.id,
-            );
+            await feedService.removePostFromFeeds(post.id!, followedAccount.id);
 
             // Verify repost was removed
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);
@@ -1909,10 +1904,7 @@ describe('FeedService', () => {
             expect(true).toBe(true);
 
             // Remove only reposter1's repost
-            await feedService.removePostFromFeeds(
-                post as PublicPost,
-                reposter1.id,
-            );
+            await feedService.removePostFromFeeds(post.id!, reposter1.id);
 
             // Verify only reposter2's repost remains
             const feedAfterRemoval = await getFeedDataForAccount(userAccount);

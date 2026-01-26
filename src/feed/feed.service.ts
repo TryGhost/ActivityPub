@@ -556,16 +556,14 @@ export class FeedService {
     /**
      * Remove a post from the feeds of the users that can already see it
      *
-     * @param postOrId Post or Post ID to remove from feeds
+     * @param postId ID of the post to remove from feeds
      * @param derepostedBy ID of the account that dereposted the post (if applicable)
      * @returns IDs of the users that had their feed updated
      */
     async removePostFromFeeds(
-        postOrId: Post | number,
+        postId: number,
         derepostedBy: number | null = null,
     ) {
-        const postId = typeof postOrId === 'number' ? postOrId : postOrId.id;
-
         // Work out which user's feeds the post should be removed from
         const updatedFeedUserIds = (
             await this.db('feeds')
