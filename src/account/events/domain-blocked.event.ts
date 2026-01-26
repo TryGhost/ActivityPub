@@ -36,6 +36,7 @@ export class DomainBlockedEvent implements SerializableEvent {
         if (typeof data.blockerId !== 'number') {
             throw new Error('blockerId must be a number');
         }
+
         return new DomainBlockedEvent(new URL(data.domain), data.blockerId);
     }
 }
