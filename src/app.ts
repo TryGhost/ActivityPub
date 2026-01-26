@@ -42,6 +42,7 @@ import { behindProxy } from 'x-forwarded-fetch';
 import type { Account } from '@/account/account.entity';
 import { AccountCreatedEvent } from '@/account/events/account-created.event';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
+import { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
 import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher';
 import type { CreateHandler } from '@/activity-handlers/create.handler';
 import type { DeleteHandler } from '@/activity-handlers/delete.handler';
@@ -234,6 +235,9 @@ container
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(AccountFollowedEvent.getName(), AccountFollowedEvent);
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(AccountUnfollowedEvent.getName(), AccountUnfollowedEvent);
 
 /** Fedify */
 
