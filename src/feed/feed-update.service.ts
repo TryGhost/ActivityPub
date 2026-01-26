@@ -75,10 +75,10 @@ export class FeedUpdateService {
     }
 
     private async handlePostDerepostedEvent(event: PostDerepostedEvent) {
-        const post = event.getPost();
-        const derepostedBy = event.getAccountId();
-
-        await this.feedService.removePostFromFeeds(post, derepostedBy);
+        await this.feedService.removePostFromFeeds(
+            event.getPostId(),
+            event.getAccountId(),
+        );
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {

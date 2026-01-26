@@ -1027,7 +1027,7 @@ describe('KnexPostRepository', () => {
         expect(eventsEmitSpy).nthCalledWith(
             5,
             PostDerepostedEvent.getName(),
-            new PostDerepostedEvent(post, Number(accounts[1].id)),
+            new PostDerepostedEvent(Number(post.id), Number(accounts[1].id)),
         );
     });
 

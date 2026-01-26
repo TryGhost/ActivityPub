@@ -117,6 +117,7 @@ import {
 } from '@/mq/gcloud-pubsub-push/mq';
 import type { NotificationEventService } from '@/notification/notification-event.service';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
+import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import type { Site } from '@/site/site.service';
 
@@ -258,6 +259,9 @@ container
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(NotificationsReadEvent.getName(), NotificationsReadEvent);
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(PostDerepostedEvent.getName(), PostDerepostedEvent);
 
 /** Fedify */
 

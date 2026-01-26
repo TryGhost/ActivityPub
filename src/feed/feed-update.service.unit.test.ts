@@ -196,18 +196,15 @@ describe('FeedUpdateService', () => {
         const derepostedById = 789;
 
         it('should remove reposted post from feeds when dereposted', () => {
-            const post = Post.createFromData(account, {
-                type: PostType.Article,
-                audience: Audience.Public,
-            });
+            const postId = 123;
 
             events.emit(
                 PostDerepostedEvent.getName(),
-                new PostDerepostedEvent(post, derepostedById),
+                new PostDerepostedEvent(postId, derepostedById),
             );
 
             expect(feedService.removePostFromFeeds).toHaveBeenCalledWith(
-                post,
+                postId,
                 derepostedById,
             );
         });
