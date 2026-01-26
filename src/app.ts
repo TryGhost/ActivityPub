@@ -40,6 +40,7 @@ import { cors } from 'hono/cors';
 import { behindProxy } from 'x-forwarded-fetch';
 
 import type { Account } from '@/account/account.entity';
+import { AccountBlockedEvent } from '@/account/events/account-blocked.event';
 import { AccountCreatedEvent } from '@/account/events/account-created.event';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
 import { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
@@ -238,6 +239,9 @@ container
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(AccountUnfollowedEvent.getName(), AccountUnfollowedEvent);
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(AccountBlockedEvent.getName(), AccountBlockedEvent);
 
 /** Fedify */
 
