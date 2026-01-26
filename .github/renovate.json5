@@ -1,35 +1,32 @@
 {
-  "extends": [
-    "github>tryghost/renovate-config",
-    // Pin Docker image digests for reproducible builds
-    // See: https://docs.renovatebot.com/presets-docker/#dockerpindigests
-    "docker:pinDigests",
-    // Disable major version updates for Docker images
-    // See: https://docs.renovatebot.com/presets-docker/#dockerdisablemajor
-    "docker:disableMajor"
+  extends: [
+    'github>tryghost/renovate-config',
+    'docker:pinDigests',
+    'docker:disableMajor',
   ],
-  // Automerge only on Monday, Tuesday, Wednesday and Thursday mornings UTC (08:00 - 11:59 UTC)
-  // Why? Merging to main ships to production, so we want to avoid automerging when no engineer is online
-  // Notes:
-  // - this doesn't restrict when the PRs are opened by Renovate, only when they are merged
-  // - this works only if we're using Renovate automerge over platform automerge (Github)
-  "platformAutomerge": false,
-  "schedule": ["* 8-11 * * 1,2,3,4"],
-  "automergeSchedule": ["* 8-11 * * 1,2,3,4"],
-  // Automerge lock file updates, whenever available
-  // Note: the base config file has this enabled, but on a weekly basis only
-  "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true
+  platformAutomerge: false,
+  schedule: [
+    '* 8-11 * * 1,2,3,4',
+  ],
+  automergeSchedule: [
+    '* 8-11 * * 1,2,3,4',
+  ],
+  lockFileMaintenance: {
+    enabled: true,
+    automerge: true,
   },
-  "packageRules": [
+  packageRules: [
     {
-      "matchDatasources": ["docker"],
-      "automerge": true
+      matchDatasources: [
+        'docker',
+      ],
+      automerge: true,
     },
     {
-      "matchPackagePatterns": ["^@fedify/"],
-      "automerge": false
-    }
-  ]
+      automerge: false,
+      matchPackageNames: [
+        '/^@fedify//',
+      ],
+    },
+  ],
 }
