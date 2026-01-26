@@ -32,7 +32,7 @@ jobs:
 
       - name: Deploy Migrations to Cloud Run
         if: ${{ matrix.region == 'europe-west4' }}
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -43,7 +43,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -53,7 +53,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub Retry Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -63,7 +63,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub External to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -73,7 +73,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub API to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -104,7 +104,7 @@ jobs:
 
       - name: Deploy Migrations to Cloud Run
         if: ${{ matrix.region == 'europe-west4' }}
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -115,7 +115,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -125,7 +125,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub Retry Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -135,7 +135,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub External to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
@@ -145,7 +145,7 @@ jobs:
             commit-sha=${{ github.sha }}
 
       - name: Deploy ActivityPub API to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
