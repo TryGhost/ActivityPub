@@ -116,8 +116,8 @@ import {
     type GCloudPubSubPushMessageQueue,
 } from '@/mq/gcloud-pubsub-push/mq';
 import type { NotificationEventService } from '@/notification/notification-event.service';
-import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
+import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
 import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import type { Site } from '@/site/site.service';
 
