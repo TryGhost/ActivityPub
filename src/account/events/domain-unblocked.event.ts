@@ -36,6 +36,7 @@ export class DomainUnblockedEvent implements SerializableEvent {
         if (typeof data.unblockerId !== 'number') {
             throw new Error('unblockerId must be a number');
         }
+
         return new DomainUnblockedEvent(new URL(data.domain), data.unblockerId);
     }
 }
