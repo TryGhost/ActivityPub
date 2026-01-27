@@ -45,6 +45,7 @@ export class PostLikedEvent implements SerializableEvent {
         if (typeof data.accountId !== 'number') {
             throw new Error('accountId must be a number');
         }
+
         return new PostLikedEvent(
             data.postId,
             data.postAuthorId,
