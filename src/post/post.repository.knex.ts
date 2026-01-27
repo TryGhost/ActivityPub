@@ -523,7 +523,11 @@ export class KnexPostRepository {
             for (const accountId of likeAccountIds) {
                 await this.events.emitAsync(
                     PostLikedEvent.getName(),
-                    new PostLikedEvent(post.id as number, accountId),
+                    new PostLikedEvent(
+                        post.id as number,
+                        post.author.id as number,
+                        accountId,
+                    ),
                 );
             }
 
