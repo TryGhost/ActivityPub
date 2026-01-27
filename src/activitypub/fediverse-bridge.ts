@@ -8,6 +8,7 @@ import {
     Reject,
     Update,
 } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Account } from '@/account/account.entity';
@@ -28,6 +29,7 @@ export class FediverseBridge {
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
+        private readonly logger: Logger,
     ) {}
 
     async init() {
@@ -76,14 +78,25 @@ export class FediverseBridge {
     ) {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
-        await ctx.sendActivity(
-            { username: account.username },
-            'followers',
-            activity,
-            {
-                preferSharedInbox: true,
-            },
-        );
+        try {
+            await ctx.sendActivity(
+                { username: account.username },
+                'followers',
+                activity,
+                {
+                    preferSharedInbox: true,
+                },
+            );
+        } catch (error) {
+            // The action succeeded, but federation fails. This needs to be handled
+            // gracefully to avoid 500 responses to the user, in case of synchronous
+            // federation (e.g. no message queue is used).
+            this.logger.error('Failed to federate activity to followers: {error}', {
+                accountId: account.id,
+                accountUsername: account.username,
+                error,
+            });
+        }
     }
 
     private async handlePostCreated(event: PostCreatedEvent) {
