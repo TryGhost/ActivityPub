@@ -1,13 +1,13 @@
-import type { Post } from '@/post/post.entity';
+import type { SerializableEvent } from '@/events/event';
 
-export class PostLikedEvent {
+export class PostLikedEvent implements SerializableEvent {
     constructor(
-        private readonly post: Post,
+        private readonly postId: number,
         private readonly accountId: number,
     ) {}
 
-    getPost(): Post {
-        return this.post;
+    getPostId(): number {
+        return this.postId;
     }
 
     getAccountId(): number {
@@ -16,5 +16,22 @@ export class PostLikedEvent {
 
     static getName(): string {
         return 'post.liked';
+    }
+
+    toJSON(): Record<string, unknown> {
+        return {
+            postId: this.postId,
+            accountId: this.accountId,
+        };
+    }
+
+    static fromJSON(data: Record<string, unknown>): PostLikedEvent {
+        if (typeof data.postId !== 'number') {
+            throw new Error('postId must be a number');
+        }
+        if (typeof data.accountId !== 'number') {
+            throw new Error('accountId must be a number');
+        }
+        return new PostLikedEvent(data.postId, data.accountId);
     }
 }

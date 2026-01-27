@@ -7,6 +7,7 @@ import {
     NotificationsReadEvent,
 } from '@/account/events';
 import type { NotificationService } from '@/notification/notification.service';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
@@ -16,6 +17,7 @@ export class NotificationEventService {
     constructor(
         private readonly events: EventEmitter,
         private readonly notificationService: NotificationService,
+        private readonly postRepository: KnexPostRepository,
     ) {}
 
     init() {
@@ -61,8 +63,13 @@ export class NotificationEventService {
     }
 
     private async handlePostLikedEvent(event: PostLikedEvent) {
+        const post = await this.postRepository.getById(event.getPostId());
+        if (!post) {
+            // Post was deleted
+            return;
+        }
         await this.notificationService.createLikeNotification(
-            event.getPost(),
+            post,
             event.getAccountId(),
         );
     }
