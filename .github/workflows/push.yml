@@ -38,13 +38,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download ActivityPub image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: activitypub-amd64
           path: /tmp
 
       - name: Download Migrations image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: activitypub-migrations-amd64
           path: /tmp
