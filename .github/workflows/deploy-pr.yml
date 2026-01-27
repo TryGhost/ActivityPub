@@ -29,7 +29,7 @@ jobs:
 
       - name: Checkout activitypub-infra repo
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TryGhost/activitypub-infra
           ssh-key: ${{ secrets.ACTIVITYPUB_INFRA_DEPLOY_KEY }}
@@ -37,7 +37,7 @@ jobs:
 
       - name: Checkout terraform repo
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: TryGhost/terraform
           ssh-key: ${{ secrets.TERRAFORM_DEPLOY_KEY }}
