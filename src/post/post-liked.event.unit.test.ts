@@ -55,7 +55,13 @@ describe('PostLikedEvent', () => {
         ).toThrow('accountId must be a number');
     });
 
-    it('should return the correct event name', () => {
+    it('should return the correct event name from static method', () => {
         expect(PostLikedEvent.getName()).toBe('post.liked');
+    });
+
+    it('should return the correct event name from instance method', () => {
+        const event = new PostLikedEvent(123, 456, 789);
+
+        expect(event.getName()).toBe('post.liked');
     });
 });

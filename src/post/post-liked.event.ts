@@ -19,6 +19,10 @@ export class PostLikedEvent implements SerializableEvent {
         return this.accountId;
     }
 
+    getName(): string {
+        return PostLikedEvent.getName();
+    }
+
     static getName(): string {
         return 'post.liked';
     }
