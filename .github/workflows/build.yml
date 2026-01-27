@@ -251,7 +251,7 @@ jobs:
 
       - name: Authenticate with GCP
         if: steps.changes.outputs.reconcile-account-topics == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         id: gcp-auth
         with:
           token_format: access_token
