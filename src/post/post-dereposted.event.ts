@@ -14,6 +14,10 @@ export class PostDerepostedEvent implements SerializableEvent {
         return this.accountId;
     }
 
+    getName(): string {
+        return 'post.dereposted';
+    }
+
     static getName(): string {
         return 'post.dereposted';
     }

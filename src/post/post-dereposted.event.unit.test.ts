@@ -4,8 +4,14 @@ import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 
 describe('PostDerepostedEvent', () => {
     describe('getName', () => {
-        it('should return the event name', () => {
+        it('should return the event name from static method', () => {
             expect(PostDerepostedEvent.getName()).toBe('post.dereposted');
+        });
+
+        it('should return the event name from instance method', () => {
+            const event = new PostDerepostedEvent(123, 456);
+
+            expect(event.getName()).toBe('post.dereposted');
         });
     });
 
