@@ -535,10 +535,12 @@ export class KnexPostRepository {
             }
 
             for (const accountId of repostsToRemove) {
-                await this.events.emitAsync(
-                    PostDerepostedEvent.getName(),
-                    new PostDerepostedEvent(post, accountId),
-                );
+                if (post.id !== null) {
+                    await this.events.emitAsync(
+                        PostDerepostedEvent.getName(),
+                        new PostDerepostedEvent(post.id, accountId),
+                    );
+                }
             }
         } catch (err) {
             await transaction.rollback();

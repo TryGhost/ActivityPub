@@ -70,15 +70,17 @@ export class FeedUpdateService {
     private async handlePostDeletedEvent(event: PostDeletedEvent) {
         const post = event.getPost();
 
-        await this.feedService.removePostFromFeeds(post);
+        if (post.id !== null) {
+            await this.feedService.removePostFromFeeds(post.id);
+        }
         await this.feedService.removePostFromDiscoveryFeeds(post);
     }
 
     private async handlePostDerepostedEvent(event: PostDerepostedEvent) {
-        const post = event.getPost();
-        const derepostedBy = event.getAccountId();
-
-        await this.feedService.removePostFromFeeds(post, derepostedBy);
+        await this.feedService.removePostFromFeeds(
+            event.getPostId(),
+            event.getAccountId(),
+        );
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {
