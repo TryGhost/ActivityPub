@@ -61,22 +61,18 @@ describe('NotificationEventService', () => {
 
     describe('handling a post like', () => {
         it('should create a like notification', () => {
-            const post = {
-                id: 123,
-                author: {
-                    id: 456,
-                },
-            } as Post;
+            const postId = 123;
+            const postAuthorId = 456;
             const accountId = 789;
 
             events.emit(
                 PostLikedEvent.getName(),
-                new PostLikedEvent(post as Post, accountId),
+                new PostLikedEvent(postId, postAuthorId, accountId),
             );
 
             expect(
                 notificationService.createLikeNotification,
-            ).toHaveBeenCalledWith(post, accountId);
+            ).toHaveBeenCalledWith(postId, postAuthorId, accountId);
         });
     });
 

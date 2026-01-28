@@ -423,15 +423,9 @@ describe('NotificationService', () => {
                 domain: 'bob.com',
             });
 
-            const post = {
-                id: userPostId,
-                author: {
-                    id: accountId,
-                },
-            } as Post;
-
             await notificationService.createLikeNotification(
-                post,
+                userPostId,
+                accountId,
                 likeAccountId,
             );
 
@@ -446,15 +440,13 @@ describe('NotificationService', () => {
 
         it('should do nothing if the account liking the post is the same as the post author', async () => {
             const accountId = 123;
+            const postId = 456;
 
-            const post = {
-                id: 456,
-                author: {
-                    id: accountId,
-                },
-            } as Post;
-
-            await notificationService.createLikeNotification(post, accountId);
+            await notificationService.createLikeNotification(
+                postId,
+                accountId,
+                accountId,
+            );
 
             const notifications = await client('notifications').select('*');
 
@@ -462,15 +454,14 @@ describe('NotificationService', () => {
         });
 
         it('should do nothing if user is not found for account', async () => {
-            const postWithAccountWithoutUser = {
-                author: {
-                    id: 999,
-                },
-            } as Post;
+            const postId = 456;
+            const postAuthorId = 999;
+            const likerAccountId = 123;
 
             await notificationService.createLikeNotification(
-                postWithAccountWithoutUser,
-                123,
+                postId,
+                postAuthorId,
+                likerAccountId,
             );
 
             const notifications = await client('notifications').select('*');
@@ -488,8 +479,9 @@ describe('NotificationService', () => {
 
             const post = await fixtureManager.createPost(aliceAccount);
             await notificationService.createLikeNotification(
-                post,
-                bobAccount.id,
+                post.id as number,
+                post.author.id as number,
+                bobAccount.id as number,
             );
 
             const notifications = await client('notifications').select('*');

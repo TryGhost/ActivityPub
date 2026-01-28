@@ -62,7 +62,8 @@ export class NotificationEventService {
 
     private async handlePostLikedEvent(event: PostLikedEvent) {
         await this.notificationService.createLikeNotification(
-            event.getPost(),
+            event.getPostId(),
+            event.getPostAuthorId(),
             event.getAccountId(),
         );
     }
