@@ -314,6 +314,7 @@ export async function handleAnnouncedCreate(
     }
 
     let create: Create | null = null;
+    let createJson: Awaited<ReturnType<Create['toJsonLd']>> | undefined;
 
     // Verify create activity
     create = (await announce.getObject()) as Create;
@@ -327,8 +328,11 @@ export async function handleAnnouncedCreate(
     if (create.proofId || create.proofIds.length > 0) {
         ctx.data.logger.debug('Verifying create with proof(s)');
 
-        if ((await verifyObject(Create, await create.toJsonLd())) === null) {
-            ctx.data.logger.debug(
+        // Cache the JSON-LD result to avoid redundant serialization later
+        createJson = await create.toJsonLd();
+
+        if ((await verifyObject(Create, createJson)) === null) {
+            ctx.data.logger.info(
                 'Create cannot be verified with provided proof(s), exit early',
             );
 
@@ -397,8 +401,11 @@ export async function handleAnnouncedCreate(
         }
     }
 
-    // Persist create activity
-    const createJson = await create.toJsonLd();
+    // Persist create activity - use cached JSON-LD if available (from proof verification)
+    // Otherwise serialize now (happens when create was replaced via network lookup)
+    if (!createJson) {
+        createJson = await create.toJsonLd();
+    }
     ctx.data.globaldb.set([create.id.href], createJson);
 
     if (!create.objectId) {
