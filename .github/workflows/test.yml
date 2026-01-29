@@ -20,7 +20,7 @@ jobs:
 
       - name: Checkout
         if: steps.check-skip-tests.outputs.skip_tests != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download ActivityPub image
         if: steps.check-skip-tests.outputs.skip_tests != 'true'
