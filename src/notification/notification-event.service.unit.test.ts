@@ -12,11 +12,11 @@ import {
 import type { NotificationService } from '@/notification/notification.service';
 import { NotificationEventService } from '@/notification/notification-event.service';
 import type { Post } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import type { KnexPostRepository } from '@/post/post.repository.knex';
 
 describe('NotificationEventService', () => {
     let events: EventEmitter;

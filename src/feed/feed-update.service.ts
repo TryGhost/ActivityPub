@@ -7,11 +7,11 @@ import {
 } from '@/account/events';
 import type { FeedService } from '@/feed/feed.service';
 import { isFollowersOnlyPost, isPublicPost } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import type { KnexPostRepository } from '@/post/post.repository.knex';
 
 export class FeedUpdateService {
     constructor(
