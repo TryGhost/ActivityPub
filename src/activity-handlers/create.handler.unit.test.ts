@@ -21,6 +21,7 @@ describe('CreateHandler', () => {
     let mockContext: FedifyContext;
     let mockLogger: {
         info: ReturnType<typeof vi.fn>;
+        debug: ReturnType<typeof vi.fn>;
         error: ReturnType<typeof vi.fn>;
     };
     let mockGlobalDb: {
@@ -31,6 +32,7 @@ describe('CreateHandler', () => {
     beforeEach(() => {
         mockLogger = {
             info: vi.fn(),
+            debug: vi.fn(),
             error: vi.fn(),
         };
 

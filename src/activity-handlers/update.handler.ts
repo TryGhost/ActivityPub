@@ -12,20 +12,20 @@ export class UpdateHandler {
         ctx.data.logger.info('Handling Update');
 
         if (!update.id) {
-            ctx.data.logger.info('Update missing id - exit');
+            ctx.data.logger.debug('Update missing id - exit');
             return;
         }
 
         const object = await update.getObject();
         if (!isActor(object)) {
-            ctx.data.logger.info('Update object is not an actor - exit');
+            ctx.data.logger.debug('Update object is not an actor - exit');
             return;
         }
 
         const updatedActor = object as Actor;
 
         if (!updatedActor.id) {
-            ctx.data.logger.info('Update actor missing id - exit');
+            ctx.data.logger.debug('Update actor missing id - exit');
             return;
         }
 
@@ -48,7 +48,7 @@ export class UpdateHandler {
             const error = getError(updateResult);
             switch (error) {
                 case 'account-not-found':
-                    ctx.data.logger.info(
+                    ctx.data.logger.debug(
                         'Update failed - account not found for apId',
                         {
                             apId: updatedActor.id,
