@@ -16,9 +16,9 @@ export class DeleteHandler {
     async handle(ctx: FedifyContext, deleteActivity: Delete) {
         ctx.data.logger.info('Handling Delete');
         const parsed = ctx.parseUri(deleteActivity.objectId);
-        ctx.data.logger.info('Parsed delete object', { parsed });
+        ctx.data.logger.debug('Parsed delete object', { parsed });
         if (!deleteActivity.id) {
-            ctx.data.logger.info('Missing delete id - exit');
+            ctx.data.logger.debug('Missing delete id - exit');
             return;
         }
 
@@ -34,12 +34,12 @@ export class DeleteHandler {
         }
 
         if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Delete sender missing, exit early');
+            ctx.data.logger.debug('Delete sender missing, exit early');
             return;
         }
 
         if (!deleteActivity.objectId) {
-            ctx.data.logger.info('Delete object id missing, exit early');
+            ctx.data.logger.debug('Delete object id missing, exit early');
             return;
         }
 
@@ -53,7 +53,7 @@ export class DeleteHandler {
         }
 
         if (senderAccount === null) {
-            ctx.data.logger.info('Sender account not found, exit early');
+            ctx.data.logger.debug('Sender account not found, exit early');
             return;
         }
 

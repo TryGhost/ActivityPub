@@ -10,14 +10,14 @@ export class CreateHandler {
     async handle(ctx: FedifyContext, create: Create) {
         ctx.data.logger.info('Handling Create');
         const parsed = ctx.parseUri(create.objectId);
-        ctx.data.logger.info('Parsed create object', { parsed });
+        ctx.data.logger.debug('Parsed create object', { parsed });
         if (!create.id) {
-            ctx.data.logger.info('Create missing id - exit');
+            ctx.data.logger.debug('Create missing id - exit');
             return;
         }
 
         if (!create.objectId) {
-            ctx.data.logger.info('Create object id missing, exit early');
+            ctx.data.logger.debug('Create object id missing, exit early');
             return;
         }
 
@@ -27,7 +27,7 @@ export class CreateHandler {
         const isPublic = recipients.includes(PUBLIC_COLLECTION.href);
 
         if (!isPublic) {
-            ctx.data.logger.info('Create activity is not public - exit');
+            ctx.data.logger.debug('Create activity is not public - exit');
             return;
         }
 
@@ -38,7 +38,7 @@ export class CreateHandler {
             const error = getError(postResult);
             switch (error) {
                 case 'upstream-error':
-                    ctx.data.logger.info(
+                    ctx.data.logger.debug(
                         'Upstream error fetching post for create handling',
                         {
                             postId: create.objectId.href,
@@ -46,7 +46,7 @@ export class CreateHandler {
                     );
                     return;
                 case 'not-a-post':
-                    ctx.data.logger.info(
+                    ctx.data.logger.debug(
                         'Resource is not a post in create handling',
                         {
                             postId: create.objectId.href,
@@ -54,7 +54,7 @@ export class CreateHandler {
                     );
                     return;
                 case 'missing-author':
-                    ctx.data.logger.info(
+                    ctx.data.logger.debug(
                         'Post has missing author in create handling',
                         {
                             postId: create.objectId.href,
