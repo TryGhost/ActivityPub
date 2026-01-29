@@ -111,6 +111,7 @@ describe('dispatchers', () => {
             outboxCtx = {
                 data: {
                     logger: {
+                        debug: vi.fn(),
                         info: vi.fn(),
                         error: vi.fn(),
                     },
@@ -968,6 +969,7 @@ describe('dispatchers', () => {
             followingCtx = {
                 data: {
                     logger: {
+                        debug: vi.fn(),
                         info: vi.fn(),
                         error: vi.fn(),
                     },
