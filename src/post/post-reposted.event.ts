@@ -18,6 +18,10 @@ export class PostRepostedEvent implements SerializableEvent {
         return 'post.reposted';
     }
 
+    getName(): string {
+        return PostRepostedEvent.getName();
+    }
+
     toJSON(): Record<string, unknown> {
         return {
             postId: this.postId,
