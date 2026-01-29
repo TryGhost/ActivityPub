@@ -813,17 +813,29 @@ describe('KnexPostRepository', () => {
         expect(eventsEmitSpy).nthCalledWith(
             2,
             PostLikedEvent.getName(),
-            new PostLikedEvent(post, Number(accounts[0].id)),
+            new PostLikedEvent(
+                Number(post.id),
+                Number(post.author.id),
+                Number(accounts[0].id),
+            ),
         );
         expect(eventsEmitSpy).nthCalledWith(
             3,
             PostLikedEvent.getName(),
-            new PostLikedEvent(post, Number(accounts[1].id)),
+            new PostLikedEvent(
+                Number(post.id),
+                Number(post.author.id),
+                Number(accounts[1].id),
+            ),
         );
         expect(eventsEmitSpy).nthCalledWith(
             4,
             PostLikedEvent.getName(),
-            new PostLikedEvent(post, Number(accounts[2].id)),
+            new PostLikedEvent(
+                Number(post.id),
+                Number(post.author.id),
+                Number(accounts[2].id),
+            ),
         );
     });
 
@@ -880,17 +892,29 @@ describe('KnexPostRepository', () => {
         expect(eventsEmitSpy).nthCalledWith(
             2,
             PostLikedEvent.getName(),
-            new PostLikedEvent(post, Number(accounts[1].id)),
+            new PostLikedEvent(
+                Number(post.id),
+                Number(post.author.id),
+                Number(accounts[1].id),
+            ),
         );
         expect(eventsEmitSpy).nthCalledWith(
             3,
             PostLikedEvent.getName(),
-            new PostLikedEvent(post, Number(accounts[0].id)),
+            new PostLikedEvent(
+                Number(post.id),
+                Number(post.author.id),
+                Number(accounts[0].id),
+            ),
         );
         expect(eventsEmitSpy).nthCalledWith(
             4,
             PostLikedEvent.getName(),
-            new PostLikedEvent(post, Number(accounts[2].id)),
+            new PostLikedEvent(
+                Number(post.id),
+                Number(post.author.id),
+                Number(accounts[2].id),
+            ),
         );
     });
 

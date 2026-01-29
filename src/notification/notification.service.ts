@@ -242,18 +242,23 @@ export class NotificationService {
     /**
      * Create a notification for a post being liked
      *
-     * @param post The post that is being liked
+     * @param postId The ID of the post that is being liked
+     * @param postAuthorId The ID of the post author's account
      * @param accountId The ID of the account that is liking the post
      */
-    async createLikeNotification(post: Post, accountId: number) {
-        if (post.author.id === accountId) {
+    async createLikeNotification(
+        postId: number,
+        postAuthorId: number,
+        accountId: number,
+    ) {
+        if (postAuthorId === accountId) {
             // Do not create a notification for a post created by the same account
             // that is liking it
             return;
         }
 
         const user = await this.db('users')
-            .where('account_id', post.author.id)
+            .where('account_id', postAuthorId)
             .select('id')
             .first();
 
@@ -267,7 +272,7 @@ export class NotificationService {
         const notificationAllowed =
             await this.moderationService.canInteractWithAccount(
                 accountId,
-                post.author.id,
+                postAuthorId,
             );
 
         if (!notificationAllowed) {
@@ -277,7 +282,7 @@ export class NotificationService {
         await this.db('notifications').insert({
             user_id: user.id,
             account_id: accountId,
-            post_id: post.id,
+            post_id: postId,
             event_type: NotificationType.Like,
         });
     }
