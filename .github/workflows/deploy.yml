@@ -20,8 +20,6 @@ jobs:
         include:
           - region: europe-west4
             region_name: netherlands
-          - region: europe-west3
-            region_name: frankfurt
     steps:
       - name: Authenticate with GCP
         uses: google-github-actions/auth@v3
@@ -91,8 +89,6 @@ jobs:
         include:
           - region: europe-west4
             region_name: netherlands
-          - region: europe-west3
-            region_name: frankfurt
     steps:
       - name: Authenticate with GCP
         id: gcp-auth
