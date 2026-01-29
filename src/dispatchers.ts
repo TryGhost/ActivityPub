@@ -230,10 +230,15 @@ export function createAcceptHandler(accountService: AccountService) {
             return;
         }
 
-        const senderJson = await sender.toJsonLd();
-        const acceptJson = await accept.toJsonLd();
-        ctx.data.globaldb.set([accept.id.href], acceptJson);
-        ctx.data.globaldb.set([sender.id.href], senderJson);
+        // Parallelize JSON-LD serialization to reduce latency
+        const [senderJson, acceptJson] = await Promise.all([
+            sender.toJsonLd(),
+            accept.toJsonLd(),
+        ]);
+        await Promise.all([
+            ctx.data.globaldb.set([accept.id.href], acceptJson),
+            ctx.data.globaldb.set([sender.id.href], senderJson),
+        ]);
 
         // Record the account of the sender as well as the follow
         const followerAccountResult = await accountService.ensureByApId(
@@ -627,7 +632,7 @@ export function createAnnounceHandler(
             return;
         }
 
-        // Lookup announced object - If not found in globalDb, perform network lookup
+        // Lookup announced object - If not found in globalDb
         let object = null;
         const existing =
             (await ctx.data.globaldb.get([announce.objectId.href])) ?? null;
@@ -636,7 +641,9 @@ export function createAnnounceHandler(
             ctx.data.logger.debug(
                 'Announce object not found in globalDb, performing network lookup',
             );
-            object = await lookupObject(ctx, announce.objectId);
+            // Reuse the already-fetched object from the Create check above
+            // instead of calling lookupObject again
+            object = announced;
         }
 
         if (!existing && !object) {
