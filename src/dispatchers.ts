@@ -205,28 +205,28 @@ export function createAcceptHandler(accountService: AccountService) {
     return async function handleAccept(ctx: FedifyContext, accept: Accept) {
         ctx.data.logger.info('Handling Accept');
         const parsed = ctx.parseUri(accept.objectId);
-        ctx.data.logger.info('Parsed accept object', { parsed });
+        ctx.data.logger.debug('Parsed accept object', { parsed });
         if (!accept.id) {
-            ctx.data.logger.info('Accept missing id - exit');
+            ctx.data.logger.debug('Accept missing id - exit');
             return;
         }
 
         const sender = await accept.getActor(ctx);
-        ctx.data.logger.info('Accept sender', { sender });
+        ctx.data.logger.debug('Accept sender retrieved');
         if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Sender missing, exit early');
+            ctx.data.logger.debug('Sender missing, exit early');
             return;
         }
 
         const object = await accept.getObject();
         if (object instanceof Follow === false) {
-            ctx.data.logger.info('Accept object is not a Follow, exit early');
+            ctx.data.logger.debug('Accept object is not a Follow, exit early');
             return;
         }
 
         const recipient = await object.getActor();
         if (recipient === null || recipient.id === null) {
-            ctx.data.logger.info('Recipient missing, exit early');
+            ctx.data.logger.debug('Recipient missing, exit early');
             return;
         }
 
@@ -240,7 +240,7 @@ export function createAcceptHandler(accountService: AccountService) {
             recipient.id,
         );
         if (isError(followerAccountResult)) {
-            ctx.data.logger.info('Follower account not found, exit early');
+            ctx.data.logger.debug('Follower account not found, exit early');
             return;
         }
         const followerAccount = getValue(followerAccountResult);
@@ -249,7 +249,7 @@ export function createAcceptHandler(accountService: AccountService) {
             sender.id,
         );
         if (isError(ensureAccountToFollowResult)) {
-            ctx.data.logger.info('Account to follow not found, exit early');
+            ctx.data.logger.debug('Account to follow not found, exit early');
             return;
         }
         const accountToFollow = getValue(ensureAccountToFollowResult);
@@ -272,7 +272,7 @@ export async function handleAnnouncedCreate(
     const announcer = await announce.getActor(ctx);
 
     if (!(announcer instanceof Group)) {
-        ctx.data.logger.info('Create is not from a Group, exit early');
+        ctx.data.logger.debug('Create is not from a Group, exit early');
 
         return;
     }
@@ -308,7 +308,7 @@ export async function handleAnnouncedCreate(
     if (
         !(await isFollowedByDefaultSiteAccount(announcer, site, accountService))
     ) {
-        ctx.data.logger.info('Group is not followed, exit early');
+        ctx.data.logger.debug('Group is not followed, exit early');
 
         return;
     }
@@ -319,28 +319,28 @@ export async function handleAnnouncedCreate(
     create = (await announce.getObject()) as Create;
 
     if (!create.id) {
-        ctx.data.logger.info('Create missing id, exit early');
+        ctx.data.logger.debug('Create missing id, exit early');
 
         return;
     }
 
     if (create.proofId || create.proofIds.length > 0) {
-        ctx.data.logger.info('Verifying create with proof(s)');
+        ctx.data.logger.debug('Verifying create with proof(s)');
 
         if ((await verifyObject(Create, await create.toJsonLd())) === null) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Create cannot be verified with provided proof(s), exit early',
             );
 
             return;
         }
     } else {
-        ctx.data.logger.info('Verifying create with network lookup');
+        ctx.data.logger.debug('Verifying create with network lookup');
 
         const lookupResult = await lookupObject(ctx, create.id);
 
         if (lookupResult === null) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Create cannot be verified with network lookup due to inability to lookup object, exit early',
             );
 
@@ -351,7 +351,7 @@ export async function handleAnnouncedCreate(
             lookupResult instanceof Create &&
             String(create.id) !== String(lookupResult.id)
         ) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Create cannot be verified with network lookup due to local activity + remote activity ID mismatch, exit early',
             );
 
@@ -362,7 +362,7 @@ export async function handleAnnouncedCreate(
             lookupResult instanceof Create &&
             lookupResult.id?.origin !== lookupResult.actorId?.origin
         ) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Create cannot be verified with network lookup due to remote activity + actor origin mismatch, exit early',
             );
 
@@ -373,7 +373,7 @@ export async function handleAnnouncedCreate(
             (lookupResult instanceof Note || lookupResult instanceof Article) &&
             create.objectId?.href !== lookupResult.id?.href
         ) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Create cannot be verified with network lookup due to lookup returning Object and ID mismatch, exit early',
             );
 
@@ -391,7 +391,7 @@ export async function handleAnnouncedCreate(
         }
 
         if (!create.id) {
-            ctx.data.logger.info('Remote create missing id, exit early');
+            ctx.data.logger.debug('Remote create missing id, exit early');
 
             return;
         }
@@ -402,7 +402,7 @@ export async function handleAnnouncedCreate(
     ctx.data.globaldb.set([create.id.href], createJson);
 
     if (!create.objectId) {
-        ctx.data.logger.info('Create object id missing, exit early');
+        ctx.data.logger.debug('Create object id missing, exit early');
 
         return;
     }
@@ -415,7 +415,7 @@ export async function handleAnnouncedCreate(
 
         switch (error) {
             case 'upstream-error':
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     'Upstream error fetching post for create handling',
                     {
                         postId: create.objectId.href,
@@ -423,7 +423,7 @@ export async function handleAnnouncedCreate(
                 );
                 break;
             case 'not-a-post':
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     'Resource is not a post in create handling',
                     {
                         postId: create.objectId.href,
@@ -431,7 +431,7 @@ export async function handleAnnouncedCreate(
                 );
                 break;
             case 'missing-author':
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     'Post has missing author in create handling',
                     {
                         postId: create.objectId.href,
@@ -447,7 +447,7 @@ export async function handleAnnouncedCreate(
         const post = getValue(postResult);
 
         if (announcer.id === null) {
-            ctx.data.logger.info('Announcer id missing, exit early');
+            ctx.data.logger.debug('Announcer id missing, exit early');
 
             return;
         }
@@ -455,7 +455,7 @@ export async function handleAnnouncedCreate(
         const accountResult = await accountService.ensureByApId(announcer.id);
 
         if (isError(accountResult)) {
-            ctx.data.logger.info('Announcer account not found, exit early');
+            ctx.data.logger.debug('Announcer account not found, exit early');
 
             return;
         }
@@ -477,7 +477,7 @@ export const createUndoHandler = (
         ctx.data.logger.info('Handling Undo');
 
         if (!undo.id) {
-            ctx.data.logger.info('Undo missing an id - exiting');
+            ctx.data.logger.debug('Undo missing an id - exiting');
             return;
         }
 
@@ -486,7 +486,7 @@ export const createUndoHandler = (
         if (object instanceof Follow) {
             const follow = object as Follow;
             if (!follow.actorId || !follow.objectId) {
-                ctx.data.logger.info('Undo contains invalid Follow - exiting');
+                ctx.data.logger.debug('Undo contains invalid Follow - exiting');
                 return;
             }
 
@@ -494,14 +494,14 @@ export const createUndoHandler = (
                 follow.actorId.href,
             );
             if (!unfollower) {
-                ctx.data.logger.info('Could not find unfollower');
+                ctx.data.logger.debug('Could not find unfollower');
                 return;
             }
             const unfollowing = await accountService.getAccountByApId(
                 follow.objectId.href,
             );
             if (!unfollowing) {
-                ctx.data.logger.info('Could not find unfollowing');
+                ctx.data.logger.debug('Could not find unfollowing');
                 return;
             }
 
@@ -511,7 +511,7 @@ export const createUndoHandler = (
         } else if (object instanceof Announce) {
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     'Undo announce activity sender missing, exit early',
                 );
                 return;
@@ -519,7 +519,7 @@ export const createUndoHandler = (
             const senderAccount = await accountService.getByApId(sender.id);
 
             if (object.objectId === null) {
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     'Undo announce activity object id missing, exit early',
                 );
                 return;
@@ -534,7 +534,7 @@ export const createUndoHandler = (
                     const error = getError(originalPostResult);
                     switch (error) {
                         case 'upstream-error':
-                            ctx.data.logger.info(
+                            ctx.data.logger.debug(
                                 'Upstream error fetching post for undoing announce',
                                 {
                                     postId: object.objectId.href,
@@ -542,7 +542,7 @@ export const createUndoHandler = (
                             );
                             break;
                         case 'not-a-post':
-                            ctx.data.logger.info(
+                            ctx.data.logger.debug(
                                 'Resource is not a post in undoing announce',
                                 {
                                     postId: object.objectId.href,
@@ -550,7 +550,7 @@ export const createUndoHandler = (
                             );
                             break;
                         case 'missing-author':
-                            ctx.data.logger.info(
+                            ctx.data.logger.debug(
                                 'Post has missing author in undoing announce',
                                 {
                                     postId: object.objectId.href,
@@ -585,12 +585,12 @@ export function createAnnounceHandler(
 
         if (!announce.id) {
             // Validate announce
-            ctx.data.logger.info('Invalid Announce - no id');
+            ctx.data.logger.debug('Invalid Announce - no id');
             return;
         }
 
         if (!announce.objectId) {
-            ctx.data.logger.info('Invalid Announce - no object id');
+            ctx.data.logger.debug('Invalid Announce - no object id');
             return;
         }
 
@@ -616,7 +616,7 @@ export function createAnnounceHandler(
         const sender = await announce.getActor(ctx);
 
         if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Announce sender missing, exit early');
+            ctx.data.logger.debug('Announce sender missing, exit early');
             return;
         }
 
@@ -626,7 +626,7 @@ export function createAnnounceHandler(
             (await ctx.data.globaldb.get([announce.objectId.href])) ?? null;
 
         if (!existing) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Announce object not found in globalDb, performing network lookup',
             );
             object = await lookupObject(ctx, announce.objectId);
@@ -634,12 +634,14 @@ export function createAnnounceHandler(
 
         if (!existing && !object) {
             // Validate object
-            ctx.data.logger.info('Invalid Announce - could not find object');
+            ctx.data.logger.debug('Invalid Announce - could not find object');
             return;
         }
 
         if (object && !object.id) {
-            ctx.data.logger.info('Invalid Announce - could not find object id');
+            ctx.data.logger.debug(
+                'Invalid Announce - could not find object id',
+            );
             return;
         }
 
@@ -657,7 +659,7 @@ export function createAnnounceHandler(
 
         if (!existing && object && object.id) {
             // Persist object if not already persisted
-            ctx.data.logger.info('Storing object in globalDb');
+            ctx.data.logger.debug('Storing object in globalDb');
 
             const objectJson = await object.toJsonLd();
 
@@ -693,7 +695,7 @@ export function createAnnounceHandler(
                 const error = getError(postResult);
                 switch (error) {
                     case 'upstream-error':
-                        ctx.data.logger.info(
+                        ctx.data.logger.debug(
                             'Upstream error fetching post for reposting',
                             {
                                 postId: announce.objectId.href,
@@ -701,7 +703,7 @@ export function createAnnounceHandler(
                         );
                         break;
                     case 'not-a-post':
-                        ctx.data.logger.info(
+                        ctx.data.logger.debug(
                             'Resource for reposting is not a post',
                             {
                                 postId: announce.objectId.href,
@@ -709,7 +711,7 @@ export function createAnnounceHandler(
                         );
                         break;
                     case 'missing-author':
-                        ctx.data.logger.info(
+                        ctx.data.logger.debug(
                             'Post for reposting has missing author',
                             {
                                 postId: announce.objectId.href,
@@ -738,17 +740,17 @@ export function createLikeHandler(
 
         // Validate like
         if (!like.id) {
-            ctx.data.logger.info('Invalid Like - no id');
+            ctx.data.logger.debug('Invalid Like - no id');
             return;
         }
 
         if (!like.objectId) {
-            ctx.data.logger.info('Invalid Like - no object id');
+            ctx.data.logger.debug('Invalid Like - no object id');
             return;
         }
 
         if (!like.actorId) {
-            ctx.data.logger.info('Invalid Like - no actor id');
+            ctx.data.logger.debug('Invalid Like - no actor id');
             return;
         }
 
@@ -760,7 +762,7 @@ export function createLikeHandler(
                 const error = getError(postResult);
                 switch (error) {
                     case 'upstream-error':
-                        ctx.data.logger.info(
+                        ctx.data.logger.debug(
                             'Upstream error fetching post for liking',
                             {
                                 postId: like.objectId.href,
@@ -768,7 +770,7 @@ export function createLikeHandler(
                         );
                         break;
                     case 'not-a-post':
-                        ctx.data.logger.info(
+                        ctx.data.logger.debug(
                             'Resource for liking is not a post',
                             {
                                 postId: like.objectId.href,
@@ -776,7 +778,7 @@ export function createLikeHandler(
                         );
                         break;
                     case 'missing-author':
-                        ctx.data.logger.info(
+                        ctx.data.logger.debug(
                             'Post for liking has missing author',
                             {
                                 postId: like.objectId.href,
@@ -798,7 +800,7 @@ export function createLikeHandler(
         const sender = await like.getActor(ctx);
 
         if (sender === null || sender.id === null) {
-            ctx.data.logger.info('Like sender missing, exit early');
+            ctx.data.logger.debug('Like sender missing, exit early');
             return;
         }
 
@@ -808,14 +810,14 @@ export function createLikeHandler(
             (await ctx.data.globaldb.get([like.objectId.href])) ?? null;
 
         if (!existing) {
-            ctx.data.logger.info(
+            ctx.data.logger.debug(
                 'Like object not found in globalDb, performing network lookup',
             );
 
             try {
                 object = await like.getObject();
             } catch (err) {
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     'Error performing like object network lookup',
                     {
                         error: err,
@@ -826,12 +828,12 @@ export function createLikeHandler(
 
         // Validate object
         if (!existing && !object) {
-            ctx.data.logger.info('Invalid Like - could not find object');
+            ctx.data.logger.debug('Invalid Like - could not find object');
             return;
         }
 
         if (object && !object.id) {
-            ctx.data.logger.info('Invalid Like - could not find object id');
+            ctx.data.logger.debug('Invalid Like - could not find object id');
             return;
         }
 
@@ -841,7 +843,7 @@ export function createLikeHandler(
 
         // Persist object if not already persisted
         if (!existing && object && object.id) {
-            ctx.data.logger.info('Storing object in globalDb');
+            ctx.data.logger.debug('Storing object in globalDb');
 
             const objectJson = await object.toJsonLd();
 
@@ -913,7 +915,7 @@ export function createFollowingDispatcher(
         _handle: string,
         cursor: string | null,
     ) {
-        ctx.data.logger.info('Following Dispatcher');
+        ctx.data.logger.debug('Following Dispatcher');
 
         const offset = Number.parseInt(cursor ?? '0', 10);
         let nextCursor: string | null = null;
@@ -960,7 +962,9 @@ export function createFollowingDispatcher(
                 ? (offset + ACTIVITYPUB_COLLECTION_PAGE_SIZE).toString()
                 : null;
 
-        ctx.data.logger.info('Following results', { results });
+        ctx.data.logger.debug('Following results retrieved', {
+            count: results.length,
+        });
 
         return {
             items: results.map((result) => new URL(result.ap_id)),
@@ -1064,7 +1068,7 @@ export function createOutboxDispatcher(
         _handle: string,
         cursor: string | null,
     ) {
-        ctx.data.logger.info('Outbox Dispatcher');
+        ctx.data.logger.debug('Outbox Dispatcher');
 
         const host = ctx.request.headers.get('host')!;
         const hostData = await hostDataContextLoader.loadDataForHost(host);
