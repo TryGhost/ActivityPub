@@ -16,10 +16,12 @@ import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 
 describe('NotificationEventService', () => {
     let events: EventEmitter;
     let notificationService: NotificationService;
+    let postRepository: KnexPostRepository;
     let notificationEventService: NotificationEventService;
 
     beforeEach(() => {
@@ -36,9 +38,14 @@ describe('NotificationEventService', () => {
             readAllNotifications: vi.fn(),
         } as unknown as NotificationService;
 
+        postRepository = {
+            getById: vi.fn(),
+        } as unknown as KnexPostRepository;
+
         notificationEventService = new NotificationEventService(
             events,
             notificationService,
+            postRepository,
         );
         notificationEventService.init();
     });
@@ -77,23 +84,48 @@ describe('NotificationEventService', () => {
     });
 
     describe('handling a post repost', () => {
-        it('should create a repost notification', () => {
+        it('should create a repost notification', async () => {
+            const postId = 123;
             const post = {
-                id: 123,
+                id: postId,
                 author: {
                     id: 456,
                 },
             } as Post;
             const accountId = 789;
 
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
+
             events.emit(
                 PostRepostedEvent.getName(),
-                new PostRepostedEvent(post as Post, accountId),
+                new PostRepostedEvent(postId, accountId),
             );
 
+            await new Promise(process.nextTick);
+
+            expect(postRepository.getById).toHaveBeenCalledWith(postId);
             expect(
                 notificationService.createRepostNotification,
             ).toHaveBeenCalledWith(post, accountId);
+        });
+
+        it('should not create a repost notification if post was deleted', async () => {
+            const postId = 123;
+            const accountId = 789;
+
+            vi.mocked(postRepository.getById).mockResolvedValue(null);
+
+            events.emit(
+                PostRepostedEvent.getName(),
+                new PostRepostedEvent(postId, accountId),
+            );
+
+            await new Promise(process.nextTick);
+
+            expect(postRepository.getById).toHaveBeenCalledWith(postId);
+            expect(
+                notificationService.createRepostNotification,
+            ).not.toHaveBeenCalled();
         });
     });
 
