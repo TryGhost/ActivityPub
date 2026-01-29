@@ -24,14 +24,14 @@ jobs:
 
       - name: Download ActivityPub image
         if: steps.check-skip-tests.outputs.skip_tests != 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: activitypub-amd64
           path: /tmp
 
       - name: Download Migrations image
         if: steps.check-skip-tests.outputs.skip_tests != 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: activitypub-migrations-amd64
           path: /tmp
