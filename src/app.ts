@@ -171,6 +171,11 @@ await configure({
                 'warning',
         },
         {
+            category: ['fedify', 'federation', 'actor'],
+            sinks: ['console'],
+            level: 'error',
+        },
+        {
             category: ['logtape', 'meta'],
             sinks: ['console'],
             level: 'error',
