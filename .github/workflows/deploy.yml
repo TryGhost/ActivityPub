@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        region: [europe-west4, europe-west3]
+        region: [europe-west4]
         include:
           - region: europe-west4
             region_name: netherlands
@@ -85,7 +85,7 @@ jobs:
     needs: [deploy-staging]
     strategy:
       matrix:
-        region: [europe-west4, europe-west3]
+        region: [europe-west4]
         include:
           - region: europe-west4
             region_name: netherlands
