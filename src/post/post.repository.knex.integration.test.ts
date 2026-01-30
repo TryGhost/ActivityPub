@@ -89,7 +89,11 @@ describe('KnexPostRepository', () => {
         postRepository = new KnexPostRepository(client, events, logger);
         const moderationService = new ModerationService(client);
         const feedService = new FeedService(client, moderationService);
-        const feedUpdateService = new FeedUpdateService(events, feedService);
+        const feedUpdateService = new FeedUpdateService(
+            events,
+            feedService,
+            postRepository,
+        );
         feedUpdateService.init();
     });
 
@@ -974,12 +978,12 @@ describe('KnexPostRepository', () => {
         expect(eventsEmitSpy).nthCalledWith(
             2,
             PostRepostedEvent.getName(),
-            new PostRepostedEvent(post, Number(accounts[1].id)),
+            new PostRepostedEvent(Number(post.id), Number(accounts[1].id)),
         );
         expect(eventsEmitSpy).nthCalledWith(
             3,
             PostRepostedEvent.getName(),
-            new PostRepostedEvent(post, Number(accounts[2].id)),
+            new PostRepostedEvent(Number(post.id), Number(accounts[2].id)),
         );
     });
 
@@ -1036,17 +1040,17 @@ describe('KnexPostRepository', () => {
         expect(eventsEmitSpy).nthCalledWith(
             2,
             PostRepostedEvent.getName(),
-            new PostRepostedEvent(post, Number(accounts[1].id)),
+            new PostRepostedEvent(Number(post.id), Number(accounts[1].id)),
         );
         expect(eventsEmitSpy).nthCalledWith(
             3,
             PostRepostedEvent.getName(),
-            new PostRepostedEvent(post, Number(accounts[0].id)),
+            new PostRepostedEvent(Number(post.id), Number(accounts[0].id)),
         );
         expect(eventsEmitSpy).nthCalledWith(
             4,
             PostRepostedEvent.getName(),
-            new PostRepostedEvent(post, Number(accounts[2].id)),
+            new PostRepostedEvent(Number(post.id), Number(accounts[2].id)),
         );
         expect(eventsEmitSpy).nthCalledWith(
             5,
