@@ -62,9 +62,11 @@ export class FeedUpdateService {
 
     private async handlePostRepostedEvent(event: PostRepostedEvent) {
         const post = await this.postRepository.getById(event.getPostId());
+
         if (!post) {
             return; // Post was deleted
         }
+
         const repostedBy = event.getAccountId();
 
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
