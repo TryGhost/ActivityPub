@@ -72,9 +72,11 @@ export class NotificationEventService {
 
     private async handlePostRepostedEvent(event: PostRepostedEvent) {
         const post = await this.postRepository.getById(event.getPostId());
+
         if (!post) {
             return; // Post was deleted
         }
+
         await this.notificationService.createRepostNotification(
             post,
             event.getAccountId(),
