@@ -60,7 +60,7 @@
     "typescript": "5.9.3",
     "vite-tsconfig-paths": "5.1.4",
     "vitest": "2.1.9",
-    "wiremock-captain": "3.6.1"
+    "wiremock-captain": "4.1.3"
   },
   "dependencies": {
     "@fedify/fedify": "1.9.1",
