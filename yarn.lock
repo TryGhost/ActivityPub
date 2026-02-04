@@ -961,10 +961,10 @@
   dependencies:
     jsbi "^4.3.0"
 
-"@logtape/logtape@0.12.3":
-  version "0.12.3"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-0.12.3.tgz#f3c340966f30bc3eb8a896aa9f303747fc337387"
-  integrity sha512-LNIYAQ3CbIBPDVlKz25g8ix47iYnJhkI93cPs8WWANLB1cBxdhNb2ibWg1gKZtenR72grDXFLM49Ci+7sYjUmQ==
+"@logtape/logtape@2.0.2":
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-2.0.2.tgz#41057af2ffdb701fc139a3197c7d3f35626bf7ba"
+  integrity sha512-cveUBLbCMFkvkLycP/2vNWvywl47JcJbazHIju94/QNGboZ/jyYAgZIm0ZXezAOx3eIz8OG1EOZ5CuQP3+2FQg==
 
 "@logtape/logtape@^1.1.1":
   version "1.3.7"
