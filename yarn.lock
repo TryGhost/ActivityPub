@@ -606,14 +606,14 @@
     stream-events "^1.0.5"
     uuid "^9.0.0"
 
-"@google-cloud/opentelemetry-cloud-trace-exporter@2.4.1":
-  version "2.4.1"
-  resolved "https://registry.yarnpkg.com/@google-cloud/opentelemetry-cloud-trace-exporter/-/opentelemetry-cloud-trace-exporter-2.4.1.tgz#98759ffc46907e5f62985409adfecc45f6b81817"
-  integrity sha512-Dq2IyAyA9PCjbjLOn86i2byjkYPC59b5ic8k/L4q5bBWH0Jro8lzMs8C0G5pJfqh2druj8HF+oAIAlSdWQ+Z9Q==
+"@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@google-cloud/opentelemetry-cloud-trace-exporter/-/opentelemetry-cloud-trace-exporter-3.0.0.tgz#d780573c4f57e0253aea63d56db88afe8acc5ed0"
+  integrity sha512-mUfLJBFo+ESbO0dAGboErx2VyZ7rbrHcQvTP99yH/J72dGaPbH2IzS+04TFbTbEd1VW5R9uK3xq2CqawQaG+1Q==
   dependencies:
-    "@google-cloud/opentelemetry-resource-util" "^2.4.0"
+    "@google-cloud/opentelemetry-resource-util" "^3.0.0"
     "@grpc/grpc-js" "^1.1.8"
-    "@grpc/proto-loader" "^0.7.0"
+    "@grpc/proto-loader" "^0.8.0"
     google-auth-library "^9.0.0"
 
 "@google-cloud/opentelemetry-cloud-trace-propagator@0.20.0":
@@ -623,10 +623,10 @@
   dependencies:
     hex2dec "^1.0.1"
 
-"@google-cloud/opentelemetry-resource-util@^2.4.0":
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/@google-cloud/opentelemetry-resource-util/-/opentelemetry-resource-util-2.4.0.tgz#787cae31e5a5ecdc9684a1f54b5674061832c29d"
-  integrity sha512-/7ujlMoKtDtrbQlJihCjQnm31n2s2RTlvJqcSbt2jV3OkCzPAdo3u31Q13HNugqtIRUSk7bUoLx6AzhURkhW4w==
+"@google-cloud/opentelemetry-resource-util@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@google-cloud/opentelemetry-resource-util/-/opentelemetry-resource-util-3.0.0.tgz#6803d021e8bf13566f4a8db668bb56869a7cd15c"
+  integrity sha512-CGR/lNzIfTKlZoZFfS6CkVzx+nsC9gzy6S8VcyaLegfEJbiPjxbMLP7csyhJTvZe/iRRcQJxSk0q8gfrGqD3/Q==
   dependencies:
     "@opentelemetry/semantic-conventions" "^1.22.0"
     gcp-metadata "^6.0.0"
@@ -729,7 +729,7 @@
     "@grpc/proto-loader" "^0.8.0"
     "@js-sdsl/ordered-map" "^4.4.2"
 
-"@grpc/proto-loader@^0.7.0", "@grpc/proto-loader@^0.7.13":
+"@grpc/proto-loader@^0.7.13":
   version "0.7.15"
   resolved "https://registry.yarnpkg.com/@grpc/proto-loader/-/proto-loader-0.7.15.tgz#4cdfbf35a35461fc843abe8b9e2c0770b5095e60"
   integrity sha512-tMXdRCfYVixjuFK+Hk0Q1s38gV9zDiDJfWL3h1rv4Qc39oILCu1TRTDt7+fGUI8K4G1Fj125Hx/ru3azECWTyQ==
