@@ -58,7 +58,7 @@
     "esbuild": "0.27.2",
     "nock": "14.0.10",
     "typescript": "5.9.3",
-    "vite-tsconfig-paths": "5.1.4",
+    "vite-tsconfig-paths": "6.0.5",
     "vitest": "2.1.9",
     "wiremock-captain": "3.6.1"
   },
