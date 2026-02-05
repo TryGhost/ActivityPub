@@ -534,7 +534,7 @@ export class KnexPostRepository {
             for (const accountId of repostAccountIds) {
                 await this.events.emitAsync(
                     PostRepostedEvent.getName(),
-                    new PostRepostedEvent(post, accountId),
+                    new PostRepostedEvent(post.id as number, accountId),
                 );
             }
 
