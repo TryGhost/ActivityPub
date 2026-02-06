@@ -1,4 +1,4 @@
-FROM fsouza/fake-gcs-server@sha256:666f86b873120818b10a5e68d99401422fcf8b00c1f27fe89599c35236f48b4c
+FROM fsouza/fake-gcs-server@sha256:e0dd21cc6188b8a1538cb840e29289e80c05e5ee8594ed7aa54d61cbae192517
 
 # Install curl
 RUN apk add --no-cache curl
