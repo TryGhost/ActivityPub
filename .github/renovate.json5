@@ -4,12 +4,15 @@
     'docker:pinDigests',
     'docker:disableMajor',
   ],
+  // Automerge during EU office hours only (Monday - Thursday, 07:00 - 16:59 UTC)
+  // Why? Merging to main ships to production, so we want to avoid automerging when no engineer is online
+  //
+  // Notes:
+  // - this schedule doesn't restrict when the PRs are opened by Renovate, only when they are merged
+  // - automerge schedule works only if we're using Renovate automerge over platform automerge (Github)
   platformAutomerge: false,
-  schedule: [
-    '* 8-11 * * 1,2,3,4',
-  ],
   automergeSchedule: [
-    '* 8-11 * * 1,2,3,4',
+    '* 7-16 * * 1,2,3,4',
   ],
   lockFileMaintenance: {
     enabled: true,
