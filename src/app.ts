@@ -706,14 +706,9 @@ app.use(async (ctx, next) => {
     return next();
 });
 
-// Track in-flight requests
-let activeRequests = 0;
-
 app.use(async (ctx, next) => {
     const id = crypto.randomUUID();
     const start = Date.now();
-
-    activeRequests++;
 
     ctx.get('logger').info('{method} {host} {url} {id}', {
         id,
@@ -725,7 +720,6 @@ app.use(async (ctx, next) => {
     try {
         await next();
     } finally {
-        activeRequests--;
         const end = Date.now();
 
         ctx.get('logger').info(
@@ -997,30 +991,10 @@ let isShuttingDown = false;
 async function gracefulShutdown(signal: 'SIGINT' | 'SIGTERM') {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    globalLogging.info(
-        `Received ${signal}, shutting down gracefully. Active requests: ${activeRequests}`,
-    );
-    const requestMonitor = setInterval(() => {
-        if (activeRequests > 0) {
-            globalLogging.info(
-                `Waiting for ${activeRequests} in-flight requests to complete...`,
-            );
-        }
-    }, 1000);
+    globalLogging.info(`Received ${signal}, shutting down gracefully.`);
     try {
         const maxWaitTime = 9000;
-        const startTime = Date.now();
-        while (activeRequests > 0 && Date.now() - startTime < maxWaitTime) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-        if (activeRequests > 0) {
-            globalLogging.warn(
-                `Shutting down with ${activeRequests} requests still in flight`,
-            );
-        } else {
-            globalLogging.info('All requests completed');
-        }
-        clearInterval(requestMonitor);
+        await new Promise((resolve) => setTimeout(resolve, maxWaitTime));
         await knex.destroy();
         globalLogging.info('DB connection closed');
         await Sentry.close(1000);
@@ -1033,7 +1007,6 @@ async function gracefulShutdown(signal: 'SIGINT' | 'SIGTERM') {
             },
         );
     } finally {
-        clearInterval(requestMonitor);
         process.exit(0);
     }
 }
