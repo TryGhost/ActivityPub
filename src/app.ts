@@ -706,37 +706,35 @@ app.use(async (ctx, next) => {
     return next();
 });
 
-if (process.env.NODE_ENV !== 'production') {
-    app.use(async (ctx, next) => {
-        const id = crypto.randomUUID();
-        const start = Date.now();
+app.use(async (ctx, next) => {
+    const id = crypto.randomUUID();
+    const start = Date.now();
 
-        ctx.get('logger').info('{method} {host} {url} {id}', {
-            id,
-            method: ctx.req.method.toUpperCase(),
-            host: ctx.req.header('host'),
-            url: ctx.req.url,
-        });
-
-        try {
-            await next();
-        } finally {
-            const end = Date.now();
-
-            ctx.get('logger').info(
-                '{method} {host} {url} {id} {status} {duration}ms',
-                {
-                    id,
-                    method: ctx.req.method.toUpperCase(),
-                    host: ctx.req.header('host'),
-                    url: ctx.req.url,
-                    status: ctx.res.status,
-                    duration: end - start,
-                },
-            );
-        }
+    ctx.get('logger').debug('{method} {host} {url} {id}', {
+        id,
+        method: ctx.req.method.toUpperCase(),
+        host: ctx.req.header('host'),
+        url: ctx.req.url,
     });
-}
+
+    try {
+        await next();
+    } finally {
+        const end = Date.now();
+
+        ctx.get('logger').debug(
+            '{method} {host} {url} {id} {status} {duration}ms',
+            {
+                id,
+                method: ctx.req.method.toUpperCase(),
+                host: ctx.req.header('host'),
+                url: ctx.req.url,
+                status: ctx.res.status,
+                duration: end - start,
+            },
+        );
+    }
+});
 
 app.use(async (ctx, next) => {
     const flagService = container.resolve('flagService');

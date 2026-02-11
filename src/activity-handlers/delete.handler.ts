@@ -14,7 +14,7 @@ export class DeleteHandler {
     ) {}
 
     async handle(ctx: FedifyContext, deleteActivity: Delete) {
-        ctx.data.logger.info('Handling Delete');
+        ctx.data.logger.debug('Handling Delete');
         const parsed = ctx.parseUri(deleteActivity.objectId);
         ctx.data.logger.debug('Parsed delete object', { parsed });
         if (!deleteActivity.id) {

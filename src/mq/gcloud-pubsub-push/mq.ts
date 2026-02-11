@@ -292,7 +292,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
         const fedifyId = message.attributes.fedifyId ?? 'unknown';
 
-        this.logger.info(
+        this.logger.debug(
             `Handling message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
             { fedifyId, pubSubId: message.id, mq_message: message.data },
         );
@@ -302,7 +302,7 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
 
             await this.handleSuccess(message.data);
 
-            this.logger.info(
+            this.logger.debug(
                 `Acknowledged message [FedifyID: ${fedifyId}, PubSubID: ${message.id}]`,
                 { fedifyId, pubSubId: message.id },
             );

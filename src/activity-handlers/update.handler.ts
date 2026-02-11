@@ -9,7 +9,7 @@ export class UpdateHandler {
     constructor(private readonly accountService: AccountService) {}
 
     async handle(ctx: FedifyContext, update: Update) {
-        ctx.data.logger.info('Handling Update');
+        ctx.data.logger.debug('Handling Update');
 
         if (!update.id) {
             ctx.data.logger.debug('Update missing id - exit');
