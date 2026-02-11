@@ -70,6 +70,7 @@ describe('PostService', () => {
             info: vi.fn(),
             error: vi.fn(),
             warn: vi.fn(),
+            debug: vi.fn(),
         } as unknown as Logger;
         postRepository = new KnexPostRepository(db, events, logger);
         accountRepository = new KnexAccountRepository(db, events);

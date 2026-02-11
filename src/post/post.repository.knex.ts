@@ -426,7 +426,7 @@ export class KnexPostRepository {
                         const shouldUseAtomicUpdate =
                             post.isInternal || !post.isRepostCountDirty;
 
-                        this.logger.info(
+                        this.logger.debug(
                             `Updating repost count for post ${post.id}`,
                             {
                                 postId: post.id,

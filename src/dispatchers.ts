@@ -203,7 +203,7 @@ export const keypairDispatcher = (
 
 export function createAcceptHandler(accountService: AccountService) {
     return async function handleAccept(ctx: FedifyContext, accept: Accept) {
-        ctx.data.logger.info('Handling Accept');
+        ctx.data.logger.debug('Handling Accept');
         const parsed = ctx.parseUri(accept.objectId);
         ctx.data.logger.debug('Parsed accept object', { parsed });
         if (!accept.id) {
@@ -270,7 +270,7 @@ export async function handleAnnouncedCreate(
     postService: PostService,
     hostDataContextLoader: HostDataContextLoader,
 ) {
-    ctx.data.logger.info('Handling Announced Create');
+    ctx.data.logger.debug('Handling Announced Create');
 
     // Validate announced create activity is from a Group as we only support
     // announcements from Groups - See https://codeberg.org/fediverse/fep/src/branch/main/fep/1b12/fep-1b12.md
@@ -486,7 +486,7 @@ export const createUndoHandler = (
     postService: PostService,
 ) =>
     async function handleUndo(ctx: FedifyContext, undo: Undo) {
-        ctx.data.logger.info('Handling Undo');
+        ctx.data.logger.debug('Handling Undo');
 
         if (!undo.id) {
             ctx.data.logger.debug('Undo missing an id - exiting');
@@ -593,7 +593,7 @@ export function createAnnounceHandler(
         ctx: FedifyContext,
         announce: Announce,
     ) {
-        ctx.data.logger.info('Handling Announce');
+        ctx.data.logger.debug('Handling Announce');
 
         if (!announce.id) {
             // Validate announce
@@ -750,7 +750,7 @@ export function createLikeHandler(
     postService: PostService,
 ) {
     return async function handleLike(ctx: FedifyContext, like: Like) {
-        ctx.data.logger.info('Handling Like');
+        ctx.data.logger.debug('Handling Like');
 
         // Validate like
         if (!like.id) {

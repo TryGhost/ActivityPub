@@ -85,6 +85,7 @@ describe('KnexPostRepository', () => {
         });
         const logger = {
             info: vi.fn(),
+            debug: vi.fn(),
         } as unknown as Logger;
         postRepository = new KnexPostRepository(client, events, logger);
         const moderationService = new ModerationService(client);

@@ -8,7 +8,7 @@ export class CreateHandler {
     constructor(private readonly postService: PostService) {}
 
     async handle(ctx: FedifyContext, create: Create) {
-        ctx.data.logger.info('Handling Create');
+        ctx.data.logger.debug('Handling Create');
         const parsed = ctx.parseUri(create.objectId);
         ctx.data.logger.debug('Parsed create object', { parsed });
         if (!create.id) {

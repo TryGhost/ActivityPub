@@ -13,7 +13,7 @@ export class FollowHandler {
     ) {}
 
     async handle(ctx: FedifyContext, follow: Follow) {
-        ctx.data.logger.info('Handling Follow');
+        ctx.data.logger.debug('Handling Follow');
 
         // Validate activity data
         if (!follow.id) {
