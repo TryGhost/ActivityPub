@@ -6,7 +6,7 @@ import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import { AccountBlockedEvent } from '@/account/events';
+import { AccountBlockedEvent, AccountUpdatedEvent } from '@/account/events';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { UriBuilder } from '@/activitypub/uri';
@@ -551,6 +551,81 @@ describe('FediverseBridge', () => {
         events.emit(PostUpdatedEvent.getName(), event);
 
         await nextTick();
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should send update activity on AccountUpdatedEvent for internal accounts', async () => {
+        const internalAccount = {
+            id: 123,
+            username: 'testuser',
+            apId: new URL('https://example.com/user/123'),
+            apFollowers: new URL('https://example.com/user/123/followers'),
+            isInternal: true,
+        } as AccountEntity;
+
+        vi.mocked(accountService.getAccountById).mockResolvedValue(
+            internalAccount,
+        );
+
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const event = new AccountUpdatedEvent(internalAccount.id);
+        events.emit(AccountUpdatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(accountService.getAccountById).toHaveBeenCalledWith(
+            internalAccount.id,
+        );
+        expect(sendActivity).toHaveBeenCalledOnce();
+        expect(context.data.globaldb.set).toHaveBeenCalledOnce();
+    });
+
+    it('should not send update activity on AccountUpdatedEvent for external accounts', async () => {
+        const externalAccount = {
+            id: 456,
+            username: 'external',
+            apId: new URL('https://external.com/user/456'),
+            apFollowers: new URL('https://external.com/user/456/followers'),
+            isInternal: false,
+        } as AccountEntity;
+
+        vi.mocked(accountService.getAccountById).mockResolvedValue(
+            externalAccount,
+        );
+
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const event = new AccountUpdatedEvent(externalAccount.id);
+        events.emit(AccountUpdatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(accountService.getAccountById).toHaveBeenCalledWith(
+            externalAccount.id,
+        );
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should not send update activity on AccountUpdatedEvent if account is not found', async () => {
+        vi.mocked(accountService.getAccountById).mockResolvedValue(null);
+
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        const event = new AccountUpdatedEvent(999);
+        events.emit(AccountUpdatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(accountService.getAccountById).toHaveBeenCalledWith(999);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });

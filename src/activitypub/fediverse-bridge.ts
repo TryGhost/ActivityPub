@@ -162,8 +162,11 @@ export class FediverseBridge {
     }
 
     private async handleAccountUpdatedEvent(event: AccountUpdatedEvent) {
-        const account = event.getAccount();
-        if (!account.isInternal) {
+        const account = await this.accountService.getAccountById(
+            event.getAccountId(),
+        );
+
+        if (!account || !account.isInternal) {
             return;
         }
 

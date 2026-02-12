@@ -194,9 +194,9 @@ describe('KnexAccountRepository', () => {
             expect.any(AccountUpdatedEvent),
         );
 
-        // Verify that the event contains the account
+        // Verify that the event contains the account ID
         const event = emitSpy.mock.calls[0][1] as AccountUpdatedEvent;
-        expect(event.getAccount()).toBe(updated);
+        expect(event.getAccountId()).toBe(updated.id);
 
         // Verify the database was updated
         const updatedAccount = await client('accounts')
