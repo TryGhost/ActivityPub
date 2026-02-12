@@ -556,10 +556,10 @@
     url-template "^3.1.1"
     urlpattern-polyfill "^10.1.0"
 
-"@fedify/hono@1.9.1":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.9.1.tgz#efdc54e4857299c63db117dce42c47259f10809f"
-  integrity sha512-kBuO+mNWcc9z8iiiWiIfvOUe7/VCNrjPogjMcq51jdjb6HbJdy77gdTN26dcUq6JASoxMjMFnZqjT/YixL7sTA==
+"@fedify/hono@1.10.3":
+  version "1.10.3"
+  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.3.tgz#a15bd6127a6caed1e97f74199ef85b7fee60cc35"
+  integrity sha512-10gwmyLYisWvTBHvtmxRkY0zkJhYLS2j7JDMmP6vx/ikTBz+fX1zoI3p9Ozpre/M1lpACHpZmyYrcYm3hLT1EQ==
 
 "@fedify/redis@1.9.1":
   version "1.9.1"
