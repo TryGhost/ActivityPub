@@ -237,7 +237,7 @@ export class AccountEntity implements Account {
             account.customFields !== this.customFields
         ) {
             account.events = account.events.concat(
-                new AccountUpdatedEvent(account),
+                new AccountUpdatedEvent(account.id),
             );
         }
 

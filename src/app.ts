@@ -45,6 +45,7 @@ import { AccountCreatedEvent } from '@/account/events/account-created.event';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
 import { AccountUnblockedEvent } from '@/account/events/account-unblocked.event';
 import { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
+import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 import { DomainBlockedEvent } from '@/account/events/domain-blocked.event';
 import { DomainUnblockedEvent } from '@/account/events/domain-unblocked.event';
 import { NotificationsReadEvent } from '@/account/events/notifications-read-event';
@@ -245,6 +246,9 @@ container
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(AccountCreatedEvent.getName(), AccountCreatedEvent);
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(AccountUpdatedEvent.getName(), AccountUpdatedEvent);
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(AccountFollowedEvent.getName(), AccountFollowedEvent);
