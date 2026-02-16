@@ -3699,10 +3699,10 @@ multiformats@^9.4.2:
   resolved "https://registry.yarnpkg.com/multiformats/-/multiformats-9.9.0.tgz#c68354e7d21037a8f1f8833c8ccd68618e8f1d37"
   integrity sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==
 
-mysql2@3.16.3:
-  version "3.16.3"
-  resolved "https://registry.yarnpkg.com/mysql2/-/mysql2-3.16.3.tgz#59491bfa13f1979c2a87fd1ef68a3eb83fd58fcb"
-  integrity sha512-+3XhQEt4FEFuvGV0JjIDj4eP2OT/oIj/54dYvqhblnSzlfcxVOuj+cd15Xz6hsG4HU1a+A5+BA9gm0618C4z7A==
+mysql2@3.17.1:
+  version "3.17.1"
+  resolved "https://registry.yarnpkg.com/mysql2/-/mysql2-3.17.1.tgz#781292f60df3806949c0a3161a51ad3e4e4689a1"
+  integrity sha512-UzIzdVwPXPoZm+FaJ4lNsRt28HtUwt68gpLH7NP1oSjd91M5Qn1XJzbIsSRMRc5CV3pvktLNshmbaFfMYqPBhQ==
   dependencies:
     aws-ssl-profiles "^1.1.2"
     denque "^2.1.0"
@@ -3712,7 +3712,7 @@ mysql2@3.16.3:
     lru.min "^1.1.3"
     named-placeholders "^1.1.6"
     seq-queue "^0.0.5"
-    sqlstring "^2.3.3"
+    sql-escaper "^1.3.2"
 
 mz@^2.7.0:
   version "2.7.0"
@@ -4568,10 +4568,10 @@ split@^1.0.1:
   dependencies:
     through "2"
 
-sqlstring@^2.3.3:
-  version "2.3.3"
-  resolved "https://registry.yarnpkg.com/sqlstring/-/sqlstring-2.3.3.tgz#2ddc21f03bce2c387ed60680e739922c65751d0c"
-  integrity sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==
+sql-escaper@^1.3.2:
+  version "1.3.2"
+  resolved "https://registry.yarnpkg.com/sql-escaper/-/sql-escaper-1.3.2.tgz#b11c68c6541fc05afdf508d52e54af7219455fad"
+  integrity sha512-lp+ZDVfSjHt+qAK1jXBTIXBNYnbo7gnaAGwoYTH9bE89kNkXwcu6g0WjJGRsdTKVpY1z70u3Y0IgmnBOoRybHw==
 
 stackback@0.0.2:
   version "0.0.2"
