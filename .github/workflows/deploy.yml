@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 jobs:
-  deploy-staging:
+  deploy-staging-migrations:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,49 +40,37 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: Deploy ActivityPub Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: stg-${{ matrix.region_name }}-activitypub-queue
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: Deploy ActivityPub Retry Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: stg-${{ matrix.region_name }}-activitypub-retry-queue
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: Deploy ActivityPub External to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: stg-${{ matrix.region_name }}-activitypub-external
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: Deploy ActivityPub API to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: stg-${{ matrix.region_name }}-activitypub-api
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-  deploy-production:
+  deploy-staging-services:
     runs-on: ubuntu-latest
-    needs: [deploy-staging]
+    needs: [deploy-staging-migrations]
+    strategy:
+      matrix:
+        region: [europe-west4]
+        service: [activitypub-queue, activitypub-retry-queue, activitypub-external, activitypub-api]
+        include:
+          - region: europe-west4
+            region_name: netherlands
+    steps:
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/203831262197/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: stg-activitypub-terraform-cicd@ghost-activitypub-stg.iam.gserviceaccount.com
+
+      - name: Deploy ${{ matrix.service }} to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
+          region: ${{ matrix.region }}
+          service: stg-${{ matrix.region_name }}-${{ matrix.service }}
+          skip_default_labels: true
+          labels: |-
+            commit-sha=${{ github.sha }}
+
+  deploy-production-migrations:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-services]
     strategy:
       matrix:
         region: [europe-west4]
@@ -110,42 +98,31 @@ jobs:
           labels: |-
             commit-sha=${{ github.sha }}
 
-      - name: Deploy ActivityPub Queue to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
+  deploy-production-services:
+    runs-on: ubuntu-latest
+    needs: [deploy-production-migrations]
+    strategy:
+      matrix:
+        region: [europe-west4]
+        service: [activitypub-queue, activitypub-retry-queue, activitypub-external, activitypub-api]
+        include:
+          - region: europe-west4
+            region_name: netherlands
+    steps:
+      - name: Authenticate with GCP
+        id: gcp-auth
+        uses: google-github-actions/auth@v3
         with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: prd-${{ matrix.region_name }}-activitypub-queue
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
+          token_format: access_token
+          workload_identity_provider: projects/687476608778/locations/global/workloadIdentityPools/github-oidc-activitypub/providers/github-provider-activitypub
+          service_account: prd-activitypub-terraform-cicd@ghost-activitypub.iam.gserviceaccount.com
 
-      - name: Deploy ActivityPub Retry Queue to Cloud Run
+      - name: Deploy ${{ matrix.service }} to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v3
         with:
           image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
           region: ${{ matrix.region }}
-          service: prd-${{ matrix.region_name }}-activitypub-retry-queue
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: Deploy ActivityPub External to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: prd-${{ matrix.region_name }}-activitypub-external
-          skip_default_labels: true
-          labels: |-
-            commit-sha=${{ github.sha }}
-
-      - name: Deploy ActivityPub API to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          image: europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:${{ inputs.github-sha }}
-          region: ${{ matrix.region }}
-          service: prd-${{ matrix.region_name }}-activitypub-api
+          service: prd-${{ matrix.region_name }}-${{ matrix.service }}
           skip_default_labels: true
           labels: |-
             commit-sha=${{ github.sha }}
