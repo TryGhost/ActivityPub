@@ -1788,9 +1788,9 @@
     "@types/node" "*"
 
 "@types/node@*", "@types/node@>=13.7.0":
-  version "25.2.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-25.2.2.tgz#0ddfe326c326afcb3422d32bfe5eb2938e1cb5db"
-  integrity sha512-BkmoP5/FhRYek5izySdkOneRyXYN35I860MFAGupTdebyE66uZaR+bXLHq8k4DirE5DwQi3NuhvRU1jqTVwUrQ==
+  version "25.2.3"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-25.2.3.tgz#9c18245be768bdb4ce631566c7da303a5c99a7f8"
+  integrity sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ==
   dependencies:
     undici-types "~7.16.0"
 
@@ -2705,9 +2705,9 @@ fast-glob@^3.3.3:
     micromatch "^4.0.8"
 
 fast-xml-parser@^5.3.4:
-  version "5.3.5"
-  resolved "https://registry.yarnpkg.com/fast-xml-parser/-/fast-xml-parser-5.3.5.tgz#3e914cb852e636923cb555deaa356f7366e18b49"
-  integrity sha512-JeaA2Vm9ffQKp9VjvfzObuMCjUYAp5WDYhRYL5LrBPY/jUDlUtOvDfot0vKSkB9tuX885BDHjtw4fZadD95wnA==
+  version "5.3.6"
+  resolved "https://registry.yarnpkg.com/fast-xml-parser/-/fast-xml-parser-5.3.6.tgz#85a69117ca156b1b3c52e426495b6de266cb6a4b"
+  integrity sha512-QNI3sAvSvaOiaMl8FYU4trnEzCwiRr8XMWgAHzlrWpTSj+QaCSvOf1h82OEP1s4hiAXhnbXSyFWCf4ldZzZRVA==
   dependencies:
     strnum "^2.1.2"
 
