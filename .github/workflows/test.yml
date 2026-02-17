@@ -64,4 +64,4 @@ jobs:
           docker load < /tmp/activitypub-migrations-amd64.tar
 
       - name: Run E2E Tests
-        run: yarn test:cucumber
+        run: yarn test:cucumber:parallel

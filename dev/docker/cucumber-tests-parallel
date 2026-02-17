@@ -1,0 +1,267 @@
+#!/usr/bin/env bash
+
+# Parallel Cucumber test runner
+#
+# Distributes feature files across N isolated Docker Compose stacks (shards).
+# Each shard gets its own database, Redis, Wiremock, etc. via Docker Compose
+# project isolation.
+#
+# Usage:
+#   NUM_SHARDS=4 ./dev/docker/cucumber-tests-parallel [@tag-expression]
+#
+# Environment:
+#   NUM_SHARDS  Number of parallel shards (default: 4)
+
+set -euo pipefail
+
+NUM_SHARDS=${NUM_SHARDS:-4}
+export TAGS=${1:-}
+FEATURE_DIR="features"
+
+# Generate a compose override to replace the fake-gcs bind mount with a named
+# volume. Bind mounts point to the same host directory across all shards, so
+# without this each shard's fake-gcs would share storage with every other shard.
+# Named volumes are automatically prefixed with the project name, giving each
+# shard its own isolated storage.
+SHARD_OVERRIDE=$(mktemp)
+cat > "$SHARD_OVERRIDE" <<'EOF'
+services:
+  caddy-testing:
+    ports: !override []
+  fake-gcs:
+    volumes:
+      - fake-gcs-storage:/storage
+volumes:
+  fake-gcs-storage:
+EOF
+
+COMPOSE_FILES="-f docker-compose.yml -f $SHARD_OVERRIDE"
+
+declare -a PIDS=()
+
+if (( NUM_SHARDS < 1 )); then
+    echo "Error: NUM_SHARDS must be at least 1"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Collect feature files and count scenarios
+# ---------------------------------------------------------------------------
+
+declare -a FILES=()
+declare -a COUNTS=()
+
+for file in "$FEATURE_DIR"/*.feature; do
+    [ -f "$file" ] || continue
+    count=$(grep -cE '^\s*Scenario' "$file" || true)
+    FILES+=("$(basename "$file")")
+    COUNTS+=("$count")
+done
+
+total_files=${#FILES[@]}
+
+if (( total_files == 0 )); then
+    echo "No feature files found in $FEATURE_DIR"
+    exit 1
+fi
+
+if (( NUM_SHARDS > total_files )); then
+    NUM_SHARDS=$total_files
+fi
+
+# ---------------------------------------------------------------------------
+# Sort files by scenario count (descending) for greedy bin-packing
+# ---------------------------------------------------------------------------
+
+declare -a SORTED_INDICES=()
+for ((i = 0; i < total_files; i++)); do
+    SORTED_INDICES+=("$i")
+done
+
+for ((i = 0; i < total_files; i++)); do
+    for ((j = i + 1; j < total_files; j++)); do
+        if (( COUNTS[SORTED_INDICES[j]] > COUNTS[SORTED_INDICES[i]] )); then
+            tmp=${SORTED_INDICES[i]}
+            SORTED_INDICES[i]=${SORTED_INDICES[j]}
+            SORTED_INDICES[j]=$tmp
+        fi
+    done
+done
+
+# ---------------------------------------------------------------------------
+# Greedy bin-packing: assign each file to the shard with fewest scenarios
+# ---------------------------------------------------------------------------
+
+declare -a SHARD_FILES=()
+declare -a SHARD_COUNTS=()
+
+for ((i = 0; i < NUM_SHARDS; i++)); do
+    SHARD_FILES[$i]=""
+    SHARD_COUNTS[$i]=0
+done
+
+for idx in "${SORTED_INDICES[@]}"; do
+    file="${FILES[$idx]}"
+    count="${COUNTS[$idx]}"
+
+    min_shard=0
+    for ((i = 1; i < NUM_SHARDS; i++)); do
+        if (( SHARD_COUNTS[i] < SHARD_COUNTS[min_shard] )); then
+            min_shard=$i
+        fi
+    done
+
+    if [ -n "${SHARD_FILES[$min_shard]}" ]; then
+        SHARD_FILES[$min_shard]="${SHARD_FILES[$min_shard]} $file"
+    else
+        SHARD_FILES[$min_shard]="$file"
+    fi
+    SHARD_COUNTS[$min_shard]=$((SHARD_COUNTS[$min_shard] + count))
+done
+
+# ---------------------------------------------------------------------------
+# Print distribution
+# ---------------------------------------------------------------------------
+
+echo "=== Cucumber Parallel Test Runner ==="
+echo "Shards: $NUM_SHARDS"
+[ -n "$TAGS" ] && echo "Tags: $TAGS"
+echo ""
+
+total_scenarios=0
+for ((i = 0; i < NUM_SHARDS; i++)); do
+    echo "Shard $i (${SHARD_COUNTS[$i]} scenarios):"
+    for f in ${SHARD_FILES[$i]}; do
+        echo "  - $f"
+    done
+    total_scenarios=$((total_scenarios + SHARD_COUNTS[$i]))
+done
+
+echo ""
+echo "Total: $total_scenarios scenarios across $total_files files"
+echo ""
+
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+cleanup_shard() {
+    local shard_id=$1
+    local project="activitypub-shard-${shard_id}"
+    docker compose -p "$project" $COMPOSE_FILES down --volumes --remove-orphans 2>/dev/null || true
+}
+
+cleanup_all() {
+    echo ""
+    echo "=== Cleaning up ==="
+    if (( ${#PIDS[@]} > 0 )); then
+        for pid in "${PIDS[@]}"; do
+            kill "$pid" 2>/dev/null || true
+        done
+    fi
+    wait 2>/dev/null || true
+    local pids=()
+    for ((i = 0; i < NUM_SHARDS; i++)); do
+        cleanup_shard "$i" &
+        pids+=($!)
+    done
+    for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
+    done
+    rm -f "$SHARD_OVERRIDE"
+}
+
+trap cleanup_all EXIT
+
+# ---------------------------------------------------------------------------
+# Pre-build images (warm Docker build cache to avoid parallel build races)
+# ---------------------------------------------------------------------------
+
+echo "=== Building images ==="
+docker compose $COMPOSE_FILES build migrate-testing activitypub-testing cucumber-tests fake-gcs
+echo ""
+
+# ---------------------------------------------------------------------------
+# Run shards in parallel
+# ---------------------------------------------------------------------------
+
+run_shard() {
+    local shard_id=$1
+    local files=$2
+    local project="activitypub-shard-${shard_id}"
+    local log_file="/tmp/cucumber-shard-${shard_id}.log"
+
+    local feature_args=""
+    for f in $files; do
+        feature_args="$feature_args features/$f"
+    done
+
+    (
+        docker compose -p "$project" $COMPOSE_FILES \
+            run --rm migrate-testing up 2>&1 && \
+        docker compose -p "$project" $COMPOSE_FILES \
+            run --rm cucumber-tests \
+            /opt/activitypub/node_modules/.bin/cucumber-js $feature_args 2>&1
+    ) > "$log_file" 2>&1
+
+    return $?
+}
+
+echo "=== Running $NUM_SHARDS shards ==="
+
+for ((i = 0; i < NUM_SHARDS; i++)); do
+    run_shard "$i" "${SHARD_FILES[$i]}" &
+    PIDS+=($!)
+    echo "[Shard $i] Started (PID ${PIDS[$i]})"
+done
+
+echo ""
+echo "Waiting for shards to complete..."
+echo ""
+
+# ---------------------------------------------------------------------------
+# Wait for results
+# ---------------------------------------------------------------------------
+
+overall_exit=0
+declare -a EXIT_CODES=()
+
+for ((i = 0; i < NUM_SHARDS; i++)); do
+    if wait "${PIDS[$i]}" 2>/dev/null; then
+        EXIT_CODES+=(0)
+        echo "[Shard $i] PASSED"
+    else
+        EXIT_CODES+=($?)
+        overall_exit=1
+        echo "[Shard $i] FAILED (exit code ${EXIT_CODES[$i]})"
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "=== Results ==="
+
+for ((i = 0; i < NUM_SHARDS; i++)); do
+    if (( EXIT_CODES[i] != 0 )); then
+        echo ""
+        echo "Shard $i: FAIL (exit code ${EXIT_CODES[$i]})"
+        echo "--- Last 30 lines of /tmp/cucumber-shard-${i}.log ---"
+        tail -30 "/tmp/cucumber-shard-${i}.log" 2>/dev/null | sed 's/^/  /'
+        echo "---"
+    else
+        echo "Shard $i: PASS"
+    fi
+done
+
+echo ""
+if (( overall_exit == 0 )); then
+    echo "All shards passed!"
+else
+    echo "Some shards failed. See logs above for details."
+    echo "Full logs: /tmp/cucumber-shard-*.log"
+fi
+
+exit $overall_exit
