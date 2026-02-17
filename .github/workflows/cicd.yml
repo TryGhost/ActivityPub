@@ -31,7 +31,7 @@ jobs:
       skip-tests: ${{ contains(github.event.pull_request.labels.*.name, 'skip-tests') }}
 
   push:
-    needs: [build, test]
+    needs: [build]
     uses: ./.github/workflows/push.yml
     with:
       activitypub-private-tags: ${{ needs.build.outputs.activitypub-private-tags }}
@@ -42,13 +42,13 @@ jobs:
       activitypub-migrations-public-labels: ${{ needs.build.outputs.activitypub-migrations-public-labels }}
 
   deploy-pr:
-    needs: push
+    needs: [push, test]
     if: github.event_name == 'pull_request'
     uses: ./.github/workflows/deploy-pr.yml
     secrets: inherit
 
   deploy:
-    needs: push
+    needs: [push, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
