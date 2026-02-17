@@ -96,6 +96,13 @@ export interface ImageAttachment {
 
 export type MentionedAccount = Pick<Account, 'id' | 'apId' | 'username'>;
 
+// MySQL TIMESTAMP minimum: 1970-01-01 00:00:01 UTC
+const MYSQL_TIMESTAMP_MIN = new Date(1000);
+
+function clampDate(date: Date): Date {
+    return date < MYSQL_TIMESTAMP_MIN ? MYSQL_TIMESTAMP_MIN : date;
+}
+
 export interface PostData {
     type: CreatePostType;
     audience?: Audience;
@@ -528,7 +535,7 @@ export class Post extends BaseEntity {
             data.content ?? null,
             data.url ?? null,
             data.imageUrl ?? null,
-            data.publishedAt ?? new Date(),
+            clampDate(data.publishedAt ?? new Date()),
             data.metadata ?? null,
             0,
             0,

@@ -580,7 +580,7 @@ export class KnexPostRepository {
                 summary: post.summary,
                 content: post.content,
                 url: post.url?.href,
-                image_url: post.imageUrl?.href,
+                image_url: post.imageUrl?.href ?? null,
                 published_at: post.publishedAt,
                 in_reply_to: post.inReplyTo,
                 thread_root: post.threadRoot,
