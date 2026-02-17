@@ -15,7 +15,12 @@ const PostInputSchema = z.object({
     excerpt: z.string().nullable(),
     custom_excerpt: z.string().nullable(),
     feature_image: z.url().nullable(),
-    published_at: z.iso.datetime(),
+    published_at: z.iso
+        .datetime()
+        .refine(
+            (date) => date >= '1970-01-01T00:00:01Z',
+            'published_at must not be before 1970-01-01',
+        ),
     url: z.url(),
     visibility: z.enum(['public', 'members', 'paid', 'tiers']),
     authors: z
