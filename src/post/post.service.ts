@@ -240,7 +240,9 @@ export class PostService {
             summary: foundObject.summary?.toString() ?? null,
             content: foundObject.content?.toString(),
             imageUrl: foundObject.imageId,
-            publishedAt: new Date(foundObject.published?.toString() || ''),
+            publishedAt: foundObject.published
+                ? new Date(foundObject.published.toString())
+                : new Date(),
             url: foundObject.url instanceof URL ? foundObject.url : id,
             apId: id,
             inReplyTo,

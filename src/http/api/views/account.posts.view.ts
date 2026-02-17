@@ -741,7 +741,9 @@ export class AccountPostsView {
             content: object.content || '',
             url: object.url || '',
             featureImageUrl: object.image || null,
-            publishedAt: new Date(object.published || ''),
+            publishedAt: object.published
+                ? new Date(object.published)
+                : new Date(),
             likeCount: 0,
             likedByMe: object.liked || false,
             replyCount: object.replyCount || 0,

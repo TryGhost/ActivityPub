@@ -528,7 +528,9 @@ export class Post extends BaseEntity {
             data.content ?? null,
             data.url ?? null,
             data.imageUrl ?? null,
-            data.publishedAt ?? new Date(),
+            data.publishedAt && !Number.isNaN(data.publishedAt.getTime())
+                ? data.publishedAt
+                : new Date(),
             data.metadata ?? null,
             0,
             0,
