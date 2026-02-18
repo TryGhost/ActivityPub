@@ -7,6 +7,10 @@ export class PostCreatedEvent implements SerializableEvent {
         return this.postId;
     }
 
+    getName(): string {
+        return PostCreatedEvent.getName();
+    }
+
     static getName(): string {
         return 'post.created';
     }
