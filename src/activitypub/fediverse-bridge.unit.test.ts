@@ -12,6 +12,7 @@ import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import type { UriBuilder } from '@/activitypub/uri';
 import type { FedifyContext } from '@/app';
 import { Post, PostType } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
@@ -29,6 +30,7 @@ vi.mock('node:crypto', async (importOriginal) => {
 describe('FediverseBridge', () => {
     let events: EventEmitter;
     let accountService: AccountService;
+    let postRepository: KnexPostRepository;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
     let mockUriBuilder: UriBuilder<FedifyObject>;
@@ -39,6 +41,9 @@ describe('FediverseBridge', () => {
         accountService = {
             getAccountById: vi.fn(),
         } as unknown as AccountService;
+        postRepository = {
+            getById: vi.fn(),
+        } as unknown as KnexPostRepository;
         mockUriBuilder = {
             buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
                 return new URL(
@@ -75,6 +80,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
     });
 
@@ -163,6 +169,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -246,6 +253,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -291,6 +299,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -333,6 +342,7 @@ describe('FediverseBridge', () => {
             events,
             fedifyContextFactory,
             accountService,
+            postRepository,
         );
         await bridge.init();
 
@@ -515,10 +525,13 @@ describe('FediverseBridge', () => {
         post.apId = new URL('https://example.com/article/post-456');
         post.publishedAt = new Date('2025-01-01T00:00:00Z');
 
-        const event = new PostUpdatedEvent(post);
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostUpdatedEvent(456);
         events.emit(PostUpdatedEvent.getName(), event);
 
         await nextTick();
+        expect(postRepository.getById).toHaveBeenCalledWith(456);
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalledTimes(2);
 
@@ -547,10 +560,29 @@ describe('FediverseBridge', () => {
         post.content = 'Updated post content';
         post.apId = new URL('https://external.com/article/post-456');
 
-        const event = new PostUpdatedEvent(post);
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostUpdatedEvent(456);
         events.emit(PostUpdatedEvent.getName(), event);
 
         await nextTick();
+        expect(postRepository.getById).toHaveBeenCalledWith(456);
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should not send update activities on the PostUpdatedEvent if post is not found', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        vi.mocked(postRepository.getById).mockResolvedValue(null);
+
+        const event = new PostUpdatedEvent(999);
+        events.emit(PostUpdatedEvent.getName(), event);
+
+        await nextTick();
+        expect(postRepository.getById).toHaveBeenCalledWith(999);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });

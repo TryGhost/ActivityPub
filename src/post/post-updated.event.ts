@@ -1,13 +1,30 @@
-import type { Post } from '@/post/post.entity';
+import type { SerializableEvent } from '@/events/event';
 
-export class PostUpdatedEvent {
-    constructor(private readonly post: Post) {}
+export class PostUpdatedEvent implements SerializableEvent {
+    constructor(private readonly postId: number) {}
 
-    getPost(): Post {
-        return this.post;
+    getPostId(): number {
+        return this.postId;
+    }
+
+    getName(): string {
+        return PostUpdatedEvent.getName();
     }
 
     static getName(): string {
         return 'post.updated';
+    }
+
+    toJSON(): Record<string, unknown> {
+        return {
+            postId: this.postId,
+        };
+    }
+
+    static fromJSON(data: Record<string, unknown>): PostUpdatedEvent {
+        if (typeof data.postId !== 'number') {
+            throw new Error('postId must be a number');
+        }
+        return new PostUpdatedEvent(data.postId);
     }
 }
