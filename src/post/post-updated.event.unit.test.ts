@@ -33,7 +33,12 @@ describe('PostUpdatedEvent', () => {
         );
     });
 
-    it('should return the correct event name', () => {
+    it('should return the correct event name from static method', () => {
         expect(PostUpdatedEvent.getName()).toEqual('post.updated');
+    });
+
+    it('should return the correct event name from instance method', () => {
+        const event = new PostUpdatedEvent(123);
+        expect(event.getName()).toEqual('post.updated');
     });
 });
