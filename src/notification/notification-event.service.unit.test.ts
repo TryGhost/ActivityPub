@@ -158,10 +158,7 @@ describe('NotificationEventService', () => {
         it('should not create a reply notification if post was deleted', async () => {
             vi.mocked(postRepository.getById).mockResolvedValue(null);
 
-            events.emit(
-                PostCreatedEvent.getName(),
-                new PostCreatedEvent(123),
-            );
+            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(123));
 
             await new Promise(process.nextTick);
 
@@ -247,7 +244,9 @@ describe('NotificationEventService', () => {
                 ],
             } as unknown as Post;
 
-            vi.mocked(postRepository.getById).mockResolvedValue(postWithMention);
+            vi.mocked(postRepository.getById).mockResolvedValue(
+                postWithMention,
+            );
 
             events.emit(
                 PostCreatedEvent.getName(),
