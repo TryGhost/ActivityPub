@@ -73,11 +73,19 @@ describe('FeedUpdateService', () => {
                 type: PostType.Article,
                 audience: Audience.Public,
             });
+            // biome-ignore lint/suspicious/noExplicitAny: Test helper to set post id
+            (post as any).id = 123;
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post.id as number),
+            );
 
             await vi.runAllTimersAsync();
 
+            expect(postRepository.getById).toHaveBeenCalledWith(post.id);
             expect(feedService.addPostToFeeds).toHaveBeenCalledWith(post);
             expect(feedService.addPostToDiscoveryFeeds).toHaveBeenCalledWith(
                 post,
@@ -89,25 +97,55 @@ describe('FeedUpdateService', () => {
                 type: PostType.Article,
                 audience: Audience.FollowersOnly,
             });
+            // biome-ignore lint/suspicious/noExplicitAny: Test helper to set post id
+            (post as any).id = 124;
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post.id as number),
+            );
 
             await vi.runAllTimersAsync();
 
+            expect(postRepository.getById).toHaveBeenCalledWith(post.id);
             expect(feedService.addPostToFeeds).toHaveBeenCalledWith(post);
             expect(feedService.addPostToDiscoveryFeeds).toHaveBeenCalledWith(
                 post,
             );
         });
 
-        it('should not add direct post to user nor discovery feeds when created', () => {
+        it('should not add direct post to user nor discovery feeds when created', async () => {
             const post = Post.createFromData(account, {
                 type: PostType.Article,
                 audience: Audience.Direct,
             });
+            // biome-ignore lint/suspicious/noExplicitAny: Test helper to set post id
+            (post as any).id = 125;
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(post));
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
 
+            events.emit(
+                PostCreatedEvent.getName(),
+                new PostCreatedEvent(post.id as number),
+            );
+
+            await vi.runAllTimersAsync();
+
+            expect(postRepository.getById).toHaveBeenCalledWith(post.id);
+            expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
+            expect(feedService.addPostToDiscoveryFeeds).not.toHaveBeenCalled();
+        });
+
+        it('should not add post to feeds if post was deleted', async () => {
+            vi.mocked(postRepository.getById).mockResolvedValue(null);
+
+            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(126));
+
+            await vi.runAllTimersAsync();
+
+            expect(postRepository.getById).toHaveBeenCalledWith(126);
             expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
             expect(feedService.addPostToDiscoveryFeeds).not.toHaveBeenCalled();
         });

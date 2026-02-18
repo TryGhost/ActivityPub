@@ -502,7 +502,7 @@ export class KnexPostRepository {
             if (isNewPost) {
                 await this.events.emitAsync(
                     PostCreatedEvent.getName(),
-                    new PostCreatedEvent(post),
+                    new PostCreatedEvent(post.id as number),
                 );
             }
 

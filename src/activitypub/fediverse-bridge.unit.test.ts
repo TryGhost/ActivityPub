@@ -376,7 +376,7 @@ describe('FediverseBridge', () => {
         author.apFollowers = new URL('https://example.com/user/foo/followers');
 
         const post = Object.create(Post);
-        post.id = 'post-123';
+        post.id = 456;
         post.author = author;
         post.type = PostType.Note;
         post.content = 'Note content';
@@ -385,11 +385,14 @@ describe('FediverseBridge', () => {
         post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
         post.publishedAt = new Date('2025-01-01T00:00:00Z');
 
-        const event = new PostCreatedEvent(post);
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostCreatedEvent(post.id as number);
         events.emit(PostCreatedEvent.getName(), event);
 
         await nextTick();
 
+        expect(postRepository.getById).toHaveBeenCalledWith(post.id);
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalled();
 
@@ -417,7 +420,7 @@ describe('FediverseBridge', () => {
         mentionedAccount.isInternal = true;
 
         const post = Object.create(Post);
-        post.id = 'post-123';
+        post.id = 789;
         post.author = author;
         post.type = PostType.Note;
         post.content = 'Hello! @test@example.com';
@@ -426,10 +429,14 @@ describe('FediverseBridge', () => {
         post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
         post.publishedAt = new Date('2025-01-01T00:00:00Z');
 
-        const event = new PostCreatedEvent(post);
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostCreatedEvent(post.id as number);
         events.emit(PostCreatedEvent.getName(), event);
 
         await nextTick();
+
+        expect(postRepository.getById).toHaveBeenCalledWith(post.id);
 
         const storedActivity = await globalDbSet.mock.calls[0][1];
         await expect(storedActivity).toMatchFileSnapshot(
@@ -451,7 +458,7 @@ describe('FediverseBridge', () => {
         author.apFollowers = new URL('https://example.com/user/foo/followers');
 
         const post = Object.create(Post);
-        post.id = 'post-123';
+        post.id = 111;
         post.author = author;
         post.type = PostType.Article;
         post.title = 'Post title';
@@ -463,11 +470,14 @@ describe('FediverseBridge', () => {
         post.apId = new URL('https://example.com/article/post-123');
         post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
 
-        const event = new PostCreatedEvent(post);
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostCreatedEvent(post.id as number);
         events.emit(PostCreatedEvent.getName(), event);
 
         await nextTick();
 
+        expect(postRepository.getById).toHaveBeenCalledWith(post.id);
         expect(sendActivity).toHaveBeenCalledOnce();
         expect(context.data.globaldb.set).toHaveBeenCalled();
 
@@ -489,15 +499,36 @@ describe('FediverseBridge', () => {
         author.isInternal = false;
 
         const post = Object.create(Post);
+        post.id = 222;
         post.author = author;
         post.type = PostType.Note;
         post.content = 'Test content';
 
-        const event = new PostCreatedEvent(post);
+        vi.mocked(postRepository.getById).mockResolvedValue(post);
+
+        const event = new PostCreatedEvent(post.id as number);
         events.emit(PostCreatedEvent.getName(), event);
 
         await nextTick();
 
+        expect(postRepository.getById).toHaveBeenCalledWith(post.id);
+        expect(sendActivity).not.toHaveBeenCalled();
+        expect(context.data.globaldb.set).not.toHaveBeenCalled();
+    });
+
+    it('should not create or send activities if post is not found on the PostCreatedEvent', async () => {
+        await bridge.init();
+
+        const sendActivity = vi.spyOn(context, 'sendActivity');
+
+        vi.mocked(postRepository.getById).mockResolvedValue(null);
+
+        const event = new PostCreatedEvent(999);
+        events.emit(PostCreatedEvent.getName(), event);
+
+        await nextTick();
+
+        expect(postRepository.getById).toHaveBeenCalledWith(999);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
