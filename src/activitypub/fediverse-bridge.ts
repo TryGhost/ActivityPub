@@ -19,6 +19,7 @@ import {
     buildUpdateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
 import { PostType } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostCreatedEvent } from '@/post/post-created.event';
 import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
@@ -28,6 +29,7 @@ export class FediverseBridge {
         private readonly events: EventEmitter,
         private readonly fedifyContextFactory: FedifyContextFactory,
         private readonly accountService: AccountService,
+        private readonly postRepository: KnexPostRepository,
     ) {}
 
     async init() {
@@ -138,8 +140,8 @@ export class FediverseBridge {
     }
 
     private async handlePostUpdated(event: PostUpdatedEvent) {
-        const post = event.getPost();
-        if (!post.author.isInternal) {
+        const post = await this.postRepository.getById(event.getPostId());
+        if (!post || !post.author.isInternal) {
             return;
         }
 

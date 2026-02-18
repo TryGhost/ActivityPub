@@ -2094,14 +2094,14 @@ describe('KnexPostRepository', () => {
             expect(eventsEmitSpy).toHaveBeenCalledWith(
                 PostUpdatedEvent.getName(),
                 expect.objectContaining({
-                    getPost: expect.any(Function),
+                    getPostId: expect.any(Function),
                 }),
             );
 
             const emittedEvent = eventsEmitSpy.mock.calls.find(
                 (call) => call[0] === PostUpdatedEvent.getName(),
-            )?.[1];
-            expect(emittedEvent?.getPost()).toEqual(post);
+            )?.[1] as PostUpdatedEvent | undefined;
+            expect(emittedEvent?.getPostId()).toEqual(post.id);
 
             const updatedRowInDb = await client('posts')
                 .where({ uuid: post.uuid })

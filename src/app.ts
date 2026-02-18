@@ -122,6 +122,7 @@ import type { PostInteractionCountsService } from '@/post/post-interaction-count
 import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
+import { PostUpdatedEvent } from '@/post/post-updated.event';
 import type { Site } from '@/site/site.service';
 
 function toLogLevel(level: unknown): LogLevel | null {
@@ -279,6 +280,9 @@ container
 container
     .resolve<EventSerializer>('eventSerializer')
     .register(PostRepostedEvent.getName(), PostRepostedEvent);
+container
+    .resolve<EventSerializer>('eventSerializer')
+    .register(PostUpdatedEvent.getName(), PostUpdatedEvent);
 
 /** Fedify */
 

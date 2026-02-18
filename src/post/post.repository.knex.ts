@@ -516,7 +516,7 @@ export class KnexPostRepository {
             if (wasUpdated) {
                 await this.events.emitAsync(
                     PostUpdatedEvent.getName(),
-                    new PostUpdatedEvent(post),
+                    new PostUpdatedEvent(post.id as number),
                 );
             }
 
