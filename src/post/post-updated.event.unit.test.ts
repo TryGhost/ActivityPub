@@ -3,42 +3,75 @@ import { describe, expect, it } from 'vitest';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 
 describe('PostUpdatedEvent', () => {
-    it('should be serializable', () => {
-        const event = new PostUpdatedEvent(123);
+    describe('getName', () => {
+        it('should return the event name from static method', () => {
+            expect(PostUpdatedEvent.getName()).toBe('post.updated');
+        });
 
-        expect(event.toJSON()).toEqual({
-            postId: 123,
+        it('should return the event name from instance method', () => {
+            const event = new PostUpdatedEvent(123);
+
+            expect(event.getName()).toBe('post.updated');
         });
     });
 
-    it('should be deserializable', () => {
-        const event = PostUpdatedEvent.fromJSON({
-            postId: 456,
+    describe('getPostId', () => {
+        it('should return the post id', () => {
+            const event = new PostUpdatedEvent(123);
+
+            expect(event.getPostId()).toBe(123);
+        });
+    });
+
+    describe('toJSON', () => {
+        it('should serialize the event to JSON', () => {
+            const event = new PostUpdatedEvent(123);
+
+            expect(event.toJSON()).toEqual({
+                postId: 123,
+            });
+        });
+    });
+
+    describe('fromJSON', () => {
+        it('should deserialize the event from JSON', () => {
+            const event = PostUpdatedEvent.fromJSON({
+                postId: 123,
+            });
+
+            expect(event.getPostId()).toBe(123);
         });
 
-        expect(event.getPostId()).toEqual(456);
+        it('should throw an error if postId is missing', () => {
+            expect(() => PostUpdatedEvent.fromJSON({})).toThrow(
+                'postId must be a number',
+            );
+        });
+
+        it('should throw an error if postId is not a number', () => {
+            expect(() =>
+                PostUpdatedEvent.fromJSON({
+                    postId: 'not a number',
+                }),
+            ).toThrow('postId must be a number');
+        });
+
+        it('should throw an error if postId is null', () => {
+            expect(() =>
+                PostUpdatedEvent.fromJSON({
+                    postId: null,
+                }),
+            ).toThrow('postId must be a number');
+        });
     });
 
-    it('should throw an error if postId is not a number', () => {
-        expect(() =>
-            PostUpdatedEvent.fromJSON({
-                postId: 'not a number',
-            }),
-        ).toThrow('postId must be a number');
-    });
+    describe('round-trip serialization', () => {
+        it('should correctly serialize and deserialize', () => {
+            const original = new PostUpdatedEvent(999);
+            const json = original.toJSON();
+            const restored = PostUpdatedEvent.fromJSON(json);
 
-    it('should throw an error if postId is missing', () => {
-        expect(() => PostUpdatedEvent.fromJSON({})).toThrow(
-            'postId must be a number',
-        );
-    });
-
-    it('should return the correct event name from static method', () => {
-        expect(PostUpdatedEvent.getName()).toEqual('post.updated');
-    });
-
-    it('should return the correct event name from instance method', () => {
-        const event = new PostUpdatedEvent(123);
-        expect(event.getName()).toEqual('post.updated');
+            expect(restored.getPostId()).toBe(original.getPostId());
+        });
     });
 });
