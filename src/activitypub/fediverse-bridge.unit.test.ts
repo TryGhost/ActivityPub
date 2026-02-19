@@ -458,16 +458,16 @@ describe('FediverseBridge', () => {
         author.apFollowers = new URL('https://example.com/user/foo/followers');
 
         const post = Object.create(Post);
-        post.id = 111;
+        post.id = 456;
         post.author = author;
         post.type = PostType.Article;
         post.title = 'Post title';
         post.content = 'Post content';
         post.excerpt = 'Post excerpt';
-        post.imageUrl = new URL('https://example.com/img/post-123_feature.jpg');
+        post.imageUrl = new URL('https://example.com/img/456_feature.jpg');
         post.publishedAt = new Date('2025-01-12T10:30:00Z');
-        post.url = new URL('https://example.com/post/post-123');
-        post.apId = new URL('https://example.com/article/post-123');
+        post.url = new URL('https://example.com/post/456');
+        post.apId = new URL('https://example.com/article/456');
         post.uuid = 'cb1e7e92-5560-4ceb-9272-7e9d0e2a7da4';
 
         vi.mocked(postRepository.getById).mockResolvedValue(post);
