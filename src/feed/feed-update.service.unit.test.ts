@@ -98,7 +98,7 @@ describe('FeedUpdateService', () => {
                 audience: Audience.FollowersOnly,
             });
             // biome-ignore lint/suspicious/noExplicitAny: Test helper to set post id
-            (post as any).id = 124;
+            (post as any).id = 123;
 
             vi.mocked(postRepository.getById).mockResolvedValue(post);
 
@@ -122,7 +122,7 @@ describe('FeedUpdateService', () => {
                 audience: Audience.Direct,
             });
             // biome-ignore lint/suspicious/noExplicitAny: Test helper to set post id
-            (post as any).id = 125;
+            (post as any).id = 123;
 
             vi.mocked(postRepository.getById).mockResolvedValue(post);
 
@@ -141,11 +141,11 @@ describe('FeedUpdateService', () => {
         it('should not add post to feeds if post was deleted', async () => {
             vi.mocked(postRepository.getById).mockResolvedValue(null);
 
-            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(126));
+            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(123));
 
             await vi.runAllTimersAsync();
 
-            expect(postRepository.getById).toHaveBeenCalledWith(126);
+            expect(postRepository.getById).toHaveBeenCalledWith(123);
             expect(feedService.addPostToFeeds).not.toHaveBeenCalled();
             expect(feedService.addPostToDiscoveryFeeds).not.toHaveBeenCalled();
         });
