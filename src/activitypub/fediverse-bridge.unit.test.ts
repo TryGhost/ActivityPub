@@ -499,7 +499,7 @@ describe('FediverseBridge', () => {
         author.isInternal = false;
 
         const post = Object.create(Post);
-        post.id = 222;
+        post.id = 456;
         post.author = author;
         post.type = PostType.Note;
         post.content = 'Test content';
@@ -523,12 +523,12 @@ describe('FediverseBridge', () => {
 
         vi.mocked(postRepository.getById).mockResolvedValue(null);
 
-        const event = new PostCreatedEvent(999);
+        const event = new PostCreatedEvent(456);
         events.emit(PostCreatedEvent.getName(), event);
 
         await nextTick();
 
-        expect(postRepository.getById).toHaveBeenCalledWith(999);
+        expect(postRepository.getById).toHaveBeenCalledWith(456);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
