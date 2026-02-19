@@ -523,12 +523,12 @@ describe('FediverseBridge', () => {
 
         vi.mocked(postRepository.getById).mockResolvedValue(null);
 
-        const event = new PostCreatedEvent(456);
+        const event = new PostCreatedEvent(123);
         events.emit(PostCreatedEvent.getName(), event);
 
         await nextTick();
 
-        expect(postRepository.getById).toHaveBeenCalledWith(456);
+        expect(postRepository.getById).toHaveBeenCalledWith(123);
         expect(sendActivity).not.toHaveBeenCalled();
         expect(context.data.globaldb.set).not.toHaveBeenCalled();
     });
