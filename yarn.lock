@@ -532,10 +532,10 @@
   resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.9.1.tgz#4d9bec78f98febd0eb10b0aa9c6ac54a77e42759"
   integrity sha512-Vj3EF6U1rGEfMcM0VK4p8981KebjPTh1Yw81qjRO4Zc4qvROdQL/sXZ1UU21opSFHLFJ4khHTTRK2cYOkkyreg==
 
-"@fedify/fedify@1.9.1":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.9.1.tgz#3c3ecdab8c09ea7459da71a886031bf44b8b636c"
-  integrity sha512-MvR8E4hQGxkWPOhQfQeGVPPPJ3jC+crIin7WOA4O6HjAk1rPT8H/9rALuMEhoyDbly3xKVBi11Qo9XLHHGiUiA==
+"@fedify/fedify@1.9.2":
+  version "1.9.2"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.9.2.tgz#3e8c53b4fd4b7d29326c7ee508f95b7d86f48d32"
+  integrity sha512-+v6XuhrwRwYeYQDSLnpuo70TydjzprqufMa1A5zEy1kQVe2sFJgZXpMjpu1zY2wfjb2nCVzBSZ4K6VEEkIq9Rw==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@js-temporal/polyfill" "^0.5.1"
