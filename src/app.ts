@@ -155,7 +155,12 @@ await configure({
                   }),
         }),
     },
-    filters: {},
+    filters: {
+        suppressHttpSignatureVerification: (record: LogRecord) =>
+            !record.message
+                .join('')
+                .includes("Failed to verify the request's HTTP Signatures"),
+    },
     loggers: [
         {
             category: 'activitypub',
@@ -168,6 +173,7 @@ await configure({
         {
             category: 'fedify',
             sinks: ['console'],
+            filters: ['suppressHttpSignatureVerification'],
             level:
                 toLogLevel(process.env.LOG_LEVEL_FEDIFY) ||
                 toLogLevel(process.env.LOG_LEVEL) ||
