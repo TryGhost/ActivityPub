@@ -514,7 +514,7 @@ export class KnexPostRepository {
                         post.apId.href,
                         post.author.id,
                         post.author.apId.href,
-                        post.author.apFollowers.href,
+                        post.author.apFollowers?.href ?? '',
                         post.author.username,
                         post.author.isInternal,
                     ),

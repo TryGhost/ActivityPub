@@ -5,7 +5,6 @@ import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type FollowersOnlyPost,
-    type Post,
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
