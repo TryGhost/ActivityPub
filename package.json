@@ -94,7 +94,7 @@
     "node-html-parser": "7.0.2",
     "node-jose": "2.2.0",
     "reflect-metadata": "0.2.2",
-    "sanitize-html": "2.17.0",
+    "sanitize-html": "2.17.1",
     "sharp": "0.34.5",
     "url-regex": "5.0.0",
     "uuid": "10.0.0",
