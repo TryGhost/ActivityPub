@@ -26,8 +26,12 @@ describe('PostDeletedEvent', () => {
     }
 
     describe('getName', () => {
-        it('should return the event name', () => {
+        it('should return the event name from static method', () => {
             expect(PostDeletedEvent.getName()).toBe('post.deleted');
+        });
+
+        it('should return the event name from instance method', () => {
+            expect(createEvent().getName()).toBe('post.deleted');
         });
     });
 

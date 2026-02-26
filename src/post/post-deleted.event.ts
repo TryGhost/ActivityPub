@@ -39,6 +39,10 @@ export class PostDeletedEvent implements SerializableEvent {
         return this.authorIsInternal;
     }
 
+    getName(): string {
+        return PostDeletedEvent.getName();
+    }
+
     static getName(): string {
         return 'post.deleted';
     }

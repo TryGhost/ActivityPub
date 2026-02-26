@@ -139,13 +139,9 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await ctx.sendActivity(
-            { username: event.getAuthorUsername() },
-            'followers',
+        await this.sendActivityToFollowers(
+            { username: event.getAuthorUsername() } as Account,
             deleteActivity,
-            {
-                preferSharedInbox: true,
-            },
         );
     }
 
