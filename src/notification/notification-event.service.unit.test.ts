@@ -130,23 +130,42 @@ describe('NotificationEventService', () => {
     });
 
     describe('handling a post reply', () => {
-        it('should create a reply notification', () => {
+        it('should create a reply notification', async () => {
             const post = {
                 id: 123,
                 author: {
                     id: 456,
                 },
                 inReplyTo: 789,
-            } as Post;
+                mentions: [],
+            } as unknown as Post;
+
+            vi.mocked(postRepository.getById).mockResolvedValue(post);
 
             events.emit(
                 PostCreatedEvent.getName(),
-                new PostCreatedEvent(post as Post),
+                new PostCreatedEvent(post.id as number),
             );
 
+            await new Promise(process.nextTick);
+
+            expect(postRepository.getById).toHaveBeenCalledWith(post.id);
             expect(
                 notificationService.createReplyNotification,
             ).toHaveBeenCalledWith(post);
+        });
+
+        it('should not create a reply notification if post was deleted', async () => {
+            vi.mocked(postRepository.getById).mockResolvedValue(null);
+
+            events.emit(PostCreatedEvent.getName(), new PostCreatedEvent(123));
+
+            await new Promise(process.nextTick);
+
+            expect(postRepository.getById).toHaveBeenCalledWith(123);
+            expect(
+                notificationService.createReplyNotification,
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -225,13 +244,20 @@ describe('NotificationEventService', () => {
                 ],
             } as unknown as Post;
 
+            vi.mocked(postRepository.getById).mockResolvedValue(
+                postWithMention,
+            );
+
             events.emit(
                 PostCreatedEvent.getName(),
-                new PostCreatedEvent(postWithMention),
+                new PostCreatedEvent(postWithMention.id as number),
             );
 
             await new Promise(process.nextTick);
 
+            expect(postRepository.getById).toHaveBeenCalledWith(
+                postWithMention.id,
+            );
             expect(
                 notificationService.createMentionNotification,
             ).toHaveBeenCalledWith(

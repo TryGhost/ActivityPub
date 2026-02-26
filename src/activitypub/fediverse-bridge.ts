@@ -89,7 +89,11 @@ export class FediverseBridge {
     }
 
     private async handlePostCreated(event: PostCreatedEvent) {
-        const post = event.getPost();
+        const post = await this.postRepository.getById(event.getPostId());
+        if (!post) {
+            return;
+        }
+
         if (!post.author.isInternal) {
             return;
         }

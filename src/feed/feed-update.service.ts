@@ -52,7 +52,11 @@ export class FeedUpdateService {
     }
 
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
-        const post = event.getPost();
+        const post = await this.postRepository.getById(event.getPostId());
+
+        if (!post) {
+            return;
+        }
 
         if (isPublicPost(post) || isFollowersOnlyPost(post)) {
             await this.feedService.addPostToFeeds(post);

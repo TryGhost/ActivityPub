@@ -582,7 +582,7 @@ describe('KnexPostRepository', () => {
 
         expect(eventsEmitSpy).toHaveBeenCalledWith(
             PostCreatedEvent.getName(),
-            new PostCreatedEvent(post),
+            new PostCreatedEvent(post.id as number),
         );
     });
 
@@ -1442,7 +1442,7 @@ describe('KnexPostRepository', () => {
         expect(eventsEmitSpy).nthCalledWith(
             1,
             PostCreatedEvent.getName(),
-            new PostCreatedEvent(post),
+            new PostCreatedEvent(post.id as number),
         );
     });
 

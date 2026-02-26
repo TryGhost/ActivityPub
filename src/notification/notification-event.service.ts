@@ -84,14 +84,20 @@ export class NotificationEventService {
     }
 
     private async handlePostCreatedEvent(event: PostCreatedEvent) {
-        await this.notificationService.createReplyNotification(event.getPost());
+        const post = await this.postRepository.getById(event.getPostId());
+
+        if (!post) {
+            return;
+        }
+
+        await this.notificationService.createReplyNotification(post);
 
         // Create a mention notification for each mention in the post
-        const mentions = event.getPost().mentions;
+        const mentions = post.mentions;
         if (mentions && mentions.length > 0) {
             for (const mention of mentions) {
                 await this.notificationService.createMentionNotification(
-                    event.getPost(),
+                    post,
                     mention.id,
                 );
             }
