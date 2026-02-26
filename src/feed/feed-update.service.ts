@@ -79,12 +79,10 @@ export class FeedUpdateService {
     }
 
     private async handlePostDeletedEvent(event: PostDeletedEvent) {
-        const post = event.getPost();
+        const postId = event.getPostId();
 
-        if (post.id !== null) {
-            await this.feedService.removePostFromFeeds(post.id);
-        }
-        await this.feedService.removePostFromDiscoveryFeeds(post);
+        await this.feedService.removePostFromFeeds(postId);
+        await this.feedService.removePostFromDiscoveryFeeds(postId);
     }
 
     private async handlePostDerepostedEvent(event: PostDerepostedEvent) {

@@ -89,17 +89,15 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
-        const author = Object.create(AccountEntity);
-        author.id = 123;
-        author.username = 'index';
-        author.apId = new URL('https://author.com/user/123');
-        author.isInternal = true;
-
-        const post = Object.create(Post);
-        post.author = author;
-        post.apId = new URL('https://author.com/post/123');
-
-        const event = new PostDeletedEvent(post, author.id);
+        const event = new PostDeletedEvent(
+            456,
+            'https://author.com/post/123',
+            123,
+            'https://author.com/user/123',
+            'https://author.com/user/123/followers',
+            'index',
+            true,
+        );
         events.emit(PostDeletedEvent.getName(), event);
 
         await nextTick();
@@ -114,17 +112,15 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
-        const author = Object.create(AccountEntity);
-        author.id = 123;
-        author.username = 'index';
-        author.apId = new URL('https://author.com/user/123');
-        author.isInternal = false;
-
-        const post = Object.create(Post);
-        post.author = author;
-        post.apId = new URL('https://author.com/post/123');
-
-        const event = new PostDeletedEvent(post, author.id);
+        const event = new PostDeletedEvent(
+            456,
+            'https://author.com/post/123',
+            123,
+            'https://author.com/user/123',
+            'https://author.com/user/123/followers',
+            'index',
+            false,
+        );
         events.emit(PostDeletedEvent.getName(), event);
 
         await nextTick();

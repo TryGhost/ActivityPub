@@ -222,7 +222,7 @@ describe('KnexPostRepository', () => {
 
             const postDeletedEvent = await postDeletedEventPromise;
 
-            expect(postDeletedEvent.getPost().id).toBe(post.id);
+            expect(postDeletedEvent.getPostId()).toBe(post.id);
         });
 
         it('Can handle a deleted reply', async () => {
@@ -285,7 +285,7 @@ describe('KnexPostRepository', () => {
 
             const postDeletedEvent = await postDeletedEventPromise;
 
-            expect(postDeletedEvent.getPost().id).toBe(reply.id);
+            expect(postDeletedEvent.getPostId()).toBe(reply.id);
 
             const postRowAfterDelete = await client('posts')
                 .where({

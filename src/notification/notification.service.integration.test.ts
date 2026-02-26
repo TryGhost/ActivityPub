@@ -1111,7 +1111,9 @@ describe('NotificationService', () => {
                 otherPost.id,
             );
 
-            await notificationService.removePostNotifications(post);
+            await notificationService.removePostNotifications(
+                post.id as number,
+            );
 
             const remainingNotifications =
                 await client('notifications').select('*');
