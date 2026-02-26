@@ -5,7 +5,6 @@ import { sanitizeHtml } from '@/helpers/html';
 import type { ModerationService } from '@/moderation/moderation.service';
 import {
     type FollowersOnlyPost,
-    type Post,
     PostType,
     type PublicPost,
 } from '@/post/post.entity';
@@ -594,8 +593,8 @@ export class FeedService {
      *
      * @param post Post to remove from discovery feeds
      */
-    async removePostFromDiscoveryFeeds(post: Post) {
-        await this.db('discovery_feeds').where('post_id', post.id).delete();
+    async removePostFromDiscoveryFeeds(postId: number) {
+        await this.db('discovery_feeds').where('post_id', postId).delete();
     }
 
     async removeBlockedAccountPostsFromFeed(

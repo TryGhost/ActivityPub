@@ -181,14 +181,13 @@ export class GhostPostService {
     }
 
     private async deleteGhostPostMapping(event: PostDeletedEvent) {
-        const post = event.getPost();
-        if (!post.author.isInternal) {
+        if (!event.isAuthorInternal()) {
             return;
         }
         await this.db('ghost_ap_post_mappings')
             .whereRaw(
                 'ghost_ap_post_mappings.ap_id_hash = UNHEX(SHA2(?, 256))',
-                [post.apId.href],
+                [event.getPostApId()],
             )
             .delete();
     }

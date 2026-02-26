@@ -1962,7 +1962,7 @@ describe('FeedService', () => {
             );
 
             // Remove the post from discovery feeds
-            await feedService.removePostFromDiscoveryFeeds(post);
+            await feedService.removePostFromDiscoveryFeeds(post.id!);
 
             // Verify the post is no longer in discovery feeds
             const discoveryFeedsAfterRemoval = await client('discovery_feeds')
@@ -1986,7 +1986,7 @@ describe('FeedService', () => {
             await postRepository.save(post);
 
             // Remove the post from discovery feeds (should not error)
-            await feedService.removePostFromDiscoveryFeeds(post);
+            await feedService.removePostFromDiscoveryFeeds(post.id!);
 
             // Verify the post is not in any discovery feeds
             const discoveryFeeds = await client('discovery_feeds')

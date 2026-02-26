@@ -509,7 +509,15 @@ export class KnexPostRepository {
             if (wasDeleted) {
                 await this.events.emitAsync(
                     PostDeletedEvent.getName(),
-                    new PostDeletedEvent(post, post.author.id),
+                    new PostDeletedEvent(
+                        post.id as number,
+                        post.apId.href,
+                        post.author.id,
+                        post.author.apId.href,
+                        post.author.apFollowers?.href ?? '',
+                        post.author.username,
+                        post.author.isInternal,
+                    ),
                 );
             }
 

@@ -171,22 +171,21 @@ describe('NotificationEventService', () => {
 
     describe('handling a post deleted event', () => {
         it('should remove notifications for the deleted post', () => {
-            const post = {
-                id: 123,
-                author: {
-                    id: 456,
-                },
-            } as Post;
-            const deletedById = 456;
-
-            events.emit(
-                PostDeletedEvent.getName(),
-                new PostDeletedEvent(post as Post, deletedById),
+            const event = new PostDeletedEvent(
+                123,
+                'https://example.com/post/123',
+                456,
+                'https://example.com/user/456',
+                'https://example.com/user/456/followers',
+                'testuser',
+                true,
             );
+
+            events.emit(PostDeletedEvent.getName(), event);
 
             expect(
                 notificationService.removePostNotifications,
-            ).toHaveBeenCalledWith(post);
+            ).toHaveBeenCalledWith(123);
         });
     });
 
