@@ -2083,10 +2083,10 @@ asynckit@^0.4.0:
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
   integrity sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==
 
-awilix@12.1.1:
-  version "12.1.1"
-  resolved "https://registry.yarnpkg.com/awilix/-/awilix-12.1.1.tgz#1e13ba5aacd2cedad4b22112d618033557c3aac1"
-  integrity sha512-A93ak7Ypot8YlkfulCBL4GCkZozuwdfwOJs+4l8+svJYCfXKuokLxWe/usTiatN1dlPOdT5HO0MBpNNTzZSWug==
+awilix@13.0.0:
+  version "13.0.0"
+  resolved "https://registry.yarnpkg.com/awilix/-/awilix-13.0.0.tgz#b3572259f6bfbce364fad49b31fc627b4a1335fc"
+  integrity sha512-kVpYTF+hFM3KD1EeMZvdRBbhY2UufBk1DAony89CeywsNGn8IaofSK4h9rnm8FehnptYk6iY8eVDlRNRHB4vdg==
   dependencies:
     fast-glob "^3.3.3"
 
