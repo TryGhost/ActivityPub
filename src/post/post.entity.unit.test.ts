@@ -1032,6 +1032,40 @@ describe('Post', () => {
     });
 
     describe('createFromData', () => {
+        it('should not produce an invalid publishedAt date when publishedAt is undefined', async () => {
+            const account = await externalAccount();
+
+            const result = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'A post without a published date',
+                apId: new URL('https://example.com/post'),
+            });
+
+            expect(result.publishedAt).toBeInstanceOf(Date);
+            expect(Number.isNaN(result.publishedAt.getTime())).toBe(false);
+        });
+
+        it('should not produce an invalid publishedAt date when publishedAt is an Invalid Date', async () => {
+            const account = await externalAccount();
+
+            // This is the scenario that caused ER_BAD_NULL_ERROR in production:
+            // new Date('') produces an Invalid Date which is not null/undefined,
+            // so the ?? fallback doesn't trigger, and MySQL receives
+            // '0NaN-NaN-NaN NaN:NaN:NaN.NaN' as the published_at value
+            const invalidDate = new Date('');
+            expect(Number.isNaN(invalidDate.getTime())).toBe(true);
+
+            const result = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'A post with an invalid published date',
+                publishedAt: invalidDate,
+                apId: new URL('https://example.com/post'),
+            });
+
+            expect(result.publishedAt).toBeInstanceOf(Date);
+            expect(Number.isNaN(result.publishedAt.getTime())).toBe(false);
+        });
+
         it('creates a post of type note', async () => {
             const account = await internalAccount();
             const postData = {
