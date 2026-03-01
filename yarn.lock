@@ -561,13 +561,13 @@
   resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.9.1.tgz#efdc54e4857299c63db117dce42c47259f10809f"
   integrity sha512-kBuO+mNWcc9z8iiiWiIfvOUe7/VCNrjPogjMcq51jdjb6HbJdy77gdTN26dcUq6JASoxMjMFnZqjT/YixL7sTA==
 
-"@fedify/redis@1.9.1":
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.9.1.tgz#05e5d92a10f94f4c9b2da6f1c58dc75217d9ae04"
-  integrity sha512-FGMZRrmHOAYQ3QGJtJfY/O7+TcKlX9ojHds5XnGyUPXqMg0XTGb+K3W7k0WlcWDTDs+L0ZcTd6W8V0VB2B36Hw==
+"@fedify/redis@2.0.2":
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-2.0.2.tgz#c0a6657277ae2c7adb2a80fd8791e7a08c972988"
+  integrity sha512-witODkEucE5stmqWIkraRiRyXhDCZb77TIEXHN1K6c6F+tPEYqPucLlQHgeg/whE6ncFNlJsRj1/gC2eep2hHQ==
   dependencies:
     "@js-temporal/polyfill" "^0.5.1"
-    "@logtape/logtape" "^1.1.1"
+    "@logtape/logtape" "^2.0.0"
 
 "@google-cloud/common@^5.0.0":
   version "5.0.2"
@@ -970,6 +970,11 @@
   version "1.3.7"
   resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-1.3.7.tgz#aa0e576254c382b436cbe742c1894c174ff768d9"
   integrity sha512-YgF+q9op97oLLPwc7TcTNIllTArVtTwkwyKky6XVzAXQcBrvFXXtMuwJSryONAyOUSItrx994O/HABOrszZyFg==
+
+"@logtape/logtape@^2.0.0":
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-2.0.4.tgz#a8481398f9274ed4e2bccfbd3009cfa36911a1ea"
+  integrity sha512-Z4COeAMdedcBFuFkXaPFvDPOVuHoEom1hwNnPCIkSyojyikuNguplwPoSG+kZthWrS7GiOJo1USQyjWwIFfTKA==
 
 "@mapbox/node-pre-gyp@^1.0.9":
   version "1.0.11"
