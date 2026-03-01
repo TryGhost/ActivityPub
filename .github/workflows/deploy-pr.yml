@@ -51,7 +51,7 @@ jobs:
 
       - name: Setup terraform
         if: ${{ steps.check-labels.outputs.is_ephemeral_staging == 'true' }}
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ steps.terraform-version.outputs.terraform_version }}
 
