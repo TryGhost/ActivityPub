@@ -125,6 +125,15 @@ export class FediverseBridge {
         if (!event.isAuthorInternal()) {
             return;
         }
+
+        const account = await this.accountService.getAccountById(
+            event.getAccountId(),
+        );
+
+        if (!account) {
+            return;
+        }
+
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const deleteActivity = new Delete({
             id: ctx.getObjectUri(Delete, { id: uuidv4() }),
@@ -139,10 +148,7 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await this.sendActivityToFollowers(
-            { username: event.getAuthorUsername() } as Account,
-            deleteActivity,
-        );
+        await this.sendActivityToFollowers(account, deleteActivity);
     }
 
     private async handlePostUpdated(event: PostUpdatedEvent) {

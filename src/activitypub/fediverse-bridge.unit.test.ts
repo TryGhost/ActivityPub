@@ -89,6 +89,15 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
+        const author = {
+            id: 123,
+            username: 'index',
+            apId: new URL('https://author.com/user/123'),
+            isInternal: true,
+        } as AccountEntity;
+
+        vi.mocked(accountService.getAccountById).mockResolvedValue(author);
+
         const event = new PostDeletedEvent(
             456,
             'https://author.com/post/123',
@@ -102,8 +111,8 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
+        expect(accountService.getAccountById).toHaveBeenCalledWith(123);
         expect(sendActivity.mock.lastCall).toBeDefined();
-
         expect(context.data.globaldb.set).toHaveBeenCalledOnce();
     });
 
@@ -126,7 +135,6 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         expect(sendActivity.mock.lastCall).not.toBeDefined();
-
         expect(context.data.globaldb.set).not.toHaveBeenCalledOnce();
     });
 
