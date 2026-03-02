@@ -43,18 +43,18 @@ export class FollowHandler {
 
         // Resolve the accounts of the account to follow and the follower,
         // and check if the follow is allowed
-        const accountToFollowResult = await this.accountService.ensureByApId(
-            follow.objectId,
-        );
+        const [accountToFollowResult, followerAccountResult] =
+            await Promise.all([
+                this.accountService.ensureByApId(follow.objectId),
+                this.accountService.ensureByApId(sender.id),
+            ]);
+
         if (isError(accountToFollowResult)) {
             ctx.data.logger.debug('Account to follow not found, exit early');
             return;
         }
         const accountToFollow = getValue(accountToFollowResult);
 
-        const followerAccountResult = await this.accountService.ensureByApId(
-            sender.id,
-        );
         if (isError(followerAccountResult)) {
             ctx.data.logger.debug('Follower account not found, exit early');
             return;
@@ -91,8 +91,10 @@ export class FollowHandler {
         follow: Follow,
         sender: Actor,
     ) {
-        const followJson = await follow.toJsonLd();
-        const senderJson = await sender.toJsonLd();
+        const [followJson, senderJson] = await Promise.all([
+            follow.toJsonLd(),
+            sender.toJsonLd(),
+        ]);
 
         await Promise.all([
             // Persist activity in the global db
