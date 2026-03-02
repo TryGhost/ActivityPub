@@ -137,10 +137,10 @@ export class FediverseBridge {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const deleteActivity = new Delete({
             id: ctx.getObjectUri(Delete, { id: uuidv4() }),
-            actor: new URL(event.getAuthorApId()),
+            actor: account.apId,
             object: new URL(event.getPostApId()),
             to: PUBLIC_COLLECTION,
-            cc: new URL(event.getAuthorApFollowers()),
+            cc: account.apFollowers,
         });
 
         await ctx.data.globaldb.set(
