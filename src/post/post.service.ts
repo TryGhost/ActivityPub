@@ -128,34 +128,36 @@ export class PostService {
     private async getMentionedAccounts(
         object: Note | Article,
     ): Promise<Mention[]> {
-        const mentions: Mention[] = [];
+        const mentionTags: { href: URL; name: string }[] = [];
         for await (const tag of object.getTags()) {
-            if (tag instanceof FedifyMention) {
-                if (!tag.href) {
-                    continue;
-                }
-
-                if (!tag.name) {
-                    continue;
-                }
-
-                const accountResult = await this.accountService.ensureByApId(
-                    tag.href,
-                );
-                if (isError(accountResult)) {
-                    continue;
-                }
-
-                const account = getValue(accountResult);
-                mentions.push({
-                    name: tag.name.toString(),
-                    href: tag.href,
-                    account,
-                });
+            if (tag instanceof FedifyMention && tag.href && tag.name) {
+                mentionTags.push({ href: tag.href, name: tag.name.toString() });
             }
         }
 
-        return mentions;
+        const results = await Promise.all(
+            mentionTags.map(async (tag) => {
+                try {
+                    const accountResult =
+                        await this.accountService.ensureByApId(tag.href);
+                    if (isError(accountResult)) {
+                        throw getError(accountResult);
+                    }
+                    return {
+                        name: tag.name,
+                        href: tag.href,
+                        account: getValue(accountResult),
+                    };
+                } catch (err) {
+                    this.logger.debug(
+                        `Failed to lookup account for mention: ${tag.name}, error: ${err}`,
+                    );
+                    return null;
+                }
+            }),
+        );
+
+        return results.filter((m): m is Mention => m !== null);
     }
 
     /**
@@ -284,7 +286,7 @@ export class PostService {
             let account: Account | null = null;
             const lookupResult = await lookupActorProfile(ctx, mention);
             if (isError(lookupResult)) {
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     `Failed to lookup apId for mention: ${mention}, error: ${getError(lookupResult)}`,
                 );
                 continue;
@@ -294,7 +296,7 @@ export class PostService {
                 getValue(lookupResult),
             );
             if (isError(accountResult)) {
-                ctx.data.logger.info(
+                ctx.data.logger.debug(
                     `Failed to lookup account for mention: ${mention}, error: ${getError(accountResult)}`,
                 );
                 continue;
