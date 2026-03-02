@@ -100,28 +100,23 @@ export class ModerationService {
         interactionAccountId: number,
         targetAccountId: number,
     ): Promise<boolean> {
-        const accountBlock = await this.db('blocks')
-            .where('blocker_id', targetAccountId)
-            .andWhere('blocked_id', interactionAccountId)
-            .first();
+        const block = await this.db.raw(
+            `SELECT 1 AS blocked FROM blocks
+            WHERE blocker_id = ? AND blocked_id = ?
+            UNION ALL
+            SELECT 1 AS blocked FROM domain_blocks
+            INNER JOIN accounts ON domain_blocks.domain_hash = accounts.domain_hash
+            WHERE domain_blocks.blocker_id = ? AND accounts.id = ?
+            LIMIT 1`,
+            [
+                targetAccountId,
+                interactionAccountId,
+                targetAccountId,
+                interactionAccountId,
+            ],
+        );
 
-        if (accountBlock !== undefined) {
-            return false;
-        }
-
-        const domainBlock = await this.db('domain_blocks')
-            .join(
-                'accounts',
-                'domain_blocks.domain_hash',
-                'accounts.domain_hash',
-            )
-            .where({
-                'domain_blocks.blocker_id': targetAccountId,
-                'accounts.id': interactionAccountId,
-            })
-            .first();
-
-        return domainBlock === undefined;
+        return block[0].length === 0;
     }
 
     async getBlockedDomains(accountId: number): Promise<Set<string>> {
