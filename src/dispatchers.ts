@@ -502,16 +502,14 @@ export const createUndoHandler = (
                 return;
             }
 
-            const unfollower = await accountService.getAccountByApId(
-                follow.actorId.href,
-            );
+            const [unfollower, unfollowing] = await Promise.all([
+                accountService.getAccountByApId(follow.actorId.href),
+                accountService.getAccountByApId(follow.objectId.href),
+            ]);
             if (!unfollower) {
                 ctx.data.logger.debug('Could not find unfollower');
                 return;
             }
-            const unfollowing = await accountService.getAccountByApId(
-                follow.objectId.href,
-            );
             if (!unfollowing) {
                 ctx.data.logger.debug('Could not find unfollowing');
                 return;
