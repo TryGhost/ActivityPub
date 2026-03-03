@@ -1,3 +1,4 @@
+import { htmlToText } from 'html-to-text';
 import doSanitizeHtml from 'sanitize-html';
 
 export function sanitizeHtml(content: string): string {
@@ -254,13 +255,28 @@ export function sanitizeHtml(content: string): string {
     });
 }
 
-export function sanitizePlainText(content: string): string {
+export function normalizePlainText(content: string): string {
     if (!content) {
         return content;
     }
 
-    return doSanitizeHtml(content, {
-        allowedTags: [],
-        allowedAttributes: {},
-    }).trim();
+    const text = htmlToText(content, {
+        wordwrap: false,
+        preserveNewlines: true,
+        selectors: [
+            { selector: 'img', format: 'skip' },
+            { selector: 'script', format: 'skip' },
+            { selector: 'style', format: 'skip' },
+            { selector: 'noscript', format: 'skip' },
+            { selector: 'a', options: { ignoreHref: true } },
+            { selector: 'h1', format: 'inline' },
+            { selector: 'h2', format: 'inline' },
+            { selector: 'h3', format: 'inline' },
+            { selector: 'h4', format: 'inline' },
+            { selector: 'h5', format: 'inline' },
+            { selector: 'h6', format: 'inline' },
+        ],
+    });
+
+    return text.replace(/\s+/g, ' ').trim();
 }

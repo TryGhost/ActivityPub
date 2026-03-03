@@ -6,7 +6,7 @@ import type { Account } from '@/account/account.entity';
 import { BaseEntity } from '@/core/base.entity';
 import { error, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
-import { sanitizeHtml, sanitizePlainText } from '@/helpers/html';
+import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
 import { ContentPreparer, type PrepareContentOptions } from '@/post/content';
 
 /** @see PostSummary.parse to get a branded PostSummary */
@@ -282,7 +282,7 @@ export class Post extends BaseEntity {
             return null;
         }
 
-        const sanitized = sanitizePlainText(title).slice(
+        const sanitized = normalizePlainText(title).slice(
             0,
             POST_TITLE_MAX_LENGTH,
         );

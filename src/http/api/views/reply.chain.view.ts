@@ -3,7 +3,7 @@ import z from 'zod';
 
 import { getAccountHandle } from '@/account/utils';
 import { error, ok, type Result } from '@/core/result';
-import { sanitizePlainText } from '@/helpers/html';
+import { normalizePlainText } from '@/helpers/html';
 import type { PostDTO } from '@/http/api/types';
 import { PostType } from '@/post/post.entity';
 
@@ -111,7 +111,7 @@ export class ReplyChainView {
         return {
             id: result.post_ap_id,
             type: result.post_type,
-            title: sanitizePlainText(result.post_title ?? ''),
+            title: normalizePlainText(result.post_title ?? ''),
             excerpt: result.post_excerpt ?? '',
             summary: result.post_summary ?? null,
             content: result.post_content ?? '',

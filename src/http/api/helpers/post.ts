@@ -1,6 +1,6 @@
 import type { Account } from '@/account/account.entity';
 import { getAccountHandle } from '@/account/utils';
-import { sanitizePlainText } from '@/helpers/html';
+import { normalizePlainText } from '@/helpers/html';
 import type { AuthorDTO, PostDTO } from '@/http/api/types';
 import type { Post } from '@/post/post.entity';
 
@@ -39,7 +39,7 @@ export function postToDTO(
     return {
         id: post.apId.href,
         type: post.type,
-        title: sanitizePlainText(post.title ?? ''),
+        title: normalizePlainText(post.title ?? ''),
         excerpt: post.excerpt ?? '',
         summary: post.summary ?? null,
         content: post.content ?? '',
