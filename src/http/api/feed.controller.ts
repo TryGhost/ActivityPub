@@ -9,6 +9,7 @@ import type {
     FeedType,
     GetFeedDataResultRow,
 } from '@/feed/feed.service';
+import { sanitizePlainText } from '@/helpers/html';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
@@ -157,7 +158,7 @@ export class FeedController {
             return {
                 id: result.post_ap_id,
                 type: result.post_type,
-                title: result.post_title ?? '',
+                title: sanitizePlainText(result.post_title ?? ''),
                 excerpt: result.post_excerpt ?? '',
                 summary: result.post_summary ?? null,
                 content: result.post_content ?? '',

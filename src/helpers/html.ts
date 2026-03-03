@@ -253,3 +253,14 @@ export function sanitizeHtml(content: string): string {
         allowVulnerableTags: true,
     });
 }
+
+export function sanitizePlainText(content: string): string {
+    if (!content) {
+        return content;
+    }
+
+    return doSanitizeHtml(content, {
+        allowedTags: [],
+        allowedAttributes: {},
+    }).trim();
+}

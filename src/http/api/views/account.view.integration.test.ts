@@ -95,6 +95,26 @@ describe('AccountView', () => {
             expect(view!.customFields).toEqual(account.customFields || {});
         });
 
+        it('should sanitize HTML in bio field', async () => {
+            const [account] = await fixtureManager.createInternalAccount();
+
+            const bioWithHtml =
+                '<p>Hello <strong>world</strong></p><script>alert("xss")</script><img src="x" onerror="alert(1)">';
+
+            await db('accounts').where({ id: account.id }).update({
+                bio: bioWithHtml,
+            });
+
+            const view = await accountView.viewById(account.id!);
+
+            expect(view).not.toBeNull();
+            expect(view!.bio).toContain('<p>');
+            expect(view!.bio).toContain('<strong>');
+            expect(view!.bio).not.toContain('alert("xss")');
+            expect(view!.bio).not.toContain('onerror');
+            expect(view!.bio).not.toContain('alert(1)');
+        });
+
         it('should not be able to view an external account by its ID', async () => {
             const account = await fixtureManager.createExternalAccount();
 

@@ -10,7 +10,7 @@ import type { Account } from '@/account/account.entity';
 import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
-import { sanitizeHtml } from '@/helpers/html';
+import { sanitizeHtml, sanitizePlainText } from '@/helpers/html';
 import type { PostDTO } from '@/http/api/types';
 import { ContentPreparer } from '@/post/content';
 import { type Mention, OutboxType, PostType } from '@/post/post.entity';
@@ -673,7 +673,7 @@ export class AccountPostsView {
         return {
             id: result.post_ap_id,
             type: result.post_type,
-            title: result.post_title ?? '',
+            title: sanitizePlainText(result.post_title ?? ''),
             excerpt: result.post_excerpt ?? '',
             summary: result.post_summary ?? null,
             content: result.post_content ?? '',
@@ -735,7 +735,7 @@ export class AccountPostsView {
         return {
             id: object.id,
             type: object.type === 'Article' ? PostType.Article : PostType.Note,
-            title: object.name || '',
+            title: sanitizePlainText(object.name || ''),
             excerpt: object.preview?.content || '',
             summary: object.summary || null,
             content: object.content || '',

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import doSanitizeHtml from 'sanitize-html';
 
-import { sanitizeHtml } from '@/helpers/html';
+import { sanitizeHtml, sanitizePlainText } from '@/helpers/html';
 
 vi.mock('sanitize-html');
 
@@ -48,5 +48,38 @@ describe('sanitizeHtml', () => {
         // Restore the mock for subsequent tests
         vi.mock('sanitize-html');
         vi.resetModules();
+    });
+});
+
+describe('sanitizePlainText', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should sanitize content using plain-text rules', () => {
+        vi.mocked(doSanitizeHtml).mockReturnValue('sanitized title');
+
+        expect(sanitizePlainText('<h1>sanitized title</h1>')).toEqual(
+            'sanitized title',
+        );
+
+        expect(doSanitizeHtml).toHaveBeenCalledWith(
+            '<h1>sanitized title</h1>',
+            {
+                allowedTags: [],
+                allowedAttributes: {},
+            },
+        );
+    });
+
+    it('should trim surrounding whitespace after sanitization', () => {
+        vi.mocked(doSanitizeHtml).mockReturnValue('  sanitized title  ');
+
+        expect(sanitizePlainText('title')).toEqual('sanitized title');
+    });
+
+    it('should do nothing if content is empty', () => {
+        expect(sanitizePlainText('')).toEqual('');
+        expect(doSanitizeHtml).not.toHaveBeenCalled();
     });
 });

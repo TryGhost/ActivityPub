@@ -671,6 +671,21 @@ describe('Post', () => {
         expect(post.content).toEqual('<p>Hello world!</p><script></script>');
     });
 
+    it('should sanitize HTML title when creating an article post', async () => {
+        const author = await internalAccount();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Article,
+            title: 'Hello <script>alert("hax")</script><strong>world</strong>',
+            content: 'Test content',
+        });
+
+        expect(post.title).toContain('Hello');
+        expect(post.title).toContain('world');
+        expect(post.title).not.toContain('<script');
+        expect(post.title).not.toContain('alert("hax")');
+    });
+
     it('should handle adding and removing likes', async () => {
         const postAuthorAccount = await internalAccount(456);
         const liker = await externalAccount(789);

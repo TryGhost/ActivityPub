@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { sanitizePlainText } from '@/helpers/html';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { PostType } from '@/post/post.entity';
 
@@ -29,6 +30,7 @@ vi.mock('@fedify/fedify', () => ({
 // Mock the content helpers
 vi.mock('@/helpers/html', () => ({
     sanitizeHtml: vi.fn((content: string) => `${content} [sanitized]`),
+    sanitizePlainText: vi.fn((content: string) => content),
 }));
 
 vi.mock('@/post/content', () => ({
@@ -45,6 +47,8 @@ describe('Account Posts View', () => {
     let fedifyContextFactory: FedifyContextFactory;
 
     beforeEach(() => {
+        vi.clearAllMocks();
+
         db = {
             select: vi.fn(),
             from: vi.fn(),
@@ -93,6 +97,9 @@ describe('Account Posts View', () => {
             };
 
             const result = view.mapActivityToPostDTO(activity);
+
+            expect(sanitizePlainText).toHaveBeenCalledTimes(1);
+            expect(sanitizePlainText).toHaveBeenCalledWith('Test Post');
 
             expect(result).toEqual({
                 id: 'https://example.com/posts/123',
