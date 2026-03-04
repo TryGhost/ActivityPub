@@ -230,5 +230,33 @@ describe('Feed API', () => {
                 './__snapshots__/feed.json',
             );
         });
+
+        it('should sanitize post titles in the feed response', async () => {
+            const baseResult = getMockFeedData({
+                accountId: account.id,
+                feedType: 'Inbox',
+                limit: 2,
+                cursor: null,
+            }).results[0];
+
+            feedService.getFeedData = vi.fn().mockResolvedValue({
+                results: [
+                    {
+                        ...baseResult,
+                        post_title:
+                            'Hello <script>alert("xss")</script><strong>world</strong>',
+                    },
+                ],
+                nextCursor: null,
+            });
+
+            const response = await feedController.getReaderFeed(ctx);
+            const body = await response.json();
+
+            expect(body.posts[0].title).toContain('Hello');
+            expect(body.posts[0].title).toContain('world');
+            expect(body.posts[0].title).not.toContain('<script');
+            expect(body.posts[0].title).not.toContain('alert("xss")');
+        });
     });
 });

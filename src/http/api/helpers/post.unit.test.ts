@@ -77,6 +77,23 @@ describe('postToPostDTO', () => {
         expect(dto.content).toEqual('Test content');
     });
 
+    it('should sanitize HTML in title values', async () => {
+        const author = await createAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Article,
+            title: 'Hello <script>alert("xss")</script><strong>world</strong>',
+            content: 'Test content',
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto.title).toContain('Hello');
+        expect(dto.title).toContain('world');
+        expect(dto.title).not.toContain('<script');
+        expect(dto.title).not.toContain('alert("xss")');
+    });
+
     it('Should default summary to null', async () => {
         const author = await createAuthor();
 

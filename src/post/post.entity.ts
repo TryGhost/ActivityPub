@@ -6,7 +6,7 @@ import type { Account } from '@/account/account.entity';
 import { BaseEntity } from '@/core/base.entity';
 import { error, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
-import { sanitizeHtml } from '@/helpers/html';
+import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
 import { ContentPreparer, type PrepareContentOptions } from '@/post/content';
 
 /** @see PostSummary.parse to get a branded PostSummary */
@@ -18,9 +18,10 @@ export const PostSummary = z
 
 /** @see PostTitle.parse to get a branded PostTitle */
 export type PostTitle = string & { readonly __brand: unique symbol };
+export const POST_TITLE_MAX_LENGTH = 256;
 export const PostTitle = z
     .string()
-    .max(256)
+    .max(POST_TITLE_MAX_LENGTH)
     .transform((val) => val as PostTitle);
 
 export enum PostType {
@@ -67,7 +68,7 @@ export interface GhostPost {
 }
 
 export interface PostUpdateParams {
-    title: PostTitle | null;
+    title: string | null;
     content: string | null;
     excerpt: PostSummary | null;
     summary: PostSummary | null;
@@ -166,7 +167,7 @@ export class Post extends BaseEntity {
         public readonly author: Account,
         public readonly type: CreatePostType,
         public readonly audience: Audience,
-        title: PostTitle | null,
+        title: string | null,
         excerpt: PostSummary | null,
         summary: PostSummary | null,
         content: string | null,
@@ -204,7 +205,7 @@ export class Post extends BaseEntity {
         } else {
             this._url = url;
         }
-        this._title = title;
+        this._title = Post.normalizeTitle(title);
         this._excerpt = excerpt;
         this._summary = summary;
         this._content = content !== null ? sanitizeHtml(content) : null;
@@ -267,13 +268,30 @@ export class Post extends BaseEntity {
         }
         this._updateDirty = true;
 
-        this._title = params.title;
+        this._title = Post.normalizeTitle(params.title);
         this._content = params.content ? sanitizeHtml(params.content) : null;
         this._excerpt = params.excerpt;
         this._summary = params.summary;
         this._imageUrl = params.imageUrl;
         this._url = params.url;
         this._metadata = params.metadata;
+    }
+
+    private static normalizeTitle(title: string | null): PostTitle | null {
+        if (!title) {
+            return null;
+        }
+
+        const sanitized = normalizePlainText(title).slice(
+            0,
+            POST_TITLE_MAX_LENGTH,
+        );
+
+        if (!sanitized) {
+            return null;
+        }
+
+        return PostTitle.parse(sanitized);
     }
 
     private handleDeleted() {
@@ -460,7 +478,6 @@ export class Post extends BaseEntity {
             });
         }
 
-        const title = ghostPost.title ? PostTitle.parse(ghostPost.title) : null;
         const summary = ghostPost.custom_excerpt
             ? PostSummary.parse(ghostPost.custom_excerpt)
             : null;
@@ -472,7 +489,7 @@ export class Post extends BaseEntity {
                 account,
                 PostType.Article,
                 Audience.Public,
-                title,
+                ghostPost.title,
                 excerpt,
                 summary,
                 content,
@@ -506,9 +523,6 @@ export class Post extends BaseEntity {
             );
         }
 
-        const title = data.title
-            ? PostTitle.parse(data.title.slice(0, 256))
-            : null;
         const excerpt = data.excerpt
             ? ContentPreparer.regenerateExcerpt(data.excerpt)
             : null;
@@ -522,7 +536,7 @@ export class Post extends BaseEntity {
             account,
             data.type,
             data.audience ?? Audience.Public,
-            title,
+            data.title ?? null,
             excerpt,
             summary,
             data.content ?? null,
