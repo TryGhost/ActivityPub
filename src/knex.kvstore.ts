@@ -28,7 +28,7 @@ export class KnexKvStore implements KvStore {
     }
 
     async get(key: KvKey) {
-        this.logging.info(`KnexKvStore: Get key ${key}`, getKeyInfo(key));
+        this.logging.debug(`KnexKvStore: Get key ${key}`, getKeyInfo(key));
         const query = {
             key: this.keyToString(key),
         };
@@ -43,7 +43,7 @@ export class KnexKvStore implements KvStore {
     }
 
     async set(key: KvKey, value: unknown, options?: KvStoreSetOptions) {
-        this.logging.info(`KnexKvStore: Set key ${key}`, getKeyInfo(key));
+        this.logging.debug(`KnexKvStore: Set key ${key}`, getKeyInfo(key));
         let valueToStore = value;
 
         if (typeof valueToStore === 'boolean') {
@@ -70,7 +70,7 @@ export class KnexKvStore implements KvStore {
     }
 
     async delete(key: KvKey) {
-        this.logging.info(`KnexKvStore: Delete key ${key}`, getKeyInfo(key));
+        this.logging.debug(`KnexKvStore: Delete key ${key}`, getKeyInfo(key));
         await this.knex(this.table)
             .where({
                 key: this.keyToString(key),

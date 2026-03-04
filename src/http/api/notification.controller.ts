@@ -2,6 +2,7 @@ import type { AccountService } from '@/account/account.service';
 import { getAccountHandle } from '@/account/utils';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { normalizePlainText } from '@/helpers/html';
 import type { NotificationDTO } from '@/http/api/types';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
@@ -77,7 +78,7 @@ export class NotificationController {
                     ? {
                           id: result.post_ap_id,
                           type: postTypeMap[Number(result.post_type)],
-                          title: result.post_title,
+                          title: normalizePlainText(result.post_title ?? ''),
                           content: result.post_content,
                           url: result.post_url,
                           likeCount: result.post_like_count || 0,
@@ -101,7 +102,9 @@ export class NotificationController {
                           type: postTypeMap[
                               Number(result.in_reply_to_post_type)
                           ],
-                          title: result.in_reply_to_post_title,
+                          title: normalizePlainText(
+                              result.in_reply_to_post_title ?? '',
+                          ),
                           content: result.in_reply_to_post_content,
                           url: result.in_reply_to_post_url,
                       }
