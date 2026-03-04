@@ -241,18 +241,18 @@ export function createAcceptHandler(accountService: AccountService) {
         ]);
 
         // Record the account of the sender as well as the follow
-        const followerAccountResult = await accountService.ensureByApId(
-            recipient.id,
-        );
+        const [followerAccountResult, ensureAccountToFollowResult] =
+            await Promise.all([
+                accountService.ensureByApId(recipient.id),
+                accountService.ensureByApId(sender.id),
+            ]);
+
         if (isError(followerAccountResult)) {
             ctx.data.logger.debug('Follower account not found, exit early');
             return;
         }
         const followerAccount = getValue(followerAccountResult);
 
-        const ensureAccountToFollowResult = await accountService.ensureByApId(
-            sender.id,
-        );
         if (isError(ensureAccountToFollowResult)) {
             ctx.data.logger.debug('Account to follow not found, exit early');
             return;
@@ -658,22 +658,23 @@ export function createAnnounceHandler(
         }
 
         // Persist announce
-        const announceJson = (await announce.toJsonLd()) as {
+        let announceJson: {
             object: object | string;
             [key: string]: unknown;
         };
 
-        if (existing) {
-            // If the announced object already exists in globalDb, set it on
-            // the activity
-            announceJson.object = existing;
-        }
-
         if (!existing && object && object.id) {
-            // Persist object if not already persisted
+            // Parallelize announce and object serialization
             ctx.data.logger.debug('Storing object in globalDb');
 
-            const objectJson = await object.toJsonLd();
+            let objectJson: unknown;
+            [announceJson, objectJson] = await Promise.all([
+                announce.toJsonLd() as Promise<{
+                    object: object | string;
+                    [key: string]: unknown;
+                }>,
+                object.toJsonLd(),
+            ]);
 
             if (typeof objectJson === 'object' && objectJson !== null) {
                 if (
@@ -692,6 +693,17 @@ export function createAnnounceHandler(
 
             // Set the full object on the activity
             announceJson.object = objectJson as object;
+        } else {
+            announceJson = (await announce.toJsonLd()) as {
+                object: object | string;
+                [key: string]: unknown;
+            };
+
+            if (existing) {
+                // If the announced object already exists in globalDb, set it on
+                // the activity
+                announceJson.object = existing;
+            }
         }
 
         ctx.data.globaldb.set([announce.id.href], announceJson);
@@ -766,7 +778,11 @@ export function createLikeHandler(
             return;
         }
 
-        const account = await accountService.getByApId(like.actorId);
+        const [account, sender] = await Promise.all([
+            accountService.getByApId(like.actorId),
+            like.getActor(ctx),
+        ]);
+
         if (account !== null) {
             const postResult = await postService.getByApId(like.objectId);
 
@@ -809,7 +825,6 @@ export function createLikeHandler(
         }
 
         // Validate sender
-        const sender = await like.getActor(ctx);
 
         if (sender === null || sender.id === null) {
             ctx.data.logger.debug('Like sender missing, exit early');
