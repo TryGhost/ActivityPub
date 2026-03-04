@@ -6,7 +6,6 @@ services:
       - "9229:9229"
     volumes:
       - ./src:/opt/activitypub/src
-      - ./dist:/opt/activitypub/dist
       - dev-content:/opt/activitypub/content
     environment:
       - PORT=8080
