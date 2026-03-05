@@ -93,6 +93,7 @@ describe('FediverseBridge', () => {
             id: 123,
             username: 'index',
             apId: new URL('https://author.com/user/123'),
+            apFollowers: new URL('https://author.com/user/123/followers'),
             isInternal: true,
         } as AccountEntity;
 
@@ -141,6 +142,7 @@ describe('FediverseBridge', () => {
 
         await nextTick();
 
+        expect(accountService.getAccountById).not.toHaveBeenCalled();
         expect(sendActivity.mock.lastCall).not.toBeDefined();
         expect(context.data.globaldb.set).not.toHaveBeenCalledOnce();
     });
