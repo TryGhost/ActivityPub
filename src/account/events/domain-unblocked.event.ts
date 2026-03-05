@@ -15,7 +15,7 @@ export class DomainUnblockedEvent implements SerializableEvent {
     }
 
     getName(): string {
-        return 'domain.unblocked';
+        return DomainUnblockedEvent.getName();
     }
 
     static getName(): string {

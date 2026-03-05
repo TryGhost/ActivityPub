@@ -9,6 +9,10 @@ export class PostInteractionCountsUpdateRequestedEvent
         return this.postIds;
     }
 
+    getName(): string {
+        return PostInteractionCountsUpdateRequestedEvent.getName();
+    }
+
     static getName(): string {
         return 'post.interaction-counts-update-requested';
     }

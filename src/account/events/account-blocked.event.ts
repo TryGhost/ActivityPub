@@ -15,7 +15,7 @@ export class AccountBlockedEvent implements SerializableEvent {
     }
 
     getName(): string {
-        return 'account.blocked';
+        return AccountBlockedEvent.getName();
     }
 
     static getName(): string {

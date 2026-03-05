@@ -15,7 +15,7 @@ export class AccountFollowedEvent implements SerializableEvent {
     }
 
     getName(): string {
-        return 'account.followed';
+        return AccountFollowedEvent.getName();
     }
 
     static getName(): string {

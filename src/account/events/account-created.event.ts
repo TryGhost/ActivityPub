@@ -8,7 +8,7 @@ export class AccountCreatedEvent implements SerializableEvent {
     }
 
     getName(): string {
-        return 'account.created';
+        return AccountCreatedEvent.getName();
     }
 
     static getName(): string {

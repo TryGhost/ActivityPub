@@ -15,7 +15,7 @@ export class DomainBlockedEvent implements SerializableEvent {
     }
 
     getName(): string {
-        return 'domain.blocked';
+        return DomainBlockedEvent.getName();
     }
 
     static getName(): string {

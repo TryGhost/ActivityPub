@@ -15,7 +15,7 @@ export class PostDerepostedEvent implements SerializableEvent {
     }
 
     getName(): string {
-        return 'post.dereposted';
+        return PostDerepostedEvent.getName();
     }
 
     static getName(): string {
