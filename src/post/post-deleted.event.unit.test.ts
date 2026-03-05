@@ -136,6 +136,12 @@ describe('PostDeletedEvent', () => {
             ).toThrow('postApId must be a string');
         });
 
+        it('should throw an error if postApId is null', () => {
+            expect(() =>
+                PostDeletedEvent.fromJSON({ ...validData, postApId: null }),
+            ).toThrow('postApId must be a string');
+        });
+
         it('should throw an error if accountId is missing', () => {
             const { accountId: _, ...data } = validData;
             expect(() => PostDeletedEvent.fromJSON(data)).toThrow(
@@ -146,6 +152,12 @@ describe('PostDeletedEvent', () => {
         it('should throw an error if accountId is not a number', () => {
             expect(() =>
                 PostDeletedEvent.fromJSON({ ...validData, accountId: 'bad' }),
+            ).toThrow('accountId must be a number');
+        });
+
+        it('should throw an error if accountId is null', () => {
+            expect(() =>
+                PostDeletedEvent.fromJSON({ ...validData, accountId: null }),
             ).toThrow('accountId must be a number');
         });
 
@@ -162,6 +174,12 @@ describe('PostDeletedEvent', () => {
             ).toThrow('authorApId must be a string');
         });
 
+        it('should throw an error if authorApId is null', () => {
+            expect(() =>
+                PostDeletedEvent.fromJSON({ ...validData, authorApId: null }),
+            ).toThrow('authorApId must be a string');
+        });
+
         it('should throw an error if authorApFollowers is missing', () => {
             const { authorApFollowers: _, ...data } = validData;
             expect(() => PostDeletedEvent.fromJSON(data)).toThrow(
@@ -174,6 +192,15 @@ describe('PostDeletedEvent', () => {
                 PostDeletedEvent.fromJSON({
                     ...validData,
                     authorApFollowers: 123,
+                }),
+            ).toThrow('authorApFollowers must be a string');
+        });
+
+        it('should throw an error if authorApFollowers is null', () => {
+            expect(() =>
+                PostDeletedEvent.fromJSON({
+                    ...validData,
+                    authorApFollowers: null,
                 }),
             ).toThrow('authorApFollowers must be a string');
         });
@@ -194,6 +221,15 @@ describe('PostDeletedEvent', () => {
             ).toThrow('authorUsername must be a string');
         });
 
+        it('should throw an error if authorUsername is null', () => {
+            expect(() =>
+                PostDeletedEvent.fromJSON({
+                    ...validData,
+                    authorUsername: null,
+                }),
+            ).toThrow('authorUsername must be a string');
+        });
+
         it('should throw an error if authorIsInternal is missing', () => {
             const { authorIsInternal: _, ...data } = validData;
             expect(() => PostDeletedEvent.fromJSON(data)).toThrow(
@@ -206,6 +242,15 @@ describe('PostDeletedEvent', () => {
                 PostDeletedEvent.fromJSON({
                     ...validData,
                     authorIsInternal: 'bad',
+                }),
+            ).toThrow('authorIsInternal must be a boolean');
+        });
+
+        it('should throw an error if authorIsInternal is null', () => {
+            expect(() =>
+                PostDeletedEvent.fromJSON({
+                    ...validData,
+                    authorIsInternal: null,
                 }),
             ).toThrow('authorIsInternal must be a boolean');
         });
