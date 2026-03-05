@@ -107,7 +107,9 @@ export class NotificationEventService {
     }
 
     private async handlePostDeletedEvent(event: PostDeletedEvent) {
-        await this.notificationService.removePostNotifications(event.getPost());
+        await this.notificationService.removePostNotifications(
+            event.getPostId(),
+        );
     }
 
     private async handleAccountBlockedEvent(event: AccountBlockedEvent) {

@@ -122,17 +122,25 @@ export class FediverseBridge {
     }
 
     private async handlePostDeleted(event: PostDeletedEvent) {
-        const post = event.getPost();
-        if (!post.author.isInternal) {
+        if (!event.isAuthorInternal()) {
             return;
         }
+
+        const account = await this.accountService.getAccountById(
+            event.getAccountId(),
+        );
+
+        if (!account || !account.isInternal) {
+            return;
+        }
+
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const deleteActivity = new Delete({
             id: ctx.getObjectUri(Delete, { id: uuidv4() }),
-            actor: post.author.apId,
-            object: post.apId,
+            actor: account.apId,
+            object: new URL(event.getPostApId()),
             to: PUBLIC_COLLECTION,
-            cc: post.author.apFollowers,
+            cc: account.apFollowers,
         });
 
         await ctx.data.globaldb.set(
@@ -140,7 +148,7 @@ export class FediverseBridge {
             await deleteActivity.toJsonLd(),
         );
 
-        await this.sendActivityToFollowers(post.author, deleteActivity);
+        await this.sendActivityToFollowers(account, deleteActivity);
     }
 
     private async handlePostUpdated(event: PostUpdatedEvent) {

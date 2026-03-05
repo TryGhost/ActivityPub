@@ -260,29 +260,25 @@ describe('FeedUpdateService', () => {
     });
 
     describe('handling a deleted post', () => {
-        const deletedById = 789;
-
         it('should remove post from feeds when deleted', async () => {
-            const post = Post.createFromData(account, {
-                type: PostType.Article,
-                audience: Audience.Public,
-            });
-
-            // Simulate a saved post with an id
-            // biome-ignore lint/suspicious/noExplicitAny: Test helper to set post id
-            (post as any).id = 123;
-
-            events.emit(
-                PostDeletedEvent.getName(),
-                new PostDeletedEvent(post, deletedById),
+            const event = new PostDeletedEvent(
+                123,
+                'https://example.com/post/123',
+                789,
+                'https://example.com/user/456',
+                'https://example.com/user/456/followers',
+                'foobar',
+                true,
             );
+
+            events.emit(PostDeletedEvent.getName(), event);
 
             await vi.runAllTimersAsync();
 
             expect(feedService.removePostFromFeeds).toHaveBeenCalledWith(123);
             expect(
                 feedService.removePostFromDiscoveryFeeds,
-            ).toHaveBeenCalledWith(post);
+            ).toHaveBeenCalledWith(123);
         });
     });
 

@@ -89,22 +89,37 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
-        const author = Object.create(AccountEntity);
-        author.id = 123;
-        author.username = 'index';
-        author.apId = new URL('https://author.com/user/123');
-        author.isInternal = true;
+        const author = {
+            id: 123,
+            username: 'index',
+            apId: new URL('https://author.com/user/123'),
+            apFollowers: new URL('https://author.com/user/123/followers'),
+            isInternal: true,
+        } as AccountEntity;
 
-        const post = Object.create(Post);
-        post.author = author;
-        post.apId = new URL('https://author.com/post/123');
+        vi.mocked(accountService.getAccountById).mockResolvedValue(author);
 
-        const event = new PostDeletedEvent(post, author.id);
+        const event = new PostDeletedEvent(
+            456,
+            'https://author.com/post/123',
+            123,
+            'https://author.com/user/123',
+            'https://author.com/user/123/followers',
+            'index',
+            true,
+        );
         events.emit(PostDeletedEvent.getName(), event);
 
         await nextTick();
 
-        expect(sendActivity.mock.lastCall).toBeDefined();
+        expect(accountService.getAccountById).toHaveBeenCalledWith(123);
+
+        const sendActivityCall = sendActivity.mock.lastCall;
+        expect(sendActivityCall).toBeDefined();
+        expect(sendActivityCall![0]).toMatchObject({
+            username: 'index',
+        });
+        expect(sendActivityCall![1]).toBe('followers');
 
         expect(context.data.globaldb.set).toHaveBeenCalledOnce();
     });
@@ -114,23 +129,21 @@ describe('FediverseBridge', () => {
 
         const sendActivity = vi.spyOn(context, 'sendActivity');
 
-        const author = Object.create(AccountEntity);
-        author.id = 123;
-        author.username = 'index';
-        author.apId = new URL('https://author.com/user/123');
-        author.isInternal = false;
-
-        const post = Object.create(Post);
-        post.author = author;
-        post.apId = new URL('https://author.com/post/123');
-
-        const event = new PostDeletedEvent(post, author.id);
+        const event = new PostDeletedEvent(
+            456,
+            'https://author.com/post/123',
+            123,
+            'https://author.com/user/123',
+            'https://author.com/user/123/followers',
+            'index',
+            false,
+        );
         events.emit(PostDeletedEvent.getName(), event);
 
         await nextTick();
 
+        expect(accountService.getAccountById).not.toHaveBeenCalled();
         expect(sendActivity.mock.lastCall).not.toBeDefined();
-
         expect(context.data.globaldb.set).not.toHaveBeenCalledOnce();
     });
 

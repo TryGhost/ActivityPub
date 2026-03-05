@@ -408,10 +408,10 @@ export class NotificationService {
             .delete();
     }
 
-    async removePostNotifications(post: Post) {
+    async removePostNotifications(postId: number) {
         await this.db('notifications')
-            .where('post_id', post.id)
-            .orWhere('in_reply_to_post_id', post.id)
+            .where('post_id', postId)
+            .orWhere('in_reply_to_post_id', postId)
             .delete();
     }
 
