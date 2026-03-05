@@ -876,6 +876,52 @@ describe('PostService', () => {
             expect(post.mentions[0].username).toBe(mentionedAccount.username);
             expect(post.mentions[0].apId).toEqual(mentionedAccount.apId);
         });
+
+        it('should still return successful mentions when some lookups fail', async () => {
+            const authorAccount = await fixtureManager.createExternalAccount();
+            const mentionedAccount =
+                await fixtureManager.createExternalAccount();
+
+            const unknownAccountUrl = new URL(
+                'https://unknown.example.com/users/ghost',
+            );
+            const apId = new URL('https://blahblah.com/post/2');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: apId,
+                    content: 'Hello mentions',
+                    published: Temporal.Instant.from(
+                        '2025-07-14T22:29:48+00:00',
+                    ),
+                    attribution: authorAccount.apId,
+                    tags: [
+                        new Mention({
+                            href: mentionedAccount.apId,
+                            name: `@${mentionedAccount.username}@${mentionedAccount.apId.hostname}`,
+                        }),
+                        new Mention({
+                            href: unknownAccountUrl,
+                            name: '@ghost@unknown.example.com',
+                        }),
+                    ],
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error(
+                    `Result should not be an error: ${getError(result)}`,
+                );
+            }
+
+            const post = getValue(result);
+            expect(post).not.toBeNull();
+            expect(post.mentions).toHaveLength(1);
+            expect(post.mentions[0].username).toBe(mentionedAccount.username);
+            expect(post.mentions[0].apId).toEqual(mentionedAccount.apId);
+        });
     });
 
     describe('getOutboxForAccount', () => {

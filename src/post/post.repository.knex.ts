@@ -528,32 +528,36 @@ export class KnexPostRepository {
                 );
             }
 
-            for (const accountId of likeAccountIds) {
-                await this.events.emitAsync(
-                    PostLikedEvent.getName(),
-                    new PostLikedEvent(
-                        post.id as number,
-                        post.author.id as number,
-                        accountId,
+            await Promise.all(
+                likeAccountIds.map((accountId) =>
+                    this.events.emitAsync(
+                        PostLikedEvent.getName(),
+                        new PostLikedEvent(
+                            post.id as number,
+                            post.author.id as number,
+                            accountId,
+                        ),
                     ),
-                );
-            }
+                ),
+            );
 
-            for (const accountId of repostAccountIds) {
-                await this.events.emitAsync(
-                    PostRepostedEvent.getName(),
-                    new PostRepostedEvent(post.id as number, accountId),
-                );
-            }
+            await Promise.all(
+                repostAccountIds.map((accountId) =>
+                    this.events.emitAsync(
+                        PostRepostedEvent.getName(),
+                        new PostRepostedEvent(post.id as number, accountId),
+                    ),
+                ),
+            );
 
-            for (const accountId of repostsToRemove) {
-                if (post.id !== null) {
-                    await this.events.emitAsync(
+            await Promise.all(
+                repostsToRemove.map((accountId) =>
+                    this.events.emitAsync(
                         PostDerepostedEvent.getName(),
-                        new PostDerepostedEvent(post.id, accountId),
-                    );
-                }
-            }
+                        new PostDerepostedEvent(post.id as number, accountId),
+                    ),
+                ),
+            );
         } catch (err) {
             await transaction.rollback();
 

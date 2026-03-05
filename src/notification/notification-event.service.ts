@@ -95,12 +95,14 @@ export class NotificationEventService {
         // Create a mention notification for each mention in the post
         const mentions = post.mentions;
         if (mentions && mentions.length > 0) {
-            for (const mention of mentions) {
-                await this.notificationService.createMentionNotification(
-                    post,
-                    mention.id,
-                );
-            }
+            await Promise.all(
+                mentions.map((mention) =>
+                    this.notificationService.createMentionNotification(
+                        post,
+                        mention.id,
+                    ),
+                ),
+            );
         }
     }
 
