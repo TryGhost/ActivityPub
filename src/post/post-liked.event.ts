@@ -7,6 +7,14 @@ export class PostLikedEvent implements SerializableEvent {
         private readonly accountId: number,
     ) {}
 
+    static getName(): string {
+        return 'post.liked';
+    }
+
+    getName(): string {
+        return PostLikedEvent.getName();
+    }
+
     getPostId(): number {
         return this.postId;
     }
@@ -17,14 +25,6 @@ export class PostLikedEvent implements SerializableEvent {
 
     getAccountId(): number {
         return this.accountId;
-    }
-
-    getName(): string {
-        return PostLikedEvent.getName();
-    }
-
-    static getName(): string {
-        return 'post.liked';
     }
 
     toJSON(): Record<string, unknown> {

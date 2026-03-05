@@ -6,20 +6,20 @@ export class AccountFollowedEvent implements SerializableEvent {
         private readonly followerId: number,
     ) {}
 
-    getAccountId(): number {
-        return this.accountId;
-    }
-
-    getFollowerId(): number {
-        return this.followerId;
+    static getName(): string {
+        return 'account.followed';
     }
 
     getName(): string {
         return AccountFollowedEvent.getName();
     }
 
-    static getName(): string {
-        return 'account.followed';
+    getAccountId(): number {
+        return this.accountId;
+    }
+
+    getFollowerId(): number {
+        return this.followerId;
     }
 
     toJSON(): Record<string, unknown> {

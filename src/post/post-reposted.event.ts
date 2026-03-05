@@ -6,20 +6,20 @@ export class PostRepostedEvent implements SerializableEvent {
         private readonly accountId: number,
     ) {}
 
-    getPostId(): number {
-        return this.postId;
-    }
-
-    getAccountId(): number {
-        return this.accountId;
-    }
-
     static getName(): string {
         return 'post.reposted';
     }
 
     getName(): string {
         return PostRepostedEvent.getName();
+    }
+
+    getPostId(): number {
+        return this.postId;
+    }
+
+    getAccountId(): number {
+        return this.accountId;
     }
 
     toJSON(): Record<string, unknown> {

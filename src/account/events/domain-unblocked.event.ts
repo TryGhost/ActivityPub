@@ -6,20 +6,20 @@ export class DomainUnblockedEvent implements SerializableEvent {
         private readonly unblockerId: number,
     ) {}
 
-    getDomain(): URL {
-        return this.domain;
-    }
-
-    getUnblockerId(): number {
-        return this.unblockerId;
+    static getName(): string {
+        return 'domain.unblocked';
     }
 
     getName(): string {
         return DomainUnblockedEvent.getName();
     }
 
-    static getName(): string {
-        return 'domain.unblocked';
+    getDomain(): URL {
+        return this.domain;
+    }
+
+    getUnblockerId(): number {
+        return this.unblockerId;
     }
 
     toJSON(): Record<string, unknown> {

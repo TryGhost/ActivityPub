@@ -3,16 +3,16 @@ import type { SerializableEvent } from '@/events/event';
 export class PostUpdatedEvent implements SerializableEvent {
     constructor(private readonly postId: number) {}
 
-    getPostId(): number {
-        return this.postId;
+    static getName(): string {
+        return 'post.updated';
     }
 
     getName(): string {
         return PostUpdatedEvent.getName();
     }
 
-    static getName(): string {
-        return 'post.updated';
+    getPostId(): number {
+        return this.postId;
     }
 
     toJSON(): Record<string, unknown> {

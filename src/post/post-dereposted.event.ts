@@ -6,20 +6,20 @@ export class PostDerepostedEvent implements SerializableEvent {
         private readonly accountId: number,
     ) {}
 
-    getPostId(): number {
-        return this.postId;
-    }
-
-    getAccountId(): number {
-        return this.accountId;
+    static getName(): string {
+        return 'post.dereposted';
     }
 
     getName(): string {
         return PostDerepostedEvent.getName();
     }
 
-    static getName(): string {
-        return 'post.dereposted';
+    getPostId(): number {
+        return this.postId;
+    }
+
+    getAccountId(): number {
+        return this.accountId;
     }
 
     toJSON(): Record<string, unknown> {

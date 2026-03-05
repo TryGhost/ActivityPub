@@ -6,20 +6,20 @@ export class AccountUnblockedEvent implements SerializableEvent {
         private readonly unblockerId: number,
     ) {}
 
-    getAccountId(): number {
-        return this.accountId;
-    }
-
-    getUnblockerId(): number {
-        return this.unblockerId;
+    static getName(): string {
+        return 'account.unblocked';
     }
 
     getName(): string {
         return AccountUnblockedEvent.getName();
     }
 
-    static getName(): string {
-        return 'account.unblocked';
+    getAccountId(): number {
+        return this.accountId;
+    }
+
+    getUnblockerId(): number {
+        return this.unblockerId;
     }
 
     toJSON(): Record<string, unknown> {

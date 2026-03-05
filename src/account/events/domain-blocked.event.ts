@@ -6,20 +6,20 @@ export class DomainBlockedEvent implements SerializableEvent {
         private readonly blockerId: number,
     ) {}
 
-    getDomain(): URL {
-        return this.domain;
-    }
-
-    getBlockerId(): number {
-        return this.blockerId;
+    static getName(): string {
+        return 'domain.blocked';
     }
 
     getName(): string {
         return DomainBlockedEvent.getName();
     }
 
-    static getName(): string {
-        return 'domain.blocked';
+    getDomain(): URL {
+        return this.domain;
+    }
+
+    getBlockerId(): number {
+        return this.blockerId;
     }
 
     toJSON(): Record<string, unknown> {
