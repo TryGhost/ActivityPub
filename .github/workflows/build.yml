@@ -101,7 +101,7 @@ jobs:
       - name: ActivityPub Docker metadata for private registry
         if: steps.should-build.outputs.skip != 'true'
         id: activitypub-docker-metadata-private
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub
@@ -124,7 +124,7 @@ jobs:
       - name: ActivityPub Docker metadata for public registry
         id: activitypub-docker-metadata-public
         if: steps.should-build.outputs.skip != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ghcr.io/tryghost/activitypub
@@ -145,7 +145,7 @@ jobs:
       - name: Migrations Docker meta for private registry
         if: steps.should-build.outputs.skip != 'true'
         id: activitypub-migrations-docker-metadata-private
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations
@@ -161,7 +161,7 @@ jobs:
       - name: ActivityPub Migrations Docker metadata for public registry
         id: activitypub-migrations-docker-metadata-public
         if: steps.should-build.outputs.skip != 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ghcr.io/tryghost/activitypub-migrations
@@ -242,7 +242,7 @@ jobs:
       - name: Docker metadata
         if: steps.changes.outputs.reconcile-account-topics == 'true'
         id: reconcile-account-topics-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: europe-docker.pkg.dev/ghost-activitypub/activitypub/reconcile-account-topics
           tags: |
