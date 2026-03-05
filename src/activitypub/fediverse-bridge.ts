@@ -130,7 +130,7 @@ export class FediverseBridge {
             event.getAccountId(),
         );
 
-        if (!account) {
+        if (!account || !account.isInternal) {
             return;
         }
 

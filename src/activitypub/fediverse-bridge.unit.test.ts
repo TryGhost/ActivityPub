@@ -112,7 +112,14 @@ describe('FediverseBridge', () => {
         await nextTick();
 
         expect(accountService.getAccountById).toHaveBeenCalledWith(123);
-        expect(sendActivity.mock.lastCall).toBeDefined();
+
+        const sendActivityCall = sendActivity.mock.lastCall;
+        expect(sendActivityCall).toBeDefined();
+        expect(sendActivityCall![0]).toMatchObject({
+            username: 'index',
+        });
+        expect(sendActivityCall![1]).toBe('followers');
+
         expect(context.data.globaldb.set).toHaveBeenCalledOnce();
     });
 

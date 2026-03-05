@@ -591,7 +591,7 @@ export class FeedService {
     /**
      * Remove a post from discovery feeds
      *
-     * @param post Post to remove from discovery feeds
+     * @param postId ID of the post to remove from discovery feeds
      */
     async removePostFromDiscoveryFeeds(postId: number) {
         await this.db('discovery_feeds').where('post_id', postId).delete();
