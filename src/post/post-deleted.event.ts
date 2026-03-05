@@ -11,6 +11,14 @@ export class PostDeletedEvent implements SerializableEvent {
         private readonly authorIsInternal: boolean,
     ) {}
 
+    static getName(): string {
+        return 'post.deleted';
+    }
+
+    getName(): string {
+        return PostDeletedEvent.getName();
+    }
+
     getPostId(): number {
         return this.postId;
     }
@@ -37,14 +45,6 @@ export class PostDeletedEvent implements SerializableEvent {
 
     isAuthorInternal(): boolean {
         return this.authorIsInternal;
-    }
-
-    getName(): string {
-        return PostDeletedEvent.getName();
-    }
-
-    static getName(): string {
-        return 'post.deleted';
     }
 
     toJSON(): Record<string, unknown> {

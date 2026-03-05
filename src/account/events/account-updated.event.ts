@@ -3,16 +3,16 @@ import type { SerializableEvent } from '@/events/event';
 export class AccountUpdatedEvent implements SerializableEvent {
     constructor(private readonly accountId: number) {}
 
-    getAccountId(): number {
-        return this.accountId;
+    static getName(): string {
+        return 'account.updated';
     }
 
     getName(): string {
-        return 'account.updated';
+        return AccountUpdatedEvent.getName();
     }
 
-    static getName(): string {
-        return 'account.updated';
+    getAccountId(): number {
+        return this.accountId;
     }
 
     toJSON(): Record<string, unknown> {

@@ -44,6 +44,16 @@ describe('DomainUnblockedEvent', () => {
                 unblockerId: 456,
             });
         });
+
+        it('should serialize URLs with paths correctly', () => {
+            const domain = new URL('https://example.com/path/to/resource');
+            const event = new DomainUnblockedEvent(domain, 123);
+
+            expect(event.toJSON()).toEqual({
+                domain: 'https://example.com/path/to/resource',
+                unblockerId: 123,
+            });
+        });
     });
 
     describe('fromJSON', () => {
@@ -123,8 +133,10 @@ describe('DomainUnblockedEvent', () => {
             expect(restored.getUnblockerId()).toBe(original.getUnblockerId());
         });
 
-        it('should preserve URL path and other components', () => {
-            const domain = new URL('https://subdomain.example.com:8080/path');
+        it('should preserve complex URLs through round-trip', () => {
+            const domain = new URL(
+                'https://subdomain.example.com:8080/path?query=value#hash',
+            );
             const original = new DomainUnblockedEvent(domain, 999);
             const json = original.toJSON();
             const restored = DomainUnblockedEvent.fromJSON(json);
@@ -132,9 +144,6 @@ describe('DomainUnblockedEvent', () => {
             expect(restored.getDomain().toString()).toBe(
                 original.getDomain().toString(),
             );
-            expect(restored.getDomain().hostname).toBe('subdomain.example.com');
-            expect(restored.getDomain().port).toBe('8080');
-            expect(restored.getDomain().pathname).toBe('/path');
         });
     });
 });

@@ -50,7 +50,7 @@ describe('NotificationEventService', () => {
         notificationEventService.init();
     });
 
-    describe('handling an account follow', () => {
+    describe('handling an account followed event', () => {
         it('should create a follow notification', () => {
             const account = { id: 123 };
             const followerAccount = { id: 456 };
@@ -66,7 +66,7 @@ describe('NotificationEventService', () => {
         });
     });
 
-    describe('handling a post like', () => {
+    describe('handling a post liked event', () => {
         it('should create a like notification', () => {
             const postId = 123;
             const postAuthorId = 456;
@@ -83,7 +83,7 @@ describe('NotificationEventService', () => {
         });
     });
 
-    describe('handling a post repost', () => {
+    describe('handling a post reposted event', () => {
         it('should create a repost notification', async () => {
             const postId = 123;
             const post = {
@@ -129,7 +129,7 @@ describe('NotificationEventService', () => {
         });
     });
 
-    describe('handling a post reply', () => {
+    describe('handling a post reply event', () => {
         it('should create a reply notification', async () => {
             const post = {
                 id: 123,

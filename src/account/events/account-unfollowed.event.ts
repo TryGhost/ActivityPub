@@ -6,20 +6,20 @@ export class AccountUnfollowedEvent implements SerializableEvent {
         private readonly unfollowerId: number,
     ) {}
 
+    static getName(): string {
+        return 'account.unfollowed';
+    }
+
+    getName(): string {
+        return AccountUnfollowedEvent.getName();
+    }
+
     getAccountId(): number {
         return this.accountId;
     }
 
     getUnfollowerId(): number {
         return this.unfollowerId;
-    }
-
-    getName(): string {
-        return 'account.unfollowed';
-    }
-
-    static getName(): string {
-        return 'account.unfollowed';
     }
 
     toJSON(): Record<string, unknown> {

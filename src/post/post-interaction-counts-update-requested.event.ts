@@ -5,12 +5,16 @@ export class PostInteractionCountsUpdateRequestedEvent
 {
     constructor(private readonly postIds: number[]) {}
 
-    getPostIds(): number[] {
-        return this.postIds;
-    }
-
     static getName(): string {
         return 'post.interaction-counts-update-requested';
+    }
+
+    getName(): string {
+        return PostInteractionCountsUpdateRequestedEvent.getName();
+    }
+
+    getPostIds(): number[] {
+        return this.postIds;
     }
 
     toJSON(): Record<string, unknown> {

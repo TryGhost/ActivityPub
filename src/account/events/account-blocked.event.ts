@@ -6,20 +6,20 @@ export class AccountBlockedEvent implements SerializableEvent {
         private readonly blockerId: number,
     ) {}
 
+    static getName(): string {
+        return 'account.blocked';
+    }
+
+    getName(): string {
+        return AccountBlockedEvent.getName();
+    }
+
     getAccountId(): number {
         return this.accountId;
     }
 
     getBlockerId(): number {
         return this.blockerId;
-    }
-
-    getName(): string {
-        return 'account.blocked';
-    }
-
-    static getName(): string {
-        return 'account.blocked';
     }
 
     toJSON(): Record<string, unknown> {

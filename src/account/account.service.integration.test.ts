@@ -18,6 +18,7 @@ import {
     DELIVERY_FAILURE_BACKOFF_SECONDS,
 } from '@/account/account.service';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
+import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 import type {
     ExternalAccountData,
     InternalAccountData,
@@ -1395,6 +1396,59 @@ describe('AccountService', () => {
                 await service.getActiveDeliveryBackoff(nonExistentInboxUrl);
 
             expect(backoff).toBeNull();
+        });
+    });
+
+    describe('updateAccount', () => {
+        it('should emit AccountUpdatedEvent when profile fields change for internal account', async () => {
+            let accountUpdatedEvent: AccountUpdatedEvent | undefined;
+
+            events.on(AccountUpdatedEvent.getName(), (event) => {
+                accountUpdatedEvent = event;
+            });
+
+            const result = await service.createInternalAccount(
+                site,
+                internalAccountData,
+            );
+
+            const accountRow = await db('accounts')
+                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [result.ap_id])
+                .first();
+
+            await service.updateAccount(accountRow, {
+                name: 'Updated Name',
+            });
+
+            await vi.waitFor(() => {
+                return accountUpdatedEvent !== undefined;
+            });
+
+            expect(accountUpdatedEvent).toBeDefined();
+            expect(accountUpdatedEvent).toBeInstanceOf(AccountUpdatedEvent);
+            expect(accountUpdatedEvent?.getAccountId()).toBe(accountRow.id);
+        });
+
+        it('should not emit AccountUpdatedEvent for external account', async () => {
+            let accountUpdatedEvent: AccountUpdatedEvent | undefined;
+
+            events.on(AccountUpdatedEvent.getName(), (event) => {
+                accountUpdatedEvent = event;
+            });
+
+            await service.createExternalAccount(externalAccountData);
+
+            const accountRow = await db('accounts')
+                .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                    externalAccountData.ap_id,
+                ])
+                .first();
+
+            await service.updateAccount(accountRow, {
+                name: 'Updated Name',
+            });
+
+            expect(accountUpdatedEvent).toBeUndefined();
         });
     });
 
