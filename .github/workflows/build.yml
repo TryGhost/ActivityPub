@@ -96,7 +96,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.should-build.outputs.skip != 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: ActivityPub Docker metadata for private registry
         if: steps.should-build.outputs.skip != 'true'
@@ -237,7 +237,7 @@ jobs:
               - 'jobs/reconcile-account-topics/**'
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Docker metadata
         if: steps.changes.outputs.reconcile-account-topics == 'true'
