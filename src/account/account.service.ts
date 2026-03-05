@@ -12,6 +12,7 @@ import type { Knex } from 'knex';
 import { type Account, AccountEntity } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
+import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 import type {
     Account as AccountType,
     ExternalAccountData,
@@ -621,7 +622,10 @@ export class AccountService {
         const bioChanged = account.bio !== data.bio;
 
         if (avatarChanged || nameChanged || bioChanged) {
-            await this.events.emitAsync('account.updated', newAccount);
+            await this.events.emitAsync(
+                AccountUpdatedEvent.getName(),
+                new AccountUpdatedEvent(account.id),
+            );
         }
 
         return newAccount;
