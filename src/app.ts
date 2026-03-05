@@ -246,57 +246,31 @@ container.resolve<GhostPostService>('ghostPostService').init();
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')
     .init();
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(
-        PostInteractionCountsUpdateRequestedEvent.getName(),
-        PostInteractionCountsUpdateRequestedEvent,
-    );
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(AccountCreatedEvent.getName(), AccountCreatedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(AccountUpdatedEvent.getName(), AccountUpdatedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(AccountFollowedEvent.getName(), AccountFollowedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(AccountUnfollowedEvent.getName(), AccountUnfollowedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(AccountBlockedEvent.getName(), AccountBlockedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(AccountUnblockedEvent.getName(), AccountUnblockedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(DomainBlockedEvent.getName(), DomainBlockedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(DomainUnblockedEvent.getName(), DomainUnblockedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(NotificationsReadEvent.getName(), NotificationsReadEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(PostDerepostedEvent.getName(), PostDerepostedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(PostLikedEvent.getName(), PostLikedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(PostRepostedEvent.getName(), PostRepostedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(PostUpdatedEvent.getName(), PostUpdatedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(PostCreatedEvent.getName(), PostCreatedEvent);
-container
-    .resolve<EventSerializer>('eventSerializer')
-    .register(PostDeletedEvent.getName(), PostDeletedEvent);
+
+// Register all events with the event serializer
+const globalEventSerializer =
+    container.resolve<EventSerializer>('eventSerializer');
+
+for (const event of [
+    AccountBlockedEvent,
+    AccountCreatedEvent,
+    AccountFollowedEvent,
+    AccountUnblockedEvent,
+    AccountUnfollowedEvent,
+    AccountUpdatedEvent,
+    DomainBlockedEvent,
+    DomainUnblockedEvent,
+    NotificationsReadEvent,
+    PostCreatedEvent,
+    PostDeletedEvent,
+    PostDerepostedEvent,
+    PostInteractionCountsUpdateRequestedEvent,
+    PostLikedEvent,
+    PostRepostedEvent,
+    PostUpdatedEvent,
+]) {
+    globalEventSerializer.register(event.getName(), event);
+}
 
 /** Fedify */
 
