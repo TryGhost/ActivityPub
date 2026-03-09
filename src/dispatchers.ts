@@ -104,8 +104,22 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
 export const keypairDispatcher = (
     accountService: AccountService,
     hostDataContextLoader: HostDataContextLoader,
-) =>
-    async function keypairDispatcher(ctx: FedifyContext, identifier: string) {
+) => {
+    const MAX_CACHE_SIZE = 1000;
+    const KEY_TTL_MS = 30 * 60 * 1000; // 30 minutes
+    const cryptoKeyCache = new Map<
+        number,
+        {
+            publicKey: CryptoKey;
+            privateKey: CryptoKey;
+            createdAt: number;
+        }
+    >();
+
+    return async function keypairDispatcher(
+        ctx: FedifyContext,
+        identifier: string,
+    ) {
         const hostData = await hostDataContextLoader.loadDataForHost(ctx.host);
 
         if (isError(hostData)) {
@@ -145,6 +159,14 @@ export const keypairDispatcher = (
 
         const { account } = getValue(hostData);
 
+        const cached = cryptoKeyCache.get(account.id);
+        if (cached) {
+            if (Date.now() - cached.createdAt < KEY_TTL_MS) {
+                return [cached];
+            }
+            cryptoKeyCache.delete(account.id);
+        }
+
         const keyPair = await accountService.getKeyPair(account.id);
 
         if (isError(keyPair)) {
@@ -176,18 +198,47 @@ export const keypairDispatcher = (
         const { publicKey, privateKey } = getValue(keyPair);
 
         try {
-            return [
-                {
-                    publicKey: await importJwk(
-                        JSON.parse(publicKey) as JsonWebKey,
-                        'public',
-                    ),
-                    privateKey: await importJwk(
-                        JSON.parse(privateKey) as JsonWebKey,
-                        'private',
-                    ),
-                },
-            ];
+            const imported = {
+                publicKey: await importJwk(
+                    JSON.parse(publicKey) as JsonWebKey,
+                    'public',
+                ),
+                privateKey: await importJwk(
+                    JSON.parse(privateKey) as JsonWebKey,
+                    'private',
+                ),
+            };
+
+            const now = Date.now();
+
+            // Evict expired entries
+            for (const [key, entry] of cryptoKeyCache) {
+                if (now - entry.createdAt >= KEY_TTL_MS) {
+                    cryptoKeyCache.delete(key);
+                }
+            }
+
+            // If still full, evict the oldest entry
+            if (cryptoKeyCache.size >= MAX_CACHE_SIZE) {
+                let oldestKey: number | undefined;
+                let oldestTime = Infinity;
+                for (const [key, entry] of cryptoKeyCache) {
+                    if (entry.createdAt < oldestTime) {
+                        oldestTime = entry.createdAt;
+                        oldestKey = key;
+                    }
+                }
+                if (oldestKey !== undefined) {
+                    cryptoKeyCache.delete(oldestKey);
+                }
+            }
+
+            cryptoKeyCache.set(account.id, {
+                ...imported,
+                createdAt: now,
+            });
+
+            return [imported];
         } catch (error) {
             ctx.data.logger.error(
                 'Could not parse keypair for {host} (identifier: {identifier}): {error}',
@@ -200,6 +251,7 @@ export const keypairDispatcher = (
             return [];
         }
     };
+};
 
 export function createAcceptHandler(accountService: AccountService) {
     return async function handleAccept(ctx: FedifyContext, accept: Accept) {
