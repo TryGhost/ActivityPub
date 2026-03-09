@@ -26,7 +26,7 @@ export class DeleteHandler {
         try {
             sender = await deleteActivity.getActor(ctx);
         } catch (error) {
-            ctx.data.logger.error(
+            ctx.data.logger.debug(
                 'Error fetching sender from delete activity',
                 { error },
             );
