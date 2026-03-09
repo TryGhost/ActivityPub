@@ -103,7 +103,8 @@ function isNetworkConnectivityError(error: Error, depth = 0): boolean {
         error.message.match(/(read|connect) ECONNRESET/i) !== null ||
         error.message.match(/socket hang up/i) !== null ||
         error.message.match(/Connect Timeout Error/i) !== null ||
-        error.message.match(/other side closed/i) !== null
+        error.message.match(/other side closed/i) !== null ||
+        error.name === 'TimeoutError'
     ) {
         return true;
     }
