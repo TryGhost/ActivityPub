@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { Logger } from '@logtape/logtape';
+import { forEachAsync } from 'es-toolkit/array';
 import type { Knex } from 'knex';
 
 import { AccountEntity } from '@/account/account.entity';
@@ -528,35 +529,41 @@ export class KnexPostRepository {
                 );
             }
 
-            await Promise.all(
-                likeAccountIds.map((accountId) =>
-                    this.events.emitAsync(
+            await forEachAsync(
+                likeAccountIds,
+                async (accountId) => {
+                    await this.events.emitAsync(
                         PostLikedEvent.getName(),
                         new PostLikedEvent(
                             post.id as number,
                             post.author.id as number,
                             accountId,
                         ),
-                    ),
-                ),
+                    );
+                },
+                { concurrency: 10 },
             );
 
-            await Promise.all(
-                repostAccountIds.map((accountId) =>
-                    this.events.emitAsync(
+            await forEachAsync(
+                repostAccountIds,
+                async (accountId) => {
+                    await this.events.emitAsync(
                         PostRepostedEvent.getName(),
                         new PostRepostedEvent(post.id as number, accountId),
-                    ),
-                ),
+                    );
+                },
+                { concurrency: 10 },
             );
 
-            await Promise.all(
-                repostsToRemove.map((accountId) =>
-                    this.events.emitAsync(
+            await forEachAsync(
+                repostsToRemove,
+                async (accountId) => {
+                    await this.events.emitAsync(
                         PostDerepostedEvent.getName(),
                         new PostDerepostedEvent(post.id as number, accountId),
-                    ),
-                ),
+                    );
+                },
+                { concurrency: 10 },
             );
         } catch (err) {
             await transaction.rollback();
