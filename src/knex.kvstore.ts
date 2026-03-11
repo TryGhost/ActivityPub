@@ -12,15 +12,22 @@ function getKeyInfo(key: KvKey) {
 }
 
 export class KnexKvStore implements KvStore {
+    private writesSinceLastCleanup = 0;
+
     private constructor(
         private readonly knex: Knex.Knex,
         private readonly table: string,
         private readonly logging: Logger,
+        private readonly cleanupInterval: number,
     ) {}
 
-    static create(knex: Knex.Knex, table: string, logging: Logger) {
-        // TODO: Validate table structure
-        return new KnexKvStore(knex, table, logging);
+    static create(
+        knex: Knex.Knex,
+        table: string,
+        logging: Logger,
+        cleanupInterval: number = 100,
+    ) {
+        return new KnexKvStore(knex, table, logging, cleanupInterval);
     }
 
     private keyToString(key: KvKey): string {
@@ -28,12 +35,21 @@ export class KnexKvStore implements KvStore {
     }
 
     async get(key: KvKey) {
-        this.logging.debug(`KnexKvStore: Get key ${key}`, getKeyInfo(key));
+        const keyInfo = getKeyInfo(key);
+        this.logging.debug(`KnexKvStore: Get key ${key}`, keyInfo);
         const query = {
             key: this.keyToString(key),
         };
         const row = await this.knex(this.table).where(query).first();
         if (!row) {
+            return null;
+        }
+        if (row.expires !== null && row.expires <= new Date()) {
+            this.logging.debug(
+                `KnexKvStore: Deleting expired key ${key}`,
+                keyInfo,
+            );
+            await this.knex(this.table).where(query).del();
             return null;
         }
         if (Object.hasOwn(row.value, '@@BOOLEAN@@')) {
@@ -67,6 +83,18 @@ export class KnexKvStore implements KvStore {
             })
             .onConflict('key')
             .merge(['value', 'expires']);
+
+        this.writesSinceLastCleanup++;
+
+        if (this.writesSinceLastCleanup >= this.cleanupInterval) {
+            this.writesSinceLastCleanup = 0;
+            this.logging.debug('KnexKvStore: Running expired row cleanup');
+
+            await this.knex.raw(
+                `DELETE FROM ?? WHERE expires IS NOT NULL AND expires <= ? LIMIT 100`,
+                [this.table, new Date()],
+            );
+        }
     }
 
     async delete(key: KvKey) {
