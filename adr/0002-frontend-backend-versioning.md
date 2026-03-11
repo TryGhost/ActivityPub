@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved
+Superseded by [ADR-0012](0012-forward-compatible-api-evolution.md)
 
 ## Context
 
