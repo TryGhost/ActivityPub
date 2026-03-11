@@ -116,4 +116,129 @@ describe('KnexKvStore', () => {
 
         expect(differenceFromOneDay).toBeLessThan(1000);
     });
+
+    it('Does not return expired entries', async () => {
+        const table = 'key_value';
+        const store = KnexKvStore.create(client, table, logger);
+
+        await client(table)
+            .insert({
+                key: JSON.stringify(['expired-key']),
+                value: JSON.stringify({ stale: 'data' }),
+                expires: new Date(Date.now() - 1000),
+            })
+            .onConflict('key')
+            .merge(['value', 'expires']);
+
+        const result = await store.get(['expired-key']);
+
+        expect(result).toBeNull();
+    });
+
+    it('Deletes expired entries from the database on read', async () => {
+        const table = 'key_value';
+        const store = KnexKvStore.create(client, table, logger);
+
+        const keyString = JSON.stringify(['expired-key-cleanup']);
+        await client(table)
+            .insert({
+                key: keyString,
+                value: JSON.stringify({ stale: 'data' }),
+                expires: new Date(Date.now() - 1000),
+            })
+            .onConflict('key')
+            .merge(['value', 'expires']);
+
+        await store.get(['expired-key-cleanup']);
+
+        const row = await client(table).where({ key: keyString }).first();
+
+        expect(row).toBeUndefined();
+    });
+
+    it('Returns entries with a future expiry', async () => {
+        const table = 'key_value';
+        const store = KnexKvStore.create(client, table, logger);
+
+        await store.set(
+            ['future-expiry'],
+            { fresh: 'data' },
+            {
+                ttl: Temporal.Duration.from({ hours: 1 }),
+            },
+        );
+
+        const result = await store.get(['future-expiry']);
+
+        expect(result).toEqual({ fresh: 'data' });
+    });
+
+    it('Returns entries with no expiry', async () => {
+        const table = 'key_value';
+        const store = KnexKvStore.create(client, table, logger);
+
+        await store.set(['no-expiry'], { persistent: 'data' });
+
+        const result = await store.get(['no-expiry']);
+
+        expect(result).toEqual({ persistent: 'data' });
+    });
+
+    it('Cleans up expired rows on set() after cleanup interval is reached', async () => {
+        const table = 'key_value';
+
+        // Cleanup every 3 set() calls
+        const store = KnexKvStore.create(client, table, logger, 3);
+
+        // Insert expired rows directly
+        const expiredKeys = ['cleanup-a', 'cleanup-b', 'cleanup-c'];
+        for (const k of expiredKeys) {
+            await client(table)
+                .insert({
+                    key: JSON.stringify([k]),
+                    value: JSON.stringify({ stale: 'data' }),
+                    expires: new Date(Date.now() - 1000),
+                })
+                .onConflict('key')
+                .merge(['value', 'expires']);
+        }
+
+        // Insert a non-expired row that should survive cleanup
+        const nonExpiredKey = JSON.stringify(['cleanup-survivor']);
+        await client(table)
+            .insert({
+                key: nonExpiredKey,
+                value: JSON.stringify({ fresh: 'data' }),
+                expires: new Date(Date.now() + 60000),
+            })
+            .onConflict('key')
+            .merge(['value', 'expires']);
+
+        // First two set() calls should not trigger cleanup
+        await store.set(['trigger-1'], 'value');
+        await store.set(['trigger-2'], 'value');
+
+        const remainingBeforeCleanup = await client(table).whereIn(
+            'key',
+            expiredKeys.map((k) => JSON.stringify([k])),
+        );
+        expect(remainingBeforeCleanup).toHaveLength(3);
+
+        // Third set() call triggers cleanup
+        await store.set(['trigger-3'], 'value');
+
+        const remainingAfterCleanup = await client(table).whereIn(
+            'key',
+            expiredKeys.map((k) => JSON.stringify([k])),
+        );
+
+        expect(remainingAfterCleanup).toHaveLength(0);
+
+        // Non-expired row should still exist
+        const survivor = await client(table)
+            .where({ key: nonExpiredKey })
+            .first();
+
+        expect(survivor).toBeDefined();
+    });
 });
