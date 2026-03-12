@@ -1,5 +1,7 @@
 import type { EventEmitter } from 'node:events';
 
+import { forEachAsync } from 'es-toolkit/array';
+
 import {
     AccountBlockedEvent,
     AccountFollowedEvent,
@@ -95,13 +97,14 @@ export class NotificationEventService {
         // Create a mention notification for each mention in the post
         const mentions = post.mentions;
         if (mentions && mentions.length > 0) {
-            await Promise.all(
-                mentions.map((mention) =>
+            await forEachAsync(
+                mentions,
+                (mention) =>
                     this.notificationService.createMentionNotification(
                         post,
                         mention.id,
                     ),
-                ),
+                { concurrency: 10 },
             );
         }
     }
