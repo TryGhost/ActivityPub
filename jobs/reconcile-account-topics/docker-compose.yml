@@ -1,6 +1,6 @@
 services:
   mysql-test:
-    image: mysql:8.4.8@sha256:a2d126916bc2ba79a890a4bf62d305eb8b68fcbdd35c6e582d529df18faf5ebb
+    image: mysql:8.4.8@sha256:be18eb9dc45eea9b86cb74f8c68ab92ce8569ecc37ea4e6fade02e37036c5ff4
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: reconcile-account-topics
