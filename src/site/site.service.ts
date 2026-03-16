@@ -39,20 +39,28 @@ export class SiteService {
             throw new Error(`Site already exists for ${host}`);
         }
 
+        let hasUUIDConflict = false;
+
+        if (ghostUuid !== null) {
+            const currentOwner = await this.client('sites')
+                .select('host')
+                .where({ ghost_uuid: ghostUuid })
+                .first();
+
+            if (currentOwner) {
+                await this.verifyUUIDReleased(currentOwner.host, ghostUuid);
+
+                hasUUIDConflict = true;
+            }
+        }
+
         const webhook_secret = crypto.randomBytes(32).toString('hex');
 
         return await this.client.transaction(async (trx) => {
-            if (ghostUuid !== null) {
-                const uuidExists = await trx('sites')
-                    .select('*')
+            if (hasUUIDConflict) {
+                await trx('sites')
                     .where({ ghost_uuid: ghostUuid })
-                    .first();
-
-                if (uuidExists) {
-                    await trx('sites')
-                        .where({ ghost_uuid: ghostUuid })
-                        .update({ ghost_uuid: null });
-                }
+                    .update({ ghost_uuid: null });
             }
 
             const [id] = await trx('sites').insert({
@@ -145,6 +153,23 @@ export class SiteService {
         const result = await this.client.delete().from('sites').where({ host });
 
         return result === 1;
+    }
+
+    private async verifyUUIDReleased(
+        host: string,
+        ghostUuid: string,
+    ): Promise<void> {
+        try {
+            const settings = await this.ghostService.getSiteSettings(host);
+
+            if (settings?.site?.site_uuid === ghostUuid) {
+                throw new Error('ghost_uuid is still claimed by another host');
+            }
+        } catch (err) {
+            if (err instanceof Error && err.message.includes('still claimed')) {
+                throw err;
+            }
+        }
     }
 
     private async getSiteSettings(host: string): Promise<SiteSettings> {
