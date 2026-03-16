@@ -339,9 +339,12 @@ describe('SiteService', () => {
             .fn()
             .mockImplementation((host: string) => {
                 if (host === 'old-domain.tld') {
-                    return Promise.reject(
-                        new Error('ENOTFOUND old-domain.tld'),
+                    const dnsError = Object.assign(
+                        new Error('getaddrinfo ENOTFOUND old-domain.tld'),
+                        { code: 'ENOTFOUND' },
                     );
+
+                    return Promise.reject(dnsError);
                 }
                 return Promise.resolve({
                     site: {
@@ -364,5 +367,64 @@ describe('SiteService', () => {
             .first();
 
         expect(oldRow.ghost_uuid).toBeNull();
+    });
+
+    it('Blocks ghost_uuid reassignment when the old host returns a transient HTTP error', async () => {
+        const ghostUUID = 'transient-error-uuid';
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: 'https://site-a.tld/icon.png',
+                title: 'Site A',
+                description: 'Site A description',
+                cover_image: 'https://site-a.tld/cover.png',
+                site_uuid: ghostUUID,
+            },
+        });
+
+        await service.initialiseSiteForHost('site-a.tld');
+
+        // Old host returns an HTTP error (has a response property)
+        const httpError = Object.assign(
+            new Error('Request failed with status code 500'),
+            { response: { status: 500 } },
+        );
+
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockImplementation((host: string) => {
+                if (host === 'site-a.tld') {
+                    return Promise.reject(httpError);
+                }
+                return Promise.resolve({
+                    site: {
+                        icon: 'https://site-b.tld/icon.png',
+                        title: 'Site B',
+                        description: 'Site B description',
+                        cover_image: 'https://site-b.tld/cover.png',
+                        site_uuid: ghostUUID,
+                    },
+                });
+            });
+
+        await expect(
+            service.initialiseSiteForHost('site-b.tld'),
+        ).rejects.toThrow(
+            'Unable to verify ghost_uuid ownership: site-a.tld returned an error',
+        );
+
+        // Verify existing site is untouched
+        const siteARow = await db('sites')
+            .where({ host: 'site-a.tld' })
+            .first();
+
+        expect(siteARow.ghost_uuid).toBe(ghostUUID);
+
+        // Verify new site was not created
+        const siteBRow = await db('sites')
+            .where({ host: 'site-b.tld' })
+            .first();
+
+        expect(siteBRow).toBeUndefined();
     });
 });

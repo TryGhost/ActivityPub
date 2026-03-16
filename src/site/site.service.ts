@@ -159,16 +159,31 @@ export class SiteService {
         host: string,
         ghostUuid: string,
     ): Promise<void> {
-        try {
-            const settings = await this.ghostService.getSiteSettings(host);
+        let settings: SiteSettings | undefined;
 
-            if (settings?.site?.site_uuid === ghostUuid) {
-                throw new Error('ghost_uuid is still claimed by another host');
-            }
+        try {
+            settings = await this.ghostService.getSiteSettings(host);
         } catch (err) {
-            if (err instanceof Error && err.message.includes('still claimed')) {
-                throw err;
+            // ky throws HTTPError (with `response`) for HTTP errors and
+            // TimeoutError (with `request`) for timeouts — both indicate
+            // the host is reachable, so re-throw. Everything else is a
+            // network-level failure (DNS, connection refused) meaning the
+            // host is genuinely gone — allow reassignment.
+            if (
+                err &&
+                typeof err === 'object' &&
+                ('response' in err || 'request' in err)
+            ) {
+                throw new Error(
+                    `Unable to verify ghost_uuid ownership: ${host} returned an error`,
+                );
             }
+
+            return;
+        }
+
+        if (settings?.site?.site_uuid === ghostUuid) {
+            throw new Error('ghost_uuid is still claimed by another host');
         }
     }
 
