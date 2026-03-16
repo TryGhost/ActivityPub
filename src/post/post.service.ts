@@ -5,6 +5,7 @@ import {
     Note,
 } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
+import { mapAsync } from 'es-toolkit/array';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -135,8 +136,9 @@ export class PostService {
             }
         }
 
-        const results = await Promise.all(
-            mentionTags.map(async (tag) => {
+        const results = await mapAsync(
+            mentionTags,
+            async (tag): Promise<Mention | null> => {
                 try {
                     const accountResult =
                         await this.accountService.ensureByApId(tag.href);
@@ -154,7 +156,8 @@ export class PostService {
                     );
                     return null;
                 }
-            }),
+            },
+            { concurrency: 10 },
         );
 
         return results.filter((m): m is Mention => m !== null);
