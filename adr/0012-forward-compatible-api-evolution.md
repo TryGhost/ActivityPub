@@ -57,7 +57,7 @@ Ghost Admin has transitioned from a legacy Ember admin to a new React admin shel
 However, the legacy loading infrastructure still exists in the Ghost codebase:
 
 - The Ember admin's `admin-x-component.js` still fetches `/.ghost/activitypub/stable/client-config` and loads from jsDelivr when the React shell is not active
-- The CI pipeline (`.github/workflows/ci.yml`) still publishes `@tryghost/activitypub` to npm and purges the jsDelivr cache
+- The GitHub Actions workflow (`ci.yml`) still publishes `@tryghost/activitypub` to npm and purges the jsDelivr cache
 - A pre-commit hook prompts developers to bump the activitypub package version on changes
 
 To complete the transition to the model described in this ADR:
