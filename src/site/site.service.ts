@@ -39,7 +39,7 @@ export class SiteService {
             throw new Error(`Site already exists for ${host}`);
         }
 
-        let hasUUIDConflict = false;
+        let verifiedOwnerHost: string | null = null;
 
         if (ghostUuid !== null) {
             const currentOwner = await this.client('sites')
@@ -50,16 +50,16 @@ export class SiteService {
             if (currentOwner) {
                 await this.verifyUUIDReleased(currentOwner.host, ghostUuid);
 
-                hasUUIDConflict = true;
+                verifiedOwnerHost = currentOwner.host;
             }
         }
 
         const webhook_secret = crypto.randomBytes(32).toString('hex');
 
         return await this.client.transaction(async (trx) => {
-            if (hasUUIDConflict) {
+            if (verifiedOwnerHost) {
                 await trx('sites')
-                    .where({ ghost_uuid: ghostUuid })
+                    .where({ host: verifiedOwnerHost, ghost_uuid: ghostUuid })
                     .update({ ghost_uuid: null });
             }
 
