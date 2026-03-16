@@ -150,9 +150,7 @@ The order in which changes are deployed matters. The ActivityPub server and the 
 
 #### Coordinating with feature flags
 
-In practice, client and server changes for a feature are often developed in parallel. The approach depends on whether the change introduces a new endpoint or modifies an existing one.
-
-**New endpoint**: a server-side feature flag is not needed - a new endpoint that nobody calls is harmless. Only the client needs a feature flag to hide the UI until it's ready:
+In practice, client and server changes for a feature are often developed in parallel. Since we control both sides and there are no external API consumers, a server-side feature flag is not needed. A new endpoint that nobody calls is harmless, and breaking changes to existing endpoints go through per-endpoint versioning (which creates a new endpoint). Only the client needs a feature flag to hide the UI until it's ready:
 
 1. Add the server-side endpoint (deployed and live, but no client calls it yet)
 2. Ship client-side code behind a feature flag (deployed but hidden)
@@ -160,15 +158,9 @@ In practice, client and server changes for a feature are often developed in para
 
 Until the client flag is removed, the endpoint is effectively in development and can be changed freely.
 
-**Modifying an existing endpoint**: if the change affects current behavior and needs to be developed iteratively, a server-side feature flag is useful. The client opts in via a URL parameter, and existing clients continue getting the old behavior:
+For additive changes to existing endpoints (adding a new response field, adding an optional parameter), no feature flags are needed on either side - just ship it.
 
-1. Ship the server change behind a feature flag (existing behavior is unchanged unless the flag is present)
-2. Ship client-side code behind a feature flag that passes the server flag via URL parameter
-3. When ready, remove both feature flags (new behavior becomes the default)
-
-Note: for additive changes to existing endpoints (adding a new response field, adding an optional parameter), no feature flags are needed on either side - just ship it.
-
-The ActivityPub React app has its own feature flag mechanism (`apps/activitypub/src/lib/feature-flags.tsx`) that uses URL parameters and localStorage. Flags are toggled via `?flag-name=ON` in the URL and accessed via a `useFeatureFlags()` hook. The server's `FlagService` is request-scoped and activated via URL query parameters passed by the client.
+The ActivityPub React app has its own feature flag mechanism (`apps/activitypub/src/lib/feature-flags.tsx`) that uses URL parameters and localStorage. Flags are toggled via `?flag-name=ON` in the URL and accessed via a `useFeatureFlags()` hook.
 
 For simpler changes where feature flags are unnecessary, sequencing the PRs (server merged first) is sufficient.
 
