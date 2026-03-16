@@ -150,19 +150,25 @@ The order in which changes are deployed matters. The ActivityPub server and the 
 
 #### Coordinating with feature flags
 
-In practice, client and server changes for a feature are often developed in parallel. Feature flags can be used to merge and deploy code before it's ready to be used:
+In practice, client and server changes for a feature are often developed in parallel. The approach depends on whether the change introduces a new endpoint or modifies an existing one.
 
-1. Merge server-side endpoint behind a feature flag (deployed but not reachable without the flag)
-2. Merge client-side code behind its own feature flag in Ghost Admin (deployed but hidden)
-3. Enable the server-side flag (endpoint is now live)
-4. Enable the client-side flag (client now calls the endpoint)
+**New endpoint**: a server-side feature flag is not needed - a new endpoint that nobody calls is harmless. Only the client needs a feature flag to hide the UI until it's ready:
 
-This avoids the need to strictly sequence PRs while still respecting the server-first rule: the server endpoint is live before the client starts calling it.
+1. Add the server-side endpoint (deployed and live, but no client calls it yet)
+2. Ship client-side code behind a feature flag (deployed but hidden)
+3. When ready, remove the client-side feature flag (client now calls the endpoint)
 
-The client and server have separate feature flag systems:
+Until the client flag is removed, the endpoint is effectively in development and can be changed freely.
 
-- **Client**: the ActivityPub React app has its own feature flag mechanism (`apps/activitypub/src/lib/feature-flags.tsx`) that uses URL parameters and localStorage. Flags are toggled via `?flag-name=ON` in the URL and accessed via a `useFeatureFlags()` hook.
-- **Server**: the `FlagService` is request-scoped and activated via URL query parameters passed by the client. This works for client-driven feature gating but is not a general-purpose server-side toggle. For server-only features that need to be gated independently of the client, a different mechanism may be needed.
+**Modifying an existing endpoint**: if the change affects current behavior and needs to be developed iteratively, a server-side feature flag is useful. The client opts in via a URL parameter, and existing clients continue getting the old behavior:
+
+1. Ship the server change behind a feature flag (existing behavior is unchanged unless the flag is present)
+2. Ship client-side code behind a feature flag that passes the server flag via URL parameter
+3. When ready, remove both feature flags (new behavior becomes the default)
+
+Note: for additive changes to existing endpoints (adding a new response field, adding an optional parameter), no feature flags are needed on either side - just ship it.
+
+The ActivityPub React app has its own feature flag mechanism (`apps/activitypub/src/lib/feature-flags.tsx`) that uses URL parameters and localStorage. Flags are toggled via `?flag-name=ON` in the URL and accessed via a `useFeatureFlags()` hook. The server's `FlagService` is request-scoped and activated via URL query parameters passed by the client.
 
 For simpler changes where feature flags are unnecessary, sequencing the PRs (server merged first) is sufficient.
 
@@ -175,7 +181,7 @@ Example: adding a bookmarks feature with a new `GET /v1/bookmarks` endpoint and 
 
 If the client shipped first, it would call `/v1/bookmarks` on a server that doesn't have it yet, resulting in 404s. Server-first means the endpoint exists (unused) until the client catches up.
 
-For Ghost Pro, both deploy independently -- the server endpoint should be live before the admin deploy that uses it. For proxy self-hosters, step 1 happens immediately (Ghost Pro deploys continuously). Step 2 happens whenever they update Ghost. The endpoint is available and waiting.
+For Ghost Pro, both deploy independently - the server endpoint should be live before the admin deploy that uses it. For proxy self-hosters, step 1 happens immediately (Ghost Pro deploys continuously). Step 2 happens whenever they update Ghost. The endpoint is available and waiting.
 
 #### New feature (server only)
 
