@@ -164,21 +164,11 @@ export class SiteService {
         try {
             settings = await this.ghostService.getSiteSettings(host);
         } catch (err) {
-            // ky throws HTTPError (with `response`) for HTTP errors and
-            // TimeoutError (with `request`) for timeouts — both indicate
-            // the host is reachable, so re-throw. Everything else is a
-            // network-level failure (DNS, connection refused) meaning the
-            // host is genuinely gone — allow reassignment.
-            if (
-                err &&
-                typeof err === 'object' &&
-                ('response' in err || 'request' in err)
-            ) {
+            if (this.isHostReachableError(err)) {
                 throw new Error(
                     `Unable to verify ghost_uuid ownership: ${host} returned an error`,
                 );
             }
-
             return;
         }
 
@@ -195,5 +185,13 @@ export class SiteService {
         }
 
         return settings;
+    }
+
+    private isHostReachableError(err: unknown): boolean {
+        return (
+            err !== null &&
+            typeof err === 'object' &&
+            ('response' in err || 'request' in err)
+        );
     }
 }
