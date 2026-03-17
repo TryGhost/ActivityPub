@@ -210,15 +210,32 @@ describe('SiteService', () => {
         expect(siteA.host).toBe('domain-a.tld');
         expect(siteA.ghost_uuid).toBe(ghostUUID);
 
-        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
-            site: {
-                icon: 'https://domain-b.tld/icon.png',
-                title: 'Site B title',
-                description: 'Site B description',
-                cover_image: 'https://domain-b.tld/cover.png',
-                site_uuid: ghostUUID,
-            },
-        });
+        // When domain-b.tld initialises with the same ghost_uuid,
+        // the old host (domain-a.tld) no longer claims it
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockImplementation((host: string) => {
+                if (host === 'domain-a.tld') {
+                    return Promise.resolve({
+                        site: {
+                            icon: 'https://domain-a.tld/icon.png',
+                            title: 'Site A title',
+                            description: 'Site A description',
+                            cover_image: 'https://domain-a.tld/cover.png',
+                            site_uuid: null,
+                        },
+                    });
+                }
+                return Promise.resolve({
+                    site: {
+                        icon: 'https://domain-b.tld/icon.png',
+                        title: 'Site B title',
+                        description: 'Site B description',
+                        cover_image: 'https://domain-b.tld/cover.png',
+                        site_uuid: ghostUUID,
+                    },
+                });
+            });
 
         const siteB = await service.initialiseSiteForHost('domain-b.tld');
 
@@ -238,5 +255,176 @@ describe('SiteService', () => {
         const newSite = allSites.find((s) => s.host === 'domain-b.tld');
         expect(newSite).toBeDefined();
         expect(newSite?.ghost_uuid).toBe(ghostUUID);
+    });
+
+    it('Rejects ghost_uuid reassignment when the existing host still claims it', async () => {
+        const ghostUUID = 'existing-ghost-uuid';
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: 'https://site-a.tld/icon.png',
+                title: 'Site A',
+                description: 'Site A description',
+                cover_image: 'https://site-a.tld/cover.png',
+                site_uuid: ghostUUID,
+            },
+        });
+
+        const siteA = await service.initialiseSiteForHost('site-a.tld');
+
+        expect(siteA.ghost_uuid).toBe(ghostUUID);
+
+        // A different host tries to register with the same ghost_uuid,
+        // but the existing host (site-a.tld) still claims it
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockImplementation((host: string) => {
+                if (host === 'site-a.tld') {
+                    return Promise.resolve({
+                        site: {
+                            icon: 'https://site-a.tld/icon.png',
+                            title: 'Site A',
+                            description: 'Site A description',
+                            cover_image: 'https://site-a.tld/cover.png',
+                            site_uuid: ghostUUID,
+                        },
+                    });
+                }
+                return Promise.resolve({
+                    site: {
+                        icon: 'https://site-b.tld/icon.png',
+                        title: 'Site B',
+                        description: 'Site B description',
+                        cover_image: 'https://site-b.tld/cover.png',
+                        site_uuid: ghostUUID,
+                    },
+                });
+            });
+
+        await expect(
+            service.initialiseSiteForHost('site-b.tld'),
+        ).rejects.toThrow('ghost_uuid is still claimed by another host');
+
+        // Verify existing site is untouched
+        const siteARow = await db('sites')
+            .where({ host: 'site-a.tld' })
+            .first();
+        expect(siteARow.ghost_uuid).toBe(ghostUUID);
+
+        // Verify new site was not created
+        const siteBRow = await db('sites')
+            .where({ host: 'site-b.tld' })
+            .first();
+
+        expect(siteBRow).toBeUndefined();
+    });
+
+    it('Allows ghost_uuid reassignment when the old host is unreachable', async () => {
+        const ghostUUID = 'migrating-ghost-uuid';
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: 'https://old-domain.tld/icon.png',
+                title: 'Original site',
+                description: 'Original description',
+                cover_image: 'https://old-domain.tld/cover.png',
+                site_uuid: ghostUUID,
+            },
+        });
+
+        await service.initialiseSiteForHost('old-domain.tld');
+
+        // Old host is unreachable (domain decommissioned)
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockImplementation((host: string) => {
+                if (host === 'old-domain.tld') {
+                    const dnsError = Object.assign(
+                        new Error('getaddrinfo ENOTFOUND old-domain.tld'),
+                        { code: 'ENOTFOUND' },
+                    );
+
+                    return Promise.reject(dnsError);
+                }
+                return Promise.resolve({
+                    site: {
+                        icon: 'https://new-domain.tld/icon.png',
+                        title: 'Migrated site',
+                        description: 'Migrated description',
+                        cover_image: 'https://new-domain.tld/cover.png',
+                        site_uuid: ghostUUID,
+                    },
+                });
+            });
+
+        const newSite = await service.initialiseSiteForHost('new-domain.tld');
+
+        expect(newSite.ghost_uuid).toBe(ghostUUID);
+
+        // Old site's ghost_uuid should be nullified
+        const oldRow = await db('sites')
+            .where({ host: 'old-domain.tld' })
+            .first();
+
+        expect(oldRow.ghost_uuid).toBeNull();
+    });
+
+    it('Blocks ghost_uuid reassignment when the old host returns a transient HTTP error', async () => {
+        const ghostUUID = 'transient-error-uuid';
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: 'https://site-a.tld/icon.png',
+                title: 'Site A',
+                description: 'Site A description',
+                cover_image: 'https://site-a.tld/cover.png',
+                site_uuid: ghostUUID,
+            },
+        });
+
+        await service.initialiseSiteForHost('site-a.tld');
+
+        // Old host returns an HTTP error (has a response property)
+        const httpError = Object.assign(
+            new Error('Request failed with status code 500'),
+            { response: { status: 500 } },
+        );
+
+        ghostService.getSiteSettings = vi
+            .fn()
+            .mockImplementation((host: string) => {
+                if (host === 'site-a.tld') {
+                    return Promise.reject(httpError);
+                }
+                return Promise.resolve({
+                    site: {
+                        icon: 'https://site-b.tld/icon.png',
+                        title: 'Site B',
+                        description: 'Site B description',
+                        cover_image: 'https://site-b.tld/cover.png',
+                        site_uuid: ghostUUID,
+                    },
+                });
+            });
+
+        await expect(
+            service.initialiseSiteForHost('site-b.tld'),
+        ).rejects.toThrow(
+            'Unable to verify ghost_uuid ownership: site-a.tld returned an error',
+        );
+
+        // Verify existing site is untouched
+        const siteARow = await db('sites')
+            .where({ host: 'site-a.tld' })
+            .first();
+
+        expect(siteARow.ghost_uuid).toBe(ghostUUID);
+
+        // Verify new site was not created
+        const siteBRow = await db('sites')
+            .where({ host: 'site-b.tld' })
+            .first();
+
+        expect(siteBRow).toBeUndefined();
     });
 });

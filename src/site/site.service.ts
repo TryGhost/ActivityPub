@@ -39,20 +39,28 @@ export class SiteService {
             throw new Error(`Site already exists for ${host}`);
         }
 
+        let verifiedOwnerHost: string | null = null;
+
+        if (ghostUuid !== null) {
+            const currentOwner = await this.client('sites')
+                .select('host')
+                .where({ ghost_uuid: ghostUuid })
+                .first();
+
+            if (currentOwner) {
+                await this.verifyUUIDReleased(currentOwner.host, ghostUuid);
+
+                verifiedOwnerHost = currentOwner.host;
+            }
+        }
+
         const webhook_secret = crypto.randomBytes(32).toString('hex');
 
         return await this.client.transaction(async (trx) => {
-            if (ghostUuid !== null) {
-                const uuidExists = await trx('sites')
-                    .select('*')
-                    .where({ ghost_uuid: ghostUuid })
-                    .first();
-
-                if (uuidExists) {
-                    await trx('sites')
-                        .where({ ghost_uuid: ghostUuid })
-                        .update({ ghost_uuid: null });
-                }
+            if (verifiedOwnerHost) {
+                await trx('sites')
+                    .where({ host: verifiedOwnerHost, ghost_uuid: ghostUuid })
+                    .update({ ghost_uuid: null });
             }
 
             const [id] = await trx('sites').insert({
@@ -147,6 +155,28 @@ export class SiteService {
         return result === 1;
     }
 
+    private async verifyUUIDReleased(
+        host: string,
+        ghostUuid: string,
+    ): Promise<void> {
+        let settings: SiteSettings | undefined;
+
+        try {
+            settings = await this.ghostService.getSiteSettings(host);
+        } catch (err) {
+            if (this.isHostReachableError(err)) {
+                throw new Error(
+                    `Unable to verify ghost_uuid ownership: ${host} returned an error`,
+                );
+            }
+            return;
+        }
+
+        if (settings?.site?.site_uuid === ghostUuid) {
+            throw new Error('ghost_uuid is still claimed by another host');
+        }
+    }
+
     private async getSiteSettings(host: string): Promise<SiteSettings> {
         const settings = await this.ghostService.getSiteSettings(host);
 
@@ -155,5 +185,13 @@ export class SiteService {
         }
 
         return settings;
+    }
+
+    private isHostReachableError(err: unknown): boolean {
+        return (
+            err !== null &&
+            typeof err === 'object' &&
+            ('response' in err || 'request' in err)
+        );
     }
 }
