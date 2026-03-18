@@ -230,7 +230,7 @@ jobs:
 
       - name: Check for changes in reconcile account topics job
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             reconcile-account-topics:
