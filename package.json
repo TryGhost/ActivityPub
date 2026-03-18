@@ -92,7 +92,7 @@
     "linkify-html": "4.3.2",
     "linkifyjs": "4.3.2",
     "mysql2": "3.19.1",
-    "node-html-parser": "7.0.2",
+    "node-html-parser": "7.1.0",
     "node-jose": "2.2.0",
     "reflect-metadata": "0.2.2",
     "sanitize-html": "2.17.1",
