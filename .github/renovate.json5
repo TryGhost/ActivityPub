@@ -25,11 +25,15 @@
       ],
       automerge: true,
     },
+
+    // Group Fedify updates together and require a manual review
     {
+      groupName: 'Fedify packages',
+      groupSlug: 'fedify',
       automerge: false,
       matchPackageNames: [
-        '/^@fedify//',
-      ],
+        '@fedify/*',
+      ]
     },
   ],
 }
