@@ -19,13 +19,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download ActivityPub image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: activitypub-amd64
           path: /tmp
 
       - name: Download Migrations image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: activitypub-migrations-amd64
           path: /tmp
@@ -47,13 +47,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download ActivityPub image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: activitypub-amd64
           path: /tmp
 
       - name: Download Migrations image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: activitypub-migrations-amd64
           path: /tmp
