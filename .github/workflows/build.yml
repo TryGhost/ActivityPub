@@ -260,7 +260,7 @@ jobs:
 
       - name: Login to GCP Artifact Registry
         if: steps.changes.outputs.reconcile-account-topics == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: europe-docker.pkg.dev
           username: oauth2accesstoken
