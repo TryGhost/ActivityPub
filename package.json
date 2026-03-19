@@ -1,6 +1,6 @@
 {
   "name": "activitypub",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "repository": "git@github.com:TryGhost/ActivityPub.git",
   "author": "Ghost Foundation",
   "license": "MIT",
