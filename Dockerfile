@@ -1,4 +1,4 @@
-FROM node:22.22.1-alpine@sha256:8094c002d08262dba12645a3b4a15cd6cd627d30bc782f53229a2ec13ee22a00
+FROM node:22.22.2-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
 
 RUN apk add python3 g++ make
 RUN apk add --no-cache ca-certificates
