@@ -1665,15 +1665,15 @@
     domhandler "^5.0.3"
     selderee "^0.11.0"
 
-"@sentry/core@8.55.0":
-  version "8.55.0"
-  resolved "https://registry.yarnpkg.com/@sentry/core/-/core-8.55.0.tgz#4964920229fcf649237ef13b1533dfc4b9f6b22e"
-  integrity sha512-6g7jpbefjHYs821Z+EBJ8r4Z7LT5h80YSWRJaylGS4nW5W5Z2KXzpdnyFarv37O7QjauzVC2E+PABmpkw5/JGA==
+"@sentry/core@8.55.1":
+  version "8.55.1"
+  resolved "https://registry.yarnpkg.com/@sentry/core/-/core-8.55.1.tgz#e7ea62beebb0579fa97cf9d6e6362b2b0018593f"
+  integrity sha512-0ea+yDOgaijR3ba2al1QZxY0bZ9MBZq2a0G+2A0uCBpBkiXnpLFGVAo9UAlEikN1C4M8ROZYiuFU7yZCqacgLQ==
 
-"@sentry/node@8.55.0":
-  version "8.55.0"
-  resolved "https://registry.yarnpkg.com/@sentry/node/-/node-8.55.0.tgz#0d0a14777824c341f30c746c4b2939456a09a272"
-  integrity sha512-h10LJLDTRAzYgay60Oy7moMookqqSZSviCWkkmHZyaDn+4WURnPp5SKhhfrzPRQcXKrweiOwDSHBgn1tweDssg==
+"@sentry/node@8.55.1":
+  version "8.55.1"
+  resolved "https://registry.yarnpkg.com/@sentry/node/-/node-8.55.1.tgz#b8632018c12e5c3e74e6904336f2abdc9c3a95cc"
+  integrity sha512-s8ydn/OxZFIxc9Fvt23gJkrXkCvPnUu2bDKwjQBCx0M1b4DdNdp4FaimT6B9reya7buj+tsNkZAoT11KqFhG/g==
   dependencies:
     "@opentelemetry/api" "^1.9.0"
     "@opentelemetry/context-async-hooks" "^1.30.1"
@@ -1707,16 +1707,16 @@
     "@opentelemetry/sdk-trace-base" "^1.30.1"
     "@opentelemetry/semantic-conventions" "^1.28.0"
     "@prisma/instrumentation" "5.22.0"
-    "@sentry/core" "8.55.0"
-    "@sentry/opentelemetry" "8.55.0"
+    "@sentry/core" "8.55.1"
+    "@sentry/opentelemetry" "8.55.1"
     import-in-the-middle "^1.11.2"
 
-"@sentry/opentelemetry@8.55.0":
-  version "8.55.0"
-  resolved "https://registry.yarnpkg.com/@sentry/opentelemetry/-/opentelemetry-8.55.0.tgz#d4827d52ae9f1fb9352729250b980f9f2caa1877"
-  integrity sha512-UvatdmSr3Xf+4PLBzJNLZ2JjG1yAPWGe/VrJlJAqyTJ2gKeTzgXJJw8rp4pbvNZO8NaTGEYhhO+scLUj0UtLAQ==
+"@sentry/opentelemetry@8.55.1":
+  version "8.55.1"
+  resolved "https://registry.yarnpkg.com/@sentry/opentelemetry/-/opentelemetry-8.55.1.tgz#bf066af16f2dfbd5d6c38e37271ec5ab47e88341"
+  integrity sha512-ipiM/k3Hzt8visoBfkDb4AQBWHkJeou3SjoPec7NlDabH/Jj8x6VlK5Hex4z+WOv99rRy+5MUtga/CZnOjvh0A==
   dependencies:
-    "@sentry/core" "8.55.0"
+    "@sentry/core" "8.55.1"
 
 "@teppeis/multimaps@3.0.0", "@teppeis/multimaps@^3.0.0":
   version "3.0.0"
