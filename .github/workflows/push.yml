@@ -82,9 +82,17 @@ jobs:
       - name: Push ActivityPub Docker image to public registry
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         run: |
+          source_tag=$(printf '%s\n' "${{ inputs.activitypub-private-tags }}" | awk 'NF { print; exit }')
+
+          if [ -z "$source_tag" ]; then
+            echo "Failed to find a private ActivityPub image tag to retag for GHCR"
+            exit 1
+          fi
+
           echo "${{ inputs.activitypub-public-tags }}" | while read -r tag; do
-            docker tag europe-docker.pkg.dev/ghost-activitypub/activitypub/activitypub:edge $tag
-            docker push $tag
+            [ -n "$tag" ] || continue
+            docker tag "$source_tag" "$tag"
+            docker push "$tag"
           done
 
       - name: Push Migrations Docker image to private registry
@@ -97,7 +105,15 @@ jobs:
       - name: Push Migrations Docker image to public registry
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         run: |
+          source_tag=$(printf '%s\n' "${{ inputs.activitypub-migrations-private-tags }}" | awk 'NF { print; exit }')
+
+          if [ -z "$source_tag" ]; then
+            echo "Failed to find a private migrations image tag to retag for GHCR"
+            exit 1
+          fi
+
           echo "${{ inputs.activitypub-migrations-public-tags }}" | while read -r tag; do
-            docker tag europe-docker.pkg.dev/ghost-activitypub/activitypub/migrations:edge $tag
-            docker push $tag
+            [ -n "$tag" ] || continue
+            docker tag "$source_tag" "$tag"
+            docker push "$tag"
           done
