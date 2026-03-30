@@ -38,19 +38,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download ActivityPub image
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: activitypub-amd64
           path: /tmp
 
       - name: Download Migrations image
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: activitypub-migrations-amd64
           path: /tmp
 
       - name: Authenticate with GCP
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         id: gcp-auth
         with:
           token_format: access_token
@@ -58,7 +58,7 @@ jobs:
           service_account: cicd-activitypub-terraform@ghost-activitypub.iam.gserviceaccount.com
 
       - name: Login to GCP Artifact Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: europe-docker.pkg.dev
           username: oauth2accesstoken
@@ -66,7 +66,7 @@ jobs:
 
       - name: Login to GitHub Container Registry"
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-        uses: docker/login-action@v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
