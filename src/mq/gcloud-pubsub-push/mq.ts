@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import type {
     MessageQueue,
     MessageQueueEnqueueOptions,
@@ -13,6 +15,21 @@ import { z } from 'zod';
 import type { AccountService } from '@/account/account.service';
 import { parseURL } from '@/core/url';
 import { analyzeError } from '@/mq/gcloud-pubsub-push/error-utils';
+
+const OUTGOING_FETCH_TIMEOUT_MS = 10_000;
+
+const fetchTimeoutStorage = new AsyncLocalStorage<number>();
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const timeout = fetchTimeoutStorage.getStore();
+    if (timeout && !init?.signal) {
+        return originalFetch(input, {
+            ...init,
+            signal: AbortSignal.timeout(timeout),
+        });
+    }
+    return originalFetch(input, init);
+};
 
 /**
  * Message from Fedify
@@ -298,7 +315,9 @@ export class GCloudPubSubPushMessageQueue implements MessageQueue {
         );
 
         try {
-            await this.messageHandler(message.data);
+            await fetchTimeoutStorage.run(OUTGOING_FETCH_TIMEOUT_MS, () =>
+                this.messageHandler!(message.data),
+            );
 
             await this.handleSuccess(message.data);
 
