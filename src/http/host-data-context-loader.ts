@@ -3,23 +3,60 @@ import type { Knex } from 'knex';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { Result } from '@/core/result';
-import { error, ok } from '@/core/result';
+import { error, isError, ok } from '@/core/result';
 import type { Site } from '@/site/site.service';
 
+type HostDataResult = Result<
+    { site: Site; account: Account },
+    'site-not-found' | 'account-not-found' | 'multiple-users-for-site'
+>;
+
+interface CacheEntry {
+    result: HostDataResult;
+    expiry: number;
+}
+
 export class HostDataContextLoader {
+    private static readonly CACHE_TTL_MS = 60_000;
+    private static readonly MAX_CACHE_SIZE = 1000;
+    private static readonly CACHE_ENABLED =
+        process.env.NODE_ENV === 'production';
+    private readonly cache = new Map<string, CacheEntry>();
+
     constructor(
         readonly db: Knex,
         readonly accountRepository: KnexAccountRepository,
     ) {}
 
-    async loadDataForHost(
-        host: string,
-    ): Promise<
-        Result<
-            { site: Site; account: Account },
-            'site-not-found' | 'account-not-found' | 'multiple-users-for-site'
-        >
-    > {
+    async loadDataForHost(host: string): Promise<HostDataResult> {
+        if (!HostDataContextLoader.CACHE_ENABLED) {
+            return this.queryDataForHost(host);
+        }
+
+        const now = Date.now();
+        const cached = this.cache.get(host);
+
+        if (cached && cached.expiry > now) {
+            return cached.result;
+        }
+
+        const result = await this.queryDataForHost(host);
+
+        if (!isError(result)) {
+            if (this.cache.size >= HostDataContextLoader.MAX_CACHE_SIZE) {
+                this.cache.delete(this.cache.keys().next().value!);
+            }
+
+            this.cache.set(host, {
+                result,
+                expiry: now + HostDataContextLoader.CACHE_TTL_MS,
+            });
+        }
+
+        return result;
+    }
+
+    private async queryDataForHost(host: string): Promise<HostDataResult> {
         const results = await this.db('sites')
             .leftJoin('users', 'users.site_id', 'sites.id')
             .leftJoin('accounts', 'accounts.id', 'users.account_id')
