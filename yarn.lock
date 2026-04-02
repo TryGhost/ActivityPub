@@ -749,10 +749,10 @@
     protobufjs "^7.5.3"
     yargs "^17.7.2"
 
-"@hono/node-server@1.19.11":
-  version "1.19.11"
-  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.11.tgz#dc419f0826dd2504e9fc86ad289d5636a0444e2f"
-  integrity sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==
+"@hono/node-server@1.19.12":
+  version "1.19.12"
+  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-1.19.12.tgz#dae075247959b6d7d2dba4c8bdc8c452ca0c7b40"
+  integrity sha512-txsUW4SQ1iilgE0l9/e9VQWmELXifEFvmdA1j6WFh/aFPj99hIntrSsq/if0UWyGVkmrRPKA1wCeP+UCr1B9Uw==
 
 "@img/colour@^1.0.0":
   version "1.1.0"
