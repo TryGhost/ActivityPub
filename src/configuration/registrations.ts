@@ -1,4 +1,10 @@
-import { createFederation, type KvStore } from '@fedify/fedify';
+import {
+    createFederation,
+    FetchError,
+    getDocumentLoader,
+    type KvStore,
+    kvCache,
+} from '@fedify/fedify';
 import { RedisKvStore } from '@fedify/redis';
 import type { PubSub } from '@google-cloud/pubsub';
 import { getLogger, type Logger } from '@logtape/logtape';
@@ -237,6 +243,13 @@ export function registerDependencies(
     container.register(
         'fedify',
         asFunction((fedifyKv: KvStore, queue: GCloudPubSubPushMessageQueue) => {
+            // Cache for permanently failed URLs (410 Gone, 404 Not Found)
+            const goneUrlCache = new Map<
+                string,
+                { cachedAt: number; status: number }
+            >();
+            const GONE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
             return createFederation<ContextData>({
                 kv: fedifyKv,
                 queue: process.env.USE_MQ === 'true' ? queue : undefined,
@@ -251,6 +264,56 @@ export function registerDependencies(
                     ['development', 'testing'].includes(
                         process.env.NODE_ENV || '',
                     ),
+                documentLoaderFactory(opts) {
+                    const loader = kvCache({
+                        loader: getDocumentLoader({
+                            allowPrivateAddress: opts?.allowPrivateAddress,
+                            userAgent: opts?.userAgent,
+                        }),
+                        kv: fedifyKv,
+                        prefix: ['_fedify', 'remoteDocument'],
+                    });
+
+                    return async (url: string, options?: unknown) => {
+                        const cached = goneUrlCache.get(url);
+                        if (cached !== undefined) {
+                            if (
+                                Date.now() - cached.cachedAt <
+                                GONE_CACHE_TTL_MS
+                            ) {
+                                throw new FetchError(
+                                    url,
+                                    `HTTP ${cached.status}: ${url}`,
+                                );
+                            }
+                            goneUrlCache.delete(url);
+                        }
+
+                        try {
+                            return await loader(
+                                url,
+                                options as Parameters<typeof loader>[1],
+                            );
+                        } catch (error) {
+                            if (
+                                error instanceof FetchError &&
+                                (error.message.includes('HTTP 410') ||
+                                    error.message.includes('HTTP 404'))
+                            ) {
+                                const status = error.message.includes(
+                                    'HTTP 410',
+                                )
+                                    ? 410
+                                    : 404;
+                                goneUrlCache.set(url, {
+                                    cachedAt: Date.now(),
+                                    status,
+                                });
+                            }
+                            throw error;
+                        }
+                    };
+                },
                 firstKnock: 'draft-cavage-http-signatures-12',
             });
         }).singleton(),
