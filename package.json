@@ -88,7 +88,7 @@
     "ioredis": "5.10.1",
     "jsonwebtoken": "9.0.3",
     "knex": "3.2.9",
-    "ky": "1.14.3",
+    "ky": "2.0.0",
     "linkify-html": "4.3.2",
     "linkifyjs": "4.3.2",
     "mysql2": "3.20.0",
