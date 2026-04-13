@@ -181,7 +181,7 @@ jobs:
 
       - name: Build Docker Image for ActivityPub
         if: steps.should-build.outputs.skip != 'true'
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: .
           load: true
@@ -194,7 +194,7 @@ jobs:
 
       - name: Build Docker Image for Migrations
         if: steps.should-build.outputs.skip != 'true'
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: migrate
           load: true
@@ -268,7 +268,7 @@ jobs:
 
       - name: Build reconcile account topics job image
         if: steps.changes.outputs.reconcile-account-topics == 'true'
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: jobs/reconcile-account-topics
           load: true
