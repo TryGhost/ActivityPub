@@ -3,6 +3,6 @@
     "private": true,
     "dependencies": {
         "@fedify/fedify": "1.9.7",
-        "mysql2": "3.21.1"
+        "mysql2": "3.22.1"
     }
 }
