@@ -22,7 +22,7 @@ describe('TopicView', () => {
     });
 
     afterAll(async () => {
-        await db.destroy();
+        await db?.destroy();
     });
 
     describe('getTopics', () => {

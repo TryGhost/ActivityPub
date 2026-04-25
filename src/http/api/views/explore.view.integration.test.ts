@@ -23,7 +23,7 @@ describe('ExploreView', () => {
     });
 
     afterAll(async () => {
-        await db.destroy();
+        await db?.destroy();
     });
 
     describe('getAccountsInTopic', () => {

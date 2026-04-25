@@ -142,7 +142,7 @@ describe('PostService', () => {
 
     afterEach(async () => {
         // Clean up database connections
-        await db.destroy();
+        await db?.destroy();
     });
 
     describe('createNote', () => {

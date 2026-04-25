@@ -21,7 +21,7 @@ describe('BlocksView', () => {
     });
 
     afterAll(async () => {
-        await db.destroy();
+        await db?.destroy();
     });
 
     describe('getBlockedAccounts', () => {

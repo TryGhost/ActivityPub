@@ -18,11 +18,11 @@ describe('Timestamp Test', () => {
                 .timestamp('created_at', { precision: 6 })
                 .defaultTo(client.fn.now(6));
         });
+    });
 
-        afterAll(async () => {
-            await client.schema.dropTableIfExists(TEST_TABLE);
-            await client.destroy();
-        });
+    afterAll(async () => {
+        await client?.schema.dropTableIfExists(TEST_TABLE);
+        await client?.destroy();
     });
 
     it('should insert and return UTC timestamp', async () => {

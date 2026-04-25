@@ -22,7 +22,7 @@ describe('RecommendationsView', () => {
     });
 
     afterAll(async () => {
-        await db.destroy();
+        await db?.destroy();
     });
 
     describe('getRecommendations', () => {
