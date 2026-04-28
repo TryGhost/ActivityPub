@@ -3744,10 +3744,10 @@ multiformats@^9.4.2:
   resolved "https://registry.yarnpkg.com/multiformats/-/multiformats-9.9.0.tgz#c68354e7d21037a8f1f8833c8ccd68618e8f1d37"
   integrity sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==
 
-mysql2@3.22.1:
-  version "3.22.1"
-  resolved "https://registry.yarnpkg.com/mysql2/-/mysql2-3.22.1.tgz#a78750cb7e3c564d770b853d2d7b4a344aa75647"
-  integrity sha512-48+9UXehKyxxiP2pqCxUq+MSFvX+v41jwsSpFDQO/jAoFuAELutBGJUhWJnDbe82/OBlIhSBMC82WeonmznT/Q==
+mysql2@3.22.2:
+  version "3.22.2"
+  resolved "https://registry.yarnpkg.com/mysql2/-/mysql2-3.22.2.tgz#9735f707980e107d55d40a4eb91fbfb06d8bdb1c"
+  integrity sha512-snC/L6YoCJPFpozZo3p3hiOlt9ItQ7sCnLSziFLlIttEzsPhrdcPT8g21BiQ7Oqif25W4Xq1IFuBzBvoFYDf0Q==
   dependencies:
     aws-ssl-profiles "^1.1.2"
     denque "^2.1.0"
