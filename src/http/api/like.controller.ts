@@ -31,6 +31,12 @@ export class LikeController {
     async handleLike(ctx: AppContext) {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
+        if (!id) {
+            return new Response(
+                JSON.stringify({ error: 'ID should be a valid URL' }),
+                { status: 400 },
+            );
+        }
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
@@ -164,6 +170,12 @@ export class LikeController {
     async handleUnlike(ctx: AppContext) {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
+        if (!id) {
+            return new Response(
+                JSON.stringify({ error: 'ID should be a valid URL' }),
+                { status: 400 },
+            );
+        }
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),

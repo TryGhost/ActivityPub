@@ -56,6 +56,10 @@ export class AccountController {
     async handleGetAccount(ctx: AppContext) {
         const handle = ctx.req.param('handle');
 
+        if (!handle) {
+            return new Response(null, { status: 400 });
+        }
+
         if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
             return new Response(null, { status: 404 });
         }
@@ -110,7 +114,7 @@ export class AccountController {
         }
 
         const type = ctx.req.param('type');
-        if (!['following', 'followers'].includes(type)) {
+        if (!type || !['following', 'followers'].includes(type)) {
             return new Response(null, { status: 400 });
         }
 
