@@ -21,6 +21,14 @@ interface RouteRegistration {
     versions?: string[];
 }
 
+// Hono 4.12 made `app.get/post/put/delete` overloads infer a path-specific
+// Input type per handler, which can't unify with our pre-built array of
+// middleware. We dispatch via a simpler, erased signature.
+type RegisterRoute = (
+    path: string,
+    ...middleware: MiddlewareHandler<{ Variables: HonoContextVariables }>[]
+) => void;
+
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
 
@@ -67,7 +75,8 @@ export class RouteRegistry {
                 | 'post'
                 | 'put'
                 | 'delete';
-            app[method](route.path, ...middleware);
+            const register = app[method].bind(app) as RegisterRoute;
+            register(route.path, ...middleware);
         }
     }
 
@@ -86,7 +95,10 @@ export class RouteRegistry {
                     throw new Error('RouteRegistration was modified');
                 }
 
-                if (!route.versions.includes(requestVersion)) {
+                if (
+                    !requestVersion ||
+                    !route.versions.includes(requestVersion)
+                ) {
                     return ctx.json(
                         {
                             message: `Version ${requestVersion} is not supported.`,

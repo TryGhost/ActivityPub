@@ -10,6 +10,9 @@ export class ExploreController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getAccountsPerTopic(ctx: AppContext) {
         const topicSlug = ctx.req.param('topic_slug');
+        if (!topicSlug) {
+            return new Response(null, { status: 400 });
+        }
         const viewerAccountId = ctx.get('account').id;
 
         const nextParam = ctx.req.query('next');

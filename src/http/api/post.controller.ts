@@ -55,7 +55,11 @@ export class PostController {
     @APIRoute('GET', 'post/:post_ap_id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetPost(ctx: AppContext) {
-        const postApId = decodeURIComponent(ctx.req.param('post_ap_id'));
+        const postApIdParam = ctx.req.param('post_ap_id');
+        if (!postApIdParam) {
+            return new Response(null, { status: 400 });
+        }
+        const postApId = decodeURIComponent(postApIdParam);
         const idAsUrl = parseURL(postApId);
 
         if (!idAsUrl) {
@@ -299,6 +303,12 @@ export class PostController {
         const account = ctx.get('account');
         const logger = ctx.get('logger');
         const id = ctx.req.param('id');
+        if (!id) {
+            return new Response(
+                JSON.stringify({ error: 'ID should be a valid URL' }),
+                { status: 400 },
+            );
+        }
 
         const ReplyActionSchema = z.object({
             content: z.string(),
@@ -658,6 +668,11 @@ export class PostController {
     async handleDerepost(ctx: AppContext) {
         const account = ctx.get('account');
         const id = ctx.req.param('id');
+        if (!id) {
+            return new Response(JSON.stringify({ error: 'Post not found' }), {
+                status: 404,
+            });
+        }
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
