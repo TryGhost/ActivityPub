@@ -502,6 +502,16 @@ export const createUndoHandler = (
                 return;
             }
 
+            if (
+                !undo.actorId ||
+                undo.actorId.href !== follow.actorId.href
+            ) {
+                ctx.data.logger.warn(
+                    'Undo actor does not match Follow actor - exiting',
+                );
+                return;
+            }
+
             const [unfollower, unfollowing] = await Promise.all([
                 accountService.getAccountByApId(follow.actorId.href),
                 accountService.getAccountByApId(follow.objectId.href),
@@ -519,6 +529,17 @@ export const createUndoHandler = (
 
             await accountService.recordAccountUnfollow(unfollowing, unfollower);
         } else if (object instanceof Announce) {
+            if (
+                !undo.actorId ||
+                !object.actorId ||
+                undo.actorId.href !== object.actorId.href
+            ) {
+                ctx.data.logger.warn(
+                    'Undo actor does not match Announce actor - exiting',
+                );
+                return;
+            }
+
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
                 ctx.data.logger.debug(

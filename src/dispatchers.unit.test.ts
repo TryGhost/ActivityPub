@@ -1,6 +1,12 @@
+import {
+    type Actor,
+    Announce,
+    exportJwk,
+    Follow,
+    type RequestContext,
+    Undo,
+} from '@fedify/fedify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { exportJwk, type RequestContext } from '@fedify/fedify';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -20,12 +26,14 @@ import {
     createFollowingDispatcher,
     createOutboxCounter,
     createOutboxDispatcher,
+    createUndoHandler,
     keypairDispatcher,
     likedDispatcher,
     nodeInfoDispatcher,
 } from '@/dispatchers';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { Site } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
@@ -68,6 +76,176 @@ describe('dispatchers', () => {
         });
 
         vi.clearAllMocks();
+    });
+
+    describe('createUndoHandler', () => {
+        const attackerApId = new URL('https://evil.example/users/attacker');
+        const aliceApId = new URL('https://example.com/users/alice');
+        const ghostApId = new URL(
+            'https://ghost.example/.ghost/activitypub/users/index',
+        );
+        const postApId = new URL('https://ghost.example/post/123');
+
+        let accountService: AccountService;
+        let postRepository: KnexPostRepository;
+        let postService: PostService;
+        let undoCtx: FedifyContext;
+        let handler: ReturnType<typeof createUndoHandler>;
+        let aliceAccount: Account;
+        let ghostAccount: Account;
+
+        beforeEach(() => {
+            aliceAccount = {
+                id: 1,
+                apId: aliceApId,
+            } as Account;
+
+            ghostAccount = {
+                id: 2,
+                apId: ghostApId,
+            } as Account;
+
+            accountService = {
+                getAccountByApId: vi.fn(async (apId: string) => {
+                    if (apId === aliceApId.href) {
+                        return aliceAccount;
+                    }
+                    if (apId === ghostApId.href) {
+                        return ghostAccount;
+                    }
+                    return null;
+                }),
+                getByApId: vi.fn(async (apId: URL) => {
+                    if (apId.href === aliceApId.href) {
+                        return aliceAccount;
+                    }
+                    return null;
+                }),
+                recordAccountUnfollow: vi.fn(),
+            } as unknown as AccountService;
+
+            postRepository = {
+                save: vi.fn(),
+            } as unknown as KnexPostRepository;
+
+            postService = {
+                getByApId: vi.fn(),
+            } as unknown as PostService;
+
+            undoCtx = {
+                data: {
+                    logger: {
+                        debug: vi.fn(),
+                        warn: vi.fn(),
+                    },
+                    globaldb: {
+                        set: vi.fn(),
+                    },
+                },
+            } as unknown as FedifyContext;
+
+            handler = createUndoHandler(
+                accountService,
+                postRepository,
+                postService,
+            );
+        });
+
+        it('ignores Undo(Follow) when the outer actor does not match the Follow actor', async () => {
+            const follow = new Follow({
+                id: new URL('https://example.com/activities/follow'),
+                actor: aliceApId,
+                object: ghostApId,
+            });
+            const undo = new Undo({
+                id: new URL('https://evil.example/activities/undo'),
+                actor: attackerApId,
+                object: follow,
+            });
+
+            await handler(undoCtx, undo);
+
+            expect(accountService.getAccountByApId).not.toHaveBeenCalled();
+            expect(accountService.recordAccountUnfollow).not.toHaveBeenCalled();
+            expect(undoCtx.data.globaldb.set).not.toHaveBeenCalled();
+        });
+
+        it('processes Undo(Follow) when the outer actor matches the Follow actor', async () => {
+            const follow = new Follow({
+                id: new URL('https://example.com/activities/follow'),
+                actor: aliceApId,
+                object: ghostApId,
+            });
+            const undo = new Undo({
+                id: new URL('https://example.com/activities/undo'),
+                actor: aliceApId,
+                object: follow,
+            });
+
+            await handler(undoCtx, undo);
+
+            expect(accountService.getAccountByApId).toHaveBeenCalledWith(
+                aliceApId.href,
+            );
+            expect(accountService.getAccountByApId).toHaveBeenCalledWith(
+                ghostApId.href,
+            );
+            expect(undoCtx.data.globaldb.set).toHaveBeenCalledWith(
+                [undo.id?.href],
+                await undo.toJsonLd(),
+            );
+            expect(accountService.recordAccountUnfollow).toHaveBeenCalledWith(
+                ghostAccount,
+                aliceAccount,
+            );
+        });
+
+        it('ignores Undo(Announce) when the outer actor does not match the Announce actor', async () => {
+            const announce = new Announce({
+                id: new URL('https://example.com/activities/announce'),
+                actor: aliceApId,
+                object: postApId,
+            });
+            const undo = new Undo({
+                id: new URL('https://evil.example/activities/undo'),
+                actor: attackerApId,
+                object: announce,
+            });
+
+            await handler(undoCtx, undo);
+
+            expect(accountService.getByApId).not.toHaveBeenCalled();
+            expect(postService.getByApId).not.toHaveBeenCalled();
+            expect(postRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('processes Undo(Announce) when the outer actor matches the Announce actor', async () => {
+            const announce = new Announce({
+                id: new URL('https://example.com/activities/announce'),
+                actor: aliceApId,
+                object: postApId,
+            });
+            vi.spyOn(announce, 'getActor').mockResolvedValue({
+                id: aliceApId,
+            } as Actor);
+            const undo = new Undo({
+                id: new URL('https://example.com/activities/undo'),
+                actor: aliceApId,
+                object: announce,
+            });
+            const post = {
+                removeRepost: vi.fn(),
+            } as unknown as Post;
+
+            vi.mocked(postService.getByApId).mockResolvedValue(ok(post));
+
+            await handler(undoCtx, undo);
+
+            expect(accountService.getByApId).toHaveBeenCalledWith(aliceApId);
+            expect(postService.getByApId).toHaveBeenCalledWith(postApId);
+            expect(post.removeRepost).toHaveBeenCalledWith(aliceAccount);
+            expect(postRepository.save).toHaveBeenCalledWith(post);
+        });
     });
 
     describe('likedDispatcher', () => {
