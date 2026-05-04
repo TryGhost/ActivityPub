@@ -3,8 +3,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { File as NodeFile } from 'fetch-blob/file.js';
-
 import { getError, getValue, isError } from '@/core/result';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { ImageProcessor } from '@/storage/image-processor';
@@ -38,12 +36,12 @@ describe('Image Storage Service - GCP Storage Integration', () => {
     describe('.save()', () => {
         it('should save an image file to the bucket and return a valid URL', async () => {
             const buffer = readFileSync(TEST_IMAGE_PATH);
-            const file = new NodeFile([buffer], 'dog.jpg', {
+            const file = new File([buffer], 'dog.jpg', {
                 type: 'image/jpeg',
             });
 
             const result = await service.save(
-                file as unknown as File,
+                file,
                 `images/${TEST_ACCOUNT_UUID}/`,
             );
 
@@ -66,12 +64,12 @@ describe('Image Storage Service - GCP Storage Integration', () => {
         it('should reject files larger than 5MB', async () => {
             // Create a 6MB buffer
             const largeBuffer = Buffer.alloc(6 * 1024 * 1024);
-            const file = new NodeFile([largeBuffer], 'large.jpg', {
+            const file = new File([largeBuffer], 'large.jpg', {
                 type: 'image/jpeg',
             });
 
             const result = await service.save(
-                file as unknown as File,
+                file,
                 `images/${TEST_ACCOUNT_UUID}/`,
             );
 
@@ -83,12 +81,12 @@ describe('Image Storage Service - GCP Storage Integration', () => {
 
         it('should reject unsupported file types', async () => {
             const buffer = readFileSync(TEST_IMAGE_PATH);
-            const file = new NodeFile([buffer], 'test.bmp', {
+            const file = new File([buffer], 'test.bmp', {
                 type: 'image/bmp',
             });
 
             const result = await service.save(
-                file as unknown as File,
+                file,
                 `images/${TEST_ACCOUNT_UUID}/`,
             );
 
@@ -102,12 +100,12 @@ describe('Image Storage Service - GCP Storage Integration', () => {
     describe('.verifyFileUrl()', () => {
         it('should verify a valid image URL', async () => {
             const buffer = readFileSync(TEST_IMAGE_PATH);
-            const file = new NodeFile([buffer], 'dog.jpg', {
+            const file = new File([buffer], 'dog.jpg', {
                 type: 'image/jpeg',
             });
 
             const saveResult = await service.save(
-                file as unknown as File,
+                file,
                 `images/${TEST_ACCOUNT_UUID}/`,
             );
 
