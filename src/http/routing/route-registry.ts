@@ -21,13 +21,8 @@ interface RouteRegistration {
     versions?: string[];
 }
 
-// Hono 4.12 made `app.get/post/put/delete` overloads infer a path-specific
-// Input type per handler, which can't unify with our pre-built array of
-// middleware. We dispatch via a simpler, erased signature.
-type RegisterRoute = (
-    path: string,
-    ...middleware: MiddlewareHandler<{ Variables: HonoContextVariables }>[]
-) => void;
+type AppMiddleware = MiddlewareHandler<{ Variables: HonoContextVariables }>;
+type AppHono = Hono<{ Variables: HonoContextVariables }>;
 
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
@@ -64,64 +59,70 @@ export class RouteRegistry {
         }
     }
 
-    mountRoutes(
-        app: Hono<{ Variables: HonoContextVariables }>,
-        container: AwilixContainer,
-    ): void {
+    mountRoutes(app: AppHono, container: AwilixContainer): void {
         for (const route of this.routes) {
-            const middleware = this.buildMiddleware(route, container);
-            const method = route.method.toLowerCase() as
-                | 'get'
-                | 'post'
-                | 'put'
-                | 'delete';
-            const register = app[method].bind(app) as RegisterRoute;
-            register(route.path, ...middleware);
+            const handlers = this.buildHandlers(route, container);
+            switch (route.method) {
+                case 'GET':
+                    app.get(route.path, ...handlers);
+                    break;
+                case 'POST':
+                    app.post(route.path, ...handlers);
+                    break;
+                case 'PUT':
+                    app.put(route.path, ...handlers);
+                    break;
+                case 'DELETE':
+                    app.delete(route.path, ...handlers);
+                    break;
+            }
         }
     }
 
-    private buildMiddleware(
+    private buildHandlers(
         route: RouteRegistration,
         container: AwilixContainer,
-    ): MiddlewareHandler<{ Variables: HonoContextVariables }>[] {
-        const middleware: MiddlewareHandler<{
-            Variables: HonoContextVariables;
-        }>[] = [];
+    ): [AppMiddleware, ...AppMiddleware[]] {
+        const handler = this.buildHandler(route, container);
+        const versionMw = route.versions?.length
+            ? this.buildVersionGuard(route)
+            : null;
+        const roleMw = route.requiredRoles?.length
+            ? (requireRole(...route.requiredRoles) as AppMiddleware)
+            : null;
 
-        if (route.versions && route.versions.length > 0) {
-            middleware.push(async (ctx: AppContext, next: Next) => {
-                const requestVersion = ctx.req.param('version');
-                if (!route.versions) {
-                    throw new Error('RouteRegistration was modified');
-                }
+        if (versionMw && roleMw) return [versionMw, roleMw, handler];
+        if (versionMw) return [versionMw, handler];
+        if (roleMw) return [roleMw, handler];
+        return [handler];
+    }
 
-                if (
-                    !requestVersion ||
-                    !route.versions.includes(requestVersion)
-                ) {
-                    return ctx.json(
-                        {
-                            message: `Version ${requestVersion} is not supported.`,
-                            code: 'INVALID_VERSION',
-                            requestedVersion: requestVersion,
-                            supportedVersions: route.versions,
-                        },
-                        410,
-                    );
-                }
-                return await next();
-            });
-        }
+    private buildVersionGuard(route: RouteRegistration): AppMiddleware {
+        return async (ctx: AppContext, next: Next) => {
+            const requestVersion = ctx.req.param('version');
+            if (!route.versions) {
+                throw new Error('RouteRegistration was modified');
+            }
+            if (!requestVersion || !route.versions.includes(requestVersion)) {
+                return ctx.json(
+                    {
+                        message: `Version ${requestVersion} is not supported.`,
+                        code: 'INVALID_VERSION',
+                        requestedVersion: requestVersion,
+                        supportedVersions: route.versions,
+                    },
+                    410,
+                );
+            }
+            return await next();
+        };
+    }
 
-        if (route.requiredRoles && route.requiredRoles.length > 0) {
-            middleware.push(
-                requireRole(...route.requiredRoles) as MiddlewareHandler<{
-                    Variables: HonoContextVariables;
-                }>,
-            );
-        }
-
-        middleware.push((ctx: AppContext, next: Next) => {
+    private buildHandler(
+        route: RouteRegistration,
+        container: AwilixContainer,
+    ): AppMiddleware {
+        return (ctx: AppContext, next: Next) => {
             const controller = container.resolve(route.controllerToken);
             return Sentry.startSpan(
                 {
@@ -130,8 +131,6 @@ export class RouteRegistry {
                 },
                 () => controller[route.methodName](ctx, next),
             );
-        });
-
-        return middleware;
+        };
     }
 }
