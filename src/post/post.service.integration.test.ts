@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     Collection,
@@ -63,8 +63,11 @@ describe('PostService', () => {
     let events: AsyncEvents;
     let logger: Logger;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         db = await createTestDb();
+    });
+
+    beforeEach(async () => {
         events = new AsyncEvents();
         logger = {
             info: vi.fn(),
@@ -138,11 +141,6 @@ describe('PostService', () => {
 
         // Create a test account
         [account] = await fixtureManager.createInternalAccount();
-    });
-
-    afterEach(async () => {
-        // Clean up database connections
-        await db.destroy();
     });
 
     describe('createNote', () => {
