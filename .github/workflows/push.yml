@@ -95,6 +95,7 @@ jobs:
         env:
           PRIVATE_TAGS: ${{ inputs.activitypub-private-tags }}
           PUBLIC_TAGS: ${{ inputs.activitypub-public-tags }}
+          PUBLIC_LABELS: ${{ inputs.activitypub-public-labels }}
         run: |
           source_private=$(printf '%s\n' "$PRIVATE_TAGS" | awk 'NF { print; exit }')
           [ -n "$source_private" ] || { echo "no source tag"; exit 1; }
@@ -118,7 +119,14 @@ jobs:
             [ -n "$tag" ] || continue
             tag_args+=(-t "$tag")
           done <<< "$PUBLIC_TAGS"
-          docker buildx imagetools create "${tag_args[@]}" \
+
+          annotation_args=()
+          while IFS= read -r label; do
+            [ -n "$label" ] || continue
+            annotation_args+=(--annotation "index:$label")
+          done <<< "$PUBLIC_LABELS"
+
+          docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" \
             "ghcr.io/tryghost/activitypub@${amd64_digest}" \
             "ghcr.io/tryghost/activitypub@${arm64_digest}"
 
@@ -134,6 +142,7 @@ jobs:
         env:
           PRIVATE_TAGS: ${{ inputs.activitypub-migrations-private-tags }}
           PUBLIC_TAGS: ${{ inputs.activitypub-migrations-public-tags }}
+          PUBLIC_LABELS: ${{ inputs.activitypub-migrations-public-labels }}
         run: |
           source_private=$(printf '%s\n' "$PRIVATE_TAGS" | awk 'NF { print; exit }')
           [ -n "$source_private" ] || { echo "no source tag"; exit 1; }
@@ -157,6 +166,13 @@ jobs:
             [ -n "$tag" ] || continue
             tag_args+=(-t "$tag")
           done <<< "$PUBLIC_TAGS"
-          docker buildx imagetools create "${tag_args[@]}" \
+
+          annotation_args=()
+          while IFS= read -r label; do
+            [ -n "$label" ] || continue
+            annotation_args+=(--annotation "index:$label")
+          done <<< "$PUBLIC_LABELS"
+
+          docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" \
             "ghcr.io/tryghost/activitypub-migrations@${amd64_digest}" \
             "ghcr.io/tryghost/activitypub-migrations@${arm64_digest}"
