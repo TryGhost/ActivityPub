@@ -1,4 +1,4 @@
-name: Test
+name: Push
 
 on:
   workflow_call:
@@ -49,6 +49,13 @@ jobs:
           name: activitypub-migrations-amd64
           path: /tmp
 
+      - name: Download arm64 GHCR digests
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: arm64-ghcr-digests
+          path: /tmp/digests
+
       - name: Authenticate with GCP
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         id: gcp-auth
@@ -64,13 +71,17 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
-      - name: Login to GitHub Container Registry"
+      - name: Login to GitHub Container Registry
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
       - name: Push ActivityPub Docker image to private registry
         run: |
@@ -79,21 +90,37 @@ jobs:
             docker push $tag
           done
 
-      - name: Push ActivityPub Docker image to public registry
+      - name: Push ActivityPub multi-arch image and manifest to public registry
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          PRIVATE_TAGS: ${{ inputs.activitypub-private-tags }}
+          PUBLIC_TAGS: ${{ inputs.activitypub-public-tags }}
         run: |
-          source_tag=$(printf '%s\n' "${{ inputs.activitypub-private-tags }}" | awk 'NF { print; exit }')
+          source_private=$(printf '%s\n' "$PRIVATE_TAGS" | awk 'NF { print; exit }')
+          [ -n "$source_private" ] || { echo "no source tag"; exit 1; }
 
-          if [ -z "$source_tag" ]; then
-            echo "Failed to find a private ActivityPub image tag to retag for GHCR"
-            exit 1
-          fi
-
-          echo "${{ inputs.activitypub-public-tags }}" | while read -r tag; do
+          amd64_digest=""
+          while IFS= read -r tag; do
             [ -n "$tag" ] || continue
-            docker tag "$source_tag" "$tag"
-            docker push "$tag"
-          done
+            docker tag "$source_private" "$tag"
+            push_output=$(docker push "$tag")
+            echo "$push_output"
+            d=$(echo "$push_output" | grep -oE 'digest: sha256:[a-f0-9]+' | awk '{print $2}' | tail -1)
+            [ -n "$d" ] && amd64_digest="$d"
+          done <<< "$PUBLIC_TAGS"
+          [ -n "$amd64_digest" ] || { echo "failed to capture amd64 digest"; exit 1; }
+
+          arm64_digest=$(cat /tmp/digests/activitypub-arm64.digest)
+          [ -n "$arm64_digest" ] || { echo "missing arm64 digest"; exit 1; }
+
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            tag_args+=(-t "$tag")
+          done <<< "$PUBLIC_TAGS"
+          docker buildx imagetools create "${tag_args[@]}" \
+            "ghcr.io/tryghost/activitypub@${amd64_digest}" \
+            "ghcr.io/tryghost/activitypub@${arm64_digest}"
 
       - name: Push Migrations Docker image to private registry
         run: |
@@ -102,18 +129,34 @@ jobs:
             docker push $tag
           done
 
-      - name: Push Migrations Docker image to public registry
+      - name: Push Migrations multi-arch image and manifest to public registry
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          PRIVATE_TAGS: ${{ inputs.activitypub-migrations-private-tags }}
+          PUBLIC_TAGS: ${{ inputs.activitypub-migrations-public-tags }}
         run: |
-          source_tag=$(printf '%s\n' "${{ inputs.activitypub-migrations-private-tags }}" | awk 'NF { print; exit }')
+          source_private=$(printf '%s\n' "$PRIVATE_TAGS" | awk 'NF { print; exit }')
+          [ -n "$source_private" ] || { echo "no source tag"; exit 1; }
 
-          if [ -z "$source_tag" ]; then
-            echo "Failed to find a private migrations image tag to retag for GHCR"
-            exit 1
-          fi
-
-          echo "${{ inputs.activitypub-migrations-public-tags }}" | while read -r tag; do
+          amd64_digest=""
+          while IFS= read -r tag; do
             [ -n "$tag" ] || continue
-            docker tag "$source_tag" "$tag"
-            docker push "$tag"
-          done
+            docker tag "$source_private" "$tag"
+            push_output=$(docker push "$tag")
+            echo "$push_output"
+            d=$(echo "$push_output" | grep -oE 'digest: sha256:[a-f0-9]+' | awk '{print $2}' | tail -1)
+            [ -n "$d" ] && amd64_digest="$d"
+          done <<< "$PUBLIC_TAGS"
+          [ -n "$amd64_digest" ] || { echo "failed to capture amd64 digest"; exit 1; }
+
+          arm64_digest=$(cat /tmp/digests/activitypub-migrations-arm64.digest)
+          [ -n "$arm64_digest" ] || { echo "missing arm64 digest"; exit 1; }
+
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            tag_args+=(-t "$tag")
+          done <<< "$PUBLIC_TAGS"
+          docker buildx imagetools create "${tag_args[@]}" \
+            "ghcr.io/tryghost/activitypub-migrations@${amd64_digest}" \
+            "ghcr.io/tryghost/activitypub-migrations@${arm64_digest}"
