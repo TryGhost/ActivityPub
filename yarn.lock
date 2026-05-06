@@ -3421,7 +3421,12 @@ knuth-shuffle-seeded@^1.0.6:
   dependencies:
     seed-random "~2.2.0"
 
-ky@1.14.3, ky@^1.14.2:
+ky@2.0.2:
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/ky/-/ky-2.0.2.tgz#baab48b2b93e7996135a1c0e3ca7a0bcf44cd6a9"
+  integrity sha512-/GmXpo9F9W+f8n4Ivr2iH+7h7wL7jLbLKWkMlpflcCRb6kGjBfTlASEXaZ9qUgNTn4VgS0P2pwxxzQ4EM6Ulgg==
+
+ky@^1.14.2:
   version "1.14.3"
   resolved "https://registry.yarnpkg.com/ky/-/ky-1.14.3.tgz#d7fcc6ac93d1588accee72cc44dcc6cf84c0bdaa"
   integrity sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==
