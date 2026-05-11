@@ -2,18 +2,19 @@ import 'reflect-metadata';
 
 import * as Sentry from '@sentry/node';
 import type { AwilixContainer } from 'awilix';
-import type { Hono, MiddlewareHandler, Next } from 'hono';
+import type { Handler, Hono, MiddlewareHandler, Next } from 'hono';
 
 import type { AppContext, HonoContextVariables } from '@/app';
 import {
     ROLES_METADATA_KEY,
     ROUTES_METADATA_KEY,
+    type RouteMethod,
 } from '@/http/decorators/route.decorator';
 import type { GhostRole } from '@/http/middleware/role-guard';
 import { requireRole } from '@/http/middleware/role-guard';
 
 interface RouteRegistration {
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    method: RouteMethod;
     path: string;
     controllerToken: string;
     methodName: string;
@@ -21,8 +22,9 @@ interface RouteRegistration {
     versions?: string[];
 }
 
-type AppMiddleware = MiddlewareHandler<{ Variables: HonoContextVariables }>;
-type AppHono = Hono<{ Variables: HonoContextVariables }>;
+type AppEnv = { Variables: HonoContextVariables };
+type AppHandler = Handler<AppEnv> | MiddlewareHandler<AppEnv>;
+type AppHono = Hono<AppEnv>;
 
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
@@ -62,42 +64,30 @@ export class RouteRegistry {
     mountRoutes(app: AppHono, container: AwilixContainer): void {
         for (const route of this.routes) {
             const handlers = this.buildHandlers(route, container);
-            switch (route.method) {
-                case 'GET':
-                    app.get(route.path, ...handlers);
-                    break;
-                case 'POST':
-                    app.post(route.path, ...handlers);
-                    break;
-                case 'PUT':
-                    app.put(route.path, ...handlers);
-                    break;
-                case 'DELETE':
-                    app.delete(route.path, ...handlers);
-                    break;
-            }
+            app.on(route.method, route.path, ...handlers);
         }
     }
 
     private buildHandlers(
         route: RouteRegistration,
         container: AwilixContainer,
-    ): [AppMiddleware, ...AppMiddleware[]] {
-        const handler = this.buildHandler(route, container);
-        const versionMw = route.versions?.length
-            ? this.buildVersionGuard(route)
-            : null;
-        const roleMw = route.requiredRoles?.length
-            ? (requireRole(...route.requiredRoles) as AppMiddleware)
-            : null;
+    ): AppHandler[] {
+        const handlers: AppHandler[] = [];
 
-        if (versionMw && roleMw) return [versionMw, roleMw, handler];
-        if (versionMw) return [versionMw, handler];
-        if (roleMw) return [roleMw, handler];
-        return [handler];
+        if (route.versions?.length) {
+            handlers.push(this.buildVersionGuard(route));
+        }
+
+        if (route.requiredRoles?.length) {
+            handlers.push(requireRole(...route.requiredRoles) as AppHandler);
+        }
+
+        handlers.push(this.buildHandler(route, container));
+
+        return handlers;
     }
 
-    private buildVersionGuard(route: RouteRegistration): AppMiddleware {
+    private buildVersionGuard(route: RouteRegistration): AppHandler {
         return async (ctx: AppContext, next: Next) => {
             const requestVersion = ctx.req.param('version');
             if (!route.versions) {
@@ -121,7 +111,7 @@ export class RouteRegistry {
     private buildHandler(
         route: RouteRegistration,
         container: AwilixContainer,
-    ): AppMiddleware {
+    ): AppHandler {
         return (ctx: AppContext, next: Next) => {
             const controller = container.resolve(route.controllerToken);
             return Sentry.startSpan(
