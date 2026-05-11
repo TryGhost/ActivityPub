@@ -1,8 +1,10 @@
 import type { KvStore } from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
-import type { Context as HonoContext, Next } from 'hono';
+import type { Context as HonoContext, MiddlewareHandler, Next } from 'hono';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
+
+import type { HonoContextVariables } from '@/app';
 
 export enum GhostRole {
     Anonymous = 'Anonymous',
@@ -236,8 +238,10 @@ export function createRoleMiddleware(jwksCache: KvStore) {
     };
 }
 
-export function requireRole(...roles: GhostRole[]) {
-    return function roleMiddleware(ctx: HonoContext, next: Next) {
+export function requireRole(
+    ...roles: GhostRole[]
+): MiddlewareHandler<{ Variables: HonoContextVariables }> {
+    return async function roleMiddleware(ctx, next) {
         if (!roles.includes(ctx.get('role'))) {
             ctx.get('logger').error(
                 'User role {userRole} is not allowed to access this resource',
@@ -259,6 +263,6 @@ export function requireRole(...roles: GhostRole[]) {
                 },
             );
         }
-        return next();
+        await next();
     };
 }

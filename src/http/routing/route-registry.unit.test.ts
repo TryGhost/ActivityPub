@@ -227,6 +227,43 @@ describe('RouteRegistry', () => {
             );
         });
 
+        it('should return 410 with INVALID_VERSION when version param is missing', async () => {
+            const registration = {
+                method: 'GET' as const,
+                path: '/:version/test',
+                controllerToken: 'TestController',
+                methodName: 'testMethod',
+                versions: ['v1', 'v2'],
+            };
+
+            routeRegistry.registerRoute(registration);
+            routeRegistry.mountRoutes(
+                mockApp as unknown as Hono<{ Variables: HonoContextVariables }>,
+                mockContainer as unknown as AwilixContainer,
+            );
+
+            const callArgs = mockApp.get.mock.calls[0];
+            const middlewares = callArgs.slice(1);
+            const versionMiddleware = middlewares[0] as MiddlewareHandler;
+
+            (mockContext.req!.param as unknown as MockedFunction<
+                (key: string) => string | undefined
+            >) = vi.fn().mockReturnValue(undefined);
+
+            await versionMiddleware(mockContext as AppContext, mockNext);
+
+            expect(mockNext).not.toHaveBeenCalled();
+            expect(mockContext.json).toHaveBeenCalledWith(
+                {
+                    message: 'A version is required.',
+                    code: 'INVALID_VERSION',
+                    requestedVersion: null,
+                    supportedVersions: ['v1', 'v2'],
+                },
+                410,
+            );
+        });
+
         it('should include supported versions in error response', async () => {
             const registration = {
                 method: 'POST' as const,

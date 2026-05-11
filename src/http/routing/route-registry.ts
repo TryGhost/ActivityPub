@@ -83,18 +83,15 @@ export class RouteRegistry {
         route: RouteRegistration,
         container: AwilixContainer,
     ): [AppMiddleware, ...AppMiddleware[]] {
-        const handler = this.buildHandler(route, container);
-        const versionMw = route.versions?.length
-            ? this.buildVersionGuard(route)
-            : null;
-        const roleMw = route.requiredRoles?.length
-            ? (requireRole(...route.requiredRoles) as AppMiddleware)
-            : null;
-
-        if (versionMw && roleMw) return [versionMw, roleMw, handler];
-        if (versionMw) return [versionMw, handler];
-        if (roleMw) return [roleMw, handler];
-        return [handler];
+        const handlers: AppMiddleware[] = [];
+        if (route.versions?.length) {
+            handlers.push(this.buildVersionGuard(route));
+        }
+        if (route.requiredRoles?.length) {
+            handlers.push(requireRole(...route.requiredRoles));
+        }
+        handlers.push(this.buildHandler(route, container));
+        return handlers as [AppMiddleware, ...AppMiddleware[]];
     }
 
     private buildVersionGuard(route: RouteRegistration): AppMiddleware {
@@ -103,7 +100,18 @@ export class RouteRegistry {
             if (!route.versions) {
                 throw new Error('RouteRegistration was modified');
             }
-            if (!requestVersion || !route.versions.includes(requestVersion)) {
+            if (!requestVersion) {
+                return ctx.json(
+                    {
+                        message: 'A version is required.',
+                        code: 'INVALID_VERSION',
+                        requestedVersion: null,
+                        supportedVersions: route.versions,
+                    },
+                    410,
+                );
+            }
+            if (!route.versions.includes(requestVersion)) {
                 return ctx.json(
                     {
                         message: `Version ${requestVersion} is not supported.`,
