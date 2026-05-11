@@ -16,9 +16,12 @@ export class BlockController {
     @APIRoute('POST', 'actions/block/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlock(ctx: AppContext) {
-        const accountToBlock = parseURL(
-            decodeURIComponent(ctx.req.param('id')),
-        );
+        const id = ctx.req.param('id');
+        if (!id) {
+            return BadRequest('Expected a URL for the ID');
+        }
+
+        const accountToBlock = parseURL(decodeURIComponent(id));
 
         if (!accountToBlock) {
             return BadRequest('Expected a URL for the ID');
@@ -56,9 +59,12 @@ export class BlockController {
     @APIRoute('POST', 'actions/unblock/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblock(ctx: AppContext) {
-        const accountToUnblock = parseURL(
-            decodeURIComponent(ctx.req.param('id')),
-        );
+        const id = ctx.req.param('id');
+        if (!id) {
+            return BadRequest('Expected a URL for the ID');
+        }
+
+        const accountToUnblock = parseURL(decodeURIComponent(id));
 
         if (!accountToUnblock) {
             return BadRequest('Expected a URL for the ID');
@@ -96,7 +102,12 @@ export class BlockController {
     @APIRoute('POST', 'actions/block/domain/:domain')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlockDomain(ctx: AppContext) {
-        const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
+        const domainParam = ctx.req.param('domain');
+        if (!domainParam) {
+            return BadRequest('Expected a URL for the domain');
+        }
+
+        const domain = parseURL(decodeURIComponent(domainParam));
         if (!domain) {
             return BadRequest('Expected a URL for the domain');
         }
@@ -114,7 +125,12 @@ export class BlockController {
     @APIRoute('POST', 'actions/unblock/domain/:domain')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblockDomain(ctx: AppContext) {
-        const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
+        const domainParam = ctx.req.param('domain');
+        if (!domainParam) {
+            return BadRequest('Expected a URL for the domain');
+        }
+
+        const domain = parseURL(decodeURIComponent(domainParam));
         if (!domain) {
             return BadRequest('Expected a URL for the domain');
         }

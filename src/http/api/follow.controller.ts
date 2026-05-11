@@ -30,6 +30,9 @@ export class FollowController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleFollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
+        if (!handle) {
+            return BadRequest('Expected a handle');
+        }
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
@@ -147,6 +150,9 @@ export class FollowController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnfollow(ctx: AppContext) {
         const handle = ctx.req.param('handle');
+        if (!handle) {
+            return BadRequest('Expected a handle');
+        }
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
