@@ -521,15 +521,15 @@
   resolved "https://registry.yarnpkg.com/@faker-js/faker/-/faker-9.9.0.tgz#3ad015fbbaaae7af3149555e0f22b4b30134c69d"
   integrity sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==
 
-"@fedify/cli@1.10.8":
-  version "1.10.8"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.10.8.tgz#0ae07a602453d10880580e258e3c32764889de93"
-  integrity sha512-6if8qnBD52ZdSgZeIVciA7d85bRtcgi5YEMM4ER5QyAN87xS1BE6G6Qrz1qeHn5/90BhFL4Px4Q0vOAIu6+ISA==
+"@fedify/cli@1.10.9":
+  version "1.10.9"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.10.9.tgz#b303bb746cb18ba02e89de8a94ff8370e40da474"
+  integrity sha512-bUtA85eORi0mfY5eBXqEUIaXwAOUbdIwYOuvSXV3ngUNxusWnNOQXgC7sVvNIfIzhRQE8ZzYEVKRGwhqJQ8sQQ==
 
-"@fedify/fedify@1.10.8":
-  version "1.10.8"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.10.8.tgz#be49b5235ec1c129c03125369757c737b87aa20b"
-  integrity sha512-h339lDbV7/tAzd00F2iacXqoytW2l8zB+MtSR8pgWs6jb7pueXuwE9eTFyvCBKYlw8d32UknUctVErtuUnebzw==
+"@fedify/fedify@1.10.9":
+  version "1.10.9"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.10.9.tgz#35b99e05b66ef6bd9d397ab7ede99fa2e4ee9975"
+  integrity sha512-iAwpup5ZmH8PfbSZGKVqLGZf7XVr2XdquUdfJB7urZjV1b1nK6Yobqk/fZZfq16HntkbbySh4C/BzNPPX+Z0ow==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@js-temporal/polyfill" "^0.5.1"
@@ -552,15 +552,15 @@
     url-template "^3.1.1"
     urlpattern-polyfill "^10.1.0"
 
-"@fedify/hono@1.10.8":
-  version "1.10.8"
-  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.8.tgz#c7cf82a44f229a1634f2f452c0f5be96b15a5810"
-  integrity sha512-D4rY9G85hC5+RdOT1voLNn33riHpyefJDf0zzu0w/FxdbvjNT1b69YMpeg5Y1IIpzyEvRSOQa8szyKoI9LRMaQ==
+"@fedify/hono@1.10.9":
+  version "1.10.9"
+  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.9.tgz#c0c7579598652192462df75c7d88dd466812fa63"
+  integrity sha512-Qlwqkp5gvug5E765jxQFMjgs0TlGvTjx5oQr8N7KVyd2LhRucnslXAB8P7bSnKsmiTZlwF8zzMG/0G1nivX1zA==
 
-"@fedify/redis@1.10.8":
-  version "1.10.8"
-  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.10.8.tgz#2ef42500b3c3a4015b7ba76651ca139cacdd3bfa"
-  integrity sha512-luZ/s0Nunly9acQiq3HhwKF9CQPRIidgUOmqxnsxmAGYg1ODhKhPHV32MoSLCRjApU/CWz+mfhwIh5HuBBeG3Q==
+"@fedify/redis@1.10.9":
+  version "1.10.9"
+  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.10.9.tgz#8a3a918eb9e5d83c4df99baeb3ac1ee420408bd1"
+  integrity sha512-uOBv9PGFX9vP5bXxY5Yv9RztHuqHFFNpYnSFE6qh8Gh1qquOYZFbdEfMgbtQJtLifSt7fqYNVw1vWLOfjAm6+A==
   dependencies:
     "@js-temporal/polyfill" "^0.5.1"
     "@logtape/logtape" "^1.2.2"
