@@ -54,13 +54,13 @@
     "@types/sanitize-html": "2.16.1",
     "@types/sinon": "21.0.1",
     "@types/uuid": "11.0.0",
-    "@vitest/coverage-v8": "2.1.9",
+    "@vitest/coverage-v8": "4.1.6",
     "concurrently": "9.2.1",
     "esbuild": "0.28.0",
     "nock": "14.0.15",
     "typescript": "5.9.3",
     "vite-tsconfig-paths": "5.1.4",
-    "vitest": "2.1.9",
+    "vitest": "4.1.6",
     "wiremock-captain": "3.6.1"
   },
   "dependencies": {
