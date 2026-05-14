@@ -103,6 +103,9 @@ export class FeedController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getDiscoveryFeed(ctx: AppContext) {
         const slug = ctx.req.param('slug');
+        if (!slug) {
+            return new Response(null, { status: 400 });
+        }
 
         // Check if topic exists
         const topic = await this.feedService.getTopicBySlug(slug);

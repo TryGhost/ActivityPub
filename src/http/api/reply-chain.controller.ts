@@ -13,9 +13,14 @@ export class ReplyChainController {
     async handleGetReplies(ctx: AppContext) {
         const account = ctx.get('account');
 
+        const postApId = ctx.req.param('post_ap_id');
+        if (!postApId) {
+            return new Response(null, { status: 400 });
+        }
+
         const replyChainResult = await this.replyChainView.getReplyChain(
             account.id,
-            new URL(ctx.req.param('post_ap_id')),
+            new URL(postApId),
             ctx.req.query('next'),
         );
 

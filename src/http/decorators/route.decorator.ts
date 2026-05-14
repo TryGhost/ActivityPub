@@ -6,7 +6,9 @@ export const ROUTES_METADATA_KEY = Symbol('routes');
 export const ROLES_METADATA_KEY = Symbol('roles');
 export const DEFAULT_API_VERSION = 'v1';
 
-export function Route(method: string, path: string) {
+export type RouteMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+export function Route(method: RouteMethod, path: string) {
     return (target: object, propertyKey: string) => {
         const existingRoutes =
             Reflect.getMetadata(ROUTES_METADATA_KEY, target) || [];
@@ -19,7 +21,11 @@ export function Route(method: string, path: string) {
     };
 }
 
-export function APIRoute(method: string, path: string, ...versions: string[]) {
+export function APIRoute(
+    method: RouteMethod,
+    path: string,
+    ...versions: string[]
+) {
     if (path.startsWith('/')) {
         path = path.slice(1);
     }

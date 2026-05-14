@@ -2,24 +2,29 @@ import 'reflect-metadata';
 
 import * as Sentry from '@sentry/node';
 import type { AwilixContainer } from 'awilix';
-import type { Hono, MiddlewareHandler, Next } from 'hono';
+import type { Handler, Hono, MiddlewareHandler, Next } from 'hono';
 
 import type { AppContext, HonoContextVariables } from '@/app';
 import {
     ROLES_METADATA_KEY,
     ROUTES_METADATA_KEY,
+    type RouteMethod,
 } from '@/http/decorators/route.decorator';
 import type { GhostRole } from '@/http/middleware/role-guard';
 import { requireRole } from '@/http/middleware/role-guard';
 
 interface RouteRegistration {
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    method: RouteMethod;
     path: string;
     controllerToken: string;
     methodName: string;
     requiredRoles?: GhostRole[];
     versions?: string[];
 }
+
+type AppEnv = { Variables: HonoContextVariables };
+type AppHandler = Handler<AppEnv> | MiddlewareHandler<AppEnv>;
+type AppHono = Hono<AppEnv>;
 
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
@@ -56,60 +61,58 @@ export class RouteRegistry {
         }
     }
 
-    mountRoutes(
-        app: Hono<{ Variables: HonoContextVariables }>,
-        container: AwilixContainer,
-    ): void {
+    mountRoutes(app: AppHono, container: AwilixContainer): void {
         for (const route of this.routes) {
-            const middleware = this.buildMiddleware(route, container);
-            const method = route.method.toLowerCase() as
-                | 'get'
-                | 'post'
-                | 'put'
-                | 'delete';
-            app[method](route.path, ...middleware);
+            const handlers = this.buildHandlers(route, container);
+            app.on(route.method, route.path, ...handlers);
         }
     }
 
-    private buildMiddleware(
+    private buildHandlers(
         route: RouteRegistration,
         container: AwilixContainer,
-    ): MiddlewareHandler<{ Variables: HonoContextVariables }>[] {
-        const middleware: MiddlewareHandler<{
-            Variables: HonoContextVariables;
-        }>[] = [];
+    ): AppHandler[] {
+        const handlers: AppHandler[] = [];
 
-        if (route.versions && route.versions.length > 0) {
-            middleware.push(async (ctx: AppContext, next: Next) => {
-                const requestVersion = ctx.req.param('version');
-                if (!route.versions) {
-                    throw new Error('RouteRegistration was modified');
-                }
-
-                if (!route.versions.includes(requestVersion)) {
-                    return ctx.json(
-                        {
-                            message: `Version ${requestVersion} is not supported.`,
-                            code: 'INVALID_VERSION',
-                            requestedVersion: requestVersion,
-                            supportedVersions: route.versions,
-                        },
-                        410,
-                    );
-                }
-                return await next();
-            });
+        if (route.versions?.length) {
+            handlers.push(this.buildVersionGuard(route));
         }
 
-        if (route.requiredRoles && route.requiredRoles.length > 0) {
-            middleware.push(
-                requireRole(...route.requiredRoles) as MiddlewareHandler<{
-                    Variables: HonoContextVariables;
-                }>,
-            );
+        if (route.requiredRoles?.length) {
+            handlers.push(requireRole(...route.requiredRoles) as AppHandler);
         }
 
-        middleware.push((ctx: AppContext, next: Next) => {
+        handlers.push(this.buildHandler(route, container));
+
+        return handlers;
+    }
+
+    private buildVersionGuard(route: RouteRegistration): AppHandler {
+        return async (ctx: AppContext, next: Next) => {
+            const requestVersion = ctx.req.param('version');
+            if (!route.versions) {
+                throw new Error('RouteRegistration was modified');
+            }
+            if (!requestVersion || !route.versions.includes(requestVersion)) {
+                return ctx.json(
+                    {
+                        message: `Version ${requestVersion} is not supported.`,
+                        code: 'INVALID_VERSION',
+                        requestedVersion: requestVersion,
+                        supportedVersions: route.versions,
+                    },
+                    410,
+                );
+            }
+            return await next();
+        };
+    }
+
+    private buildHandler(
+        route: RouteRegistration,
+        container: AwilixContainer,
+    ): AppHandler {
+        return (ctx: AppContext, next: Next) => {
             const controller = container.resolve(route.controllerToken);
             return Sentry.startSpan(
                 {
@@ -118,8 +121,6 @@ export class RouteRegistry {
                 },
                 () => controller[route.methodName](ctx, next),
             );
-        });
-
-        return middleware;
+        };
     }
 }
