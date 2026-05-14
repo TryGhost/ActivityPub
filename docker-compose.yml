@@ -272,7 +272,7 @@ services:
           - bob.test
           - charlie.test
           - fake-external-activitypub.test
-    image: caddy:2@sha256:f6ec72f1a5c5927d4e269f27f4d8c7e4a9cb06641d2118eb33d91f68d9fbd14f
+    image: caddy:2@sha256:ec18ee54aab3315c22e25f3b2babda73ff8007d39b13b3bd1bfffa2f0444c7d9
     ports:
       - "444:443"
     volumes:
