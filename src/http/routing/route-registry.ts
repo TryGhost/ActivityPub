@@ -62,12 +62,7 @@ export class RouteRegistry {
     ): void {
         for (const route of this.routes) {
             const middleware = this.buildMiddleware(route, container);
-            const method = route.method.toLowerCase() as
-                | 'get'
-                | 'post'
-                | 'put'
-                | 'delete';
-            app[method](route.path, ...middleware);
+            app.on(route.method, [route.path], ...middleware);
         }
     }
 
@@ -86,7 +81,10 @@ export class RouteRegistry {
                     throw new Error('RouteRegistration was modified');
                 }
 
-                if (!route.versions.includes(requestVersion)) {
+                if (
+                    !requestVersion ||
+                    !route.versions.includes(requestVersion)
+                ) {
                     return ctx.json(
                         {
                             message: `Version ${requestVersion} is not supported.`,

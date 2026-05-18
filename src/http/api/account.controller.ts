@@ -6,6 +6,7 @@ import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory'
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { isHandle } from '@/helpers/activitypub/actor';
+import { requireParam } from '@/http/api/helpers/request';
 import type { AccountDTO } from '@/http/api/types';
 import type {
     AccountFollows,
@@ -54,7 +55,7 @@ export class AccountController {
     @APIRoute('GET', 'account/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccount(ctx: AppContext) {
-        const handle = ctx.req.param('handle');
+        const handle = requireParam(ctx, 'handle');
 
         if (handle !== CURRENT_USER_KEYWORD && !isHandle(handle)) {
             return new Response(null, { status: 404 });
@@ -104,12 +105,9 @@ export class AccountController {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
 
-        const handle = ctx.req.param('handle') || '';
-        if (handle === '') {
-            return new Response(null, { status: 400 });
-        }
+        const handle = requireParam(ctx, 'handle');
 
-        const type = ctx.req.param('type');
+        const type = requireParam(ctx, 'type');
         if (!['following', 'followers'].includes(type)) {
             return new Response(null, { status: 400 });
         }
@@ -214,10 +212,7 @@ export class AccountController {
         const logger = ctx.get('logger');
         const site = ctx.get('site');
 
-        const handle = ctx.req.param('handle');
-        if (!handle) {
-            return new Response(null, { status: 400 });
-        }
+        const handle = requireParam(ctx, 'handle');
 
         const currentContextAccount =
             await this.accountRepository.getBySite(site);

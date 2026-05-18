@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { requireParam } from '@/http/api/helpers/request';
 import {
     BadRequest,
     Conflict,
@@ -29,7 +30,7 @@ export class FollowController {
     @APIRoute('POST', 'actions/follow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleFollow(ctx: AppContext) {
-        const handle = ctx.req.param('handle');
+        const handle = requireParam(ctx, 'handle');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
@@ -146,7 +147,7 @@ export class FollowController {
     @APIRoute('POST', 'actions/unfollow/:handle')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnfollow(ctx: AppContext) {
-        const handle = ctx.req.param('handle');
+        const handle = requireParam(ctx, 'handle');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),

@@ -1,5 +1,6 @@
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
+import { requireParam } from '@/http/api/helpers/request';
 import { NotFound } from '@/http/api/helpers/response';
 import type { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
@@ -13,9 +14,11 @@ export class ReplyChainController {
     async handleGetReplies(ctx: AppContext) {
         const account = ctx.get('account');
 
+        const postApId = requireParam(ctx, 'post_ap_id');
+
         const replyChainResult = await this.replyChainView.getReplyChain(
             account.id,
-            new URL(ctx.req.param('post_ap_id')),
+            new URL(postApId),
             ctx.req.query('next'),
         );
 

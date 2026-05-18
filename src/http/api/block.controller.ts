@@ -2,6 +2,7 @@ import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
+import { requireParam } from '@/http/api/helpers/request';
 import { BadRequest, NotFound } from '@/http/api/helpers/response';
 import type { BlocksView } from '@/http/api/views/blocks.view';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
@@ -16,9 +17,9 @@ export class BlockController {
     @APIRoute('POST', 'actions/block/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlock(ctx: AppContext) {
-        const accountToBlock = parseURL(
-            decodeURIComponent(ctx.req.param('id')),
-        );
+        const id = requireParam(ctx, 'id');
+
+        const accountToBlock = parseURL(decodeURIComponent(id));
 
         if (!accountToBlock) {
             return BadRequest('Expected a URL for the ID');
@@ -56,9 +57,9 @@ export class BlockController {
     @APIRoute('POST', 'actions/unblock/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblock(ctx: AppContext) {
-        const accountToUnblock = parseURL(
-            decodeURIComponent(ctx.req.param('id')),
-        );
+        const id = requireParam(ctx, 'id');
+
+        const accountToUnblock = parseURL(decodeURIComponent(id));
 
         if (!accountToUnblock) {
             return BadRequest('Expected a URL for the ID');
@@ -96,7 +97,9 @@ export class BlockController {
     @APIRoute('POST', 'actions/block/domain/:domain')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleBlockDomain(ctx: AppContext) {
-        const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
+        const domainParam = requireParam(ctx, 'domain');
+
+        const domain = parseURL(decodeURIComponent(domainParam));
         if (!domain) {
             return BadRequest('Expected a URL for the domain');
         }
@@ -114,7 +117,9 @@ export class BlockController {
     @APIRoute('POST', 'actions/unblock/domain/:domain')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnblockDomain(ctx: AppContext) {
-        const domain = parseURL(decodeURIComponent(ctx.req.param('domain')));
+        const domainParam = requireParam(ctx, 'domain');
+
+        const domain = parseURL(decodeURIComponent(domainParam));
         if (!domain) {
             return BadRequest('Expected a URL for the domain');
         }
