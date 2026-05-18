@@ -21,16 +21,6 @@ interface RouteRegistration {
     versions?: string[];
 }
 
-// Hono 4.12 types `.get/.post/.put/.delete` as a large overload set, each
-// overload requiring handlers as a non-empty tuple (`[H, ...H[]]`) with a
-// per-position Input type. Spreading our runtime-built `MiddlewareHandler[]`
-// (which TS can't prove is non-empty) matches none of them, so we cast to
-// a uniform signature at this single dispatch site.
-type RegisterRoute = (
-    path: string,
-    ...middleware: MiddlewareHandler<{ Variables: HonoContextVariables }>[]
-) => void;
-
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
 
@@ -72,13 +62,7 @@ export class RouteRegistry {
     ): void {
         for (const route of this.routes) {
             const middleware = this.buildMiddleware(route, container);
-            const method = route.method.toLowerCase() as
-                | 'get'
-                | 'post'
-                | 'put'
-                | 'delete';
-            const register = app[method].bind(app) as RegisterRoute;
-            register(route.path, ...middleware);
+            app.on(route.method, [route.path], ...middleware);
         }
     }
 

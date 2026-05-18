@@ -11,10 +11,7 @@ import { RouteRegistry } from './route-registry';
 
 // Mock types for Hono app methods
 type MockedHono = {
-    get: MockedFunction<(...args: unknown[]) => unknown>;
-    post: MockedFunction<(...args: unknown[]) => unknown>;
-    put: MockedFunction<(...args: unknown[]) => unknown>;
-    delete: MockedFunction<(...args: unknown[]) => unknown>;
+    on: MockedFunction<(...args: unknown[]) => unknown>;
 };
 
 // Mock type for Awilix container
@@ -30,10 +27,7 @@ describe('RouteRegistry', () => {
     beforeEach(() => {
         routeRegistry = new RouteRegistry();
         mockApp = {
-            get: vi.fn(),
-            post: vi.fn(),
-            put: vi.fn(),
-            delete: vi.fn(),
+            on: vi.fn(),
         };
         mockContainer = {
             resolve: vi.fn(),
@@ -56,8 +50,9 @@ describe('RouteRegistry', () => {
                 mockApp as unknown as Hono<{ Variables: HonoContextVariables }>,
                 mockContainer as unknown as AwilixContainer,
             );
-            expect(mockApp.get).toHaveBeenCalledWith(
-                '/test',
+            expect(mockApp.on).toHaveBeenCalledWith(
+                'GET',
+                ['/test'],
                 expect.any(Function),
             );
         });
@@ -77,11 +72,13 @@ describe('RouteRegistry', () => {
                 mockApp as unknown as Hono<{ Variables: HonoContextVariables }>,
                 mockContainer as unknown as AwilixContainer,
             );
-            expect(mockApp.get).toHaveBeenCalled();
-            const call = mockApp.get.mock.calls[0];
-            expect(call[0]).toBe('/:version/test');
+            expect(mockApp.on).toHaveBeenCalled();
+            const call = mockApp.on.mock.calls[0];
+            expect(call[0]).toBe('GET');
+            expect(call[1]).toEqual(['/:version/test']);
             // Should have multiple middlewares when versions are specified
-            expect(call.length).toBeGreaterThan(2);
+            // Args: method, [path], ...middlewares — so >3 means at least 2 middlewares
+            expect(call.length).toBeGreaterThan(3);
         });
     });
 
@@ -114,15 +111,16 @@ describe('RouteRegistry', () => {
                 mockContainer as unknown as AwilixContainer,
             );
 
-            expect(mockApp.get).toHaveBeenCalledWith(
-                '/test1',
+            expect(mockApp.on).toHaveBeenCalledWith(
+                'GET',
+                ['/test1'],
                 expect.any(Function),
             );
-            expect(mockApp.post).toHaveBeenCalled();
-            const postCall = mockApp.post.mock.calls[0];
-            expect(postCall[0]).toBe('/:version/test2');
-            // Should have at least 2 middlewares when versions are specified (version + controller)
-            expect(postCall.length).toBeGreaterThanOrEqual(2);
+            const postCall = mockApp.on.mock.calls.find((c) => c[0] === 'POST');
+            expect(postCall).toBeDefined();
+            expect(postCall![1]).toEqual(['/:version/test2']);
+            // Args: method, [path], ...middlewares — at least 2 middlewares (version + controller)
+            expect(postCall!.length).toBeGreaterThanOrEqual(4);
         });
     });
 
@@ -165,9 +163,9 @@ describe('RouteRegistry', () => {
             );
 
             // Get the middleware array from the first call
-            const callArgs = mockApp.get.mock.calls[0];
-            // Skip the path argument, the rest are middlewares
-            const middlewares = callArgs.slice(1);
+            // Args: method, [path], ...middlewares — skip first 2
+            const callArgs = mockApp.on.mock.calls[0];
+            const middlewares = callArgs.slice(2);
             const versionMiddleware = middlewares[0] as MiddlewareHandler;
 
             (mockContext.req!.param as unknown as MockedFunction<
@@ -195,8 +193,8 @@ describe('RouteRegistry', () => {
                 mockContainer as unknown as AwilixContainer,
             );
 
-            const callArgs = mockApp.get.mock.calls[0];
-            const middlewares = callArgs.slice(1);
+            const callArgs = mockApp.on.mock.calls[0];
+            const middlewares = callArgs.slice(2);
             const versionMiddleware = middlewares[0] as MiddlewareHandler;
 
             (mockContext.req!.param as unknown as MockedFunction<
@@ -242,8 +240,8 @@ describe('RouteRegistry', () => {
                 mockContainer as unknown as AwilixContainer,
             );
 
-            const callArgs = mockApp.post.mock.calls[0];
-            const middlewares = callArgs.slice(1);
+            const callArgs = mockApp.on.mock.calls[0];
+            const middlewares = callArgs.slice(2);
             const versionMiddleware = middlewares[0] as MiddlewareHandler;
 
             (mockContext.req!.param as unknown as MockedFunction<
@@ -275,9 +273,9 @@ describe('RouteRegistry', () => {
                 mockContainer as unknown as AwilixContainer,
             );
 
-            // Should only have one middleware (the controller handler)
-            const middlewares = mockApp.get.mock.calls[0];
-            expect(middlewares.length).toBe(2); // path + handler
+            // Args: method, [path], ...middlewares — only the controller handler expected
+            const callArgs = mockApp.on.mock.calls[0];
+            expect(callArgs.length).toBe(3); // method + [path] + handler
         });
 
         it('should not add version middleware when versions is undefined', () => {
@@ -294,9 +292,9 @@ describe('RouteRegistry', () => {
                 mockContainer as unknown as AwilixContainer,
             );
 
-            // Should only have one middleware (the controller handler)
-            const middlewares = mockApp.get.mock.calls[0];
-            expect(middlewares.length).toBe(2); // path + handler
+            // Args: method, [path], ...middlewares — only the controller handler expected
+            const callArgs = mockApp.on.mock.calls[0];
+            expect(callArgs.length).toBe(3); // method + [path] + handler
         });
     });
 
@@ -322,7 +320,8 @@ describe('RouteRegistry', () => {
                 mockContainer as unknown as AwilixContainer,
             );
 
-            const middlewares = mockApp.get.mock.calls[0].slice(1);
+            // Args: method, [path], ...middlewares — skip first 2
+            const middlewares = mockApp.on.mock.calls[0].slice(2);
 
             // Should have 3 middlewares: version, role, controller
             expect(middlewares.length).toBe(3);
