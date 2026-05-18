@@ -43,7 +43,10 @@ describe('GCPStorageAdapter', () => {
             bucket: vi.fn().mockReturnValue(mockBucket),
         } as unknown as Storage;
 
-        (Storage as unknown as Mock).mockImplementation(() => mockStorage);
+        // biome-ignore lint/complexity/useArrowFunction: mock is invoked with `new`, which requires a non-arrow function
+        (Storage as unknown as Mock).mockImplementation(function () {
+            return mockStorage;
+        });
 
         adapter = new GCPStorageAdapter('test-bucket', mockLogger);
     });

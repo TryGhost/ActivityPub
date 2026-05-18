@@ -205,6 +205,8 @@ describe('KnexAccountRepository', () => {
 
         expect(updatedAccount.name).toBe('Updated Name');
         expect(updatedAccount.bio).toBe('Updated Bio');
+
+        emitSpy.mockRestore();
     });
 
     it('handles saving a new account when avatarUrl or bannerImageUrl have null values', async () => {
