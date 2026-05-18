@@ -62,12 +62,24 @@ import { registerDependencies } from '@/configuration/registrations';
 import { knex } from '@/db';
 import {
     acceptDispatcher,
+    type actorDispatcher,
     announceDispatcher,
     articleDispatcher,
+    type createAcceptHandler,
+    type createAnnounceHandler,
     createDispatcher,
+    type createFollowersCounter,
+    type createFollowersDispatcher,
+    type createFollowingCounter,
+    type createFollowingDispatcher,
+    type createLikeHandler,
+    type createOutboxCounter,
+    type createOutboxDispatcher,
+    type createUndoHandler,
     followDispatcher,
     followingFirstCursor,
     inboxErrorHandler,
+    type keypairDispatcher,
     likeDispatcher,
     likedCounter,
     likedDispatcher,
@@ -81,6 +93,7 @@ import {
 import type { EventSerializer } from '@/events/event';
 import type { createIncomingPubSubMessageHandler } from '@/events/pubsub-http';
 import type { FeedUpdateService } from '@/feed/feed-update.service';
+import type { FlagService } from '@/flag/flag.service';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
 import { AccountController } from '@/http/api/account.controller';
@@ -308,8 +321,11 @@ globalFedify
     .setActorDispatcher(
         '/.ghost/activitypub/users/{identifier}',
         spanWrapper((ctx: FedifyRequestContext, identifier: string) => {
-            const actorDispatcher = container.resolve('actorDispatcher');
-            return actorDispatcher(ctx, identifier);
+            const dispatcher =
+                container.resolve<ReturnType<typeof actorDispatcher>>(
+                    'actorDispatcher',
+                );
+            return dispatcher(ctx, identifier);
         }),
     )
     .mapHandle(async () => {
@@ -318,9 +334,11 @@ globalFedify
     .setKeyPairsDispatcher(
         ensureCorrectContext(
             spanWrapper((ctx: FedifyContext, identifier: string) => {
-                const keypairDispatcher =
-                    container.resolve('keypairDispatcher');
-                return keypairDispatcher(ctx, identifier);
+                const dispatcher =
+                    container.resolve<ReturnType<typeof keypairDispatcher>>(
+                        'keypairDispatcher',
+                    );
+                return dispatcher(ctx, identifier);
             }),
         ),
     );
@@ -348,7 +366,10 @@ inboxListener
         Accept,
         ensureCorrectContext(
             spanWrapper((ctx: FedifyContext, activity: Accept) => {
-                const acceptHandler = container.resolve('acceptHandler');
+                const acceptHandler =
+                    container.resolve<ReturnType<typeof createAcceptHandler>>(
+                        'acceptHandler',
+                    );
                 return acceptHandler(ctx, activity);
             }),
         ),
@@ -380,7 +401,10 @@ inboxListener
         Announce,
         ensureCorrectContext(
             spanWrapper((ctx: FedifyContext, activity: Announce) => {
-                const announceHandler = container.resolve('announceHandler');
+                const announceHandler =
+                    container.resolve<ReturnType<typeof createAnnounceHandler>>(
+                        'announceHandler',
+                    );
                 return announceHandler(ctx, activity);
             }),
         ),
@@ -390,7 +414,10 @@ inboxListener
         Like,
         ensureCorrectContext(
             spanWrapper((ctx: FedifyContext, activity: Like) => {
-                const likeHandler = container.resolve('likeHandler');
+                const likeHandler =
+                    container.resolve<ReturnType<typeof createLikeHandler>>(
+                        'likeHandler',
+                    );
                 return likeHandler(ctx, activity);
             }),
         ),
@@ -400,7 +427,10 @@ inboxListener
         Undo,
         ensureCorrectContext(
             spanWrapper((ctx: FedifyContext, activity: Undo) => {
-                const undoHandler = container.resolve('undoHandler');
+                const undoHandler =
+                    container.resolve<ReturnType<typeof createUndoHandler>>(
+                        'undoHandler',
+                    );
                 return undoHandler(ctx, activity);
             }),
         ),
@@ -422,14 +452,17 @@ globalFedify
     .setFollowersDispatcher(
         '/.ghost/activitypub/followers/{identifier}',
         spanWrapper((ctx: FedifyContext, identifier: string) => {
-            const followersDispatcher = container.resolve(
-                'followersDispatcher',
-            );
+            const followersDispatcher = container.resolve<
+                ReturnType<typeof createFollowersDispatcher>
+            >('followersDispatcher');
             return followersDispatcher(ctx, identifier);
         }),
     )
     .setCounter((ctx: FedifyRequestContext, identifier: string) => {
-        const followersCounter = container.resolve('followersCounter');
+        const followersCounter =
+            container.resolve<ReturnType<typeof createFollowersCounter>>(
+                'followersCounter',
+            );
         return followersCounter(ctx, identifier);
     });
 
@@ -442,15 +475,18 @@ globalFedify
                 identifier: string,
                 cursor: string | null,
             ) => {
-                const followingDispatcher = container.resolve(
-                    'followingDispatcher',
-                );
+                const followingDispatcher = container.resolve<
+                    ReturnType<typeof createFollowingDispatcher>
+                >('followingDispatcher');
                 return followingDispatcher(ctx, identifier, cursor);
             },
         ),
     )
     .setCounter((ctx: FedifyRequestContext, identifier: string) => {
-        const followingCounter = container.resolve('followingCounter');
+        const followingCounter =
+            container.resolve<ReturnType<typeof createFollowingCounter>>(
+                'followingCounter',
+            );
         return followingCounter(ctx, identifier);
     })
     .setFirstCursor(followingFirstCursor);
@@ -464,13 +500,19 @@ globalFedify
                 identifier: string,
                 cursor: string | null,
             ) => {
-                const outboxDispatcher = container.resolve('outboxDispatcher');
+                const outboxDispatcher =
+                    container.resolve<
+                        ReturnType<typeof createOutboxDispatcher>
+                    >('outboxDispatcher');
                 return outboxDispatcher(ctx, identifier, cursor);
             },
         ),
     )
     .setCounter((ctx: FedifyRequestContext) => {
-        const outboxCounter = container.resolve('outboxCounter');
+        const outboxCounter =
+            container.resolve<ReturnType<typeof createOutboxCounter>>(
+                'outboxCounter',
+            );
         return outboxCounter(ctx);
     })
     .setFirstCursor(outboxFirstCursor);
@@ -733,7 +775,7 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (ctx, next) => {
-    const flagService = container.resolve('flagService');
+    const flagService = container.resolve<FlagService>('flagService');
     return flagService.runInContext(async () => {
         const enabledFlags: string[] = [];
 
