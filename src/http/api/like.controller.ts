@@ -12,6 +12,7 @@ import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { parseURL } from '@/core/url';
+import { requireParam } from '@/http/api/helpers/request';
 import { Forbidden } from '@/http/api/helpers/response';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
@@ -30,13 +31,7 @@ export class LikeController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleLike(ctx: AppContext) {
         const account = ctx.get('account');
-        const id = ctx.req.param('id');
-        if (!id) {
-            return new Response(
-                JSON.stringify({ error: 'ID should be a valid URL' }),
-                { status: 400 },
-            );
-        }
+        const id = requireParam(ctx, 'id');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
@@ -169,13 +164,7 @@ export class LikeController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleUnlike(ctx: AppContext) {
         const account = ctx.get('account');
-        const id = ctx.req.param('id');
-        if (!id) {
-            return new Response(
-                JSON.stringify({ error: 'ID should be a valid URL' }),
-                { status: 400 },
-            );
-        }
+        const id = requireParam(ctx, 'id');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),

@@ -1,4 +1,5 @@
 import type { AppContext } from '@/app';
+import { requireParam } from '@/http/api/helpers/request';
 import type { ExploreView } from '@/http/api/views/explore.view';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
@@ -9,10 +10,7 @@ export class ExploreController {
     @APIRoute('GET', 'explore/:topic_slug')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getAccountsPerTopic(ctx: AppContext) {
-        const topicSlug = ctx.req.param('topic_slug');
-        if (!topicSlug) {
-            return new Response(null, { status: 400 });
-        }
+        const topicSlug = requireParam(ctx, 'topic_slug');
         const viewerAccountId = ctx.get('account').id;
 
         const nextParam = ctx.req.query('next');

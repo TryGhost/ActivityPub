@@ -90,6 +90,7 @@ import { ClientConfigController } from '@/http/api/client-config.controller';
 import { ExploreController } from '@/http/api/explore.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
+import { MissingRequiredParamError } from '@/http/api/helpers/request';
 import { BadRequest } from '@/http/api/helpers/response';
 import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
@@ -935,8 +936,10 @@ app.use(
     ),
 );
 
-// Send errors to Sentry
 app.onError((err, c) => {
+    if (err instanceof MissingRequiredParamError) {
+        return BadRequest(err.message);
+    }
     if (err.name === 'jsonld.SyntaxError') {
         const code = get(err, 'details.code');
         if (code === 'invalid term definition') {

@@ -10,6 +10,7 @@ import type {
     GetFeedDataResultRow,
 } from '@/feed/feed.service';
 import { normalizePlainText } from '@/helpers/html';
+import { requireParam } from '@/http/api/helpers/request';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
 import type { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
@@ -102,10 +103,7 @@ export class FeedController {
     @APIRoute('GET', 'feed/discover/:slug')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async getDiscoveryFeed(ctx: AppContext) {
-        const slug = ctx.req.param('slug');
-        if (!slug) {
-            return new Response(null, { status: 400 });
-        }
+        const slug = requireParam(ctx, 'slug');
 
         // Check if topic exists
         const topic = await this.feedService.getTopicBySlug(slug);

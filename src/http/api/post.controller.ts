@@ -24,6 +24,7 @@ import { getRelatedActivities } from '@/db';
 import { buildAnnounceActivityForPost } from '@/helpers/activitypub/activity';
 import { getHandle } from '@/helpers/activitypub/actor';
 import { postToDTO } from '@/http/api/helpers/post';
+import { requireParam } from '@/http/api/helpers/request';
 import {
     BadRequest,
     Conflict,
@@ -55,10 +56,7 @@ export class PostController {
     @APIRoute('GET', 'post/:post_ap_id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetPost(ctx: AppContext) {
-        const postApIdParam = ctx.req.param('post_ap_id');
-        if (!postApIdParam) {
-            return new Response(null, { status: 400 });
-        }
+        const postApIdParam = requireParam(ctx, 'post_ap_id');
         const postApId = decodeURIComponent(postApIdParam);
         const idAsUrl = parseURL(postApId);
 
@@ -136,7 +134,7 @@ export class PostController {
     async handleDeletePost(ctx: AppContext) {
         const logger = ctx.get('logger');
 
-        const id = ctx.req.param('id');
+        const id = requireParam(ctx, 'id');
 
         const idAsUrl = parseURL(id);
 
@@ -302,13 +300,7 @@ export class PostController {
     async handleCreateReply(ctx: AppContext) {
         const account = ctx.get('account');
         const logger = ctx.get('logger');
-        const id = ctx.req.param('id');
-        if (!id) {
-            return new Response(
-                JSON.stringify({ error: 'ID should be a valid URL' }),
-                { status: 400 },
-            );
-        }
+        const id = requireParam(ctx, 'id');
 
         const ReplyActionSchema = z.object({
             content: z.string(),
@@ -585,7 +577,7 @@ export class PostController {
     @APIRoute('POST', 'actions/repost/:id')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleRepost(ctx: AppContext): Promise<Response> {
-        const id = ctx.req.param('id');
+        const id = requireParam(ctx, 'id');
         const apId = parseURL(id);
 
         if (apId === null) {
@@ -667,12 +659,7 @@ export class PostController {
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleDerepost(ctx: AppContext) {
         const account = ctx.get('account');
-        const id = ctx.req.param('id');
-        if (!id) {
-            return new Response(JSON.stringify({ error: 'Post not found' }), {
-                status: 404,
-            });
-        }
+        const id = requireParam(ctx, 'id');
         const apCtx = this.fedify.createContext(ctx.req.raw as Request, {
             globaldb: ctx.get('globaldb'),
             logger: ctx.get('logger'),
