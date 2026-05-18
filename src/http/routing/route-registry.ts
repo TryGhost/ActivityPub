@@ -21,6 +21,12 @@ interface RouteRegistration {
     versions?: string[];
 }
 
+type ControllerInstance = {
+    [methodName: string]: MiddlewareHandler<{
+        Variables: HonoContextVariables;
+    }>;
+};
+
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
 
@@ -108,7 +114,9 @@ export class RouteRegistry {
         }
 
         middleware.push((ctx: AppContext, next: Next) => {
-            const controller = container.resolve(route.controllerToken);
+            const controller = container.resolve<ControllerInstance>(
+                route.controllerToken,
+            );
             return Sentry.startSpan(
                 {
                     op: 'controller.handle',
