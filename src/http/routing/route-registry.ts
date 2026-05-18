@@ -22,10 +22,9 @@ interface RouteRegistration {
 }
 
 type ControllerInstance = {
-    [methodName: string]: (
-        ctx: AppContext,
-        next: Next,
-    ) => Promise<Response | void>;
+    [methodName: string]: MiddlewareHandler<{
+        Variables: HonoContextVariables;
+    }>;
 };
 
 export class RouteRegistry {
