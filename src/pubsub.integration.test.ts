@@ -19,7 +19,10 @@ describe('initPubSubClient', () => {
             projectId: PROJECT_ID,
         };
 
-        (PubSub as unknown as Mock).mockImplementation(() => mockPubSubClient);
+        // biome-ignore lint/complexity/useArrowFunction: mock is invoked with `new`, which requires a non-arrow function
+        (PubSub as unknown as Mock).mockImplementation(function () {
+            return mockPubSubClient;
+        });
     });
 
     it('should return a configured Pub/Sub client', async () => {
