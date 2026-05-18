@@ -35,6 +35,7 @@ export interface Account {
     ap_following_url: string;
     ap_followers_url: string;
     ap_liked_url: string;
+    also_known_as?: string[] | string | null;
     ap_public_key: string;
     ap_private_key: string | null;
 }

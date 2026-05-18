@@ -123,6 +123,32 @@ describe('AccountEntity', () => {
             expect(events[0]).toBeInstanceOf(AccountCreatedEvent);
         });
 
+        it('defensively copies aliases from the draft', async () => {
+            const draftData = await createInternalAccountDraftData({
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: null,
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            const draft = AccountEntity.draft(draftData);
+            draft.alsoKnownAs.push(
+                new URL('https://mastodon.social/users/old'),
+            );
+
+            const account = AccountEntity.fromDraft(draft, 123);
+
+            draft.alsoKnownAs.push(new URL('https://hachyderm.io/users/old'));
+
+            expect(account.alsoKnownAs.map((alias) => alias.href)).toEqual([
+                'https://mastodon.social/users/old',
+            ]);
+        });
+
         it('should handle null values correctly', async () => {
             const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
@@ -189,6 +215,109 @@ describe('AccountEntity', () => {
             expect(postApId.href).toBe(
                 'http://foobar.com/.ghost/activitypub/note/123',
             );
+        });
+    });
+
+    describe('aliases', () => {
+        it('adds aliases and emits an account updated event', async () => {
+            const account = await createTestInternalAccount(1, {
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            AccountEntity.pullEvents(account);
+
+            const updated = account.addAlias(
+                new URL('https://mastodon.social/users/old'),
+            );
+
+            expect(updated.alsoKnownAs.map((alias) => alias.href)).toEqual([
+                'https://mastodon.social/users/old',
+            ]);
+            expect(AccountEntity.pullEvents(updated)).toEqual([
+                expect.any(AccountUpdatedEvent),
+            ]);
+        });
+
+        it('defensively copies aliases when creating an account', async () => {
+            const account = await createTestInternalAccount(1, {
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+            const aliases = [new URL('https://mastodon.social/users/old')];
+
+            const created = AccountEntity.create({
+                ...account,
+                alsoKnownAs: aliases,
+            });
+
+            aliases.push(new URL('https://hachyderm.io/users/old'));
+
+            expect(created.alsoKnownAs.map((alias) => alias.href)).toEqual([
+                'https://mastodon.social/users/old',
+            ]);
+        });
+
+        it('does not emit an event when adding an existing alias', async () => {
+            const account = await createTestInternalAccount(1, {
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            const alias = new URL('https://mastodon.social/users/old');
+            const updated = account.addAlias(alias);
+            AccountEntity.pullEvents(updated);
+
+            expect(
+                updated.addAlias(new URL('https://mastodon.social/users/old')),
+            ).toBe(updated);
+        });
+
+        it('removes and clears aliases', async () => {
+            const account = await createTestInternalAccount(1, {
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            const firstAlias = new URL('https://mastodon.social/users/old');
+            const secondAlias = new URL('https://hachyderm.io/users/older');
+            const withAliases = account
+                .addAlias(firstAlias)
+                .addAlias(secondAlias);
+
+            const withOneAlias = withAliases.removeAlias(
+                new URL('https://mastodon.social/users/old'),
+            );
+            expect(withOneAlias.alsoKnownAs.map((alias) => alias.href)).toEqual(
+                ['https://hachyderm.io/users/older'],
+            );
+
+            const cleared = withOneAlias.clearAliases();
+            expect(cleared.alsoKnownAs).toEqual([]);
         });
     });
 

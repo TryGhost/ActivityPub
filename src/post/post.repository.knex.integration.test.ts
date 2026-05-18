@@ -676,6 +676,42 @@ describe('KnexPostRepository', () => {
         assert.equal(result.author.apInbox?.href, account.apInbox?.href);
     });
 
+    it('hydrates account aliases on post authors', async () => {
+        const site = await siteService.initialiseSiteForHost(
+            'testing-author-aliases.com',
+        );
+        const account = await accountRepository.getBySite(site);
+        const withAlias = account.addAlias(
+            new URL('https://mastodon.social/users/old'),
+        );
+
+        await accountRepository.save(withAlias);
+
+        const postResult = await Post.createArticleFromGhostPost(account, {
+            title: 'Title',
+            uuid: randomUUID(),
+            html: '<p>Hello, world!</p>',
+            excerpt: 'Hello, world!',
+            custom_excerpt: null,
+            feature_image: null,
+            url: 'https://testing.com/hello-world',
+            published_at: '2025-01-01',
+            visibility: 'public',
+            authors: [],
+        });
+        const post = getValue(postResult as Ok<Post>) as Post;
+
+        await postRepository.save(post);
+
+        const result = await postRepository.getById(post.id);
+
+        assert(result);
+        assert.deepEqual(
+            result.author.alsoKnownAs.map((alias) => alias.href),
+            ['https://mastodon.social/users/old'],
+        );
+    });
+
     it('Ensures an account associated with a post has a uuid when retrieved by apId', async () => {
         const site = await siteService.initialiseSiteForHost(
             'testing-account-uuid.com',

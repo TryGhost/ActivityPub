@@ -249,6 +249,69 @@ describe('KnexAccountRepository', () => {
         expect(updatedAccount.banner_image_url).toBe(null);
     });
 
+    it('persists account aliases as JSON and hydrates them as URLs', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+
+        const withAliases = account
+            .addAlias(new URL('https://mastodon.social/users/old'))
+            .addAlias(new URL('https://hachyderm.io/users/older'));
+
+        await accountRepository.save(withAliases);
+
+        const row = await client('accounts')
+            .where({ id: account.id })
+            .select('also_known_as')
+            .first();
+
+        expect(row.also_known_as).toEqual([
+            'https://mastodon.social/users/old',
+            'https://hachyderm.io/users/older',
+        ]);
+
+        const hydrated = await accountRepository.getById(account.id);
+        assert(hydrated, 'Expected account aliases to hydrate');
+
+        expect(hydrated.alsoKnownAs.map((alias) => alias.href)).toEqual([
+            'https://mastodon.social/users/old',
+            'https://hachyderm.io/users/older',
+        ]);
+
+        await accountRepository.save(hydrated.clearAliases());
+
+        const cleared = await accountRepository.getById(account.id);
+        expect(cleared?.alsoKnownAs).toEqual([]);
+    });
+
+    it('ignores malformed account alias data when hydrating an account', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+
+        await client('accounts')
+            .where({ id: account.id })
+            .update({
+                also_known_as: JSON.stringify([
+                    'not-a-url',
+                    'https://mastodon.social/users/old',
+                ]),
+            });
+
+        const hydrated = await accountRepository.getById(account.id);
+        assert(hydrated, 'Expected account with malformed aliases to hydrate');
+
+        expect(hydrated.alsoKnownAs.map((alias) => alias.href)).toEqual([
+            'https://mastodon.social/users/old',
+        ]);
+
+        const row = await client('accounts').where({ id: account.id }).first();
+        assert(row, 'Expected raw account row to exist');
+
+        const malformed = await accountRepository.createFromRow({
+            ...row,
+            also_known_as: '{',
+        });
+
+        expect(malformed.alsoKnownAs).toEqual([]);
+    });
+
     it('handles inserting a row into the blocks table when an account has been blocked', async () => {
         const [[account], [accountToBlock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),

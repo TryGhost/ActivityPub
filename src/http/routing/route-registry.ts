@@ -27,6 +27,44 @@ type ControllerInstance = {
     }>;
 };
 
+const METHOD_ORDER: RouteRegistration['method'][] = [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+];
+
+function compareRouteSpecificity(
+    a: RouteRegistration,
+    b: RouteRegistration,
+): number {
+    if (a.method !== b.method) {
+        return METHOD_ORDER.indexOf(a.method) - METHOD_ORDER.indexOf(b.method);
+    }
+
+    const aSegments = a.path.split('/').filter(Boolean);
+    const bSegments = b.path.split('/').filter(Boolean);
+    const aDynamicSegments = aSegments.filter((segment) =>
+        segment.startsWith(':'),
+    ).length;
+    const bDynamicSegments = bSegments.filter((segment) =>
+        segment.startsWith(':'),
+    ).length;
+
+    if (aDynamicSegments !== bDynamicSegments) {
+        return aDynamicSegments - bDynamicSegments;
+    }
+
+    const aStaticSegments = aSegments.length - aDynamicSegments;
+    const bStaticSegments = bSegments.length - bDynamicSegments;
+
+    if (aStaticSegments !== bStaticSegments) {
+        return bStaticSegments - aStaticSegments;
+    }
+
+    return bSegments.length - aSegments.length;
+}
+
 export class RouteRegistry {
     private routes: RouteRegistration[] = [];
 
@@ -66,7 +104,7 @@ export class RouteRegistry {
         app: Hono<{ Variables: HonoContextVariables }>,
         container: AwilixContainer,
     ): void {
-        for (const route of this.routes) {
+        for (const route of [...this.routes].sort(compareRouteSpecificity)) {
             const middleware = this.buildMiddleware(route, container);
             app.on(route.method, [route.path], ...middleware);
         }

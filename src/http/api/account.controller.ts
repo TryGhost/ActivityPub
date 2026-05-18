@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
+import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
+import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -36,6 +38,14 @@ const MAX_POSTS_LIMIT = 100;
  */
 const CURRENT_USER_KEYWORD = 'me';
 
+const AddAliasSchema = z.object({
+    sourceHandle: z.string(),
+});
+
+const RemoveAliasSchema = z.object({
+    actorUri: z.string(),
+});
+
 /**
  * Controller for account-related operations
  */
@@ -48,6 +58,18 @@ export class AccountController {
         private readonly accountPostsView: AccountPostsView,
         private readonly accountService: AccountService,
     ) {}
+
+    private accountAliasesResponse(account: Account) {
+        return {
+            destination: {
+                handle: getAccountHandle(account.apId.host, account.username),
+                apId: account.apId.href,
+            },
+            aliases: account.alsoKnownAs.map((alias) => ({
+                apId: alias.href,
+            })),
+        };
+    }
 
     /**
      * Handle a request for an account
@@ -377,6 +399,136 @@ export class AccountController {
         });
 
         return new Response(JSON.stringify({}), { status: 200 });
+    }
+
+    @APIRoute('GET', 'account/aliases')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleGetAccountAliases(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        return new Response(
+            JSON.stringify(this.accountAliasesResponse(account)),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
+    }
+
+    @APIRoute('POST', 'account/aliases')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleAddAccountAlias(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof AddAliasSchema>;
+
+        try {
+            data = AddAliasSchema.parse((await ctx.req.json()) as unknown);
+        } catch (_err) {
+            return new Response(null, { status: 400 });
+        }
+
+        const result = await this.accountService.addAlias(
+            account,
+            data.sourceHandle,
+        );
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'invalid-handle':
+                case 'self-alias':
+                    return new Response(null, { status: 400 });
+                case 'lookup-failed':
+                case 'not-an-actor':
+                    return new Response(null, { status: 404 });
+                case 'invalid-actor-uri':
+                    return new Response(null, { status: 400 });
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        const updatedAccount =
+            (await this.accountService.getAccountById(account.id)) ?? account;
+
+        return new Response(
+            JSON.stringify(this.accountAliasesResponse(updatedAccount)),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
+    }
+
+    @APIRoute('DELETE', 'account/aliases')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleRemoveAccountAlias(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof RemoveAliasSchema>;
+
+        try {
+            data = RemoveAliasSchema.parse((await ctx.req.json()) as unknown);
+        } catch (_err) {
+            return new Response(null, { status: 400 });
+        }
+
+        const result = await this.accountService.removeAlias(
+            account,
+            data.actorUri,
+        );
+
+        if (isError(result)) {
+            const error = getError(result);
+            switch (error) {
+                case 'invalid-actor-uri':
+                    return new Response(null, { status: 400 });
+                case 'lookup-failed':
+                case 'not-an-actor':
+                    return new Response(null, { status: 404 });
+                case 'invalid-handle':
+                case 'self-alias':
+                    return new Response(null, { status: 400 });
+                default:
+                    return exhaustiveCheck(error);
+            }
+        }
+
+        const updatedAccount =
+            (await this.accountService.getAccountById(account.id)) ?? account;
+
+        return new Response(
+            JSON.stringify(this.accountAliasesResponse(updatedAccount)),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
     }
 }
 

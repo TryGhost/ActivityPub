@@ -93,6 +93,9 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
             followers: account.apFollowers,
             liked: account.apLiked,
             url: account.url || account.apId,
+            ...(account.alsoKnownAs.length > 0
+                ? { aliases: account.alsoKnownAs }
+                : {}),
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),

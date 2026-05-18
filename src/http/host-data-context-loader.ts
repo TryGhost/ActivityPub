@@ -44,6 +44,7 @@ export class HostDataContextLoader {
                 'accounts.ap_outbox_url as account_ap_outbox_url',
                 'accounts.ap_following_url as account_ap_following_url',
                 'accounts.ap_liked_url as account_ap_liked_url',
+                'accounts.also_known_as as account_also_known_as',
                 'accounts.custom_fields as account_custom_fields',
             )
             .where('sites.host', host);
@@ -84,6 +85,7 @@ export class HostDataContextLoader {
             ap_outbox_url: result.account_ap_outbox_url,
             ap_following_url: result.account_ap_following_url,
             ap_liked_url: result.account_ap_liked_url,
+            also_known_as: result.account_also_known_as,
             custom_fields: result.account_custom_fields,
             site_id: result.site_id,
         });

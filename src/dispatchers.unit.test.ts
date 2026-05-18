@@ -526,9 +526,10 @@ describe('dispatchers', () => {
             apFollowing: new URL('https://example.com/user/testuser/following'),
             apFollowers: new URL('https://example.com/user/testuser/followers'),
             apLiked: new URL('https://example.com/user/testuser/liked'),
+            alsoKnownAs: [],
             isInternal: true,
             customFields: null,
-        } as Account;
+        } as unknown as Account;
 
         let actorCtx: FedifyRequestContext;
 
@@ -565,6 +566,30 @@ describe('dispatchers', () => {
             expect(
                 mockHostDataContextLoader.loadDataForHost,
             ).toHaveBeenCalledWith('example.com');
+        });
+
+        it('returns a Person with aliases when the account has known aliases', async () => {
+            vi.mocked(
+                mockHostDataContextLoader.loadDataForHost,
+            ).mockResolvedValue(
+                ok({
+                    site: mockSite,
+                    account: {
+                        ...mockAccountForActor,
+                        alsoKnownAs: [
+                            new URL('https://mastodon.social/users/old'),
+                        ],
+                    },
+                }),
+            );
+
+            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const result = await dispatcher(actorCtx, 'testuser');
+            const jsonLd = await result?.toJsonLd({ format: 'compact' });
+
+            expect(JSON.stringify(jsonLd)).toContain(
+                'https://mastodon.social/users/old',
+            );
         });
 
         it('returns a Person without icon when avatarUrl is null', async () => {

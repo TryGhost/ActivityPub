@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
     AccountBlockedEvent,
@@ -28,6 +28,7 @@ export interface Account {
     readonly apOutbox: URL | null;
     readonly apFollowing: URL | null;
     readonly apLiked: URL | null;
+    readonly alsoKnownAs: URL[];
     readonly isInternal: boolean;
     readonly customFields: Record<string, string> | null;
     unblock(account: Account): Account;
@@ -41,6 +42,9 @@ export interface Account {
      * Returns a new Account instance which needs to be saved.
      */
     updateProfile(params: ProfileUpdateParams): Account;
+    addAlias(alias: URL): Account;
+    removeAlias(alias: URL): Account;
+    clearAliases(): Account;
     /**
      * @deprecated
      */
@@ -57,6 +61,7 @@ export interface AccountDraft {
     bannerImageUrl: URL | null;
     apId: URL;
     customFields: Record<string, string> | null;
+    alsoKnownAs: URL[];
     apFollowers: URL | null;
     apFollowing: URL | null;
     apInbox: URL | null;
@@ -88,6 +93,7 @@ export class AccountEntity implements Account {
         public readonly apOutbox: URL | null,
         public readonly apFollowing: URL | null,
         public readonly apLiked: URL | null,
+        public readonly alsoKnownAs: URL[],
         public readonly isInternal: boolean,
         public readonly customFields: Record<string, string> | null,
         private events: AccountEvent[],
@@ -118,6 +124,7 @@ export class AccountEntity implements Account {
             data.apOutbox,
             data.apFollowing,
             data.apLiked,
+            [...data.alsoKnownAs],
             data.isInternal,
             data.customFields,
             events,
@@ -141,6 +148,7 @@ export class AccountEntity implements Account {
             draft.apOutbox,
             draft.apFollowing,
             draft.apLiked,
+            [...draft.alsoKnownAs],
             draft.isInternal,
             draft.customFields,
             events,
@@ -183,6 +191,7 @@ export class AccountEntity implements Account {
             apFollowing,
             apLiked,
             apPrivateKey,
+            alsoKnownAs: [],
         };
     }
 
@@ -242,6 +251,56 @@ export class AccountEntity implements Account {
         }
 
         return account;
+    }
+
+    addAlias(alias: URL): Account {
+        if (
+            this.alsoKnownAs.some(
+                (existing) => apIdHash(existing) === apIdHash(alias),
+            )
+        ) {
+            return this;
+        }
+
+        return AccountEntity.create(
+            {
+                ...this,
+                alsoKnownAs: this.alsoKnownAs.concat(alias),
+            },
+            this.events.concat(new AccountUpdatedEvent(this.id)),
+        );
+    }
+
+    removeAlias(alias: URL): Account {
+        const aliases = this.alsoKnownAs.filter(
+            (existing) => apIdHash(existing) !== apIdHash(alias),
+        );
+
+        if (aliases.length === this.alsoKnownAs.length) {
+            return this;
+        }
+
+        return AccountEntity.create(
+            {
+                ...this,
+                alsoKnownAs: aliases,
+            },
+            this.events.concat(new AccountUpdatedEvent(this.id)),
+        );
+    }
+
+    clearAliases(): Account {
+        if (this.alsoKnownAs.length === 0) {
+            return this;
+        }
+
+        return AccountEntity.create(
+            {
+                ...this,
+                alsoKnownAs: [],
+            },
+            this.events.concat(new AccountUpdatedEvent(this.id)),
+        );
     }
 
     unblock(account: Account): Account {
@@ -304,6 +363,10 @@ export class AccountEntity implements Account {
             this.events.concat(new NotificationsReadEvent(this.id)),
         );
     }
+}
+
+function apIdHash(apId: URL): string {
+    return createHash('sha256').update(apId.href).digest('hex');
 }
 
 type ProfileUpdateParams = {

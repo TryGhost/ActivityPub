@@ -8,6 +8,7 @@ import {
     type AccountDraft,
     AccountEntity,
 } from '@/account/account.entity';
+import { parseAlsoKnownAs } from '@/account/also-known-as';
 import {
     AccountBlockedEvent,
     AccountFollowedEvent,
@@ -35,6 +36,7 @@ interface AccountRow {
     ap_outbox_url: string | null;
     ap_following_url: string | null;
     ap_liked_url: string | null;
+    also_known_as?: string[] | string | null;
     custom_fields: Record<string, string> | null;
     site_id: number | null;
 }
@@ -62,6 +64,12 @@ export class KnexAccountRepository {
                 ap_outbox_url: draft.apOutbox?.href ?? null,
                 ap_following_url: draft.apFollowing?.href ?? null,
                 ap_liked_url: draft.apLiked?.href ?? null,
+                also_known_as:
+                    draft.alsoKnownAs.length > 0
+                        ? JSON.stringify(
+                              draft.alsoKnownAs.map((alias) => alias.href),
+                          )
+                        : null,
                 ap_public_key: JSON.stringify(
                     await exportJwk(draft.apPublicKey),
                 ),
@@ -118,6 +126,14 @@ export class KnexAccountRepository {
                     username: account.username,
                     avatar_url: account.avatarUrl?.href ?? null,
                     banner_image_url: account.bannerImageUrl?.href ?? null,
+                    also_known_as:
+                        account.alsoKnownAs.length > 0
+                            ? JSON.stringify(
+                                  account.alsoKnownAs.map(
+                                      (alias) => alias.href,
+                                  ),
+                              )
+                            : null,
                     custom_fields: account.customFields
                         ? JSON.stringify(account.customFields)
                         : null,
@@ -265,6 +281,7 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
+                'accounts.also_known_as',
                 'accounts.custom_fields',
             )
             .first();
@@ -295,6 +312,7 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
+                'accounts.also_known_as',
                 'accounts.custom_fields',
                 'users.site_id',
             )
@@ -327,6 +345,7 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
+                'accounts.also_known_as',
                 'users.site_id',
             )
             .first();
@@ -360,6 +379,7 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
+                'accounts.also_known_as',
                 'accounts.custom_fields',
                 'users.site_id',
             )
@@ -413,6 +433,7 @@ export class KnexAccountRepository {
             apOutbox: parseURL(row.ap_outbox_url),
             apFollowing: parseURL(row.ap_following_url),
             apLiked: parseURL(row.ap_liked_url),
+            alsoKnownAs: parseAlsoKnownAs(row.also_known_as),
             isInternal: row.site_id !== null,
             customFields: row.custom_fields,
         });

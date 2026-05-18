@@ -5,6 +5,7 @@ import { forEachAsync } from 'es-toolkit/array';
 import type { Knex } from 'knex';
 
 import { AccountEntity } from '@/account/account.entity';
+import { parseAlsoKnownAs } from '@/account/also-known-as';
 import type { AsyncEvents } from '@/core/events';
 import { parseURL } from '@/core/url';
 import {
@@ -69,6 +70,7 @@ interface PostRow {
     author_ap_outbox_url: string | null;
     author_ap_following_url: string | null;
     author_ap_liked_url: string | null;
+    also_known_as: string[] | string | null;
     site_id: number | null;
     site_host: string | null;
 }
@@ -136,6 +138,7 @@ export class KnexPostRepository {
                 'accounts.ap_outbox_url as author_ap_outbox_url',
                 'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_liked_url as author_ap_liked_url',
+                'accounts.also_known_as',
                 'sites.id as site_id',
                 'sites.host as site_host',
             )
@@ -978,6 +981,7 @@ export class KnexPostRepository {
             apOutbox: parseURL(row.author_ap_outbox_url),
             apFollowing: parseURL(row.author_ap_following_url),
             apLiked: parseURL(row.author_ap_liked_url),
+            alsoKnownAs: parseAlsoKnownAs(row.also_known_as),
             isInternal: row.site_id !== null,
         });
 
