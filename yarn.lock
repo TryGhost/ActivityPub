@@ -3454,15 +3454,15 @@ leac@^0.7.0:
   resolved "https://registry.yarnpkg.com/leac/-/leac-0.7.0.tgz#27632daa46e58b4fa36178bcbeb10bf1d4a1699a"
   integrity sha512-qMrZeyEekgdRQ9o6a4NAB2EQZrv827GJdn1vnapwSJ90hWRB4TzUSunvacPkxQ2TnNqHNI1/zSt0hlo0crG8Jw==
 
-linkify-html@4.3.2:
-  version "4.3.2"
-  resolved "https://registry.yarnpkg.com/linkify-html/-/linkify-html-4.3.2.tgz#ef84b39828c66170221af1a49a042c7993bd4543"
-  integrity sha512-RozNgrfSFrNQlprJSZIN7lF+ZVPj5Pz8POQcu1PYGAUhL9tKtvtWcOXOmlXjuGGEWHtC6gt6Q2U4+VUq9ELmng==
+linkify-html@4.3.3:
+  version "4.3.3"
+  resolved "https://registry.yarnpkg.com/linkify-html/-/linkify-html-4.3.3.tgz#67da3d6b83585eeb1c44f17c449055632b571629"
+  integrity sha512-VQH0xk8QilyWvRNQqyervP/zfe/KqE1bXB5NcwWoz8Oj9Yz5hWM0VvXs9vkLy7NlTao1jrmM1cqQv8rTmerctg==
 
-linkifyjs@4.3.2:
-  version "4.3.2"
-  resolved "https://registry.yarnpkg.com/linkifyjs/-/linkifyjs-4.3.2.tgz#d97eb45419aabf97ceb4b05a7adeb7b8c8ade2b1"
-  integrity sha512-NT1CJtq3hHIreOianA8aSXn6Cw0JzYOuDQbOrSPe7gqFnCpKP++MQe3ODgO3oh2GJFORkAAdqredOa60z63GbA==
+linkifyjs@4.3.3:
+  version "4.3.3"
+  resolved "https://registry.yarnpkg.com/linkifyjs/-/linkifyjs-4.3.3.tgz#da08f0eeb4d89a24541d09591fbdcc211eb8fef0"
+  integrity sha512-P8aEP5U/D1/IlTY2OeYsErdwh9bGuLE30NcXtKEjgdHcahveQoQwM2yZNsioQHsWFz0P7KKudisbrzCgR0sDHg==
 
 lodash.camelcase@^4.3.0:
   version "4.3.0"
