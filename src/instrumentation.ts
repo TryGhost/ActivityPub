@@ -75,22 +75,6 @@ export async function setupInstrumentation(logger: Logger) {
         }
     }
 
-    if (process.env.ENABLE_GCP_CPU_PROFILER === 'true') {
-        (async () => {
-            try {
-                const cpuProfiler = await import('@google-cloud/profiler');
-                await cpuProfiler.start({
-                    serviceContext: {
-                        service: process.env.K_SERVICE || 'activitypub',
-                        version: process.env.K_REVISION || 'unknown',
-                    },
-                });
-            } catch (error) {
-                logger.error(`Failed to start CPU profiler: ${error}`);
-            }
-        })();
-    }
-
     if (
         process.env.ENABLE_NODE_CPU_PROFILE_FOR &&
         process.env.NODE_CPU_PROFILE_BUCKET_NAME
