@@ -168,7 +168,7 @@ await configure({
         {
             category: 'activitypub',
             sinks: ['console'],
-            level:
+            lowestLevel:
                 toLogLevel(process.env.LOG_LEVEL_ACTIVITYPUB) ||
                 toLogLevel(process.env.LOG_LEVEL) ||
                 'info',
@@ -177,7 +177,7 @@ await configure({
             category: 'fedify',
             sinks: ['console'],
             filters: ['suppressHttpSignatureVerification'],
-            level:
+            lowestLevel:
                 toLogLevel(process.env.LOG_LEVEL_FEDIFY) ||
                 toLogLevel(process.env.LOG_LEVEL) ||
                 'warning',
@@ -185,12 +185,12 @@ await configure({
         {
             category: ['fedify', 'federation', 'actor'],
             sinks: ['console'],
-            level: 'error',
+            lowestLevel: 'error',
         },
         {
             category: ['logtape', 'meta'],
             sinks: ['console'],
-            level: 'error',
+            lowestLevel: 'error',
         },
     ],
 });
