@@ -7,13 +7,14 @@ set -e
 # The port to use for the Redis server
 PORT=6379
 
-# Get the container's hostname automatically
-HOSTNAME=$(hostname)
+# Get the container's IP address. Redis 7.4.9 requires cluster-announce-ip to be
+# a valid IPv4/IPv6 address — hostnames are no longer accepted.
+ANNOUNCE_IP=$(hostname -i | awk '{print $1}')
 
 echo "Starting Redis in cluster mode..."
 
 # Start Redis in cluster mode in the background
-redis-server --port ${PORT} --cluster-enabled yes --cluster-announce-ip ${HOSTNAME} --cluster-announce-port ${PORT} --daemonize yes
+redis-server --port ${PORT} --cluster-enabled yes --cluster-announce-ip ${ANNOUNCE_IP} --cluster-announce-port ${PORT} --daemonize yes
 
 # Wait for Redis to start
 sleep 3
@@ -28,4 +29,4 @@ sleep 1
 
 # Start Redis in foreground so Docker can manage the process
 echo "Starting Redis cluster in foreground..."
-exec redis-server --port ${PORT} --cluster-enabled yes --cluster-announce-ip ${HOSTNAME} --cluster-announce-port ${PORT}
+exec redis-server --port ${PORT} --cluster-enabled yes --cluster-announce-ip ${ANNOUNCE_IP} --cluster-announce-port ${PORT}
