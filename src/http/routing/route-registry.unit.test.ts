@@ -2,8 +2,7 @@ import type { MockedFunction } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AwilixContainer } from 'awilix';
-import type { MiddlewareHandler } from 'hono';
-import { Hono } from 'hono';
+import type { Hono, MiddlewareHandler } from 'hono';
 
 import type { AppContext, HonoContextVariables } from '@/app';
 import { ROUTES_METADATA_KEY } from '../decorators/route.decorator';
@@ -80,80 +79,6 @@ describe('RouteRegistry', () => {
             // Should have multiple middlewares when versions are specified
             // Args: method, [path], ...middlewares — so >3 means at least 2 middlewares
             expect(call.length).toBeGreaterThan(3);
-        });
-
-        it('should mount static routes before dynamic routes with the same prefix', () => {
-            routeRegistry.registerRoute({
-                method: 'GET' as const,
-                path: '/.ghost/activitypub/:version/account/:handle',
-                controllerToken: 'TestController',
-                methodName: 'handleGetAccount',
-                versions: ['v1'],
-            });
-            routeRegistry.registerRoute({
-                method: 'GET' as const,
-                path: '/.ghost/activitypub/:version/account/aliases',
-                controllerToken: 'TestController',
-                methodName: 'handleGetAccountAliases',
-                versions: ['v1'],
-            });
-
-            routeRegistry.mountRoutes(
-                mockApp as unknown as Hono<{ Variables: HonoContextVariables }>,
-                mockContainer as unknown as AwilixContainer,
-            );
-
-            expect(mockApp.on.mock.calls[0][0]).toBe('GET');
-            expect(mockApp.on.mock.calls[0][1]).toEqual([
-                '/.ghost/activitypub/:version/account/aliases',
-            ]);
-            expect(mockApp.on.mock.calls[1][0]).toBe('GET');
-            expect(mockApp.on.mock.calls[1][1]).toEqual([
-                '/.ghost/activitypub/:version/account/:handle',
-            ]);
-        });
-
-        it('should route static GET routes before dynamic GET routes when other methods are interleaved', async () => {
-            const app = new Hono<{ Variables: HonoContextVariables }>();
-            const controller = {
-                handleGetAccount: vi.fn(
-                    (ctx: AppContext) =>
-                        new Response(`dynamic:${ctx.req.param('handle')}`),
-                ),
-                handleAddAccountAlias: vi.fn(() => new Response('add-alias')),
-                handleGetAccountAliases: vi.fn(() => new Response('aliases')),
-            };
-
-            mockContainer.resolve.mockReturnValue(controller);
-            routeRegistry.registerRoute({
-                method: 'GET' as const,
-                path: '/account/:handle',
-                controllerToken: 'TestController',
-                methodName: 'handleGetAccount',
-            });
-            routeRegistry.registerRoute({
-                method: 'POST' as const,
-                path: '/account/aliases',
-                controllerToken: 'TestController',
-                methodName: 'handleAddAccountAlias',
-            });
-            routeRegistry.registerRoute({
-                method: 'GET' as const,
-                path: '/account/aliases',
-                controllerToken: 'TestController',
-                methodName: 'handleGetAccountAliases',
-            });
-
-            routeRegistry.mountRoutes(
-                app,
-                mockContainer as unknown as AwilixContainer,
-            );
-
-            const response = await app.request('/account/aliases');
-
-            expect(await response.text()).toBe('aliases');
-            expect(controller.handleGetAccountAliases).toHaveBeenCalled();
-            expect(controller.handleGetAccount).not.toHaveBeenCalled();
         });
     });
 

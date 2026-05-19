@@ -402,7 +402,7 @@ export class AccountController {
         return new Response(JSON.stringify({}), { status: 200 });
     }
 
-    @APIRoute('GET', 'account/aliases')
+    @APIRoute('GET', 'aliases')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetAccountAliases(ctx: AppContext) {
         const account = await this.accountService.getAccountForSite(
@@ -424,7 +424,7 @@ export class AccountController {
         );
     }
 
-    @APIRoute('POST', 'account/aliases')
+    @APIRoute('POST', 'aliases')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleAddAccountAlias(ctx: AppContext) {
         const account = await this.accountService.getAccountForSite(
@@ -475,7 +475,7 @@ export class AccountController {
         );
     }
 
-    @APIRoute('DELETE', 'account/aliases')
+    @APIRoute('DELETE', 'aliases')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleRemoveAccountAlias(ctx: AppContext) {
         const account = await this.accountService.getAccountForSite(

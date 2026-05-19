@@ -83,17 +83,17 @@ describe('AccountController aliases', () => {
             expect.arrayContaining([
                 expect.objectContaining({
                     method: 'GET',
-                    path: '/.ghost/activitypub/:version/account/aliases',
+                    path: '/.ghost/activitypub/:version/aliases',
                     methodName: 'handleGetAccountAliases',
                 }),
                 expect.objectContaining({
                     method: 'POST',
-                    path: '/.ghost/activitypub/:version/account/aliases',
+                    path: '/.ghost/activitypub/:version/aliases',
                     methodName: 'handleAddAccountAlias',
                 }),
                 expect.objectContaining({
                     method: 'DELETE',
-                    path: '/.ghost/activitypub/:version/account/aliases',
+                    path: '/.ghost/activitypub/:version/aliases',
                     methodName: 'handleRemoveAccountAlias',
                 }),
             ]),
@@ -127,28 +127,21 @@ describe('AccountController aliases', () => {
         });
         routeRegistry.registerRoute({
             method: 'GET',
-            path: '/.ghost/activitypub/:version/account/:handle',
-            controllerToken: 'accountController',
-            methodName: 'handleGetAccount',
-            versions: ['v1'],
-        });
-        routeRegistry.registerRoute({
-            method: 'POST',
-            path: '/.ghost/activitypub/:version/account/aliases',
-            controllerToken: 'accountController',
-            methodName: 'handleAddAccountAlias',
-            versions: ['v1'],
-        });
-        routeRegistry.registerRoute({
-            method: 'GET',
-            path: '/.ghost/activitypub/:version/account/aliases',
+            path: '/.ghost/activitypub/:version/aliases',
             controllerToken: 'accountController',
             methodName: 'handleGetAccountAliases',
             versions: ['v1'],
         });
         routeRegistry.registerRoute({
+            method: 'POST',
+            path: '/.ghost/activitypub/:version/aliases',
+            controllerToken: 'accountController',
+            methodName: 'handleAddAccountAlias',
+            versions: ['v1'],
+        });
+        routeRegistry.registerRoute({
             method: 'DELETE',
-            path: '/.ghost/activitypub/:version/account/aliases',
+            path: '/.ghost/activitypub/:version/aliases',
             controllerToken: 'accountController',
             methodName: 'handleRemoveAccountAlias',
             versions: ['v1'],
@@ -159,9 +152,7 @@ describe('AccountController aliases', () => {
             new URL('https://mastodon.social/users/old'),
         ]);
 
-        const getResponse = await app.request(
-            '/.ghost/activitypub/v1/account/aliases',
-        );
+        const getResponse = await app.request('/.ghost/activitypub/v1/aliases');
 
         expect(getResponse.status).toBe(200);
         expect(await getResponse.json()).toEqual({
@@ -177,7 +168,7 @@ describe('AccountController aliases', () => {
         );
 
         const postResponse = await app.request(
-            '/.ghost/activitypub/v1/account/aliases',
+            '/.ghost/activitypub/v1/aliases',
             {
                 method: 'POST',
                 body: JSON.stringify({
@@ -196,7 +187,7 @@ describe('AccountController aliases', () => {
         vi.mocked(accountService.getAliases).mockResolvedValue([]);
 
         const deleteResponse = await app.request(
-            '/.ghost/activitypub/v1/account/aliases',
+            '/.ghost/activitypub/v1/aliases',
             {
                 method: 'DELETE',
                 body: JSON.stringify({
