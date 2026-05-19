@@ -47,31 +47,5 @@
       ],
       allowedVersions: '<23',
     },
-
-    // Hold OpenTelemetry on the v1.x track while @sentry/node 8.x is in use.
-    // @sentry/node 8.55.2 declares "@opentelemetry/core": "^1.30.1" and pulls
-    // the rest of the v1.x peer set; mixing in OTel v2.x SDKs creates two
-    // incompatible ReadableSpan/SpanExporter type trees (v2 adds a required
-    // `instrumentationScope` field), which breaks `tsc` against
-    // src/instrumentation.ts. The experimental exporter line forked at
-    // 0.200.0 — versions >=0.200.0 require OTel SDK v2.x. When @sentry/node
-    // is upgraded to 10.x (which targets OTel v2.x), lift both rules in
-    // lockstep with the SDK bumps.
-    {
-      description: 'Hold OpenTelemetry stable packages on v1.x (Sentry 8.x compat)',
-      matchPackageNames: [
-        '@opentelemetry/core',
-        '@opentelemetry/resources',
-        '@opentelemetry/sdk-trace-base',
-      ],
-      allowedVersions: '<2.0.0',
-    },
-    {
-      description: 'Hold OpenTelemetry experimental packages on the v1.x-compatible 0.5x track',
-      matchPackageNames: [
-        '@opentelemetry/exporter-trace-otlp-proto',
-      ],
-      allowedVersions: '<0.200.0',
-    },
   ],
 }
