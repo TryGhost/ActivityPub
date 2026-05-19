@@ -1,7 +1,7 @@
 import { htmlToText } from 'html-to-text';
 import linkifyHtml from 'linkify-html';
+import { find as findLinks } from 'linkifyjs';
 import { parse } from 'node-html-parser';
-import urlRegex from 'url-regex';
 
 import { HANDLE_REGEX } from '@/constants';
 import { isEqual } from '@/helpers/uri';
@@ -150,10 +150,17 @@ export class ContentPreparer {
     private addMentions(content: string, mentions: Mention[]) {
         // Protect URLs by replacing them with placeholders
         const urls: string[] = [];
-        let preparedContent = content.replace(urlRegex(), (url) => {
-            urls.push(url);
-            return `__URL_${urls.length - 1}__`;
-        });
+        const tokens = findLinks(content, 'url');
+
+        let preparedContent = '';
+        let lastEnd = 0;
+        for (const token of tokens) {
+            preparedContent += content.substring(lastEnd, token.start);
+            preparedContent += `__URL_${urls.length}__`;
+            urls.push(token.value);
+            lastEnd = token.end;
+        }
+        preparedContent += content.substring(lastEnd);
 
         for (const mention of mentions) {
             const mentionRegex = new RegExp(
