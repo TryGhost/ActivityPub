@@ -249,67 +249,56 @@ describe('KnexAccountRepository', () => {
         expect(updatedAccount.banner_image_url).toBe(null);
     });
 
-    it('persists account aliases as JSON and hydrates them as URLs', async () => {
+    it('inserts aliases into account_aliases on save and reads them via getAliases', async () => {
         const [account] = await fixtureManager.createInternalAccount();
 
-        const withAliases = account
-            .addAlias(new URL('https://mastodon.social/users/old'))
-            .addAlias(new URL('https://hachyderm.io/users/older'));
+        await accountRepository.save(
+            account.addAlias(new URL('https://mastodon.social/users/old')),
+        );
+        await accountRepository.save(
+            account.addAlias(new URL('https://hachyderm.io/users/older')),
+        );
 
-        await accountRepository.save(withAliases);
-
-        const row = await client('accounts')
-            .where({ id: account.id })
-            .select('also_known_as')
-            .first();
-
-        expect(row.also_known_as).toEqual([
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases.map((alias) => alias.href)).toEqual([
             'https://mastodon.social/users/old',
             'https://hachyderm.io/users/older',
         ]);
-
-        const hydrated = await accountRepository.getById(account.id);
-        assert(hydrated, 'Expected account aliases to hydrate');
-
-        expect(hydrated.alsoKnownAs.map((alias) => alias.href)).toEqual([
-            'https://mastodon.social/users/old',
-            'https://hachyderm.io/users/older',
-        ]);
-
-        await accountRepository.save(hydrated.clearAliases());
-
-        const cleared = await accountRepository.getById(account.id);
-        expect(cleared?.alsoKnownAs).toEqual([]);
     });
 
-    it('ignores malformed account alias data when hydrating an account', async () => {
+    it('treats duplicate alias inserts as idempotent', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const alias = new URL('https://mastodon.social/users/old');
+
+        await accountRepository.save(account.addAlias(alias));
+        await accountRepository.save(account.addAlias(alias));
+
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases.map((value) => value.href)).toEqual([alias.href]);
+    });
+
+    it('removes an alias from account_aliases on save', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const alias = new URL('https://mastodon.social/users/old');
+
+        await accountRepository.save(account.addAlias(alias));
+        await accountRepository.save(account.removeAlias(alias));
+
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases).toEqual([]);
+    });
+
+    it('treats removing a non-existent alias as a no-op', async () => {
         const [account] = await fixtureManager.createInternalAccount();
 
-        await client('accounts')
-            .where({ id: account.id })
-            .update({
-                also_known_as: JSON.stringify([
-                    'not-a-url',
-                    'https://mastodon.social/users/old',
-                ]),
-            });
+        await accountRepository.save(
+            account.removeAlias(
+                new URL('https://example.com/users/never-added'),
+            ),
+        );
 
-        const hydrated = await accountRepository.getById(account.id);
-        assert(hydrated, 'Expected account with malformed aliases to hydrate');
-
-        expect(hydrated.alsoKnownAs.map((alias) => alias.href)).toEqual([
-            'https://mastodon.social/users/old',
-        ]);
-
-        const row = await client('accounts').where({ id: account.id }).first();
-        assert(row, 'Expected raw account row to exist');
-
-        const malformed = await accountRepository.createFromRow({
-            ...row,
-            also_known_as: '{',
-        });
-
-        expect(malformed.alsoKnownAs).toEqual([]);
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases).toEqual([]);
     });
 
     it('handles inserting a row into the blocks table when an account has been blocked', async () => {

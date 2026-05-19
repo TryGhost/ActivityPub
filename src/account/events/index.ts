@@ -1,6 +1,8 @@
+export { AccountAliasedEvent } from '@/account/events/account-aliased.event';
 export { AccountBlockedEvent } from '@/account/events/account-blocked.event';
 export { AccountCreatedEvent } from '@/account/events/account-created.event';
 export { AccountFollowedEvent } from '@/account/events/account-followed.event';
+export { AccountUnaliasedEvent } from '@/account/events/account-unaliased.event';
 export { AccountUnblockedEvent } from '@/account/events/account-unblocked.event';
 export { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
 export { AccountUpdatedEvent } from '@/account/events/account-updated.event';

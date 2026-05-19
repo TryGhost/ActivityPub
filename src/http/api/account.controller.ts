@@ -59,13 +59,14 @@ export class AccountController {
         private readonly accountService: AccountService,
     ) {}
 
-    private accountAliasesResponse(account: Account) {
+    private async accountAliasesResponse(account: Account) {
+        const aliases = await this.accountService.getAliases(account.id);
         return {
             destination: {
                 handle: getAccountHandle(account.apId.host, account.username),
                 apId: account.apId.href,
             },
-            aliases: account.alsoKnownAs.map((alias) => ({
+            aliases: aliases.map((alias) => ({
                 apId: alias.href,
             })),
         };
@@ -413,7 +414,7 @@ export class AccountController {
         }
 
         return new Response(
-            JSON.stringify(this.accountAliasesResponse(account)),
+            JSON.stringify(await this.accountAliasesResponse(account)),
             {
                 headers: {
                     'Content-Type': 'application/json',
@@ -463,11 +464,8 @@ export class AccountController {
             }
         }
 
-        const updatedAccount =
-            (await this.accountService.getAccountById(account.id)) ?? account;
-
         return new Response(
-            JSON.stringify(this.accountAliasesResponse(updatedAccount)),
+            JSON.stringify(await this.accountAliasesResponse(account)),
             {
                 headers: {
                     'Content-Type': 'application/json',
@@ -517,11 +515,8 @@ export class AccountController {
             }
         }
 
-        const updatedAccount =
-            (await this.accountService.getAccountById(account.id)) ?? account;
-
         return new Response(
-            JSON.stringify(this.accountAliasesResponse(updatedAccount)),
+            JSON.stringify(await this.accountAliasesResponse(account)),
             {
                 headers: {
                     'Content-Type': 'application/json',

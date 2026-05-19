@@ -224,11 +224,7 @@ export class AccountService {
             return error('self-alias');
         }
 
-        const updatedAccount = account.addAlias(sourceActorApId);
-
-        if (updatedAccount !== account) {
-            await this.accountRepository.save(updatedAccount);
-        }
+        await this.accountRepository.save(account.addAlias(sourceActorApId));
 
         return ok(sourceActorApId);
     }
@@ -245,23 +241,13 @@ export class AccountService {
             return error('invalid-actor-uri');
         }
 
-        const updatedAccount = account.removeAlias(alias);
-
-        if (updatedAccount !== account) {
-            await this.accountRepository.save(updatedAccount);
-        }
+        await this.accountRepository.save(account.removeAlias(alias));
 
         return ok(true);
     }
 
-    async clearAliases(account: Account): Promise<Result<true, never>> {
-        const updatedAccount = account.clearAliases();
-
-        if (updatedAccount !== account) {
-            await this.accountRepository.save(updatedAccount);
-        }
-
-        return ok(true);
+    async getAliases(accountId: number): Promise<URL[]> {
+        return this.accountRepository.getAliases(accountId);
     }
 
     /**

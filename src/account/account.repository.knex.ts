@@ -8,10 +8,11 @@ import {
     type AccountDraft,
     AccountEntity,
 } from '@/account/account.entity';
-import { parseAlsoKnownAs } from '@/account/also-known-as';
 import {
+    AccountAliasedEvent,
     AccountBlockedEvent,
     AccountFollowedEvent,
+    AccountUnaliasedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
     DomainBlockedEvent,
@@ -36,7 +37,6 @@ interface AccountRow {
     ap_outbox_url: string | null;
     ap_following_url: string | null;
     ap_liked_url: string | null;
-    also_known_as?: string[] | string | null;
     custom_fields: Record<string, string> | null;
     site_id: number | null;
 }
@@ -64,12 +64,6 @@ export class KnexAccountRepository {
                 ap_outbox_url: draft.apOutbox?.href ?? null,
                 ap_following_url: draft.apFollowing?.href ?? null,
                 ap_liked_url: draft.apLiked?.href ?? null,
-                also_known_as:
-                    draft.alsoKnownAs.length > 0
-                        ? JSON.stringify(
-                              draft.alsoKnownAs.map((alias) => alias.href),
-                          )
-                        : null,
                 ap_public_key: JSON.stringify(
                     await exportJwk(draft.apPublicKey),
                 ),
@@ -126,14 +120,6 @@ export class KnexAccountRepository {
                     username: account.username,
                     avatar_url: account.avatarUrl?.href ?? null,
                     banner_image_url: account.bannerImageUrl?.href ?? null,
-                    also_known_as:
-                        account.alsoKnownAs.length > 0
-                            ? JSON.stringify(
-                                  account.alsoKnownAs.map(
-                                      (alias) => alias.href,
-                                  ),
-                              )
-                            : null,
                     custom_fields: account.customFields
                         ? JSON.stringify(account.customFields)
                         : null,
@@ -147,7 +133,22 @@ export class KnexAccountRepository {
             }
 
             for (const event of events) {
-                if (event instanceof AccountBlockedEvent) {
+                if (event instanceof AccountAliasedEvent) {
+                    await transaction('account_aliases')
+                        .insert({
+                            account_id: event.getAccountId(),
+                            ap_id: event.getAliasApId().href,
+                        })
+                        .onConflict(['account_id', 'ap_id_hash'])
+                        .ignore();
+                } else if (event instanceof AccountUnaliasedEvent) {
+                    await transaction('account_aliases')
+                        .where('account_id', event.getAccountId())
+                        .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                            event.getAliasApId().href,
+                        ])
+                        .delete();
+                } else if (event instanceof AccountBlockedEvent) {
                     await transaction('blocks')
                         .insert({
                             blocker_id: event.getBlockerId(),
@@ -281,7 +282,6 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
-                'accounts.also_known_as',
                 'accounts.custom_fields',
             )
             .first();
@@ -312,7 +312,6 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
-                'accounts.also_known_as',
                 'accounts.custom_fields',
                 'users.site_id',
             )
@@ -345,7 +344,6 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
-                'accounts.also_known_as',
                 'users.site_id',
             )
             .first();
@@ -379,7 +377,6 @@ export class KnexAccountRepository {
                 'accounts.ap_outbox_url',
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
-                'accounts.also_known_as',
                 'accounts.custom_fields',
                 'users.site_id',
             )
@@ -410,6 +407,14 @@ export class KnexAccountRepository {
         };
     }
 
+    async getAliases(accountId: number): Promise<URL[]> {
+        const rows = await this.db('account_aliases')
+            .where('account_id', accountId)
+            .orderBy('id')
+            .select('ap_id');
+        return rows.map((row) => new URL(row.ap_id));
+    }
+
     private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {
         if (!row.uuid) {
             row.uuid = randomUUID();
@@ -433,7 +438,6 @@ export class KnexAccountRepository {
             apOutbox: parseURL(row.ap_outbox_url),
             apFollowing: parseURL(row.ap_following_url),
             apLiked: parseURL(row.ap_liked_url),
-            alsoKnownAs: parseAlsoKnownAs(row.also_known_as),
             isInternal: row.site_id !== null,
             customFields: row.custom_fields,
         });

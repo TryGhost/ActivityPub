@@ -53,14 +53,13 @@ describe('AccountController aliases', () => {
             id: 1,
             username: 'index',
             apId: new URL('https://example.com/.ghost/activitypub/users/index'),
-            alsoKnownAs: [],
         } as unknown as Account;
         accountRepository = {
             getById: vi.fn().mockResolvedValue(account),
         } as unknown as KnexAccountRepository;
         accountService = {
             getAccountForSite: vi.fn().mockResolvedValue(account),
-            getAccountById: vi.fn().mockResolvedValue(account),
+            getAliases: vi.fn().mockResolvedValue([]),
             addAlias: vi.fn(),
             removeAlias: vi.fn(),
         } as unknown as AccountService;
@@ -121,10 +120,6 @@ describe('AccountController aliases', () => {
         const container = {
             resolve: vi.fn().mockReturnValue(controller),
         } as unknown as AwilixContainer;
-        const updatedAccount = {
-            ...account,
-            alsoKnownAs: [new URL('https://mastodon.social/users/old')],
-        } as Account;
 
         app.use('*', async (ctx, next) => {
             ctx.set('site', site);
@@ -160,9 +155,9 @@ describe('AccountController aliases', () => {
         });
         routeRegistry.mountRoutes(app, container);
 
-        vi.mocked(accountService.getAccountForSite).mockResolvedValue(
-            updatedAccount,
-        );
+        vi.mocked(accountService.getAliases).mockResolvedValue([
+            new URL('https://mastodon.social/users/old'),
+        ]);
 
         const getResponse = await app.request(
             '/.ghost/activitypub/v1/account/aliases',
@@ -177,12 +172,8 @@ describe('AccountController aliases', () => {
             aliases: [{ apId: 'https://mastodon.social/users/old' }],
         });
 
-        vi.mocked(accountService.getAccountForSite).mockResolvedValue(account);
         vi.mocked(accountService.addAlias).mockResolvedValue(
             ok(new URL('https://mastodon.social/users/old')),
-        );
-        vi.mocked(accountService.getAccountById).mockResolvedValue(
-            updatedAccount,
         );
 
         const postResponse = await app.request(
@@ -202,7 +193,7 @@ describe('AccountController aliases', () => {
         );
 
         vi.mocked(accountService.removeAlias).mockResolvedValue(ok(true));
-        vi.mocked(accountService.getAccountById).mockResolvedValue(account);
+        vi.mocked(accountService.getAliases).mockResolvedValue([]);
 
         const deleteResponse = await app.request(
             '/.ghost/activitypub/v1/account/aliases',
@@ -222,11 +213,9 @@ describe('AccountController aliases', () => {
     });
 
     it('returns account aliases', async () => {
-        account = {
-            ...account,
-            alsoKnownAs: [new URL('https://mastodon.social/users/old')],
-        } as Account;
-        vi.mocked(accountService.getAccountForSite).mockResolvedValue(account);
+        vi.mocked(accountService.getAliases).mockResolvedValue([
+            new URL('https://mastodon.social/users/old'),
+        ]);
 
         const response = await controller.handleGetAccountAliases(
             createContext(),
@@ -255,17 +244,12 @@ describe('AccountController aliases', () => {
     });
 
     it('adds an alias and returns the updated alias list', async () => {
-        const updatedAccount = {
-            ...account,
-            alsoKnownAs: [new URL('https://mastodon.social/users/old')],
-        } as Account;
-
         vi.mocked(accountService.addAlias).mockResolvedValue(
             ok(new URL('https://mastodon.social/users/old')),
         );
-        vi.mocked(accountService.getAccountById).mockResolvedValue(
-            updatedAccount,
-        );
+        vi.mocked(accountService.getAliases).mockResolvedValue([
+            new URL('https://mastodon.social/users/old'),
+        ]);
 
         const response = await controller.handleAddAccountAlias(
             createContext({ sourceHandle: '@old@mastodon.social' }),

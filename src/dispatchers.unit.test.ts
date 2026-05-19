@@ -511,6 +511,10 @@ describe('dispatchers', () => {
             loadDataForHost: vi.fn(),
         } as unknown as HostDataContextLoader;
 
+        const mockAccountService = {
+            getAliases: vi.fn().mockResolvedValue([]),
+        } as unknown as AccountService;
+
         const mockAccountForActor: Account = {
             id: 1,
             uuid: 'test-uuid',
@@ -526,7 +530,6 @@ describe('dispatchers', () => {
             apFollowing: new URL('https://example.com/user/testuser/following'),
             apFollowers: new URL('https://example.com/user/testuser/followers'),
             apLiked: new URL('https://example.com/user/testuser/liked'),
-            alsoKnownAs: [],
             isInternal: true,
             customFields: null,
         } as unknown as Account;
@@ -543,6 +546,7 @@ describe('dispatchers', () => {
                 host: 'example.com',
                 getActorKeyPairs: vi.fn().mockResolvedValue([]),
             } as unknown as FedifyRequestContext;
+            vi.mocked(mockAccountService.getAliases).mockResolvedValue([]);
         });
 
         it('returns a Person', async () => {
@@ -555,7 +559,10 @@ describe('dispatchers', () => {
                 }),
             );
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+            );
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).not.toBeNull();
@@ -574,22 +581,29 @@ describe('dispatchers', () => {
             ).mockResolvedValue(
                 ok({
                     site: mockSite,
-                    account: {
-                        ...mockAccountForActor,
-                        alsoKnownAs: [
-                            new URL('https://mastodon.social/users/old'),
-                        ],
-                    },
+                    account: mockAccountForActor,
                 }),
             );
+            vi.mocked(mockAccountService.getAliases).mockResolvedValue([
+                new URL('https://mastodon.social/users/old'),
+            ]);
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
-            const result = await dispatcher(actorCtx, 'testuser');
-            const jsonLd = await result?.toJsonLd({ format: 'compact' });
-
-            expect(JSON.stringify(jsonLd)).toContain(
-                'https://mastodon.social/users/old',
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
             );
+            const result = await dispatcher(actorCtx, 'testuser');
+            const jsonLd = (await result?.toJsonLd({
+                format: 'compact',
+            })) as { alsoKnownAs?: string | string[] };
+
+            const aliases = Array.isArray(jsonLd?.alsoKnownAs)
+                ? jsonLd?.alsoKnownAs
+                : jsonLd?.alsoKnownAs
+                  ? [jsonLd.alsoKnownAs]
+                  : [];
+
+            expect(aliases).toContain('https://mastodon.social/users/old');
         });
 
         it('returns a Person without icon when avatarUrl is null', async () => {
@@ -607,7 +621,10 @@ describe('dispatchers', () => {
                 }),
             );
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+            );
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).not.toBeNull();
@@ -629,7 +646,10 @@ describe('dispatchers', () => {
                 }),
             );
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+            );
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).not.toBeNull();
@@ -641,7 +661,10 @@ describe('dispatchers', () => {
                 mockHostDataContextLoader.loadDataForHost,
             ).mockResolvedValue(error('site-not-found'));
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+            );
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).toBeNull();
@@ -652,7 +675,10 @@ describe('dispatchers', () => {
                 mockHostDataContextLoader.loadDataForHost,
             ).mockResolvedValue(error('account-not-found'));
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+            );
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).toBeNull();
@@ -663,7 +689,10 @@ describe('dispatchers', () => {
                 mockHostDataContextLoader.loadDataForHost,
             ).mockResolvedValue(error('multiple-users-for-site'));
 
-            const dispatcher = actorDispatcher(mockHostDataContextLoader);
+            const dispatcher = actorDispatcher(
+                mockHostDataContextLoader,
+                mockAccountService,
+            );
             const result = await dispatcher(actorCtx, 'testuser');
 
             expect(result).toBeNull();

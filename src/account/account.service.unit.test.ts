@@ -221,34 +221,6 @@ describe('AccountService', () => {
             expect(lookupHelpers.lookupObject).not.toHaveBeenCalled();
             expect(knexAccountRepository.save).not.toHaveBeenCalled();
         });
-
-        it('does not save when the alias already exists', async () => {
-            const account = {
-                apId: new URL('https://example.com/users/index'),
-                addAlias: vi.fn(),
-            } as unknown as AccountEntity;
-            const sourceApId = new URL('https://mastodon.social/users/old');
-            const actor = {
-                id: sourceApId,
-            };
-
-            vi.mocked(account.addAlias).mockReturnValue(account);
-            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
-                ok(sourceApId),
-            );
-            vi.mocked(lookupHelpers.lookupObject).mockResolvedValue(
-                actor as never,
-            );
-            vi.mocked(isActor).mockReturnValue(true);
-
-            const result = await accountService.addAlias(
-                account,
-                '@old@mastodon.social',
-            );
-
-            expect(result).toEqual(ok(sourceApId));
-            expect(knexAccountRepository.save).not.toHaveBeenCalled();
-        });
     });
 
     describe('removeAlias', () => {
