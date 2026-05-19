@@ -3,7 +3,10 @@ import { Session } from 'node:inspector';
 
 import type { Logger } from '@logtape/logtape';
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api';
-import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import {
+    SimpleSpanProcessor,
+    type SpanProcessor,
+} from '@opentelemetry/sdk-trace-base';
 import * as Sentry from '@sentry/node';
 
 import { beforeSend } from '@/sentry';
@@ -19,13 +22,29 @@ export async function setupInstrumentation(logger: Logger) {
     }
 
     if (process.env.SENTRY_DSN) {
-        const sentryClient = Sentry.init({
+        const openTelemetrySpanProcessors: SpanProcessor[] = [];
+
+        if (process.env.NODE_ENV === 'development') {
+            const { OTLPTraceExporter } = await import(
+                '@opentelemetry/exporter-trace-otlp-proto'
+            );
+            openTelemetrySpanProcessors.push(
+                new SimpleSpanProcessor(
+                    new OTLPTraceExporter({
+                        url: 'http://jaeger:4318/v1/traces',
+                    }),
+                ),
+            );
+        }
+
+        Sentry.init({
             dsn: process.env.SENTRY_DSN,
             environment: process.env.NODE_ENV || 'unknown',
             release: process.env.K_REVISION,
             tracesSampleRate: 1.0,
             maxValueLength: 2000,
             beforeSend: beforeSend,
+            openTelemetrySpanProcessors,
             integrations: [
                 // Customize HTTP integration to use better span names
                 Sentry.httpIntegration({
@@ -60,19 +79,6 @@ export async function setupInstrumentation(logger: Logger) {
                 }),
             ],
         });
-
-        if (process.env.NODE_ENV === 'development') {
-            const { OTLPTraceExporter } = await import(
-                '@opentelemetry/exporter-trace-otlp-proto'
-            );
-            sentryClient?.traceProvider?.addSpanProcessor(
-                new SimpleSpanProcessor(
-                    new OTLPTraceExporter({
-                        url: 'http://jaeger:4318/v1/traces',
-                    }),
-                ),
-            );
-        }
     }
 
     if (
