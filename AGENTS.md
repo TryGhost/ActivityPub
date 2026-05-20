@@ -135,6 +135,12 @@ yarn test:cucumber @only
 - Tests should be co-located with the code they test
 - e2e tests should reside in the `features` directory
 - Tests should execute quickly, there is an upper limit of 10 seconds
+- Assertions should target the specific field being tested, not stringify
+  the whole object. Prefer `expect(result.field).toEqual(...)` over
+  `expect(JSON.stringify(result)).toContain(...)` — the latter passes when
+  the value appears in any field, hiding bugs
+- When adding a new table, also add it to `FixtureManager.reset()` so
+  integration tests stay isolated between runs
 
 #### Testing Notes:
 
@@ -243,6 +249,20 @@ Currently unsupported
 - The `Result` pattern is preferred over throwing errors, with an exhaustive
   check on the result to ensure that all possible errors are handled
 - Business logic is modelled in the entities
+- Entities are write-side only for relational data. Collections that map to
+  a separate table (blocks, follows, aliases) are not stored as fields on
+  the entity; `addX` / `removeX` methods emit events and the repository
+  handles persistence in `save()`. Reads of those collections go through
+  the repository or a view (e.g. `accountRepository.getAliases(accountId)`)
+- Many-to-many and one-to-many relations get their own table, not a JSON
+  column on the parent. Follow the `blocks` shape: surrogate `id`,
+  `created_at`, hash-indexed `(parent_id, target_hash)` unique constraint,
+  FK cascade. JSON columns are for fixed-shape display data
+  (e.g. `accounts.custom_fields`)
+- Hash columns are stored generated columns, not application-computed.
+  Define them as `BINARY(32) GENERATED ALWAYS AS (UNHEX(SHA2(col, 256))) STORED`
+  and let MySQL maintain them on insert/update. Application code only does
+  hash lookups: `whereRaw('col_hash = UNHEX(SHA2(?, 256))', [value])`
 - Repositories are used to abstract away the database operations
   - Repositories should not be used directly, they should be used through the
     services
@@ -325,6 +345,29 @@ Routes are defined using decorators, not direct registration - see [ADR-0010](ad
 async handleGetAccount() { }
 ```
 
+### Don't Leak Wire-Format Names Into Internal Code
+
+When a protocol field has a name dictated by an external spec, use a
+codebase-natural name internally and only translate at the serialization
+boundary. For ActivityPub, Fedify is a useful reference — check what name
+it uses in its constructors and getters vs. what it emits in JSON-LD,
+and prefer Fedify's internal name in our own code.
+
+```typescript
+// ❌ WRONG - wire format leaked everywhere
+class Account {
+  readonly alsoKnownAs: URL[];
+}
+// also_known_as column on the DB
+
+// ✅ CORRECT - natural names internally
+class Account {
+  readonly aliases: URL[];  // or queried via accountRepository.getAliases()
+}
+// account_aliases.ap_id column
+// Fedify emits "alsoKnownAs" in JSON-LD via the aliases: constructor key
+```
+
 ### Legacy Code Warning
 
 `dispatchers.ts` contains 1100+ lines of legacy factory functions. New handlers should follow the class-based pattern in `/activity-handlers/` - see [ADR-0006](adr/0006-class-based-architecture.md)
@@ -332,6 +375,16 @@ async handleGetAccount() { }
 ---
 
 ## Code Conventions
+
+### HTTP route paths
+
+- Routes that operate on the current user live at top-level paths
+  (e.g. `aliases`, `blocks/accounts`, `blocks/domains`, `notifications`,
+  `feed/*`)
+- The `account/:handle` namespace is reserved for routes that operate on a
+  specific account identified by a handle
+- Don't nest current-user resources under `account/...` — it forces awkward
+  disambiguation and conflicts with the `:handle` dynamic segment
 
 ### e2e testing
 

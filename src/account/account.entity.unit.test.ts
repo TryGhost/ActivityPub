@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { AccountEntity } from '@/account/account.entity';
 import {
+    AccountAliasedEvent,
     AccountBlockedEvent,
     AccountCreatedEvent,
     AccountFollowedEvent,
+    AccountUnaliasedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
     AccountUpdatedEvent,
@@ -189,6 +191,60 @@ describe('AccountEntity', () => {
             expect(postApId.href).toBe(
                 'http://foobar.com/.ghost/activitypub/note/123',
             );
+        });
+    });
+
+    describe('aliases', () => {
+        it('emits account aliased and account updated events on addAlias', async () => {
+            const account = await createTestInternalAccount(1, {
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            AccountEntity.pullEvents(account);
+
+            const alias = new URL('https://mastodon.social/users/old');
+            const updated = account.addAlias(alias);
+
+            const events = AccountEntity.pullEvents(updated);
+            expect(events).toHaveLength(2);
+            expect(events[0]).toBeInstanceOf(AccountAliasedEvent);
+            expect((events[0] as AccountAliasedEvent).getAliasApId().href).toBe(
+                alias.href,
+            );
+            expect(events[1]).toBeInstanceOf(AccountUpdatedEvent);
+        });
+
+        it('emits account unaliased and account updated events on removeAlias', async () => {
+            const account = await createTestInternalAccount(1, {
+                host: new URL('http://example.com'),
+                username: 'testuser',
+                name: 'Test User',
+                bio: 'Test bio',
+                url: null,
+                avatarUrl: null,
+                bannerImageUrl: null,
+                customFields: null,
+            });
+
+            AccountEntity.pullEvents(account);
+
+            const alias = new URL('https://mastodon.social/users/old');
+            const updated = account.removeAlias(alias);
+
+            const events = AccountEntity.pullEvents(updated);
+            expect(events).toHaveLength(2);
+            expect(events[0]).toBeInstanceOf(AccountUnaliasedEvent);
+            expect(
+                (events[0] as AccountUnaliasedEvent).getAliasApId().href,
+            ).toBe(alias.href);
+            expect(events[1]).toBeInstanceOf(AccountUpdatedEvent);
         });
     });
 

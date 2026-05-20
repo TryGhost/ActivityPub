@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { isActor } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
 import type { AccountEntity } from '@/account/account.entity';
@@ -7,6 +8,22 @@ import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AsyncEvents } from '@/core/events';
+import { error, ok } from '@/core/result';
+import * as lookupHelpers from '@/lookup-helpers';
+
+vi.mock('@fedify/fedify', async () => {
+    const original = await vi.importActual('@fedify/fedify');
+
+    return {
+        ...original,
+        isActor: vi.fn(),
+    };
+});
+
+vi.mock('@/lookup-helpers', () => ({
+    lookupActorProfile: vi.fn(),
+    lookupObject: vi.fn(),
+}));
 
 describe('AccountService', () => {
     let knex: Knex;
@@ -15,8 +32,11 @@ describe('AccountService', () => {
     let fedifyContextFactory: FedifyContextFactory;
     let generateKeyPair: () => Promise<CryptoKeyPair>;
     let accountService: AccountService;
+    let fedifyContext: object;
 
     beforeEach(() => {
+        vi.clearAllMocks();
+
         knex = {} as Knex;
         asyncEvents = {} as AsyncEvents;
         knexAccountRepository = {
@@ -25,7 +45,10 @@ describe('AccountService', () => {
             getByApId: vi.fn(),
             getByInboxUrl: vi.fn(),
         } as unknown as KnexAccountRepository;
-        fedifyContextFactory = {} as FedifyContextFactory;
+        fedifyContext = {};
+        fedifyContextFactory = {
+            getFedifyContext: vi.fn().mockReturnValue(fedifyContext),
+        } as unknown as FedifyContextFactory;
         generateKeyPair = vi.fn();
 
         accountService = new AccountService(
@@ -35,6 +58,203 @@ describe('AccountService', () => {
             fedifyContextFactory,
             generateKeyPair,
         );
+    });
+
+    describe('addAlias', () => {
+        it('resolves a handle, verifies the actor, and saves the alias', async () => {
+            const updatedAccount = {} as AccountEntity;
+            const account = {
+                id: 1,
+                apId: new URL('https://example.com/users/index'),
+                addAlias: vi.fn().mockReturnValue(updatedAccount),
+            } as unknown as AccountEntity;
+            const sourceApId = new URL('https://mastodon.social/users/old');
+            const actor = {
+                id: sourceApId,
+            };
+
+            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
+                ok(sourceApId),
+            );
+            vi.mocked(lookupHelpers.lookupObject).mockResolvedValue(
+                actor as never,
+            );
+            vi.mocked(isActor).mockReturnValue(true);
+
+            const result = await accountService.addAlias(
+                account,
+                '@old@mastodon.social',
+            );
+
+            expect(result).toEqual(ok(sourceApId));
+            expect(lookupHelpers.lookupActorProfile).toHaveBeenCalledWith(
+                fedifyContext,
+                '@old@mastodon.social',
+            );
+            expect(lookupHelpers.lookupObject).toHaveBeenCalledWith(
+                fedifyContext,
+                sourceApId,
+            );
+            expect(account.addAlias).toHaveBeenCalledWith(sourceApId);
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
+
+        it('rejects invalid handles', async () => {
+            const account = {
+                apId: new URL('https://example.com/users/index'),
+            } as AccountEntity;
+
+            const result = await accountService.addAlias(
+                account,
+                'not-a-handle',
+            );
+
+            expect(result).toEqual(error('invalid-handle'));
+            expect(lookupHelpers.lookupActorProfile).not.toHaveBeenCalled();
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('rejects failed WebFinger lookups', async () => {
+            const account = {
+                apId: new URL('https://example.com/users/index'),
+            } as AccountEntity;
+
+            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
+                error('lookup-error'),
+            );
+
+            const result = await accountService.addAlias(
+                account,
+                '@old@mastodon.social',
+            );
+
+            expect(result).toEqual(error('lookup-failed'));
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('rejects failed actor fetches', async () => {
+            const account = {
+                apId: new URL('https://example.com/users/index'),
+            } as AccountEntity;
+            const sourceApId = new URL('https://mastodon.social/users/old');
+
+            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
+                ok(sourceApId),
+            );
+            vi.mocked(lookupHelpers.lookupObject).mockRejectedValue(
+                new Error('network failed'),
+            );
+
+            const result = await accountService.addAlias(
+                account,
+                '@old@mastodon.social',
+            );
+
+            expect(result).toEqual(error('lookup-failed'));
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('rejects non-actor lookup results', async () => {
+            const account = {
+                apId: new URL('https://example.com/users/index'),
+            } as AccountEntity;
+            const sourceApId = new URL('https://mastodon.social/users/old');
+
+            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
+                ok(sourceApId),
+            );
+            vi.mocked(lookupHelpers.lookupObject).mockResolvedValue(
+                {} as never,
+            );
+            vi.mocked(isActor).mockReturnValue(false);
+
+            const result = await accountService.addAlias(
+                account,
+                '@old@mastodon.social',
+            );
+
+            expect(result).toEqual(error('not-an-actor'));
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('rejects actors without a canonical id', async () => {
+            const account = {
+                apId: new URL('https://example.com/users/index'),
+            } as AccountEntity;
+            const sourceApId = new URL('https://mastodon.social/users/old');
+
+            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
+                ok(sourceApId),
+            );
+            vi.mocked(lookupHelpers.lookupObject).mockResolvedValue(
+                {} as never,
+            );
+            vi.mocked(isActor).mockReturnValue(true);
+
+            const result = await accountService.addAlias(
+                account,
+                '@old@mastodon.social',
+            );
+
+            expect(result).toEqual(error('not-an-actor'));
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('rejects self aliases', async () => {
+            const apId = new URL('https://example.com/users/index');
+            const account = {
+                apId,
+            } as AccountEntity;
+
+            vi.mocked(lookupHelpers.lookupActorProfile).mockResolvedValue(
+                ok(apId),
+            );
+
+            const result = await accountService.addAlias(
+                account,
+                '@index@example.com',
+            );
+
+            expect(result).toEqual(error('self-alias'));
+            expect(lookupHelpers.lookupObject).not.toHaveBeenCalled();
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('removeAlias', () => {
+        it('removes an alias and saves the account', async () => {
+            const updatedAccount = {} as AccountEntity;
+            const account = {
+                removeAlias: vi.fn().mockReturnValue(updatedAccount),
+            } as unknown as AccountEntity;
+
+            const result = await accountService.removeAlias(
+                account,
+                'https://mastodon.social/users/old',
+            );
+
+            expect(result).toEqual(ok(true));
+            expect(account.removeAlias).toHaveBeenCalledWith(
+                new URL('https://mastodon.social/users/old'),
+            );
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
+
+        it('rejects invalid actor URIs', async () => {
+            const account = {
+                removeAlias: vi.fn(),
+            } as unknown as AccountEntity;
+
+            const result = await accountService.removeAlias(account, 'not-url');
+
+            expect(result).toEqual(error('invalid-actor-uri'));
+            expect(account.removeAlias).not.toHaveBeenCalled();
+            expect(knexAccountRepository.save).not.toHaveBeenCalled();
+        });
     });
 
     describe('updateAccountProfile', () => {

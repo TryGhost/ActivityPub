@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+    AccountAliasedEvent,
     AccountBlockedEvent,
     AccountCreatedEvent,
     AccountFollowedEvent,
+    AccountUnaliasedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
     AccountUpdatedEvent,
@@ -41,6 +43,8 @@ export interface Account {
      * Returns a new Account instance which needs to be saved.
      */
     updateProfile(params: ProfileUpdateParams): Account;
+    addAlias(alias: URL): Account;
+    removeAlias(alias: URL): Account;
     /**
      * @deprecated
      */
@@ -242,6 +246,26 @@ export class AccountEntity implements Account {
         }
 
         return account;
+    }
+
+    addAlias(alias: URL): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(
+                new AccountAliasedEvent(this.id, alias),
+                new AccountUpdatedEvent(this.id),
+            ),
+        );
+    }
+
+    removeAlias(alias: URL): Account {
+        return AccountEntity.create(
+            this,
+            this.events.concat(
+                new AccountUnaliasedEvent(this.id, alias),
+                new AccountUpdatedEvent(this.id),
+            ),
+        );
     }
 
     unblock(account: Account): Account {

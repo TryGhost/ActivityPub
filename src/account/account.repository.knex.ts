@@ -9,8 +9,10 @@ import {
     AccountEntity,
 } from '@/account/account.entity';
 import {
+    AccountAliasedEvent,
     AccountBlockedEvent,
     AccountFollowedEvent,
+    AccountUnaliasedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
     DomainBlockedEvent,
@@ -131,7 +133,22 @@ export class KnexAccountRepository {
             }
 
             for (const event of events) {
-                if (event instanceof AccountBlockedEvent) {
+                if (event instanceof AccountAliasedEvent) {
+                    await transaction('account_aliases')
+                        .insert({
+                            account_id: event.getAccountId(),
+                            ap_id: event.getAliasApId().href,
+                        })
+                        .onConflict(['account_id', 'ap_id_hash'])
+                        .ignore();
+                } else if (event instanceof AccountUnaliasedEvent) {
+                    await transaction('account_aliases')
+                        .where('account_id', event.getAccountId())
+                        .whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [
+                            event.getAliasApId().href,
+                        ])
+                        .delete();
+                } else if (event instanceof AccountBlockedEvent) {
                     await transaction('blocks')
                         .insert({
                             blocker_id: event.getBlockerId(),
@@ -388,6 +405,14 @@ export class KnexAccountRepository {
             publicKey: row.ap_public_key,
             privateKey: row.ap_private_key,
         };
+    }
+
+    async getAliases(accountId: number): Promise<URL[]> {
+        const rows = await this.db('account_aliases')
+            .where('account_id', accountId)
+            .orderBy('id')
+            .select('ap_id');
+        return rows.map((row) => new URL(row.ap_id));
     }
 
     private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {

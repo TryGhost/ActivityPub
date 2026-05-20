@@ -40,7 +40,10 @@ import { OutboxType, type Post } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 
-export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
+export const actorDispatcher = (
+    hostDataContextLoader: HostDataContextLoader,
+    accountService: AccountService,
+) =>
     async function actorDispatcher(
         ctx: FedifyRequestContext,
         identifier: string,
@@ -71,6 +74,7 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
         }
 
         const { account } = getValue(hostData);
+        const aliases = await accountService.getAliases(account.id);
 
         const person = new Person({
             id: new URL(account.apId),
@@ -93,6 +97,7 @@ export const actorDispatcher = (hostDataContextLoader: HostDataContextLoader) =>
             followers: account.apFollowers,
             liked: account.apLiked,
             url: account.url || account.apId,
+            ...(aliases.length > 0 ? { aliases } : {}),
             publicKeys: (await ctx.getActorKeyPairs(identifier)).map(
                 (key) => key.cryptographicKey,
             ),

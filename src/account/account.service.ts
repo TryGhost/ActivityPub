@@ -5,7 +5,7 @@ import {
     exportJwk,
     generateCryptoKeyPair,
     isActor,
-    lookupObject,
+    lookupObject as lookupFedifyObject,
 } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
@@ -24,6 +24,11 @@ import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory'
 import type { AsyncEvents } from '@/core/events';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
 import { parseURL } from '@/core/url';
+import { isHandle } from '@/helpers/activitypub/actor';
+import {
+    lookupObject as lookupActivityPubObject,
+    lookupActorProfile,
+} from '@/lookup-helpers';
 
 interface GetFollowingAccountsOptions {
     limit: number;
@@ -52,6 +57,13 @@ type RemoteAccountFetchError =
     | 'invalid-data'
     | 'network-failure'
     | 'not-found';
+
+export type AccountAliasError =
+    | 'invalid-handle'
+    | 'lookup-failed'
+    | 'not-an-actor'
+    | 'self-alias'
+    | 'invalid-actor-uri';
 
 export const DELIVERY_FAILURE_BACKOFF_SECONDS = 60;
 export const DELIVERY_FAILURE_BACKOFF_MULTIPLIER = 2;
@@ -85,7 +97,7 @@ export class AccountService {
         const documentLoader = await context.getDocumentLoader({
             handle: 'index',
         });
-        const potentialActor = await lookupObject(id, { documentLoader });
+        const potentialActor = await lookupFedifyObject(id, { documentLoader });
 
         // If potentialActor is null - we could not find anything for this URL
         // Error because could be upstream server issues and we want a retry
@@ -123,7 +135,9 @@ export class AccountService {
         let actor: Actor;
 
         try {
-            const potentialActor = await lookupObject(id, { documentLoader });
+            const potentialActor = await lookupFedifyObject(id, {
+                documentLoader,
+            });
 
             if (potentialActor === null) {
                 return error('not-found');
@@ -165,6 +179,75 @@ export class AccountService {
         }
 
         return ok(createdAccount);
+    }
+
+    async addAlias(
+        account: Account,
+        sourceHandle: string,
+    ): Promise<Result<URL, AccountAliasError>> {
+        if (!isHandle(sourceHandle)) {
+            return error('invalid-handle');
+        }
+
+        const context = this.fedifyContextFactory.getFedifyContext();
+        const lookupResult = await lookupActorProfile(context, sourceHandle);
+
+        if (isError(lookupResult)) {
+            return error('lookup-failed');
+        }
+
+        const sourceApId = getValue(lookupResult);
+
+        if (sourceApId.href === account.apId.href) {
+            return error('self-alias');
+        }
+
+        let sourceObject: unknown;
+
+        try {
+            sourceObject = await lookupActivityPubObject(context, sourceApId);
+        } catch (_err) {
+            return error('lookup-failed');
+        }
+
+        if (!isActor(sourceObject)) {
+            return error('not-an-actor');
+        }
+
+        if (!sourceObject.id) {
+            return error('not-an-actor');
+        }
+
+        const sourceActorApId = sourceObject.id;
+
+        if (sourceActorApId.href === account.apId.href) {
+            return error('self-alias');
+        }
+
+        await this.accountRepository.save(account.addAlias(sourceActorApId));
+
+        return ok(sourceActorApId);
+    }
+
+    async removeAlias(
+        account: Account,
+        actorUri: string,
+    ): Promise<Result<true, AccountAliasError>> {
+        let alias: URL;
+
+        try {
+            alias = new URL(actorUri);
+        } catch (_err) {
+            return error('invalid-actor-uri');
+        }
+
+        await this.accountRepository.save(account.removeAlias(alias));
+
+        return ok(true);
+    }
+
+    async getAliases(accountId: number): Promise<URL[]> {
+        return this.accountRepository.getAliases(accountId);
     }
 
     /**

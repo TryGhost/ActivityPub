@@ -249,6 +249,58 @@ describe('KnexAccountRepository', () => {
         expect(updatedAccount.banner_image_url).toBe(null);
     });
 
+    it('inserts aliases into account_aliases on save and reads them via getAliases', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+
+        await accountRepository.save(
+            account.addAlias(new URL('https://mastodon.social/users/old')),
+        );
+        await accountRepository.save(
+            account.addAlias(new URL('https://hachyderm.io/users/older')),
+        );
+
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases.map((alias) => alias.href)).toEqual([
+            'https://mastodon.social/users/old',
+            'https://hachyderm.io/users/older',
+        ]);
+    });
+
+    it('treats duplicate alias inserts as idempotent', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const alias = new URL('https://mastodon.social/users/old');
+
+        await accountRepository.save(account.addAlias(alias));
+        await accountRepository.save(account.addAlias(alias));
+
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases.map((value) => value.href)).toEqual([alias.href]);
+    });
+
+    it('removes an alias from account_aliases on save', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+        const alias = new URL('https://mastodon.social/users/old');
+
+        await accountRepository.save(account.addAlias(alias));
+        await accountRepository.save(account.removeAlias(alias));
+
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases).toEqual([]);
+    });
+
+    it('treats removing a non-existent alias as a no-op', async () => {
+        const [account] = await fixtureManager.createInternalAccount();
+
+        await accountRepository.save(
+            account.removeAlias(
+                new URL('https://example.com/users/never-added'),
+            ),
+        );
+
+        const aliases = await accountRepository.getAliases(account.id);
+        expect(aliases).toEqual([]);
+    });
+
     it('handles inserting a row into the blocks table when an account has been blocked', async () => {
         const [[account], [accountToBlock]] = await Promise.all([
             fixtureManager.createInternalAccount(null, 'example.com'),

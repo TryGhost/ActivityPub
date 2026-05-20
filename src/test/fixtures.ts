@@ -278,6 +278,7 @@ export class FixtureManager {
             this.db('domain_blocks').truncate(),
             this.db('blocks').truncate(),
             this.db('follows').truncate(),
+            this.db('account_aliases').truncate(),
             this.db('accounts').truncate(),
             this.db('users').truncate(),
             this.db('sites').truncate(),
