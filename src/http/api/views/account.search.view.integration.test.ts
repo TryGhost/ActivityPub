@@ -43,7 +43,16 @@ describe('AccountSearchView', () => {
 
         accountSearchView = new AccountSearchView(db);
 
-        [viewerAccount] = await fixtureManager.createInternalAccount();
+        // Use a deterministic host/name for the viewer so faker-generated
+        // values can never collide with the search queries below
+        [viewerAccount] = await fixtureManager.createInternalAccount(
+            undefined,
+            'viewer-fixture.invalid',
+        );
+
+        await db('accounts')
+            .where('id', viewerAccount.id)
+            .update({ name: 'Generic Fixture Viewer' });
     });
 
     describe('search', () => {
