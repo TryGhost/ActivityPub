@@ -8,6 +8,7 @@ import {
     Undo,
 } from '@fedify/fedify';
 
+import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -25,6 +26,7 @@ export class LikeController {
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
+        private readonly nodeInfoService: NodeInfoService,
     ) {}
 
     @APIRoute('POST', 'actions/like/:id')
@@ -59,6 +61,7 @@ export class LikeController {
         }
 
         const postResult = await this.postService.getByApId(idAsUrl);
+        let shouldMarkActivity = false;
 
         if (isError(postResult)) {
             const error = getError(postResult);
@@ -84,6 +87,8 @@ export class LikeController {
                 default:
                     return exhaustiveCheck(error);
             }
+
+            shouldMarkActivity = true;
         } else {
             const post = getValue(postResult);
 
@@ -138,20 +143,48 @@ export class LikeController {
                 objectToLike.attributionId.href,
             );
         }
-        if (attributionActor) {
-            apCtx.sendActivity(
-                { username: account.username },
-                attributionActor,
-                like,
-                {
-                    preferSharedInbox: true,
-                },
+        let didSendActivity = false;
+        try {
+            const sendActivityPromises: Promise<void>[] = [];
+
+            if (attributionActor) {
+                sendActivityPromises.push(
+                    apCtx.sendActivity(
+                        { username: account.username },
+                        attributionActor,
+                        like,
+                        {
+                            preferSharedInbox: true,
+                        },
+                    ),
+                );
+            }
+
+            sendActivityPromises.push(
+                apCtx.sendActivity(
+                    { username: account.username },
+                    'followers',
+                    like,
+                    {
+                        preferSharedInbox: true,
+                    },
+                ),
             );
+
+            await Promise.all(sendActivityPromises);
+            didSendActivity = true;
+        } catch (err) {
+            ctx.get('logger').warn('Failed to send like activity', {
+                err,
+                accountId: account.id,
+                objectId: id,
+            });
         }
 
-        apCtx.sendActivity({ username: account.username }, 'followers', like, {
-            preferSharedInbox: true,
-        });
+        if (shouldMarkActivity && didSendActivity) {
+            await this.markAccountActive(ctx, account.id);
+        }
+
         return new Response(JSON.stringify(likeJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
@@ -212,6 +245,7 @@ export class LikeController {
         }
 
         const postResult = await this.postService.getByApId(idAsUrl);
+        let shouldMarkActivity = false;
 
         if (isError(postResult)) {
             const error = getError(postResult);
@@ -237,6 +271,8 @@ export class LikeController {
                 default:
                     return exhaustiveCheck(error);
             }
+
+            shouldMarkActivity = true;
         } else {
             const post = getValue(postResult);
             post.removeLike(account);
@@ -266,25 +302,65 @@ export class LikeController {
                 objectToLike.attributionId.href,
             );
         }
-        if (attributionActor) {
-            apCtx.sendActivity(
-                { username: account.username },
-                attributionActor,
-                undo,
-                {
-                    preferSharedInbox: true,
-                },
+
+        let didSendActivity = false;
+        try {
+            const sendActivityPromises: Promise<void>[] = [];
+
+            if (attributionActor) {
+                sendActivityPromises.push(
+                    apCtx.sendActivity(
+                        { username: account.username },
+                        attributionActor,
+                        undo,
+                        {
+                            preferSharedInbox: true,
+                        },
+                    ),
+                );
+            }
+
+            sendActivityPromises.push(
+                apCtx.sendActivity(
+                    { username: account.username },
+                    'followers',
+                    undo,
+                    {
+                        preferSharedInbox: true,
+                    },
+                ),
             );
+
+            await Promise.all(sendActivityPromises);
+            didSendActivity = true;
+        } catch (err) {
+            ctx.get('logger').warn('Failed to send unlike activity', {
+                err,
+                accountId: account.id,
+                objectId: id,
+            });
         }
 
-        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
-            preferSharedInbox: true,
-        });
+        if (shouldMarkActivity && didSendActivity) {
+            await this.markAccountActive(ctx, account.id);
+        }
+
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
             },
             status: 200,
         });
+    }
+
+    private async markAccountActive(ctx: AppContext, accountId: number) {
+        try {
+            await this.nodeInfoService.markAccountActive(accountId);
+        } catch (err) {
+            ctx.get('logger').warn('Failed to mark NodeInfo account active', {
+                err,
+                accountId,
+            });
+        }
     }
 }

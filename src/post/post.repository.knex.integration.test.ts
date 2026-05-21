@@ -28,6 +28,7 @@ import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
+import { PostUnlikedEvent } from '@/post/post-unliked.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 import { SiteService } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
@@ -900,7 +901,7 @@ describe('KnexPostRepository', () => {
 
         assert.equal(rowInDb.like_count, 2, 'There should be 2 likes');
 
-        expect(eventsEmitSpy).toHaveBeenCalledTimes(4); // 1 post created + 3 posts liked
+        expect(eventsEmitSpy).toHaveBeenCalledTimes(5); // 1 post created + 3 posts liked + 1 post unliked
         expect(eventsEmitSpy).nthCalledWith(
             2,
             PostLikedEvent.getName(),
@@ -927,6 +928,11 @@ describe('KnexPostRepository', () => {
                 Number(post.author.id),
                 Number(accounts[2].id),
             ),
+        );
+        expect(eventsEmitSpy).nthCalledWith(
+            5,
+            PostUnlikedEvent.getName(),
+            new PostUnlikedEvent(Number(post.id), Number(accounts[1].id)),
         );
     });
 

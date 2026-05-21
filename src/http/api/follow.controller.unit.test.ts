@@ -5,6 +5,7 @@ import { Follow, isActor, Undo } from '@fedify/fedify';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
+import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData, FedifyContext } from '@/app';
 import { error, ok } from '@/core/result';
 import { FollowController } from '@/http/api/follow.controller';
@@ -88,6 +89,7 @@ describe('FollowController', () => {
     let accountService: AccountService;
     let moderationService: ModerationService;
     let fedify: Federation<ContextData>;
+    let nodeInfoService: NodeInfoService;
     let controller: FollowController;
     let followerAccount: Account;
     let externalAccountToFollow: Account;
@@ -100,6 +102,7 @@ describe('FollowController', () => {
     let mockLogger: {
         error: ReturnType<typeof vi.fn>;
         info: ReturnType<typeof vi.fn>;
+        warn: ReturnType<typeof vi.fn>;
     };
 
     beforeEach(async () => {
@@ -159,6 +162,7 @@ describe('FollowController', () => {
         mockLogger = {
             error: vi.fn(),
             info: vi.fn(),
+            warn: vi.fn(),
         };
 
         mockApCtx = {
@@ -184,10 +188,15 @@ describe('FollowController', () => {
             createContext: vi.fn().mockReturnValue(mockApCtx),
         } as unknown as Federation<ContextData>;
 
+        nodeInfoService = {
+            markAccountActive: vi.fn(),
+        } as unknown as NodeInfoService;
+
         controller = new FollowController(
             accountService,
             moderationService,
             fedify,
+            nodeInfoService,
         );
 
         vi.mocked(isActor).mockReturnValue(true);
@@ -373,6 +382,9 @@ describe('FollowController', () => {
 
             // Should NOT call followAccount for external accounts
             expect(accountService.followAccount).not.toHaveBeenCalled();
+            expect(nodeInfoService.markAccountActive).toHaveBeenCalledWith(
+                followerAccount.id,
+            );
         });
 
         it('should follow internal account without federating', async () => {
@@ -423,6 +435,7 @@ describe('FollowController', () => {
             // Should NOT send federated activity for internal accounts
             expect(mockApCtx.sendActivity).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
+            expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
         });
     });
 
@@ -551,6 +564,7 @@ describe('FollowController', () => {
 
             // Verify activity was stored in globaldb
             expect(mockGlobalDb.set).toHaveBeenCalled();
+            expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
         });
 
         it('should unfollow internal account without federating', async () => {
@@ -586,6 +600,7 @@ describe('FollowController', () => {
             // Should NOT send federated activity for internal accounts
             expect(mockApCtx.sendActivity).not.toHaveBeenCalled();
             expect(mockGlobalDb.set).not.toHaveBeenCalled();
+            expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
         });
 
         it('should call unfollowAccount before checking if account is internal', async () => {

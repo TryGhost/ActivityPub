@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { exportJwk, type RequestContext } from '@fedify/fedify';
+import { exportJwk } from '@fedify/fedify';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { Account as AccountType } from '@/account/types';
 import type { FollowersService } from '@/activitypub/followers.service';
+import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
@@ -482,11 +483,7 @@ describe('dispatchers', () => {
 
     describe('nodeInfoDispatcher', () => {
         it('returns the node info', async () => {
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            const result = await nodeInfoDispatcher({} as RequestContext<any>);
-
-            expect(result).toEqual({
+            const nodeInfo = {
                 software: {
                     name: 'ghost',
                     version: { major: 0, minor: 1, patch: 0 },
@@ -494,15 +491,50 @@ describe('dispatchers', () => {
                     repository: new URL('https://github.com/TryGhost/Ghost'),
                 },
                 protocols: ['activitypub'],
+                services: {
+                    inbound: [],
+                    outbound: [],
+                },
                 openRegistrations: false,
                 usage: {
                     users: {
                         total: 1,
+                        activeMonth: 1,
+                        activeHalfyear: 1,
                     },
-                    localPosts: 0,
-                    localComments: 0,
+                    localPosts: 2,
+                    localComments: 1,
                 },
-            });
+                metadata: {
+                    nodeName: 'Test Site',
+                    private: false,
+                    postFormats: ['text/html'],
+                },
+            };
+
+            const nodeInfoService = {
+                getNodeInfo: vi.fn().mockResolvedValue(nodeInfo),
+            };
+
+            const dispatcher = nodeInfoDispatcher(
+                nodeInfoService as unknown as NodeInfoService,
+            );
+
+            const result = await dispatcher({
+                data: {
+                    site: mockSite,
+                    account: mockAccount,
+                    logger: {
+                        error: vi.fn(),
+                    },
+                },
+            } as unknown as FedifyRequestContext);
+
+            expect(result).toEqual(nodeInfo);
+            expect(nodeInfoService.getNodeInfo).toHaveBeenCalledWith(
+                mockSite,
+                mockAccount,
+            );
         });
     });
 

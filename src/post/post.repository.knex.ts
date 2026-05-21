@@ -22,6 +22,7 @@ import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
+import { PostUnlikedEvent } from '@/post/post-unliked.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 
 interface PostRow {
@@ -200,6 +201,7 @@ export class KnexPostRepository {
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             const mentionsToAdd = post.mentions;
             let likeAccountIds: number[] = [];
+            let unlikeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
             let wasUpdated = false;
@@ -343,18 +345,25 @@ export class KnexPostRepository {
                                   accountIdsInserted: [],
                               };
 
-                    const removedLikesCount =
+                    const { removedLikesCount, accountIdsRemoved } =
                         likesToRemove.length > 0
                             ? await this.removeLikes(
                                   post,
                                   likesToRemove,
                                   transaction,
                               )
-                            : 0;
+                            : {
+                                  removedLikesCount: 0,
+                                  accountIdsRemoved: [],
+                              };
 
                     likeAccountIds = accountIdsInserted.filter(
                         (accountId) => !likesToRemove.includes(accountId),
                     );
+
+                    if (removedLikesCount > 0) {
+                        unlikeAccountIds = accountIdsRemoved;
+                    }
 
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
@@ -545,6 +554,17 @@ export class KnexPostRepository {
             );
 
             await forEachAsync(
+                unlikeAccountIds,
+                async (accountId) => {
+                    await this.events.emitAsync(
+                        PostUnlikedEvent.getName(),
+                        new PostUnlikedEvent(post.id as number, accountId),
+                    );
+                },
+                { concurrency: 10 },
+            );
+
+            await forEachAsync(
                 repostAccountIds,
                 async (accountId) => {
                     await this.events.emitAsync(
@@ -679,13 +699,32 @@ export class KnexPostRepository {
         post: Post,
         accountIds: number[],
         transaction: Knex.Transaction,
-    ): Promise<number> {
-        return await transaction('likes')
+    ): Promise<{ removedLikesCount: number; accountIdsRemoved: number[] }> {
+        const currentLikeAccountIds = (
+            await transaction('likes')
+                .where('post_id', post.id)
+                .whereIn('account_id', accountIds)
+                .select('account_id')
+        ).map((row) => row.account_id);
+
+        if (currentLikeAccountIds.length === 0) {
+            return {
+                removedLikesCount: 0,
+                accountIdsRemoved: [],
+            };
+        }
+
+        const removedLikesCount = await transaction('likes')
             .where({
                 post_id: post.id,
             })
-            .whereIn('account_id', accountIds)
+            .whereIn('account_id', currentLikeAccountIds)
             .del();
+
+        return {
+            removedLikesCount,
+            accountIdsRemoved: currentLikeAccountIds,
+        };
     }
 
     /**

@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
+import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -48,6 +49,7 @@ export class PostController {
         private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
+        private readonly nodeInfoService: NodeInfoService,
     ) {}
 
     /**
@@ -709,6 +711,7 @@ export class PostController {
         }
 
         const originalPostResult = await this.postService.getByApId(idAsUrl);
+        let shouldMarkActivity = false;
 
         if (isError(originalPostResult)) {
             const error = getError(originalPostResult);
@@ -734,6 +737,8 @@ export class PostController {
                 default:
                     return exhaustiveCheck(error);
             }
+
+            shouldMarkActivity = true;
         } else {
             const originalPost = getValue(originalPostResult);
             originalPost.removeRepost(account);
@@ -763,20 +768,47 @@ export class PostController {
                 post.attributionId.href,
             );
         }
-        if (attributionActor) {
-            apCtx.sendActivity(
-                { username: account.username },
-                attributionActor,
-                undo,
-                {
-                    preferSharedInbox: true,
-                },
+        let didSendActivity = false;
+        try {
+            const sendActivityPromises: Promise<void>[] = [];
+
+            if (attributionActor) {
+                sendActivityPromises.push(
+                    apCtx.sendActivity(
+                        { username: account.username },
+                        attributionActor,
+                        undo,
+                        {
+                            preferSharedInbox: true,
+                        },
+                    ),
+                );
+            }
+
+            sendActivityPromises.push(
+                apCtx.sendActivity(
+                    { username: account.username },
+                    'followers',
+                    undo,
+                    {
+                        preferSharedInbox: true,
+                    },
+                ),
             );
+
+            await Promise.all(sendActivityPromises);
+            didSendActivity = true;
+        } catch (err) {
+            ctx.get('logger').warn('Failed to send derepost activity', {
+                err,
+                accountId: account.id,
+                objectId: id,
+            });
         }
 
-        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
-            preferSharedInbox: true,
-        });
+        if (shouldMarkActivity && didSendActivity) {
+            await this.markAccountActive(ctx, account.id);
+        }
 
         return new Response(JSON.stringify(undoJson), {
             headers: {
@@ -784,5 +816,16 @@ export class PostController {
             },
             status: 200,
         });
+    }
+
+    private async markAccountActive(ctx: AppContext, accountId: number) {
+        try {
+            await this.nodeInfoService.markAccountActive(accountId);
+        } catch (err) {
+            ctx.get('logger').warn('Failed to mark NodeInfo account active', {
+                err,
+                accountId,
+            });
+        }
     }
 }

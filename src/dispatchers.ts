@@ -26,6 +26,7 @@ import * as Sentry from '@sentry/node';
 
 import type { AccountService } from '@/account/account.service';
 import type { FollowersService } from '@/activitypub/followers.service';
+import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
 import { ACTIVITYPUB_COLLECTION_PAGE_SIZE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -1333,22 +1334,20 @@ export async function undoDispatcher(
     return Undo.fromJsonLd(exists);
 }
 
-export async function nodeInfoDispatcher(_ctx: FedifyRequestContext) {
-    return {
-        software: {
-            name: 'ghost',
-            version: { major: 0, minor: 1, patch: 0 },
-            homepage: new URL('https://ghost.org/'),
-            repository: new URL('https://github.com/TryGhost/Ghost'),
-        },
-        protocols: ['activitypub'] as Protocol[],
-        openRegistrations: false,
-        usage: {
-            users: {
-                total: 1,
-            },
-            localPosts: 0,
-            localComments: 0,
-        },
+export const nodeInfoDispatcher =
+    (nodeInfoService: NodeInfoService) => async (ctx: FedifyRequestContext) => {
+        if (!ctx.data.site || !ctx.data.account) {
+            ctx.data.logger.error('NodeInfo requested without site context');
+            throw new Error('NodeInfo requested without site context');
+        }
+
+        const nodeInfo = await nodeInfoService.getNodeInfo(
+            ctx.data.site,
+            ctx.data.account,
+        );
+
+        return {
+            ...nodeInfo,
+            protocols: nodeInfo.protocols as Protocol[],
+        };
     };
-}
