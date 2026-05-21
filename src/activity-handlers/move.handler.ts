@@ -263,6 +263,10 @@ export class MoveHandler {
         sourceAccount: Account,
         sourceActor: Actor,
     ) {
+        // Best-effort cleanup: the follower's local state has already been
+        // migrated by this point, so a failed Undo only leaves a stale follow
+        // on the source server. Swallow the error here so that the outer loop
+        // does not treat the migration as failed.
         try {
             const follow = new Follow({
                 id: null,
