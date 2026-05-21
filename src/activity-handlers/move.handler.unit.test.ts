@@ -2,10 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Follow, lookupObject, Move, Person, Undo } from '@fedify/fedify';
 
-import { type Account, AccountEntity } from '@/account/account.entity';
+import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
-import { AccountFollowedEvent } from '@/account/events/account-followed.event';
-import { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
 import type { FedifyContext } from '@/app';
 import { error, ok } from '@/core/result';
 import type { ModerationService } from '@/moderation/moderation.service';
@@ -32,7 +30,8 @@ describe('MoveHandler', () => {
         ensureByApId: ReturnType<typeof vi.fn>;
         getInternalFollowerAccounts: ReturnType<typeof vi.fn>;
         checkIfAccountIsFollowing: ReturnType<typeof vi.fn>;
-        saveAccount: ReturnType<typeof vi.fn>;
+        followAccount: ReturnType<typeof vi.fn>;
+        unfollowAccount: ReturnType<typeof vi.fn>;
     };
     let moderationService: {
         canFollowAccount: ReturnType<typeof vi.fn>;
@@ -75,7 +74,8 @@ describe('MoveHandler', () => {
             ensureByApId: vi.fn(),
             getInternalFollowerAccounts: vi.fn(),
             checkIfAccountIsFollowing: vi.fn(),
-            saveAccount: vi.fn(),
+            followAccount: vi.fn(),
+            unfollowAccount: vi.fn(),
         };
 
         moderationService = {
@@ -272,7 +272,8 @@ describe('MoveHandler', () => {
 
         await handler.handle(ctx, createMove());
 
-        expect(accountService.saveAccount).not.toHaveBeenCalled();
+        expect(accountService.unfollowAccount).not.toHaveBeenCalled();
+        expect(accountService.followAccount).not.toHaveBeenCalled();
         expect(ctx.sendActivity).not.toHaveBeenCalled();
     });
 
@@ -281,7 +282,8 @@ describe('MoveHandler', () => {
 
         await handler.handle(ctx, createMove());
 
-        expect(accountService.saveAccount).not.toHaveBeenCalled();
+        expect(accountService.unfollowAccount).not.toHaveBeenCalled();
+        expect(accountService.followAccount).not.toHaveBeenCalled();
         expect(ctx.sendActivity).not.toHaveBeenCalled();
     });
 
@@ -297,12 +299,12 @@ describe('MoveHandler', () => {
             expect.any(Undo),
         );
 
-        const savedAccount = accountService.saveAccount.mock.calls[0][0];
-        const events = AccountEntity.pullEvents(savedAccount);
-
-        expect(events).toEqual([
-            new AccountUnfollowedEvent(sourceAccount.id, followerAccount.id),
-        ]);
+        expect(accountService.unfollowAccount).toHaveBeenCalledOnce();
+        expect(accountService.unfollowAccount).toHaveBeenCalledWith(
+            followerAccount,
+            sourceAccount,
+        );
+        expect(accountService.followAccount).not.toHaveBeenCalled();
     });
 
     it('follows the target and unfollows the old account for a valid Move', async () => {
@@ -322,13 +324,14 @@ describe('MoveHandler', () => {
             expect.any(Undo),
         );
 
-        const savedAccount = accountService.saveAccount.mock.calls[0][0];
-        const events = AccountEntity.pullEvents(savedAccount);
-
-        expect(events).toEqual([
-            new AccountUnfollowedEvent(sourceAccount.id, followerAccount.id),
-            new AccountFollowedEvent(targetAccount.id, followerAccount.id),
-        ]);
+        expect(accountService.unfollowAccount).toHaveBeenCalledWith(
+            followerAccount,
+            sourceAccount,
+        );
+        expect(accountService.followAccount).toHaveBeenCalledWith(
+            followerAccount,
+            targetAccount,
+        );
         expect(globaldb.set).toHaveBeenCalledWith(
             [createMove().id!.href],
             expect.any(Object),
@@ -342,7 +345,8 @@ describe('MoveHandler', () => {
 
         await handler.handle(ctx, createMove());
 
-        expect(accountService.saveAccount).not.toHaveBeenCalled();
+        expect(accountService.unfollowAccount).not.toHaveBeenCalled();
+        expect(accountService.followAccount).not.toHaveBeenCalled();
     });
 
     it('continues migrating later followers when one follower fails', async () => {
@@ -367,14 +371,16 @@ describe('MoveHandler', () => {
 
         await handler.handle(ctx, createMove());
 
-        expect(accountService.saveAccount).toHaveBeenCalledOnce();
-        const savedAccount = accountService.saveAccount.mock.calls[0][0];
-        const events = AccountEntity.pullEvents(savedAccount);
-
-        expect(events).toEqual([
-            new AccountUnfollowedEvent(sourceAccount.id, secondFollower.id),
-            new AccountFollowedEvent(targetAccount.id, secondFollower.id),
-        ]);
+        expect(accountService.unfollowAccount).toHaveBeenCalledOnce();
+        expect(accountService.unfollowAccount).toHaveBeenCalledWith(
+            secondFollower,
+            sourceAccount,
+        );
+        expect(accountService.followAccount).toHaveBeenCalledOnce();
+        expect(accountService.followAccount).toHaveBeenCalledWith(
+            secondFollower,
+            targetAccount,
+        );
     });
 
     it('ignores embedded target aliases when authoritative target does not alias the source', async () => {
@@ -394,6 +400,7 @@ describe('MoveHandler', () => {
         await handler.handle(ctx, createMove({ target: embeddedTarget }));
 
         expect(accountService.ensureByApId).not.toHaveBeenCalled();
-        expect(accountService.saveAccount).not.toHaveBeenCalled();
+        expect(accountService.unfollowAccount).not.toHaveBeenCalled();
+        expect(accountService.followAccount).not.toHaveBeenCalled();
     });
 });

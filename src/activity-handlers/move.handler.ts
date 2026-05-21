@@ -227,13 +227,12 @@ export class MoveHandler {
             await this.sendFollow(ctx, follower, targetActor);
         }
 
-        let updatedFollower = follower.unfollow(sourceAccount);
+        await this.accountService.unfollowAccount(follower, sourceAccount);
 
         if (!alreadyFollowingTarget) {
-            updatedFollower = updatedFollower.follow(targetAccount);
+            await this.accountService.followAccount(follower, targetAccount);
         }
 
-        await this.accountService.saveAccount(updatedFollower);
         await this.sendUndoFollow(ctx, follower, sourceAccount, sourceActor);
     }
 

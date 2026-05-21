@@ -822,10 +822,6 @@ export class AccountService {
         return await this.accountRepository.getInternalFollowers(account);
     }
 
-    async saveAccount(account: Account): Promise<void> {
-        await this.accountRepository.save(account);
-    }
-
     async blockDomain(
         account: Account,
         domain: URL,
