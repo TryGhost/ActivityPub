@@ -68,7 +68,10 @@ export class NotificationController {
                     name: result.actor_name,
                     url: result.actor_url,
                     handle: getAccountHandle(
-                        result.actor_url ? new URL(result.actor_url).host : '',
+                        result.actor_webfinger_host ??
+                            (result.actor_url
+                                ? new URL(result.actor_url).host
+                                : ''),
                         result.actor_username,
                     ),
                     avatarUrl: result.actor_avatar_url,

@@ -774,6 +774,75 @@ describe('KnexAccountRepository', () => {
         fromDraftSpy.mockRestore();
     });
 
+    it('persists and resolves a custom WebFinger host', async () => {
+        const site = await fixtureManager.createSite('blog.example.com');
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'index',
+            name: 'Test',
+            bio: null,
+            url: new URL(`https://${site.host}`),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+
+        const account = await accountRepository.create(
+            AccountEntity.draft(draftData),
+        );
+        const updated = account.setWebfingerHost('example.com');
+
+        await accountRepository.save(updated);
+
+        const fetched = await accountRepository.getByWebfingerHandle(
+            'index',
+            'example.com',
+        );
+
+        expect(fetched?.id).toBe(account.id);
+        expect(fetched?.webfingerHost).toBe('example.com');
+        await expect(
+            accountRepository.hasWebfingerHandleConflict(
+                'index',
+                'example.com',
+                account.id,
+            ),
+        ).resolves.toBe(false);
+    });
+
+    it('resolves a custom WebFinger host by stable actor username', async () => {
+        const site = await fixtureManager.createSite('blog.example.com');
+        const draftData = await createInternalAccountDraftData({
+            host: new URL(`https://${site.host}`),
+            username: 'index',
+            name: 'Test',
+            bio: null,
+            url: new URL(`https://${site.host}`),
+            avatarUrl: null,
+            bannerImageUrl: null,
+            customFields: null,
+        });
+
+        const account = await accountRepository.create(
+            AccountEntity.draft(draftData),
+        );
+        const updated = account
+            .setWebfingerHost('example.com')
+            .updateProfile({ username: 'alice' });
+
+        await accountRepository.save(updated);
+
+        const fetched = await accountRepository.getByWebfingerHandle(
+            'index',
+            'example.com',
+        );
+
+        expect(fetched?.id).toBe(account.id);
+        expect(fetched?.username).toBe('alice');
+        expect(fetched?.apId.pathname.endsWith('/index')).toBe(true);
+        expect(fetched?.webfingerHost).toBe('example.com');
+    });
+
     it('Handles events when creating an account', async () => {
         const emitSpy = vi.spyOn(events, 'emitAsync');
 

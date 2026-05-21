@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import { SiteController } from '@/http/api/site.controller';
 import type { Site, SiteService } from '@/site/site.service';
@@ -74,6 +75,23 @@ describe('SiteController', () => {
 
             const body = await response.json();
             expect(body).toEqual(mockSite);
+        });
+
+        it('returns site data when no account exists for the site', async () => {
+            const accountService = {
+                getAccountForSite: vi.fn().mockResolvedValue(null),
+            } as unknown as AccountService;
+            siteController = new SiteController(
+                siteService,
+                undefined,
+                accountService,
+            );
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleGetSiteData(ctx);
+
+            expect(response.status).toBe(200);
+            expect(await response.json()).toEqual(mockSite);
         });
 
         it('sets `ghost_pro` flag to false when none of the x-forwarded-for IP addresses matches any of the Ghost (Pro) IP addresses', async () => {

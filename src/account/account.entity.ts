@@ -32,6 +32,7 @@ export interface Account {
     readonly apLiked: URL | null;
     readonly isInternal: boolean;
     readonly customFields: Record<string, string> | null;
+    readonly webfingerHost: string | null;
     unblock(account: Account): Account;
     block(account: Account): Account;
     blockDomain(domain: URL): Account;
@@ -43,6 +44,7 @@ export interface Account {
      * Returns a new Account instance which needs to be saved.
      */
     updateProfile(params: ProfileUpdateParams): Account;
+    setWebfingerHost(webfingerHost: string | null): Account;
     addAlias(alias: URL): Account;
     removeAlias(alias: URL): Account;
     /**
@@ -70,6 +72,7 @@ export interface AccountDraft {
     apPublicKey: CryptoKey;
     apPrivateKey: CryptoKey | null;
     isInternal: boolean;
+    webfingerHost: string | null;
 }
 
 export type AccountEvent = {
@@ -94,6 +97,7 @@ export class AccountEntity implements Account {
         public readonly apLiked: URL | null,
         public readonly isInternal: boolean,
         public readonly customFields: Record<string, string> | null,
+        public readonly webfingerHost: string | null,
         private events: AccountEvent[],
     ) {}
 
@@ -124,6 +128,7 @@ export class AccountEntity implements Account {
             data.apLiked,
             data.isInternal,
             data.customFields,
+            data.webfingerHost,
             events,
         );
     }
@@ -147,6 +152,7 @@ export class AccountEntity implements Account {
             draft.apLiked,
             draft.isInternal,
             draft.customFields,
+            draft.webfingerHost,
             events,
         );
     }
@@ -174,6 +180,7 @@ export class AccountEntity implements Account {
             : new URL('/.ghost/activitypub/liked/index', from.host);
         const url = from.url || apId;
         const apPrivateKey = !from.isInternal ? null : from.apPrivateKey;
+        const webfingerHost = from.webfingerHost ?? null;
 
         return {
             ...from,
@@ -187,6 +194,7 @@ export class AccountEntity implements Account {
             apFollowing,
             apLiked,
             apPrivateKey,
+            webfingerHost,
         };
     }
 
@@ -256,6 +264,24 @@ export class AccountEntity implements Account {
                 new AccountUpdatedEvent(this.id),
             ),
         );
+    }
+
+    setWebfingerHost(webfingerHost: string | null): Account {
+        const account = AccountEntity.create(
+            {
+                ...this,
+                webfingerHost,
+            },
+            this.events,
+        );
+
+        if (account.webfingerHost !== this.webfingerHost) {
+            account.events = account.events.concat(
+                new AccountUpdatedEvent(account.id),
+            );
+        }
+
+        return account;
     }
 
     removeAlias(alias: URL): Account {
@@ -355,6 +381,7 @@ type InternalAccountDraftData = {
     customFields: Record<string, string> | null;
     apPublicKey: CryptoKey;
     apPrivateKey: CryptoKey;
+    webfingerHost?: string | null;
 };
 
 /**
@@ -377,6 +404,7 @@ type ExternalAccountDraftData = {
     apFollowing: URL | null;
     apLiked: URL | null;
     apPublicKey: CryptoKey;
+    webfingerHost?: string | null;
 };
 
 type AccountDraftData = InternalAccountDraftData | ExternalAccountDraftData;

@@ -50,10 +50,10 @@ export class AccountSearchView {
             `CASE
                 WHEN accounts.name LIKE ? ESCAPE '\\\\' THEN 0
                 WHEN accounts.name LIKE ? ESCAPE '\\\\' THEN 1
-                WHEN CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\' THEN 2
-                WHEN CONCAT('@', accounts.username, '@', accounts.domain) LIKE ? ESCAPE '\\\\' THEN 3
-                WHEN accounts.domain LIKE ? ESCAPE '\\\\' THEN 4
-                WHEN accounts.domain LIKE ? ESCAPE '\\\\' THEN 5
+                WHEN CONCAT('@', accounts.username, '@', COALESCE(accounts.webfinger_host, accounts.domain)) LIKE ? ESCAPE '\\\\' THEN 2
+                WHEN CONCAT('@', accounts.username, '@', COALESCE(accounts.webfinger_host, accounts.domain)) LIKE ? ESCAPE '\\\\' THEN 3
+                WHEN COALESCE(accounts.webfinger_host, accounts.domain) LIKE ? ESCAPE '\\\\' THEN 4
+                WHEN COALESCE(accounts.webfinger_host, accounts.domain) LIKE ? ESCAPE '\\\\' THEN 5
                 ELSE 6
             END as search_rank`,
             [
@@ -70,7 +70,7 @@ export class AccountSearchView {
             viewerAccountId,
             (qb) =>
                 qb.whereRaw(
-                    'MATCH(accounts.name, accounts.username, accounts.domain) AGAINST(? IN BOOLEAN MODE)',
+                    'MATCH(accounts.name, accounts.username, accounts.domain, accounts.webfinger_host) AGAINST(? IN BOOLEAN MODE)',
                     [fulltextQuery],
                 ),
             SEARCH_RESULT_LIMIT,
@@ -86,10 +86,17 @@ export class AccountSearchView {
         return this.searchByQuery(
             viewerAccountId,
             (qb) =>
-                qb.whereRaw(
-                    'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
-                    [domain],
-                ),
+                qb.where((domainQb) => {
+                    domainQb
+                        .whereRaw(
+                            'accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256))',
+                            [domain],
+                        )
+                        .orWhereRaw(
+                            'accounts.webfinger_host_hash = UNHEX(SHA2(LOWER(?), 256))',
+                            [domain],
+                        );
+                }),
             limit,
         );
     }
@@ -105,8 +112,12 @@ export class AccountSearchView {
                 'accounts.ap_id',
                 'accounts.name',
                 'accounts.username',
-                'accounts.domain',
                 'accounts.avatar_url',
+            )
+            .select(
+                this.db.raw(
+                    'COALESCE(accounts.webfinger_host, accounts.domain) as domain',
+                ),
             )
             .where(whereClause)
             // Compute followedByMe

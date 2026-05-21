@@ -343,6 +343,44 @@ describe('RecommendationsView', () => {
             expect(accounts[0].id).toBe(normalAccount.apId.toString());
         });
 
+        it('should exclude accounts with blocked custom WebFinger domains', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const [normalAccount] =
+                await fixtureManager.createInternalAccount();
+            const customDomainAccount =
+                await fixtureManager.createExternalAccount(
+                    'https://actor-domain.com/',
+                );
+
+            await db('accounts')
+                .where({ id: customDomainAccount.id })
+                .update({ webfinger_host: 'custom-blocked.com' });
+
+            const topic = await fixtureManager.createTopic(
+                'Technology',
+                'technology',
+            );
+
+            await fixtureManager.addAccountToTopic(viewer.id, topic.id);
+            await fixtureManager.addAccountToTopic(normalAccount.id, topic.id);
+            await fixtureManager.addAccountToTopic(
+                customDomainAccount.id,
+                topic.id,
+            );
+            await fixtureManager.createDomainBlock(
+                viewer,
+                new URL('https://custom-blocked.com'),
+            );
+
+            const accounts = await recommendationsView.getRecommendations(
+                viewer.id,
+                20,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].id).toBe(normalAccount.apId.toString());
+        });
+
         it('should sanitize HTML in bio field', async () => {
             const [viewer] = await fixtureManager.createInternalAccount();
 

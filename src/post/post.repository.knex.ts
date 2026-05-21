@@ -69,6 +69,7 @@ interface PostRow {
     author_ap_outbox_url: string | null;
     author_ap_following_url: string | null;
     author_ap_liked_url: string | null;
+    author_webfinger_host: string | null;
     site_id: number | null;
     site_host: string | null;
 }
@@ -136,6 +137,7 @@ export class KnexPostRepository {
                 'accounts.ap_outbox_url as author_ap_outbox_url',
                 'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_liked_url as author_ap_liked_url',
+                'accounts.webfinger_host as author_webfinger_host',
                 'sites.id as site_id',
                 'sites.host as site_host',
             )
@@ -152,11 +154,17 @@ export class KnexPostRepository {
         const mentions = await this.db('mentions')
             .join('accounts', 'accounts.id', 'mentions.account_id')
             .where('mentions.post_id', postId)
-            .select('accounts.id', 'accounts.ap_id', 'accounts.username');
+            .select(
+                'accounts.id',
+                'accounts.ap_id',
+                'accounts.username',
+                'accounts.webfinger_host',
+            );
         return mentions.map((mention) => ({
             id: mention.id,
             apId: new URL(mention.ap_id),
             username: mention.username,
+            webfingerHost: mention.webfinger_host ?? null,
         }));
     }
 
@@ -979,6 +987,7 @@ export class KnexPostRepository {
             apFollowing: parseURL(row.author_ap_following_url),
             apLiked: parseURL(row.author_ap_liked_url),
             isInternal: row.site_id !== null,
+            webfingerHost: row.author_webfinger_host ?? null,
         });
 
         const attachments = row.attachments
@@ -1072,6 +1081,7 @@ export class KnexPostRepository {
                 'accounts.ap_outbox_url as author_ap_outbox_url',
                 'accounts.ap_following_url as author_ap_following_url',
                 'accounts.ap_liked_url as author_ap_liked_url',
+                'accounts.webfinger_host as author_webfinger_host',
                 'sites.id as site_id',
                 'sites.host as site_host',
                 'outboxes.outbox_type',

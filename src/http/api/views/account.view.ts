@@ -2,7 +2,7 @@ import { type Actor, type Collection, isActor } from '@fedify/fedify';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
-import { getAccountHandle } from '@/account/utils';
+import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { getError, getValue, isError } from '@/core/result';
 import { getAttachments, getHandle } from '@/helpers/activitypub/actor';
@@ -86,7 +86,10 @@ export class AccountView {
             apId: accountData.ap_id,
             name: accountData.name,
             handle: getAccountHandle(
-                new URL(accountData.ap_id).host,
+                getAccountHandleHost({
+                    apId: new URL(accountData.ap_id),
+                    webfingerHost: accountData.webfinger_host,
+                }),
                 accountData.username,
             ),
             bio: sanitizeHtml(accountData.bio || ''),
@@ -184,7 +187,10 @@ export class AccountView {
             apId: accountData.ap_id,
             name: accountData.name,
             handle: getAccountHandle(
-                new URL(accountData.ap_id).host,
+                getAccountHandleHost({
+                    apId: new URL(accountData.ap_id),
+                    webfingerHost: accountData.webfinger_host,
+                }),
                 accountData.username,
             ),
             bio: sanitizeHtml(accountData.bio || ''),
@@ -309,6 +315,7 @@ export class AccountView {
             'accounts.url',
             'accounts.custom_fields',
             'accounts.ap_id',
+            'accounts.webfinger_host',
         ];
 
         const countSelects = includeCounts

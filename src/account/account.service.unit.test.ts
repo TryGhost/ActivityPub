@@ -36,6 +36,7 @@ describe('AccountService', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.unstubAllGlobals();
 
         knex = {} as Knex;
         asyncEvents = {} as AsyncEvents;
@@ -44,6 +45,7 @@ describe('AccountService', () => {
             getById: vi.fn(),
             getByApId: vi.fn(),
             getByInboxUrl: vi.fn(),
+            hasWebfingerHandleConflict: vi.fn().mockResolvedValue(false),
         } as unknown as KnexAccountRepository;
         fedifyContext = {};
         fedifyContextFactory = {
@@ -58,6 +60,288 @@ describe('AccountService', () => {
             fedifyContextFactory,
             generateKeyPair,
         );
+    });
+
+    describe('validateWebfingerHost', () => {
+        const account = {
+            id: 1,
+            username: 'index',
+            apId: new URL('https://blog.example.com/users/index'),
+        } as AccountEntity;
+
+        it('validates live WebFinger data for the account', async () => {
+            const fetchMock = vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        subject: 'acct:index@example.com',
+                        links: [
+                            {
+                                rel: 'self',
+                                type: 'application/activity+json',
+                                href: 'https://blog.example.com/users/index',
+                            },
+                        ],
+                    }),
+                    {
+                        status: 200,
+                        headers: {
+                            'content-type': 'application/jrd+json',
+                        },
+                    },
+                ),
+            );
+            vi.stubGlobal('fetch', fetchMock);
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(ok(true));
+            expect(fetchMock).toHaveBeenCalledWith(
+                new URL(
+                    'https://example.com/.well-known/webfinger?resource=acct%3Aindex%40example.com',
+                ),
+                expect.objectContaining({
+                    redirect: 'follow',
+                }),
+            );
+        });
+
+        it('rejects invalid domains', async () => {
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'https://example.com',
+            );
+
+            expect(result).toEqual(
+                error({
+                    type: 'invalid-domain',
+                    host: 'https://example.com',
+                }),
+            );
+        });
+
+        it('rejects conflicting handles', async () => {
+            vi.mocked(
+                knexAccountRepository.hasWebfingerHandleConflict,
+            ).mockResolvedValue(true);
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(
+                error({ type: 'conflict', host: 'example.com' }),
+            );
+        });
+
+        it('rejects unreachable domains', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('no')));
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(
+                error({ type: 'not-reachable', host: 'example.com' }),
+            );
+        });
+
+        it('rejects non-json WebFinger responses', async () => {
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue(
+                    new Response('nope', {
+                        status: 200,
+                        headers: { 'content-type': 'text/plain' },
+                    }),
+                ),
+            );
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(
+                error({ type: 'invalid-webfinger', host: 'example.com' }),
+            );
+        });
+
+        it('rejects WebFinger responses without a self link', async () => {
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue(
+                    new Response(
+                        JSON.stringify({
+                            subject: 'acct:index@example.com',
+                            links: [],
+                        }),
+                        {
+                            status: 200,
+                            headers: {
+                                'content-type': 'application/jrd+json',
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(
+                error({ type: 'invalid-webfinger', host: 'example.com' }),
+            );
+        });
+
+        it('rejects WebFinger responses for the wrong actor', async () => {
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue(
+                    new Response(
+                        JSON.stringify({
+                            subject: 'acct:index@example.com',
+                            links: [
+                                {
+                                    rel: 'self',
+                                    type: 'application/activity+json',
+                                    href: 'https://other.example.com/users/index',
+                                },
+                            ],
+                        }),
+                        {
+                            status: 200,
+                            headers: {
+                                'content-type': 'application/jrd+json',
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(
+                error({
+                    type: 'wrong-actor',
+                    host: 'example.com',
+                    expectedActorUrl: 'https://blog.example.com/users/index',
+                    actualActorUrl: 'https://other.example.com/users/index',
+                }),
+            );
+        });
+
+        it('rejects WebFinger responses for the wrong subject', async () => {
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue(
+                    new Response(
+                        JSON.stringify({
+                            subject: 'acct:index@other.example.com',
+                            links: [
+                                {
+                                    rel: 'self',
+                                    type: 'application/activity+json',
+                                    href: 'https://blog.example.com/users/index',
+                                },
+                            ],
+                        }),
+                        {
+                            status: 200,
+                            headers: {
+                                'content-type': 'application/jrd+json',
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const result = await accountService.validateWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(
+                error({ type: 'invalid-webfinger', host: 'example.com' }),
+            );
+        });
+    });
+
+    describe('setWebfingerHost', () => {
+        it('saves a validated custom domain', async () => {
+            const updatedAccount = {} as AccountEntity;
+            const account = {
+                id: 1,
+                username: 'index',
+                apId: new URL('https://blog.example.com/users/index'),
+                setWebfingerHost: vi.fn().mockReturnValue(updatedAccount),
+            } as unknown as AccountEntity;
+
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockResolvedValue(
+                    new Response(
+                        JSON.stringify({
+                            subject: 'acct:index@example.com',
+                            links: [
+                                {
+                                    rel: 'self',
+                                    type: 'application/activity+json',
+                                    href: 'https://blog.example.com/users/index',
+                                },
+                            ],
+                        }),
+                        {
+                            status: 200,
+                            headers: {
+                                'content-type': 'application/jrd+json',
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const result = await accountService.setWebfingerHost(
+                account,
+                'example.com',
+            );
+
+            expect(result).toEqual(ok(updatedAccount));
+            expect(account.setWebfingerHost).toHaveBeenCalledWith(
+                'example.com',
+            );
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
+
+        it('clears the custom domain without live validation', async () => {
+            const updatedAccount = {} as AccountEntity;
+            const account = {
+                apId: new URL('https://blog.example.com/users/index'),
+                setWebfingerHost: vi.fn().mockReturnValue(updatedAccount),
+            } as unknown as AccountEntity;
+            const fetchMock = vi.fn();
+            vi.stubGlobal('fetch', fetchMock);
+
+            const result = await accountService.setWebfingerHost(account, null);
+
+            expect(result).toEqual(ok(updatedAccount));
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(account.setWebfingerHost).toHaveBeenCalledWith(null);
+            expect(knexAccountRepository.save).toHaveBeenCalledWith(
+                updatedAccount,
+            );
+        });
     });
 
     describe('addAlias', () => {

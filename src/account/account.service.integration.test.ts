@@ -291,6 +291,35 @@ describe('AccountService', () => {
             expect(secondAccount).toMatchObject(account);
         });
 
+        it('rejects creating a default handle that is already claimed as a custom WebFinger host', async () => {
+            const [otherSiteId] = await db('sites').insert({
+                host: 'blog.example.com',
+                webhook_secret: 'other-secret',
+                ghost_uuid: null,
+            });
+            const otherSite = {
+                id: otherSiteId,
+                host: 'blog.example.com',
+                webhook_secret: 'other-secret',
+                ghost_uuid: null,
+            };
+
+            const otherAccount = await service.createInternalAccount(
+                otherSite,
+                internalAccountData,
+            );
+
+            await db('accounts')
+                .where({ id: otherAccount.id })
+                .update({ webfinger_host: 'example.com' });
+
+            await expect(
+                service.createInternalAccount(site, internalAccountData),
+            ).rejects.toThrow(
+                'WebFinger handle @index@example.com is already claimed',
+            );
+        });
+
         it('should ensure the account is created with a domain', async () => {
             const account = await service.createInternalAccount(
                 site,

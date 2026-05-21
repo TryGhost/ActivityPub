@@ -1,5 +1,8 @@
+import { isIP } from 'node:net';
+
 import { type Actor, PropertyValue } from '@fedify/fedify';
 
+import type { Account } from '@/account/account.entity';
 import type { ExternalAccountData } from '@/account/types';
 
 interface PublicKey {
@@ -77,4 +80,58 @@ export async function mapActorToExternalAccountData(
  */
 export function getAccountHandle(host?: string, username?: string) {
     return `@${username || 'unknown'}@${host?.replace(/^www\./, '') || 'unknown'}`;
+}
+
+export function getAccountHandleHost(
+    account: Pick<Account, 'apId' | 'webfingerHost'>,
+) {
+    return account.webfingerHost || account.apId.host;
+}
+
+export function normalizeWebfingerHost(input: string): string | null {
+    const host = input
+        .trim()
+        .toLowerCase()
+        .replace(/^www\./, '');
+
+    if (!host) {
+        return null;
+    }
+
+    if (
+        host.includes('://') ||
+        host.includes('/') ||
+        host.includes('?') ||
+        host.includes('#') ||
+        host.includes(':') ||
+        host === 'localhost' ||
+        isIP(host)
+    ) {
+        return null;
+    }
+
+    const labels = host.split('.');
+    if (labels.length < 2) {
+        return null;
+    }
+
+    if (
+        labels.some(
+            (label) =>
+                label.length === 0 ||
+                label.length > 63 ||
+                label.startsWith('-') ||
+                label.endsWith('-') ||
+                !/^[a-z0-9-]+$/.test(label),
+        )
+    ) {
+        return null;
+    }
+
+    const tld = labels[labels.length - 1];
+    if (!/[a-z]/.test(tld)) {
+        return null;
+    }
+
+    return host;
 }

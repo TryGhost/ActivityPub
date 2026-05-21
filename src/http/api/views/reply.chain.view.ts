@@ -57,6 +57,7 @@ const PostRowSchema = z.object({
     author_name: z.string().nullable(),
     author_username: z.string(),
     author_url: z.string().nullable(),
+    author_webfinger_host: z.string().nullable(),
     author_avatar_url: z.string().nullable(),
     author_followed_by_user: z.union([z.literal(0), z.literal(1)]),
 });
@@ -91,9 +92,10 @@ export class ReplyChainView {
                 author: {
                     id: result.author_id.toString(),
                     handle: getAccountHandle(
-                        result.author_url
-                            ? new URL(result.author_url).host
-                            : '',
+                        result.author_webfinger_host ??
+                            (result.author_url
+                                ? new URL(result.author_url).host
+                                : ''),
                         result.author_username,
                     ),
                     name: result.author_name ?? '',
@@ -133,7 +135,10 @@ export class ReplyChainView {
             author: {
                 id: result.author_id.toString(),
                 handle: getAccountHandle(
-                    result.author_url ? new URL(result.author_url).host : '',
+                    result.author_webfinger_host ??
+                        (result.author_url
+                            ? new URL(result.author_url).host
+                            : ''),
                     result.author_username,
                 ),
                 name: result.author_name ?? '',
@@ -229,6 +234,7 @@ export class ReplyChainView {
                     'author_account.name as author_name',
                     'author_account.username as author_username',
                     'author_account.url as author_url',
+                    'author_account.webfinger_host as author_webfinger_host',
                     'author_account.avatar_url as author_avatar_url',
                     this.db.raw(`
                     CASE

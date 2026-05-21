@@ -116,7 +116,7 @@ import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
 import type { SiteController } from '@/http/api/site.controller';
 import { TopicController } from '@/http/api/topic.controller';
-import { WebFingerController } from '@/http/api/webfinger.controller';
+import type { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
@@ -863,6 +863,16 @@ app.delete(
     }),
 );
 
+app.get(
+    '/.well-known/webfinger',
+    spanWrapper((ctx: HonoContext, next: Next) => {
+        const webFingerController = container.resolve<WebFingerController>(
+            'webFingerController',
+        );
+        return webFingerController.handleWebFinger(ctx, next);
+    }),
+);
+
 app.use(
     createHostDataContextMiddleware(
         container.resolve<HostDataContextLoader>('hostDataContextLoader'),
@@ -952,7 +962,6 @@ app.post(
     }),
 );
 
-routeRegistry.registerController('webFingerController', WebFingerController);
 routeRegistry.registerController('followController', FollowController);
 routeRegistry.registerController('likeController', LikeController);
 routeRegistry.registerController('postController', PostController);

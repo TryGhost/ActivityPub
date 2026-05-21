@@ -76,6 +76,33 @@ describe('BlocksView', () => {
                 isFollowing: false,
             });
         });
+
+        it('should mark blocked accounts with custom WebFinger domains as domain-blocked', async () => {
+            const [blocker] = await fixtureManager.createInternalAccount();
+            const blockedAccount = await fixtureManager.createExternalAccount(
+                'https://actor-domain.com/',
+            );
+
+            await db('accounts')
+                .where({ id: blockedAccount.id })
+                .update({ webfinger_host: 'custom-blocked.com' });
+
+            await fixtureManager.createBlock(blocker, blockedAccount);
+            await fixtureManager.createDomainBlock(
+                blocker,
+                new URL('https://custom-blocked.com'),
+            );
+
+            const blockedAccounts = await blocksView.getBlockedAccounts(
+                blocker.id,
+            );
+
+            expect(blockedAccounts).toHaveLength(1);
+            expect(blockedAccounts[0].handle).toBe(
+                `@${blockedAccount.username}@custom-blocked.com`,
+            );
+            expect(blockedAccounts[0].domainBlockedByMe).toBe(true);
+        });
     });
 
     describe('getBlockedDomains', () => {

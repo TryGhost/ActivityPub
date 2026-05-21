@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
-import { getAccountHandle } from '@/account/utils';
+import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -46,6 +46,10 @@ const RemoveAliasSchema = z.object({
     actorUri: z.string(),
 });
 
+const UpdateDomainSchema = z.object({
+    domain: z.string().nullable(),
+});
+
 /**
  * Controller for account-related operations
  */
@@ -63,12 +67,26 @@ export class AccountController {
         const aliases = await this.accountService.getAliases(account.id);
         return {
             destination: {
-                handle: getAccountHandle(account.apId.host, account.username),
+                handle: getAccountHandle(
+                    getAccountHandleHost(account),
+                    account.username,
+                ),
                 apId: account.apId.href,
             },
             aliases: aliases.map((alias) => ({
                 apId: alias.href,
             })),
+        };
+    }
+
+    private accountDomainResponse(account: Account) {
+        return {
+            domain: account.webfingerHost,
+            handle: getAccountHandle(
+                getAccountHandleHost(account),
+                account.username,
+            ),
+            actorUrl: account.apId.href,
         };
     }
 
@@ -415,6 +433,104 @@ export class AccountController {
 
         return new Response(
             JSON.stringify(await this.accountAliasesResponse(account)),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
+    }
+
+    @APIRoute('GET', 'domain')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleGetAccountDomain(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        return new Response(
+            JSON.stringify(this.accountDomainResponse(account)),
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                status: 200,
+            },
+        );
+    }
+
+    @APIRoute('PUT', 'domain')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleUpdateAccountDomain(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof UpdateDomainSchema>;
+
+        try {
+            data = UpdateDomainSchema.parse((await ctx.req.json()) as unknown);
+        } catch (_err) {
+            return new Response(null, { status: 400 });
+        }
+
+        const result = await this.accountService.setWebfingerHost(
+            account,
+            data.domain,
+        );
+
+        if (isError(result)) {
+            const accountError = getError(result);
+
+            switch (accountError.type) {
+                case 'invalid-domain':
+                case 'invalid-webfinger':
+                    return new Response(
+                        JSON.stringify({ code: accountError.type }),
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            status: 400,
+                        },
+                    );
+                case 'conflict':
+                    return new Response(
+                        JSON.stringify({ code: accountError.type }),
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            status: 409,
+                        },
+                    );
+                case 'not-reachable':
+                case 'wrong-actor':
+                    return new Response(
+                        JSON.stringify({ code: accountError.type }),
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            status: 422,
+                        },
+                    );
+                default:
+                    return exhaustiveCheck(accountError);
+            }
+        }
+
+        return new Response(
+            JSON.stringify(this.accountDomainResponse(getValue(result))),
             {
                 headers: {
                     'Content-Type': 'application/json',

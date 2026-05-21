@@ -66,7 +66,7 @@ export class RouteRegistry {
         app: Hono<{ Variables: HonoContextVariables }>,
         container: AwilixContainer,
     ): void {
-        for (const route of this.routes) {
+        for (const route of [...this.routes].sort(compareRouteSpecificity)) {
             const middleware = this.buildMiddleware(route, container);
             app.on(route.method, [route.path], ...middleware);
         }
@@ -128,4 +128,19 @@ export class RouteRegistry {
 
         return middleware;
     }
+}
+
+function compareRouteSpecificity(a: RouteRegistration, b: RouteRegistration) {
+    const dynamicSegmentDifference =
+        countDynamicSegments(a.path) - countDynamicSegments(b.path);
+
+    if (dynamicSegmentDifference !== 0) {
+        return dynamicSegmentDifference;
+    }
+
+    return b.path.length - a.path.length;
+}
+
+function countDynamicSegments(path: string) {
+    return path.split('/').filter((segment) => segment.startsWith(':')).length;
 }

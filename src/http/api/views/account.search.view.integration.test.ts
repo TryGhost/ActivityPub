@@ -386,6 +386,25 @@ describe('AccountSearchView', () => {
             expect(accounts[0].name).toBe('Coding Horror');
         });
 
+        it('should return accounts matching by custom WebFinger domain', async () => {
+            await db('accounts').insert({
+                ap_id: 'https://blog.example.com/users/index',
+                username: 'index',
+                domain: 'blog.example.com',
+                webfinger_host: 'customdomain.example',
+                ap_inbox_url: 'https://blog.example.com/users/index/inbox',
+                name: 'Plain Site',
+            });
+
+            const accounts = await accountSearchView.search(
+                'customdomain',
+                viewerAccount.id,
+            );
+
+            expect(accounts).toHaveLength(1);
+            expect(accounts[0].handle).toBe('@index@customdomain.example');
+        });
+
         it('should return accounts matching by partial domain', async () => {
             // Fixtures contain account on domain "blog.codinghorror.com"
             // Searching "codinghorror" should match by domain

@@ -453,17 +453,24 @@ export function registerDependencies(
 
     container.register(
         'siteController',
-        asFunction((siteService: SiteService) => {
-            let ghostProIpAddresses: string[] | undefined;
+        asFunction(
+            (siteService: SiteService, accountService: AccountService) => {
+                let ghostProIpAddresses: string[] | undefined;
 
-            if (process.env.GHOST_PRO_IP_ADDRESSES) {
-                ghostProIpAddresses = process.env.GHOST_PRO_IP_ADDRESSES.split(
-                    ',',
-                ).map((ip) => ip.trim());
-            }
+                if (process.env.GHOST_PRO_IP_ADDRESSES) {
+                    ghostProIpAddresses =
+                        process.env.GHOST_PRO_IP_ADDRESSES.split(',').map(
+                            (ip) => ip.trim(),
+                        );
+                }
 
-            return new SiteController(siteService, ghostProIpAddresses);
-        }).singleton(),
+                return new SiteController(
+                    siteService,
+                    ghostProIpAddresses,
+                    accountService,
+                );
+            },
+        ).singleton(),
     );
 
     container.register(

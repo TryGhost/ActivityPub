@@ -39,6 +39,7 @@ interface AccountRow {
     ap_liked_url: string | null;
     custom_fields: Record<string, string> | null;
     site_id: number | null;
+    webfinger_host: string | null;
 }
 
 export class KnexAccountRepository {
@@ -74,6 +75,7 @@ export class KnexAccountRepository {
                     ? JSON.stringify(draft.customFields)
                     : null,
                 domain: draft.apId.hostname,
+                webfinger_host: draft.webfingerHost,
             });
 
             if (draft.isInternal) {
@@ -123,6 +125,7 @@ export class KnexAccountRepository {
                     custom_fields: account.customFields
                         ? JSON.stringify(account.customFields)
                         : null,
+                    webfinger_host: account.webfingerHost,
                 })
                 .where({ id: account.id });
 
@@ -266,7 +269,7 @@ export class KnexAccountRepository {
         // We can safely assume that there is an account for the user due to
         // the foreign key constraint on the users table
         const accountRow = await this.db('accounts')
-            .where('id', user.account_id)
+            .where('accounts.id', user.account_id)
             .select(
                 'accounts.id',
                 'accounts.uuid',
@@ -283,7 +286,10 @@ export class KnexAccountRepository {
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
                 'accounts.custom_fields',
+                'accounts.webfinger_host',
+                'users.site_id',
             )
+            .leftJoin('users', 'users.account_id', 'accounts.id')
             .first();
 
         if (!accountRow) {
@@ -313,6 +319,7 @@ export class KnexAccountRepository {
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
                 'accounts.custom_fields',
+                'accounts.webfinger_host',
                 'users.site_id',
             )
             .first();
@@ -345,6 +352,7 @@ export class KnexAccountRepository {
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
                 'users.site_id',
+                'accounts.webfinger_host',
             )
             .first();
 
@@ -378,6 +386,7 @@ export class KnexAccountRepository {
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
                 'accounts.custom_fields',
+                'accounts.webfinger_host',
                 'users.site_id',
             )
             .first();
@@ -442,6 +451,78 @@ export class KnexAccountRepository {
         return rows.map((row) => new URL(row.ap_id));
     }
 
+    async getByWebfingerHandle(
+        username: string,
+        host: string,
+    ): Promise<Account | null> {
+        const accountRow = await this.db('accounts')
+            .where((qb) => {
+                qb.whereRaw('LOWER(accounts.username) = LOWER(?)', [
+                    username,
+                ]).orWhereRaw(
+                    "LOWER(SUBSTRING_INDEX(accounts.ap_id, '/', -1)) = LOWER(?)",
+                    [username],
+                );
+            })
+            .whereRaw(
+                'accounts.webfinger_host_hash = UNHEX(SHA2(LOWER(?), 256))',
+                [host],
+            )
+            .leftJoin('users', 'users.account_id', 'accounts.id')
+            .select(
+                'accounts.id',
+                'accounts.uuid',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.url',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.ap_followers_url',
+                'accounts.ap_inbox_url',
+                'accounts.ap_outbox_url',
+                'accounts.ap_following_url',
+                'accounts.ap_liked_url',
+                'accounts.custom_fields',
+                'accounts.webfinger_host',
+                'users.site_id',
+            )
+            .first();
+
+        if (!accountRow) {
+            return null;
+        }
+
+        return this.mapRowToAccountEntity(accountRow);
+    }
+
+    async hasWebfingerHandleConflict(
+        username: string,
+        host: string,
+        excludeAccountId: number,
+    ): Promise<boolean> {
+        const row = await this.db('accounts')
+            .where('accounts.username', username)
+            .whereNot('accounts.id', excludeAccountId)
+            .where((qb) => {
+                qb.whereRaw(
+                    'accounts.webfinger_host_hash = UNHEX(SHA2(LOWER(?), 256))',
+                    [host],
+                ).orWhere((fallbackQb) => {
+                    fallbackQb
+                        .whereNull('accounts.webfinger_host')
+                        .whereRaw(
+                            '(accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256)) OR accounts.domain_hash = UNHEX(SHA2(LOWER(?), 256)))',
+                            [host, `www.${host}`],
+                        );
+                });
+            })
+            .first('accounts.id');
+
+        return !!row;
+    }
+
     private async mapRowToAccountEntity(row: AccountRow): Promise<Account> {
         if (!row.uuid) {
             row.uuid = randomUUID();
@@ -467,6 +548,7 @@ export class KnexAccountRepository {
             apLiked: parseURL(row.ap_liked_url),
             isInternal: row.site_id !== null,
             customFields: row.custom_fields,
+            webfingerHost: row.webfinger_host ?? null,
         });
     }
 }

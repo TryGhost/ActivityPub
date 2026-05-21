@@ -1,5 +1,5 @@
 import type { Account } from '@/account/account.entity';
-import { getAccountHandle } from '@/account/utils';
+import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
 import { normalizePlainText } from '@/helpers/html';
 import type { AuthorDTO, PostDTO } from '@/http/api/types';
 import type { Post } from '@/post/post.entity';
@@ -11,7 +11,10 @@ function accountToAuthorDTO(
     return {
         id: account.apId.href,
         name: account.name || '',
-        handle: getAccountHandle(new URL(account.apId).host, account.username),
+        handle: getAccountHandle(
+            getAccountHandleHost(account),
+            account.username,
+        ),
         avatarUrl: account.avatarUrl?.href || '',
         url: account.url.href,
         followedByMe,
