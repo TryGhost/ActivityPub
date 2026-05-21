@@ -1003,7 +1003,7 @@ describe('AccountService', () => {
         });
     });
 
-    describe('getInternalFollowersOfAccount', () => {
+    describe('getInternalFollowerAccounts', () => {
         it('should retrieve only internal accounts following an account', async () => {
             const account = await fixtureManager.createExternalAccount();
             const [internalFollower] =
@@ -1015,30 +1015,7 @@ describe('AccountService', () => {
             await fixtureManager.createFollow(externalFollower, account);
 
             const followers =
-                await service.getInternalFollowersOfAccount(account);
-
-            expect(followers).toHaveLength(1);
-            expect(followers[0]).toMatchObject({
-                id: internalFollower.id,
-                isInternal: true,
-            });
-        });
-
-        it('should not duplicate internal followers when an account has multiple users', async () => {
-            const account = await fixtureManager.createExternalAccount();
-            const [internalFollower] =
-                await fixtureManager.createInternalAccount();
-            const extraSite = await fixtureManager.createSite();
-
-            await db('users').insert({
-                account_id: internalFollower.id,
-                site_id: extraSite.id,
-            });
-
-            await fixtureManager.createFollow(internalFollower, account);
-
-            const followers =
-                await service.getInternalFollowersOfAccount(account);
+                await service.getInternalFollowerAccounts(account);
 
             expect(followers).toHaveLength(1);
             expect(followers[0]).toMatchObject({

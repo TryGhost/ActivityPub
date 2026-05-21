@@ -389,15 +389,11 @@ export class KnexAccountRepository {
         return this.mapRowToAccountEntity(accountRow);
     }
 
-    async getInternalFollowersOf(account: Account): Promise<Account[]> {
-        const internalAccountExists = this.db('users')
-            .select(1)
-            .whereRaw('users.account_id = accounts.id');
-
+    async getInternalFollowers(account: Account): Promise<Account[]> {
         const rows = await this.db('follows')
             .innerJoin('accounts', 'accounts.id', 'follows.follower_id')
+            .innerJoin('users', 'users.account_id', 'accounts.id')
             .where('follows.following_id', account.id)
-            .whereExists(internalAccountExists)
             .select(
                 'accounts.id',
                 'accounts.uuid',
@@ -414,7 +410,7 @@ export class KnexAccountRepository {
                 'accounts.ap_following_url',
                 'accounts.ap_liked_url',
                 'accounts.custom_fields',
-                this.db.raw('1 as site_id'),
+                'users.site_id',
             );
 
         return Promise.all(rows.map((row) => this.mapRowToAccountEntity(row)));

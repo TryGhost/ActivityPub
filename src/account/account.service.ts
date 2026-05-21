@@ -818,8 +818,8 @@ export class AccountService {
         return await this.accountRepository.getById(id);
     }
 
-    async getInternalFollowersOfAccount(account: Account): Promise<Account[]> {
-        return await this.accountRepository.getInternalFollowersOf(account);
+    async getInternalFollowerAccounts(account: Account): Promise<Account[]> {
+        return await this.accountRepository.getInternalFollowers(account);
     }
 
     async saveAccount(account: Account): Promise<void> {

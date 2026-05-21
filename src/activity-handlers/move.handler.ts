@@ -101,7 +101,7 @@ export class MoveHandler {
         const targetAccount = getValue(targetAccountResult);
 
         const followers =
-            await this.accountService.getInternalFollowersOfAccount(
+            await this.accountService.getInternalFollowerAccounts(
                 sourceAccount,
             );
 

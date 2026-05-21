@@ -30,7 +30,7 @@ describe('MoveHandler', () => {
         getAccountByApId: ReturnType<typeof vi.fn>;
         getAccountById: ReturnType<typeof vi.fn>;
         ensureByApId: ReturnType<typeof vi.fn>;
-        getInternalFollowersOfAccount: ReturnType<typeof vi.fn>;
+        getInternalFollowerAccounts: ReturnType<typeof vi.fn>;
         checkIfAccountIsFollowing: ReturnType<typeof vi.fn>;
         saveAccount: ReturnType<typeof vi.fn>;
     };
@@ -73,7 +73,7 @@ describe('MoveHandler', () => {
             getAccountByApId: vi.fn(),
             getAccountById: vi.fn(),
             ensureByApId: vi.fn(),
-            getInternalFollowersOfAccount: vi.fn(),
+            getInternalFollowerAccounts: vi.fn(),
             checkIfAccountIsFollowing: vi.fn(),
             saveAccount: vi.fn(),
         };
@@ -143,7 +143,7 @@ describe('MoveHandler', () => {
         });
         accountService.getAccountById.mockResolvedValue(sourceAccount);
         accountService.ensureByApId.mockResolvedValue(ok(targetAccount));
-        accountService.getInternalFollowersOfAccount.mockResolvedValue([
+        accountService.getInternalFollowerAccounts.mockResolvedValue([
             followerAccount,
         ]);
         accountService.checkIfAccountIsFollowing.mockResolvedValue(false);
@@ -220,7 +220,7 @@ describe('MoveHandler', () => {
         await handler.handle(ctx, createMove());
 
         expect(
-            accountService.getInternalFollowersOfAccount,
+            accountService.getInternalFollowerAccounts,
         ).not.toHaveBeenCalled();
         expect(ctx.sendActivity).not.toHaveBeenCalled();
     });
@@ -268,7 +268,7 @@ describe('MoveHandler', () => {
     });
 
     it('ignores Move activities when there are no internal followers', async () => {
-        accountService.getInternalFollowersOfAccount.mockResolvedValue([]);
+        accountService.getInternalFollowerAccounts.mockResolvedValue([]);
 
         await handler.handle(ctx, createMove());
 
@@ -357,7 +357,7 @@ describe('MoveHandler', () => {
             customFields: null,
         });
 
-        accountService.getInternalFollowersOfAccount.mockResolvedValue([
+        accountService.getInternalFollowerAccounts.mockResolvedValue([
             followerAccount,
             secondFollower,
         ]);
