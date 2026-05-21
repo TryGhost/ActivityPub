@@ -655,7 +655,7 @@ export class AccountService {
     async getByInternalId(id: number): Promise<AccountType | null> {
         const rows = await this.db('accounts').select('*').where({ id });
 
-        if (!rows || !rows.length) {
+        if (!rows?.length) {
             return null;
         }
 
@@ -816,6 +816,14 @@ export class AccountService {
 
     async getAccountById(id: number) {
         return await this.accountRepository.getById(id);
+    }
+
+    async getInternalFollowersOfAccount(account: Account): Promise<Account[]> {
+        return await this.accountRepository.getInternalFollowersOf(account);
+    }
+
+    async saveAccount(account: Account): Promise<void> {
+        await this.accountRepository.save(account);
     }
 
     async blockDomain(

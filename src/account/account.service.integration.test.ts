@@ -1003,6 +1003,51 @@ describe('AccountService', () => {
         });
     });
 
+    describe('getInternalFollowersOfAccount', () => {
+        it('should retrieve only internal accounts following an account', async () => {
+            const account = await fixtureManager.createExternalAccount();
+            const [internalFollower] =
+                await fixtureManager.createInternalAccount();
+            const externalFollower =
+                await fixtureManager.createExternalAccount();
+
+            await fixtureManager.createFollow(internalFollower, account);
+            await fixtureManager.createFollow(externalFollower, account);
+
+            const followers =
+                await service.getInternalFollowersOfAccount(account);
+
+            expect(followers).toHaveLength(1);
+            expect(followers[0]).toMatchObject({
+                id: internalFollower.id,
+                isInternal: true,
+            });
+        });
+
+        it('should not duplicate internal followers when an account has multiple users', async () => {
+            const account = await fixtureManager.createExternalAccount();
+            const [internalFollower] =
+                await fixtureManager.createInternalAccount();
+            const extraSite = await fixtureManager.createSite();
+
+            await db('users').insert({
+                account_id: internalFollower.id,
+                site_id: extraSite.id,
+            });
+
+            await fixtureManager.createFollow(internalFollower, account);
+
+            const followers =
+                await service.getInternalFollowersOfAccount(account);
+
+            expect(followers).toHaveLength(1);
+            expect(followers[0]).toMatchObject({
+                id: internalFollower.id,
+                isInternal: true,
+            });
+        });
+    });
+
     describe('checkIfAccountIsFollowing', () => {
         it('should check if an account is following another account', async () => {
             const [[account], [followee], [nonFollowee]] = await Promise.all([

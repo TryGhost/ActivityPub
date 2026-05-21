@@ -17,6 +17,7 @@ import { AccountService } from '@/account/account.service';
 import { CreateHandler } from '@/activity-handlers/create.handler';
 import { DeleteHandler } from '@/activity-handlers/delete.handler';
 import { FollowHandler } from '@/activity-handlers/follow.handler';
+import { MoveHandler } from '@/activity-handlers/move.handler';
 import { UpdateHandler } from '@/activity-handlers/update.handler';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
@@ -375,6 +376,7 @@ export function registerDependencies(
     container.register('createHandler', asClass(CreateHandler).singleton());
     container.register('deleteHandler', asClass(DeleteHandler).singleton());
     container.register('followHandler', asClass(FollowHandler).singleton());
+    container.register('moveHandler', asClass(MoveHandler).singleton());
     container.register('updateHandler', asClass(UpdateHandler).singleton());
     container.register(
         'deleteDispatcher',

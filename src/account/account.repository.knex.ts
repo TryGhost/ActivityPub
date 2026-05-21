@@ -389,6 +389,37 @@ export class KnexAccountRepository {
         return this.mapRowToAccountEntity(accountRow);
     }
 
+    async getInternalFollowersOf(account: Account): Promise<Account[]> {
+        const internalAccountExists = this.db('users')
+            .select(1)
+            .whereRaw('users.account_id = accounts.id');
+
+        const rows = await this.db('follows')
+            .innerJoin('accounts', 'accounts.id', 'follows.follower_id')
+            .where('follows.following_id', account.id)
+            .whereExists(internalAccountExists)
+            .select(
+                'accounts.id',
+                'accounts.uuid',
+                'accounts.username',
+                'accounts.name',
+                'accounts.bio',
+                'accounts.url',
+                'accounts.avatar_url',
+                'accounts.banner_image_url',
+                'accounts.ap_id',
+                'accounts.ap_followers_url',
+                'accounts.ap_inbox_url',
+                'accounts.ap_outbox_url',
+                'accounts.ap_following_url',
+                'accounts.ap_liked_url',
+                'accounts.custom_fields',
+                this.db.raw('1 as site_id'),
+            );
+
+        return Promise.all(rows.map((row) => this.mapRowToAccountEntity(row)));
+    }
+
     async getKeyPair(
         accountId: number,
     ): Promise<{ publicKey: string | null; privateKey: string | null } | null> {

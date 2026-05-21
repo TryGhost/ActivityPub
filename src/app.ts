@@ -14,6 +14,7 @@ import {
     Follow,
     type KvStore,
     Like,
+    Move,
     Note,
     Reject,
     type RequestContext,
@@ -53,6 +54,7 @@ import { dispatchRejectActivity } from '@/activity-dispatchers/reject.dispatcher
 import type { CreateHandler } from '@/activity-handlers/create.handler';
 import type { DeleteHandler } from '@/activity-handlers/delete.handler';
 import type { FollowHandler } from '@/activity-handlers/follow.handler';
+import type { MoveHandler } from '@/activity-handlers/move.handler';
 import type { UpdateHandler } from '@/activity-handlers/update.handler';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
@@ -433,6 +435,17 @@ inboxListener
                         'undoHandler',
                     );
                 return undoHandler(ctx, activity);
+            }),
+        ),
+    )
+    .onError(inboxErrorHandler)
+    .on(
+        Move,
+        ensureCorrectContext(
+            spanWrapper((ctx: FedifyContext, activity: Move) => {
+                const moveHandler =
+                    container.resolve<MoveHandler>('moveHandler');
+                return moveHandler.handle(ctx, activity);
             }),
         ),
     )
