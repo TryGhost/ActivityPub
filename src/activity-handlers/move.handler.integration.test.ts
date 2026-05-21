@@ -50,16 +50,6 @@ describe('MoveHandler', () => {
     beforeEach(async () => {
         await fixtureManager.reset();
 
-        await db.raw('SET FOREIGN_KEY_CHECKS = 0');
-        try {
-            await db('follows').truncate();
-            await db('accounts').truncate();
-            await db('users').truncate();
-            await db('sites').truncate();
-        } finally {
-            await db.raw('SET FOREIGN_KEY_CHECKS = 1');
-        }
-
         events = new AsyncEvents();
         const accountRepository = new KnexAccountRepository(db, events);
         const fedifyContextFactory = {
