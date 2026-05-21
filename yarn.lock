@@ -416,15 +416,15 @@
     "@opentelemetry/semantic-conventions" "^1.28.0"
     minimatch "^10.2.4"
 
-"@fedify/cli@1.10.9":
-  version "1.10.9"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.10.9.tgz#b303bb746cb18ba02e89de8a94ff8370e40da474"
-  integrity sha512-bUtA85eORi0mfY5eBXqEUIaXwAOUbdIwYOuvSXV3ngUNxusWnNOQXgC7sVvNIfIzhRQE8ZzYEVKRGwhqJQ8sQQ==
+"@fedify/cli@1.10.10":
+  version "1.10.10"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.10.10.tgz#49f4d7416f34a410e56364c768aaeaca37026976"
+  integrity sha512-DTPZh+qvXZKtfFA4CHyChp2HBMhzy5eEqVLpYg9ztI5uPkd1sGWZHc3I/FNvChvJT6JXiK5A40UzphqFyKORWg==
 
-"@fedify/fedify@1.10.9":
-  version "1.10.9"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.10.9.tgz#35b99e05b66ef6bd9d397ab7ede99fa2e4ee9975"
-  integrity sha512-iAwpup5ZmH8PfbSZGKVqLGZf7XVr2XdquUdfJB7urZjV1b1nK6Yobqk/fZZfq16HntkbbySh4C/BzNPPX+Z0ow==
+"@fedify/fedify@1.10.10":
+  version "1.10.10"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.10.10.tgz#8d874a8920f61d793e36fbd5d28bab600a106a53"
+  integrity sha512-iIEokcPsy3p73qIO9n0IEJDXtqxrE8AQx/9m1rrPfzJRGsOG1QWlLxcvoxXXgD2yCY+E+HtBokALWzlWy39XHg==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@js-temporal/polyfill" "^0.5.1"
@@ -447,15 +447,15 @@
     url-template "^3.1.1"
     urlpattern-polyfill "^10.1.0"
 
-"@fedify/hono@1.10.9":
-  version "1.10.9"
-  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.9.tgz#c0c7579598652192462df75c7d88dd466812fa63"
-  integrity sha512-Qlwqkp5gvug5E765jxQFMjgs0TlGvTjx5oQr8N7KVyd2LhRucnslXAB8P7bSnKsmiTZlwF8zzMG/0G1nivX1zA==
+"@fedify/hono@1.10.10":
+  version "1.10.10"
+  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.10.tgz#faa465ecef1d1100c751a9cff6d6dd13358f4367"
+  integrity sha512-0zInG7fR25ZetMgLaviIzsMRKG70UZRnjPka8QxfICMmkGNrv9l/+HfWsR9Yplukj71BfMdz1dduRwOzWGIShQ==
 
-"@fedify/redis@1.10.9":
-  version "1.10.9"
-  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.10.9.tgz#8a3a918eb9e5d83c4df99baeb3ac1ee420408bd1"
-  integrity sha512-uOBv9PGFX9vP5bXxY5Yv9RztHuqHFFNpYnSFE6qh8Gh1qquOYZFbdEfMgbtQJtLifSt7fqYNVw1vWLOfjAm6+A==
+"@fedify/redis@1.10.10":
+  version "1.10.10"
+  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.10.10.tgz#ae972ee01384baf4a0b8c5b90bfcb6d315330091"
+  integrity sha512-0X6pnLbPcNHPdo8GSb8WpD9TTh5cAnekBodGFQLfnBT7nZ5m+YUeQPuigu6ryRPe6pM7ByJFb+6M+zGSQ85QUA==
   dependencies:
     "@js-temporal/polyfill" "^0.5.1"
     "@logtape/logtape" "^1.2.2"
