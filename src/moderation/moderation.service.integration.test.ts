@@ -318,6 +318,20 @@ describe('ModerationService', () => {
     });
 
     describe('canFollowAccount', () => {
+        it('should allow following when neither account has blocked the other', async () => {
+            const [[aliceAccount], [bobAccount]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const aliceCanFollowBob = await moderationService.canFollowAccount(
+                aliceAccount.id,
+                bobAccount.id,
+            );
+
+            expect(aliceCanFollowBob).toBe(true);
+        });
+
         it('should prevent following when the follower has blocked the target', async () => {
             const [[aliceAccount], [bobAccount]] = await Promise.all([
                 fixtureManager.createInternalAccount(),
