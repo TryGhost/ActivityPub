@@ -210,6 +210,10 @@ export class MoveHandler {
             targetAccount.id,
         );
 
+        // If either side has blocked the other, skip this follower entirely.
+        // The follow of the source account is intentionally left in place; a
+        // block expresses an explicit decision, and the Move should not be
+        // used to bypass it. The stale follow can be cleaned up manually.
         if (!canInteract) {
             ctx.data.logger.debug(
                 `${follower.apId.href} is not allowed to follow ${targetAccount.apId.href}`,
