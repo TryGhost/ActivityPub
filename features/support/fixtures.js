@@ -104,7 +104,7 @@ export async function createObject(
     return object;
 }
 
-export async function createActivity(type, object, actor) {
+export async function createActivity(type, object, actor, extras = {}) {
     let activity;
 
     if (type === 'Follow') {
@@ -219,6 +219,21 @@ export async function createActivity(type, object, actor) {
         };
     }
 
+    if (type === 'Move') {
+        activity = {
+            '@context': [
+                'https://www.w3.org/ns/activitystreams',
+                'https://w3id.org/security/data-integrity/v1',
+            ],
+            type: 'Move',
+            id: `${process.env.URL_EXTERNAL_ACTIVITY_PUB}/move/${uuidv4()}`,
+            to: 'as:Public',
+            object: object,
+            target: extras.target,
+            actor: actor,
+        };
+    }
+
     const externalActivityPub = getExternalWiremock();
 
     await externalActivityPub.register(
@@ -243,7 +258,7 @@ export async function createActivity(type, object, actor) {
 
 export async function createActor(
     name,
-    { remote = true, type = 'Person' } = {},
+    { remote = true, type = 'Person', aliases } = {},
 ) {
     if (remote === false) {
         return {
@@ -310,6 +325,10 @@ export async function createActor(
                 '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSc3IqGjRaO3vcFdQ15D\nF90WVJC6tb2QwYBh9kQYVlQ1VhBiF6E4GK2okvyvukIL5PHLCgfQrfJmSiopk9Xo\n46Qri6rJbcPoWoZz/jWN0pfmU20hNuTQx6ebSoSkg6rHv1MKuy5LmDGLFC2ze3kU\nsY8u7X6TOBrifs/N+goLaH3+SkT2hZDKWJrmDyHzj043KLvXs/eiyu50M+ERoSlg\n70uO7QAXQFuLMILdy0UNJFM4xjlK6q4Jfbm4MC8QRG+i31AkmNvpY9JqCLqu0mGD\nBrdfJeN8PN+7DHW/Pzspf5RlJtlvBx1dS8Bxo2xteUyLGIaTZ9HZFhHc3IrmmKeW\naQIDAQAB\n-----END PUBLIC KEY-----\n',
         },
     };
+
+    if (aliases) {
+        user.alsoKnownAs = aliases.map((alias) => alias?.id ?? alias);
+    }
 
     const externalActivityPub = getExternalWiremock();
 
