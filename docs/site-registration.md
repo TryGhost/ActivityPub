@@ -28,8 +28,9 @@ fetching `/ghost/api/admin/site/` on the previous host:
 | 200 with a different / missing `site_uuid`          | `released`             | Allow reassignment                     |
 | 200 with non-JSON body                              | `released`             | Allow reassignment                     |
 | 3xx / 4xx                                           | `released`             | Allow reassignment                     |
-| DNS NXDOMAIN / EAI_AGAIN                            | `released`             | Allow reassignment                     |
+| DNS NXDOMAIN (ENOTFOUND)                            | `released`             | Allow reassignment                     |
 | Connection refused (ECONNREFUSED)                   | `released`             | Allow reassignment                     |
+| Transient DNS failure (EAI_AGAIN)                   | `unverifiable`         | Allow reassignment (fail-open), logged |
 | 5xx / timeout / other transport error               | `unverifiable`         | Allow reassignment (fail-open), logged |
 
 When the reassignment proceeds (whether `released` or `unverifiable`),

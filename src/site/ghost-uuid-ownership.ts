@@ -88,7 +88,10 @@ function classifyError(err: unknown): OwnershipCheckResult {
     // (e.g. ENOTFOUND, ECONNREFUSED) nested in the cause chain.
     if (err instanceof Error) {
         const code = getNetworkErrorCode(err);
-        if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+        // ENOTFOUND is a definitive "no DNS record exists" response.
+        // EAI_AGAIN is a transient resolver failure (e.g. upstream
+        // resolver timeout) and does not prove the host is gone.
+        if (code === 'ENOTFOUND') {
             return { type: 'released', reason: 'dns-not-found' };
         }
         if (code === 'ECONNREFUSED') {

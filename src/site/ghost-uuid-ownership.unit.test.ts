@@ -98,7 +98,7 @@ describe('classifyGhostUuidOwnership', () => {
             });
         });
 
-        it('returns released on transient DNS failure (EAI_AGAIN)', async () => {
+        it('returns unverifiable on transient DNS failure (EAI_AGAIN)', async () => {
             const result = await classifyGhostUuidOwnership(
                 HOST,
                 UUID,
@@ -108,8 +108,8 @@ describe('classifyGhostUuidOwnership', () => {
             );
 
             expect(result).toEqual({
-                type: 'released',
-                reason: 'dns-not-found',
+                type: 'unverifiable',
+                reason: 'network-error',
             });
         });
 
