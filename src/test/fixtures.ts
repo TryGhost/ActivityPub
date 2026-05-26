@@ -305,20 +305,26 @@ export function createFixtureManager(
         fedifyContextFactory,
         generateTestCryptoKeyPair,
     );
-    const siteService = new SiteService(db, accountService, {
-        getSiteSettings: async (host) => ({
-            site: {
-                description: faker.lorem.sentence(),
-                title: faker.person.fullName(),
-                icon: `https://${host}/avatar/c4863565-3533-43fa-9991-19c5160a4da2.jpg`,
-                cover_image: `https://${host}/cover/cd93c035-7326-4043-aed1-9150fe91b59.jpg`,
-                site_uuid: crypto.randomUUID(),
-            },
-        }),
-    });
     const logger = {
         info: () => {},
+        warn: () => {},
     } as unknown as Logger;
+    const siteService = new SiteService(
+        db,
+        accountService,
+        {
+            getSiteSettings: async (host) => ({
+                site: {
+                    description: faker.lorem.sentence(),
+                    title: faker.person.fullName(),
+                    icon: `https://${host}/avatar/c4863565-3533-43fa-9991-19c5160a4da2.jpg`,
+                    cover_image: `https://${host}/cover/cd93c035-7326-4043-aed1-9150fe91b59.jpg`,
+                    site_uuid: crypto.randomUUID(),
+                },
+            }),
+        },
+        logger,
+    );
     const postRepository = new KnexPostRepository(db, events, logger);
 
     return new FixtureManager(

@@ -152,6 +152,7 @@ describe('FeedService', () => {
         const logger = {
             info: vi.fn(),
             debug: vi.fn(),
+            warn: vi.fn(),
         } as unknown as Logger;
         events = new AsyncEvents();
         accountRepository = new KnexAccountRepository(client, events);
@@ -163,19 +164,24 @@ describe('FeedService', () => {
             fedifyContextFactory,
             generateTestCryptoKeyPair,
         );
-        siteService = new SiteService(client, accountService, {
-            async getSiteSettings(host: string) {
-                return {
-                    site: {
-                        title: `Site ${host} title`,
-                        description: `Site ${host} description`,
-                        icon: `https://${host}/favicon.ico`,
-                        cover_image: `https://${host}/cover.png`,
-                        site_uuid: crypto.randomUUID(),
-                    },
-                };
+        siteService = new SiteService(
+            client,
+            accountService,
+            {
+                async getSiteSettings(host: string) {
+                    return {
+                        site: {
+                            title: `Site ${host} title`,
+                            description: `Site ${host} description`,
+                            icon: `https://${host}/favicon.ico`,
+                            cover_image: `https://${host}/cover.png`,
+                            site_uuid: crypto.randomUUID(),
+                        },
+                    };
+                },
             },
-        });
+            logger,
+        );
         postRepository = new KnexPostRepository(client, events, logger);
         moderationService = new ModerationService(client);
         fixtureManager = createFixtureManager(client);

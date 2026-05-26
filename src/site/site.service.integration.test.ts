@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getLogger } from '@logtape/logtape';
 import type { Knex } from 'knex';
+import { HTTPError } from 'ky';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
 import { AccountService } from '@/account/account.service';
@@ -66,7 +68,12 @@ describe('SiteService', () => {
             },
         };
         // Create the service
-        service = new SiteService(db, accountService, ghostService);
+        service = new SiteService(
+            db,
+            accountService,
+            ghostService,
+            getLogger(['test', 'site-service']),
+        );
     });
 
     it('Can initialise a site multiple times and retrieve it', async () => {
@@ -369,7 +376,7 @@ describe('SiteService', () => {
         expect(oldRow.ghost_uuid).toBeNull();
     });
 
-    it('Blocks ghost_uuid reassignment when the old host returns a transient HTTP error', async () => {
+    it('Allows ghost_uuid reassignment when the old host returns a transient 5xx (fail-open)', async () => {
         const ghostUUID = 'transient-error-uuid';
 
         ghostService.getSiteSettings = vi.fn().mockResolvedValue({
@@ -384,10 +391,13 @@ describe('SiteService', () => {
 
         await service.initialiseSiteForHost('site-a.tld');
 
-        // Old host returns an HTTP error (has a response property)
-        const httpError = Object.assign(
-            new Error('Request failed with status code 500'),
-            { response: { status: 500 } },
+        // Old host returns a 500 (genuinely unverifiable). Policy is to
+        // fail-open: allow reassignment rather than block legitimate
+        // domain changes during transient outages.
+        const httpError = new HTTPError(
+            new Response('', { status: 500 }),
+            new Request('https://site-a.tld/ghost/api/admin/site/'),
+            {} as never,
         );
 
         ghostService.getSiteSettings = vi
@@ -407,24 +417,14 @@ describe('SiteService', () => {
                 });
             });
 
-        await expect(
-            service.initialiseSiteForHost('site-b.tld'),
-        ).rejects.toThrow(
-            'Unable to verify ghost_uuid ownership: site-a.tld returned an error',
-        );
+        const siteB = await service.initialiseSiteForHost('site-b.tld');
 
-        // Verify existing site is untouched
+        expect(siteB.ghost_uuid).toBe(ghostUUID);
+
+        // Old site's ghost_uuid should be released
         const siteARow = await db('sites')
             .where({ host: 'site-a.tld' })
             .first();
-
-        expect(siteARow.ghost_uuid).toBe(ghostUUID);
-
-        // Verify new site was not created
-        const siteBRow = await db('sites')
-            .where({ host: 'site-b.tld' })
-            .first();
-
-        expect(siteBRow).toBeUndefined();
+        expect(siteARow.ghost_uuid).toBeNull();
     });
 });
