@@ -32,7 +32,10 @@ export class SiteController {
                 },
             });
         } catch (error) {
-            logger.error('Failed to get site data', { error });
+            logger.error('Failed to get site data: {error} for host {host}', {
+                error,
+                host,
+            });
             return new Response(
                 error instanceof Error ? error.message : 'Unknown error',
                 {
