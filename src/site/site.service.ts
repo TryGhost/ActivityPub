@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 
+import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
 import type { AccountService } from '@/account/account.service';
 import type { InternalAccountData } from '@/account/types';
 import type { getSiteSettings, SiteSettings } from '@/helpers/ghost';
+import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
 
 export type Site = {
     id: number;
@@ -22,6 +24,7 @@ export class SiteService {
         private client: Knex,
         private accountService: AccountService,
         private ghostService: IGhostService,
+        private logger: Logger,
     ) {}
 
     private async createSite(
@@ -48,7 +51,11 @@ export class SiteService {
                 .first();
 
             if (currentOwner) {
-                await this.verifyUUIDReleased(currentOwner.host, ghostUuid);
+                await this.verifyUUIDReleased(
+                    currentOwner.host,
+                    host,
+                    ghostUuid,
+                );
 
                 verifiedOwnerHost = currentOwner.host;
             }
@@ -156,25 +163,45 @@ export class SiteService {
     }
 
     private async verifyUUIDReleased(
-        host: string,
+        previousHost: string,
+        newHost: string,
         ghostUuid: string,
     ): Promise<void> {
-        let settings: SiteSettings | undefined;
+        const result = await classifyGhostUuidOwnership(
+            previousHost,
+            ghostUuid,
+            (host) => this.ghostService.getSiteSettings(host),
+        );
 
-        try {
-            settings = await this.ghostService.getSiteSettings(host);
-        } catch (err) {
-            if (this.isHostReachableError(err)) {
-                throw new Error(
-                    `Unable to verify ghost_uuid ownership: ${host} returned an error`,
-                );
-            }
+        if (result.type === 'still-claims') {
+            throw new Error('ghost_uuid is still claimed by another host');
+        }
+
+        if (result.type === 'unverifiable') {
+            // Fail-open: a transient or ambiguous response from the
+            // previous host should not block legitimate domain changes.
+            // The trade-off is accepted; see docs/site-registration.md.
+            this.logger.warn(
+                'Reassigning ghost_uuid despite unverifiable response from previous host {previousHost} (reason: {reason}); transferring to {newHost}',
+                {
+                    previousHost,
+                    newHost,
+                    ghostUuid,
+                    reason: result.reason,
+                },
+            );
             return;
         }
 
-        if (settings?.site?.site_uuid === ghostUuid) {
-            throw new Error('ghost_uuid is still claimed by another host');
-        }
+        this.logger.info(
+            'Previous host {previousHost} has released ghost_uuid (reason: {reason}); transferring to {newHost}',
+            {
+                previousHost,
+                newHost,
+                ghostUuid,
+                reason: result.reason,
+            },
+        );
     }
 
     private async getSiteSettings(host: string): Promise<SiteSettings> {
@@ -185,13 +212,5 @@ export class SiteService {
         }
 
         return settings;
-    }
-
-    private isHostReachableError(err: unknown): boolean {
-        return (
-            err !== null &&
-            typeof err === 'object' &&
-            ('response' in err || 'request' in err)
-        );
     }
 }
