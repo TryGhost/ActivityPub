@@ -24,7 +24,8 @@ export type ReleaseReason =
     | 'connection-refused'
     | 'admin-api-gone'
     | 'non-ghost-response'
-    | 'different-uuid';
+    | 'different-uuid'
+    | 'aliased';
 
 export type UnverifiableReason =
     | 'network-error'
@@ -61,10 +62,44 @@ export async function classifyGhostUuidOwnership(
     }
 
     if (settings.site.site_uuid === expectedUuid) {
+        // The previous host still serves a matching UUID, but Ghost
+        // reports a different host as the install's canonical URL.
+        // This is the common pattern for managed Ghost hosting (e.g.
+        // a provider's backend hostname aliased to a customer's
+        // custom domain): both hostnames serve the same install, but
+        // the install considers the custom domain its public identity.
+        // Treat the previous host as having released the UUID so the
+        // new (canonical) host can take it.
+        if (canonicalUrlPointsElsewhere(settings.site.url, host)) {
+            return { type: 'released', reason: 'aliased' };
+        }
         return { type: 'still-claims' };
     }
 
     return { type: 'released', reason: 'different-uuid' };
+}
+
+/**
+ * Returns true when the Ghost-reported canonical URL's host does not
+ * match the host we queried. A null/malformed `url` returns false
+ * (we conservatively keep treating the response as authoritative).
+ */
+function canonicalUrlPointsElsewhere(
+    canonicalUrl: string | null,
+    queriedHost: string,
+): boolean {
+    if (!canonicalUrl) {
+        return false;
+    }
+
+    let canonicalHost: string;
+    try {
+        canonicalHost = new URL(canonicalUrl).host;
+    } catch {
+        return false;
+    }
+
+    return canonicalHost !== queriedHost;
 }
 
 function classifyError(err: unknown): OwnershipCheckResult {

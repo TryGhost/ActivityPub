@@ -17,6 +17,7 @@ describe('getSiteSettings', () => {
                 icon: 'https://example.com/baz.png',
                 cover_image: 'https://example.com/qux.png',
                 site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                url: 'https://example.com/',
             },
         };
 
@@ -41,6 +42,7 @@ describe('getSiteSettings', () => {
                     icon: 'https://example.com/baz.png',
                     cover_image: 'https://example.com/qux.png',
                     site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                    url: 'https://example.com/',
                 },
             }),
         } as ResponsePromise);
@@ -54,6 +56,7 @@ describe('getSiteSettings', () => {
                 icon: 'https://example.com/baz.png',
                 cover_image: 'https://example.com/qux.png',
                 site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                url: 'https://example.com/',
             },
         });
     });
@@ -66,6 +69,7 @@ describe('getSiteSettings', () => {
                     title: 'bar',
                     cover_image: 'https://example.com/qux.png',
                     site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                    url: 'https://example.com/',
                 },
             }),
         } as ResponsePromise);
@@ -79,6 +83,7 @@ describe('getSiteSettings', () => {
                 icon: null,
                 cover_image: 'https://example.com/qux.png',
                 site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                url: 'https://example.com/',
             },
         });
     });
@@ -91,6 +96,7 @@ describe('getSiteSettings', () => {
                     icon: 'https://example.com/baz.png',
                     cover_image: 'https://example.com/qux.png',
                     site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                    url: 'https://example.com/',
                 },
             }),
         } as ResponsePromise);
@@ -104,6 +110,7 @@ describe('getSiteSettings', () => {
                 icon: 'https://example.com/baz.png',
                 cover_image: 'https://example.com/qux.png',
                 site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                url: 'https://example.com/',
             },
         });
     });
@@ -116,6 +123,7 @@ describe('getSiteSettings', () => {
                     title: 'bar',
                     icon: 'https://example.com/baz.png',
                     site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                    url: 'https://example.com/',
                 },
             }),
         } as ResponsePromise);
@@ -129,6 +137,7 @@ describe('getSiteSettings', () => {
                 icon: 'https://example.com/baz.png',
                 cover_image: null,
                 site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                url: 'https://example.com/',
             },
         });
     });
@@ -141,6 +150,7 @@ describe('getSiteSettings', () => {
                     title: 'bar',
                     icon: 'https://example.com/baz.png',
                     cover_image: 'https://example.com/qux.png',
+                    url: 'https://example.com/',
                 },
             }),
         } as ResponsePromise);
@@ -154,6 +164,34 @@ describe('getSiteSettings', () => {
                 icon: 'https://example.com/baz.png',
                 cover_image: 'https://example.com/qux.png',
                 site_uuid: null,
+                url: 'https://example.com/',
+            },
+        });
+    });
+
+    it('sets the site url to null if missing', async () => {
+        vi.mocked(ky.get).mockReturnValue({
+            json: async () => ({
+                site: {
+                    description: 'foo',
+                    title: 'bar',
+                    icon: 'https://example.com/baz.png',
+                    cover_image: 'https://example.com/qux.png',
+                    site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                },
+            }),
+        } as ResponsePromise);
+
+        const result = await getSiteSettings(host);
+
+        expect(result).toEqual({
+            site: {
+                description: 'foo',
+                title: 'bar',
+                icon: 'https://example.com/baz.png',
+                cover_image: 'https://example.com/qux.png',
+                site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                url: null,
             },
         });
     });
