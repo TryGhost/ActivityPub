@@ -15,23 +15,36 @@ on:
     tags:
       - "v*.*.*" # Trigger on semantic version tags like v1.0.0
 
+permissions:
+  contents: read
+
 concurrency:
   group: cicd-${{ github.ref_name == 'main' && 'main' || github.ref_name }}
   cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 jobs:
   build:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     uses: ./.github/workflows/build.yml
     secrets: inherit
 
   test:
     needs: build
+    permissions:
+      contents: read
     uses: ./.github/workflows/test.yml
     with:
       skip-tests: ${{ contains(github.event.pull_request.labels.*.name, 'skip-tests') }}
 
   push:
     needs: [build]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     uses: ./.github/workflows/push.yml
     with:
       activitypub-private-tags: ${{ needs.build.outputs.activitypub-private-tags }}
@@ -44,12 +57,18 @@ jobs:
   deploy-pr:
     needs: [push, test]
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy-pr.yml
     secrets: inherit
 
   deploy:
     needs: [push, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     with:
