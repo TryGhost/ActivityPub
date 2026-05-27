@@ -55,7 +55,7 @@ describe('SiteService', () => {
             generateTestCryptoKeyPair,
         );
         ghostService = {
-            async getSiteSettings(_host: string) {
+            async getSiteSettings(host: string) {
                 return {
                     site: {
                         icon: '',
@@ -63,6 +63,7 @@ describe('SiteService', () => {
                         description: 'Default Description',
                         cover_image: 'https://testing.com/cover.png',
                         site_uuid: 'e604ed82-188c-4f55-a5ce-9ebfb4184970',
+                        url: `https://${host}/`,
                     },
                 };
             },
@@ -426,5 +427,55 @@ describe('SiteService', () => {
             .where({ host: 'site-a.tld' })
             .first();
         expect(siteARow.ghost_uuid).toBeNull();
+    });
+
+    it('Allows ghost_uuid reassignment when the previous host is an alias of the same install', async () => {
+        // A managed-Ghost provider's backend hostname is registered
+        // first; the install's canonical URL then moves to the customer's
+        // custom domain. Both hostnames still serve the same UUID, but
+        // Ghost reports the custom domain as the canonical URL.
+        const ghostUUID = 'aliased-ghost-uuid';
+        const backendHost = 'pod-a.provider.tld';
+        const customDomain = 'custom-domain.tld';
+
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: null,
+                title: 'Aliased site',
+                description: null,
+                cover_image: null,
+                site_uuid: ghostUUID,
+                url: `https://${backendHost}/`,
+            },
+        });
+
+        await service.initialiseSiteForHost(backendHost);
+
+        // Both hosts now serve the same install, with the custom
+        // domain reported as the canonical URL.
+        ghostService.getSiteSettings = vi.fn().mockResolvedValue({
+            site: {
+                icon: null,
+                title: 'Aliased site',
+                description: null,
+                cover_image: null,
+                site_uuid: ghostUUID,
+                url: `https://${customDomain}/`,
+            },
+        });
+
+        const customSite = await service.initialiseSiteForHost(customDomain);
+
+        expect(customSite.ghost_uuid).toBe(ghostUUID);
+
+        const backendRow = await db('sites')
+            .where({ host: backendHost })
+            .first();
+        expect(backendRow.ghost_uuid).toBeNull();
+
+        const customRow = await db('sites')
+            .where({ host: customDomain })
+            .first();
+        expect(customRow.ghost_uuid).toBe(ghostUUID);
     });
 });

@@ -8,7 +8,10 @@ import { classifyGhostUuidOwnership } from '@/site/ghost-uuid-ownership';
 const HOST = 'previous-owner.tld';
 const UUID = '3955fb96-837a-44b2-bb58-e20c082bc992';
 
-function settingsWithUuid(uuid: string | null): SiteSettings {
+function settingsWithUuid(
+    uuid: string | null,
+    url: string | null = `https://${HOST}/`,
+): SiteSettings {
     return {
         site: {
             description: null,
@@ -16,6 +19,7 @@ function settingsWithUuid(uuid: string | null): SiteSettings {
             title: 'Previous owner',
             cover_image: null,
             site_uuid: uuid,
+            url,
         },
     };
 }
@@ -78,6 +82,72 @@ describe('classifyGhostUuidOwnership', () => {
             expect(result).toEqual({
                 type: 'released',
                 reason: 'different-uuid',
+            });
+        });
+    });
+
+    describe('aliased hosts', () => {
+        it('returns released when the host serves a matching uuid but reports a different canonical url', async () => {
+            // The previous host is e.g. a managed-Ghost provider's
+            // backend hostname; the install's canonical url has been
+            // moved to a customer's custom domain.
+            const result = await classifyGhostUuidOwnership(
+                HOST,
+                UUID,
+                async () =>
+                    settingsWithUuid(UUID, 'https://customer-domain.tld/'),
+            );
+
+            expect(result).toEqual({
+                type: 'released',
+                reason: 'aliased',
+            });
+        });
+
+        it('returns still-claims when the canonical url matches the queried host', async () => {
+            const result = await classifyGhostUuidOwnership(
+                HOST,
+                UUID,
+                async () => settingsWithUuid(UUID, `https://${HOST}/`),
+            );
+
+            expect(result).toEqual({ type: 'still-claims' });
+        });
+
+        it('returns still-claims when the canonical url is missing', async () => {
+            const result = await classifyGhostUuidOwnership(
+                HOST,
+                UUID,
+                async () => settingsWithUuid(UUID, null),
+            );
+
+            expect(result).toEqual({ type: 'still-claims' });
+        });
+
+        it('returns still-claims when the canonical url is malformed', async () => {
+            const result = await classifyGhostUuidOwnership(
+                HOST,
+                UUID,
+                async () => settingsWithUuid(UUID, 'not a url'),
+            );
+
+            expect(result).toEqual({ type: 'still-claims' });
+        });
+
+        it('ignores port differences when comparing hosts', async () => {
+            // `new URL(...).host` includes the port if present, so a
+            // url with an explicit port on a different domain is still
+            // treated as a different host.
+            const result = await classifyGhostUuidOwnership(
+                HOST,
+                UUID,
+                async () =>
+                    settingsWithUuid(UUID, 'https://customer-domain.tld:8080/'),
+            );
+
+            expect(result).toEqual({
+                type: 'released',
+                reason: 'aliased',
             });
         });
     });

@@ -320,6 +320,7 @@ export function createFixtureManager(
                     icon: `https://${host}/avatar/c4863565-3533-43fa-9991-19c5160a4da2.jpg`,
                     cover_image: `https://${host}/cover/cd93c035-7326-4043-aed1-9150fe91b59.jpg`,
                     site_uuid: crypto.randomUUID(),
+                    url: `https://${host}/`,
                 },
             }),
         },

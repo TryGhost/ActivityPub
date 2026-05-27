@@ -22,21 +22,38 @@ host registers with a `ghost_uuid` that already belongs to an existing
 site row, the service classifies the previous owner's current state by
 fetching `/ghost/api/admin/site/` on the previous host:
 
-| Previous host response                              | Classification         | Outcome                                |
-| --------------------------------------------------- | ---------------------- | -------------------------------------- |
-| 200 with the same `site_uuid`                       | `still-claims`         | Refuse the reassignment                |
-| 200 with a different / missing `site_uuid`          | `released`             | Allow reassignment                     |
-| 200 with non-JSON body                              | `released`             | Allow reassignment                     |
-| 3xx / 4xx                                           | `released`             | Allow reassignment                     |
-| DNS NXDOMAIN (ENOTFOUND)                            | `released`             | Allow reassignment                     |
-| Connection refused (ECONNREFUSED)                   | `released`             | Allow reassignment                     |
-| Transient DNS failure (EAI_AGAIN)                   | `unverifiable`         | Allow reassignment (fail-open), logged |
-| 5xx / timeout / other transport error               | `unverifiable`         | Allow reassignment (fail-open), logged |
+| Previous host response                                                 | Classification | Outcome                                |
+| ---------------------------------------------------------------------- | -------------- | -------------------------------------- |
+| 200 with the same `site_uuid` and a matching canonical `url`           | `still-claims` | Refuse the reassignment                |
+| 200 with the same `site_uuid` but a different canonical `url` (alias)  | `released`     | Allow reassignment                     |
+| 200 with a different / missing `site_uuid`                             | `released`     | Allow reassignment                     |
+| 200 with non-JSON body                                                 | `released`     | Allow reassignment                     |
+| 3xx / 4xx                                                              | `released`     | Allow reassignment                     |
+| DNS NXDOMAIN (ENOTFOUND)                                               | `released`     | Allow reassignment                     |
+| Connection refused (ECONNREFUSED)                                      | `released`     | Allow reassignment                     |
+| Transient DNS failure (EAI_AGAIN)                                      | `unverifiable` | Allow reassignment (fail-open), logged |
+| 5xx / timeout / other transport error                                  | `unverifiable` | Allow reassignment (fail-open), logged |
 
 When the reassignment proceeds (whether `released` or `unverifiable`),
 the previous row's `ghost_uuid` is set to `null` and the new row takes
 the UUID. The previous row's account data stays intact; only the UUID
 claim is released.
+
+### Aliased hosts
+
+Managed Ghost hosting providers typically give each install two valid
+hostnames: a provider-controlled backend hostname (e.g.
+`<pod>.provider.tld`, `<customer>.ghost.io`) and a customer's custom
+domain pointed at it. Both hostnames serve the same install and return
+the same `site_uuid`, so a naive "does the previous host still claim
+this UUID?" check would always say yes when the customer's custom
+domain registers after the backend hostname.
+
+Ghost reports a single canonical URL in its admin settings (`site.url`).
+If the previous host's response includes a `url` whose host is not the
+previous host itself, that install has effectively moved its public
+identity elsewhere, and we treat the previous host as having released
+the UUID.
 
 ### Fail-open on unverifiable
 
