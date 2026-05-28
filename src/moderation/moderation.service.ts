@@ -119,6 +119,18 @@ export class ModerationService {
         return block[0].length === 0;
     }
 
+    async canFollowAccount(
+        followerAccountId: number,
+        targetAccountId: number,
+    ): Promise<boolean> {
+        const [targetAllowsFollower, followerAllowsTarget] = await Promise.all([
+            this.canInteractWithAccount(followerAccountId, targetAccountId),
+            this.canInteractWithAccount(targetAccountId, followerAccountId),
+        ]);
+
+        return targetAllowsFollower && followerAllowsTarget;
+    }
+
     async getBlockedDomains(accountId: number): Promise<Set<string>> {
         const blocks = await this.db('domain_blocks')
             .where('blocker_id', accountId)

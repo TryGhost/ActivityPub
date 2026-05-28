@@ -655,7 +655,7 @@ export class AccountService {
     async getByInternalId(id: number): Promise<AccountType | null> {
         const rows = await this.db('accounts').select('*').where({ id });
 
-        if (!rows || !rows.length) {
+        if (!rows?.length) {
             return null;
         }
 
@@ -818,6 +818,10 @@ export class AccountService {
         return await this.accountRepository.getById(id);
     }
 
+    async getInternalFollowerAccounts(account: Account): Promise<Account[]> {
+        return await this.accountRepository.getInternalFollowers(account);
+    }
+
     async blockDomain(
         account: Account,
         domain: URL,
@@ -844,6 +848,16 @@ export class AccountService {
 
     async unfollowAccount(account: Account, accountToUnfollow: Account) {
         const updated = account.unfollow(accountToUnfollow);
+
+        await this.accountRepository.save(updated);
+    }
+
+    async migrateFollow(
+        follower: Account,
+        sourceAccount: Account,
+        targetAccount: Account,
+    ) {
+        const updated = follower.unfollow(sourceAccount).follow(targetAccount);
 
         await this.accountRepository.save(updated);
     }

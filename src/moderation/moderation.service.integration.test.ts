@@ -317,6 +317,54 @@ describe('ModerationService', () => {
         });
     });
 
+    describe('canFollowAccount', () => {
+        it('should allow following when neither account has blocked the other', async () => {
+            const [[aliceAccount], [bobAccount]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            const aliceCanFollowBob = await moderationService.canFollowAccount(
+                aliceAccount.id,
+                bobAccount.id,
+            );
+
+            expect(aliceCanFollowBob).toBe(true);
+        });
+
+        it('should prevent following when the follower has blocked the target', async () => {
+            const [[aliceAccount], [bobAccount]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await fixtureManager.createBlock(aliceAccount, bobAccount);
+
+            const aliceCanFollowBob = await moderationService.canFollowAccount(
+                aliceAccount.id,
+                bobAccount.id,
+            );
+
+            expect(aliceCanFollowBob).toBe(false);
+        });
+
+        it('should prevent following when the target has blocked the follower', async () => {
+            const [[aliceAccount], [bobAccount]] = await Promise.all([
+                fixtureManager.createInternalAccount(),
+                fixtureManager.createInternalAccount(),
+            ]);
+
+            await fixtureManager.createBlock(bobAccount, aliceAccount);
+
+            const aliceCanFollowBob = await moderationService.canFollowAccount(
+                aliceAccount.id,
+                bobAccount.id,
+            );
+
+            expect(aliceCanFollowBob).toBe(false);
+        });
+    });
+
     describe('getBlockedDomains', () => {
         it('should return blocked domains for an account', async () => {
             const [[aliceAccount], bobAccount, charlieAccount] =
