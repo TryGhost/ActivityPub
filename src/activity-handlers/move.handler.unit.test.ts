@@ -30,8 +30,8 @@ describe('MoveHandler', () => {
         ensureByApId: ReturnType<typeof vi.fn>;
         getInternalFollowerAccounts: ReturnType<typeof vi.fn>;
         checkIfAccountIsFollowing: ReturnType<typeof vi.fn>;
-        followAccount: ReturnType<typeof vi.fn>;
         unfollowAccount: ReturnType<typeof vi.fn>;
+        migrateFollow: ReturnType<typeof vi.fn>;
     };
     let moderationService: {
         canFollowAccount: ReturnType<typeof vi.fn>;
@@ -74,8 +74,8 @@ describe('MoveHandler', () => {
             ensureByApId: vi.fn(),
             getInternalFollowerAccounts: vi.fn(),
             checkIfAccountIsFollowing: vi.fn(),
-            followAccount: vi.fn(),
             unfollowAccount: vi.fn(),
+            migrateFollow: vi.fn(),
         };
 
         moderationService = {
@@ -273,7 +273,7 @@ describe('MoveHandler', () => {
         await handler.handle(ctx, createMove());
 
         expect(accountService.unfollowAccount).not.toHaveBeenCalled();
-        expect(accountService.followAccount).not.toHaveBeenCalled();
+        expect(accountService.migrateFollow).not.toHaveBeenCalled();
         expect(ctx.sendActivity).not.toHaveBeenCalled();
     });
 
@@ -283,7 +283,7 @@ describe('MoveHandler', () => {
         await handler.handle(ctx, createMove());
 
         expect(accountService.unfollowAccount).not.toHaveBeenCalled();
-        expect(accountService.followAccount).not.toHaveBeenCalled();
+        expect(accountService.migrateFollow).not.toHaveBeenCalled();
         expect(ctx.sendActivity).not.toHaveBeenCalled();
     });
 
@@ -304,7 +304,7 @@ describe('MoveHandler', () => {
             followerAccount,
             sourceAccount,
         );
-        expect(accountService.followAccount).not.toHaveBeenCalled();
+        expect(accountService.migrateFollow).not.toHaveBeenCalled();
     });
 
     it('follows the target and unfollows the old account for a valid Move', async () => {
@@ -324,14 +324,13 @@ describe('MoveHandler', () => {
             expect.any(Undo),
         );
 
-        expect(accountService.unfollowAccount).toHaveBeenCalledWith(
+        expect(accountService.migrateFollow).toHaveBeenCalledOnce();
+        expect(accountService.migrateFollow).toHaveBeenCalledWith(
             followerAccount,
             sourceAccount,
-        );
-        expect(accountService.followAccount).toHaveBeenCalledWith(
-            followerAccount,
             targetAccount,
         );
+        expect(accountService.unfollowAccount).not.toHaveBeenCalled();
         expect(globaldb.set).toHaveBeenCalledWith(
             [createMove().id!.href],
             expect.any(Object),
@@ -346,7 +345,7 @@ describe('MoveHandler', () => {
         await handler.handle(ctx, createMove());
 
         expect(accountService.unfollowAccount).not.toHaveBeenCalled();
-        expect(accountService.followAccount).not.toHaveBeenCalled();
+        expect(accountService.migrateFollow).not.toHaveBeenCalled();
     });
 
     it('continues migrating later followers when one follower fails', async () => {
@@ -371,16 +370,13 @@ describe('MoveHandler', () => {
 
         await handler.handle(ctx, createMove());
 
-        expect(accountService.unfollowAccount).toHaveBeenCalledOnce();
-        expect(accountService.unfollowAccount).toHaveBeenCalledWith(
+        expect(accountService.migrateFollow).toHaveBeenCalledOnce();
+        expect(accountService.migrateFollow).toHaveBeenCalledWith(
             secondFollower,
             sourceAccount,
-        );
-        expect(accountService.followAccount).toHaveBeenCalledOnce();
-        expect(accountService.followAccount).toHaveBeenCalledWith(
-            secondFollower,
             targetAccount,
         );
+        expect(accountService.unfollowAccount).not.toHaveBeenCalled();
     });
 
     it('ignores embedded target aliases when authoritative target does not alias the source', async () => {
@@ -401,6 +397,6 @@ describe('MoveHandler', () => {
 
         expect(accountService.ensureByApId).not.toHaveBeenCalled();
         expect(accountService.unfollowAccount).not.toHaveBeenCalled();
-        expect(accountService.followAccount).not.toHaveBeenCalled();
+        expect(accountService.migrateFollow).not.toHaveBeenCalled();
     });
 });

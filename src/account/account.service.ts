@@ -852,6 +852,16 @@ export class AccountService {
         await this.accountRepository.save(updated);
     }
 
+    async migrateFollow(
+        follower: Account,
+        sourceAccount: Account,
+        targetAccount: Account,
+    ) {
+        const updated = follower.unfollow(sourceAccount).follow(targetAccount);
+
+        await this.accountRepository.save(updated);
+    }
+
     async readAllNotifications(account: Account) {
         const updated = account.readAllNotifications();
 

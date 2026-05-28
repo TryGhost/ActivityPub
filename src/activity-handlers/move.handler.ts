@@ -227,14 +227,15 @@ export class MoveHandler {
                 targetAccount.id,
             );
 
-        if (!alreadyFollowingTarget) {
+        if (alreadyFollowingTarget) {
+            await this.accountService.unfollowAccount(follower, sourceAccount);
+        } else {
             await this.sendFollow(ctx, follower, targetActor);
-        }
-
-        await this.accountService.unfollowAccount(follower, sourceAccount);
-
-        if (!alreadyFollowingTarget) {
-            await this.accountService.followAccount(follower, targetAccount);
+            await this.accountService.migrateFollow(
+                follower,
+                sourceAccount,
+                targetAccount,
+            );
         }
 
         await this.sendUndoFollow(ctx, follower, sourceAccount, sourceActor);
