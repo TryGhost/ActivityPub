@@ -84,7 +84,7 @@
     "es-toolkit": "1.46.1",
     "hono": "4.12.19",
     "html-to-text": "10.0.0",
-    "ioredis": "5.10.1",
+    "ioredis": "5.11.0",
     "jsonwebtoken": "9.0.3",
     "knex": "3.2.10",
     "ky": "2.0.2",
