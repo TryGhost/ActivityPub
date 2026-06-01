@@ -58,7 +58,6 @@ import type { MoveHandler } from '@/activity-handlers/move.handler';
 import type { UpdateHandler } from '@/activity-handlers/update.handler';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
-import type { NodeInfoEventService } from '@/activitypub/nodeinfo-event.service';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
@@ -141,7 +140,6 @@ import type { PostInteractionCountsService } from '@/post/post-interaction-count
 import { PostInteractionCountsUpdateRequestedEvent } from '@/post/post-interaction-counts-update-requested.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import { PostUnlikedEvent } from '@/post/post-unliked.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 import type { Site } from '@/site/site.service';
 
@@ -215,8 +213,6 @@ await configure({
 export type ContextData = {
     globaldb: KvStore;
     logger: Logger;
-    site?: Site;
-    account?: Account;
 };
 
 // Register all dependencies
@@ -266,7 +262,6 @@ container.resolve<GhostPostService>('ghostPostService').init();
 container
     .resolve<PostInteractionCountsService>('postInteractionCountsService')
     .init();
-container.resolve<NodeInfoEventService>('nodeInfoEventService').init();
 
 // Register all events with the event serializer
 const globalEventSerializer =
@@ -288,7 +283,6 @@ for (const event of [
     PostInteractionCountsUpdateRequestedEvent,
     PostLikedEvent,
     PostRepostedEvent,
-    PostUnlikedEvent,
     PostUpdatedEvent,
 ]) {
     globalEventSerializer.register(event.getName(), event);
@@ -998,8 +992,6 @@ app.use(
             return {
                 globaldb: ctx.get('globaldb'),
                 logger: ctx.get('logger'),
-                site: ctx.get('site'),
-                account: ctx.get('account'),
             };
         },
     ),

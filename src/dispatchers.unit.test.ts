@@ -48,6 +48,11 @@ describe('dispatchers', () => {
         mockAccount = {
             id: 1,
             username: 'testuser',
+            name: 'Test Site',
+            bio: 'Test description',
+            url: new URL('https://example.com/'),
+            avatarUrl: new URL('https://example.com/icon.png'),
+            bannerImageUrl: new URL('https://example.com/banner.png'),
             apId: new URL('https://example.com/user/testuser'),
             apInbox: new URL('https://example.com/user/testuser/inbox'),
             isInternal: true,
@@ -482,58 +487,90 @@ describe('dispatchers', () => {
     });
 
     describe('nodeInfoDispatcher', () => {
-        it('returns the node info', async () => {
-            const nodeInfo = {
-                software: {
-                    name: 'ghost',
-                    version: { major: 0, minor: 1, patch: 0 },
-                    homepage: new URL('https://ghost.org/'),
-                    repository: new URL('https://github.com/TryGhost/Ghost'),
-                },
-                protocols: ['activitypub'],
-                services: {
-                    inbound: [],
-                    outbound: [],
-                },
-                openRegistrations: false,
-                usage: {
-                    users: {
-                        total: 1,
-                        activeMonth: 1,
-                        activeHalfyear: 1,
-                    },
+        it('resolves host data and returns node info', async () => {
+            const hostDataContextLoader = {
+                loadDataForHost: vi.fn().mockResolvedValue(
+                    ok({
+                        site: mockSite,
+                        account: mockAccount,
+                    }),
+                ),
+            };
+            const nodeInfoService = {
+                getData: vi.fn().mockResolvedValue({
+                    lastActivityAt: new Date(),
                     localPosts: 2,
                     localComments: 1,
-                },
-                metadata: {
-                    nodeName: 'Test Site',
-                    private: false,
-                    postFormats: ['text/html'],
-                },
-            };
-
-            const nodeInfoService = {
-                getNodeInfo: vi.fn().mockResolvedValue(nodeInfo),
+                }),
             };
 
             const dispatcher = nodeInfoDispatcher(
+                hostDataContextLoader as unknown as HostDataContextLoader,
                 nodeInfoService as unknown as NodeInfoService,
             );
 
             const result = await dispatcher({
+                host: mockSite.host,
                 data: {
-                    site: mockSite,
-                    account: mockAccount,
                     logger: {
                         error: vi.fn(),
                     },
                 },
             } as unknown as FedifyRequestContext);
 
-            expect(result).toEqual(nodeInfo);
-            expect(nodeInfoService.getNodeInfo).toHaveBeenCalledWith(
+            expect(result.usage.users.total).toBe(1);
+            expect(result.usage.users.activeMonth).toBe(1);
+            expect(result.usage.users.activeHalfyear).toBe(1);
+            expect(result.usage.localPosts).toBe(2);
+            expect(result.usage.localComments).toBe(1);
+            expect(result.metadata).toEqual({
+                nodeName: mockAccount.name,
+                nodeDescription: mockAccount.bio,
+                nodeIcon: mockAccount.avatarUrl?.href,
+                nodeBanner: mockAccount.bannerImageUrl?.href,
+                private: false,
+                postFormats: ['text/html'],
+            });
+            expect(hostDataContextLoader.loadDataForHost).toHaveBeenCalledWith(
+                mockSite.host,
+            );
+            expect(nodeInfoService.getData).toHaveBeenCalledWith(
                 mockSite,
                 mockAccount,
+            );
+        });
+
+        it('throws when host data cannot be resolved', async () => {
+            const logger = {
+                error: vi.fn(),
+            };
+            const hostDataContextLoader = {
+                loadDataForHost: vi
+                    .fn()
+                    .mockResolvedValue(error('site-not-found')),
+            };
+            const nodeInfoService = {
+                getData: vi.fn(),
+            };
+
+            const dispatcher = nodeInfoDispatcher(
+                hostDataContextLoader as unknown as HostDataContextLoader,
+                nodeInfoService as unknown as NodeInfoService,
+            );
+
+            await expect(
+                dispatcher({
+                    host: mockSite.host,
+                    data: { logger },
+                } as unknown as FedifyRequestContext),
+            ).rejects.toThrow('NodeInfo requested without site context');
+            expect(nodeInfoService.getData).not.toHaveBeenCalled();
+            expect(logger.error).toHaveBeenCalledWith(
+                'NodeInfo: failed to resolve host',
+                {
+                    host: mockSite.host,
+                    error: 'site-not-found',
+                },
             );
         });
     });

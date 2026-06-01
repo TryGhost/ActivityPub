@@ -8,7 +8,6 @@ import {
 } from '@fedify/fedify';
 
 import type { Account } from '@/account/account.entity';
-import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData, FedifyContext } from '@/app';
 import { error, ok } from '@/core/result';
 import { LikeController } from '@/http/api/like.controller';
@@ -92,7 +91,6 @@ describe('LikeController', () => {
     let postService: PostService;
     let postRepository: KnexPostRepository;
     let fedify: Federation<ContextData>;
-    let nodeInfoService: NodeInfoService;
     let mockApCtx: FedifyContext;
     let mockGlobalDb: {
         get: ReturnType<typeof vi.fn>;
@@ -123,9 +121,6 @@ describe('LikeController', () => {
         postRepository = {
             save: vi.fn(),
         } as unknown as KnexPostRepository;
-        nodeInfoService = {
-            markAccountActive: vi.fn(),
-        } as unknown as NodeInfoService;
         mockGlobalDb = {
             get: vi.fn().mockResolvedValue(null),
             set: vi.fn(),
@@ -156,12 +151,7 @@ describe('LikeController', () => {
         fedify = {
             createContext: vi.fn().mockReturnValue(mockApCtx),
         } as unknown as Federation<ContextData>;
-        controller = new LikeController(
-            postService,
-            postRepository,
-            fedify,
-            nodeInfoService,
-        );
+        controller = new LikeController(postService, postRepository, fedify);
 
         vi.mocked(lookupHelpers.lookupObject).mockResolvedValue({
             id: new URL('https://remote.example/post/1'),
@@ -192,18 +182,16 @@ describe('LikeController', () => {
         } as unknown as AppContext;
     }
 
-    it('marks the account active for a successful wire-only like', async () => {
+    it('sends a successful wire-only like', async () => {
         const response = await controller.handleLike(
             getMockContext('https://remote.example/post/1'),
         );
 
         expect(response.status).toBe(200);
-        expect(nodeInfoService.markAccountActive).toHaveBeenCalledWith(
-            account.id,
-        );
+        expect(mockApCtx.sendActivity).toHaveBeenCalled();
     });
 
-    it('does not mark the account active when a wire-only like send fails', async () => {
+    it('logs when a wire-only like send fails', async () => {
         const sendActivity = mockApCtx.sendActivity as ReturnType<typeof vi.fn>;
         sendActivity.mockRejectedValueOnce(new Error('send failed'));
 
@@ -212,7 +200,6 @@ describe('LikeController', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
         expect(mockLogger.warn).toHaveBeenCalledWith(
             'Failed to send like activity',
             expect.objectContaining({
@@ -222,7 +209,7 @@ describe('LikeController', () => {
         );
     });
 
-    it('does not mark the account active directly for a persisted like', async () => {
+    it('persists a local like', async () => {
         vi.mocked(postService.getByApId).mockResolvedValue(ok({} as never));
 
         const response = await controller.handleLike(
@@ -231,10 +218,9 @@ describe('LikeController', () => {
 
         expect(response.status).toBe(200);
         expect(postService.likePost).toHaveBeenCalled();
-        expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
     });
 
-    it('marks the account active for a successful wire-only unlike', async () => {
+    it('sends a successful wire-only unlike', async () => {
         mockGlobalDb.get.mockResolvedValue({
             type: 'Like',
             id: 'https://example.com/like/existing',
@@ -245,12 +231,10 @@ describe('LikeController', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(nodeInfoService.markAccountActive).toHaveBeenCalledWith(
-            account.id,
-        );
+        expect(mockApCtx.sendActivity).toHaveBeenCalled();
     });
 
-    it('does not mark the account active when a wire-only unlike send fails', async () => {
+    it('logs when a wire-only unlike send fails', async () => {
         mockGlobalDb.get.mockResolvedValue({
             type: 'Like',
             id: 'https://example.com/like/existing',
@@ -263,7 +247,6 @@ describe('LikeController', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
         expect(mockLogger.warn).toHaveBeenCalledWith(
             'Failed to send unlike activity',
             expect.objectContaining({

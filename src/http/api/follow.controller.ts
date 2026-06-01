@@ -2,7 +2,6 @@ import { type Federation, Follow, isActor, Undo } from '@fedify/fedify';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
-import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { requireParam } from '@/http/api/helpers/request';
@@ -26,7 +25,6 @@ export class FollowController {
         private readonly accountService: AccountService,
         private readonly moderationService: ModerationService,
         private readonly fedify: Federation<ContextData>,
-        private readonly nodeInfoService: NodeInfoService,
     ) {}
 
     @APIRoute('POST', 'actions/follow/:handle')
@@ -136,8 +134,6 @@ export class FollowController {
                 actorToFollow,
                 follow,
             );
-
-            await this.markAccountActive(ctx, followerAccount.id);
         }
 
         return new Response(JSON.stringify(await actorToFollow.toJsonLd()), {
@@ -249,16 +245,5 @@ export class FollowController {
         return new Response(null, {
             status: 202,
         });
-    }
-
-    private async markAccountActive(ctx: AppContext, accountId: number) {
-        try {
-            await this.nodeInfoService.markAccountActive(accountId);
-        } catch (err) {
-            ctx.get('logger').warn('Failed to mark NodeInfo account active', {
-                err,
-                accountId,
-            });
-        }
     }
 }

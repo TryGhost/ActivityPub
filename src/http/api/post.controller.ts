@@ -16,7 +16,6 @@ import { z } from 'zod';
 
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
-import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -49,7 +48,6 @@ export class PostController {
         private readonly accountRepository: KnexAccountRepository,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
-        private readonly nodeInfoService: NodeInfoService,
     ) {}
 
     /**
@@ -163,13 +161,17 @@ export class PostController {
                 case 'not-a-post':
                     logger.info(
                         'Resource requested for deletion is not a post',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     return new Response(null, { status: 400 });
                 case 'missing-author':
                     logger.info(
                         'Post requested for deletion has missing author',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     return new Response(null, { status: 400 });
                 case 'not-author':
@@ -228,7 +230,9 @@ export class PostController {
         } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
-                { status: 400 },
+                {
+                    status: 400,
+                },
             );
         }
 
@@ -322,7 +326,9 @@ export class PostController {
         } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
-                { status: 400 },
+                {
+                    status: 400,
+                },
             );
         }
 
@@ -711,7 +717,6 @@ export class PostController {
         }
 
         const originalPostResult = await this.postService.getByApId(idAsUrl);
-        let shouldMarkActivity = false;
 
         if (isError(originalPostResult)) {
             const error = getError(originalPostResult);
@@ -719,26 +724,30 @@ export class PostController {
                 case 'upstream-error':
                     ctx.get('logger').info(
                         'Upstream error fetching post for dereposting',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'not-a-post':
                     ctx.get('logger').info(
                         'Resource for dereposting is not a post',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'missing-author':
                     ctx.get('logger').info(
                         'Post for dereposting has missing author',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 default:
                     return exhaustiveCheck(error);
             }
-
-            shouldMarkActivity = true;
         } else {
             const originalPost = getValue(originalPostResult);
             originalPost.removeRepost(account);
@@ -768,7 +777,6 @@ export class PostController {
                 post.attributionId.href,
             );
         }
-        let didSendActivity = false;
         try {
             const sendActivityPromises: Promise<void>[] = [];
 
@@ -797,7 +805,6 @@ export class PostController {
             );
 
             await Promise.all(sendActivityPromises);
-            didSendActivity = true;
         } catch (err) {
             ctx.get('logger').warn('Failed to send derepost activity', {
                 err,
@@ -806,26 +813,11 @@ export class PostController {
             });
         }
 
-        if (shouldMarkActivity && didSendActivity) {
-            await this.markAccountActive(ctx, account.id);
-        }
-
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
             },
             status: 200,
         });
-    }
-
-    private async markAccountActive(ctx: AppContext, accountId: number) {
-        try {
-            await this.nodeInfoService.markAccountActive(accountId);
-        } catch (err) {
-            ctx.get('logger').warn('Failed to mark NodeInfo account active', {
-                err,
-                accountId,
-            });
-        }
     }
 }

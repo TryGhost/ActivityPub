@@ -23,7 +23,6 @@ import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
 import { FollowersService } from '@/activitypub/followers.service';
 import { NodeInfoService } from '@/activitypub/nodeinfo.service';
-import { NodeInfoEventService } from '@/activitypub/nodeinfo-event.service';
 import { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import type { ContextData } from '@/app';
 import { AsyncEvents } from '@/core/events';
@@ -318,10 +317,6 @@ export function registerDependencies(
         asClass(PostInteractionCountsService).singleton(),
     );
     container.register('nodeInfoService', asClass(NodeInfoService).singleton());
-    container.register(
-        'nodeInfoEventService',
-        asClass(NodeInfoEventService).singleton(),
-    );
     container.register(
         'ghostService',
         asValue({

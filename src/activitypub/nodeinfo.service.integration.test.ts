@@ -50,12 +50,11 @@ describe('NodeInfoService integration', () => {
         const service = new NodeInfoService(
             db,
             KnexKvStore.create(db, 'key_value', logger),
-            logger,
         );
 
-        const nodeInfo = await service.getNodeInfo(site, account);
+        const data = await service.getData(site, account);
 
-        expect(nodeInfo.usage.localPosts).toBe(2);
-        expect(nodeInfo.usage.localComments).toBe(0);
+        expect(data.localPosts).toBe(2);
+        expect(data.localComments).toBe(0);
     });
 });

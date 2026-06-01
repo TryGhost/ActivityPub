@@ -22,7 +22,6 @@ import { PostDeletedEvent } from '@/post/post-deleted.event';
 import { PostDerepostedEvent } from '@/post/post-dereposted.event';
 import { PostLikedEvent } from '@/post/post-liked.event';
 import { PostRepostedEvent } from '@/post/post-reposted.event';
-import { PostUnlikedEvent } from '@/post/post-unliked.event';
 import { PostUpdatedEvent } from '@/post/post-updated.event';
 
 interface PostRow {
@@ -201,7 +200,6 @@ export class KnexPostRepository {
             const { repostsToAdd, repostsToRemove } = post.getChangedReposts();
             const mentionsToAdd = post.mentions;
             let likeAccountIds: number[] = [];
-            let unlikeAccountIds: number[] = [];
             let repostAccountIds: number[] = [];
             let wasDeleted = false;
             let wasUpdated = false;
@@ -345,7 +343,7 @@ export class KnexPostRepository {
                                   accountIdsInserted: [],
                               };
 
-                    const { removedLikesCount, accountIdsRemoved } =
+                    const { removedLikesCount } =
                         likesToRemove.length > 0
                             ? await this.removeLikes(
                                   post,
@@ -354,16 +352,11 @@ export class KnexPostRepository {
                               )
                             : {
                                   removedLikesCount: 0,
-                                  accountIdsRemoved: [],
                               };
 
                     likeAccountIds = accountIdsInserted.filter(
                         (accountId) => !likesToRemove.includes(accountId),
                     );
-
-                    if (removedLikesCount > 0) {
-                        unlikeAccountIds = accountIdsRemoved;
-                    }
 
                     if (insertedLikesCount - removedLikesCount !== 0) {
                         await transaction('posts')
@@ -548,17 +541,6 @@ export class KnexPostRepository {
                             post.author.id as number,
                             accountId,
                         ),
-                    );
-                },
-                { concurrency: 10 },
-            );
-
-            await forEachAsync(
-                unlikeAccountIds,
-                async (accountId) => {
-                    await this.events.emitAsync(
-                        PostUnlikedEvent.getName(),
-                        new PostUnlikedEvent(post.id as number, accountId),
                     );
                 },
                 { concurrency: 10 },

@@ -8,7 +8,6 @@ import {
     Undo,
 } from '@fedify/fedify';
 
-import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -26,7 +25,6 @@ export class LikeController {
         private readonly postService: PostService,
         private readonly postRepository: KnexPostRepository,
         private readonly fedify: Federation<ContextData>,
-        private readonly nodeInfoService: NodeInfoService,
     ) {}
 
     @APIRoute('POST', 'actions/like/:id')
@@ -61,34 +59,36 @@ export class LikeController {
         }
 
         const postResult = await this.postService.getByApId(idAsUrl);
-        let shouldMarkActivity = false;
-
         if (isError(postResult)) {
             const error = getError(postResult);
             switch (error) {
                 case 'upstream-error':
                     ctx.get('logger').info(
                         'Upstream error fetching post for liking',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'not-a-post':
                     ctx.get('logger').info(
                         'Resource for liking is not a post',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'missing-author':
                     ctx.get('logger').info(
                         'Post for liking has missing author',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 default:
                     return exhaustiveCheck(error);
             }
-
-            shouldMarkActivity = true;
         } else {
             const post = getValue(postResult);
 
@@ -143,7 +143,6 @@ export class LikeController {
                 objectToLike.attributionId.href,
             );
         }
-        let didSendActivity = false;
         try {
             const sendActivityPromises: Promise<void>[] = [];
 
@@ -172,17 +171,12 @@ export class LikeController {
             );
 
             await Promise.all(sendActivityPromises);
-            didSendActivity = true;
         } catch (err) {
             ctx.get('logger').warn('Failed to send like activity', {
                 err,
                 accountId: account.id,
                 objectId: id,
             });
-        }
-
-        if (shouldMarkActivity && didSendActivity) {
-            await this.markAccountActive(ctx, account.id);
         }
 
         return new Response(JSON.stringify(likeJson), {
@@ -245,34 +239,36 @@ export class LikeController {
         }
 
         const postResult = await this.postService.getByApId(idAsUrl);
-        let shouldMarkActivity = false;
-
         if (isError(postResult)) {
             const error = getError(postResult);
             switch (error) {
                 case 'upstream-error':
                     ctx.get('logger').info(
                         'Upstream error fetching post for unliking',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'not-a-post':
                     ctx.get('logger').info(
                         'Resource for unliking is not a post',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 case 'missing-author':
                     ctx.get('logger').info(
                         'Post for unliking has missing author',
-                        { postId: idAsUrl.href },
+                        {
+                            postId: idAsUrl.href,
+                        },
                     );
                     break;
                 default:
                     return exhaustiveCheck(error);
             }
-
-            shouldMarkActivity = true;
         } else {
             const post = getValue(postResult);
             post.removeLike(account);
@@ -303,7 +299,6 @@ export class LikeController {
             );
         }
 
-        let didSendActivity = false;
         try {
             const sendActivityPromises: Promise<void>[] = [];
 
@@ -332,7 +327,6 @@ export class LikeController {
             );
 
             await Promise.all(sendActivityPromises);
-            didSendActivity = true;
         } catch (err) {
             ctx.get('logger').warn('Failed to send unlike activity', {
                 err,
@@ -341,26 +335,11 @@ export class LikeController {
             });
         }
 
-        if (shouldMarkActivity && didSendActivity) {
-            await this.markAccountActive(ctx, account.id);
-        }
-
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
             },
             status: 200,
         });
-    }
-
-    private async markAccountActive(ctx: AppContext, accountId: number) {
-        try {
-            await this.nodeInfoService.markAccountActive(accountId);
-        } catch (err) {
-            ctx.get('logger').warn('Failed to mark NodeInfo account active', {
-                err,
-                accountId,
-            });
-        }
     }
 }

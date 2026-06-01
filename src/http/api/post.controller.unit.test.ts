@@ -10,7 +10,6 @@ import {
 import type { AccountEntity } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
 import type { AccountService } from '@/account/account.service';
-import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { AppContext, ContextData } from '@/app';
 import { error, ok } from '@/core/result';
 import { PostController } from '@/http/api/post.controller';
@@ -82,7 +81,6 @@ describe('Post API', () => {
     let postRepository: KnexPostRepository;
     let postController: PostController;
     let fedify: Federation<ContextData>;
-    let nodeInfoService: NodeInfoService;
 
     /**
      * Helper to get a mock AppContext
@@ -226,16 +224,12 @@ describe('Post API', () => {
         accountRepository = {} as unknown as KnexAccountRepository;
         postRepository = {} as unknown as KnexPostRepository;
         fedify = {} as unknown as Federation<ContextData>;
-        nodeInfoService = {
-            markAccountActive: vi.fn(),
-        } as unknown as NodeInfoService;
         postController = new PostController(
             postService,
             accountService,
             accountRepository,
             postRepository,
             fedify,
-            nodeInfoService,
         );
     });
 
@@ -386,21 +380,19 @@ describe('Post API', () => {
         expect(response.status).toBe(404);
     });
 
-    it('marks the account active for a successful wire-only derepost', async () => {
+    it('sends a successful wire-only derepost', async () => {
         const postApId = 'https://remote.example/posts/1';
         postService.getByApId = vi.fn().mockResolvedValue(error('not-a-post'));
 
-        const { ctx } = setupDerepostContext(postApId);
+        const { apCtx, ctx } = setupDerepostContext(postApId);
 
         const response = await postController.handleDerepost(ctx);
 
         expect(response.status).toBe(200);
-        expect(nodeInfoService.markAccountActive).toHaveBeenCalledWith(
-            account.id,
-        );
+        expect(apCtx.sendActivity).toHaveBeenCalled();
     });
 
-    it('does not mark the account active when a wire-only derepost send fails', async () => {
+    it('logs when a wire-only derepost send fails', async () => {
         const postApId = 'https://remote.example/posts/1';
         postService.getByApId = vi.fn().mockResolvedValue(error('not-a-post'));
 
@@ -410,10 +402,16 @@ describe('Post API', () => {
         const response = await postController.handleDerepost(ctx);
 
         expect(response.status).toBe(200);
-        expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
+        expect(ctx.get('logger').warn).toHaveBeenCalledWith(
+            'Failed to send derepost activity',
+            expect.objectContaining({
+                accountId: account.id,
+                objectId: postApId,
+            }),
+        );
     });
 
-    it('does not mark the account active directly for a persisted derepost', async () => {
+    it('persists a local derepost', async () => {
         const postApId = 'https://remote.example/posts/1';
         postService.getByApId = vi.fn().mockResolvedValue(
             ok({
@@ -428,6 +426,5 @@ describe('Post API', () => {
 
         expect(response.status).toBe(200);
         expect(postRepository.save).toHaveBeenCalled();
-        expect(nodeInfoService.markAccountActive).not.toHaveBeenCalled();
     });
 });
