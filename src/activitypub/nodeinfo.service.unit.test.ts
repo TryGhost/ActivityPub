@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
+import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
@@ -27,10 +28,28 @@ class FakeKvStore implements KvStore {
     }
 }
 
+class FailingSetKvStore extends FakeKvStore {
+    async set(): Promise<void> {
+        throw new Error('cache unavailable');
+    }
+}
+
+class FailingGetKvStore extends FakeKvStore {
+    async get<T = unknown>(): Promise<T | undefined> {
+        throw new Error('cache unavailable');
+    }
+}
+
 function createDbReturningStats(row: unknown): Knex {
     return {
         raw: vi.fn().mockResolvedValue([[row], []]),
     } as unknown as Knex;
+}
+
+function createLogger(): Logger {
+    return {
+        warn: vi.fn(),
+    } as unknown as Logger;
 }
 
 const site: Site = {
@@ -58,7 +77,7 @@ describe('NodeInfoService', () => {
         );
         const db = createDbReturningStats({});
 
-        const service = new NodeInfoService(db, kv);
+        const service = new NodeInfoService(db, kv, createLogger());
 
         const data = await service.getData(site, account);
 
@@ -77,7 +96,7 @@ describe('NodeInfoService', () => {
             local_posts: '5',
             local_comments: '8',
         });
-        const service = new NodeInfoService(db, kv);
+        const service = new NodeInfoService(db, kv, createLogger());
 
         const data = await service.getData(site, account);
 
@@ -122,10 +141,61 @@ describe('NodeInfoService', () => {
                 local_comments: 0,
             }),
             kv,
+            createLogger(),
         );
 
         const data = await service.getData(site, account);
 
         expect(data.lastActivityAt).toBeNull();
+    });
+
+    it('returns fresh stats when caching fails', async () => {
+        const logger = createLogger();
+        const service = new NodeInfoService(
+            createDbReturningStats({
+                last_activity_at: new Date('2026-02-03T04:05:06Z'),
+                local_posts: '5',
+                local_comments: '8',
+            }),
+            new FailingSetKvStore(),
+            logger,
+        );
+
+        const data = await service.getData(site, account);
+
+        expect(data).toEqual({
+            lastActivityAt: new Date('2026-02-03T04:05:06Z'),
+            localPosts: 5,
+            localComments: 8,
+        });
+        expect(logger.warn).toHaveBeenCalledWith(
+            'NodeInfo: failed to cache stats',
+            expect.objectContaining({ siteId: site.id }),
+        );
+    });
+
+    it('returns fresh stats when reading from cache fails', async () => {
+        const logger = createLogger();
+        const service = new NodeInfoService(
+            createDbReturningStats({
+                last_activity_at: new Date('2026-02-03T04:05:06Z'),
+                local_posts: '5',
+                local_comments: '8',
+            }),
+            new FailingGetKvStore(),
+            logger,
+        );
+
+        const data = await service.getData(site, account);
+
+        expect(data).toEqual({
+            lastActivityAt: new Date('2026-02-03T04:05:06Z'),
+            localPosts: 5,
+            localComments: 8,
+        });
+        expect(logger.warn).toHaveBeenCalledWith(
+            'NodeInfo: failed to read cached stats',
+            expect.objectContaining({ siteId: site.id }),
+        );
     });
 });

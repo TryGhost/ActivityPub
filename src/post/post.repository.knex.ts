@@ -681,31 +681,16 @@ export class KnexPostRepository {
         post: Post,
         accountIds: number[],
         transaction: Knex.Transaction,
-    ): Promise<{ removedLikesCount: number; accountIdsRemoved: number[] }> {
-        const currentLikeAccountIds = (
-            await transaction('likes')
-                .where('post_id', post.id)
-                .whereIn('account_id', accountIds)
-                .select('account_id')
-        ).map((row) => row.account_id);
-
-        if (currentLikeAccountIds.length === 0) {
-            return {
-                removedLikesCount: 0,
-                accountIdsRemoved: [],
-            };
-        }
-
+    ): Promise<{ removedLikesCount: number }> {
         const removedLikesCount = await transaction('likes')
             .where({
                 post_id: post.id,
             })
-            .whereIn('account_id', currentLikeAccountIds)
+            .whereIn('account_id', accountIds)
             .del();
 
         return {
             removedLikesCount,
-            accountIdsRemoved: currentLikeAccountIds,
         };
     }
 

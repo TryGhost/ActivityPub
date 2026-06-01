@@ -540,6 +540,88 @@ describe('dispatchers', () => {
             );
         });
 
+        it('maps last activity into active user windows', async () => {
+            const now = new Date('2026-01-01T00:00:00.000Z');
+            const daysAgo = (days: number) =>
+                new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+            vi.useFakeTimers();
+            vi.setSystemTime(now);
+
+            try {
+                const cases = [
+                    {
+                        lastActivityAt: null,
+                        activeMonth: 0,
+                        activeHalfyear: 0,
+                    },
+                    {
+                        lastActivityAt: daysAgo(30),
+                        activeMonth: 1,
+                        activeHalfyear: 1,
+                    },
+                    {
+                        lastActivityAt: daysAgo(31),
+                        activeMonth: 0,
+                        activeHalfyear: 1,
+                    },
+                    {
+                        lastActivityAt: daysAgo(180),
+                        activeMonth: 0,
+                        activeHalfyear: 1,
+                    },
+                    {
+                        lastActivityAt: daysAgo(181),
+                        activeMonth: 0,
+                        activeHalfyear: 0,
+                    },
+                ];
+
+                for (const {
+                    lastActivityAt,
+                    activeMonth,
+                    activeHalfyear,
+                } of cases) {
+                    const hostDataContextLoader = {
+                        loadDataForHost: vi.fn().mockResolvedValue(
+                            ok({
+                                site: mockSite,
+                                account: mockAccount,
+                            }),
+                        ),
+                    };
+                    const nodeInfoService = {
+                        getData: vi.fn().mockResolvedValue({
+                            lastActivityAt,
+                            localPosts: 0,
+                            localComments: 0,
+                        }),
+                    };
+
+                    const dispatcher = nodeInfoDispatcher(
+                        hostDataContextLoader as unknown as HostDataContextLoader,
+                        nodeInfoService as unknown as NodeInfoService,
+                    );
+
+                    const result = await dispatcher({
+                        host: mockSite.host,
+                        data: {
+                            logger: {
+                                error: vi.fn(),
+                            },
+                        },
+                    } as unknown as FedifyRequestContext);
+
+                    expect(result.usage.users.activeMonth).toBe(activeMonth);
+                    expect(result.usage.users.activeHalfyear).toBe(
+                        activeHalfyear,
+                    );
+                }
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
         it('throws when host data cannot be resolved', async () => {
             const logger = {
                 error: vi.fn(),

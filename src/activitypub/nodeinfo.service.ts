@@ -1,5 +1,6 @@
 import type { KvKey, KvStore } from '@fedify/fedify';
 import { Temporal } from '@js-temporal/polyfill';
+import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
@@ -30,10 +31,19 @@ export class NodeInfoService {
     constructor(
         private readonly db: Knex,
         private readonly kv: KvStore,
+        private readonly logging: Logger,
     ) {}
 
     async getData(site: Site, account: Account): Promise<NodeInfoData> {
-        const cached = await this.kv.get(this.dataKey(site.id));
+        let cached: unknown;
+        try {
+            cached = await this.kv.get(this.dataKey(site.id));
+        } catch (err) {
+            this.logging.warn('NodeInfo: failed to read cached stats', {
+                error: err,
+                siteId: site.id,
+            });
+        }
 
         if (this.isCachedNodeInfoData(cached)) {
             return this.deserialize(cached);
@@ -41,14 +51,23 @@ export class NodeInfoService {
 
         const data = await this.queryStats(account.id);
 
-        await this.kv.set(this.dataKey(site.id), this.serialize(data), {
-            ttl: this.dataTtl,
-        });
+        try {
+            await this.kv.set(this.dataKey(site.id), this.serialize(data), {
+                ttl: this.dataTtl,
+            });
+        } catch (err) {
+            this.logging.warn('NodeInfo: failed to cache stats', {
+                error: err,
+                siteId: site.id,
+            });
+        }
 
         return data;
     }
 
     private async queryStats(accountId: number): Promise<NodeInfoData> {
+        // This intentionally derives activity from retained rows only. Exact
+        // destructive activity tracking would require separate durable state.
         const [[row]] = (await this.db.raw(
             `
             SELECT
