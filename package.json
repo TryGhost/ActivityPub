@@ -73,7 +73,7 @@
     "@google-cloud/storage": "7.19.0",
     "@hono/node-server": "2.0.3",
     "@js-temporal/polyfill": "0.5.1",
-    "@logtape/logtape": "2.1.0",
+    "@logtape/logtape": "2.1.1",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/core": "2.7.1",
     "@opentelemetry/exporter-trace-otlp-proto": "0.218.0",
