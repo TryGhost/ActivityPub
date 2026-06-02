@@ -784,10 +784,10 @@
   dependencies:
     jsbi "^4.3.0"
 
-"@logtape/logtape@2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-2.1.0.tgz#a970c1ca2b7c820b43094b77758193b05d81a59a"
-  integrity sha512-KpKQBeLJSlFtkGr9Dpi03ld96nqBEG8WiD5lTrwE33oaKdQXOcO5oJAr28hsCQ1RnZ0U8xaVvxwopNDgjFNYuw==
+"@logtape/logtape@2.1.1":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-2.1.1.tgz#738eafcead303e0085d07882fe1cc09ce3c8daec"
+  integrity sha512-aULbCqUQGerfOsZ3CMvcKtueKzmdchluXYUd3bIHKmOIS93fx1ko0+hyRQ4flloGZ8EiyRPydZXiy8n1J/eAQA==
 
 "@logtape/logtape@^1.2.2":
   version "1.3.10"
