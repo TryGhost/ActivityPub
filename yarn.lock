@@ -406,15 +406,15 @@
   resolved "https://registry.yarnpkg.com/@faker-js/faker/-/faker-10.4.0.tgz#2dc84d1bc32a2eef3c4658985ca7692a0c5c51b3"
   integrity sha512-sDBWI3yLy8EcDzgobvJTWq1MJYzAkQdpjXuPukga9wXonhpMRvd1Izuo2Qgwey2OiEoRIBr35RMU9HJRoOHzpw==
 
-"@fedify/cli@1.10.10":
-  version "1.10.10"
-  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.10.10.tgz#49f4d7416f34a410e56364c768aaeaca37026976"
-  integrity sha512-DTPZh+qvXZKtfFA4CHyChp2HBMhzy5eEqVLpYg9ztI5uPkd1sGWZHc3I/FNvChvJT6JXiK5A40UzphqFyKORWg==
+"@fedify/cli@1.10.11":
+  version "1.10.11"
+  resolved "https://registry.yarnpkg.com/@fedify/cli/-/cli-1.10.11.tgz#ce44099d0bfbc081d7f99f56496ddbed5bb81a26"
+  integrity sha512-gM/aRtt4PYzdqIMWeAShS7Y+O+k4wgZpFDzM80rPMqQBPnbnmzSs8Ct9JDNMKLvbQ+0BgETZI4/wItuffhPSOA==
 
-"@fedify/fedify@1.10.10":
-  version "1.10.10"
-  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.10.10.tgz#8d874a8920f61d793e36fbd5d28bab600a106a53"
-  integrity sha512-iIEokcPsy3p73qIO9n0IEJDXtqxrE8AQx/9m1rrPfzJRGsOG1QWlLxcvoxXXgD2yCY+E+HtBokALWzlWy39XHg==
+"@fedify/fedify@1.10.11":
+  version "1.10.11"
+  resolved "https://registry.yarnpkg.com/@fedify/fedify/-/fedify-1.10.11.tgz#964b59a531109ebbbd648dc69a82deea0d8cc624"
+  integrity sha512-wetnw6X33bv/sqXyDCJxxdeBYaHnwYNCx33sFsQ1FyjbzHxSHrSZ0OJCIEzOnke3AoePhLwPffpGkcGeBA8erg==
   dependencies:
     "@cfworker/json-schema" "^4.1.1"
     "@js-temporal/polyfill" "^0.5.1"
@@ -437,15 +437,15 @@
     url-template "^3.1.1"
     urlpattern-polyfill "^10.1.0"
 
-"@fedify/hono@1.10.10":
-  version "1.10.10"
-  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.10.tgz#faa465ecef1d1100c751a9cff6d6dd13358f4367"
-  integrity sha512-0zInG7fR25ZetMgLaviIzsMRKG70UZRnjPka8QxfICMmkGNrv9l/+HfWsR9Yplukj71BfMdz1dduRwOzWGIShQ==
+"@fedify/hono@1.10.11":
+  version "1.10.11"
+  resolved "https://registry.yarnpkg.com/@fedify/hono/-/hono-1.10.11.tgz#3d05942e7e0d52ef3b19d22f2e0b52cf9a1f876b"
+  integrity sha512-u+y0+iGOUE9kKHhxQ689H3uqX/Tr2SPCszMDoXLPC6TNvQ6JzZv8LfdXaFH81GYdpss6CFY1Xhgby/lsTgU6ng==
 
-"@fedify/redis@1.10.10":
-  version "1.10.10"
-  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.10.10.tgz#ae972ee01384baf4a0b8c5b90bfcb6d315330091"
-  integrity sha512-0X6pnLbPcNHPdo8GSb8WpD9TTh5cAnekBodGFQLfnBT7nZ5m+YUeQPuigu6ryRPe6pM7ByJFb+6M+zGSQ85QUA==
+"@fedify/redis@1.10.11":
+  version "1.10.11"
+  resolved "https://registry.yarnpkg.com/@fedify/redis/-/redis-1.10.11.tgz#52320ecd659a72b108a35c509a14447305e58385"
+  integrity sha512-6JAs1ymP4/ycVnT1TM55vqWIpIgOq1baUlnvqk3sh9AfiX3l1ZVo53DU0WypXGNUvM1w76Ds99MjSJG6MVLzvg==
   dependencies:
     "@js-temporal/polyfill" "^0.5.1"
     "@logtape/logtape" "^1.2.2"
