@@ -2,7 +2,7 @@
     "name": "reconcile-account-topics",
     "private": true,
     "dependencies": {
-        "@fedify/fedify": "1.10.10",
+        "@fedify/fedify": "1.10.11",
         "mysql2": "3.22.4"
     }
 }
