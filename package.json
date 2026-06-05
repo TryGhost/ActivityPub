@@ -79,7 +79,7 @@
     "@opentelemetry/exporter-trace-otlp-proto": "0.218.0",
     "@opentelemetry/resources": "2.7.1",
     "@opentelemetry/sdk-trace-base": "2.7.1",
-    "@sentry/node": "10.55.0",
+    "@sentry/node": "10.56.0",
     "awilix": "13.0.3",
     "es-toolkit": "1.47.0",
     "hono": "4.12.23",
