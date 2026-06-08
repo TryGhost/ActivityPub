@@ -6,7 +6,6 @@ import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { Account as AccountType } from '@/account/types';
 import type { FollowersService } from '@/activitypub/followers.service';
-import type { NodeInfoService } from '@/activitypub/nodeinfo.service';
 import type { FedifyContext, FedifyRequestContext } from '@/app';
 import {
     ACTIVITYPUB_COLLECTION_PAGE_SIZE,
@@ -23,7 +22,6 @@ import {
     createOutboxDispatcher,
     keypairDispatcher,
     likedDispatcher,
-    nodeInfoDispatcher,
 } from '@/dispatchers';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
@@ -483,177 +481,6 @@ describe('dispatchers', () => {
             const result = await countOutboxItems(outboxCounterCtx);
 
             expect(result).toBe(0);
-        });
-    });
-
-    describe('nodeInfoDispatcher', () => {
-        it('resolves host data and returns node info', async () => {
-            const hostDataContextLoader = {
-                loadDataForHost: vi.fn().mockResolvedValue(
-                    ok({
-                        site: mockSite,
-                        account: mockAccount,
-                    }),
-                ),
-            };
-            const nodeInfoService = {
-                getData: vi.fn().mockResolvedValue({
-                    lastActivityAt: new Date(),
-                    localPosts: 2,
-                    localComments: 1,
-                }),
-            };
-
-            const dispatcher = nodeInfoDispatcher(
-                hostDataContextLoader as unknown as HostDataContextLoader,
-                nodeInfoService as unknown as NodeInfoService,
-            );
-
-            const result = await dispatcher({
-                host: mockSite.host,
-                data: {
-                    logger: {
-                        error: vi.fn(),
-                    },
-                },
-            } as unknown as FedifyRequestContext);
-
-            expect(result.usage.users.total).toBe(1);
-            expect(result.usage.users.activeMonth).toBe(1);
-            expect(result.usage.users.activeHalfyear).toBe(1);
-            expect(result.usage.localPosts).toBe(2);
-            expect(result.usage.localComments).toBe(1);
-            expect(result.metadata).toEqual({
-                nodeName: mockAccount.name,
-                nodeDescription: mockAccount.bio,
-                nodeIcon: mockAccount.avatarUrl?.href,
-                nodeBanner: mockAccount.bannerImageUrl?.href,
-                private: false,
-                postFormats: ['text/html'],
-            });
-            expect(hostDataContextLoader.loadDataForHost).toHaveBeenCalledWith(
-                mockSite.host,
-            );
-            expect(nodeInfoService.getData).toHaveBeenCalledWith(
-                mockSite,
-                mockAccount,
-            );
-        });
-
-        it('maps last activity into active user windows', async () => {
-            const now = new Date('2026-01-01T00:00:00.000Z');
-            const daysAgo = (days: number) =>
-                new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-
-            vi.useFakeTimers();
-            vi.setSystemTime(now);
-
-            try {
-                const cases = [
-                    {
-                        lastActivityAt: null,
-                        activeMonth: 0,
-                        activeHalfyear: 0,
-                    },
-                    {
-                        lastActivityAt: daysAgo(30),
-                        activeMonth: 1,
-                        activeHalfyear: 1,
-                    },
-                    {
-                        lastActivityAt: daysAgo(31),
-                        activeMonth: 0,
-                        activeHalfyear: 1,
-                    },
-                    {
-                        lastActivityAt: daysAgo(180),
-                        activeMonth: 0,
-                        activeHalfyear: 1,
-                    },
-                    {
-                        lastActivityAt: daysAgo(181),
-                        activeMonth: 0,
-                        activeHalfyear: 0,
-                    },
-                ];
-
-                for (const {
-                    lastActivityAt,
-                    activeMonth,
-                    activeHalfyear,
-                } of cases) {
-                    const hostDataContextLoader = {
-                        loadDataForHost: vi.fn().mockResolvedValue(
-                            ok({
-                                site: mockSite,
-                                account: mockAccount,
-                            }),
-                        ),
-                    };
-                    const nodeInfoService = {
-                        getData: vi.fn().mockResolvedValue({
-                            lastActivityAt,
-                            localPosts: 0,
-                            localComments: 0,
-                        }),
-                    };
-
-                    const dispatcher = nodeInfoDispatcher(
-                        hostDataContextLoader as unknown as HostDataContextLoader,
-                        nodeInfoService as unknown as NodeInfoService,
-                    );
-
-                    const result = await dispatcher({
-                        host: mockSite.host,
-                        data: {
-                            logger: {
-                                error: vi.fn(),
-                            },
-                        },
-                    } as unknown as FedifyRequestContext);
-
-                    expect(result.usage.users.activeMonth).toBe(activeMonth);
-                    expect(result.usage.users.activeHalfyear).toBe(
-                        activeHalfyear,
-                    );
-                }
-            } finally {
-                vi.useRealTimers();
-            }
-        });
-
-        it('throws when host data cannot be resolved', async () => {
-            const logger = {
-                error: vi.fn(),
-            };
-            const hostDataContextLoader = {
-                loadDataForHost: vi
-                    .fn()
-                    .mockResolvedValue(error('site-not-found')),
-            };
-            const nodeInfoService = {
-                getData: vi.fn(),
-            };
-
-            const dispatcher = nodeInfoDispatcher(
-                hostDataContextLoader as unknown as HostDataContextLoader,
-                nodeInfoService as unknown as NodeInfoService,
-            );
-
-            await expect(
-                dispatcher({
-                    host: mockSite.host,
-                    data: { logger },
-                } as unknown as FedifyRequestContext),
-            ).rejects.toThrow('NodeInfo requested without site context');
-            expect(nodeInfoService.getData).not.toHaveBeenCalled();
-            expect(logger.error).toHaveBeenCalledWith(
-                'NodeInfo: failed to resolve host',
-                {
-                    host: mockSite.host,
-                    error: 'site-not-found',
-                },
-            );
         });
     });
 

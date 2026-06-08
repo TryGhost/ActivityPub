@@ -58,6 +58,7 @@ import type { MoveHandler } from '@/activity-handlers/move.handler';
 import type { UpdateHandler } from '@/activity-handlers/update.handler';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { FediverseBridge } from '@/activitypub/fediverse-bridge';
+import type { NodeInfoDispatcher } from '@/activitypub/nodeinfo.dispatcher';
 import type { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import { container } from '@/configuration/container';
 import { registerDependencies } from '@/configuration/registrations';
@@ -86,7 +87,6 @@ import {
     likedCounter,
     likedDispatcher,
     likedFirstCursor,
-    type nodeInfoDispatcher,
     noteDispatcher,
     outboxFirstCursor,
     undoDispatcher,
@@ -602,10 +602,8 @@ globalFedify.setNodeInfoDispatcher(
     '/.ghost/activitypub/nodeinfo/2.1',
     spanWrapper((ctx: FedifyRequestContext) => {
         const dispatcher =
-            container.resolve<ReturnType<typeof nodeInfoDispatcher>>(
-                'nodeInfoDispatcher',
-            );
-        return dispatcher(ctx);
+            container.resolve<NodeInfoDispatcher>('nodeInfoDispatcher');
+        return dispatcher.dispatch(ctx);
     }),
 );
 
