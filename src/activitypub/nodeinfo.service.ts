@@ -68,6 +68,16 @@ export class NodeInfoService {
     private async queryStats(accountId: number): Promise<NodeInfoData> {
         // This intentionally derives activity from retained rows only. Exact
         // destructive activity tracking would require separate durable state.
+        //
+        // FORCE INDEX is used because the planner otherwise picks
+        // uniq_outboxes_account_post_outbox_type for the outbox subqueries,
+        // which scans every row for the account and ignores the outbox_type
+        // partition. Forcing the composite index turns each subquery into a
+        // narrow range scan keyed on (account_id, outbox_type).
+        //
+        // COALESCE with '1970-01-01' ensures GREATEST does not return NULL when
+        // a source has no rows. This SQL epoch sentinel is interpreted as "no
+        // activity" by parseLastActivityAt.
         const [[row]] = (await this.db.raw(
             `
             SELECT
@@ -119,6 +129,9 @@ export class NodeInfoService {
 
         const date = value instanceof Date ? value : new Date(value);
 
+        // getTime() === 0 detects the '1970-01-01' SQL epoch sentinel returned
+        // by the COALESCE fallback in queryStats when an account has no
+        // activity rows in any of the source tables.
         if (Number.isNaN(date.getTime()) || date.getTime() === 0) {
             return null;
         }
