@@ -522,10 +522,10 @@
   resolved "https://registry.yarnpkg.com/@google-cloud/promisify/-/promisify-5.0.1.tgz#d512d9fdc6a94dd01adb94ed66635bf10f41b0b9"
   integrity sha512-Ste6NGraHq30ge3Sdq7m+pZE6lRUlkt2YgsEdq/vcoEgdbdZ/7h37Z1dMvivjhlbgrcmYRvlLF9FgI7tXm5wjg==
 
-"@google-cloud/pubsub@5.3.0":
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/@google-cloud/pubsub/-/pubsub-5.3.0.tgz#807e7dc7d0163f94ad142316047a1db739591323"
-  integrity sha512-hyUoE85Rj3rRUVk3VU+Selp4MorBwEzsQEqAj6+SE+WabR9LIFitYS6A4R+PyiwVaRk/tggGD8p7bNiIY5sk4w==
+"@google-cloud/pubsub@5.3.1":
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/@google-cloud/pubsub/-/pubsub-5.3.1.tgz#94f1d6f77c3ad023ae606e6a8dfd8e30180a3cbe"
+  integrity sha512-xXAQBVVrFviWz8L8yDKEqv1ziVw/gMSpYHt3IxSYRSY0fTyjis+xOrKJILj8dd8PAUHGnGiAIYuTprflkE9jsQ==
   dependencies:
     "@google-cloud/paginator" "^6.0.0"
     "@google-cloud/precise-date" "^5.0.0"
@@ -538,9 +538,11 @@
     extend "^3.0.2"
     google-auth-library "^10.5.0"
     google-gax "^5.0.5"
+    google-logging-utils "^1.1.3"
     heap-js "^2.6.0"
     is-stream-ended "^0.1.4"
     lodash.snakecase "^4.1.1"
+    long "^5.3.1"
     p-defer "^3.0.0"
 
 "@google-cloud/storage@7.19.0":
@@ -2377,7 +2379,7 @@ google-logging-utils@^0.0.2:
   resolved "https://registry.yarnpkg.com/google-logging-utils/-/google-logging-utils-0.0.2.tgz#5fd837e06fa334da450433b9e3e1870c1594466a"
   integrity sha512-NEgUnEcBiP5HrPzufUkBzJOD/Sxsco3rLNo1F1TNf7ieU8ryUzBhqba8r756CjLX7rn3fHl6iLEwPYuqpoKgQQ==
 
-google-logging-utils@^1.0.0:
+google-logging-utils@^1.0.0, google-logging-utils@^1.1.3:
   version "1.1.4"
   resolved "https://registry.yarnpkg.com/google-logging-utils/-/google-logging-utils-1.1.4.tgz#279c0f58efda53880e9bf0dda8b6d32789c570f9"
   integrity sha512-LXxE6ND+JHhDPYtPFt3oeWrjxFPrnRZCZ4At6lpbi1ZDSAN7bmGET9s53vvARbxT93p+xpeDUbc/nCR4C+7vcw==
@@ -2961,7 +2963,7 @@ lodash@^4.17.21, lodash@^4.18.1:
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.18.1.tgz#ff2b66c1f6326d59513de2407bf881439812771c"
   integrity sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==
 
-long@^5.0.0, long@^5.2.0, long@^5.3.2:
+long@^5.0.0, long@^5.2.0, long@^5.3.1, long@^5.3.2:
   version "5.3.2"
   resolved "https://registry.yarnpkg.com/long/-/long-5.3.2.tgz#1d84463095999262d7d7b7f8bfd4a8cc55167f83"
   integrity sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==
