@@ -343,16 +343,14 @@ export class KnexPostRepository {
                                   accountIdsInserted: [],
                               };
 
-                    const { removedLikesCount } =
+                    const removedLikesCount =
                         likesToRemove.length > 0
                             ? await this.removeLikes(
                                   post,
                                   likesToRemove,
                                   transaction,
                               )
-                            : {
-                                  removedLikesCount: 0,
-                              };
+                            : 0;
 
                     likeAccountIds = accountIdsInserted.filter(
                         (accountId) => !likesToRemove.includes(accountId),
@@ -681,17 +679,13 @@ export class KnexPostRepository {
         post: Post,
         accountIds: number[],
         transaction: Knex.Transaction,
-    ): Promise<{ removedLikesCount: number }> {
-        const removedLikesCount = await transaction('likes')
+    ): Promise<number> {
+        return await transaction('likes')
             .where({
                 post_id: post.id,
             })
             .whereIn('account_id', accountIds)
             .del();
-
-        return {
-            removedLikesCount,
-        };
     }
 
     /**

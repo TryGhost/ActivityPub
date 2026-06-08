@@ -146,7 +146,7 @@ export class NodeInfoService {
     }
 
     private dataKey(siteId: number): KvKey {
-        return ['nodeinfo', 'data', String(siteId)];
+        return ['nodeinfo', String(siteId)];
     }
 
     private isCachedNodeInfoData(value: unknown): value is CachedNodeInfoData {

@@ -100,7 +100,6 @@ describe('FollowController', () => {
     let mockLogger: {
         error: ReturnType<typeof vi.fn>;
         info: ReturnType<typeof vi.fn>;
-        warn: ReturnType<typeof vi.fn>;
     };
 
     beforeEach(async () => {
@@ -160,7 +159,6 @@ describe('FollowController', () => {
         mockLogger = {
             error: vi.fn(),
             info: vi.fn(),
-            warn: vi.fn(),
         };
 
         mockApCtx = {

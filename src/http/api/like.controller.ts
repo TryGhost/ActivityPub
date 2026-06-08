@@ -59,31 +59,26 @@ export class LikeController {
         }
 
         const postResult = await this.postService.getByApId(idAsUrl);
+
         if (isError(postResult)) {
             const error = getError(postResult);
             switch (error) {
                 case 'upstream-error':
                     ctx.get('logger').info(
                         'Upstream error fetching post for liking',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 case 'not-a-post':
                     ctx.get('logger').info(
                         'Resource for liking is not a post',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 case 'missing-author':
                     ctx.get('logger').info(
                         'Post for liking has missing author',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 default:
@@ -143,42 +138,20 @@ export class LikeController {
                 objectToLike.attributionId.href,
             );
         }
-        try {
-            const sendActivityPromises: Promise<void>[] = [];
-
-            if (attributionActor) {
-                sendActivityPromises.push(
-                    apCtx.sendActivity(
-                        { username: account.username },
-                        attributionActor,
-                        like,
-                        {
-                            preferSharedInbox: true,
-                        },
-                    ),
-                );
-            }
-
-            sendActivityPromises.push(
-                apCtx.sendActivity(
-                    { username: account.username },
-                    'followers',
-                    like,
-                    {
-                        preferSharedInbox: true,
-                    },
-                ),
+        if (attributionActor) {
+            apCtx.sendActivity(
+                { username: account.username },
+                attributionActor,
+                like,
+                {
+                    preferSharedInbox: true,
+                },
             );
-
-            await Promise.all(sendActivityPromises);
-        } catch (err) {
-            ctx.get('logger').warn('Failed to send like activity', {
-                err,
-                accountId: account.id,
-                objectId: id,
-            });
         }
 
+        apCtx.sendActivity({ username: account.username }, 'followers', like, {
+            preferSharedInbox: true,
+        });
         return new Response(JSON.stringify(likeJson), {
             headers: {
                 'Content-Type': 'application/activity+json',
@@ -239,31 +212,26 @@ export class LikeController {
         }
 
         const postResult = await this.postService.getByApId(idAsUrl);
+
         if (isError(postResult)) {
             const error = getError(postResult);
             switch (error) {
                 case 'upstream-error':
                     ctx.get('logger').info(
                         'Upstream error fetching post for unliking',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 case 'not-a-post':
                     ctx.get('logger').info(
                         'Resource for unliking is not a post',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 case 'missing-author':
                     ctx.get('logger').info(
                         'Post for unliking has missing author',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 default:
@@ -298,43 +266,20 @@ export class LikeController {
                 objectToLike.attributionId.href,
             );
         }
-
-        try {
-            const sendActivityPromises: Promise<void>[] = [];
-
-            if (attributionActor) {
-                sendActivityPromises.push(
-                    apCtx.sendActivity(
-                        { username: account.username },
-                        attributionActor,
-                        undo,
-                        {
-                            preferSharedInbox: true,
-                        },
-                    ),
-                );
-            }
-
-            sendActivityPromises.push(
-                apCtx.sendActivity(
-                    { username: account.username },
-                    'followers',
-                    undo,
-                    {
-                        preferSharedInbox: true,
-                    },
-                ),
+        if (attributionActor) {
+            apCtx.sendActivity(
+                { username: account.username },
+                attributionActor,
+                undo,
+                {
+                    preferSharedInbox: true,
+                },
             );
-
-            await Promise.all(sendActivityPromises);
-        } catch (err) {
-            ctx.get('logger').warn('Failed to send unlike activity', {
-                err,
-                accountId: account.id,
-                objectId: id,
-            });
         }
 
+        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
+            preferSharedInbox: true,
+        });
         return new Response(JSON.stringify(undoJson), {
             headers: {
                 'Content-Type': 'application/activity+json',

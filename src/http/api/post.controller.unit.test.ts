@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-    Announce,
-    type Object as APObject,
-    type Federation,
-    Undo,
-} from '@fedify/fedify';
+import type { Federation } from '@fedify/fedify';
 
 import type { AccountEntity } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -13,7 +8,6 @@ import type { AccountService } from '@/account/account.service';
 import type { AppContext, ContextData } from '@/app';
 import { error, ok } from '@/core/result';
 import { PostController } from '@/http/api/post.controller';
-import * as lookupHelpers from '@/lookup-helpers';
 import {
     Audience,
     Post,
@@ -25,52 +19,6 @@ import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { Site } from '@/site/site.service';
 import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
-
-vi.mock('@fedify/fedify', async () => {
-    const original = await vi.importActual('@fedify/fedify');
-
-    const MockAnnounce = {
-        async fromJsonLd(json: unknown) {
-            return json;
-        },
-    };
-
-    class MockUndo {
-        id: URL | null;
-        actor: unknown;
-        object: unknown;
-
-        constructor({
-            id,
-            actor,
-            object,
-        }: { id: URL | null; actor: unknown; object: unknown }) {
-            this.id = id;
-            this.actor = actor;
-            this.object = object;
-        }
-
-        async toJsonLd() {
-            return {
-                type: 'Undo',
-                id: this.id?.href,
-                actor: this.actor,
-                object: this.object,
-            };
-        }
-    }
-
-    return {
-        ...original,
-        Announce: MockAnnounce,
-        Undo: MockUndo,
-    };
-});
-
-vi.mock('@/lookup-helpers', () => ({
-    lookupActor: vi.fn(),
-    lookupObject: vi.fn(),
-}));
 
 describe('Post API', () => {
     let site: Site;
@@ -91,12 +39,11 @@ describe('Post API', () => {
         return {
             req: {
                 param: (key: string) => {
-                    if (key === 'post_ap_id' || key === 'id') {
+                    if (key === 'post_ap_id') {
                         return postApId;
                     }
                     return null;
                 },
-                raw: {} as Request,
             },
             get: (key: string) => {
                 if (key === 'site') {
@@ -104,12 +51,6 @@ describe('Post API', () => {
                 }
                 if (key === 'account') {
                     return account;
-                }
-                if (key === 'logger') {
-                    return {
-                        info: vi.fn(),
-                        warn: vi.fn(),
-                    };
                 }
             },
         } as unknown as AppContext;
@@ -141,56 +82,6 @@ describe('Post API', () => {
             0,
             2,
         );
-    }
-
-    function setupDerepostContext(postApId: string) {
-        const globaldb = {
-            get: vi.fn().mockResolvedValue({
-                type: 'Announce',
-                id: 'https://example.com/announce/existing',
-            }),
-            set: vi.fn(),
-            delete: vi.fn(),
-        };
-        const apCtx = {
-            getActor: vi.fn().mockResolvedValue(account.apId),
-            getFollowersUri: vi
-                .fn()
-                .mockReturnValue(new URL('https://example.com/followers')),
-            getObjectUri: vi.fn((type: unknown, { id }: { id: string }) => {
-                if (type === Announce) {
-                    return new URL(`https://example.com/announce/${id}`);
-                }
-
-                if (type === Undo) {
-                    return new URL(`https://example.com/undo/${id}`);
-                }
-
-                return new URL(`https://example.com/object/${id}`);
-            }),
-            sendActivity: vi.fn(),
-        };
-        const logger = {
-            info: vi.fn(),
-            warn: vi.fn(),
-        };
-        const ctx = getMockAppContext(postApId);
-
-        fedify.createContext = vi.fn().mockReturnValue(apCtx);
-        vi.mocked(lookupHelpers.lookupObject).mockResolvedValue({
-            id: new URL(postApId),
-            attributionId: null,
-        } as unknown as APObject);
-        vi.mocked(lookupHelpers.lookupActor).mockResolvedValue(null);
-        ctx.get = vi.fn().mockImplementation((key) => {
-            if (key === 'account') return account;
-            if (key === 'globaldb') return globaldb;
-            if (key === 'logger') return logger;
-
-            return null;
-        });
-
-        return { apCtx, ctx };
     }
 
     beforeEach(async () => {
@@ -378,53 +269,5 @@ describe('Post API', () => {
         const response = await postController.handleGetPost(ctx);
 
         expect(response.status).toBe(404);
-    });
-
-    it('sends a successful wire-only derepost', async () => {
-        const postApId = 'https://remote.example/posts/1';
-        postService.getByApId = vi.fn().mockResolvedValue(error('not-a-post'));
-
-        const { apCtx, ctx } = setupDerepostContext(postApId);
-
-        const response = await postController.handleDerepost(ctx);
-
-        expect(response.status).toBe(200);
-        expect(apCtx.sendActivity).toHaveBeenCalled();
-    });
-
-    it('logs when a wire-only derepost send fails', async () => {
-        const postApId = 'https://remote.example/posts/1';
-        postService.getByApId = vi.fn().mockResolvedValue(error('not-a-post'));
-
-        const { apCtx, ctx } = setupDerepostContext(postApId);
-        apCtx.sendActivity.mockRejectedValueOnce(new Error('send failed'));
-
-        const response = await postController.handleDerepost(ctx);
-
-        expect(response.status).toBe(200);
-        expect(ctx.get('logger').warn).toHaveBeenCalledWith(
-            'Failed to send derepost activity',
-            expect.objectContaining({
-                accountId: account.id,
-                objectId: postApId,
-            }),
-        );
-    });
-
-    it('persists a local derepost', async () => {
-        const postApId = 'https://remote.example/posts/1';
-        postService.getByApId = vi.fn().mockResolvedValue(
-            ok({
-                removeRepost: vi.fn(),
-            } as never),
-        );
-        postRepository.save = vi.fn();
-
-        const { ctx } = setupDerepostContext(postApId);
-
-        const response = await postController.handleDerepost(ctx);
-
-        expect(response.status).toBe(200);
-        expect(postRepository.save).toHaveBeenCalled();
     });
 });

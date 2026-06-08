@@ -72,7 +72,7 @@ describe('NodeInfoService', () => {
             localComments: 2,
         };
         kv.values.set(
-            JSON.stringify(['nodeinfo', 'data', String(site.id)]),
+            JSON.stringify(['nodeinfo', String(site.id)]),
             cached,
         );
         const db = createDbReturningStats({});
@@ -121,7 +121,7 @@ describe('NodeInfoService', () => {
         ]);
         expect(kv.setCalls).toEqual([
             expect.objectContaining({
-                key: ['nodeinfo', 'data', String(site.id)],
+                key: ['nodeinfo', String(site.id)],
                 value: {
                     lastActivityAt: '2026-02-03T04:05:06.000Z',
                     localPosts: 5,

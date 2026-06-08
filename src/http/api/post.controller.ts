@@ -161,17 +161,13 @@ export class PostController {
                 case 'not-a-post':
                     logger.info(
                         'Resource requested for deletion is not a post',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     return new Response(null, { status: 400 });
                 case 'missing-author':
                     logger.info(
                         'Post requested for deletion has missing author',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     return new Response(null, { status: 400 });
                 case 'not-author':
@@ -230,9 +226,7 @@ export class PostController {
         } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
-                {
-                    status: 400,
-                },
+                { status: 400 },
             );
         }
 
@@ -326,9 +320,7 @@ export class PostController {
         } catch (_err) {
             return new Response(
                 JSON.stringify({ error: 'Invalid request format' }),
-                {
-                    status: 400,
-                },
+                { status: 400 },
             );
         }
 
@@ -724,25 +716,19 @@ export class PostController {
                 case 'upstream-error':
                     ctx.get('logger').info(
                         'Upstream error fetching post for dereposting',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 case 'not-a-post':
                     ctx.get('logger').info(
                         'Resource for dereposting is not a post',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 case 'missing-author':
                     ctx.get('logger').info(
                         'Post for dereposting has missing author',
-                        {
-                            postId: idAsUrl.href,
-                        },
+                        { postId: idAsUrl.href },
                     );
                     break;
                 default:
@@ -777,41 +763,20 @@ export class PostController {
                 post.attributionId.href,
             );
         }
-        try {
-            const sendActivityPromises: Promise<void>[] = [];
-
-            if (attributionActor) {
-                sendActivityPromises.push(
-                    apCtx.sendActivity(
-                        { username: account.username },
-                        attributionActor,
-                        undo,
-                        {
-                            preferSharedInbox: true,
-                        },
-                    ),
-                );
-            }
-
-            sendActivityPromises.push(
-                apCtx.sendActivity(
-                    { username: account.username },
-                    'followers',
-                    undo,
-                    {
-                        preferSharedInbox: true,
-                    },
-                ),
+        if (attributionActor) {
+            apCtx.sendActivity(
+                { username: account.username },
+                attributionActor,
+                undo,
+                {
+                    preferSharedInbox: true,
+                },
             );
-
-            await Promise.all(sendActivityPromises);
-        } catch (err) {
-            ctx.get('logger').warn('Failed to send derepost activity', {
-                err,
-                accountId: account.id,
-                objectId: id,
-            });
         }
+
+        apCtx.sendActivity({ username: account.username }, 'followers', undo, {
+            preferSharedInbox: true,
+        });
 
         return new Response(JSON.stringify(undoJson), {
             headers: {
