@@ -11,7 +11,7 @@ import { KnexPostRepository } from '@/post/post.repository.knex';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
-describe('NodeInfoService integration', () => {
+describe('NodeInfoService', () => {
     let db: Knex;
     let fixtureManager: FixtureManager;
 

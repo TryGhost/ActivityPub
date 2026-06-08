@@ -1,4 +1,4 @@
-import { type Protocol } from '@fedify/fedify';
+import type { Protocol } from '@fedify/fedify';
 
 import type { Account } from '@/account/account.entity';
 import type {

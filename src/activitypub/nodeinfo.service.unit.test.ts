@@ -71,10 +71,7 @@ describe('NodeInfoService', () => {
             localPosts: 4,
             localComments: 2,
         };
-        kv.values.set(
-            JSON.stringify(['nodeinfo', String(site.id)]),
-            cached,
-        );
+        kv.values.set(JSON.stringify(['nodeinfo', String(site.id)]), cached);
         const db = createDbReturningStats({});
 
         const service = new NodeInfoService(db, kv, createLogger());
