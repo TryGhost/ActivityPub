@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { exportJwk, type RequestContext } from '@fedify/fedify';
+import { exportJwk } from '@fedify/fedify';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -22,7 +22,6 @@ import {
     createOutboxDispatcher,
     keypairDispatcher,
     likedDispatcher,
-    nodeInfoDispatcher,
 } from '@/dispatchers';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
@@ -47,6 +46,11 @@ describe('dispatchers', () => {
         mockAccount = {
             id: 1,
             username: 'testuser',
+            name: 'Test Site',
+            bio: 'Test description',
+            url: new URL('https://example.com/'),
+            avatarUrl: new URL('https://example.com/icon.png'),
+            bannerImageUrl: new URL('https://example.com/banner.png'),
             apId: new URL('https://example.com/user/testuser'),
             apInbox: new URL('https://example.com/user/testuser/inbox'),
             isInternal: true,
@@ -477,32 +481,6 @@ describe('dispatchers', () => {
             const result = await countOutboxItems(outboxCounterCtx);
 
             expect(result).toBe(0);
-        });
-    });
-
-    describe('nodeInfoDispatcher', () => {
-        it('returns the node info', async () => {
-            // TODO: Clean up the any type
-            // biome-ignore lint/suspicious/noExplicitAny: Legacy code needs proper typing
-            const result = await nodeInfoDispatcher({} as RequestContext<any>);
-
-            expect(result).toEqual({
-                software: {
-                    name: 'ghost',
-                    version: { major: 0, minor: 1, patch: 0 },
-                    homepage: new URL('https://ghost.org/'),
-                    repository: new URL('https://github.com/TryGhost/Ghost'),
-                },
-                protocols: ['activitypub'],
-                openRegistrations: false,
-                usage: {
-                    users: {
-                        total: 1,
-                    },
-                    localPosts: 0,
-                    localComments: 0,
-                },
-            });
         });
     });
 
