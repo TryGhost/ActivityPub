@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Activity, Actor } from '@fedify/fedify';
+import type { Activity, Actor } from '@fedify/vocab';
 
 import { FedifyActivitySender } from '@/activitypub/activity';
 import type { FedifyRequestContext } from '@/app';

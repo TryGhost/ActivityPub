@@ -1,4 +1,4 @@
-import { Accept, type Actor, type Follow, Reject } from '@fedify/fedify';
+import { Accept, type Actor, type Follow, Reject } from '@fedify/vocab';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AccountService } from '@/account/account.service';
@@ -72,7 +72,7 @@ export class FollowHandler {
                 `${followerAccount.apId} is not allowed to follow ${accountToFollow.apId}, sending reject`,
             );
 
-            await this.sendReject(ctx, follow, parsed.handle, sender);
+            await this.sendReject(ctx, follow, parsed.identifier, sender);
 
             return;
         }

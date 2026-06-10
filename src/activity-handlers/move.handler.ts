@@ -6,7 +6,7 @@ import {
     type Move,
     Person,
     Undo,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Account } from '@/account/account.entity';
@@ -150,7 +150,7 @@ export class MoveHandler {
 
         try {
             const documentLoader = await ctx.getDocumentLoader({
-                handle: 'index',
+                identifier: 'index',
             });
             target = await lookupObject(move.targetId!, { documentLoader });
         } catch (err) {

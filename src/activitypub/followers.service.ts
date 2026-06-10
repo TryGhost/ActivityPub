@@ -1,4 +1,4 @@
-import type { Recipient } from '@fedify/fedify';
+import type { Recipient } from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';

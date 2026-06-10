@@ -1,5 +1,4 @@
 import type { KvKey, KvStore } from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 

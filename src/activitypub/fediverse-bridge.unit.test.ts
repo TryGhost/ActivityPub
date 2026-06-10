@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
-import { type Object as FedifyObject, Follow, Reject } from '@fedify/fedify';
+import { type Object as FedifyObject, Follow, Reject } from '@fedify/vocab';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';

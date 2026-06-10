@@ -1,6 +1,6 @@
 import { isIP } from 'node:net';
 
-import { type Actor, PropertyValue } from '@fedify/fedify';
+import { type Actor, PropertyValue } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { ExternalAccountData } from '@/account/types';

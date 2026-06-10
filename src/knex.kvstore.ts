@@ -1,4 +1,9 @@
-import type { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
+import type {
+    KvKey,
+    KvStore,
+    KvStoreListEntry,
+    KvStoreSetOptions,
+} from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import type Knex from 'knex';
 
@@ -104,5 +109,12 @@ export class KnexKvStore implements KvStore {
                 key: this.keyToString(key),
             })
             .del();
+    }
+
+    // Required by KvStore in Fedify v2 but unused for our config: the only
+    // runtime caller in v2.2.5 is FedifySpanExporter (@fedify/fedify/otel),
+    // which we do not import.
+    list(_prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+        throw new Error('KnexKvStore.list() is not implemented');
     }
 }

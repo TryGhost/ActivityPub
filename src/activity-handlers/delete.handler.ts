@@ -1,4 +1,4 @@
-import type { Actor, Delete } from '@fedify/fedify';
+import type { Actor, Delete } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';

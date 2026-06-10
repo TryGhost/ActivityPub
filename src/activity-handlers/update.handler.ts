@@ -1,4 +1,4 @@
-import { type Actor, isActor, type Update } from '@fedify/fedify';
+import { type Actor, isActor, type Update } from '@fedify/vocab';
 
 import type { AccountService } from '@/account/account.service';
 import { mapActorToExternalAccountData } from '@/account/utils';

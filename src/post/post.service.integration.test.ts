@@ -8,8 +8,7 @@ import {
     lookupObject,
     Mention,
     Note,
-} from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
+} from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
@@ -41,8 +40,8 @@ import type { ImageStorageService } from '@/storage/image-storage.service';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
-vi.mock('@fedify/fedify', async () => {
-    const actual = await vi.importActual('@fedify/fedify');
+vi.mock('@fedify/vocab', async () => {
+    const actual = await vi.importActual('@fedify/vocab');
     return {
         ...actual,
         lookupObject: vi.fn().mockResolvedValue(null),

@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { Temporal } from '@js-temporal/polyfill';
 import { getLogger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 

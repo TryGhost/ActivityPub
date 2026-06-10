@@ -3,7 +3,7 @@ import {
     Mention as FedifyMention,
     lookupObject,
     Note,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import { mapAsync } from 'es-toolkit/array';
 
@@ -175,7 +175,7 @@ export class PostService {
 
         const context = this.fedifyContextFactory.getFedifyContext();
         const documentLoader = await context.getDocumentLoader({
-            handle: 'index',
+            identifier: 'index',
         });
 
         const foundObject = await lookupObject(id, { documentLoader });

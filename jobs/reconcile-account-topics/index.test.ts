@@ -15,7 +15,7 @@ import {
     Image,
     Person,
     PropertyValue,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import mysql, { type RowDataPacket } from 'mysql2/promise';
 
 import { AccountTopicReconciler } from './lib/AccountTopicReconciler';

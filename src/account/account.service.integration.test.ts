@@ -8,7 +8,7 @@ import {
     vi,
 } from 'vitest';
 
-import { type Actor, isActor, lookupObject, type Note } from '@fedify/fedify';
+import { type Actor, isActor, lookupObject, type Note } from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -43,6 +43,14 @@ vi.mock('@fedify/fedify', async () => {
     return {
         ...original,
         generateCryptoKeyPair: vi.fn().mockReturnValue(keyPair),
+    };
+});
+
+vi.mock('@fedify/vocab', async () => {
+    const original = await vi.importActual('@fedify/vocab');
+
+    return {
+        ...original,
         lookupObject: vi.fn(),
         isActor: vi.fn(),
     };

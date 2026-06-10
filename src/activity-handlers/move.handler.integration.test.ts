@@ -8,7 +8,7 @@ import {
     vi,
 } from 'vitest';
 
-import { lookupObject, Move, Person } from '@fedify/fedify';
+import { lookupObject, Move, Person } from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -22,8 +22,8 @@ import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 import { MoveHandler } from './move.handler';
 
-vi.mock('@fedify/fedify', async (importOriginal) => {
-    const original = await importOriginal<typeof import('@fedify/fedify')>();
+vi.mock('@fedify/vocab', async (importOriginal) => {
+    const original = await importOriginal<typeof import('@fedify/vocab')>();
 
     return {
         ...original,

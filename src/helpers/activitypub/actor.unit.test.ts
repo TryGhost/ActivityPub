@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { type Actor, PropertyValue } from '@fedify/fedify';
+import { type Actor, PropertyValue } from '@fedify/vocab';
 
 import type { AccountService } from '@/account/account.service';
 import type { Account, Site } from '@/account/types';

@@ -7,7 +7,7 @@ import {
     PUBLIC_COLLECTION,
     Reject,
     Update,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Account } from '@/account/account.entity';

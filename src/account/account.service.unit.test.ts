@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { isActor } from '@fedify/fedify';
+import { isActor } from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import type { AccountEntity } from '@/account/account.entity';
@@ -11,8 +11,8 @@ import type { AsyncEvents } from '@/core/events';
 import { error, ok } from '@/core/result';
 import * as lookupHelpers from '@/lookup-helpers';
 
-vi.mock('@fedify/fedify', async () => {
-    const original = await vi.importActual('@fedify/fedify');
+vi.mock('@fedify/vocab', async () => {
+    const original = await vi.importActual('@fedify/vocab');
 
     return {
         ...original,

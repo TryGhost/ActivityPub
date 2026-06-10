@@ -1,4 +1,4 @@
-import { Delete } from '@fedify/fedify';
+import { Delete } from '@fedify/vocab';
 
 import type { FedifyRequestContext } from '@/app';
 

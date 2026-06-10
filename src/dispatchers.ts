@@ -5,6 +5,7 @@
  * This file violates our architectural patterns and should be refactored.
  */
 
+import { importJwk, verifyObject } from '@fedify/fedify';
 import {
     Accept,
     Announce,
@@ -13,14 +14,12 @@ import {
     Follow,
     Group,
     Image,
-    importJwk,
     Like,
     Note,
     Person,
     Undo,
     Update,
-    verifyObject,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import * as Sentry from '@sentry/node';
 
 import type { AccountService } from '@/account/account.service';

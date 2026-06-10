@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Actor, Object as APObject, Federation } from '@fedify/fedify';
-import { Follow, isActor, Undo } from '@fedify/fedify';
+import type { Federation } from '@fedify/fedify';
+import type { Actor, Object as APObject } from '@fedify/vocab';
+import { Follow, isActor, Undo } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -15,8 +16,8 @@ import {
     createTestInternalAccount,
 } from '@/test/account-entity-test-helpers';
 
-vi.mock('@fedify/fedify', async () => {
-    const original = await vi.importActual('@fedify/fedify');
+vi.mock('@fedify/vocab', async () => {
+    const original = await vi.importActual('@fedify/vocab');
 
     class MockFollow {
         id: unknown;
