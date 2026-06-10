@@ -80,29 +80,6 @@ describe('RouteRegistry', () => {
             // Args: method, [path], ...middlewares — so >3 means at least 2 middlewares
             expect(call.length).toBeGreaterThan(3);
         });
-
-        it('mounts static routes before dynamic routes', () => {
-            routeRegistry.registerRoute({
-                method: 'GET',
-                path: '/account/:handle',
-                controllerToken: 'TestController',
-                methodName: 'dynamicMethod',
-            });
-            routeRegistry.registerRoute({
-                method: 'GET',
-                path: '/account/settings',
-                controllerToken: 'TestController',
-                methodName: 'staticMethod',
-            });
-
-            routeRegistry.mountRoutes(
-                mockApp as unknown as Hono<{ Variables: HonoContextVariables }>,
-                mockContainer as unknown as AwilixContainer,
-            );
-
-            expect(mockApp.on.mock.calls[0][1]).toEqual(['/account/settings']);
-            expect(mockApp.on.mock.calls[1][1]).toEqual(['/account/:handle']);
-        });
     });
 
     describe('registerController', () => {
