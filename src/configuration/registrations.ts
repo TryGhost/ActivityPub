@@ -466,8 +466,8 @@ export function registerDependencies(
 
                 return new SiteController(
                     siteService,
-                    ghostProIpAddresses,
                     accountService,
+                    ghostProIpAddresses,
                 );
             },
         ).singleton(),

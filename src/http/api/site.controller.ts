@@ -6,8 +6,8 @@ import type { SiteService } from '@/site/site.service';
 export class SiteController {
     constructor(
         private readonly siteService: SiteService,
+        private readonly accountService: AccountService,
         private readonly ghostProIpAddresses?: string[],
-        private readonly accountService?: AccountService,
     ) {}
 
     async handleGetSiteData(ctx: AppContext) {
@@ -30,21 +30,18 @@ export class SiteController {
 
             let responseBody: object = site;
 
-            if (this.accountService) {
-                const account =
-                    await this.accountService.getAccountForSite(site);
+            const account = await this.accountService.getAccountForSite(site);
 
-                if (account) {
-                    responseBody = {
-                        ...site,
-                        domain: getAccountHandleHost(account),
-                        handle: getAccountHandle(
-                            getAccountHandleHost(account),
-                            account.username,
-                        ),
-                        actorUrl: account.apId.href,
-                    };
-                }
+            if (account) {
+                responseBody = {
+                    ...site,
+                    domain: getAccountHandleHost(account),
+                    handle: getAccountHandle(
+                        getAccountHandleHost(account),
+                        account.username,
+                    ),
+                    actorUrl: account.apId.href,
+                };
             }
 
             return new Response(JSON.stringify(responseBody), {
