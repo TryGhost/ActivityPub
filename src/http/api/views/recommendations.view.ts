@@ -74,16 +74,24 @@ export class RecommendationsView {
         excludeIds: number[],
         limit: number,
     ): Promise<RecommendationRow[]> {
+        const effectiveDomainHash = this.db.raw(
+            'COALESCE(accounts.webfinger_host_hash, accounts.domain_hash)',
+        );
+
         const query = this.db('accounts')
             .select(
                 'accounts.id',
                 'accounts.ap_id',
                 'accounts.name',
                 'accounts.username',
-                'accounts.domain',
                 'accounts.avatar_url',
                 'accounts.bio',
                 'accounts.url',
+            )
+            .select(
+                this.db.raw(
+                    'COALESCE(accounts.webfinger_host, accounts.domain) as domain',
+                ),
             )
             .distinct('accounts.id')
 
@@ -122,7 +130,7 @@ export class RecommendationsView {
             .leftJoin('domain_blocks', function () {
                 this.on(
                     'domain_blocks.domain_hash',
-                    'accounts.domain_hash',
+                    effectiveDomainHash,
                 ).andOnVal(
                     'domain_blocks.blocker_id',
                     '=',

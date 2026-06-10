@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { AccountService } from '@/account/account.service';
 import type { AppContext } from '@/app';
 import { SiteController } from '@/http/api/site.controller';
 import type { Site, SiteService } from '@/site/site.service';
 
 describe('SiteController', () => {
     let siteService: SiteService;
+    let accountService: AccountService;
     let siteController: SiteController;
     let mockSite: Site;
 
@@ -21,6 +23,10 @@ describe('SiteController', () => {
             initialiseSiteForHost: vi.fn().mockResolvedValue(mockSite),
             disableSiteForHost: vi.fn().mockResolvedValue(true),
         } as unknown as SiteService;
+
+        accountService = {
+            getAccountForSite: vi.fn().mockResolvedValue(null),
+        } as unknown as AccountService;
     });
 
     function getMockAppContext(
@@ -53,7 +59,7 @@ describe('SiteController', () => {
 
     describe('handleGetSiteData', () => {
         it('returns 401 if no host header is provided', async () => {
-            siteController = new SiteController(siteService);
+            siteController = new SiteController(siteService, accountService);
             const ctx = getMockAppContext(undefined);
             const response = await siteController.handleGetSiteData(ctx);
 
@@ -63,7 +69,7 @@ describe('SiteController', () => {
         });
 
         it('returns site data as JSON', async () => {
-            siteController = new SiteController(siteService);
+            siteController = new SiteController(siteService, accountService);
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleGetSiteData(ctx);
 
@@ -76,8 +82,18 @@ describe('SiteController', () => {
             expect(body).toEqual(mockSite);
         });
 
+        it('returns site data when no account exists for the site', async () => {
+            siteController = new SiteController(siteService, accountService);
+
+            const ctx = getMockAppContext('example.com');
+            const response = await siteController.handleGetSiteData(ctx);
+
+            expect(response.status).toBe(200);
+            expect(await response.json()).toEqual(mockSite);
+        });
+
         it('sets `ghost_pro` flag to false when none of the x-forwarded-for IP addresses matches any of the Ghost (Pro) IP addresses', async () => {
-            siteController = new SiteController(siteService, [
+            siteController = new SiteController(siteService, accountService, [
                 '10.0.0.1',
                 '10.0.0.2',
             ]);
@@ -94,7 +110,7 @@ describe('SiteController', () => {
         });
 
         it('sets `ghost_pro` flag to true when one of the x-forwarded-for IP addresses matches a Ghost (Pro) IP address', async () => {
-            siteController = new SiteController(siteService, [
+            siteController = new SiteController(siteService, accountService, [
                 '10.0.0.1',
                 '10.0.0.2',
             ]);
@@ -111,7 +127,7 @@ describe('SiteController', () => {
         });
 
         it('sets `ghost_pro` flag to false when no IP headers are found', async () => {
-            siteController = new SiteController(siteService, [
+            siteController = new SiteController(siteService, accountService, [
                 '10.0.0.1',
                 '10.0.0.2',
             ]);
@@ -128,7 +144,7 @@ describe('SiteController', () => {
 
     describe('handleDisableSite', () => {
         it('returns 401 if no host header is provided', async () => {
-            siteController = new SiteController(siteService);
+            siteController = new SiteController(siteService, accountService);
 
             const ctx = getMockAppContext(undefined);
             const response = await siteController.handleDisableSite(ctx);
@@ -141,7 +157,7 @@ describe('SiteController', () => {
         });
 
         it('returns 200 if the site is disabled', async () => {
-            siteController = new SiteController(siteService);
+            siteController = new SiteController(siteService, accountService);
 
             const ctx = getMockAppContext('example.com');
             const response = await siteController.handleDisableSite(ctx);
@@ -150,7 +166,7 @@ describe('SiteController', () => {
         });
 
         it('returns 404 if the site is not found', async () => {
-            siteController = new SiteController(siteService);
+            siteController = new SiteController(siteService, accountService);
 
             vi.mocked(siteService.disableSiteForHost).mockResolvedValue(false);
 
@@ -161,7 +177,7 @@ describe('SiteController', () => {
         });
 
         it('returns 500 if an error occurs', async () => {
-            siteController = new SiteController(siteService);
+            siteController = new SiteController(siteService, accountService);
 
             vi.mocked(siteService.disableSiteForHost).mockRejectedValue(
                 new Error('test'),

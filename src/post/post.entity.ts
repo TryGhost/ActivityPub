@@ -95,7 +95,10 @@ export interface ImageAttachment {
     altText?: string;
 }
 
-export type MentionedAccount = Pick<Account, 'id' | 'apId' | 'username'>;
+export type MentionedAccount = Pick<
+    Account,
+    'id' | 'apId' | 'username' | 'webfingerHost'
+>;
 
 export interface PostData {
     type: CreatePostType;

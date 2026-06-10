@@ -181,7 +181,9 @@ export class FeedController {
                 author: {
                     id: result.author_id.toString(),
                     handle: getAccountHandle(
-                        parseURL(result.author_url)?.host ?? '',
+                        result.author_webfinger_host ??
+                            parseURL(result.author_url)?.host ??
+                            '',
                         result.author_username,
                     ),
                     name: result.author_name ?? '',
@@ -196,7 +198,9 @@ export class FeedController {
                     ? {
                           id: result.reposter_id.toString(),
                           handle: getAccountHandle(
-                              parseURL(result.reposter_url)?.host ?? '',
+                              result.reposter_webfinger_host ??
+                                  parseURL(result.reposter_url)?.host ??
+                                  '',
                               result.reposter_username,
                           ),
                           name: result.reposter_name ?? '',

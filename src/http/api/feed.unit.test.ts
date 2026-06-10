@@ -61,10 +61,12 @@ describe('Feed API', () => {
                         author_name: 'Foo Bar',
                         author_username: 'foobar',
                         author_url: 'https://example.com/foobar',
+                        author_webfinger_host: null,
                         reposter_id: null,
                         reposter_name: null,
                         reposter_username: null,
                         reposter_url: null,
+                        reposter_webfinger_host: null,
                         reposter_avatar_url: null,
                         post_attachments: [
                             {
@@ -103,10 +105,12 @@ describe('Feed API', () => {
                         author_name: 'Foo Bar',
                         author_username: 'foobar',
                         author_url: 'https://example.com/foobar',
+                        author_webfinger_host: null,
                         reposter_id: 654,
                         reposter_name: 'Baz Qux',
                         reposter_username: 'bazqux',
                         reposter_url: 'https://example.com/bazqux',
+                        reposter_webfinger_host: null,
                         reposter_avatar_url:
                             'https://example.com/images/bazqux.png',
                         post_attachments: [],

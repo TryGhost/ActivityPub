@@ -53,6 +53,7 @@ describe('AccountController aliases', () => {
             id: 1,
             username: 'index',
             apId: new URL('https://example.com/.ghost/activitypub/users/index'),
+            webfingerHost: null,
         } as unknown as Account;
         accountRepository = {
             getById: vi.fn().mockResolvedValue(account),
@@ -62,6 +63,7 @@ describe('AccountController aliases', () => {
             getAliases: vi.fn().mockResolvedValue([]),
             addAlias: vi.fn(),
             removeAlias: vi.fn(),
+            setWebfingerHost: vi.fn(),
         } as unknown as AccountService;
         controller = new AccountController(
             {} as AccountView,
@@ -96,6 +98,16 @@ describe('AccountController aliases', () => {
                     path: '/.ghost/activitypub/:version/aliases',
                     methodName: 'handleRemoveAccountAlias',
                 }),
+                expect.objectContaining({
+                    method: 'GET',
+                    path: '/.ghost/activitypub/:version/domain',
+                    methodName: 'handleGetAccountDomain',
+                }),
+                expect.objectContaining({
+                    method: 'PUT',
+                    path: '/.ghost/activitypub/:version/domain',
+                    methodName: 'handleUpdateAccountDomain',
+                }),
             ]),
         );
 
@@ -103,6 +115,8 @@ describe('AccountController aliases', () => {
             'handleGetAccountAliases',
             'handleAddAccountAlias',
             'handleRemoveAccountAlias',
+            'handleGetAccountDomain',
+            'handleUpdateAccountDomain',
         ]) {
             expect(
                 Reflect.getMetadata(
@@ -232,6 +246,87 @@ describe('AccountController aliases', () => {
         );
 
         expect(response.status).toBe(404);
+    });
+
+    it('returns account domain state', async () => {
+        const response = await controller.handleGetAccountDomain(
+            createContext(),
+        );
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({
+            domain: null,
+            handle: '@index@example.com',
+            actorUrl: 'https://example.com/.ghost/activitypub/users/index',
+        });
+    });
+
+    it('updates the account domain', async () => {
+        const updatedAccount = {
+            ...account,
+            webfingerHost: 'site.com',
+        } as Account;
+
+        vi.mocked(accountService.setWebfingerHost).mockResolvedValue(
+            ok(updatedAccount),
+        );
+
+        const response = await controller.handleUpdateAccountDomain(
+            createContext({ domain: 'site.com' }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(accountService.setWebfingerHost).toHaveBeenCalledWith(
+            account,
+            'site.com',
+        );
+        expect(await response.json()).toEqual({
+            domain: 'site.com',
+            handle: '@index@site.com',
+            actorUrl: 'https://example.com/.ghost/activitypub/users/index',
+        });
+    });
+
+    it('clears the account domain', async () => {
+        vi.mocked(accountService.setWebfingerHost).mockResolvedValue(
+            ok(account),
+        );
+
+        const response = await controller.handleUpdateAccountDomain(
+            createContext({ domain: null }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(accountService.setWebfingerHost).toHaveBeenCalledWith(
+            account,
+            null,
+        );
+    });
+
+    it('returns conflict when an account domain is already claimed', async () => {
+        vi.mocked(accountService.setWebfingerHost).mockResolvedValue(
+            error({ type: 'conflict', host: 'site.com' }),
+        );
+
+        const response = await controller.handleUpdateAccountDomain(
+            createContext({ domain: 'site.com' }),
+        );
+
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({ code: 'conflict' });
+    });
+
+    it('returns bad request when an account domain is invalid', async () => {
+        vi.mocked(accountService.setWebfingerHost).mockResolvedValue(
+            error({ type: 'invalid-domain', host: 'https://site.com' }),
+        );
+
+        const response = await controller.handleUpdateAccountDomain(
+            createContext({ domain: 'https://site.com' }),
+        );
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({ code: 'invalid-domain' });
     });
 
     it('adds an alias and returns the updated alias list', async () => {

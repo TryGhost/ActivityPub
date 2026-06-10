@@ -15,15 +15,23 @@ export class ExploreView {
         offset = 0,
         limit = DEFAULT_EXPLORE_LIMIT,
     ): Promise<{ accounts: ExploreAccountDTO[]; next: string | null }> {
+        const effectiveDomainHash = this.db.raw(
+            'COALESCE(accounts.webfinger_host_hash, accounts.domain_hash)',
+        );
+
         const results = await this.db('accounts')
             .select(
                 'accounts.ap_id',
                 'accounts.name',
                 'accounts.username',
-                'accounts.domain',
                 'accounts.avatar_url',
                 'accounts.bio',
                 'accounts.url',
+            )
+            .select(
+                this.db.raw(
+                    'COALESCE(accounts.webfinger_host, accounts.domain) as domain',
+                ),
             )
             .innerJoin(
                 'account_topics',
@@ -61,7 +69,7 @@ export class ExploreView {
             .leftJoin('domain_blocks', function () {
                 this.on(
                     'domain_blocks.domain_hash',
-                    'accounts.domain_hash',
+                    effectiveDomainHash,
                 ).andOnVal(
                     'domain_blocks.blocker_id',
                     '=',

@@ -37,6 +37,7 @@ interface AccountRow {
     name: string;
     username: string;
     avatar_url: string;
+    webfinger_host: string | null;
     followed_by_me: number;
     blocked_by_me: number;
 }
@@ -131,7 +132,10 @@ export class AccountFollowsView {
                 id: result.ap_id,
                 apId: result.ap_id,
                 name: result.name || '',
-                handle: getAccountHandle(apIdUrl.host, result.username),
+                handle: getAccountHandle(
+                    result.webfinger_host ?? apIdUrl.host,
+                    result.username,
+                ),
                 avatarUrl: result.avatar_url || '',
                 isFollowing: !!result.followed_by_me,
                 followedByMe: !!result.followed_by_me,
@@ -376,7 +380,7 @@ export class AccountFollowsView {
                         apId: followeeAccount.ap_id,
                         name: followeeAccount.name || '',
                         handle: getAccountHandle(
-                            apIdUrl.host,
+                            followeeAccount.webfinger_host ?? apIdUrl.host,
                             followeeAccount.username,
                         ),
                         avatarUrl: followeeAccount.avatar_url || '',
@@ -459,6 +463,7 @@ export class AccountFollowsView {
                 'accounts.name',
                 'accounts.username',
                 'accounts.avatar_url',
+                'accounts.webfinger_host',
             ])
             .select(
                 this.db.raw(`
@@ -515,6 +520,7 @@ export class AccountFollowsView {
                 'accounts.name',
                 'accounts.username',
                 'accounts.avatar_url',
+                'accounts.webfinger_host',
             ])
             .select(
                 this.db.raw(`

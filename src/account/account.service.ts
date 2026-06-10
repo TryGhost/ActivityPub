@@ -19,10 +19,20 @@ import type {
     InternalAccountData,
     Site,
 } from '@/account/types';
-import { mapActorToExternalAccountData } from '@/account/utils';
+import {
+    mapActorToExternalAccountData,
+    normalizeWebfingerHost,
+} from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AsyncEvents } from '@/core/events';
-import { error, getValue, isError, ok, type Result } from '@/core/result';
+import {
+    error,
+    getError,
+    getValue,
+    isError,
+    ok,
+    type Result,
+} from '@/core/result';
 import { parseURL } from '@/core/url';
 import { isHandle } from '@/helpers/activitypub/actor';
 import {
@@ -64,6 +74,18 @@ export type AccountAliasError =
     | 'not-an-actor'
     | 'self-alias'
     | 'invalid-actor-uri';
+
+export type WebfingerHostError =
+    | { type: 'invalid-domain'; host: string }
+    | { type: 'conflict'; host: string }
+    | { type: 'not-reachable'; host: string; status?: number }
+    | { type: 'invalid-webfinger'; host: string }
+    | {
+          type: 'wrong-actor';
+          host: string;
+          expectedActorUrl: string;
+          actualActorUrl: string;
+      };
 
 export const DELIVERY_FAILURE_BACKOFF_SECONDS = 60;
 export const DELIVERY_FAILURE_BACKOFF_MULTIPLIER = 2;
@@ -250,6 +272,157 @@ export class AccountService {
         return this.accountRepository.getAliases(accountId);
     }
 
+    async validateWebfingerHost(
+        account: Account,
+        host: string,
+    ): Promise<Result<true, WebfingerHostError>> {
+        const normalizedHost = normalizeWebfingerHost(host);
+
+        if (!normalizedHost) {
+            return error({ type: 'invalid-domain', host });
+        }
+
+        const conflict =
+            await this.accountRepository.hasWebfingerHandleConflict(
+                account.username,
+                normalizedHost,
+                account.id,
+            );
+
+        if (conflict) {
+            return error({ type: 'conflict', host: normalizedHost });
+        }
+
+        const resource = `acct:${account.username}@${normalizedHost}`;
+        const url = new URL(`https://${normalizedHost}/.well-known/webfinger`);
+        url.searchParams.set('resource', resource);
+
+        let response: Response;
+
+        try {
+            response = await fetch(url, {
+                headers: {
+                    accept: 'application/jrd+json, application/json',
+                },
+                redirect: 'follow',
+                signal: AbortSignal.timeout(5000),
+            });
+        } catch (_err) {
+            return error({ type: 'not-reachable', host: normalizedHost });
+        }
+
+        if (!response.ok) {
+            return error({
+                type: 'not-reachable',
+                host: normalizedHost,
+                status: response.status,
+            });
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.toLowerCase().includes('json')) {
+            return error({ type: 'invalid-webfinger', host: normalizedHost });
+        }
+
+        let webfingerData: unknown;
+
+        try {
+            webfingerData = await response.json();
+        } catch (_err) {
+            return error({ type: 'invalid-webfinger', host: normalizedHost });
+        }
+
+        if (
+            typeof webfingerData !== 'object' ||
+            webfingerData === null ||
+            !('subject' in webfingerData) ||
+            webfingerData.subject !== resource ||
+            !('links' in webfingerData) ||
+            !Array.isArray(webfingerData.links)
+        ) {
+            return error({ type: 'invalid-webfinger', host: normalizedHost });
+        }
+
+        const selfLink = webfingerData.links.find((link) => {
+            if (typeof link !== 'object' || link === null) {
+                return false;
+            }
+
+            return (
+                'rel' in link &&
+                link.rel === 'self' &&
+                'type' in link &&
+                link.type === 'application/activity+json'
+            );
+        });
+
+        if (
+            typeof selfLink !== 'object' ||
+            selfLink === null ||
+            !('href' in selfLink) ||
+            typeof selfLink.href !== 'string'
+        ) {
+            return error({ type: 'invalid-webfinger', host: normalizedHost });
+        }
+
+        if (selfLink.href !== account.apId.href) {
+            return error({
+                type: 'wrong-actor',
+                host: normalizedHost,
+                expectedActorUrl: account.apId.href,
+                actualActorUrl: selfLink.href,
+            });
+        }
+
+        return ok(true);
+    }
+
+    async setWebfingerHost(
+        account: Account,
+        host: string | null,
+    ): Promise<Result<Account, WebfingerHostError>> {
+        if (host === null) {
+            const updated = account.setWebfingerHost(null);
+            await this.accountRepository.save(updated);
+            return ok(updated);
+        }
+
+        const normalizedHost = normalizeWebfingerHost(host);
+        const fallbackHost = account.apId.host.replace(/^www\./, '');
+
+        if (!normalizedHost) {
+            return error({ type: 'invalid-domain', host });
+        }
+
+        if (normalizedHost === fallbackHost) {
+            const updated = account.setWebfingerHost(null);
+            await this.accountRepository.save(updated);
+            return ok(updated);
+        }
+
+        const validationResult = await this.validateWebfingerHost(
+            account,
+            normalizedHost,
+        );
+
+        if (isError(validationResult)) {
+            return error(getError(validationResult));
+        }
+
+        const updated = account.setWebfingerHost(normalizedHost);
+        try {
+            await this.accountRepository.save(updated);
+        } catch (err) {
+            if (isDuplicateEntryError(err)) {
+                return error({ type: 'conflict', host: normalizedHost });
+            }
+
+            throw err;
+        }
+
+        return ok(updated);
+    }
+
     /**
      * Create an internal account
      *
@@ -279,6 +452,24 @@ export class AccountService {
             apPublicKey: keyPair.publicKey,
             apPrivateKey: keyPair.privateKey,
         });
+
+        const existingAccountForApId = await this.accountRepository.getByApId(
+            draft.apId,
+        );
+        const customHandleAccount =
+            await this.accountRepository.getByWebfingerHandle(
+                draft.username,
+                normalizedHost,
+            );
+
+        if (
+            customHandleAccount &&
+            customHandleAccount.id !== existingAccountForApId?.id
+        ) {
+            throw new Error(
+                `WebFinger handle @${draft.username}@${normalizedHost} is already claimed`,
+            );
+        }
 
         try {
             const account = await this.accountRepository.create(draft);
@@ -372,6 +563,7 @@ export class AccountService {
             uuid: randomUUID(),
             ap_private_key: null,
             domain: new URL(accountData.ap_id).host,
+            webfinger_host: null,
         };
 
         try {
@@ -683,6 +875,7 @@ export class AccountService {
             ap_liked_url: row.ap_liked_url,
             ap_public_key: row.ap_public_key,
             ap_private_key: row.ap_private_key,
+            webfinger_host: row.webfinger_host,
         };
     }
 

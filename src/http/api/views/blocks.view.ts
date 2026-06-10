@@ -7,21 +7,27 @@ export class BlocksView {
     constructor(private readonly db: Knex) {}
 
     async getBlockedAccounts(accountId: number): Promise<MinimalAccountDTO[]> {
+        const effectiveDomainHash = this.db.raw(
+            'COALESCE(accounts.webfinger_host_hash, accounts.domain_hash)',
+        );
+
         const results = await this.db('blocks')
             .select([
                 'accounts.ap_id',
                 'accounts.name',
                 'accounts.username',
                 'accounts.avatar_url',
-                'accounts.domain',
                 'domain_blocks.domain as blocked_domain',
             ])
-            .innerJoin('accounts', 'accounts.id', 'blocks.blocked_id')
-            .leftJoin(
-                'domain_blocks',
-                'domain_blocks.domain',
-                'accounts.domain',
+            .select(
+                this.db.raw(
+                    'COALESCE(accounts.webfinger_host, accounts.domain) as domain',
+                ),
             )
+            .innerJoin('accounts', 'accounts.id', 'blocks.blocked_id')
+            .leftJoin('domain_blocks', function () {
+                this.on('domain_blocks.domain_hash', effectiveDomainHash);
+            })
             .where('blocks.blocker_id', accountId);
 
         return results.map((result) => ({

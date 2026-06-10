@@ -4,7 +4,9 @@ import { type Actor, PropertyValue } from '@fedify/fedify';
 
 import {
     getAccountHandle,
+    getAccountHandleHost,
     mapActorToExternalAccountData,
+    normalizeWebfingerHost,
 } from '@/account/utils';
 
 describe('mapActorToExternalAccountData', () => {
@@ -68,6 +70,47 @@ describe('mapActorToExternalAccountData', () => {
                 publicKeyPem: 'publicKeyPem',
             }),
         });
+    });
+});
+
+describe('getAccountHandleHost', () => {
+    it('returns the configured webfinger host when present', () => {
+        expect(
+            getAccountHandleHost({
+                apId: new URL('https://blog.example.com/users/index'),
+                webfingerHost: 'example.com',
+            }),
+        ).toBe('example.com');
+    });
+
+    it('falls back to the AP ID host', () => {
+        expect(
+            getAccountHandleHost({
+                apId: new URL('https://blog.example.com/users/index'),
+                webfingerHost: null,
+            }),
+        ).toBe('blog.example.com');
+    });
+});
+
+describe('normalizeWebfingerHost', () => {
+    it('normalizes host casing and leading www', () => {
+        expect(normalizeWebfingerHost(' WWW.Example.COM ')).toBe('example.com');
+    });
+
+    it.each([
+        '',
+        'https://example.com',
+        'example.com/path',
+        'example.com:443',
+        'localhost',
+        '127.0.0.1',
+        '10.0.0.1',
+        'example',
+        '-example.com',
+        'example-.com',
+    ])('rejects invalid host %s', (host) => {
+        expect(normalizeWebfingerHost(host)).toBeNull();
     });
 });
 

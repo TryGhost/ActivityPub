@@ -2010,11 +2010,13 @@ describe('KnexPostRepository', () => {
                 id: mentionedAccount1.id,
                 apId: mentionedAccount1.apId,
                 username: mentionedAccount1.username,
+                webfingerHost: null,
             });
             expect(retrievedPost.mentions[1]).toEqual({
                 id: mentionedAccount2.id,
                 apId: mentionedAccount2.apId,
                 username: mentionedAccount2.username,
+                webfingerHost: null,
             });
         });
     });

@@ -45,6 +45,7 @@ export class HostDataContextLoader {
                 'accounts.ap_following_url as account_ap_following_url',
                 'accounts.ap_liked_url as account_ap_liked_url',
                 'accounts.custom_fields as account_custom_fields',
+                'accounts.webfinger_host as account_webfinger_host',
             )
             .where('sites.host', host);
 
@@ -85,6 +86,7 @@ export class HostDataContextLoader {
             ap_following_url: result.account_ap_following_url,
             ap_liked_url: result.account_ap_liked_url,
             custom_fields: result.account_custom_fields,
+            webfinger_host: result.account_webfinger_host,
             site_id: result.site_id,
         });
 

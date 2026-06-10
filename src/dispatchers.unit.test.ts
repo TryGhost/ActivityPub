@@ -510,6 +510,7 @@ describe('dispatchers', () => {
             apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: true,
             customFields: null,
+            webfingerHost: null,
         } as unknown as Account;
 
         let actorCtx: FedifyRequestContext;
@@ -703,6 +704,7 @@ describe('dispatchers', () => {
             apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: true,
             customFields: null,
+            webfingerHost: null,
         } as Account;
 
         let keypairCtx: FedifyContext;
@@ -873,6 +875,7 @@ describe('dispatchers', () => {
             apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: true,
             customFields: null,
+            webfingerHost: null,
         } as Account;
 
         let followersCtx: FedifyContext;
@@ -993,6 +996,7 @@ describe('dispatchers', () => {
             apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: true,
             customFields: null,
+            webfingerHost: null,
         } as Account;
 
         let followingCtx: FedifyRequestContext;
@@ -1123,6 +1127,7 @@ describe('dispatchers', () => {
             apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: true,
             customFields: null,
+            webfingerHost: null,
         } as Account;
 
         let followersCounterCtx: FedifyRequestContext;
@@ -1236,6 +1241,7 @@ describe('dispatchers', () => {
             apLiked: new URL('https://example.com/user/testuser/liked'),
             isInternal: true,
             customFields: null,
+            webfingerHost: null,
         } as Account;
 
         let followingCounterCtx: FedifyRequestContext;

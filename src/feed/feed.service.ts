@@ -56,6 +56,7 @@ interface BaseGetFeedDataResultRow {
     author_name: string | null;
     author_username: string;
     author_url: string | null;
+    author_webfinger_host: string | null;
     author_avatar_url: string | null;
     author_followed_by_user: 0 | 1;
 }
@@ -65,6 +66,7 @@ interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
     reposter_name: string | null;
     reposter_username: string;
     reposter_url: string | null;
+    reposter_webfinger_host: string | null;
     reposter_avatar_url: string | null;
     reposter_followed_by_user: 0 | 1;
 }
@@ -74,6 +76,7 @@ interface GetFeedDataResultRowWithoutReposted extends BaseGetFeedDataResultRow {
     reposter_name: null;
     reposter_username: null;
     reposter_url: null;
+    reposter_webfinger_host: null;
     reposter_avatar_url: null;
     reposter_followed_by_user: 0;
 }
@@ -160,6 +163,7 @@ export class FeedService {
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
+                'author_account.webfinger_host as author_webfinger_host',
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
                     CASE
@@ -172,6 +176,7 @@ export class FeedService {
                 'reposter_account.name as reposter_name',
                 'reposter_account.username as reposter_username',
                 'reposter_account.url as reposter_url',
+                'reposter_account.webfinger_host as reposter_webfinger_host',
                 'reposter_account.avatar_url as reposter_avatar_url',
                 this.db.raw(`
                     CASE
@@ -303,6 +308,7 @@ export class FeedService {
                 'author_account.name as author_name',
                 'author_account.username as author_username',
                 'author_account.url as author_url',
+                'author_account.webfinger_host as author_webfinger_host',
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
                     CASE

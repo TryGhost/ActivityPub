@@ -13,6 +13,7 @@ import {
 import { Temporal } from '@js-temporal/polyfill';
 
 import type { Account } from '@/account/account.entity';
+import { getAccountHandleHost } from '@/account/utils';
 import type { FedifyContext } from '@/app';
 import { type Post, PostType } from '@/post/post.entity';
 
@@ -31,7 +32,7 @@ async function getFedifyObjectForPost(
         mentions = post.mentions.map(
             (account) =>
                 new Mention({
-                    name: `@${account.username}@${account.apId.hostname}`,
+                    name: `@${account.username}@${getAccountHandleHost(account)}`,
                     href: account.apId,
                 }),
         );
