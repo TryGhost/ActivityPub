@@ -4,9 +4,9 @@ import {
     type Article,
     type Collection,
     isActor,
-    lookupWebFinger,
     type Note,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
+import { lookupWebFinger } from '@fedify/webfinger';
 
 import type { FedifyContext } from '@/app';
 import { error, ok, type Result } from '@/core/result';
@@ -31,7 +31,9 @@ export async function lookupActor(
             { url, error: err },
         );
         ctx.data.logger.info('Looking up actor remotely ({url})', { url });
-        const documentLoader = await ctx.getDocumentLoader({ handle: 'index' });
+        const documentLoader = await ctx.getDocumentLoader({
+            identifier: 'index',
+        });
         try {
             const remote = await ctx.lookupObject(url, { documentLoader });
             if (isActor(remote)) {

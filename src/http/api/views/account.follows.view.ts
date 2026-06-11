@@ -6,7 +6,7 @@ import {
     type DocumentLoader,
     isActor,
     lookupObject,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';
@@ -233,7 +233,7 @@ export class AccountFollowsView {
         const ctx = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await ctx.getDocumentLoader({
-            handle: 'index',
+            identifier: 'index',
         });
 
         // Lookup actor by handle
@@ -311,7 +311,7 @@ export class AccountFollowsView {
     ): Promise<MinimalAccountDTO[]> {
         const ctx = this.fedifyContextFactory.getFedifyContext();
         const documentLoader = await ctx.getDocumentLoader({
-            handle: 'index',
+            identifier: 'index',
         });
         const accounts: MinimalAccountDTO[] = [];
 

@@ -6,11 +6,14 @@
     "https://w3id.org/security/data-integrity/v1",
     "https://www.w3.org/ns/did/v1",
     "https://w3id.org/security/multikey/v1",
+    "https://gotosocial.org/ns",
     {
       "ChatMessage": "http://litepub.social/ns#ChatMessage",
       "Emoji": "toot:Emoji",
       "Hashtag": "as:Hashtag",
       "PropertyValue": "schema:PropertyValue",
+      "QuoteAuthorization": "https://w3id.org/fep/044f#QuoteAuthorization",
+      "QuoteRequest": "https://w3id.org/fep/044f#QuoteRequest",
       "_misskey_followedMessage": "misskey:_misskey_followedMessage",
       "_misskey_quote": "misskey:_misskey_quote",
       "alsoKnownAs": {
@@ -38,6 +41,14 @@
       "misskey": "https://misskey-hub.net/ns#",
       "movedTo": {
         "@id": "as:movedTo",
+        "@type": "@id",
+      },
+      "quote": {
+        "@id": "https://w3id.org/fep/044f#quote",
+        "@type": "@id",
+      },
+      "quoteAuthorization": {
+        "@id": "https://w3id.org/fep/044f#quoteAuthorization",
         "@type": "@id",
       },
       "quoteUri": "fedibird:quoteUri",

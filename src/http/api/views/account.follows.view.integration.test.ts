@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getDocumentLoader } from '@fedify/fedify';
+import { getDocumentLoader } from '@fedify/vocab-runtime';
 import nock from 'nock';
 
 import type { Account } from '@/account/account.entity';

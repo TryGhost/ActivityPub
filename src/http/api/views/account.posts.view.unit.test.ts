@@ -9,7 +9,7 @@ import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { PostType } from '@/post/post.entity';
 
 // Mock the fedify modules
-vi.mock('@fedify/fedify', () => ({
+vi.mock('@fedify/vocab', () => ({
     isActor: vi.fn(),
     lookupObject: vi.fn(),
     Activity: class MockActivity {
@@ -297,7 +297,7 @@ describe('Account Posts View', () => {
             vi.clearAllMocks();
 
             // Get mocked modules
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const htmlModule = await vi.importMock('@/helpers/html');
             const contentModule = await vi.importMock('@/post/content');
 
@@ -391,7 +391,7 @@ describe('Account Posts View', () => {
             };
 
             // Create an instance of the mocked Activity class
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const ActivityClass = (
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;
@@ -466,7 +466,7 @@ describe('Account Posts View', () => {
             };
 
             // Create an instance of the mocked Activity class
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const ActivityClass = (
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;
@@ -545,7 +545,7 @@ describe('Account Posts View', () => {
             };
 
             // Create an instance of the mocked Activity class
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const ActivityClass = (
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;
@@ -674,7 +674,7 @@ describe('Account Posts View', () => {
             };
 
             // Create an instance of the mocked Activity class
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const ActivityClass = (
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;
@@ -798,7 +798,7 @@ describe('Account Posts View', () => {
             };
 
             // Create an instance of the mocked Activity class
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const ActivityClass = (
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;
@@ -894,7 +894,7 @@ describe('Account Posts View', () => {
             };
 
             // Create an instance of the mocked Activity class
-            const fedifyModule = await vi.importMock('@fedify/fedify');
+            const fedifyModule = await vi.importMock('@fedify/vocab');
             const ActivityClass = (
                 fedifyModule as { Activity: new () => unknown }
             ).Activity;

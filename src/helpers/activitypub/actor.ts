@@ -1,4 +1,4 @@
-import { type Actor, PropertyValue } from '@fedify/fedify';
+import { type Actor, PropertyValue } from '@fedify/vocab';
 
 import type { AccountService } from '@/account/account.service';
 import { HANDLE_REGEX } from '@/constants';

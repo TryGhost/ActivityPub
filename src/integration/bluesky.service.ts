@@ -1,5 +1,4 @@
-import { Create, Follow, Note, Undo } from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
+import { Create, Follow, Note, Undo } from '@fedify/vocab';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';

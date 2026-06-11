@@ -5,5 +5,6 @@ export default defineConfig({
     plugins: [tsconfigPaths()],
     test: {
         testTimeout: 1000 * 10,
+        setupFiles: ['./src/temporal-polyfill.ts'],
     },
 });

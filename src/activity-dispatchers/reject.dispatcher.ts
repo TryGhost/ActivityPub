@@ -1,4 +1,4 @@
-import { Reject } from '@fedify/fedify';
+import { Reject } from '@fedify/vocab';
 
 import type { FedifyRequestContext } from '@/app';
 

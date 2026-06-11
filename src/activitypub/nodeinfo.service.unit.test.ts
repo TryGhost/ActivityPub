@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { KvKey, KvStore, KvStoreSetOptions } from '@fedify/fedify';
+import type {
+    KvKey,
+    KvStore,
+    KvStoreListEntry,
+    KvStoreSetOptions,
+} from '@fedify/fedify';
 import type { Logger } from '@logtape/logtape';
 import type { Knex } from 'knex';
 
@@ -25,6 +30,12 @@ class FakeKvStore implements KvStore {
 
     async delete(key: KvKey) {
         this.values.delete(JSON.stringify(key));
+    }
+
+    async *list(): AsyncIterable<KvStoreListEntry> {
+        for (const [key, value] of this.values) {
+            yield { key: JSON.parse(key) as KvKey, value };
+        }
     }
 }
 

@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
+import { exportJwk, generateCryptoKeyPair } from '@fedify/fedify';
 import {
     type Actor,
-    exportJwk,
-    generateCryptoKeyPair,
     isActor,
     lookupObject as lookupFedifyObject,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import { type Account, AccountEntity } from '@/account/account.entity';
@@ -117,7 +116,7 @@ export class AccountService {
         const context = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await context.getDocumentLoader({
-            handle: 'index',
+            identifier: 'index',
         });
         const potentialActor = await lookupFedifyObject(id, { documentLoader });
 
@@ -151,7 +150,7 @@ export class AccountService {
         const context = this.fedifyContextFactory.getFedifyContext();
 
         const documentLoader = await context.getDocumentLoader({
-            handle: 'index',
+            identifier: 'index',
         });
 
         let actor: Actor;

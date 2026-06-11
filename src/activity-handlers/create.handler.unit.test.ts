@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type Create, PUBLIC_COLLECTION } from '@fedify/fedify';
+import { type Create, PUBLIC_COLLECTION } from '@fedify/vocab';
 
 import type { FedifyContext } from '@/app';
 import { ok } from '@/core/result';

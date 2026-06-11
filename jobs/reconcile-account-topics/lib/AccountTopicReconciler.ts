@@ -4,9 +4,9 @@ import {
     type Actor,
     isActor,
     lookupObject,
-    lookupWebFinger,
     PropertyValue,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
+import { lookupWebFinger } from '@fedify/webfinger';
 import type mysql from 'mysql2/promise';
 import type { RowDataPacket } from 'mysql2/promise';
 

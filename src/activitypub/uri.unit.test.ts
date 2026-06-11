@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Article } from '@fedify/fedify';
+import { Article } from '@fedify/vocab';
 
 import { FedifyUriBuilder } from '@/activitypub/uri';
 import type { FedifyRequestContext } from '@/app';

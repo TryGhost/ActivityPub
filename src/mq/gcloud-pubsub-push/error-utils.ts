@@ -1,4 +1,4 @@
-import { FetchError } from '@fedify/fedify';
+import { FetchError } from '@fedify/vocab-runtime';
 
 export interface ErrorAnalysis {
     /**

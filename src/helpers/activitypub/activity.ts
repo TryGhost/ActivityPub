@@ -9,8 +9,7 @@ import {
     Mention,
     PUBLIC_COLLECTION,
     Update,
-} from '@fedify/fedify';
-import { Temporal } from '@js-temporal/polyfill';
+} from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import { getAccountHandleHost } from '@/account/utils';

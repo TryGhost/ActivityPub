@@ -1,12 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import {
-    type Actor,
-    type Federation,
-    Like,
-    PUBLIC_COLLECTION,
-    Undo,
-} from '@fedify/fedify';
+import type { Federation } from '@fedify/fedify';
+import { type Actor, Like, PUBLIC_COLLECTION, Undo } from '@fedify/vocab';
 
 import type { AppContext, ContextData } from '@/app';
 import { ACTOR_DEFAULT_HANDLE } from '@/constants';

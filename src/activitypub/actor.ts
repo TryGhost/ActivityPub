@@ -1,4 +1,4 @@
-import type { Actor } from '@fedify/fedify';
+import type { Actor } from '@fedify/vocab';
 
 import type { FedifyRequestContext } from '@/app';
 

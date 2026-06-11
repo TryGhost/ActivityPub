@@ -1,4 +1,5 @@
-import type { Object as FedifyObject, KvStore } from '@fedify/fedify';
+import type { KvStore } from '@fedify/fedify';
+import type { Object as FedifyObject } from '@fedify/vocab';
 
 /**
  * Stores ActivityPub objects

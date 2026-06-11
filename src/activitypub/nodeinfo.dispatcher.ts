@@ -34,7 +34,7 @@ export class NodeInfoDispatcher {
         return {
             software: {
                 name: 'ghost' as const,
-                version: { major: 0, minor: 1, patch: 0 },
+                version: '0.1.0',
                 homepage: new URL('https://ghost.org/'),
                 repository: new URL('https://github.com/TryGhost/Ghost'),
             },

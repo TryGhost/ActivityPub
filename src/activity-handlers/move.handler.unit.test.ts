@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Follow, lookupObject, Move, Person, Undo } from '@fedify/fedify';
+import { Follow, lookupObject, Move, Person, Undo } from '@fedify/vocab';
 
 import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -13,8 +13,8 @@ import {
 } from '@/test/account-entity-test-helpers';
 import { MoveHandler } from './move.handler';
 
-vi.mock('@fedify/fedify', async (importOriginal) => {
-    const original = await importOriginal<typeof import('@fedify/fedify')>();
+vi.mock('@fedify/vocab', async (importOriginal) => {
+    const original = await importOriginal<typeof import('@fedify/vocab')>();
 
     return {
         ...original,

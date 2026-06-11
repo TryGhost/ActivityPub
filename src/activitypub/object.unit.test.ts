@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Article, KvStore } from '@fedify/fedify';
+import type { KvStore } from '@fedify/fedify';
+import type { Article } from '@fedify/vocab';
 
 import { FedifyKvStoreObjectStore } from '@/activitypub/object';
 

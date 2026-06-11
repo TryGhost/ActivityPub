@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Delete } from '@fedify/fedify';
+import { Delete } from '@fedify/vocab';
 
 import { DeleteDispatcher } from '@/activitypub/object-dispatchers/delete.dispatcher';
 import type { FedifyRequestContext } from '@/app';

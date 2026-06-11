@@ -1,4 +1,4 @@
-import type { Object as FedifyObject } from '@fedify/fedify';
+import type { Object as FedifyObject } from '@fedify/vocab';
 
 import type { FedifyRequestContext } from '@/app';
 

@@ -1,4 +1,4 @@
-import { type Actor, type Collection, isActor } from '@fedify/fedify';
+import { type Actor, type Collection, isActor } from '@fedify/vocab';
 import type { Knex } from 'knex';
 
 import type { Account } from '@/account/account.entity';

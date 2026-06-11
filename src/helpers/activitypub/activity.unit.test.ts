@@ -7,7 +7,7 @@ import {
     Note as FedifyNote,
     type Object as FedifyObject,
     Update,
-} from '@fedify/fedify';
+} from '@fedify/vocab';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { UriBuilder } from '@/activitypub/uri';

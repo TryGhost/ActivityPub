@@ -1,4 +1,4 @@
-import { type Create, PUBLIC_COLLECTION } from '@fedify/fedify';
+import { type Create, PUBLIC_COLLECTION } from '@fedify/vocab';
 
 import type { FedifyContext } from '@/app';
 import { exhaustiveCheck, getError, isError } from '@/core/result';
