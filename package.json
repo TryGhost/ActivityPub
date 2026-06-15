@@ -85,7 +85,7 @@
     "@sentry/node": "10.57.0",
     "awilix": "13.0.4",
     "es-toolkit": "1.47.1",
-    "hono": "4.12.23",
+    "hono": "4.12.25",
     "html-to-text": "10.0.0",
     "ioredis": "5.11.1",
     "jsonwebtoken": "9.0.3",
