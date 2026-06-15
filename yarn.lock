@@ -2315,10 +2315,10 @@ await-to-js@^3.0.0:
   resolved "https://registry.yarnpkg.com/await-to-js/-/await-to-js-3.0.0.tgz#70929994185616f4675a91af6167eb61cc92868f"
   integrity sha512-zJAaP9zxTcvTHRlejau3ZOY4V7SRpiByf3/dxx2uyKxxor19tpmpV2QRsTKikckwhaPmr2dVpxxMr7jOCYVp5g==
 
-awilix@13.0.3:
-  version "13.0.3"
-  resolved "https://registry.yarnpkg.com/awilix/-/awilix-13.0.3.tgz#8f10dce8ac0dac641ae2e3b5f548685a916bc004"
-  integrity sha512-WpgYKwf8XEPAxabPxBYGvxz1QZhyxoopQLLqpwwVqSQAvTO46yhld3M9nfMuV8t2FjsTO7DQblALD9w+C8iVKQ==
+awilix@13.0.4:
+  version "13.0.4"
+  resolved "https://registry.yarnpkg.com/awilix/-/awilix-13.0.4.tgz#333b119b58aae430b8431a3722ac8a832169a86d"
+  integrity sha512-7jL7ksLg8fB3yyZ/gEhXfDTUTUeffLYKD5exXGpj0QdqUxN/XsQKt4JOuPE6StUfPiw17D1jp0hWlLs1cLCdwA==
   dependencies:
     fast-glob "^3.3.3"
 
