@@ -714,9 +714,7 @@ describe('FeedService', () => {
 
             // Content should be sanitized
             expect(feed.results).toHaveLength(1);
-            expect(feed.results[0].post_content).toBe(
-                'Hello world!',
-            );
+            expect(feed.results[0].post_content).toBe('Hello world!');
         });
 
         it('should correctly set post_liked_by_user flag', async () => {
