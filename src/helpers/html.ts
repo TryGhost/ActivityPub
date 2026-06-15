@@ -60,7 +60,6 @@ export function sanitizeHtml(content: string): string {
             'ruby',
             's',
             'samp',
-            'script',
             'small',
             'span',
             'strong',
@@ -226,8 +225,6 @@ export function sanitizeHtml(content: string): string {
                 'frameborder',
                 'allowfullscreen',
             ],
-            script: ['src', 'async', 'charset'],
-
             // Newly added elements
             details: ['open'],
             summary: [],
@@ -249,9 +246,6 @@ export function sanitizeHtml(content: string): string {
                 'loop',
             ],
         },
-        allowedScriptDomains: ['twitter.com'],
-        allowedScriptHostnames: ['platform.twitter.com'],
-        allowVulnerableTags: true,
     });
 }
 
