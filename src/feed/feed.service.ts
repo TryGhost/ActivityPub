@@ -129,12 +129,6 @@ export class FeedService {
             .first();
 
         const results = await this.db('feeds')
-            // FORCE INDEX keeps the scan scoped to this user's feed; without it
-            // the planner scans every Note in the table and the query degrades
-            // as the table grows.
-            .from(
-                this.db.raw('feeds FORCE INDEX (idx_feeds_user_id_post_type)'),
-            )
             .select(
                 // Post fields
                 'posts.id as post_id',
