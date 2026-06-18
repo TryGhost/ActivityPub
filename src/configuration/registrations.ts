@@ -9,7 +9,7 @@ import {
     asFunction,
     asValue,
 } from 'awilix';
-import Redis from 'ioredis';
+import Redis, { type Cluster } from 'ioredis';
 import type { Knex } from 'knex';
 
 import { KnexAccountRepository } from '@/account/account.repository.knex';
@@ -94,6 +94,55 @@ import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
 import { ImageProcessor } from '@/storage/image-processor';
 import { ImageStorageService } from '@/storage/image-storage.service';
 
+/**
+ * Create a Redis connection for use as Fedify's KvStore.
+ *
+ * Defaults to a Redis Cluster connection (the historical behaviour). Set
+ * `REDIS_CLUSTER=false` to connect to a standalone (single-node) Redis server,
+ * e.g. a plain `redis:alpine` container.
+ */
+export function createRedisConnection(logging: Logger): Redis | Cluster {
+    const host = process.env.REDIS_HOST || 'localhost';
+    const port = Number(process.env.REDIS_PORT) || 6379;
+    const tls = process.env.REDIS_TLS_CERT
+        ? { ca: process.env.REDIS_TLS_CERT }
+        : undefined;
+
+    const retryStrategy = (times: number) => {
+        const delay = Math.min(times * 50, 2000);
+        logging.warn(
+            `Redis connection retry attempt ${times}, delay ${delay}ms`,
+        );
+        return delay;
+    };
+
+    if (process.env.REDIS_CLUSTER === 'false') {
+        logging.info('Connecting to Redis in standalone mode');
+
+        return new Redis({
+            host,
+            port,
+            retryStrategy,
+            enableOfflineQueue: true,
+            maxRetriesPerRequest: 3,
+            enableReadyCheck: true,
+            tls,
+        });
+    }
+
+    logging.info('Connecting to Redis in cluster mode');
+
+    return new Redis.Cluster([{ host, port }], {
+        clusterRetryStrategy: retryStrategy,
+        enableOfflineQueue: true,
+        redisOptions: {
+            maxRetriesPerRequest: 3,
+            enableReadyCheck: true,
+            tls,
+        },
+    });
+}
+
 export function registerDependencies(
     container: AwilixContainer,
     deps: {
@@ -116,38 +165,8 @@ export function registerDependencies(
 
             if (kvStoreType === 'redis') {
                 logging.info('Using Redis KvStore for Fedify');
-                const host = process.env.REDIS_HOST || 'localhost';
-                const port = Number(process.env.REDIS_PORT) || 6379;
 
-                const redis = new Redis.Cluster(
-                    [
-                        {
-                            host,
-                            port,
-                        },
-                    ],
-                    {
-                        clusterRetryStrategy: (times: number) => {
-                            const delay = Math.min(times * 50, 2000);
-                            logging.warn(
-                                `Redis connection retry attempt ${times}, delay ${delay}ms`,
-                            );
-                            return delay;
-                        },
-                        enableOfflineQueue: true,
-                        redisOptions: {
-                            maxRetriesPerRequest: 3,
-                            enableReadyCheck: true,
-                            tls: process.env.REDIS_TLS_CERT
-                                ? {
-                                      ca: process.env.REDIS_TLS_CERT,
-                                  }
-                                : undefined,
-                        },
-                    },
-                );
-
-                return new RedisKvStore(redis);
+                return new RedisKvStore(createRedisConnection(logging));
             }
 
             logging.info('Using MySQL KvStore for Fedify');
