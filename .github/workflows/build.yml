@@ -57,15 +57,17 @@ jobs:
         run: yarn install --frozen-lockfile
 
   build-main-images:
-    name: Build Docker Images
-    runs-on: ubuntu-latest
+    name: Build Docker Images (${{ matrix.platform }}, ${{ matrix.platform_slug }})
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
         include:
           - platform: linux/amd64
             platform_slug: amd64
+            runs_on: ubuntu-latest
           - platform: linux/arm64
             platform_slug: arm64
+            runs_on: ubuntu-24.04-arm
     outputs:
       activitypub-private-tags: ${{ steps.activitypub-docker-metadata-private.outputs.tags }}
       activitypub-public-tags: ${{ steps.activitypub-docker-metadata-public.outputs.tags || '' }}
@@ -88,12 +90,6 @@ jobs:
       - name: Checkout
         if: steps.should-build.outputs.skip != 'true'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up QEMU
-        if: steps.should-build.outputs.skip != 'true'
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
-        with:
-          platforms: ${{ matrix.platform_slug }}
 
       - name: Set up Docker Buildx
         if: steps.should-build.outputs.skip != 'true'
