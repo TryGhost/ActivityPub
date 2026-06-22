@@ -43,7 +43,7 @@
     "src"
   ],
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
+    "@biomejs/biome": "2.5.0",
     "@cucumber/cucumber": "13.0.0",
     "@faker-js/faker": "10.4.0",
     "@fedify/cli": "2.2.5",
