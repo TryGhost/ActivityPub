@@ -126,9 +126,26 @@ jobs:
             annotation_args+=(--annotation "index:$label")
           done <<< "$PUBLIC_LABELS"
 
-          docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" \
-            "ghcr.io/tryghost/activitypub@${amd64_digest}" \
-            "ghcr.io/tryghost/activitypub@${arm64_digest}"
+          attempt=1
+          max_attempts=5
+          while true; do
+            set +e
+            create_output=$(
+              docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" \
+                "ghcr.io/tryghost/activitypub@${amd64_digest}" \
+                "ghcr.io/tryghost/activitypub@${arm64_digest}" 2>&1
+            )
+            status=$?
+            set -e
+            echo "$create_output"
+            [ $status -eq 0 ] && break
+            if [ $attempt -ge $max_attempts ] || ! echo "$create_output" | grep -qi "unknown blob"; then
+              exit $status
+            fi
+            echo "GHCR reported an unknown blob while creating the ActivityPub manifest; retrying in 5s..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
 
       - name: Push Migrations Docker image to private registry
         run: |
@@ -173,6 +190,23 @@ jobs:
             annotation_args+=(--annotation "index:$label")
           done <<< "$PUBLIC_LABELS"
 
-          docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" \
-            "ghcr.io/tryghost/activitypub-migrations@${amd64_digest}" \
-            "ghcr.io/tryghost/activitypub-migrations@${arm64_digest}"
+          attempt=1
+          max_attempts=5
+          while true; do
+            set +e
+            create_output=$(
+              docker buildx imagetools create "${tag_args[@]}" "${annotation_args[@]}" \
+                "ghcr.io/tryghost/activitypub-migrations@${amd64_digest}" \
+                "ghcr.io/tryghost/activitypub-migrations@${arm64_digest}" 2>&1
+            )
+            status=$?
+            set -e
+            echo "$create_output"
+            [ $status -eq 0 ] && break
+            if [ $attempt -ge $max_attempts ] || ! echo "$create_output" | grep -qi "unknown blob"; then
+              exit $status
+            fi
+            echo "GHCR reported an unknown blob while creating the migrations manifest; retrying in 5s..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
