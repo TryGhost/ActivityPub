@@ -45,7 +45,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@cucumber/cucumber": "13.0.0",
-    "@faker-js/faker": "10.4.0",
+    "@faker-js/faker": "10.5.0",
     "@fedify/cli": "2.2.5",
     "@types/html-to-text": "9.0.4",
     "@types/jsonwebtoken": "9.0.10",
