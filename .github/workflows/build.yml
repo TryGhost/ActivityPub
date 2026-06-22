@@ -58,14 +58,16 @@ jobs:
 
   build-main-images:
     name: Build Docker Images
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - platform: linux/amd64
             platform_slug: amd64
+            runner: ubuntu-latest
           - platform: linux/arm64
             platform_slug: arm64
+            runner: ubuntu-24.04-arm
     outputs:
       activitypub-private-tags: ${{ steps.activitypub-docker-metadata-private.outputs.tags }}
       activitypub-public-tags: ${{ steps.activitypub-docker-metadata-public.outputs.tags || '' }}
