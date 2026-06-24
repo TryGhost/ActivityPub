@@ -32,6 +32,7 @@ import {
     buildCreateActivityAndObjectFromPost,
 } from '@/helpers/activitypub/activity';
 import { isFollowedByDefaultSiteAccount } from '@/helpers/activitypub/actor';
+import { isEqual } from '@/helpers/uri';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { lookupActor, lookupObject } from '@/lookup-helpers';
 import { OutboxType, type Post } from '@/post/post.entity';
@@ -505,6 +506,13 @@ export const createUndoHandler = (
                 return;
             }
 
+            if (!undo.actorId || !isEqual(undo.actorId, follow.actorId)) {
+                ctx.data.logger.debug(
+                    'Undo actor does not match Follow actor, exit early',
+                );
+                return;
+            }
+
             const [unfollower, unfollowing] = await Promise.all([
                 accountService.getAccountByApId(follow.actorId.href),
                 accountService.getAccountByApId(follow.objectId.href),
@@ -522,6 +530,17 @@ export const createUndoHandler = (
 
             await accountService.recordAccountUnfollow(unfollowing, unfollower);
         } else if (object instanceof Announce) {
+            if (
+                !undo.actorId ||
+                !object.actorId ||
+                !isEqual(undo.actorId, object.actorId)
+            ) {
+                ctx.data.logger.debug(
+                    'Undo actor does not match Announce actor, exit early',
+                );
+                return;
+            }
+
             const sender = await object.getActor(ctx);
             if (sender === null || sender.id === null) {
                 ctx.data.logger.debug(
