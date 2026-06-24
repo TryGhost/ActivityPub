@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { exportJwk } from '@fedify/fedify';
+import { Announce, Follow, Person, Undo } from '@fedify/vocab';
 
 import type { Account, AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
@@ -20,11 +21,13 @@ import {
     createFollowingDispatcher,
     createOutboxCounter,
     createOutboxDispatcher,
+    createUndoHandler,
     keypairDispatcher,
     likedDispatcher,
 } from '@/dispatchers';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { OutboxType, Post, PostType } from '@/post/post.entity';
+import type { KnexPostRepository } from '@/post/post.repository.knex';
 import type { PostService } from '@/post/post.service';
 import type { Site } from '@/site/site.service';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
@@ -1326,6 +1329,180 @@ describe('dispatchers', () => {
             await expect(
                 counter(followingCounterCtx, 'testuser'),
             ).rejects.toThrow('Multiple users found for host: example.com');
+        });
+    });
+
+    describe('createUndoHandler', () => {
+        let mockAccountService: AccountService;
+        let mockPostRepository: KnexPostRepository;
+        let mockPostService: PostService;
+        let undoCtx: FedifyContext;
+        let mockGlobalDb: {
+            get: ReturnType<typeof vi.fn>;
+            set: ReturnType<typeof vi.fn>;
+        };
+
+        const ghostUserUrl = new URL(
+            'https://ghost.example/.ghost/activitypub/users/index',
+        );
+        const aliceUrl = new URL('https://remote.example/users/alice');
+        const bobUrl = new URL('https://remote.example/users/bob');
+        const otherActorUrl = new URL('https://other.example/users/other');
+        const postUrl = new URL(
+            'https://ghost.example/.ghost/activitypub/post/abc',
+        );
+
+        beforeEach(() => {
+            mockGlobalDb = { get: vi.fn(), set: vi.fn() };
+
+            mockAccountService = {
+                getAccountByApId: vi.fn(),
+                getByApId: vi.fn(),
+                recordAccountUnfollow: vi.fn(),
+            } as unknown as AccountService;
+
+            mockPostService = {
+                getByApId: vi.fn(),
+            } as unknown as PostService;
+
+            mockPostRepository = {
+                save: vi.fn(),
+            } as unknown as KnexPostRepository;
+
+            undoCtx = {
+                data: {
+                    logger: { info: vi.fn(), debug: vi.fn(), error: vi.fn() },
+                    globaldb: mockGlobalDb,
+                },
+            } as unknown as FedifyContext;
+        });
+
+        describe('Undo(Follow)', () => {
+            it('records unfollow', async () => {
+                vi.mocked(
+                    mockAccountService.getAccountByApId,
+                ).mockImplementation(async (apId: string) => {
+                    if (apId === aliceUrl.href) {
+                        return { id: 10 } as AccountType;
+                    }
+                    if (apId === ghostUserUrl.href) {
+                        return { id: 1 } as AccountType;
+                    }
+                    return null;
+                });
+
+                const follow = new Follow({
+                    id: new URL('https://remote.example/follows/42'),
+                    actor: aliceUrl,
+                    object: ghostUserUrl,
+                });
+                const undo = new Undo({
+                    id: new URL('https://remote.example/undo/1'),
+                    actor: aliceUrl,
+                    object: follow,
+                });
+
+                const handler = createUndoHandler(
+                    mockAccountService,
+                    mockPostRepository,
+                    mockPostService,
+                );
+                await handler(undoCtx, undo);
+
+                expect(
+                    mockAccountService.recordAccountUnfollow,
+                ).toHaveBeenCalledWith({ id: 1 }, { id: 10 });
+            });
+
+            it('ignores the Undo when the Follow actor differs from the Undo actor', async () => {
+                const follow = new Follow({
+                    id: new URL('https://remote.example/follows/42'),
+                    actor: aliceUrl,
+                    object: ghostUserUrl,
+                });
+                const undo = new Undo({
+                    id: new URL('https://other.example/activities/1'),
+                    actor: otherActorUrl,
+                    object: follow,
+                });
+
+                const handler = createUndoHandler(
+                    mockAccountService,
+                    mockPostRepository,
+                    mockPostService,
+                );
+                await handler(undoCtx, undo);
+
+                expect(
+                    mockAccountService.getAccountByApId,
+                ).not.toHaveBeenCalled();
+                expect(
+                    mockAccountService.recordAccountUnfollow,
+                ).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('Undo(Announce)', () => {
+            it('removes reposted post', async () => {
+                const senderAccount = { id: 20 } as unknown as Account;
+                vi.mocked(mockAccountService.getByApId).mockResolvedValue(
+                    senderAccount,
+                );
+
+                const mockRepostedPost = { removeRepost: vi.fn() };
+                vi.mocked(mockPostService.getByApId).mockResolvedValue(
+                    ok(mockRepostedPost as unknown as Post),
+                );
+
+                const announce = new Announce({
+                    id: new URL('https://remote.example/announces/7'),
+                    actor: new Person({ id: bobUrl }),
+                    object: postUrl,
+                });
+                const undo = new Undo({
+                    id: new URL('https://remote.example/undo/2'),
+                    actor: bobUrl,
+                    object: announce,
+                });
+
+                const handler = createUndoHandler(
+                    mockAccountService,
+                    mockPostRepository,
+                    mockPostService,
+                );
+                await handler(undoCtx, undo);
+
+                expect(mockRepostedPost.removeRepost).toHaveBeenCalledWith(
+                    senderAccount,
+                );
+                expect(mockPostRepository.save).toHaveBeenCalledWith(
+                    mockRepostedPost,
+                );
+            });
+
+            it('ignores the Undo when the Announce actor differs from the Undo actor', async () => {
+                const announce = new Announce({
+                    id: new URL('https://remote.example/announces/7'),
+                    actor: new Person({ id: bobUrl }),
+                    object: postUrl,
+                });
+                const undo = new Undo({
+                    id: new URL('https://other.example/activities/2'),
+                    actor: otherActorUrl,
+                    object: announce,
+                });
+
+                const handler = createUndoHandler(
+                    mockAccountService,
+                    mockPostRepository,
+                    mockPostService,
+                );
+                await handler(undoCtx, undo);
+
+                expect(mockAccountService.getByApId).not.toHaveBeenCalled();
+                expect(mockPostService.getByApId).not.toHaveBeenCalled();
+                expect(mockPostRepository.save).not.toHaveBeenCalled();
+            });
         });
     });
 });
