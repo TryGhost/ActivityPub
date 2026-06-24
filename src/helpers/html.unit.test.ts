@@ -27,7 +27,7 @@ describe('sanitizeHtml', () => {
         expect(doSanitizeHtml).not.toHaveBeenCalled();
     });
 
-    it('should only allow scripts from allowed domains', async () => {
+    it('should strip scripts while preserving Twitter embed markup', async () => {
         // Clear the mock and let the real implementation take over
         vi.doUnmock('sanitize-html');
         vi.resetModules();
@@ -36,13 +36,20 @@ describe('sanitizeHtml', () => {
         await import('sanitize-html');
         const { sanitizeHtml: realSanitizeHtml } = await import('./html');
 
-        const content =
-            '<script src="https://bad.com/script.js"></script><script src="https://twitter.com/script.js"></script><p>Hello, world!</p>';
+        const content = [
+            '<script src="https://bad.com/script.js"></script>',
+            '<blockquote class="twitter-tweet">',
+            '<p>Hello, world!</p>',
+            '<a href="https://twitter.com/ghost/status/123">March 20, 2025</a>',
+            '</blockquote>',
+            '<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>',
+            '<p>After</p>',
+        ].join('');
 
         const result = realSanitizeHtml(content);
 
         expect(result).toEqual(
-            '<script></script><script src="https://twitter.com/script.js"></script><p>Hello, world!</p>',
+            '<blockquote class="twitter-tweet"><p>Hello, world!</p><a href="https://twitter.com/ghost/status/123">March 20, 2025</a></blockquote><p>After</p>',
         );
 
         // Restore the mock for subsequent tests

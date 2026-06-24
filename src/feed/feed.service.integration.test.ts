@@ -228,7 +228,7 @@ describe('FeedService', () => {
 
             expect(feed.results).toMatchInlineSnapshot([
                 {
-                    post_content: 'Hello world!<script></script>',
+                    post_content: 'Hello world!',
                 },
             ]);
         });
@@ -714,9 +714,7 @@ describe('FeedService', () => {
 
             // Content should be sanitized
             expect(feed.results).toHaveLength(1);
-            expect(feed.results[0].post_content).toBe(
-                'Hello world!<script></script>',
-            );
+            expect(feed.results[0].post_content).toBe('Hello world!');
         });
 
         it('should correctly set post_liked_by_user flag', async () => {

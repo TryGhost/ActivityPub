@@ -83,4 +83,4 @@ Feature: Feed
   Scenario: Feed is sanitised
     Given a "Create(Note)" Activity "Note" by "Alice" with content "Hello, world!<script>alert('boo')</script>"
     When "Alice" sends "Note" to the Inbox
-    Then the note "Note" is in our feed and has content "Hello, world!<script></script>"
+    Then the note "Note" is in our feed and has content "Hello, world!"

@@ -668,7 +668,7 @@ describe('Post', () => {
             content: maliciousContent,
         });
 
-        expect(post.content).toEqual('<p>Hello world!</p><script></script>');
+        expect(post.content).toEqual('<p>Hello world!</p>');
     });
 
     it('should sanitize HTML title when creating an article post', async () => {
