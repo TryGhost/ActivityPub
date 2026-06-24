@@ -84,7 +84,7 @@
     "@opentelemetry/sdk-trace-base": "2.8.0",
     "@sentry/node": "10.59.0",
     "awilix": "13.0.5",
-    "es-toolkit": "1.47.1",
+    "es-toolkit": "1.48.1",
     "hono": "4.12.26",
     "html-to-text": "10.0.0",
     "ioredis": "5.11.1",
