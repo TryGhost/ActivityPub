@@ -244,6 +244,16 @@ export function registerDependencies(
                 kv: fedifyKv,
                 queue: process.env.USE_MQ === 'true' ? queue : undefined,
                 manuallyStartQueue: process.env.MANUALLY_START_QUEUE === 'true',
+                // Fedify >=2.3.0 enables an outbound delivery circuit breaker
+                // by default for queued outbox delivery. When a remote host's
+                // circuit opens, Fedify "holds" activities by re-enqueuing
+                // them with a delay - but our GCloudPubSubPushMessageQueue
+                // drops any delayed message (see mq.ts) because we rely on
+                // Pub/Sub native retrial plus our own per-inbox delivery
+                // backoff. With the circuit breaker on, Fedify's "retry later"
+                // therefore becomes a silent dropped delivery, so we disable
+                // it and keep our own backoff as the single mechanism.
+                circuitBreaker: false,
                 skipSignatureVerification:
                     process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
                     ['development', 'testing'].includes(
