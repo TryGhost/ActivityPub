@@ -1574,7 +1574,7 @@
   resolved "https://registry.yarnpkg.com/@opentelemetry/api/-/api-1.9.1.tgz#c1b0346de336ba55af2d5a7970882037baedec05"
   integrity sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==
 
-"@opentelemetry/core@2.8.0", "@opentelemetry/core@^2.5.0", "@opentelemetry/core@^2.6.1":
+"@opentelemetry/core@2.8.0", "@opentelemetry/core@^2.5.0":
   version "2.8.0"
   resolved "https://registry.yarnpkg.com/@opentelemetry/core/-/core-2.8.0.tgz#f6e86de3688bdb54a6ca8f4935363a5b588ae91c"
   integrity sha512-hd1Lfh8p545nNz+jq1Ejfz+Mn1hyLuxYn1YzTfFNrxr8urEWMNQLPf1Th8kjOH+HxwawCrtgBp8JpBUR4ZSgww==
@@ -1861,55 +1861,54 @@
   resolved "https://registry.yarnpkg.com/@sentry/conventions/-/conventions-0.12.0.tgz#e963cf928ac4d1585b1dcc196e767df3ac45ca5c"
   integrity sha512-z1JQrl/1SLY+8wpzvork6vl+fpsg/oCCxM7HWWhUnI/R+OGNyoIzieQuggX3uUMY7NBtp8UWCQx6FeFazzOF9g==
 
-"@sentry/core@10.59.0":
-  version "10.59.0"
-  resolved "https://registry.yarnpkg.com/@sentry/core/-/core-10.59.0.tgz#96aa9328c21888f3e9262cf3191274b576a62cda"
-  integrity sha512-QeG7XZL5j6CkToYCE7OwCerb/r742Tjj9p1BBohBKcypYTPRuqfD+A3FeUj7pk5CGO6Vj1/gOAmdbuuNbR51dQ==
+"@sentry/core@10.62.0":
+  version "10.62.0"
+  resolved "https://registry.yarnpkg.com/@sentry/core/-/core-10.62.0.tgz#73a4a8bcdded6d741d6cf58bfd055c1b60b3fe10"
+  integrity sha512-tV69fMg2sS5DUFmQSnS7Jd5qJAp0izxwcsvBVz2ieTM9VMRi99IfOSYW9UYr3p1yfuksk41kefN5PEbeedUE+A==
 
-"@sentry/node-core@10.59.0":
-  version "10.59.0"
-  resolved "https://registry.yarnpkg.com/@sentry/node-core/-/node-core-10.59.0.tgz#06585d0ed2829dc6dd7d78817a38a3a7a9eb2d3e"
-  integrity sha512-qFbepzntYhDleNG9ZCZWCSoAJK0Nsx+UJxsuiygaaAf1rJMj95RVckLyslhY86pyDLVATNMmWm2elm6etgKaJw==
+"@sentry/node-core@10.62.0":
+  version "10.62.0"
+  resolved "https://registry.yarnpkg.com/@sentry/node-core/-/node-core-10.62.0.tgz#f99e0de6d8208caefd025ab2442f891e3cd1f056"
+  integrity sha512-V7rDgbxViiHU0OpcFEDp3l41IFvWTasKHfXw8SQ6yIgtZ8VpFqmz2TR5N7X85iIOmWIvK5HV0yp0eDdsly0+rA==
   dependencies:
     "@sentry/conventions" "^0.12.0"
-    "@sentry/core" "10.59.0"
-    "@sentry/opentelemetry" "10.59.0"
+    "@sentry/core" "10.62.0"
+    "@sentry/opentelemetry" "10.62.0"
     import-in-the-middle "^3.0.0"
 
-"@sentry/node@10.59.0":
-  version "10.59.0"
-  resolved "https://registry.yarnpkg.com/@sentry/node/-/node-10.59.0.tgz#57138686ae34d6ef2f950ef7f48e76937af4874b"
-  integrity sha512-qzqbP6OVoMijlDBUxWtbvVF5j73+vyzGFi+yFIslhVvzBj97TFkIeP3TpBLsmu/0L5ZvxpQCCEmzJ677tFkq/g==
+"@sentry/node@10.62.0":
+  version "10.62.0"
+  resolved "https://registry.yarnpkg.com/@sentry/node/-/node-10.62.0.tgz#e3e52ac959b210bb53f3495b722e3f18ef4a27a4"
+  integrity sha512-4hoU67bJY0o3irEDMZu2UIztAOsvEqFkLXA7EUKl1LXMA3Ba1Lb32OUVqlsTypiEInSDs/BtM+aAFKojZ3P3Fw==
   dependencies:
     "@opentelemetry/api" "^1.9.1"
-    "@opentelemetry/core" "^2.6.1"
     "@opentelemetry/instrumentation" "^0.214.0"
     "@opentelemetry/sdk-trace-base" "^2.6.1"
     "@opentelemetry/semantic-conventions" "^1.40.0"
-    "@sentry/core" "10.59.0"
-    "@sentry/node-core" "10.59.0"
-    "@sentry/opentelemetry" "10.59.0"
-    "@sentry/server-utils" "10.59.0"
+    "@sentry/core" "10.62.0"
+    "@sentry/node-core" "10.62.0"
+    "@sentry/opentelemetry" "10.62.0"
+    "@sentry/server-utils" "10.62.0"
     import-in-the-middle "^3.0.0"
 
-"@sentry/opentelemetry@10.59.0":
-  version "10.59.0"
-  resolved "https://registry.yarnpkg.com/@sentry/opentelemetry/-/opentelemetry-10.59.0.tgz#d05bce127e5383ce0361fd77474de36fec601f09"
-  integrity sha512-wV9/HR9btrNhSkJC2S0urqsD9pE4K0f6AmdfTK3qhH505mLoyV4ekTG66hdDR9xD2zOYCm58CNzaK+336zu3Gg==
+"@sentry/opentelemetry@10.62.0":
+  version "10.62.0"
+  resolved "https://registry.yarnpkg.com/@sentry/opentelemetry/-/opentelemetry-10.62.0.tgz#74d8c58ba0bd2b737366c0ac1bd9660bd9c5aec5"
+  integrity sha512-nFwBgtjfwgY8P5lAuQFWfAsQW1MXxuQ6kR/HtBs+A6julqwGGS2QnQ65OCWMzz6IqDEL/pRgT1405/gU+OXU3A==
   dependencies:
     "@sentry/conventions" "^0.12.0"
-    "@sentry/core" "10.59.0"
+    "@sentry/core" "10.62.0"
 
-"@sentry/server-utils@10.59.0":
-  version "10.59.0"
-  resolved "https://registry.yarnpkg.com/@sentry/server-utils/-/server-utils-10.59.0.tgz#1e928d9340f10709168f31b6803cdf0809f439d9"
-  integrity sha512-mR3fWaU7uGxIstRba6YO+/6V3qIa7432F7/U8EWHry+dY4C9DWAVG90E2GCzeD2MwLSP0tB25i8p1TWTGiQgVg==
+"@sentry/server-utils@10.62.0":
+  version "10.62.0"
+  resolved "https://registry.yarnpkg.com/@sentry/server-utils/-/server-utils-10.62.0.tgz#5562c20a0d0103d51ab7cc8224c2f7d10e2d1f29"
+  integrity sha512-S5szsj6kKBhxw97b2HA98fYp/PpWXvSizlisEzb2rnL4IH6RAJ8wP05/fnth8pSywTH+gtUu+i6Wn8e8rX5HvA==
   dependencies:
     "@apm-js-collab/code-transformer" "^0.15.0"
     "@apm-js-collab/code-transformer-bundler-plugins" "^0.5.0"
     "@apm-js-collab/tracing-hooks" "^0.10.0"
     "@sentry/conventions" "^0.12.0"
-    "@sentry/core" "10.59.0"
+    "@sentry/core" "10.62.0"
     magic-string "~0.30.0"
 
 "@shikijs/core@1.29.2":
