@@ -780,10 +780,10 @@
   dependencies:
     "@logtape/logtape" "^1.0.4"
 
-"@hono/node-server@2.0.5":
-  version "2.0.5"
-  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-2.0.5.tgz#54c58f722032ccb7394d8860277cfd0415cd6ce5"
-  integrity sha512-yQFvDmyDo3y6rEOJZDUYPJ49DIKTPpIk4kGvm40xx4Ejne0Pu9a1+exxPN+C1UppWK/WGZX9F++/Xs231tE86g==
+"@hono/node-server@2.0.6":
+  version "2.0.6"
+  resolved "https://registry.yarnpkg.com/@hono/node-server/-/node-server-2.0.6.tgz#b7ee787763f99f9e1225c375b37c57d53df70daa"
+  integrity sha512-7DeRlKG57JDBNZ5Qj2jwVdgwQy4b0tLubRLl3zCf91/rCf9i7p1V5FtW/yWibm1uUHE493ts9ZXH/7g/LQWl+g==
 
 "@img/colour@^1.1.0":
   version "1.1.0"
