@@ -2925,10 +2925,10 @@ es-toolkit@1.43.0:
   resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.43.0.tgz#2c278d55ffeb30421e6e73a009738ed37b10ef61"
   integrity sha512-SKCT8AsWvYzBBuUqMk4NPwFlSdqLpJwmy6AP322ERn8W2YLIB6JBXnwMI2Qsh2gfphT3q7EKAxKb23cvFHFwKA==
 
-es-toolkit@1.48.1, es-toolkit@^1.31.0, es-toolkit@^1.39.10:
-  version "1.48.1"
-  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.48.1.tgz#4e8a7c3b0fe3a80f4d640934c8552238f25430c7"
-  integrity sha512-wfnXlwd5I75eXRtdD2vuEs50xHHESECDsGD7yiQnfFVNoa5522NwXEbmgo98LfiukSQHs+mBM7/YG3qKJB9/mQ==
+es-toolkit@1.49.0, es-toolkit@^1.31.0, es-toolkit@^1.39.10:
+  version "1.49.0"
+  resolved "https://registry.yarnpkg.com/es-toolkit/-/es-toolkit-1.49.0.tgz#93c5b031865792fc03cbf5bd20c132a4f976a52a"
+  integrity sha512-G5iZ6Pc/FNRY/soKZHC+TxGDD83rHUDXxzaWhGCX44vAv/tMs56WMusnm/KMNK+luUPsgA9U28cGr4RDlSzL2g==
 
 es6-promise@^4.2.8:
   version "4.2.8"
