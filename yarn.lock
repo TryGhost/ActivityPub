@@ -4004,10 +4004,10 @@ jws@^4.0.0, jws@^4.0.1:
     jwa "^2.0.1"
     safe-buffer "^5.0.1"
 
-knex@3.2.10:
-  version "3.2.10"
-  resolved "https://registry.yarnpkg.com/knex/-/knex-3.2.10.tgz#ca8f77a10851b1e18b26463a6dc995e563c3b165"
-  integrity sha512-oypTHfrc9i72iyxaUQBKHOxhcr0xM65MPf6FpN02nimsftXwzXprIkLjfXdubvhbu4PMWLp023q8o8CYvHSuZw==
+knex@3.3.0:
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/knex/-/knex-3.3.0.tgz#451d24d5670939fc4ce54f2269163dbf2627d682"
+  integrity sha512-LgWl031hNuLv9Lhxdd9093zULa2aNcoP04Bk29e5NidgRcEr/T0rAr2WYi4BhjTiCDoQiRU56meUE5rppLKZzQ==
   dependencies:
     colorette "2.0.19"
     commander "^10.0.0"
@@ -4021,7 +4021,7 @@ knex@3.2.10:
     pg-connection-string "2.6.2"
     rechoir "^0.8.0"
     resolve-from "^5.0.0"
-    tarn "^3.0.2"
+    tarn "^3.1.0"
     tildify "2.0.0"
 
 knuth-shuffle-seeded@^1.0.6:
@@ -5417,7 +5417,7 @@ tagged-tag@^1.0.0:
   resolved "https://registry.yarnpkg.com/tagged-tag/-/tagged-tag-1.0.0.tgz#a0b5917c2864cba54841495abfa3f6b13edcf4d6"
   integrity sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng==
 
-tarn@^3.0.2:
+tarn@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/tarn/-/tarn-3.1.0.tgz#fb805043610843ab2ad16e7631e6c61bfdca326f"
   integrity sha512-QDihlHbXxQ4SnuQcRd1TPNBHUYo/hafDRDP82COYSVfRcx/3qnfGDkn1WFjozVl+AYr8ZyDKSQ/kIgHH1ri1yg==
