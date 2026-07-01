@@ -67,6 +67,8 @@ Only required if `FEDIFY_KV_STORE_TYPE` is set to `redis`
 
 - `REDIS_HOST` - Redis server host
 - `REDIS_PORT` - Redis server port
+- `REDIS_CLUSTER` - Set to `false` to connect to a standalone (single-node) Redis server, e.g. a plain `redis:alpine` container
+  - Default: cluster mode
 - `REDIS_TLS_CERT` - TLS certificate for Redis connection
   - Only required if Redis is configured to use TLS
 
