@@ -66,6 +66,14 @@ describe('PreferencesController', () => {
         });
     });
 
+    it('returns 500 when preferences are requested for a site without a user', async () => {
+        const response = await preferencesController.handleGetPreferences(
+            createContext({ site: { id: 999999 } }),
+        );
+
+        expect(response.status).toBe(500);
+    });
+
     it('updates showSensitiveMedia to true', async () => {
         const [, site, userId] = await fixtureManager.createInternalAccount();
 
@@ -105,6 +113,17 @@ describe('PreferencesController', () => {
 
         const user = await db('users').where({ id: userId }).first();
         expect(Boolean(user.show_sensitive_media)).toBe(false);
+    });
+
+    it('returns 500 when updating preferences for a site without a user', async () => {
+        const response = await preferencesController.handleUpdatePreferences(
+            createContext({
+                site: { id: 999999 },
+                body: { showSensitiveMedia: true },
+            }),
+        );
+
+        expect(response.status).toBe(500);
     });
 
     it('rejects invalid payloads', async () => {

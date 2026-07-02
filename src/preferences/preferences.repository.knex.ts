@@ -4,6 +4,13 @@ export interface PreferencesDTO {
     showSensitiveMedia: boolean;
 }
 
+export class PreferencesUserNotFoundError extends Error {
+    constructor(readonly siteId: number) {
+        super(`No user found for site_id ${siteId}`);
+        this.name = 'PreferencesUserNotFoundError';
+    }
+}
+
 export class KnexPreferencesRepository {
     constructor(private readonly db: Knex) {}
 
@@ -13,8 +20,12 @@ export class KnexPreferencesRepository {
             .where({ site_id: siteId })
             .first();
 
+        if (!user) {
+            throw new PreferencesUserNotFoundError(siteId);
+        }
+
         return {
-            showSensitiveMedia: Boolean(user?.show_sensitive_media),
+            showSensitiveMedia: Boolean(user.show_sensitive_media),
         };
     }
 
@@ -22,9 +33,15 @@ export class KnexPreferencesRepository {
         siteId: number,
         preferences: PreferencesDTO,
     ): Promise<PreferencesDTO> {
-        await this.db('users').where({ site_id: siteId }).update({
-            show_sensitive_media: preferences.showSensitiveMedia,
-        });
+        const affectedRows = await this.db('users')
+            .where({ site_id: siteId })
+            .update({
+                show_sensitive_media: preferences.showSensitiveMedia,
+            });
+
+        if (affectedRows === 0) {
+            throw new PreferencesUserNotFoundError(siteId);
+        }
 
         return preferences;
     }
