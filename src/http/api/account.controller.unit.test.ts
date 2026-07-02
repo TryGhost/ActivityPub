@@ -64,6 +64,7 @@ describe('AccountController aliases', () => {
             addAlias: vi.fn(),
             removeAlias: vi.fn(),
             setWebfingerHost: vi.fn(),
+            validateWebfingerHost: vi.fn(),
         } as unknown as AccountService;
         controller = new AccountController(
             {} as AccountView,
@@ -108,6 +109,11 @@ describe('AccountController aliases', () => {
                     path: '/.ghost/activitypub/:version/domain',
                     methodName: 'handleUpdateAccountDomain',
                 }),
+                expect.objectContaining({
+                    method: 'POST',
+                    path: '/.ghost/activitypub/:version/domain/validate',
+                    methodName: 'handleValidateAccountDomain',
+                }),
             ]),
         );
 
@@ -117,6 +123,7 @@ describe('AccountController aliases', () => {
             'handleRemoveAccountAlias',
             'handleGetAccountDomain',
             'handleUpdateAccountDomain',
+            'handleValidateAccountDomain',
         ]) {
             expect(
                 Reflect.getMetadata(
@@ -327,6 +334,72 @@ describe('AccountController aliases', () => {
 
         expect(response.status).toBe(400);
         expect(await response.json()).toEqual({ code: 'invalid-domain' });
+    });
+
+    it('validates an account domain without saving it', async () => {
+        vi.mocked(accountService.validateWebfingerHost).mockResolvedValue(
+            ok(true),
+        );
+
+        const response = await controller.handleValidateAccountDomain(
+            createContext({ domain: 'WWW.Site.COM' }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(accountService.validateWebfingerHost).toHaveBeenCalledWith(
+            account,
+            'site.com',
+        );
+        expect(accountService.setWebfingerHost).not.toHaveBeenCalled();
+        expect(await response.json()).toEqual({
+            domain: 'site.com',
+            handle: '@index@site.com',
+            actorUrl: 'https://example.com/.ghost/activitypub/users/index',
+        });
+    });
+
+    it('returns default domain state when validating the fallback account host', async () => {
+        const response = await controller.handleValidateAccountDomain(
+            createContext({ domain: 'example.com' }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(accountService.validateWebfingerHost).not.toHaveBeenCalled();
+        expect(accountService.setWebfingerHost).not.toHaveBeenCalled();
+        expect(await response.json()).toEqual({
+            domain: null,
+            handle: '@index@example.com',
+            actorUrl: 'https://example.com/.ghost/activitypub/users/index',
+        });
+    });
+
+    it('returns bad request when validating an invalid account domain', async () => {
+        const response = await controller.handleValidateAccountDomain(
+            createContext({ domain: 'https://site.com' }),
+        );
+
+        expect(response.status).toBe(400);
+        expect(accountService.validateWebfingerHost).not.toHaveBeenCalled();
+        expect(await response.json()).toEqual({ code: 'invalid-domain' });
+    });
+
+    it('maps account domain validation errors to their status codes', async () => {
+        vi.mocked(accountService.validateWebfingerHost).mockResolvedValue(
+            error({
+                type: 'wrong-actor',
+                host: 'site.com',
+                expectedActorUrl:
+                    'https://example.com/.ghost/activitypub/users/index',
+                actualActorUrl: 'https://site.com/users/index',
+            }),
+        );
+
+        const response = await controller.handleValidateAccountDomain(
+            createContext({ domain: 'site.com' }),
+        );
+
+        expect(response.status).toBe(422);
+        expect(await response.json()).toEqual({ code: 'wrong-actor' });
     });
 
     it('adds an alias and returns the updated alias list', async () => {
