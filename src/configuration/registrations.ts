@@ -85,6 +85,8 @@ import { ModerationService } from '@/moderation/moderation.service';
 import { GCloudPubSubPushMessageQueue } from '@/mq/gcloud-pubsub-push/mq';
 import { NotificationService } from '@/notification/notification.service';
 import { NotificationEventService } from '@/notification/notification-event.service';
+import { KnexPreferencesRepository } from '@/preferences/preferences.repository.knex';
+import { PreferencesService } from '@/preferences/preferences.service';
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
@@ -317,8 +319,16 @@ export function registerDependencies(
         'postRepository',
         asClass(KnexPostRepository).singleton(),
     );
+    container.register(
+        'preferencesRepository',
+        asClass(KnexPreferencesRepository).singleton(),
+    );
     container.register('accountService', asClass(AccountService).singleton());
     container.register('postService', asClass(PostService).singleton());
+    container.register(
+        'preferencesService',
+        asClass(PreferencesService).singleton(),
+    );
     container.register(
         'ghostPostService',
         asClass(GhostPostService).singleton(),

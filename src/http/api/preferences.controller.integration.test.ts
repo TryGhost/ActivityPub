@@ -4,6 +4,8 @@ import type { Knex } from 'knex';
 
 import type { AppContext } from '@/app';
 import { PreferencesController } from '@/http/api/preferences.controller';
+import { KnexPreferencesRepository } from '@/preferences/preferences.repository.knex';
+import { PreferencesService } from '@/preferences/preferences.service';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
@@ -19,7 +21,9 @@ describe('PreferencesController', () => {
 
     beforeEach(async () => {
         await fixtureManager.reset();
-        preferencesController = new PreferencesController(db);
+        preferencesController = new PreferencesController(
+            new PreferencesService(new KnexPreferencesRepository(db)),
+        );
     });
 
     function createContext({

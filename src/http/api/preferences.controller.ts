@@ -1,25 +1,29 @@
-import type { Knex } from 'knex';
 import { z } from 'zod';
 
 import type { AppContext } from '@/app';
+import { getValue, isError } from '@/core/result';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
+import type { PreferencesService } from '@/preferences/preferences.service';
 
-const UpdatePreferencesSchema = z
-    .object({
-        showSensitiveMedia: z.boolean(),
-    })
-    .strict();
+const UpdatePreferencesSchema = z.strictObject({
+    showSensitiveMedia: z.boolean(),
+});
 
 export class PreferencesController {
-    constructor(private readonly db: Knex) {}
+    constructor(private readonly preferencesService: PreferencesService) {}
 
     @APIRoute('GET', 'preferences')
     @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
     async handleGetPreferences(ctx: AppContext) {
-        const preferences = await this.getPreferences(ctx);
+        const site = ctx.get('site');
+        const preferences = await this.preferencesService.getForSite(site);
 
-        return Response.json(preferences);
+        if (isError(preferences)) {
+            return new Response(null, { status: 500 });
+        }
+
+        return Response.json(getValue(preferences));
     }
 
     @APIRoute('PUT', 'preferences')
@@ -40,26 +44,15 @@ export class PreferencesController {
         }
 
         const site = ctx.get('site');
+        const preferences = await this.preferencesService.updateForSite(
+            site,
+            parsed.data,
+        );
 
-        await this.db('users').where({ site_id: site.id }).update({
-            show_sensitive_media: parsed.data.showSensitiveMedia,
-        });
+        if (isError(preferences)) {
+            return new Response(null, { status: 500 });
+        }
 
-        return Response.json({
-            showSensitiveMedia: parsed.data.showSensitiveMedia,
-        });
-    }
-
-    private async getPreferences(ctx: AppContext) {
-        const site = ctx.get('site');
-
-        const user = await this.db('users')
-            .select('show_sensitive_media')
-            .where({ site_id: site.id })
-            .first();
-
-        return {
-            showSensitiveMedia: Boolean(user?.show_sensitive_media),
-        };
+        return Response.json(getValue(preferences));
     }
 }

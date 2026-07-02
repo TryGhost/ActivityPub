@@ -139,10 +139,8 @@ describe('postToPostDTO', () => {
 
         const dto = postToDTO(post);
 
-        expect(dto).toMatchObject({
-            sensitive: true,
-            contentWarning: null,
-        });
+        expect(dto.sensitive).toBe(true);
+        expect(dto.contentWarning).toBeNull();
     });
 
     it('should expose a content warning for remote sensitive posts with a summary', async () => {
@@ -158,11 +156,9 @@ describe('postToPostDTO', () => {
 
         const dto = postToDTO(post);
 
-        expect(dto).toMatchObject({
-            sensitive: true,
-            summary: 'Sensitive topic',
-            contentWarning: 'Sensitive topic',
-        });
+        expect(dto.sensitive).toBe(true);
+        expect(dto.summary).toBe('Sensitive topic');
+        expect(dto.contentWarning).toBe('Sensitive topic');
     });
 
     it('should trim whitespace around content warnings', async () => {
@@ -178,11 +174,9 @@ describe('postToPostDTO', () => {
 
         const dto = postToDTO(post);
 
-        expect(dto).toMatchObject({
-            sensitive: true,
-            summary: 'Sensitive topic',
-            contentWarning: 'Sensitive topic',
-        });
+        expect(dto.sensitive).toBe(true);
+        expect(dto.summary).toBe('Sensitive topic');
+        expect(dto.contentWarning).toBe('Sensitive topic');
     });
 
     it('should not treat internal Ghost post summaries as content warnings', async () => {
@@ -197,10 +191,8 @@ describe('postToPostDTO', () => {
 
         const dto = postToDTO(post);
 
-        expect(dto).toMatchObject({
-            sensitive: true,
-            summary: 'Custom excerpt',
-            contentWarning: null,
-        });
+        expect(dto.sensitive).toBe(true);
+        expect(dto.summary).toBe('Custom excerpt');
+        expect(dto.contentWarning).toBeNull();
     });
 });
