@@ -11,7 +11,7 @@ function jsonResponse(message: string, status: number, code?: string) {
     });
 }
 
-export const Ok = (body: unknown) =>
+export const ok = (body: unknown) =>
     new Response(JSON.stringify(body), {
         headers: {
             'Content-Type': 'application/json',

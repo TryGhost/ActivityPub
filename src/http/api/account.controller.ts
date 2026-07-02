@@ -19,7 +19,7 @@ import { requireParam } from '@/http/api/helpers/request';
 import {
     BadRequest,
     Conflict,
-    Ok,
+    ok,
     UnprocessableEntity,
 } from '@/http/api/helpers/response';
 import type { AccountDTO } from '@/http/api/types';
@@ -110,7 +110,7 @@ export class AccountController {
         return {
             domain: webfingerHost,
             handle: getAccountHandle(
-                webfingerHost || account.apId.host,
+                webfingerHost || getAccountHandleHost(account),
                 account.username,
             ),
             actorUrl: account.apId.href,
@@ -576,7 +576,7 @@ export class AccountController {
         }
 
         if (data.domain === null) {
-            return Ok(this.accountDomainResponse(account));
+            return ok(this.accountDomainResponse(account));
         }
 
         const normalizedHost = normalizeWebfingerHost(data.domain);
@@ -592,7 +592,7 @@ export class AccountController {
             normalizeWebfingerHost(account.apId.host) ?? account.apId.host;
 
         if (normalizedHost === fallbackHost) {
-            return Ok(this.accountDomainPreviewResponse(account, null));
+            return ok(this.accountDomainPreviewResponse(account, null));
         }
 
         const result = await this.accountService.validateWebfingerHost(
@@ -604,7 +604,7 @@ export class AccountController {
             return this.domainErrorResponse(getError(result));
         }
 
-        return Ok(this.accountDomainPreviewResponse(account, normalizedHost));
+        return ok(this.accountDomainPreviewResponse(account, normalizedHost));
     }
 
     @APIRoute('POST', 'aliases')
