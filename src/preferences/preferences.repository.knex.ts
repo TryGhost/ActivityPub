@@ -1,5 +1,8 @@
 import type { Knex } from 'knex';
 
+import type { Result } from '@/core/result';
+import { error, ok } from '@/core/result';
+
 export interface PreferencesDTO {
     showSensitiveMedia: boolean;
 }
@@ -14,38 +17,49 @@ export class PreferencesUserNotFoundError extends Error {
 export class KnexPreferencesRepository {
     constructor(private readonly db: Knex) {}
 
-    async getForSite(siteId: number): Promise<PreferencesDTO> {
+    async getForSite(
+        siteId: number,
+    ): Promise<Result<PreferencesDTO, PreferencesUserNotFoundError>> {
         const user = await this.db('users')
             .select('show_sensitive_media')
             .where({ site_id: siteId })
             .first();
 
         if (!user) {
-            throw new PreferencesUserNotFoundError(siteId);
+            return error(new PreferencesUserNotFoundError(siteId));
         }
 
-        return {
+        return ok({
             showSensitiveMedia: Boolean(user.show_sensitive_media),
-        };
+        });
     }
 
     async updateForSite(
         siteId: number,
         preferences: PreferencesDTO,
-    ): Promise<PreferencesDTO> {
-        const userExists = await this.db('users')
-            .select('id')
-            .where({ site_id: siteId })
-            .first();
+    ): Promise<Result<PreferencesDTO, PreferencesUserNotFoundError>> {
+        return this.db.transaction(async (trx) => {
+            const userExists = await trx('users')
+                .select('id')
+                .where({ site_id: siteId })
+                .forUpdate()
+                .first();
 
-        if (!userExists) {
-            throw new PreferencesUserNotFoundError(siteId);
-        }
+            if (!userExists) {
+                return error(new PreferencesUserNotFoundError(siteId));
+            }
 
-        await this.db('users').where({ site_id: siteId }).update({
-            show_sensitive_media: preferences.showSensitiveMedia,
+            const affectedRows = await trx('users')
+                .where({ site_id: siteId })
+                .update({
+                    show_sensitive_media: preferences.showSensitiveMedia,
+                });
+
+            if (affectedRows === 0) {
+                return error(new PreferencesUserNotFoundError(siteId));
+            }
+
+            return ok(preferences);
         });
-
-        return preferences;
     }
 }

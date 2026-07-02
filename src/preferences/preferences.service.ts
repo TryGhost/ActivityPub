@@ -1,5 +1,5 @@
 import type { Result } from '@/core/result';
-import { error, ok } from '@/core/result';
+import { error, getError, getValue, isError, ok } from '@/core/result';
 import type {
     KnexPreferencesRepository,
     PreferencesDTO,
@@ -25,7 +25,17 @@ export class PreferencesService {
         site: Site,
     ): Promise<Result<PreferencesDTO, PreferencesServiceError>> {
         try {
-            return ok(await this.preferencesRepository.getForSite(site.id));
+            const preferences = await this.preferencesRepository.getForSite(
+                site.id,
+            );
+
+            if (isError(preferences)) {
+                return error(
+                    this.toServiceError(getError(preferences), site.id, 'get'),
+                );
+            }
+
+            return ok(getValue(preferences));
         } catch (err) {
             return error(this.toServiceError(err, site.id, 'get'));
         }
@@ -36,12 +46,23 @@ export class PreferencesService {
         preferences: PreferencesDTO,
     ): Promise<Result<PreferencesDTO, PreferencesServiceError>> {
         try {
-            return ok(
+            const updatedPreferences =
                 await this.preferencesRepository.updateForSite(
                     site.id,
                     preferences,
-                ),
-            );
+                );
+
+            if (isError(updatedPreferences)) {
+                return error(
+                    this.toServiceError(
+                        getError(updatedPreferences),
+                        site.id,
+                        'update',
+                    ),
+                );
+            }
+
+            return ok(getValue(updatedPreferences));
         } catch (err) {
             return error(this.toServiceError(err, site.id, 'update'));
         }
