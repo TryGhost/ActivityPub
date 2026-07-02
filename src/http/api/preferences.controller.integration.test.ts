@@ -1,0 +1,147 @@
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import type { Knex } from 'knex';
+
+import type { AppContext } from '@/app';
+import { PreferencesController } from '@/http/api/preferences.controller';
+import { createTestDb } from '@/test/db';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
+
+describe('PreferencesController', () => {
+    let db: Knex;
+    let fixtureManager: FixtureManager;
+    let preferencesController: PreferencesController;
+
+    beforeAll(async () => {
+        db = await createTestDb();
+        fixtureManager = createFixtureManager(db);
+    });
+
+    beforeEach(async () => {
+        await fixtureManager.reset();
+        preferencesController = new PreferencesController(db);
+    });
+
+    function createContext({
+        site,
+        body,
+        bodyError,
+    }: {
+        site: { id: number };
+        body?: unknown;
+        bodyError?: Error;
+    }) {
+        return {
+            get: (key: string) => {
+                if (key === 'site') {
+                    return site;
+                }
+            },
+            req: {
+                json: async () => {
+                    if (bodyError) {
+                        throw bodyError;
+                    }
+
+                    return body;
+                },
+            },
+        } as unknown as AppContext;
+    }
+
+    it('returns showSensitiveMedia false by default', async () => {
+        const [, site] = await fixtureManager.createInternalAccount();
+
+        const response = await preferencesController.handleGetPreferences(
+            createContext({ site }),
+        );
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toEqual({
+            showSensitiveMedia: false,
+        });
+    });
+
+    it('updates showSensitiveMedia to true', async () => {
+        const [, site, userId] = await fixtureManager.createInternalAccount();
+
+        const response = await preferencesController.handleUpdatePreferences(
+            createContext({
+                site,
+                body: { showSensitiveMedia: true },
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toEqual({
+            showSensitiveMedia: true,
+        });
+
+        const user = await db('users').where({ id: userId }).first();
+        expect(Boolean(user.show_sensitive_media)).toBe(true);
+    });
+
+    it('updates showSensitiveMedia back to false', async () => {
+        const [, site, userId] = await fixtureManager.createInternalAccount();
+        await db('users')
+            .where({ id: userId })
+            .update({ show_sensitive_media: true });
+
+        const response = await preferencesController.handleUpdatePreferences(
+            createContext({
+                site,
+                body: { showSensitiveMedia: false },
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toEqual({
+            showSensitiveMedia: false,
+        });
+
+        const user = await db('users').where({ id: userId }).first();
+        expect(Boolean(user.show_sensitive_media)).toBe(false);
+    });
+
+    it('rejects invalid payloads', async () => {
+        const [, site] = await fixtureManager.createInternalAccount();
+
+        const response = await preferencesController.handleUpdatePreferences(
+            createContext({
+                site,
+                body: { showSensitiveMedia: 'true' },
+            }),
+        );
+
+        expect(response.status).toBe(400);
+    });
+
+    it('rejects payloads with extra fields', async () => {
+        const [, site] = await fixtureManager.createInternalAccount();
+
+        const response = await preferencesController.handleUpdatePreferences(
+            createContext({
+                site,
+                body: {
+                    showSensitiveMedia: true,
+                    extra: true,
+                },
+            }),
+        );
+
+        expect(response.status).toBe(400);
+    });
+
+    it('rejects malformed JSON payloads', async () => {
+        const [, site] = await fixtureManager.createInternalAccount();
+
+        const response = await preferencesController.handleUpdatePreferences(
+            createContext({
+                site,
+                bodyError: new Error('Invalid JSON'),
+            }),
+        );
+
+        expect(response.status).toBe(400);
+    });
+});

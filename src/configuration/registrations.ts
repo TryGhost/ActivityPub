@@ -60,6 +60,7 @@ import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
 import { NotificationController } from '@/http/api/notification.controller';
 import { PostController } from '@/http/api/post.controller';
+import { PreferencesController } from '@/http/api/preferences.controller';
 import { RecommendationsController } from '@/http/api/recommendations.controller';
 import { ReplyChainController } from '@/http/api/reply-chain.controller';
 import { SearchController } from '@/http/api/search.controller';
@@ -509,6 +510,10 @@ export function registerDependencies(
     container.register(
         'notificationController',
         asClass(NotificationController).singleton(),
+    );
+    container.register(
+        'preferencesController',
+        asClass(PreferencesController).singleton(),
     );
 
     container.register(

@@ -38,3 +38,12 @@
 - Runtime/browser check: ActivityPub was running via `yarn dev` and Ghost via `pnpm dev`. Ghost Admin loaded in the built-in browser at `http://localhost:2368/ghost/#/signin` with title `Ghost Admin - Ghost Dev` and sign-in text. ActivityPub was verified by Docker health and `curl -I http://localhost:8080/`, returning a 302 from the running service.
 - Runtime deviation: the built-in browser reached ActivityPub root but hit `ERR_TOO_MANY_REDIRECTS`; follow-up direct navigation from the error document was blocked by browser URL policy. Curl/Docker evidence was used for ActivityPub runtime reachability.
 - Test-run note: Vitest still reports `Snapshots 1 written` on the expanded suite, but `git status` and `find src -path '*__snapshots__*' -type f` show no unexpected untracked snapshot artifacts beyond the intentionally updated snapshots.
+- Started preferences API backend slice for persisted sensitive-media display preference.
+- Red step: `yarn test:single src/http/api/preferences.controller.integration.test.ts` initially failed because `@/http/api/preferences.controller` did not exist.
+- Added `PreferencesController` with `GET /preferences` and `PUT /preferences`, registered it in DI and the route registry, and persisted `showSensitiveMedia` to `users.show_sensitive_media` for the current site user.
+- Green step: `yarn test:single src/http/api/preferences.controller.integration.test.ts` passed with default false, update true, update false, and invalid type coverage.
+- Adversarial review found payload validation gaps: extra keys were accepted and malformed/empty JSON could escape as a generic error. Fixed with a strict Zod schema and guarded JSON parsing that returns `400`.
+- Green step: `yarn test:single src/http/api/preferences.controller.integration.test.ts` passed with 6 tests after adding extra-field and malformed JSON rejection coverage.
+- Quality checks: `yarn test:types` passed, `yarn lint` passed with the same existing warning-only Biome output, and `git diff --check` passed.
+- Runtime/browser check: ActivityPub was reachable with `curl -I http://localhost:8080/`, returning a 302 from the running service. Ghost Admin, not just the public frontend, loaded in the built-in browser at `http://localhost:2368/ghost/#/signin` with title `Ghost Admin - Ghost Dev`, Ember Admin markers, and the sign-in form.
+- Review follow-up note: route registration/protection is wired through `src/app.ts`, controller decorators, and DI registration; this slice's direct controller tests do not yet exercise the full mounted HTTP route.
