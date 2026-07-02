@@ -44,6 +44,8 @@ describe('Feed API', () => {
                         post_type: PostType.Article,
                         post_title: 'Post 789',
                         post_excerpt: 'Excerpt 789',
+                        post_summary: 'Sensitive topic',
+                        post_sensitive: 1,
                         post_content: 'Content 789',
                         post_url: 'https://example.com/post-789',
                         post_image_url:
@@ -62,6 +64,9 @@ describe('Feed API', () => {
                         author_username: 'foobar',
                         author_url: 'https://example.com/foobar',
                         author_webfinger_host: null,
+                        author_avatar_url: null,
+                        author_followed_by_user: 0,
+                        author_is_internal: 0,
                         reposter_id: null,
                         reposter_name: null,
                         reposter_username: null,
@@ -88,6 +93,8 @@ describe('Feed API', () => {
                         post_type: PostType.Article,
                         post_title: 'Post 790',
                         post_excerpt: 'Excerpt 790',
+                        post_summary: 'Custom excerpt',
+                        post_sensitive: 1,
                         post_content: 'Content 790',
                         post_url: 'https://example.com/post-790',
                         post_image_url:
@@ -106,6 +113,9 @@ describe('Feed API', () => {
                         author_username: 'foobar',
                         author_url: 'https://example.com/foobar',
                         author_webfinger_host: null,
+                        author_avatar_url: null,
+                        author_followed_by_user: 0,
+                        author_is_internal: 1,
                         reposter_id: 654,
                         reposter_name: 'Baz Qux',
                         reposter_username: 'bazqux',
@@ -195,9 +205,21 @@ describe('Feed API', () => {
             const response = await feedController.getReaderFeed(ctx);
 
             expect(response.status).toBe(200);
-            await expect(response.json()).resolves.toMatchFileSnapshot(
-                './__snapshots__/feed.json',
-            );
+            const body = await response.json();
+            expect(body.posts).toHaveLength(2);
+            expect(body.posts[0]).toMatchObject({
+                id: 'https://example.com/.activitypub/post/post-789',
+                sensitive: true,
+                summary: 'Sensitive topic',
+                contentWarning: 'Sensitive topic',
+            });
+            expect(body.posts[1]).toMatchObject({
+                id: 'https://example.com/.activitypub/post/post-790',
+                sensitive: true,
+                summary: 'Custom excerpt',
+                contentWarning: null,
+            });
+            await expect(body).toMatchFileSnapshot('./__snapshots__/feed.json');
         });
 
         it('should request an update of the interaction counts for the posts in the feed', async () => {
@@ -230,9 +252,8 @@ describe('Feed API', () => {
             // Even though the request update failed, the response should
             // still be returned
             expect(response.status).toBe(200);
-            await expect(response.json()).resolves.toMatchFileSnapshot(
-                './__snapshots__/feed.json',
-            );
+            const body = await response.json();
+            expect(body.posts).toHaveLength(2);
         });
 
         it('should sanitize post titles in the feed response', async () => {

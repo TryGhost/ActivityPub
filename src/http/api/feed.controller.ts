@@ -10,6 +10,7 @@ import type {
     GetFeedDataResultRow,
 } from '@/feed/feed.service';
 import { normalizePlainText } from '@/helpers/html';
+import { getContentWarning } from '@/http/api/helpers/post';
 import { requireParam } from '@/http/api/helpers/request';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
@@ -162,6 +163,12 @@ export class FeedController {
                 title: normalizePlainText(result.post_title ?? ''),
                 excerpt: result.post_excerpt ?? '',
                 summary: result.post_summary ?? null,
+                sensitive: Boolean(result.post_sensitive),
+                contentWarning: getContentWarning({
+                    isInternal: result.author_is_internal === 1,
+                    sensitive: Boolean(result.post_sensitive),
+                    summary: result.post_summary ?? null,
+                }),
                 content: result.post_content ?? '',
                 url: result.post_url,
                 featureImageUrl: result.post_image_url ?? null,

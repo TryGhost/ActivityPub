@@ -4,6 +4,7 @@ import z from 'zod';
 import { getAccountHandle } from '@/account/utils';
 import { error, ok, type Result } from '@/core/result';
 import { normalizePlainText } from '@/helpers/html';
+import { getContentWarning } from '@/http/api/helpers/post';
 import type { PostDTO } from '@/http/api/types';
 import { PostType } from '@/post/post.entity';
 
@@ -29,6 +30,7 @@ const PostRowSchema = z.object({
     post_title: z.string().nullable(),
     post_excerpt: z.string().nullable(),
     post_summary: z.string().nullable(),
+    post_sensitive: z.union([z.literal(0), z.literal(1), z.boolean()]),
     post_content: z.string().nullable(),
     post_url: z.string(),
     post_image_url: z.string().nullable(),
@@ -60,6 +62,7 @@ const PostRowSchema = z.object({
     author_webfinger_host: z.string().nullable(),
     author_avatar_url: z.string().nullable(),
     author_followed_by_user: z.union([z.literal(0), z.literal(1)]),
+    author_is_internal: z.union([z.literal(0), z.literal(1)]),
 });
 
 export type PostRow = z.infer<typeof PostRowSchema>;
@@ -80,6 +83,8 @@ export class ReplyChainView {
                 title: '',
                 excerpt: '',
                 summary: null,
+                sensitive: false,
+                contentWarning: null,
                 content: '',
                 url: result.post_url,
                 featureImageUrl: null,
@@ -116,6 +121,12 @@ export class ReplyChainView {
             title: normalizePlainText(result.post_title ?? ''),
             excerpt: result.post_excerpt ?? '',
             summary: result.post_summary ?? null,
+            sensitive: Boolean(result.post_sensitive),
+            contentWarning: getContentWarning({
+                isInternal: result.author_is_internal === 1,
+                sensitive: Boolean(result.post_sensitive),
+                summary: result.post_summary ?? null,
+            }),
             content: result.post_content ?? '',
             url: result.post_url,
             featureImageUrl: result.post_image_url ?? null,
@@ -204,6 +215,7 @@ export class ReplyChainView {
                     'posts.title as post_title',
                     'posts.excerpt as post_excerpt',
                     'posts.summary as post_summary',
+                    'posts.sensitive as post_sensitive',
                     'posts.content as post_content',
                     'posts.url as post_url',
                     'posts.image_url as post_image_url',
@@ -236,6 +248,12 @@ export class ReplyChainView {
                     'author_account.url as author_url',
                     'author_account.webfinger_host as author_webfinger_host',
                     'author_account.avatar_url as author_avatar_url',
+                    this.db.raw(`
+                    CASE
+                        WHEN users.id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_is_internal
+                `),
                     this.db.raw(`
                     CASE
                         WHEN follows_author.following_id IS NOT NULL THEN 1

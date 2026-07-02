@@ -35,6 +35,7 @@ interface BaseGetFeedDataResultRow {
     post_title: string | null;
     post_excerpt: string | null;
     post_summary: string | null;
+    post_sensitive: 0 | 1 | boolean;
     post_content: string | null;
     post_url: string;
     post_image_url: string | null;
@@ -59,6 +60,7 @@ interface BaseGetFeedDataResultRow {
     author_webfinger_host: string | null;
     author_avatar_url: string | null;
     author_followed_by_user: 0 | 1;
+    author_is_internal: 0 | 1;
 }
 
 interface GetFeedDataResultRowReposted extends BaseGetFeedDataResultRow {
@@ -136,6 +138,7 @@ export class FeedService {
                 'posts.title as post_title',
                 'posts.excerpt as post_excerpt',
                 'posts.summary as post_summary',
+                'posts.sensitive as post_sensitive',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',
@@ -167,6 +170,12 @@ export class FeedService {
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
                     CASE
+                        WHEN author_user.id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_is_internal
+                `),
+                this.db.raw(`
+                    CASE
                         WHEN follows_author.following_id IS NOT NULL THEN 1
                         ELSE 0
                     END AS author_followed_by_user
@@ -192,6 +201,11 @@ export class FeedService {
                 'accounts as author_account',
                 'author_account.id',
                 'posts.author_id',
+            )
+            .leftJoin(
+                'users as author_user',
+                'author_user.account_id',
+                'author_account.id',
             )
             .leftJoin(
                 'accounts as reposter_account',
@@ -281,6 +295,7 @@ export class FeedService {
                 'posts.title as post_title',
                 'posts.excerpt as post_excerpt',
                 'posts.summary as post_summary',
+                'posts.sensitive as post_sensitive',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',
@@ -312,6 +327,12 @@ export class FeedService {
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
                     CASE
+                        WHEN author_user.id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_is_internal
+                `),
+                this.db.raw(`
+                    CASE
                         WHEN follows_author.following_id IS NOT NULL THEN 1
                         ELSE 0
                     END AS author_followed_by_user
@@ -323,6 +344,11 @@ export class FeedService {
                 'accounts as author_account',
                 'author_account.id',
                 'posts.author_id',
+            )
+            .leftJoin(
+                'users as author_user',
+                'author_user.account_id',
+                'author_account.id',
             )
             .leftJoin('likes', function () {
                 this.on('likes.post_id', 'posts.id').andOnVal(

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { postToDTO } from '@/http/api/helpers/post';
 import { Post, PostType } from '@/post/post.entity';
-import { createTestInternalAccount } from '@/test/account-entity-test-helpers';
+import {
+    createTestExternalAccount,
+    createTestInternalAccount,
+} from '@/test/account-entity-test-helpers';
 
 function createAuthor() {
     return createTestInternalAccount(123, {
@@ -14,6 +17,23 @@ function createAuthor() {
         avatarUrl: new URL('http://foobar.com/avatar/foobar.png'),
         bannerImageUrl: new URL('http://foobar.com/banner/foobar.png'),
         customFields: null,
+    });
+}
+
+function createExternalAuthor() {
+    return createTestExternalAccount(456, {
+        username: 'remote',
+        name: 'Remote Author',
+        bio: null,
+        url: new URL('https://remote.example.com/@remote'),
+        avatarUrl: null,
+        bannerImageUrl: null,
+        customFields: null,
+        apId: new URL('https://remote.example.com/users/remote'),
+        apFollowers: new URL(
+            'https://remote.example.com/users/remote/followers',
+        ),
+        apInbox: new URL('https://remote.example.com/users/remote/inbox'),
     });
 }
 
@@ -105,5 +125,82 @@ describe('postToPostDTO', () => {
         const dto = postToDTO(post);
 
         expect(dto.summary).toBeNull();
+    });
+
+    it('should expose sensitive posts in the DTO', async () => {
+        const author = await createExternalAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+            sensitive: true,
+            apId: new URL('https://remote.example.com/posts/sensitive'),
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto).toMatchObject({
+            sensitive: true,
+            contentWarning: null,
+        });
+    });
+
+    it('should expose a content warning for remote sensitive posts with a summary', async () => {
+        const author = await createExternalAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+            summary: 'Sensitive topic',
+            sensitive: true,
+            apId: new URL('https://remote.example.com/posts/content-warning'),
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto).toMatchObject({
+            sensitive: true,
+            summary: 'Sensitive topic',
+            contentWarning: 'Sensitive topic',
+        });
+    });
+
+    it('should trim whitespace around content warnings', async () => {
+        const author = await createExternalAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Note,
+            content: 'Hello, world!',
+            summary: '  Sensitive topic  ',
+            sensitive: true,
+            apId: new URL('https://remote.example.com/posts/padded-warning'),
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto).toMatchObject({
+            sensitive: true,
+            summary: 'Sensitive topic',
+            contentWarning: 'Sensitive topic',
+        });
+    });
+
+    it('should not treat internal Ghost post summaries as content warnings', async () => {
+        const author = await createAuthor();
+
+        const post = Post.createFromData(author, {
+            type: PostType.Article,
+            content: 'Hello, world!',
+            summary: 'Custom excerpt',
+            sensitive: true,
+        });
+
+        const dto = postToDTO(post);
+
+        expect(dto).toMatchObject({
+            sensitive: true,
+            summary: 'Custom excerpt',
+            contentWarning: null,
+        });
     });
 });

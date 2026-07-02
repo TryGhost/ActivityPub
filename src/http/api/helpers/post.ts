@@ -21,6 +21,24 @@ function accountToAuthorDTO(
     };
 }
 
+export function getContentWarning({
+    isInternal,
+    sensitive,
+    summary,
+}: {
+    isInternal: boolean;
+    sensitive: boolean;
+    summary: string | null;
+}) {
+    if (isInternal || !sensitive) {
+        return null;
+    }
+
+    const contentWarning = summary?.trim();
+
+    return contentWarning || null;
+}
+
 export function postToDTO(
     post: Post,
     meta: {
@@ -45,6 +63,12 @@ export function postToDTO(
         title: normalizePlainText(post.title ?? ''),
         excerpt: post.excerpt ?? '',
         summary: post.summary ?? null,
+        sensitive: post.sensitive,
+        contentWarning: getContentWarning({
+            isInternal: post.isInternal,
+            sensitive: post.sensitive,
+            summary: post.summary ?? null,
+        }),
         content: post.content ?? '',
         url: post.url.href,
         featureImageUrl: post.imageUrl?.href ?? null,

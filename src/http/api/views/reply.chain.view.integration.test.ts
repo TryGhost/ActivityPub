@@ -433,6 +433,32 @@ describe('ReplyChainView', () => {
             expect(replyChainResult).toEqual(['not-found', null]);
         });
 
+        it('should include sensitive and content warning fields for remote posts', async () => {
+            const [viewer] = await fixtureManager.createInternalAccount();
+            const author = await fixtureManager.createExternalAccount();
+
+            const post = await fixtureManager.createPost(author);
+
+            await db('posts').where({ id: post.id }).update({
+                sensitive: true,
+                summary: 'Sensitive topic',
+            });
+
+            const replyChainView = new ReplyChainView(db);
+            const replyChainResult = await replyChainView.getReplyChain(
+                viewer.id,
+                post.apId,
+            );
+
+            const replyChain = unsafeUnwrap(replyChainResult);
+
+            expect(replyChain.post).toMatchObject({
+                sensitive: true,
+                summary: 'Sensitive topic',
+                contentWarning: 'Sensitive topic',
+            });
+        });
+
         it('should return deleted posts as tombstones in ancestors', async () => {
             const [account] = await fixtureManager.createInternalAccount();
 

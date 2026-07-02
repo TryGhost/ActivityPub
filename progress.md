@@ -22,3 +22,19 @@
 - Adversarial review found no blocking implementation bugs. Follow-up coverage was added for sensitive `Article` ingestion, default non-sensitive ingestion, and sensitive-only `updateByApId` change detection.
 - Green step: `yarn test:single src/post/post.service.integration.test.ts` passed with 44 tests after review follow-up coverage.
 - Final pre-commit checks for this slice: `yarn test:types` passed, `yarn lint` passed with the same existing warning-only output, and `git diff --check` passed.
+- Started DTO/API contract slice for `sensitive` and `contentWarning`.
+- Red step: `yarn test:single src/http/api/helpers/post.unit.test.ts` failed before `postToDTO` exposed `sensitive` and `contentWarning`.
+- Red step: `yarn test:types` failed after making `PostDTO.sensitive` and `PostDTO.contentWarning` required, proving feed/profile/reply/notification mappers still needed the additive fields.
+- Red step: `yarn test:single src/http/api/feed.unit.test.ts` exposed stale feed response expectations.
+- Red step: `yarn test:single src/notification/notification.service.integration.test.ts` exposed stale notification raw-row snapshots after adding selected post summary/sensitive/internal-author fields.
+- Added shared `getContentWarning` mapping: only remote, sensitive posts with a non-empty summary expose a content warning. Internal Ghost summaries/custom excerpts remain `contentWarning: null`.
+- Deviation: replaced the feed test's duplicate broad file-snapshot assertions with one broad feed response snapshot plus targeted assertions for `sensitive`, `summary`, and `contentWarning`. This keeps broad contract coverage while avoiding duplicated snapshot writes in the same unit test.
+- Adversarial review finding: single-post controller snapshots were stale because `postToDTO` now adds the new fields. Confirmed red with `yarn test:single src/http/api/post.controller.unit.test.ts`, then updated the four single-post snapshots.
+- Review follow-up: trimmed content-warning labels after checking non-empty summaries, with unit coverage for padded remote summaries.
+- Green step: `yarn test:single src/http/api/post.controller.unit.test.ts src/http/api/feed.unit.test.ts src/http/api/helpers/post.unit.test.ts` passed with 20 tests.
+- Green step: expanded focused suite passed with 118 tests:
+  `yarn test:single src/http/api/helpers/post.unit.test.ts src/http/api/post.controller.unit.test.ts src/http/api/feed.unit.test.ts src/http/api/views/account.posts.view.unit.test.ts src/http/api/views/reply.chain.view.integration.test.ts src/http/api/notification.controller.unit.test.ts src/notification/notification.service.integration.test.ts src/feed/feed.service.integration.test.ts`.
+- Quality checks: `yarn test:types` passed, `yarn lint` passed with the same existing warning-only Biome output, and `git diff --check` passed.
+- Runtime/browser check: ActivityPub was running via `yarn dev` and Ghost via `pnpm dev`. Ghost Admin loaded in the built-in browser at `http://localhost:2368/ghost/#/signin` with title `Ghost Admin - Ghost Dev` and sign-in text. ActivityPub was verified by Docker health and `curl -I http://localhost:8080/`, returning a 302 from the running service.
+- Runtime deviation: the built-in browser reached ActivityPub root but hit `ERR_TOO_MANY_REDIRECTS`; follow-up direct navigation from the error document was blocked by browser URL policy. Curl/Docker evidence was used for ActivityPub runtime reachability.
+- Test-run note: Vitest still reports `Snapshots 1 written` on the expanded suite, but `git status` and `find src -path '*__snapshots__*' -type f` show no unexpected untracked snapshot artifacts beyond the intentionally updated snapshots.

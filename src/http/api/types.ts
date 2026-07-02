@@ -139,6 +139,14 @@ export interface PostDTO {
      */
     summary: string | null;
     /**
+     * Whether the post has been marked as sensitive by the author/server
+     */
+    sensitive: boolean;
+    /**
+     * Content warning label for remote sensitive posts, when present
+     */
+    contentWarning: string | null;
+    /**
      * Content of the post
      */
     content: string;
@@ -253,6 +261,8 @@ export interface NotificationDTO {
               | 'likedByMe'
               | 'repostedByMe'
               | 'attachments'
+              | 'sensitive'
+              | 'contentWarning'
           > & {
               type: 'article' | 'note';
           })
@@ -261,7 +271,15 @@ export interface NotificationDTO {
      * In reply to post (partial) associated with the notification
      */
     inReplyTo:
-        | (Pick<PostDTO, 'id' | 'title' | 'content' | 'url'> & {
+        | (Pick<
+              PostDTO,
+              | 'id'
+              | 'title'
+              | 'content'
+              | 'url'
+              | 'sensitive'
+              | 'contentWarning'
+          > & {
               type: 'article' | 'note';
           })
         | null;
