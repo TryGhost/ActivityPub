@@ -16,6 +16,12 @@ import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { isHandle } from '@/helpers/activitypub/actor';
 import { requireParam } from '@/http/api/helpers/request';
+import {
+    BadRequest,
+    Conflict,
+    Ok,
+    UnprocessableEntity,
+} from '@/http/api/helpers/response';
 import type { AccountDTO } from '@/http/api/types';
 import type {
     AccountFollows,
@@ -111,25 +117,27 @@ export class AccountController {
         };
     }
 
-    private jsonResponse(body: unknown, status = 200) {
-        return new Response(JSON.stringify(body), {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            status,
-        });
-    }
-
     private domainErrorResponse(accountError: WebfingerHostError) {
         switch (accountError.type) {
             case 'invalid-domain':
+                return BadRequest('Invalid domain', accountError.type);
             case 'invalid-webfinger':
-                return this.jsonResponse({ code: accountError.type }, 400);
+                return BadRequest(
+                    'Could not resolve domain via WebFinger',
+                    accountError.type,
+                );
             case 'conflict':
-                return this.jsonResponse({ code: accountError.type }, 409);
+                return Conflict('Domain is already in use', accountError.type);
             case 'not-reachable':
+                return UnprocessableEntity(
+                    'Domain is not reachable',
+                    accountError.type,
+                );
             case 'wrong-actor':
-                return this.jsonResponse({ code: accountError.type }, 422);
+                return UnprocessableEntity(
+                    'Domain does not resolve to this account',
+                    accountError.type,
+                );
             default:
                 return exhaustiveCheck(accountError);
         }
@@ -568,7 +576,7 @@ export class AccountController {
         }
 
         if (data.domain === null) {
-            return this.jsonResponse(this.accountDomainResponse(account));
+            return Ok(this.accountDomainResponse(account));
         }
 
         const normalizedHost = normalizeWebfingerHost(data.domain);
@@ -584,9 +592,7 @@ export class AccountController {
             normalizeWebfingerHost(account.apId.host) ?? account.apId.host;
 
         if (normalizedHost === fallbackHost) {
-            return this.jsonResponse(
-                this.accountDomainPreviewResponse(account, null),
-            );
+            return Ok(this.accountDomainPreviewResponse(account, null));
         }
 
         const result = await this.accountService.validateWebfingerHost(
@@ -598,9 +604,7 @@ export class AccountController {
             return this.domainErrorResponse(getError(result));
         }
 
-        return this.jsonResponse(
-            this.accountDomainPreviewResponse(account, normalizedHost),
-        );
+        return Ok(this.accountDomainPreviewResponse(account, normalizedHost));
     }
 
     @APIRoute('POST', 'aliases')

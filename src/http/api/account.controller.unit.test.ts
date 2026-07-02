@@ -320,7 +320,10 @@ describe('AccountController aliases', () => {
         );
 
         expect(response.status).toBe(409);
-        expect(await response.json()).toEqual({ code: 'conflict' });
+        expect(await response.json()).toEqual({
+            message: 'Domain is already in use',
+            code: 'conflict',
+        });
     });
 
     it('returns bad request when an account domain is invalid', async () => {
@@ -333,7 +336,10 @@ describe('AccountController aliases', () => {
         );
 
         expect(response.status).toBe(400);
-        expect(await response.json()).toEqual({ code: 'invalid-domain' });
+        expect(await response.json()).toEqual({
+            message: 'Invalid domain',
+            code: 'invalid-domain',
+        });
     });
 
     it('validates an account domain without saving it', async () => {
@@ -395,7 +401,10 @@ describe('AccountController aliases', () => {
 
         expect(response.status).toBe(400);
         expect(accountService.validateWebfingerHost).not.toHaveBeenCalled();
-        expect(await response.json()).toEqual({ code: 'invalid-domain' });
+        expect(await response.json()).toEqual({
+            message: 'Invalid domain',
+            code: 'invalid-domain',
+        });
     });
 
     it('maps account domain validation errors to their status codes', async () => {
@@ -414,7 +423,10 @@ describe('AccountController aliases', () => {
         );
 
         expect(response.status).toBe(422);
-        expect(await response.json()).toEqual({ code: 'wrong-actor' });
+        expect(await response.json()).toEqual({
+            message: 'Domain does not resolve to this account',
+            code: 'wrong-actor',
+        });
     });
 
     it('adds an alias and returns the updated alias list', async () => {
