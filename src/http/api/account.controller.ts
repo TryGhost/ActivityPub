@@ -2,8 +2,15 @@ import { z } from 'zod';
 
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
-import type { AccountService } from '@/account/account.service';
-import { getAccountHandle, getAccountHandleHost } from '@/account/utils';
+import type {
+    AccountService,
+    WebfingerHostError,
+} from '@/account/account.service';
+import {
+    getAccountHandle,
+    getAccountHandleHost,
+    normalizeWebfingerHost,
+} from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
@@ -88,6 +95,44 @@ export class AccountController {
             ),
             actorUrl: account.apId.href,
         };
+    }
+
+    private accountDomainPreviewResponse(
+        account: Account,
+        webfingerHost: string | null,
+    ) {
+        return {
+            domain: webfingerHost,
+            handle: getAccountHandle(
+                webfingerHost || account.apId.host,
+                account.username,
+            ),
+            actorUrl: account.apId.href,
+        };
+    }
+
+    private jsonResponse(body: unknown, status = 200) {
+        return new Response(JSON.stringify(body), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            status,
+        });
+    }
+
+    private domainErrorResponse(accountError: WebfingerHostError) {
+        switch (accountError.type) {
+            case 'invalid-domain':
+            case 'invalid-webfinger':
+                return this.jsonResponse({ code: accountError.type }, 400);
+            case 'conflict':
+                return this.jsonResponse({ code: accountError.type }, 409);
+            case 'not-reachable':
+            case 'wrong-actor':
+                return this.jsonResponse({ code: accountError.type }, 422);
+            default:
+                return exhaustiveCheck(accountError);
+        }
     }
 
     /**
@@ -489,44 +534,7 @@ export class AccountController {
         );
 
         if (isError(result)) {
-            const accountError = getError(result);
-
-            switch (accountError.type) {
-                case 'invalid-domain':
-                case 'invalid-webfinger':
-                    return new Response(
-                        JSON.stringify({ code: accountError.type }),
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            status: 400,
-                        },
-                    );
-                case 'conflict':
-                    return new Response(
-                        JSON.stringify({ code: accountError.type }),
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            status: 409,
-                        },
-                    );
-                case 'not-reachable':
-                case 'wrong-actor':
-                    return new Response(
-                        JSON.stringify({ code: accountError.type }),
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            status: 422,
-                        },
-                    );
-                default:
-                    return exhaustiveCheck(accountError);
-            }
+            return this.domainErrorResponse(getError(result));
         }
 
         return new Response(
@@ -537,6 +545,68 @@ export class AccountController {
                 },
                 status: 200,
             },
+        );
+    }
+
+    @APIRoute('POST', 'domain/validate')
+    @RequireRoles(GhostRole.Owner, GhostRole.Administrator)
+    async handleValidateAccountDomain(ctx: AppContext) {
+        const account = await this.accountService.getAccountForSite(
+            ctx.get('site'),
+        );
+
+        if (!account) {
+            return new Response(null, { status: 404 });
+        }
+
+        let data: z.infer<typeof UpdateDomainSchema>;
+
+        try {
+            data = UpdateDomainSchema.parse((await ctx.req.json()) as unknown);
+        } catch (_err) {
+            return new Response(null, { status: 400 });
+        }
+
+        if (data.domain === null) {
+            return new Response(
+                JSON.stringify(this.accountDomainResponse(account)),
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    status: 200,
+                },
+            );
+        }
+
+        const normalizedHost = normalizeWebfingerHost(data.domain);
+
+        if (!normalizedHost) {
+            return this.domainErrorResponse({
+                type: 'invalid-domain',
+                host: data.domain,
+            });
+        }
+
+        const fallbackHost = account.apId.host.replace(/^www\./, '');
+
+        if (normalizedHost === fallbackHost) {
+            return this.jsonResponse(
+                this.accountDomainPreviewResponse(account, null),
+            );
+        }
+
+        const result = await this.accountService.validateWebfingerHost(
+            account,
+            normalizedHost,
+        );
+
+        if (isError(result)) {
+            return this.domainErrorResponse(getError(result));
+        }
+
+        return this.jsonResponse(
+            this.accountDomainPreviewResponse(account, normalizedHost),
         );
     }
 
