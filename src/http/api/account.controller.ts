@@ -568,15 +568,7 @@ export class AccountController {
         }
 
         if (data.domain === null) {
-            return new Response(
-                JSON.stringify(this.accountDomainResponse(account)),
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    status: 200,
-                },
-            );
+            return this.jsonResponse(this.accountDomainResponse(account));
         }
 
         const normalizedHost = normalizeWebfingerHost(data.domain);
@@ -588,7 +580,8 @@ export class AccountController {
             });
         }
 
-        const fallbackHost = account.apId.host.replace(/^www\./, '');
+        const fallbackHost =
+            normalizeWebfingerHost(account.apId.host) ?? account.apId.host;
 
         if (normalizedHost === fallbackHost) {
             return this.jsonResponse(

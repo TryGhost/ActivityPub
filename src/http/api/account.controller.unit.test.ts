@@ -373,6 +373,21 @@ describe('AccountController aliases', () => {
         });
     });
 
+    it('returns the current domain state when validating a null account domain', async () => {
+        const response = await controller.handleValidateAccountDomain(
+            createContext({ domain: null }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(accountService.validateWebfingerHost).not.toHaveBeenCalled();
+        expect(accountService.setWebfingerHost).not.toHaveBeenCalled();
+        expect(await response.json()).toEqual({
+            domain: null,
+            handle: '@index@example.com',
+            actorUrl: 'https://example.com/.ghost/activitypub/users/index',
+        });
+    });
+
     it('returns bad request when validating an invalid account domain', async () => {
         const response = await controller.handleValidateAccountDomain(
             createContext({ domain: 'https://site.com' }),
