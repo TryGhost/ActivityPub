@@ -178,7 +178,7 @@ jobs:
 
       - name: Build Docker Image for ActivityPub
         if: steps.should-build.outputs.skip != 'true'
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
           load: true
@@ -191,7 +191,7 @@ jobs:
 
       - name: Build Docker Image for Migrations
         if: steps.should-build.outputs.skip != 'true'
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: migrate
           load: true
@@ -212,7 +212,7 @@ jobs:
       - name: Push arm64 ActivityPub by digest to GHCR
         if: matrix.platform == 'linux/arm64' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         id: activitypub-arm64-digest
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
           platforms: linux/arm64
@@ -223,7 +223,7 @@ jobs:
       - name: Push arm64 Migrations by digest to GHCR
         if: matrix.platform == 'linux/arm64' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         id: activitypub-migrations-arm64-digest
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: migrate
           platforms: linux/arm64
@@ -311,7 +311,7 @@ jobs:
 
       - name: Build reconcile account topics job image
         if: steps.changes.outputs.reconcile-account-topics == 'true'
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: jobs/reconcile-account-topics
           load: true
