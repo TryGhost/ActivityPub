@@ -4468,10 +4468,10 @@ node-forge@^1.2.1:
   resolved "https://registry.yarnpkg.com/node-forge/-/node-forge-1.4.0.tgz#1c7b7d8bdc2d078739f58287d589d903a11b2fc2"
   integrity sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==
 
-node-html-parser@8.0.3:
-  version "8.0.3"
-  resolved "https://registry.yarnpkg.com/node-html-parser/-/node-html-parser-8.0.3.tgz#419cfe55a5977bf2bc03a32857b06e9a604593dc"
-  integrity sha512-ilV20e83nDfiFoEyhlvgqks23Hmy6pySF6UNb8DpgmxnTbXDGgShYKzH2+7ctJK42LXyo+IFOgxCkXmmbacm8w==
+node-html-parser@8.0.4:
+  version "8.0.4"
+  resolved "https://registry.yarnpkg.com/node-html-parser/-/node-html-parser-8.0.4.tgz#1cbb97f310255c73b5661296cf9c4dde7c33ab82"
+  integrity sha512-w2YxujN/TqrSIWGVNW/fVgKKfAyQeHMXCvnKZI0owLnfP0tfjdLecUoy9zhOMZGoEFk6eP5qSDyvUarjPl3bwQ==
   dependencies:
     css-select "^5.1.0"
     entities "^8.0.0"
