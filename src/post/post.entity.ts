@@ -72,6 +72,7 @@ export interface PostUpdateParams {
     content: string | null;
     excerpt: PostSummary | null;
     summary: PostSummary | null;
+    sensitive?: boolean;
     imageUrl: URL | null;
     url: URL;
     metadata: Metadata | null;
@@ -106,6 +107,7 @@ export interface PostData {
     title?: string | null;
     excerpt?: string | null;
     summary?: string | null;
+    sensitive?: boolean;
     content?: string | null;
     url?: URL | null;
     imageUrl?: URL | null;
@@ -160,6 +162,7 @@ export class Post extends BaseEntity {
     private _title: PostTitle | null;
     private _excerpt: PostSummary | null;
     private _summary: PostSummary | null;
+    private _sensitive: boolean;
     private _imageUrl: URL | null;
     private _metadata: Metadata | null;
     public readonly mentions: MentionedAccount[] = [];
@@ -188,6 +191,7 @@ export class Post extends BaseEntity {
         apId: URL | null = null,
         _deleted = false,
         public readonly updatedAt: Date | null = null,
+        sensitive = false,
     ) {
         super(id);
         if (uuid === null) {
@@ -211,6 +215,7 @@ export class Post extends BaseEntity {
         this._title = Post.normalizeTitle(title);
         this._excerpt = excerpt;
         this._summary = summary;
+        this._sensitive = sensitive;
         this._content = content !== null ? sanitizeHtml(content) : null;
         this._imageUrl = imageUrl;
         this._metadata = metadata;
@@ -230,6 +235,10 @@ export class Post extends BaseEntity {
 
     get summary(): PostSummary | null {
         return this._summary;
+    }
+
+    get sensitive(): boolean {
+        return this._sensitive;
     }
 
     get content(): string | null {
@@ -275,6 +284,9 @@ export class Post extends BaseEntity {
         this._content = params.content ? sanitizeHtml(params.content) : null;
         this._excerpt = params.excerpt;
         this._summary = params.summary;
+        if (params.sensitive !== undefined) {
+            this._sensitive = params.sensitive;
+        }
         this._imageUrl = params.imageUrl;
         this._url = params.url;
         this._metadata = params.metadata;
@@ -306,6 +318,7 @@ export class Post extends BaseEntity {
         this._content = null;
         this._excerpt = null;
         this._summary = null;
+        this._sensitive = false;
         this._imageUrl = null;
         self.attachments = [];
         this._metadata = null;
@@ -555,6 +568,9 @@ export class Post extends BaseEntity {
             null,
             data.attachments ?? [],
             data.apId ?? null,
+            false,
+            null,
+            data.sensitive ?? false,
         );
 
         for (const mention of data.mentions ?? []) {

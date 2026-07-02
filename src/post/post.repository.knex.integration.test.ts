@@ -184,6 +184,63 @@ describe('KnexPostRepository', () => {
         });
     });
 
+    describe('Sensitive media', () => {
+        it('saves and retrieves sensitive posts', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-sensitive-posts.com',
+            );
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Sensitive media attached',
+                sensitive: true,
+                attachments: [
+                    {
+                        type: 'Image',
+                        mediaType: 'image/jpeg',
+                        name: 'Example image',
+                        url: new URL('https://example.com/sensitive.jpg'),
+                    },
+                ],
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('posts')
+                .where({ id: post.id })
+                .select('sensitive')
+                .first();
+            expect(rowInDb.sensitive).toBe(1);
+
+            const retrievedPost = await postRepository.getByApId(post.apId);
+
+            expect(retrievedPost?.sensitive).toBe(true);
+        });
+
+        it('defaults new posts to not sensitive', async () => {
+            const site = await siteService.initialiseSiteForHost(
+                'testing-not-sensitive-posts.com',
+            );
+            const account = await accountRepository.getBySite(site);
+            const post = Post.createFromData(account, {
+                type: PostType.Note,
+                content: 'Regular post',
+            });
+
+            await postRepository.save(post);
+
+            const rowInDb = await client('posts')
+                .where({ id: post.id })
+                .select('sensitive')
+                .first();
+            expect(rowInDb.sensitive).toBe(0);
+
+            const retrievedPost = await postRepository.getByApId(post.apId);
+
+            expect(retrievedPost?.sensitive).toBe(false);
+        });
+    });
+
     describe('Delete', () => {
         it('Can handle a deleted post', async () => {
             const site =
@@ -2080,6 +2137,7 @@ describe('KnexPostRepository', () => {
                 content: '<p>Updated content</p>',
                 excerpt: PostSummary.parse('Updated excerpt'),
                 summary: PostSummary.parse('Updated summary'),
+                sensitive: true,
                 imageUrl: new URL('https://example.com/updated-image.jpg'),
                 url: new URL('https://testing-update.com/updated-post'),
                 metadata: {
@@ -2121,6 +2179,7 @@ describe('KnexPostRepository', () => {
             expect(updatedRowInDb.content).toBe('<p>Updated content</p>');
             expect(updatedRowInDb.excerpt).toBe('Updated excerpt');
             expect(updatedRowInDb.summary).toBe('Updated summary');
+            expect(updatedRowInDb.sensitive).toBe(1);
             expect(updatedRowInDb.image_url).toBe(
                 'https://example.com/updated-image.jpg',
             );

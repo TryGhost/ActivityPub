@@ -32,6 +32,7 @@ interface PostRow {
     title: string | null;
     excerpt: string | null;
     summary: string | null;
+    sensitive: 0 | 1 | boolean;
     content: string | null;
     url: string;
     image_url: string | null;
@@ -106,6 +107,7 @@ export class KnexPostRepository {
                 'posts.title',
                 'posts.excerpt',
                 'posts.summary',
+                'posts.sensitive',
                 'posts.content',
                 'posts.url',
                 'posts.image_url',
@@ -328,6 +330,7 @@ export class KnexPostRepository {
                         title: post.title,
                         excerpt: post.excerpt,
                         summary: post.summary,
+                        sensitive: post.sensitive,
                         content: post.content,
                         image_url: post.imageUrl?.href || null,
                         url: post.url.href,
@@ -605,6 +608,7 @@ export class KnexPostRepository {
                 title: post.title,
                 excerpt: post.excerpt,
                 summary: post.summary,
+                sensitive: post.sensitive,
                 content: post.content,
                 url: post.url?.href,
                 image_url: post.imageUrl?.href ?? null,
@@ -1027,6 +1031,7 @@ export class KnexPostRepository {
             new URL(row.ap_id),
             row.deleted_at !== null,
             row.updated_at ? new Date(row.updated_at) : null,
+            Boolean(row.sensitive),
         );
 
         if (post.id) {
@@ -1050,6 +1055,7 @@ export class KnexPostRepository {
                 'posts.title',
                 'posts.excerpt',
                 'posts.summary',
+                'posts.sensitive',
                 'posts.content',
                 'posts.url',
                 'posts.image_url',
