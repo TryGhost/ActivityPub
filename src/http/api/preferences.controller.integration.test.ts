@@ -115,6 +115,39 @@ describe('PreferencesController', () => {
         expect(Boolean(user.show_sensitive_media)).toBe(false);
     });
 
+    it('returns 200 when updating showSensitiveMedia to its current value', async () => {
+        const [, site, userId] = await fixtureManager.createInternalAccount();
+        await db('users')
+            .where({ id: userId })
+            .update({ show_sensitive_media: true });
+
+        const firstResponse =
+            await preferencesController.handleUpdatePreferences(
+                createContext({
+                    site,
+                    body: { showSensitiveMedia: true },
+                }),
+            );
+
+        expect(firstResponse.status).toBe(200);
+        await expect(firstResponse.json()).resolves.toEqual({
+            showSensitiveMedia: true,
+        });
+
+        const secondResponse =
+            await preferencesController.handleUpdatePreferences(
+                createContext({
+                    site,
+                    body: { showSensitiveMedia: true },
+                }),
+            );
+
+        expect(secondResponse.status).toBe(200);
+        await expect(secondResponse.json()).resolves.toEqual({
+            showSensitiveMedia: true,
+        });
+    });
+
     it('returns 500 when updating preferences for a site without a user', async () => {
         const response = await preferencesController.handleUpdatePreferences(
             createContext({

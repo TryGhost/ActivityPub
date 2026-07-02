@@ -33,15 +33,18 @@ export class KnexPreferencesRepository {
         siteId: number,
         preferences: PreferencesDTO,
     ): Promise<PreferencesDTO> {
-        const affectedRows = await this.db('users')
+        const userExists = await this.db('users')
+            .select('id')
             .where({ site_id: siteId })
-            .update({
-                show_sensitive_media: preferences.showSensitiveMedia,
-            });
+            .first();
 
-        if (affectedRows === 0) {
+        if (!userExists) {
             throw new PreferencesUserNotFoundError(siteId);
         }
+
+        await this.db('users').where({ site_id: siteId }).update({
+            show_sensitive_media: preferences.showSensitiveMedia,
+        });
 
         return preferences;
     }
