@@ -3,7 +3,6 @@ import { getAccountHandle } from '@/account/utils';
 import type { AppContext } from '@/app';
 import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { normalizePlainText } from '@/helpers/html';
-import { getContentWarning } from '@/http/api/helpers/post';
 import type { NotificationDTO } from '@/http/api/types';
 import { APIRoute, RequireRoles } from '@/http/decorators/route.decorator';
 import { GhostRole } from '@/http/middleware/role-guard';
@@ -84,11 +83,7 @@ export class NotificationController {
                           type: postTypeMap[Number(result.post_type)],
                           title: normalizePlainText(result.post_title ?? ''),
                           sensitive: Boolean(result.post_sensitive),
-                          contentWarning: getContentWarning({
-                              isInternal: result.post_author_is_internal === 1,
-                              sensitive: Boolean(result.post_sensitive),
-                              summary: result.post_summary ?? null,
-                          }),
+                          contentWarning: result.post_content_warning ?? null,
                           content: result.post_content,
                           url: result.post_url,
                           likeCount: result.post_like_count || 0,
@@ -116,15 +111,8 @@ export class NotificationController {
                               result.in_reply_to_post_title ?? '',
                           ),
                           sensitive: Boolean(result.in_reply_to_post_sensitive),
-                          contentWarning: getContentWarning({
-                              isInternal:
-                                  result.in_reply_to_post_author_is_internal ===
-                                  1,
-                              sensitive: Boolean(
-                                  result.in_reply_to_post_sensitive,
-                              ),
-                              summary: result.in_reply_to_post_summary ?? null,
-                          }),
+                          contentWarning:
+                              result.in_reply_to_post_content_warning ?? null,
                           content: result.in_reply_to_post_content,
                           url: result.in_reply_to_post_url,
                       }

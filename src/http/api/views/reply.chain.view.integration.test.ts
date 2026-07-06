@@ -441,7 +441,8 @@ describe('ReplyChainView', () => {
 
             await db('posts').where({ id: post.id }).update({
                 sensitive: true,
-                summary: 'Sensitive topic',
+                summary: null,
+                content_warning: 'Sensitive topic',
             });
 
             const replyChainView = new ReplyChainView(db);
@@ -454,7 +455,7 @@ describe('ReplyChainView', () => {
 
             expect(replyChain.post).toMatchObject({
                 sensitive: true,
-                summary: 'Sensitive topic',
+                summary: null,
                 contentWarning: 'Sensitive topic',
             });
         });

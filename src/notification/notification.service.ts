@@ -44,7 +44,7 @@ interface BaseGetNotificationsDataResultRow {
     post_title: string;
     post_summary: string | null;
     post_sensitive: 0 | 1 | boolean | null;
-    post_author_is_internal: 0 | 1;
+    post_content_warning: string | null;
     post_content: string;
     post_url: string;
     post_like_count: number;
@@ -65,7 +65,7 @@ interface BaseGetNotificationsDataResultRow {
     in_reply_to_post_title: string;
     in_reply_to_post_summary: string | null;
     in_reply_to_post_sensitive: 0 | 1 | boolean | null;
-    in_reply_to_post_author_is_internal: 0 | 1;
+    in_reply_to_post_content_warning: string | null;
     in_reply_to_post_content: string;
     in_reply_to_post_url: string;
 }
@@ -125,12 +125,7 @@ export class NotificationService {
                 'post.title as post_title',
                 'post.summary as post_summary',
                 'post.sensitive as post_sensitive',
-                this.db.raw(`
-                    CASE
-                        WHEN post_author_user.id IS NOT NULL THEN 1
-                        ELSE 0
-                    END AS post_author_is_internal
-                `),
+                'post.content_warning as post_content_warning',
                 'post.content as post_content',
                 'post.url as post_url',
                 'post.like_count as post_like_count',
@@ -155,12 +150,7 @@ export class NotificationService {
                 'in_reply_to_post.title as in_reply_to_post_title',
                 'in_reply_to_post.summary as in_reply_to_post_summary',
                 'in_reply_to_post.sensitive as in_reply_to_post_sensitive',
-                this.db.raw(`
-                    CASE
-                        WHEN in_reply_to_post_author_user.id IS NOT NULL THEN 1
-                        ELSE 0
-                    END AS in_reply_to_post_author_is_internal
-                `),
+                'in_reply_to_post.content_warning as in_reply_to_post_content_warning',
                 'in_reply_to_post.content as in_reply_to_post_content',
                 'in_reply_to_post.url as in_reply_to_post_url',
             )
@@ -171,19 +161,9 @@ export class NotificationService {
             )
             .leftJoin('posts as post', 'post.id', 'notifications.post_id')
             .leftJoin(
-                'users as post_author_user',
-                'post_author_user.account_id',
-                'post.author_id',
-            )
-            .leftJoin(
                 'posts as in_reply_to_post',
                 'in_reply_to_post.id',
                 'notifications.in_reply_to_post_id',
-            )
-            .leftJoin(
-                'users as in_reply_to_post_author_user',
-                'in_reply_to_post_author_user.account_id',
-                'in_reply_to_post.author_id',
             )
             .leftJoin('likes as post_likes', function () {
                 this.onVal(

@@ -44,8 +44,9 @@ describe('Feed API', () => {
                         post_type: PostType.Article,
                         post_title: 'Post 789',
                         post_excerpt: 'Excerpt 789',
-                        post_summary: 'Sensitive topic',
+                        post_summary: null,
                         post_sensitive: 1,
+                        post_content_warning: 'Sensitive topic',
                         post_content: 'Content 789',
                         post_url: 'https://example.com/post-789',
                         post_image_url:
@@ -66,7 +67,6 @@ describe('Feed API', () => {
                         author_webfinger_host: null,
                         author_avatar_url: null,
                         author_followed_by_user: 0,
-                        author_is_internal: 0,
                         reposter_id: null,
                         reposter_name: null,
                         reposter_username: null,
@@ -95,6 +95,7 @@ describe('Feed API', () => {
                         post_excerpt: 'Excerpt 790',
                         post_summary: 'Custom excerpt',
                         post_sensitive: 1,
+                        post_content_warning: null,
                         post_content: 'Content 790',
                         post_url: 'https://example.com/post-790',
                         post_image_url:
@@ -115,7 +116,6 @@ describe('Feed API', () => {
                         author_webfinger_host: null,
                         author_avatar_url: null,
                         author_followed_by_user: 0,
-                        author_is_internal: 1,
                         reposter_id: 654,
                         reposter_name: 'Baz Qux',
                         reposter_username: 'bazqux',
@@ -210,7 +210,7 @@ describe('Feed API', () => {
             expect(body.posts[0]).toMatchObject({
                 id: 'https://example.com/.activitypub/post/post-789',
                 sensitive: true,
-                summary: 'Sensitive topic',
+                summary: null,
                 contentWarning: 'Sensitive topic',
             });
             expect(body.posts[1]).toMatchObject({

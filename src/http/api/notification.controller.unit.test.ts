@@ -30,9 +30,9 @@ describe('NotificationController', () => {
                         post_ap_id: 'https://remote.example.com/posts/1',
                         post_type: '0',
                         post_title: 'Sensitive post',
-                        post_summary: 'Sensitive topic',
+                        post_summary: null,
                         post_sensitive: 1,
-                        post_author_is_internal: 0,
+                        post_content_warning: 'Sensitive topic',
                         post_content: 'Post content',
                         post_url: 'https://remote.example.com/posts/1',
                         post_like_count: 0,
@@ -45,9 +45,9 @@ describe('NotificationController', () => {
                             'https://remote.example.com/posts/parent',
                         in_reply_to_post_type: '0',
                         in_reply_to_post_title: 'Parent post',
-                        in_reply_to_post_summary: 'Parent warning',
+                        in_reply_to_post_summary: null,
                         in_reply_to_post_sensitive: 1,
-                        in_reply_to_post_author_is_internal: 0,
+                        in_reply_to_post_content_warning: 'Parent warning',
                         in_reply_to_post_content: 'Parent content',
                         in_reply_to_post_url:
                             'https://remote.example.com/posts/parent',
@@ -88,67 +88,6 @@ describe('NotificationController', () => {
         expect(body.notifications[0].inReplyTo).toMatchObject({
             sensitive: true,
             contentWarning: 'Parent warning',
-        });
-    });
-
-    it('does not derive content warnings for internal sensitive posts', async () => {
-        (
-            notificationService.getNotificationsData as ReturnType<typeof vi.fn>
-        ).mockResolvedValueOnce({
-            results: [
-                {
-                    notification_id: 1,
-                    notification_created_at: new Date('2026-07-02T10:00:00Z'),
-                    notification_event_type: '2',
-                    actor_id: 123,
-                    actor_name: 'Remote Author',
-                    actor_username: 'remote',
-                    actor_url: 'https://remote.example.com/@remote',
-                    actor_webfinger_host: null,
-                    actor_avatar_url: '',
-                    actor_followed_by_user: 0,
-                    post_ap_id: 'https://remote.example.com/posts/1',
-                    post_type: '0',
-                    post_title: 'Internal sensitive post',
-                    post_summary: 'Internal excerpt',
-                    post_sensitive: 1,
-                    post_author_is_internal: 1,
-                    post_content: 'Post content',
-                    post_url: 'https://remote.example.com/posts/1',
-                    post_like_count: 0,
-                    post_liked_by_user: 0,
-                    post_reply_count: 0,
-                    post_repost_count: 0,
-                    post_reposted_by_user: 0,
-                    post_attachments: [],
-                    in_reply_to_post_ap_id:
-                        'https://remote.example.com/posts/parent',
-                    in_reply_to_post_type: '0',
-                    in_reply_to_post_title: 'Internal parent post',
-                    in_reply_to_post_summary: 'Internal reply excerpt',
-                    in_reply_to_post_sensitive: 1,
-                    in_reply_to_post_author_is_internal: 1,
-                    in_reply_to_post_content: 'Parent content',
-                    in_reply_to_post_url:
-                        'https://remote.example.com/posts/parent',
-                },
-            ],
-            nextCursor: null,
-        });
-
-        const response =
-            await notificationController.handleGetNotifications(ctx);
-
-        expect(response.status).toBe(200);
-        const body = await response.json();
-
-        expect(body.notifications[0].post).toMatchObject({
-            sensitive: true,
-            contentWarning: null,
-        });
-        expect(body.notifications[0].inReplyTo).toMatchObject({
-            sensitive: true,
-            contentWarning: null,
         });
     });
 });

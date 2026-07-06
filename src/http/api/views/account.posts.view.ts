@@ -6,10 +6,14 @@ import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { error, getValue, isError, ok, type Result } from '@/core/result';
 import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
-import { getContentWarning } from '@/http/api/helpers/post';
 import type { PostDTO } from '@/http/api/types';
 import { ContentPreparer } from '@/post/content';
-import { type Mention, OutboxType, PostType } from '@/post/post.entity';
+import {
+    classifySummary,
+    type Mention,
+    OutboxType,
+    PostType,
+} from '@/post/post.entity';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -26,6 +30,7 @@ interface BaseGetProfileDataResultRow {
     post_excerpt: string | null;
     post_summary: string | null;
     post_sensitive: 0 | 1 | boolean;
+    post_content_warning: string | null;
     post_content: string | null;
     post_url: string;
     post_image_url: string | null;
@@ -50,7 +55,6 @@ interface BaseGetProfileDataResultRow {
     author_webfinger_host: string | null;
     author_avatar_url: string | null;
     author_followed_by_current_user: 0 | 1;
-    author_is_internal: 0 | 1;
 }
 
 interface GetProfileDataResultRowReposted extends BaseGetProfileDataResultRow {
@@ -144,6 +148,7 @@ export class AccountPostsView {
                 'posts.excerpt as post_excerpt',
                 'posts.summary as post_summary',
                 'posts.sensitive as post_sensitive',
+                'posts.content_warning as post_content_warning',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',
@@ -175,12 +180,6 @@ export class AccountPostsView {
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
                     CASE
-                        WHEN author_user.id IS NOT NULL THEN 1
-                        ELSE 0
-                    END AS author_is_internal
-                `),
-                this.db.raw(`
-                    CASE
                         WHEN follows_author.following_id IS NOT NULL THEN 1
                         ELSE 0
                     END AS author_followed_by_current_user
@@ -207,11 +206,6 @@ export class AccountPostsView {
                 'accounts as author_account',
                 'author_account.id',
                 'posts.author_id',
-            )
-            .leftJoin(
-                'users as author_user',
-                'author_user.account_id',
-                'author_account.id',
             )
             .leftJoin('accounts as reposter_account', function () {
                 this.on(
@@ -588,6 +582,7 @@ export class AccountPostsView {
                 'posts.excerpt as post_excerpt',
                 'posts.summary as post_summary',
                 'posts.sensitive as post_sensitive',
+                'posts.content_warning as post_content_warning',
                 'posts.content as post_content',
                 'posts.url as post_url',
                 'posts.image_url as post_image_url',
@@ -614,12 +609,6 @@ export class AccountPostsView {
                 'author_account.avatar_url as author_avatar_url',
                 this.db.raw(`
                     CASE
-                        WHEN author_user.id IS NOT NULL THEN 1
-                        ELSE 0
-                    END AS author_is_internal
-                `),
-                this.db.raw(`
-                    CASE
                         WHEN follows_author.following_id IS NOT NULL THEN 1
                         ELSE 0
                     END AS author_followed_by_current_user
@@ -638,11 +627,6 @@ export class AccountPostsView {
                 'accounts as author_account',
                 'author_account.id',
                 'posts.author_id',
-            )
-            .leftJoin(
-                'users as author_user',
-                'author_user.account_id',
-                'author_account.id',
             )
             .leftJoin('reposts', function () {
                 this.on('reposts.post_id', 'posts.id').andOnVal(
@@ -707,11 +691,7 @@ export class AccountPostsView {
             excerpt: result.post_excerpt ?? '',
             summary: result.post_summary ?? null,
             sensitive: Boolean(result.post_sensitive),
-            contentWarning: getContentWarning({
-                isInternal: result.author_is_internal === 1,
-                sensitive: Boolean(result.post_sensitive),
-                summary: result.post_summary ?? null,
-            }),
+            contentWarning: result.post_content_warning ?? null,
             content: result.post_content ?? '',
             url: result.post_url,
             featureImageUrl: result.post_image_url ?? null,
@@ -772,18 +752,22 @@ export class AccountPostsView {
         const actor = activity.actor;
         const attributedTo = object.attributedTo;
 
+        const sensitive = object.sensitive === true;
+        const { summary, contentWarning } = classifySummary(
+            sensitive,
+            object.summary || null,
+        );
+
         return {
             id: object.id,
             type: object.type === 'Article' ? PostType.Article : PostType.Note,
             title: normalizePlainText(object.name || ''),
             excerpt: object.preview?.content || '',
-            summary: object.summary || null,
-            sensitive: object.sensitive === true,
-            contentWarning: getContentWarning({
-                isInternal: false,
-                sensitive: object.sensitive === true,
-                summary: object.summary || null,
-            }),
+            summary,
+            sensitive,
+            contentWarning: contentWarning
+                ? ContentPreparer.regenerateContentWarning(contentWarning)
+                : null,
             content: object.content || '',
             url: object.url || '',
             featureImageUrl: object.image || null,

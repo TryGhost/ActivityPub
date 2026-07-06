@@ -143,56 +143,20 @@ describe('postToPostDTO', () => {
         expect(dto.contentWarning).toBeNull();
     });
 
-    it('should expose a content warning for remote sensitive posts with a summary', async () => {
+    it('should expose the stored content warning in the DTO', async () => {
         const author = await createExternalAuthor();
 
         const post = Post.createFromData(author, {
             type: PostType.Note,
             content: 'Hello, world!',
-            summary: 'Sensitive topic',
             sensitive: true,
+            contentWarning: 'Sensitive topic',
             apId: new URL('https://remote.example.com/posts/content-warning'),
         });
 
         const dto = postToDTO(post);
 
         expect(dto.sensitive).toBe(true);
-        expect(dto.summary).toBe('Sensitive topic');
         expect(dto.contentWarning).toBe('Sensitive topic');
-    });
-
-    it('should trim whitespace around content warnings', async () => {
-        const author = await createExternalAuthor();
-
-        const post = Post.createFromData(author, {
-            type: PostType.Note,
-            content: 'Hello, world!',
-            summary: '  Sensitive topic  ',
-            sensitive: true,
-            apId: new URL('https://remote.example.com/posts/padded-warning'),
-        });
-
-        const dto = postToDTO(post);
-
-        expect(dto.sensitive).toBe(true);
-        expect(dto.summary).toBe('Sensitive topic');
-        expect(dto.contentWarning).toBe('Sensitive topic');
-    });
-
-    it('should not treat internal Ghost post summaries as content warnings', async () => {
-        const author = await createAuthor();
-
-        const post = Post.createFromData(author, {
-            type: PostType.Article,
-            content: 'Hello, world!',
-            summary: 'Custom excerpt',
-            sensitive: true,
-        });
-
-        const dto = postToDTO(post);
-
-        expect(dto.sensitive).toBe(true);
-        expect(dto.summary).toBe('Custom excerpt');
-        expect(dto.contentWarning).toBeNull();
     });
 });

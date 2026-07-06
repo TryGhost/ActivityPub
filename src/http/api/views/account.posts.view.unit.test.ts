@@ -38,6 +38,7 @@ vi.mock('@/post/content', () => ({
         updateMentions: vi.fn(
             (content: string) => `${content} [mentions updated]`,
         ),
+        regenerateContentWarning: vi.fn((html: string) => html),
     },
 }));
 
@@ -299,7 +300,7 @@ describe('Account Posts View', () => {
 
             expect(result).toMatchObject({
                 sensitive: true,
-                summary: 'Sensitive topic',
+                summary: null,
                 contentWarning: 'Sensitive topic',
             });
         });
