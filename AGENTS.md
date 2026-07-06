@@ -12,29 +12,29 @@ locally; Google Cloud Run in production.
 
 ## Commands
 
-Tests run inside a Docker container via `yarn`, so **extra flags passed to
-`yarn` do not reach the test runner** — use the dedicated scripts below.
+Tests run inside a Docker container via `pnpm`, so **extra flags passed to
+`pnpm` do not reach the test runner** — use the dedicated scripts below.
 
 ```bash
-yarn lint                       # Biome lint
-yarn fmt                        # Biome format
-yarn test:types                 # type check
-yarn test                       # everything (slow)
-yarn test:unit                  # unit only (fast)
-yarn test:integration           # integration only (slow)
-yarn test:cucumber              # e2e only (slow)
-yarn test:single 'path/to/test' # single unit/integration test (fast)
+pnpm lint                       # Biome lint
+pnpm fmt                        # Biome format
+pnpm test:types                 # type check
+pnpm test                       # everything (slow)
+pnpm test:unit                  # unit only (fast)
+pnpm test:integration           # integration only (slow)
+pnpm test:cucumber              # e2e only (slow)
+pnpm test:single 'path/to/test' # single unit/integration test (fast)
 ```
 
 Run a single e2e test by tagging a `Feature` or `Scenario` with `@only`, then
-`yarn test:cucumber @only`.
+`pnpm test:cucumber @only`.
 
 ```bash
-yarn dev            # start app (also runs pending migrations)
-yarn logs           # tail app logs  (yarn dev && yarn logs to do both)
-yarn stop           # stop app + service deps
-yarn wipe-db        # wipe the database
-yarn fix            # attempt to repair a broken local environment
+pnpm dev            # start app (also runs pending migrations)
+pnpm logs           # tail app logs  (pnpm dev && pnpm logs to do both)
+pnpm stop           # stop app + service deps
+pnpm wipe-db        # wipe the database
+pnpm fix            # attempt to repair a broken local environment
 ```
 
 Local services: nginx `:80`→`:8080`, MySQL `:3307` (user `ghost` / pass
@@ -44,11 +44,11 @@ Expose port 80 to the internet with `tailscale funnel 80`.
 ## Migrations
 
 ```bash
-yarn migration 'name-of-migration'   # create (no spaces in the name)
-yarn migrate                         # apply pending migrations
+pnpm migration 'name-of-migration'   # create (no spaces in the name)
+pnpm migrate                         # apply pending migrations
 ```
 
-Migrations also run automatically on `yarn dev`. **Rollback is unsupported** —
+Migrations also run automatically on `pnpm dev`. **Rollback is unsupported** —
 migrations are forward-only, so treat applied migrations as immutable.
 
 ## Boundaries — what not to touch
@@ -150,7 +150,7 @@ Domain-Driven, CQRS-inspired. Full rationale in `/adr`; the non-obvious rules:
 
 ## Before you commit
 
-Code must pass `yarn lint`, `yarn test:types`, and the relevant tests, follow
+Code must pass `pnpm lint`, `pnpm test:types`, and the relevant tests, follow
 the patterns above, and carry tests at the appropriate level (not everything
 needs an e2e test).
 

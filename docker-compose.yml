@@ -34,7 +34,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
-    command: yarn build:watch
+    command: pnpm build:watch
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -155,7 +155,7 @@ services:
       - REDIS_HOST=redis-testing
       - REDIS_PORT=6379
       - FEDIFY_KV_STORE_TYPE=redis
-    command: yarn build:watch
+    command: pnpm build:watch
     depends_on:
       migrate-testing:
         condition: service_completed_successfully

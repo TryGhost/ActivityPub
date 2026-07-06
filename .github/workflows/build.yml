@@ -40,21 +40,24 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
-  check-yarn-lock:
-    name: Check yarn.lock
+  check-lockfile:
+    name: Check pnpm-lock.yaml
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: lts/*
-          cache: yarn
+          cache: pnpm
 
-      - name: Check yarn.lock
-        run: yarn install --frozen-lockfile
+      - name: Check pnpm-lock.yaml
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
   build-main-images:
     name: Build Docker Images (${{ matrix.platform }}, ${{ matrix.platform_slug }})

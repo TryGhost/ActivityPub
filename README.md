@@ -30,7 +30,7 @@ All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-kn
     }
     ```
 4. **Start the ActivityPub Service**
-    - Run `yarn dev && yarn logs` in the root directory of this project
+    - Run `pnpm dev && pnpm logs` in the root directory of this project
 5. **Start Ghost**
     - Run `yarn dev` in the Ghost monorepo
     - If you were already running Ghost locally, make sure to restart it!
@@ -103,18 +103,18 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 Tests run within a Docker Compose stack. Common commands:
 
-- `yarn test` — run everything (types, unit, integration, and e2e); slow
-- `yarn test:unit` — unit tests only; fast
-- `yarn test:integration` — integration tests only
-- `yarn test:cucumber` — end-to-end (Cucumber) tests
-- `yarn test:single 'path/to/test'` — run a single unit or integration test
-- `yarn test:types` — type-check with `tsc`
+- `pnpm test` — run everything (types, unit, integration, and e2e); slow
+- `pnpm test:unit` — unit tests only; fast
+- `pnpm test:integration` — integration tests only
+- `pnpm test:cucumber` — end-to-end (Cucumber) tests
+- `pnpm test:single 'path/to/test'` — run a single unit or integration test
+- `pnpm test:types` — type-check with `tsc`
 
 See [AGENTS.md](AGENTS.md) for the full list and testing conventions.
 
 ## Migrations
 
-Run `yarn migrate` to apply pending `up` migrations against your dev db (this also happens automatically on `yarn dev`). For the testing db, use `docker compose run migrate-testing up`.
+Run `pnpm migrate` to apply pending `up` migrations against your dev db (this also happens automatically on `pnpm dev`). For the testing db, use `docker compose run migrate-testing up`.
 
 To run other `migrate` commands, drop into a shell with `docker compose exec -it migrate /bin/bash` (or `migrate-testing`). The `migrate` binary is available there, along with a `MYSQL_DB` environment variable correctly formatted for the `-database` argument.
 
