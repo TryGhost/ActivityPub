@@ -88,14 +88,14 @@ import { NotificationEventService } from '@/notification/notification-event.serv
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
-import { KnexUserRepository } from '@/user/user.repository.knex';
-import { UserService } from '@/user/user.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
 import { LocalStorageAdapter } from '@/storage/adapters/local-storage-adapter';
 import { ImageProcessor } from '@/storage/image-processor';
 import { ImageStorageService } from '@/storage/image-storage.service';
+import { KnexUserRepository } from '@/user/user.repository.knex';
+import { UserService } from '@/user/user.service';
 
 export function registerDependencies(
     container: AwilixContainer,

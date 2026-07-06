@@ -5,9 +5,9 @@ import type { Knex } from 'knex';
 import type { AppContext } from '@/app';
 import { PreferencesController } from '@/http/api/preferences.controller';
 import { createTestDb } from '@/test/db';
+import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 import { KnexUserRepository } from '@/user/user.repository.knex';
 import { UserService } from '@/user/user.service';
-import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('PreferencesController', () => {
     let db: Knex;
