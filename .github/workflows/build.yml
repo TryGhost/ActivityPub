@@ -57,7 +57,7 @@ jobs:
           cache: pnpm
 
       - name: Check pnpm-lock.yaml
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
   build-main-images:
     name: Build Docker Images (${{ matrix.platform }}, ${{ matrix.platform_slug }})
