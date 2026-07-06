@@ -101,13 +101,22 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 ## Running Tests
 
-- Run `pnpm test` to execute tests within a Docker Compose stack.
+Tests run within a Docker Compose stack. Common commands:
+
+- `pnpm test` — run everything (types, unit, integration, and e2e); slow
+- `pnpm test:unit` — unit tests only; fast
+- `pnpm test:integration` — integration tests only
+- `pnpm test:cucumber` — end-to-end (Cucumber) tests
+- `pnpm test:single 'path/to/test'` — run a single unit or integration test
+- `pnpm test:types` — type-check with `tsc`
+
+See [AGENTS.md](AGENTS.md) for the full list and testing conventions.
 
 ## Migrations
 
-`docker compose run migrate` or `docker compose run migrate-testing` will run the `up` migrations against your dev or testing db respectively.
+Run `pnpm migrate` to apply pending `up` migrations against your dev db (this also happens automatically on `pnpm dev`). For the testing db, use `docker compose run migrate-testing up`.
 
-If you would like to run other commands you can run `docker compose exec -it migrate /bin/bash` or `docker compose exec -it migrate-testing /bin/bash` - This will drop you into a shell with the `migrate` binary available as well as a `MYSQL_DB` environment variable that is correctly formated for use as the `-database` argument to the `migrate` binary
+To run other `migrate` commands, drop into a shell with `docker compose exec -it migrate /bin/bash` (or `migrate-testing`). The `migrate` binary is available there, along with a `MYSQL_DB` environment variable correctly formatted for the `-database` argument.
 
 &nbsp;
 
