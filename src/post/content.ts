@@ -4,8 +4,13 @@ import { find as findLinks } from 'linkifyjs';
 import { parse } from 'node-html-parser';
 
 import { HANDLE_REGEX } from '@/constants';
+import { normalizePlainText } from '@/helpers/html';
 import { isEqual } from '@/helpers/uri';
-import { type Mention, PostSummary } from '@/post/post.entity';
+import {
+    type Mention,
+    PostContentWarning,
+    PostSummary,
+} from '@/post/post.entity';
 
 /**
  * Marker to indicate that the proceeding content is member content
@@ -226,6 +231,18 @@ export class ContentPreparer {
         }
 
         return PostSummary.parse(`${text.substring(0, 500 - 3)}...`);
+    }
+
+    static regenerateContentWarning(html: string) {
+        return ContentPreparer.instance.regenerateContentWarning(html);
+    }
+
+    // Content warnings are short plain-text labels, so strip any HTML and
+    // truncate to the maximum length.
+    regenerateContentWarning(html: string): PostContentWarning {
+        return PostContentWarning.parse(
+            normalizePlainText(html).substring(0, 500),
+        );
     }
 
     static parseMentions(content: string) {

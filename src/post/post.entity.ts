@@ -24,6 +24,13 @@ export const PostTitle = z
     .max(POST_TITLE_MAX_LENGTH)
     .transform((val) => val as PostTitle);
 
+/** @see PostContentWarning.parse to get a branded PostContentWarning */
+export type PostContentWarning = string & { readonly __brand: unique symbol };
+export const PostContentWarning = z
+    .string()
+    .max(500)
+    .transform((val) => val as PostContentWarning);
+
 export enum PostType {
     Note = 0,
     Article = 1,
@@ -107,6 +114,7 @@ export interface PostData {
     excerpt?: string | null;
     summary?: string | null;
     sensitive?: boolean;
+    contentWarning?: string | null;
     content?: string | null;
     url?: URL | null;
     imageUrl?: URL | null;
@@ -162,6 +170,7 @@ export class Post extends BaseEntity {
     private _excerpt: PostSummary | null;
     private _summary: PostSummary | null;
     private _sensitive: boolean;
+    private _contentWarning: PostContentWarning | null;
     private _imageUrl: URL | null;
     private _metadata: Metadata | null;
     public readonly mentions: MentionedAccount[] = [];
@@ -191,6 +200,7 @@ export class Post extends BaseEntity {
         _deleted = false,
         public readonly updatedAt: Date | null = null,
         sensitive = false,
+        contentWarning: PostContentWarning | null = null,
     ) {
         super(id);
         if (uuid === null) {
@@ -215,6 +225,7 @@ export class Post extends BaseEntity {
         this._excerpt = excerpt;
         this._summary = summary;
         this._sensitive = sensitive;
+        this._contentWarning = contentWarning;
         this._content = content !== null ? sanitizeHtml(content) : null;
         this._imageUrl = imageUrl;
         this._metadata = metadata;
@@ -238,6 +249,10 @@ export class Post extends BaseEntity {
 
     get sensitive(): boolean {
         return this._sensitive;
+    }
+
+    get contentWarning(): PostContentWarning | null {
+        return this._contentWarning;
     }
 
     get content(): string | null {
@@ -315,6 +330,7 @@ export class Post extends BaseEntity {
         this._excerpt = null;
         this._summary = null;
         this._sensitive = false;
+        this._contentWarning = null;
         this._imageUrl = null;
         self.attachments = [];
         this._metadata = null;
@@ -541,6 +557,9 @@ export class Post extends BaseEntity {
         const summary = data.summary
             ? ContentPreparer.regenerateExcerpt(data.summary)
             : null;
+        const contentWarning = data.contentWarning
+            ? ContentPreparer.regenerateContentWarning(data.contentWarning)
+            : null;
 
         const post = new Post(
             null,
@@ -567,6 +586,7 @@ export class Post extends BaseEntity {
             false,
             null,
             data.sensitive ?? false,
+            contentWarning,
         );
 
         for (const mention of data.mentions ?? []) {
