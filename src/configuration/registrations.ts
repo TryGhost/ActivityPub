@@ -88,8 +88,8 @@ import { NotificationEventService } from '@/notification/notification-event.serv
 import { KnexPostRepository } from '@/post/post.repository.knex';
 import { PostService } from '@/post/post.service';
 import { PostInteractionCountsService } from '@/post/post-interaction-counts.service';
-import { KnexPreferencesRepository } from '@/preferences/preferences.repository.knex';
-import { PreferencesService } from '@/preferences/preferences.service';
+import { KnexUserRepository } from '@/user/user.repository.knex';
+import { UserService } from '@/user/user.service';
 import { getFullTopic, initPubSubClient } from '@/pubsub';
 import { SiteService } from '@/site/site.service';
 import { GCPStorageAdapter } from '@/storage/adapters/gcp-storage-adapter';
@@ -320,15 +320,12 @@ export function registerDependencies(
         asClass(KnexPostRepository).singleton(),
     );
     container.register(
-        'preferencesRepository',
-        asClass(KnexPreferencesRepository).singleton(),
+        'userRepository',
+        asClass(KnexUserRepository).singleton(),
     );
     container.register('accountService', asClass(AccountService).singleton());
     container.register('postService', asClass(PostService).singleton());
-    container.register(
-        'preferencesService',
-        asClass(PreferencesService).singleton(),
-    );
+    container.register('userService', asClass(UserService).singleton());
     container.register(
         'ghostPostService',
         asClass(GhostPostService).singleton(),

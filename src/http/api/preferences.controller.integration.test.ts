@@ -4,9 +4,9 @@ import type { Knex } from 'knex';
 
 import type { AppContext } from '@/app';
 import { PreferencesController } from '@/http/api/preferences.controller';
-import { KnexPreferencesRepository } from '@/preferences/preferences.repository.knex';
-import { PreferencesService } from '@/preferences/preferences.service';
 import { createTestDb } from '@/test/db';
+import { KnexUserRepository } from '@/user/user.repository.knex';
+import { UserService } from '@/user/user.service';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
 
 describe('PreferencesController', () => {
@@ -22,23 +22,23 @@ describe('PreferencesController', () => {
     beforeEach(async () => {
         await fixtureManager.reset();
         preferencesController = new PreferencesController(
-            new PreferencesService(new KnexPreferencesRepository(db)),
+            new UserService(new KnexUserRepository(db)),
         );
     });
 
     function createContext({
-        site,
+        account,
         body,
         bodyError,
     }: {
-        site: { id: number };
+        account: { id: number };
         body?: unknown;
         bodyError?: Error;
     }) {
         return {
             get: (key: string) => {
-                if (key === 'site') {
-                    return site;
+                if (key === 'account') {
+                    return account;
                 }
             },
             req: {
@@ -54,10 +54,10 @@ describe('PreferencesController', () => {
     }
 
     it('returns showSensitiveMedia false by default', async () => {
-        const [, site] = await fixtureManager.createInternalAccount();
+        const [account] = await fixtureManager.createInternalAccount();
 
         const response = await preferencesController.handleGetPreferences(
-            createContext({ site }),
+            createContext({ account }),
         );
 
         expect(response.status).toBe(200);
@@ -66,20 +66,21 @@ describe('PreferencesController', () => {
         });
     });
 
-    it('returns 500 when preferences are requested for a site without a user', async () => {
+    it('returns 500 when preferences are requested for an account without a user', async () => {
         const response = await preferencesController.handleGetPreferences(
-            createContext({ site: { id: 999999 } }),
+            createContext({ account: { id: 999999 } }),
         );
 
         expect(response.status).toBe(500);
     });
 
     it('updates showSensitiveMedia to true', async () => {
-        const [, site, userId] = await fixtureManager.createInternalAccount();
+        const [account, , userId] =
+            await fixtureManager.createInternalAccount();
 
         const response = await preferencesController.handleUpdatePreferences(
             createContext({
-                site,
+                account,
                 body: { showSensitiveMedia: true },
             }),
         );
@@ -94,14 +95,15 @@ describe('PreferencesController', () => {
     });
 
     it('updates showSensitiveMedia back to false', async () => {
-        const [, site, userId] = await fixtureManager.createInternalAccount();
+        const [account, , userId] =
+            await fixtureManager.createInternalAccount();
         await db('users')
             .where({ id: userId })
             .update({ show_sensitive_media: true });
 
         const response = await preferencesController.handleUpdatePreferences(
             createContext({
-                site,
+                account,
                 body: { showSensitiveMedia: false },
             }),
         );
@@ -116,7 +118,8 @@ describe('PreferencesController', () => {
     });
 
     it('returns 200 when updating showSensitiveMedia to its current value', async () => {
-        const [, site, userId] = await fixtureManager.createInternalAccount();
+        const [account, , userId] =
+            await fixtureManager.createInternalAccount();
         await db('users')
             .where({ id: userId })
             .update({ show_sensitive_media: true });
@@ -124,7 +127,7 @@ describe('PreferencesController', () => {
         const firstResponse =
             await preferencesController.handleUpdatePreferences(
                 createContext({
-                    site,
+                    account,
                     body: { showSensitiveMedia: true },
                 }),
             );
@@ -137,7 +140,7 @@ describe('PreferencesController', () => {
         const secondResponse =
             await preferencesController.handleUpdatePreferences(
                 createContext({
-                    site,
+                    account,
                     body: { showSensitiveMedia: true },
                 }),
             );
@@ -148,10 +151,10 @@ describe('PreferencesController', () => {
         });
     });
 
-    it('returns 500 when updating preferences for a site without a user', async () => {
+    it('returns 500 when updating preferences for an account without a user', async () => {
         const response = await preferencesController.handleUpdatePreferences(
             createContext({
-                site: { id: 999999 },
+                account: { id: 999999 },
                 body: { showSensitiveMedia: true },
             }),
         );
@@ -160,11 +163,11 @@ describe('PreferencesController', () => {
     });
 
     it('rejects invalid payloads', async () => {
-        const [, site] = await fixtureManager.createInternalAccount();
+        const [account] = await fixtureManager.createInternalAccount();
 
         const response = await preferencesController.handleUpdatePreferences(
             createContext({
-                site,
+                account,
                 body: { showSensitiveMedia: 'true' },
             }),
         );
@@ -173,11 +176,11 @@ describe('PreferencesController', () => {
     });
 
     it('rejects payloads with extra fields', async () => {
-        const [, site] = await fixtureManager.createInternalAccount();
+        const [account] = await fixtureManager.createInternalAccount();
 
         const response = await preferencesController.handleUpdatePreferences(
             createContext({
-                site,
+                account,
                 body: {
                     showSensitiveMedia: true,
                     extra: true,
@@ -189,11 +192,11 @@ describe('PreferencesController', () => {
     });
 
     it('rejects malformed JSON payloads', async () => {
-        const [, site] = await fixtureManager.createInternalAccount();
+        const [account] = await fixtureManager.createInternalAccount();
 
         const response = await preferencesController.handleUpdatePreferences(
             createContext({
-                site,
+                account,
                 bodyError: new Error('Invalid JSON'),
             }),
         );
