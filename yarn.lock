@@ -1461,10 +1461,10 @@
   resolved "https://registry.yarnpkg.com/@logtape/file/-/file-2.2.1.tgz#7656f75734abe1e3891125c14e4cfe0f8d6a24da"
   integrity sha512-IhfmE05naMtsIyMW5ZB8zV4XfZVib+r4WRBR+0Kgwy92yAxPUSqHyGOWysDUkm7LQKC9+UcNO6PB+j4/J2wXjw==
 
-"@logtape/logtape@2.2.1", "@logtape/logtape@^2.2.0":
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-2.2.1.tgz#ca85abb6f2b769735213791d7b7851d7532b435d"
-  integrity sha512-SkRptJUEAbGuf+/blXDxDa8sSq8no+lxJlfwPTMzrHIULOMsNZRaqT2qF3H9tmGOsaLYc+uF3orRCQfoH0qKzA==
+"@logtape/logtape@2.2.3", "@logtape/logtape@^2.2.0":
+  version "2.2.3"
+  resolved "https://registry.yarnpkg.com/@logtape/logtape/-/logtape-2.2.3.tgz#24c4bd86d0e9793aae7ab354b125d321728a9cfa"
+  integrity sha512-NIPzXBJneBv7Ar6sFBbEo5L8zZr2lopQnlVeT881y68qGNcJBy/Y8s8uAwUaVhobB8GIiMluOY7j3bOsaaIhQQ==
 
 "@logtape/logtape@^1.0.4":
   version "1.3.11"
