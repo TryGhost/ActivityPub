@@ -15,7 +15,7 @@ publishing to the open social web
 
 - [Node.js](https://nodejs.org) - Runtime
 - [TypeScript](https://www.typescriptlang.org) - Programming language
-- [Yarn](https://yarnpkg.com) - Node package management
+- [pnpm](https://pnpm.io) - Node package management
 - [Biome](https://biomejs.dev) - Linter & code formatter
 - [esbuild](https://esbuild.github.io/) - Bundler
 - [Hono](https://hono.dev) - Web Server
@@ -54,13 +54,13 @@ publishing to the open social web
 To run the linter:
 
 ```bash
-yarn lint
+pnpm lint
 ```
 
 To run the formatter:
 
 ```bash
-yarn fmt
+pnpm fmt
 ```
 
 ### Type checking
@@ -68,7 +68,7 @@ yarn fmt
 To run type checking:
 
 ```bash
-yarn test:types
+pnpm test:types
 ```
 
 ### Testing
@@ -76,31 +76,31 @@ yarn test:types
 To run all tests (slow):
 
 ```bash
-yarn test
+pnpm test
 ```
 
 To run unit tests only (fast):
 
 ```bash
-yarn test:unit
+pnpm test:unit
 ```
 
 To run integration tests only (slow):
 
 ```bash
-yarn test:integration
+pnpm test:integration
 ```
 
 To run e2e tests only (slow):
 
 ```bash
-yarn test:cucumber
+pnpm test:cucumber
 ```
 
 To run a single unit / integration test (fast):
 
 ```bash
-yarn test:single 'path/to/test'
+pnpm test:single 'path/to/test'
 ```
 
 To run a single e2e test (slow):
@@ -120,7 +120,7 @@ Feature: Hello world
 2. Run the test:
 
 ```bash
-yarn test:cucumber @only
+pnpm test:cucumber @only
 ```
 
 #### Testing Guidelines:
@@ -144,8 +144,8 @@ yarn test:cucumber @only
 
 #### Testing Notes:
 
-- Tests are executed within a Docker container when executed via `yarn`. This
-  means extra flags passed to `yarn` will not be passed to the test runner
+- Tests are executed within a Docker container when executed via `pnpm`. This
+  means extra flags passed to `pnpm` will not be passed to the test runner
 
 ---
 
@@ -179,19 +179,19 @@ tailscale funnel 80
 ### Run the application
 
 ```bash
-yarn dev
+pnpm dev
 ```
 
 ### Run the application with logging to the console
 
 ```bash
-yarn dev && yarn logs
+pnpm dev && pnpm logs
 ```
 
 ### Stop the application
 
 ```bash
-yarn stop
+pnpm stop
 ```
 
 This will also stop any service dependencies
@@ -199,7 +199,7 @@ This will also stop any service dependencies
 ### Wipe the database
 
 ```bash
-yarn wipe-db
+pnpm wipe-db
 ```
 
 ### Fix the environment
@@ -207,7 +207,7 @@ yarn wipe-db
 When there are issues with the environment, this command will attempt to resolve them:
 
 ```bash
-yarn fix
+pnpm fix
 ```
 
 ---
@@ -217,7 +217,7 @@ yarn fix
 ### Creating a new migration
 
 ```bash
-yarn migration 'name-of-migration'
+pnpm migration 'name-of-migration'
 ```
 
 Do not use spaces in the name of the migration
@@ -225,7 +225,7 @@ Do not use spaces in the name of the migration
 ### Running migrations
 
 ```bash
-yarn migrate
+pnpm migrate
 ```
 
 This will run any migrations that have not yet been applied
@@ -236,7 +236,7 @@ Currently unsupported
 
 ### Notes
 
-- Migrations are run automatically when the application is started via: `yarn dev`
+- Migrations are run automatically when the application is started via: `pnpm dev`
 
 ---
 

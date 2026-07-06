@@ -5,11 +5,12 @@ RUN apk add --no-cache ca-certificates
 
 WORKDIR /opt/activitypub
 
-COPY package.json .
-COPY yarn.lock .
+RUN corepack enable
 
-RUN yarn --ignore-scripts && \
-    yarn cache clean
+COPY package.json .
+COPY pnpm-lock.yaml .
+
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json .
 
@@ -17,7 +18,7 @@ COPY src ./src
 COPY vitest.config.ts vitest.config.ts
 
 ENV NODE_ENV=production
-RUN yarn build
+RUN pnpm build
 
 RUN apk del python3 g++ make
 

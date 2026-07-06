@@ -30,7 +30,7 @@ All requests to `/.ghost/activitypub/*`, `/.well-known/webfinger` and `/.well-kn
     }
     ```
 4. **Start the ActivityPub Service**
-    - Run `yarn dev && yarn logs` in the root directory of this project
+    - Run `pnpm dev && pnpm logs` in the root directory of this project
 5. **Start Ghost**
     - Run `yarn dev` in the Ghost monorepo
     - If you were already running Ghost locally, make sure to restart it!
@@ -101,7 +101,7 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 ## Running Tests
 
-- Run `yarn test` to execute tests within a Docker Compose stack.
+- Run `pnpm test` to execute tests within a Docker Compose stack.
 
 ## Migrations
 
