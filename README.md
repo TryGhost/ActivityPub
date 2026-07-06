@@ -105,9 +105,9 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 ## Migrations
 
-`docker compose run migrate` or `docker compose run migrate-testing` will run the `up` migrations against your dev or testing db respectively.
+Run `yarn migrate` to apply pending `up` migrations against your dev db (this also happens automatically on `yarn dev`). For the testing db, use `docker compose run migrate-testing up`.
 
-If you would like to run other commands you can run `docker compose exec -it migrate /bin/bash` or `docker compose exec -it migrate-testing /bin/bash` - This will drop you into a shell with the `migrate` binary available as well as a `MYSQL_DB` environment variable that is correctly formated for use as the `-database` argument to the `migrate` binary
+To run other `migrate` commands, drop into a shell with `docker compose exec -it migrate /bin/bash` (or `migrate-testing`). The `migrate` binary is available there, along with a `MYSQL_DB` environment variable correctly formatted for the `-database` argument.
 
 &nbsp;
 
