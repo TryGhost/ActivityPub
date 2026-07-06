@@ -1,595 +1,158 @@
-# ActivityPub AI Assistant Guide
-
-This file provides comprehensive guidance for AI agents contributing to this repository.
-
-> **Note:** This document contains detailed code examples and implementation patterns. For a concise human-readable overview, see [README.md](README.md).
-
-## Project Overview
+# ActivityPub — agent guide
 
 A multitenant ActivityPub server for [Ghost](https://ghost.org/), built with
-[Fedify](https://fedify.dev/). This service makes it possible for independent
-websites to publish their content directly to the Fediverse, enabling networked
-publishing to the open social web
+[Fedify](https://fedify.dev/), that publishes independent websites to the
+Fediverse. See [README.md](README.md) for the human overview and `/adr` for the
+Architecture Decision Records that own the rationale behind the patterns below.
 
-## Tools & Technologies Used
+Stack (versions in `package.json` / `docker-compose.yml`): Node + TypeScript,
+Hono, Fedify, Awilix (DI), Zod, Knex + MySQL, Vitest (unit/integration),
+Cucumber + Wiremock (e2e), Biome (lint/format), esbuild. Runs in Docker Compose
+locally; Google Cloud Run in production.
 
-- [Node.js](https://nodejs.org) - Runtime
-- [TypeScript](https://www.typescriptlang.org) - Programming language
-- [pnpm](https://pnpm.io) - Node package management
-- [Biome](https://biomejs.dev) - Linter & code formatter
-- [esbuild](https://esbuild.github.io/) - Bundler
-- [Hono](https://hono.dev) - Web Server
-- [Fedify](https://fedify.dev) - Federation
-- [Awilix](https://github.com/jeffijoe/awilix) - Dependency injection
-- [Zod](https://zod.dev) - Schema validation
-- [Knex](https://knexjs.org/) - SQL query builder
-- [Vitest](https://vitest.dev) - Testing (unit / integration)
-- [Cucumber](https://cucumber.io) - Testing (e2e)
-- [Wiremock](https://wiremock.org) - API mocking (for e2e tests)
-- [migrate](https://github.com/golang-migrate/migrate) - Database migrations
-- [Docker](https://www.docker.com) - Containerisation
-- [Docker Compose](https://docs.docker.com/compose) - Container orchestration
-- [MySQL](https://www.mysql.com) - Database
-- [Google Cloud Cloud Run](https://cloud.google.com/run) - Production deployment
-- [Google Cloud Cloud SQL](https://cloud.google.com/sql) - Production database deployment
-- [Google Cloud Pub/Sub](https://cloud.google.com/pubsub) - Production messaging
-- [Google Cloud Cloud Storage](https://cloud.google.com/storage) - Production file storage
+## Commands
 
----
-
-## Repository Structure
-
-- `/dev` - Development related tools, configurations, and utilities
-- `/features` - Cucumber feature files for e2e testing
-- `/jobs` - One-off jobs to be executed in a production environment (Google Cloud)
-- `/migrate` - Database migrations
-- `/src` - Source code for the application
-
----
-
-## Code Quality
-
-### Linting & formatting
-
-To run the linter:
+Tests run inside a Docker container via `pnpm`, so **extra flags passed to
+`pnpm` do not reach the test runner** — use the dedicated scripts below.
 
 ```bash
-pnpm lint
+pnpm lint                       # Biome lint
+pnpm fmt                        # Biome format
+pnpm test:types                 # type check
+pnpm test                       # everything (slow)
+pnpm test:unit                  # unit only (fast)
+pnpm test:integration           # integration only (slow)
+pnpm test:cucumber              # e2e only (slow)
+pnpm test:single 'path/to/test' # single unit/integration test (fast)
 ```
 
-To run the formatter:
+Run a single e2e test by tagging a `Feature` or `Scenario` with `@only`, then
+`pnpm test:cucumber @only`.
 
 ```bash
-pnpm fmt
+pnpm dev            # start app (also runs pending migrations)
+pnpm logs           # tail app logs  (pnpm dev && pnpm logs to do both)
+pnpm stop           # stop app + service deps
+pnpm wipe-db        # wipe the database
+pnpm fix            # attempt to repair a broken local environment
 ```
 
-### Type checking
+Local services: nginx `:80`→`:8080`, MySQL `:3307` (user `ghost` / pass
+`password` / db `activitypub`), Pub/Sub emulator `:8085`, GCS emulator `:4443`.
+Expose port 80 to the internet with `tailscale funnel 80`.
 
-To run type checking:
+## Migrations
 
 ```bash
-pnpm test:types
+pnpm migration 'name-of-migration'   # create (no spaces in the name)
+pnpm migrate                         # apply pending migrations
 ```
 
-### Testing
+Migrations also run automatically on `pnpm dev`. **Rollback is unsupported** —
+migrations are forward-only, so treat applied migrations as immutable.
 
-To run all tests (slow):
+## Boundaries — what not to touch
 
-```bash
-pnpm test
-```
+- **Never commit secrets.** Local dev credentials above are throwaway; nothing
+  else belongs in the repo.
+- **Don't add to `dispatchers.ts`** — 1100+ lines of legacy factory functions.
+  New handlers go in `/activity-handlers/` as classes ([ADR-0006](adr/0006-class-based-architecture.md)).
+- **Don't use `AccountType`** — use the `Account` entity.
+- **Don't query the DB directly from services** — go through repositories.
+- **Don't string-compare ActivityPub IDs** — use hash lookups (see below).
 
-To run unit tests only (fast):
+## Critical gotchas
 
-```bash
-pnpm test:unit
-```
+An agent will get these wrong without being told:
 
-To run integration tests only (slow):
-
-```bash
-pnpm test:integration
-```
-
-To run e2e tests only (slow):
-
-```bash
-pnpm test:cucumber
-```
-
-To run a single unit / integration test (fast):
-
-```bash
-pnpm test:single 'path/to/test'
-```
-
-To run a single e2e test (slow):
-
-1. Add a `@only` tag either above a feature file OR a scenario in a feature file:
-
-```cucumber
-# hello-world.feature
-
-@only
-Feature: Hello world
-
-    Scenario: It prints "Hello, world!"
-        ...
-```
-
-2. Run the test:
-
-```bash
-pnpm test:cucumber @only
-```
-
-#### Testing Guidelines:
-
-- Cover as much as possible with unit tests
-- Use integration tests for anything that cannot be reasonably unit tested
-- Use e2e tests to cover features at a high level
-- All unit & integration test files should have the prefix `.test.ts`
-- The type of test should be indicated by the file extension:
-  - `.unit.test.ts` for unit tests
-  - `.integration.test.ts` for integration tests
-- Tests should be co-located with the code they test
-- e2e tests should reside in the `features` directory
-- Tests should execute quickly, there is an upper limit of 10 seconds
-- Assertions should target the specific field being tested, not stringify
-  the whole object. Prefer `expect(result.field).toEqual(...)` over
-  `expect(JSON.stringify(result)).toContain(...)` — the latter passes when
-  the value appears in any field, hiding bugs
-- When adding a new table, also add it to `FixtureManager.reset()` so
-  integration tests stay isolated between runs
-
-#### Testing Notes:
-
-- Tests are executed within a Docker container when executed via `pnpm`. This
-  means extra flags passed to `pnpm` will not be passed to the test runner
-
----
-
-## Development Environment
-
-### Setup
-
-#### Using Tailscale
-
-Use [Tailscale](https://tailscale.com) to expose the local machine to the internet:
-
-```bash
-tailscale funnel 80
-```
-
-### Services
-
-- [Nginx](https://nginx.org) - Reverse proxy used to proxy traffic from port
-  `80` to port `8080` if traffic is meant for activitypub, or forward on to the
-  docker host (`host.docker.internal`) for any other traffic (i.e Ghost)
-- [MySQL](https://www.mysql.com) - Database
-  - Port: `3307`
-  - User: `ghost`
-  - Password: `password`
-  - Database: `activitypub`
-- [Google Cloud Pub/Sub emulator](https://cloud.google.com/pubsub/docs/emulator) - Pub/Sub emulator
-  - Port: `8085`
-- [Google Cloud Storage emulator](https://github.com/fsouza/fake-gcs-server) - Storage emulator
-  - Port: `4443`
-
-### Run the application
-
-```bash
-pnpm dev
-```
-
-### Run the application with logging to the console
-
-```bash
-pnpm dev && pnpm logs
-```
-
-### Stop the application
-
-```bash
-pnpm stop
-```
-
-This will also stop any service dependencies
-
-### Wipe the database
-
-```bash
-pnpm wipe-db
-```
-
-### Fix the environment
-
-When there are issues with the environment, this command will attempt to resolve them:
-
-```bash
-pnpm fix
-```
-
----
-
-## Database Migrations
-
-### Creating a new migration
-
-```bash
-pnpm migration 'name-of-migration'
-```
-
-Do not use spaces in the name of the migration
-
-### Running migrations
-
-```bash
-pnpm migrate
-```
-
-This will run any migrations that have not yet been applied
-
-### Rolling back migration
-
-Currently unsupported
-
-### Notes
-
-- Migrations are run automatically when the application is started via: `pnpm dev`
-
----
-
-## Architecture Patterns
-
-**📚 See `/adr` directory for Architecture Decision Records**
-
-- Dependency injection is heavily used to manage dependencies and facilitate
-  testing
-- The `Result` pattern is preferred over throwing errors, with an exhaustive
-  check on the result to ensure that all possible errors are handled
-- Business logic is modelled in the entities
-- Entities are write-side only for relational data. Collections that map to
-  a separate table (blocks, follows, aliases) are not stored as fields on
-  the entity; `addX` / `removeX` methods emit events and the repository
-  handles persistence in `save()`. Reads of those collections go through
-  the repository or a view (e.g. `accountRepository.getAliases(accountId)`)
-- Many-to-many and one-to-many relations get their own table, not a JSON
-  column on the parent. Follow the `blocks` shape: surrogate `id`,
-  `created_at`, hash-indexed `(parent_id, target_hash)` unique constraint,
-  FK cascade. JSON columns are for fixed-shape display data
-  (e.g. `accounts.custom_fields`)
-- Hash columns are stored generated columns, not application-computed.
-  Define them as `BINARY(32) GENERATED ALWAYS AS (UNHEX(SHA2(col, 256))) STORED`
-  and let MySQL maintain them on insert/update. Application code only does
-  hash lookups: `whereRaw('col_hash = UNHEX(SHA2(?, 256))', [value])`
-- Repositories are used to abstract away the database operations
-  - Repositories should not be used directly, they should be used through the
-    services
-- Services are used to orchestrate business logic
-  - Services can depend on other services
-- Controllers should only be lean and delegate to services where appropriate
-- Views are used at the HTTP layer to present data to the client in a fast and
-  efficient way
-  - Views can talk directly to the database if necessary
-  - Views should not be responsible for any business logic
-
-### Read/Write Separation
-
-The codebase follows a CQRS-inspired pattern:
-
-**Write Path (Commands):**
-- Controller → Service → Repository → Entity
-- Follows strict layering and repository pattern
-- Handles business logic, validations, and domain events
-
-**Read Path (Queries):**
-- Controller → View → Database
-- Views make optimized queries directly to the database
-- Returns DTOs with presentation-ready data
-- Includes user-specific context (e.g., followedByMe, blockedByMe)
-
----
-
-## Critical Patterns & Gotchas
-
-### Database Lookups Use SHA256 Hashes
-
-⚠️ **Never use direct string comparisons for ActivityPub IDs** - see [ADR-0009](adr/0009-hash-based-database-lookups.md)
+**Database lookups use SHA256 hashes** ([ADR-0009](adr/0009-hash-based-database-lookups.md)).
+Direct string comparison silently returns no rows. Applies to `ap_id`, `domain`
+(with `LOWER`), `ap_inbox_url` (with `LOWER`).
 
 ```typescript
-// ❌ WRONG - Returns no results!
+// ❌ WRONG — returns no results, no error
 await db('accounts').where('ap_id', apId)
-
-// ✅ CORRECT - Use hash lookup
+// ✅ CORRECT
 await db('accounts').whereRaw('ap_id_hash = UNHEX(SHA2(?, 256))', [apId])
 ```
 
-### Result Type Usage
+Hash columns are **stored generated columns**, not application-computed:
+`BINARY(32) GENERATED ALWAYS AS (UNHEX(SHA2(col, 256))) STORED`. App code only
+does the lookup above.
 
-Always use the helper functions with Result types:
+**Result types** — always use the helpers, never destructure:
 
 ```typescript
-// ✅ CORRECT - Use helpers
-const result = await someFunction();
-if (isError(result)) {
-  const error = getError(result);
-  // handle error
-} else {
-  const value = getValue(result);
-  // use value
-}
-
-// ❌ WRONG - Don't destructure directly
-const [error, value] = someResult;  // Implementation detail - don't do this!
+if (isError(result)) { const err = getError(result); /* ... */ }
+else { const value = getValue(result); /* ... */ }
+// ❌ const [error, value] = result   // implementation detail
 ```
 
-### Dependency Injection Names Must Match
+Prefer error *objects* with context (`{ type: 'not-found'; accountId }`) over
+string literals, and exhaustively switch on `err.type` with an `exhaustiveCheck`
+default ([ADR-0004](adr/0004-result-type-pattern.md), [ADR-0005](adr/0005-result-type-error-objects.md)).
 
-Awilix uses CLASSIC injection mode - parameter names must match registration names:
+**Awilix uses CLASSIC injection** — constructor parameter names must match the
+registration name exactly (`accountService` ↔ `'accountService'`, `db` ↔ `'db'`).
 
-```typescript
-constructor(
-  private readonly accountService: AccountService,  // Must be registered as 'accountService'
-  private readonly db: Knex,                       // Must be registered as 'db'
-)
-```
-
-### Routes Use Decorators
-
-Routes are defined using decorators, not direct registration - see [ADR-0010](adr/0010-decorator-based-routing.md)
+**Routes use decorators** ([ADR-0010](adr/0010-decorator-based-routing.md)), not
+direct registration:
 
 ```typescript
-@APIRoute('GET', 'account/:handle')  // Defines route
-@RequireRoles(GhostRole.Owner)       // Adds role check
+@APIRoute('GET', 'account/:handle')
+@RequireRoles(GhostRole.Owner)
 async handleGetAccount() { }
 ```
 
-### Don't Leak Wire-Format Names Into Internal Code
+**Don't leak wire-format names into internal code.** Use codebase-natural names
+internally and translate only at the serialization boundary; Fedify is the
+reference for the internal name. E.g. the field is `aliases` internally
+(`account_aliases.ap_id` column) and Fedify emits `alsoKnownAs` in JSON-LD via
+the `aliases:` constructor key — not `alsoKnownAs` everywhere.
 
-When a protocol field has a name dictated by an external spec, use a
-codebase-natural name internally and only translate at the serialization
-boundary. For ActivityPub, Fedify is a useful reference — check what name
-it uses in its constructors and getters vs. what it emits in JSON-LD,
-and prefer Fedify's internal name in our own code.
+## Architecture
 
-```typescript
-// ❌ WRONG - wire format leaked everywhere
-class Account {
-  readonly alsoKnownAs: URL[];
-}
-// also_known_as column on the DB
+Domain-Driven, CQRS-inspired. Full rationale in `/adr`; the non-obvious rules:
 
-// ✅ CORRECT - natural names internally
-class Account {
-  readonly aliases: URL[];  // or queried via accountRepository.getAliases()
-}
-// account_aliases.ap_id column
-// Fedify emits "alsoKnownAs" in JSON-LD via the aliases: constructor key
-```
+- **Write path:** Controller → Service → Repository → Entity. Repositories are
+  reached only through services; controllers stay lean.
+- **Read path:** Controller → View → Database. Views may query the DB directly
+  and return presentation-ready DTOs (incl. per-user context like
+  `followedByMe`), but hold no business logic ([ADR-0008](adr/0008-view-pattern-for-reads.md)).
+- **Immutable entities** return new instances and emit domain events; no dirty
+  flags ([ADR-0003](adr/0003-immutable-entities-with-events.md)).
+- **Entities are write-side only for relational data.** Collections backed by a
+  separate table (blocks, follows, aliases) are not entity fields — `addX`/
+  `removeX` emit events and the repository persists them in `save()`; reads go
+  through the repository or a view (e.g. `accountRepository.getAliases(id)`).
+- **Many-to-many / one-to-many relations get their own table**, shaped like
+  `blocks`: surrogate `id`, `created_at`, hash-indexed `(parent_id, target_hash)`
+  unique constraint, FK cascade. JSON columns are only for fixed-shape display
+  data (e.g. `accounts.custom_fields`).
 
-### Legacy Code Warning
+## Conventions
 
-`dispatchers.ts` contains 1100+ lines of legacy factory functions. New handlers should follow the class-based pattern in `/activity-handlers/` - see [ADR-0006](adr/0006-class-based-architecture.md)
+- **HTTP route paths:** current-user resources live at top level (`aliases`,
+  `blocks/accounts`, `notifications`, `feed/*`). The `account/:handle` namespace
+  is reserved for routes targeting a specific account — don't nest current-user
+  resources under it (conflicts with the `:handle` segment).
+- **Tests** are co-located with the code, named `*.unit.test.ts` /
+  `*.integration.test.ts`, and must run in under 10 seconds. Prefer unit tests;
+  use integration only for what can't be unit tested; use e2e for high-level
+  feature coverage.
+- Assert on the specific field (`expect(result.field).toEqual(...)`), never
+  `expect(JSON.stringify(result)).toContain(...)` — the latter passes on a match
+  in any field and hides bugs.
+- When adding a table, also add it to `FixtureManager.reset()` so integration
+  tests stay isolated.
+- **e2e step definitions** are grouped by feature (e.g. all reposting steps in
+  `features/step_definitions/repost_steps.js`), not 1:1 with feature files.
 
----
+## Before you commit
 
-## Code Conventions
+Code must pass `pnpm lint`, `pnpm test:types`, and the relevant tests, follow
+the patterns above, and carry tests at the appropriate level (not everything
+needs an e2e test).
 
-### HTTP route paths
-
-- Routes that operate on the current user live at top-level paths
-  (e.g. `aliases`, `blocks/accounts`, `blocks/domains`, `notifications`,
-  `feed/*`)
-- The `account/:handle` namespace is reserved for routes that operate on a
-  specific account identified by a handle
-- Don't nest current-user resources under `account/...` — it forces awkward
-  disambiguation and conflicts with the `:handle` dynamic segment
-
-### e2e testing
-
-- Step definitions should be grouped together by the high level feature they are
-  testing, i.e: Step definitions related to "reposting" should be grouped together
-  in `features/step_definitions/repost_steps.js`
-  - This is not necessarily a 1-to-1 mapping between feature files and step
-    definition files
-
----
-
-## Code Patterns
-
-These patterns are based on our architecture decisions (see `/adr` directory):
-
-### Immutable Entities with Domain Events
-
-```typescript
-// ❌ Avoid: Mutable entities with dirty flags
-class Post {
-  private _likeCount: number;
-  private _likeCountDirty: boolean;
-
-  like() {
-    this._likeCount++;
-    this._likeCountDirty = true;
-  }
-}
-
-// ✅ Prefer: Immutable entities that generate events
-class Post {
-  constructor(
-    readonly id: string,
-    readonly likeCount: number,
-    private events: DomainEvent[] = []
-  ) {}
-
-  like(): Post {
-    const newPost = new Post(this.id, this.likeCount + 1);
-    newPost.events.push(new PostLikedEvent(this.id));
-    return newPost;
-  }
-
-  pullEvents(): DomainEvent[] {
-    return [...this.events];
-  }
-}
-```
-
-### Error Objects in Result Types
-
-```typescript
-// ❌ Avoid: String literal errors without context
-Result<Account, 'not-found' | 'network-error'>
-
-// ✅ Prefer: Error objects with context
-type AccountError =
-  | { type: 'not-found'; accountId: string }
-  | { type: 'network-error'; retryable: boolean }
-
-async function getAccount(id: string): Promise<Result<Account, AccountError>> {
-  const account = await repository.findById(id);
-  if (!account) {
-    return error({ type: 'not-found', accountId: id });
-  }
-  return ok(account);
-}
-
-// Usage with exhaustive handling
-const result = await getAccount('123');
-if (isError(result)) {
-  const err = getError(result);
-  switch (err.type) {
-    case 'not-found':
-      log(`Account ${err.accountId} not found`);
-      break;
-    case 'network-error':
-      if (err.retryable) retry();
-      break;
-    default:
-      exhaustiveCheck(err);
-  }
-}
-```
-
-### Class-Based Architecture
-
-```typescript
-// ❌ Avoid: Function factories
-export function createFollowHandler(accountService: AccountService) {
-  return async function handleFollow(ctx: Context, follow: Follow) {
-    // implementation
-  }
-}
-
-// ✅ Prefer: Classes with dependency injection
-export class FollowHandler {
-  constructor(
-    private readonly accountService: AccountService,
-    private readonly notificationService: NotificationService
-  ) {}
-
-  async handle(ctx: Context, follow: Follow) {
-    // implementation
-  }
-}
-
-// Registration with Awilix
-container.register('followHandler', asClass(FollowHandler).singleton())
-```
-
-### Repository Pattern
-
-```typescript
-// ❌ Avoid: Direct database queries in services
-class AccountService {
-  async getFollowers(accountId: number) {
-    return await this.db('follows')
-      .join('accounts', 'accounts.id', 'follows.follower_id')
-      .where('follows.following_id', accountId);
-  }
-}
-
-// ✅ Prefer: Repository handles all data access
-class AccountRepository {
-  async getFollowers(accountId: number) {
-    return await this.db('follows')
-      .join('accounts', 'accounts.id', 'follows.follower_id')
-      .where('follows.following_id', accountId);
-  }
-}
-
-class AccountService {
-  constructor(private readonly accountRepository: AccountRepository) {}
-
-  async getFollowers(accountId: number) {
-    return await this.accountRepository.getFollowers(accountId);
-  }
-}
-```
-
-### View Pattern for Reads
-
-```typescript
-// Views are used for complex read operations that need optimization
-export class AccountView {
-  constructor(private readonly db: Knex) {}
-
-  async viewById(id: number, context: ViewContext): Promise<AccountDTO> {
-    // Direct database query with complex joins and aggregations
-    const accountData = await this.db('accounts')
-      .innerJoin('users', 'users.account_id', 'accounts.id')
-      .select(
-        'accounts.*',
-        this.db.raw('(select count(*) from posts where posts.author_id = accounts.id) as post_count'),
-        this.db.raw('(select count(*) from follows where follows.follower_id = accounts.id) as following_count')
-      )
-      .where('accounts.id', id)
-      .first();
-
-    // Add user-specific context
-    const followedByMe = context.requestUserAccount
-      ? await this.db('follows')
-          .where('follower_id', context.requestUserAccount.id)
-          .where('following_id', id)
-          .first() !== undefined
-      : false;
-
-    // Return presentation-ready DTO
-    return {
-      id: accountData.id,
-      handle: accountData.handle,
-      postCount: accountData.post_count,
-      followingCount: accountData.following_count,
-      followedByMe
-    };
-  }
-}
-```
-
----
-
-## Common Workflows
-
-### Adding / changing functionality
-
-- When adding / changing functionality, you should ensure that the code is:
-  - Covered by tests at the appropriate level (i.e not every test requires an e2e test)
-  - Free of linting errors
-  - Free of type errors
-  - Following existing code conventions (explicitly and implicitly)
-  - Following the architecture patterns outlined in the architecture patterns section
-  - Improving the overall quality of the codebase
-
----
-
-## Performance
-
-- It is important that the application has a quick boot time, especially when
-  running in a cloud environment like Google Cloud Run. Synchronous operations
-  should be avoided during boot (where possible) and any operation that cannot
-  be asynchronous should be reviewed for the impact it has on the boot time
-
----
-
-## Quirks
-
-Known things that are a little weird or not ideal:
+**Boot time matters** — the app runs on Cloud Run, so avoid synchronous work
+during boot; review anything that can't be async for its startup cost.
