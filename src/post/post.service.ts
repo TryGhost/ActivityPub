@@ -543,8 +543,6 @@ export class PostService {
             post.content !== params.content ||
             post.excerpt !== params.excerpt ||
             post.summary !== params.summary ||
-            (params.sensitive !== undefined &&
-                post.sensitive !== params.sensitive) ||
             post.imageUrl?.href !== params.imageUrl?.href ||
             post.url.href !== params.url.href ||
             JSON.stringify(post.metadata) !== JSON.stringify(params.metadata)

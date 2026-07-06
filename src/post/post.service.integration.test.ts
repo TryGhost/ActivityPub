@@ -1212,7 +1212,6 @@ describe('PostService', () => {
                 content: '<p>Updated content</p>',
                 excerpt: PostSummary.parse('Updated excerpt'),
                 summary: PostSummary.parse('Updated summary'),
-                sensitive: true,
                 imageUrl: new URL('https://example.com/updated-image.jpg'),
                 url: new URL('https://example.com/updated-url'),
                 metadata: {
@@ -1237,41 +1236,9 @@ describe('PostService', () => {
             expect(updatedPost.content).toBe(updateParams.content);
             expect(updatedPost.excerpt).toBe(updateParams.excerpt);
             expect(updatedPost.summary).toBe(updateParams.summary);
-            expect(updatedPost.sensitive).toBe(true);
             expect(updatedPost.imageUrl?.href).toBe(updateParams.imageUrl.href);
             expect(updatedPost.url.href).toBe(updateParams.url.href);
             expect(updatedPost.metadata).toEqual(updateParams.metadata);
-        });
-
-        it('should update a post when only sensitive changes', async () => {
-            const post = await fixtureManager.createPost(account);
-
-            const updateParams = {
-                title: post.title,
-                content: post.content,
-                excerpt: post.excerpt,
-                summary: post.summary,
-                sensitive: true,
-                imageUrl: post.imageUrl,
-                url: post.url,
-                metadata: post.metadata,
-            };
-
-            const result = await postService.updateByApId(
-                post.apId,
-                account,
-                updateParams,
-            );
-
-            if (isError(result)) {
-                throw new Error('Result should not be an error');
-            }
-
-            const updatedPost = getValue(result);
-            expect(updatedPost.sensitive).toBe(true);
-
-            const savedPost = await postRepository.getByApId(post.apId);
-            expect(savedPost?.sensitive).toBe(true);
         });
 
         it('should return post without updating when no changes are made', async () => {

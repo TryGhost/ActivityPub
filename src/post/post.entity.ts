@@ -72,7 +72,6 @@ export interface PostUpdateParams {
     content: string | null;
     excerpt: PostSummary | null;
     summary: PostSummary | null;
-    sensitive?: boolean;
     imageUrl: URL | null;
     url: URL;
     metadata: Metadata | null;
@@ -284,9 +283,6 @@ export class Post extends BaseEntity {
         this._content = params.content ? sanitizeHtml(params.content) : null;
         this._excerpt = params.excerpt;
         this._summary = params.summary;
-        if (params.sensitive !== undefined) {
-            this._sensitive = params.sensitive;
-        }
         this._imageUrl = params.imageUrl;
         this._url = params.url;
         this._metadata = params.metadata;
