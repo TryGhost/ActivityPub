@@ -2137,7 +2137,6 @@ describe('KnexPostRepository', () => {
                 content: '<p>Updated content</p>',
                 excerpt: PostSummary.parse('Updated excerpt'),
                 summary: PostSummary.parse('Updated summary'),
-                sensitive: true,
                 imageUrl: new URL('https://example.com/updated-image.jpg'),
                 url: new URL('https://testing-update.com/updated-post'),
                 metadata: {
@@ -2179,7 +2178,6 @@ describe('KnexPostRepository', () => {
             expect(updatedRowInDb.content).toBe('<p>Updated content</p>');
             expect(updatedRowInDb.excerpt).toBe('Updated excerpt');
             expect(updatedRowInDb.summary).toBe('Updated summary');
-            expect(updatedRowInDb.sensitive).toBe(1);
             expect(updatedRowInDb.image_url).toBe(
                 'https://example.com/updated-image.jpg',
             );

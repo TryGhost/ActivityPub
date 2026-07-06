@@ -28,6 +28,7 @@ import {
 import type { ModerationService } from '@/moderation/moderation.service';
 import { ContentPreparer } from '@/post/content';
 import {
+    classifySummary,
     type ImageAttachment,
     type Mention,
     Post,
@@ -239,11 +240,18 @@ export class PostService {
 
         const mentions = await this.getMentionedAccounts(foundObject);
 
+        const sensitive = foundObject.sensitive === true;
+        const { summary, contentWarning } = classifySummary(
+            sensitive,
+            foundObject.summary?.toString() ?? null,
+        );
+
         const newlyCreatedPost = Post.createFromData(author, {
             type,
             title: foundObject.name?.toString(),
-            summary: foundObject.summary?.toString() ?? null,
-            sensitive: foundObject.sensitive === true,
+            summary,
+            sensitive,
+            contentWarning,
             content: foundObject.content?.toString(),
             imageUrl: foundObject.imageId,
             publishedAt: new Date(foundObject.published?.toString() || ''),

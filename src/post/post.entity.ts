@@ -31,6 +31,25 @@ export const PostContentWarning = z
     .max(500)
     .transform((val) => val as PostContentWarning);
 
+/**
+ * Classify an incoming ActivityPub `summary` as either a post summary or a
+ * content warning.
+ *
+ * Platforms such as Mastodon overload the `summary` field to carry a content
+ * warning for sensitive posts. When a post is marked sensitive, its summary is
+ * treated as a content warning rather than a post excerpt.
+ */
+export function classifySummary(
+    sensitive: boolean,
+    summary: string | null,
+): { summary: string | null; contentWarning: string | null } {
+    if (sensitive) {
+        return { summary: null, contentWarning: summary };
+    }
+
+    return { summary, contentWarning: null };
+}
+
 export enum PostType {
     Note = 0,
     Article = 1,

@@ -776,6 +776,36 @@ describe('PostService', () => {
             expect(savedPost?.sensitive).toBe(true);
         });
 
+        it('treats the summary as a content warning for sensitive posts', async () => {
+            const author = await fixtureManager.createExternalAccount();
+            const apId = new URL('https://example.com/post/sensitive-cw');
+
+            vi.mocked(lookupObject).mockResolvedValue(
+                new Note({
+                    id: apId,
+                    content: 'Test sensitive post',
+                    sensitive: true,
+                    summary: 'Eye contact',
+                    attribution: author.apId,
+                    published: Temporal.Now.instant(),
+                }),
+            );
+
+            const result = await postService.getByApId(apId);
+
+            if (isError(result)) {
+                throw new Error('Result should not be an error');
+            }
+
+            const post = getValue(result);
+            expect(post.contentWarning).toBe('Eye contact');
+            expect(post.summary).toBeNull();
+
+            const savedPost = await postRepository.getByApId(apId);
+            expect(savedPost?.contentWarning).toBe('Eye contact');
+            expect(savedPost?.summary).toBeNull();
+        });
+
         it('should persist sensitive flag for incoming sensitive articles', async () => {
             const author = await fixtureManager.createExternalAccount();
             const apId = new URL('https://example.com/articles/sensitive');
