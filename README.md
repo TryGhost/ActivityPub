@@ -101,7 +101,16 @@ To enable auto-formatting on save, you'll need to set the [default formatter](ht
 
 ## Running Tests
 
-- Run `yarn test` to execute tests within a Docker Compose stack.
+Tests run within a Docker Compose stack. Common commands:
+
+- `yarn test` — run everything (types, unit, integration, and e2e); slow
+- `yarn test:unit` — unit tests only; fast
+- `yarn test:integration` — integration tests only
+- `yarn test:cucumber` — end-to-end (Cucumber) tests
+- `yarn test:single 'path/to/test'` — run a single unit or integration test
+- `yarn test:types` — type-check with `tsc`
+
+See [AGENTS.md](AGENTS.md) for the full list and testing conventions.
 
 ## Migrations
 
