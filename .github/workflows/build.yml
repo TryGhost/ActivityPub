@@ -40,12 +40,8 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
-  # NOTE: The job id and `name` are intentionally kept as "check-yarn-lock" /
-  # "Check yarn.lock" so the required status check "build / Check yarn.lock"
-  # (repo ruleset) keeps reporting after the pnpm migration. Rename the job and
-  # the ruleset's required-check context together in a follow-up.
-  check-yarn-lock:
-    name: Check yarn.lock
+  check-lockfile:
+    name: Check pnpm-lock.yaml
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
