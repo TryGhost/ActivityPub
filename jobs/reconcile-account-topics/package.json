@@ -2,8 +2,8 @@
     "name": "reconcile-account-topics",
     "private": true,
     "dependencies": {
-        "@fedify/vocab": "2.3.0",
-        "@fedify/webfinger": "2.3.0",
+        "@fedify/vocab": "2.3.1",
+        "@fedify/webfinger": "2.3.1",
         "mysql2": "3.22.5"
     }
 }
