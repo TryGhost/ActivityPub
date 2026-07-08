@@ -108,6 +108,24 @@ function getRedisMode(): RedisMode {
     return mode;
 }
 
+function getRedisPort(): number {
+    const rawPort = process.env.REDIS_PORT;
+
+    if (!rawPort) {
+        return 6379;
+    }
+
+    const port = Number(rawPort);
+
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new Error(
+            `Invalid REDIS_PORT "${rawPort}". Expected a port number between 1 and 65535.`,
+        );
+    }
+
+    return port;
+}
+
 /**
  * Create a Redis connection for use as Fedify's KvStore.
  *
@@ -119,7 +137,7 @@ export function createRedisConnection(logging: Logger): Redis | Cluster {
     const mode = getRedisMode();
 
     const host = process.env.REDIS_HOST || 'localhost';
-    const port = Number(process.env.REDIS_PORT) || 6379;
+    const port = getRedisPort();
     const tls = process.env.REDIS_TLS_CERT
         ? { ca: process.env.REDIS_TLS_CERT }
         : undefined;

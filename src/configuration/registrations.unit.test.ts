@@ -95,6 +95,22 @@ describe('createRedisConnection', () => {
         expect(options.port).toBe(6379);
     });
 
+    it('throws on a non-numeric REDIS_PORT', () => {
+        process.env.REDIS_PORT = 'not-a-port';
+
+        expect(() => createRedisConnection(logging)).toThrow(
+            /Invalid REDIS_PORT/,
+        );
+    });
+
+    it('throws on an out-of-range REDIS_PORT', () => {
+        process.env.REDIS_PORT = '65536';
+
+        expect(() => createRedisConnection(logging)).toThrow(
+            /Invalid REDIS_PORT/,
+        );
+    });
+
     it('passes the TLS certificate through when configured', () => {
         process.env.REDIS_MODE = 'standalone';
         process.env.REDIS_TLS_CERT = 'a-cert';
