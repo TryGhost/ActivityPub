@@ -205,6 +205,31 @@ describe('AccountPostsView', () => {
             expect(accountPosts.results[0].repostedBy).toBeNull();
         });
 
+        it('includes reposts by the account with reposter fields', async () => {
+            const originalAuthor = await fixtureManager.createExternalAccount();
+            const originalPost =
+                await fixtureManager.createPost(originalAuthor);
+
+            originalPost.addRepost(account);
+            await postRepository.save(originalPost);
+
+            const accountPosts = await viewer.getLocallyStoredPosts(
+                account,
+                contextAccount.id,
+                10,
+                null,
+            );
+
+            expect(accountPosts.results).toHaveLength(1);
+            expect(accountPosts.results[0].id).toBe(originalPost.apId.href);
+            expect(accountPosts.results[0].author.id).toBe(
+                String(originalAuthor.id),
+            );
+            expect(accountPosts.results[0].repostedBy).toMatchObject({
+                id: account.id.toString(),
+            });
+        });
+
         it('sets followedByMe on the author', async () => {
             await fixtureManager.createPost(account);
             await fixtureManager.createFollow(contextAccount, account);

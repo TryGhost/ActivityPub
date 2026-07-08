@@ -309,9 +309,9 @@ export class AccountPostsView {
     /**
      * Get the posts that are stored locally for an account
      *
-     * We may have posts for an external account stored locally as a result of
-     * previously received activities, which is useful as a fallback when the
-     * account's posts cannot be retrieved remotely
+     * We may have posts and reposts for an external account stored locally as
+     * a result of previously received activities, which is useful as a
+     * fallback when the account's posts cannot be retrieved remotely
      */
     async getLocallyStoredPosts(
         account: Account,
@@ -319,7 +319,28 @@ export class AccountPostsView {
         limit: number,
         cursor: string | null,
     ): Promise<AccountPosts> {
-        const query = this.db('posts')
+        // External accounts have no rows in the outboxes table, so we build
+        // an equivalent timeline from the posts they authored and the posts
+        // they reposted
+        const timeline = this.db('posts')
+            .select(
+                'id as post_id',
+                this.db.raw('NULL as reposter_id'),
+                'published_at as timeline_published_at',
+            )
+            .where('author_id', account.id)
+            .unionAll([
+                this.db('reposts')
+                    .select(
+                        'post_id',
+                        'account_id as reposter_id',
+                        'created_at as timeline_published_at',
+                    )
+                    .where('account_id', account.id),
+            ]);
+
+        const query = this.db
+            .from(timeline.as('timeline'))
             .select(
                 // Post fields
                 'posts.id as post_id',
@@ -362,20 +383,32 @@ export class AccountPostsView {
                         ELSE 0
                     END AS author_followed_by_current_user
                 `),
-                // Reposter fields - always empty as we only include posts
-                // authored by the account
-                this.db.raw('NULL as reposter_id'),
-                this.db.raw('NULL as reposter_name'),
-                this.db.raw('NULL as reposter_username'),
-                this.db.raw('NULL as reposter_url'),
-                this.db.raw('NULL as reposter_webfinger_host'),
-                this.db.raw('NULL as reposter_avatar_url'),
-                this.db.raw('0 as reposter_followed_by_current_user'),
+                // Reposter fields
+                'reposter_account.id as reposter_id',
+                'reposter_account.name as reposter_name',
+                'reposter_account.username as reposter_username',
+                'reposter_account.url as reposter_url',
+                'reposter_account.webfinger_host as reposter_webfinger_host',
+                'reposter_account.avatar_url as reposter_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_reposter.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS reposter_followed_by_current_user
+                `),
+                // Timeline fields
+                'timeline.timeline_published_at as timeline_published_at',
             )
+            .innerJoin('posts', 'posts.id', 'timeline.post_id')
             .innerJoin(
                 'accounts as author_account',
                 'author_account.id',
                 'posts.author_id',
+            )
+            .leftJoin(
+                'accounts as reposter_account',
+                'reposter_account.id',
+                'timeline.reposter_id',
             )
             .leftJoin('follows as follows_author', function () {
                 this.on(
@@ -383,6 +416,16 @@ export class AccountPostsView {
                     'author_account.id',
                 ).andOnVal(
                     'follows_author.follower_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .leftJoin('follows as follows_reposter', function () {
+                this.on(
+                    'follows_reposter.following_id',
+                    'reposter_account.id',
+                ).andOnVal(
+                    'follows_reposter.follower_id',
                     '=',
                     contextAccountId.toString(),
                 );
@@ -401,16 +444,15 @@ export class AccountPostsView {
                     contextAccountId.toString(),
                 );
             })
-            .where('posts.author_id', account.id)
             .where('posts.audience', Audience.Public)
             .whereNull('posts.in_reply_to')
             .whereNull('posts.deleted_at')
             .modify((query) => {
                 if (cursor) {
-                    query.where('posts.published_at', '<', cursor);
+                    query.where('timeline.timeline_published_at', '<', cursor);
                 }
             })
-            .orderBy('posts.published_at', 'desc')
+            .orderBy('timeline.timeline_published_at', 'desc')
             .limit(limit + 1);
 
         const results = await query;
@@ -424,7 +466,7 @@ export class AccountPostsView {
                 this.mapToPostDTO(result, contextAccountId),
             ),
             nextCursor:
-                hasMore && lastResult ? lastResult.post_published_at : null,
+                hasMore && lastResult ? lastResult.timeline_published_at : null,
         };
     }
 
