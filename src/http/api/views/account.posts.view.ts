@@ -4,11 +4,24 @@ import type { Knex } from 'knex';
 import type { Account } from '@/account/account.entity';
 import { getAccountHandle } from '@/account/utils';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
-import { error, getValue, isError, ok, type Result } from '@/core/result';
+import {
+    error,
+    getError,
+    getValue,
+    isError,
+    ok,
+    type Result,
+} from '@/core/result';
 import { normalizePlainText, sanitizeHtml } from '@/helpers/html';
+import { isUri } from '@/helpers/uri';
 import type { PostDTO } from '@/http/api/types';
 import { ContentPreparer } from '@/post/content';
-import { type Mention, OutboxType, PostType } from '@/post/post.entity';
+import {
+    Audience,
+    type Mention,
+    OutboxType,
+    PostType,
+} from '@/post/post.entity';
 
 export type GetPostsError =
     | 'invalid-next-parameter'
@@ -113,13 +126,38 @@ export class AccountPostsView {
         }
 
         //Otherwise, do a remote lookup to fetch the posts
-        return this.getPostsByRemoteLookUp(
+        const remoteResult = await this.getPostsByRemoteLookUp(
             currentContextAccount.id,
             currentContextAccount.apId,
             apId,
             cursor,
             account,
         );
+
+        // Some servers (e.g. Threads) do not expose a readable outbox. If we
+        // know the account, fall back to the posts we have stored locally
+        // from previously received activities. Cursors from a remote lookup
+        // are URLs and cannot be used to paginate the locally stored posts
+        // (which are paginated by timestamp)
+        if (isError(remoteResult) && account && !(cursor && isUri(cursor))) {
+            const remoteError = getError(remoteResult);
+
+            if (
+                remoteError === 'error-getting-outbox' ||
+                remoteError === 'no-page-found'
+            ) {
+                return ok(
+                    await this.getLocallyStoredPosts(
+                        account,
+                        currentContextAccount.id,
+                        limit,
+                        cursor,
+                    ),
+                );
+            }
+        }
+
+        return remoteResult;
     }
 
     async getPostsFromOutbox(
@@ -266,6 +304,128 @@ export class AccountPostsView {
             nextCursor:
                 hasMore && lastResult ? lastResult.outbox_published_at : null,
         });
+    }
+
+    /**
+     * Get the posts that are stored locally for an account
+     *
+     * We may have posts for an external account stored locally as a result of
+     * previously received activities, which is useful as a fallback when the
+     * account's posts cannot be retrieved remotely
+     */
+    async getLocallyStoredPosts(
+        account: Account,
+        contextAccountId: number,
+        limit: number,
+        cursor: string | null,
+    ): Promise<AccountPosts> {
+        const query = this.db('posts')
+            .select(
+                // Post fields
+                'posts.id as post_id',
+                'posts.type as post_type',
+                'posts.title as post_title',
+                'posts.excerpt as post_excerpt',
+                'posts.summary as post_summary',
+                'posts.content as post_content',
+                'posts.url as post_url',
+                'posts.image_url as post_image_url',
+                'posts.published_at as post_published_at',
+                'posts.like_count as post_like_count',
+                this.db.raw(`
+                    CASE
+                        WHEN likes.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_liked_by_current_user
+                `),
+                'posts.reply_count as post_reply_count',
+                'posts.reading_time_minutes as post_reading_time_minutes',
+                'posts.attachments as post_attachments',
+                'posts.repost_count as post_repost_count',
+                this.db.raw(`
+                    CASE
+                        WHEN reposts.account_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS post_reposted_by_current_user
+                `),
+                'posts.ap_id as post_ap_id',
+                // Author fields
+                'author_account.id as author_id',
+                'author_account.name as author_name',
+                'author_account.username as author_username',
+                'author_account.url as author_url',
+                'author_account.webfinger_host as author_webfinger_host',
+                'author_account.avatar_url as author_avatar_url',
+                this.db.raw(`
+                    CASE
+                        WHEN follows_author.following_id IS NOT NULL THEN 1
+                        ELSE 0
+                    END AS author_followed_by_current_user
+                `),
+                // Reposter fields - always empty as we only include posts
+                // authored by the account
+                this.db.raw('NULL as reposter_id'),
+                this.db.raw('NULL as reposter_name'),
+                this.db.raw('NULL as reposter_username'),
+                this.db.raw('NULL as reposter_url'),
+                this.db.raw('NULL as reposter_webfinger_host'),
+                this.db.raw('NULL as reposter_avatar_url'),
+                this.db.raw('0 as reposter_followed_by_current_user'),
+            )
+            .innerJoin(
+                'accounts as author_account',
+                'author_account.id',
+                'posts.author_id',
+            )
+            .leftJoin('follows as follows_author', function () {
+                this.on(
+                    'follows_author.following_id',
+                    'author_account.id',
+                ).andOnVal(
+                    'follows_author.follower_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .leftJoin('likes', function () {
+                this.on('likes.post_id', 'posts.id').andOnVal(
+                    'likes.account_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .leftJoin('reposts', function () {
+                this.on('reposts.post_id', 'posts.id').andOnVal(
+                    'reposts.account_id',
+                    '=',
+                    contextAccountId.toString(),
+                );
+            })
+            .where('posts.author_id', account.id)
+            .where('posts.audience', Audience.Public)
+            .whereNull('posts.in_reply_to')
+            .whereNull('posts.deleted_at')
+            .modify((query) => {
+                if (cursor) {
+                    query.where('posts.published_at', '<', cursor);
+                }
+            })
+            .orderBy('posts.published_at', 'desc')
+            .limit(limit + 1);
+
+        const results = await query;
+
+        const hasMore = results.length > limit;
+        const paginatedResults = results.slice(0, limit);
+        const lastResult = paginatedResults[paginatedResults.length - 1];
+
+        return {
+            results: paginatedResults.map((result: GetProfileDataResultRow) =>
+                this.mapToPostDTO(result, contextAccountId),
+            ),
+            nextCursor:
+                hasMore && lastResult ? lastResult.post_published_at : null,
+        };
     }
 
     async getPostsByRemoteLookUp(

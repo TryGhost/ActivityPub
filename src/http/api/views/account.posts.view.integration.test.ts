@@ -6,7 +6,7 @@ import type { Knex } from 'knex';
 import type { Account } from '@/account/account.entity';
 import { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { AsyncEvents } from '@/core/events';
-import { getError, getValue, isError } from '@/core/result';
+import { error, getError, getValue, isError } from '@/core/result';
 import type { AccountPosts } from '@/http/api/views/account.posts.view';
 import { AccountPostsView } from '@/http/api/views/account.posts.view';
 import { Audience, Post, PostType } from '@/post/post.entity';
@@ -175,6 +175,156 @@ describe('AccountPostsView', () => {
 
             expect(value2.results).toHaveLength(1);
             expect(value2.nextCursor).toBeNull();
+        });
+    });
+
+    describe('getLocallyStoredPosts', () => {
+        let account: Account;
+        let contextAccount: Account;
+
+        beforeEach(async () => {
+            account = await fixtureManager.createExternalAccount();
+            [contextAccount] = await fixtureManager.createInternalAccount();
+        });
+
+        it('returns posts in descending published order, excluding replies', async () => {
+            const post1 = await fixtureManager.createPost(account);
+            const post2 = await fixtureManager.createPost(account);
+            await fixtureManager.createReply(account, post1);
+
+            const accountPosts = await viewer.getLocallyStoredPosts(
+                account,
+                contextAccount.id,
+                10,
+                null,
+            );
+
+            expect(accountPosts.results).toHaveLength(2);
+            expect(accountPosts.results[0].id).toBe(post2.apId.href);
+            expect(accountPosts.results[1].id).toBe(post1.apId.href);
+            expect(accountPosts.results[0].repostedBy).toBeNull();
+        });
+
+        it('sets followedByMe on the author', async () => {
+            await fixtureManager.createPost(account);
+            await fixtureManager.createFollow(contextAccount, account);
+
+            const accountPosts = await viewer.getLocallyStoredPosts(
+                account,
+                contextAccount.id,
+                10,
+                null,
+            );
+
+            expect(accountPosts.results).toHaveLength(1);
+            expect(accountPosts.results[0].author.followedByMe).toBe(true);
+        });
+
+        it('paginates results and returns correct nextCursor', async () => {
+            const post1 = await fixtureManager.createPost(account);
+            const post2 = await fixtureManager.createPost(account);
+
+            await db('posts')
+                .where('id', post1.id)
+                .update('published_at', new Date('2023-01-01'));
+            await db('posts')
+                .where('id', post2.id)
+                .update('published_at', new Date('2023-01-02'));
+
+            const page1 = await viewer.getLocallyStoredPosts(
+                account,
+                contextAccount.id,
+                1,
+                null,
+            );
+
+            expect(page1.results).toHaveLength(1);
+            expect(page1.results[0].id).toBe(post2.apId.href);
+            expect(page1.nextCursor).toBeTruthy();
+
+            const page2 = await viewer.getLocallyStoredPosts(
+                account,
+                contextAccount.id,
+                1,
+                page1.nextCursor,
+            );
+
+            expect(page2.results).toHaveLength(1);
+            expect(page2.results[0].id).toBe(post1.apId.href);
+            expect(page2.nextCursor).toBeNull();
+        });
+    });
+
+    describe('getPostsByApId for external accounts', () => {
+        let account: Account;
+        let contextAccount: Account;
+
+        beforeEach(async () => {
+            account = await fixtureManager.createExternalAccount();
+            [contextAccount] = await fixtureManager.createInternalAccount();
+        });
+
+        it('falls back to locally stored posts when the remote outbox cannot be read', async () => {
+            const post = await fixtureManager.createPost(account);
+
+            vi.spyOn(viewer, 'getPostsByRemoteLookUp').mockResolvedValue(
+                error('error-getting-outbox'),
+            );
+
+            const result = await viewer.getPostsByApId(
+                account.apId,
+                account,
+                contextAccount,
+                10,
+                null,
+            );
+
+            expect(isError(result)).toBe(false);
+            if (!isError(result)) {
+                const accountPosts = getValue(result);
+                expect(accountPosts.results).toHaveLength(1);
+                expect(accountPosts.results[0].id).toBe(post.apId.href);
+            }
+        });
+
+        it('does not fall back when the account is not known locally', async () => {
+            vi.spyOn(viewer, 'getPostsByRemoteLookUp').mockResolvedValue(
+                error('error-getting-outbox'),
+            );
+
+            const result = await viewer.getPostsByApId(
+                new URL('https://unknown.example.com/users/foo'),
+                null,
+                contextAccount,
+                10,
+                null,
+            );
+
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('error-getting-outbox');
+            }
+        });
+
+        it('does not fall back for errors unrelated to the outbox', async () => {
+            await fixtureManager.createPost(account);
+
+            vi.spyOn(viewer, 'getPostsByRemoteLookUp').mockResolvedValue(
+                error('not-an-actor'),
+            );
+
+            const result = await viewer.getPostsByApId(
+                account.apId,
+                account,
+                contextAccount,
+                10,
+                null,
+            );
+
+            expect(isError(result)).toBe(true);
+            if (isError(result)) {
+                expect(getError(result)).toBe('not-an-actor');
+            }
         });
     });
 
