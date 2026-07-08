@@ -11,9 +11,11 @@ the ActivityPub service
    - If exists, returns existing site (idempotent)
    - If not, proceeds to create new site
 3. Service fetches site settings from Ghost to get `ghost_uuid` (called `site_uuid` in Ghost)
-4. Service handles `ghost_uuid` uniqueness (see below)
+4. Service handles `ghost_uuid` uniqueness (see below) — this can resolve
+   to moving an existing site to the new host instead of creating a new one
 5. Service creates new site record with the `ghost_uuid`
-6. Service creates internal account for the site
+6. Service creates internal account for the site (unless the site already
+   has one, e.g. after a move)
 
 ## Duplicate ghost_uuid Handling
 
@@ -25,19 +27,29 @@ fetching `/ghost/api/admin/site/` on the previous host:
 | Previous host response                                                 | Classification | Outcome                                |
 | ---------------------------------------------------------------------- | -------------- | -------------------------------------- |
 | 200 with the same `site_uuid` and a matching canonical `url`           | `still-claims` | Refuse the reassignment                |
-| 200 with the same `site_uuid` but a different canonical `url` (alias)  | `released`     | Allow reassignment                     |
-| 200 with a different / missing `site_uuid`                             | `released`     | Allow reassignment                     |
-| 200 with non-JSON body                                                 | `released`     | Allow reassignment                     |
-| 3xx / 4xx                                                              | `released`     | Allow reassignment                     |
-| DNS NXDOMAIN (ENOTFOUND)                                               | `released`     | Allow reassignment                     |
-| Connection refused (ECONNREFUSED)                                      | `released`     | Allow reassignment                     |
-| Transient DNS failure (EAI_AGAIN)                                      | `unverifiable` | Allow reassignment (fail-open), logged |
-| 5xx / timeout / other transport error                                  | `unverifiable` | Allow reassignment (fail-open), logged |
+| 200 with the same `site_uuid` but a different canonical `url` (alias)  | `released`     | New site takes the UUID                |
+| 200 with a different / missing `site_uuid`                             | `released`     | Move the existing site to the new host |
+| 200 with non-JSON body                                                 | `released`     | Move the existing site to the new host |
+| 3xx / 4xx                                                              | `released`     | Move the existing site to the new host |
+| DNS NXDOMAIN (ENOTFOUND)                                               | `released`     | Move the existing site to the new host |
+| Connection refused (ECONNREFUSED)                                      | `released`     | Move the existing site to the new host |
+| Transient DNS failure (EAI_AGAIN)                                      | `unverifiable` | New site takes the UUID (fail-open), logged |
+| 5xx / timeout / other transport error                                  | `unverifiable` | New site takes the UUID (fail-open), logged |
 
-When the reassignment proceeds (whether `released` or `unverifiable`),
-the previous row's `ghost_uuid` is set to `null` and the new row takes
-the UUID. The previous row's account data stays intact; only the UUID
-claim is released.
+There are two ways a conflict can resolve in the new host's favour:
+
+- **Move the existing site to the new host.** When the previous host no
+  longer serves the install at all (DNS gone, connection refused, not a
+  Ghost site anymore, or serving a different `site_uuid`), the install's
+  URL has changed. The existing site row is updated to the new host,
+  keeping its id, `webhook_secret`, `ghost_uuid` and — crucially — its
+  account (followers, posts, keys). Actor URLs are not rewritten;
+  changing the federated identity is a separate actor migration concern.
+- **New site takes the UUID.** When the previous host still serves the
+  install (aliased hosts, below) or the outcome is unverifiable, the new
+  host registers as its own site: the previous row's `ghost_uuid` is set
+  to `null` and the new row takes the UUID. The previous row's account
+  data stays intact; only the UUID claim is released.
 
 ### Aliased hosts
 

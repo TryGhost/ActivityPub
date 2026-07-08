@@ -46,16 +46,26 @@ export class SiteService {
 
         if (ghostUuid !== null) {
             const currentOwner = await this.client('sites')
-                .select('host')
+                .select('id', 'host', 'webhook_secret')
                 .where({ ghost_uuid: ghostUuid })
                 .first();
 
             if (currentOwner) {
-                await this.verifyUUIDReleased(
+                const resolution = await this.resolveUuidConflict(
                     currentOwner.host,
                     host,
                     ghostUuid,
                 );
+
+                if (resolution === 'move-site') {
+                    return await this.moveSiteToHost(
+                        currentOwner.id,
+                        host,
+                        isGhostPro,
+                        currentOwner.webhook_secret,
+                        ghostUuid,
+                    );
+                }
 
                 verifiedOwnerHost = currentOwner.host;
             }
@@ -128,13 +138,13 @@ export class SiteService {
             site = existingSite;
         }
 
+        // The site can already have an account even when the host lookup
+        // missed: createSite may have moved an existing site to this host
         const existingAccount =
-            (existingSite &&
-                (await this.client('accounts')
-                    .join('users', 'accounts.id', 'users.account_id')
-                    .where('users.site_id', site.id)
-                    .first())) ||
-            null;
+            (await this.client('accounts')
+                .join('users', 'accounts.id', 'users.account_id')
+                .where('users.site_id', site.id)
+                .first()) || null;
 
         if (existingAccount === null) {
             settings ??= await this.getSiteSettings(host);
@@ -162,11 +172,24 @@ export class SiteService {
         return result === 1;
     }
 
-    private async verifyUUIDReleased(
+    /**
+     * Decide what to do when a new host registers with a `ghost_uuid`
+     * that already belongs to an existing site.
+     *
+     * - `move-site`: the previous host no longer serves the install, so
+     *   this is the same site whose URL changed. The existing site row
+     *   (and with it the account, followers and webhook secret) moves to
+     *   the new host.
+     * - `release-uuid`: the new host registers as its own site and takes
+     *   the UUID from the previous row.
+     *
+     * See docs/site-registration.md for the full decision table.
+     */
+    private async resolveUuidConflict(
         previousHost: string,
         newHost: string,
         ghostUuid: string,
-    ): Promise<void> {
+    ): Promise<'move-site' | 'release-uuid'> {
         const result = await classifyGhostUuidOwnership(
             previousHost,
             ghostUuid,
@@ -190,11 +213,28 @@ export class SiteService {
                     reason: result.reason,
                 },
             );
-            return;
+            return 'release-uuid';
+        }
+
+        if (result.reason === 'aliased') {
+            // The previous host still serves the install (e.g. a managed
+            // hosting backend hostname behind a customer's custom
+            // domain), so the new canonical host registers as its own
+            // site rather than taking over the previous one.
+            this.logger.info(
+                'Previous host {previousHost} has released ghost_uuid (reason: {reason}); transferring to {newHost}',
+                {
+                    previousHost,
+                    newHost,
+                    ghostUuid,
+                    reason: result.reason,
+                },
+            );
+            return 'release-uuid';
         }
 
         this.logger.info(
-            'Previous host {previousHost} has released ghost_uuid (reason: {reason}); transferring to {newHost}',
+            'Previous host {previousHost} no longer serves ghost_uuid (reason: {reason}); moving site to {newHost}',
             {
                 previousHost,
                 newHost,
@@ -202,6 +242,34 @@ export class SiteService {
                 reason: result.reason,
             },
         );
+        return 'move-site';
+    }
+
+    /**
+     * Move an existing site to a new host after its Ghost URL changed.
+     * The site row keeps its id, webhook secret and `ghost_uuid`, so the
+     * account attached to it (followers, posts, keys) is preserved.
+     * Actor URLs are not rewritten; changing the federated identity is a
+     * separate actor migration concern.
+     */
+    private async moveSiteToHost(
+        siteId: number,
+        host: string,
+        isGhostPro: boolean,
+        webhookSecret: string,
+        ghostUuid: string,
+    ): Promise<Site> {
+        await this.client('sites').where({ id: siteId }).update({
+            host,
+            ghost_pro: isGhostPro,
+        });
+
+        return {
+            id: siteId,
+            host,
+            webhook_secret: webhookSecret,
+            ghost_uuid: ghostUuid,
+        };
     }
 
     private async getSiteSettings(host: string): Promise<SiteSettings> {

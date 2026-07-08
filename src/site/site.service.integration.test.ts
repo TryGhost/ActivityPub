@@ -200,7 +200,7 @@ describe('SiteService', () => {
         expect(account.name).toBe('Default Title');
     });
 
-    it('Handles duplicate ghost_uuid when a site changes domains', async () => {
+    it('Moves the site to the new host when the old host no longer serves its ghost_uuid', async () => {
         const ghostUUID = 'some-ghost-uuid';
 
         ghostService.getSiteSettings = vi.fn().mockResolvedValue({
@@ -212,6 +212,11 @@ describe('SiteService', () => {
                 site_uuid: ghostUUID,
             },
         });
+
+        const createInternalAccount = vi.spyOn(
+            accountService,
+            'createInternalAccount',
+        );
 
         const siteA = await service.initialiseSiteForHost('domain-a.tld');
 
@@ -247,22 +252,26 @@ describe('SiteService', () => {
 
         const siteB = await service.initialiseSiteForHost('domain-b.tld');
 
+        // The existing site moves to the new host, keeping its identity
+        expect(siteB.id).toBe(siteA.id);
         expect(siteB.host).toBe('domain-b.tld');
         expect(siteB.ghost_uuid).toBe(ghostUUID);
+        expect(siteB.webhook_secret).toBe(siteA.webhook_secret);
 
-        // Verify both sites exist
-        const allSites = await db('sites').select('*').orderBy('id', 'asc');
-        expect(allSites).toHaveLength(2);
+        const allSites = await db('sites').select('*');
+        expect(allSites).toHaveLength(1);
+        expect(allSites[0].host).toBe('domain-b.tld');
+        expect(allSites[0].ghost_uuid).toBe(ghostUUID);
 
-        // Verify old site has null ghost_uuid
-        const oldSite = allSites.find((s) => s.host === 'domain-a.tld');
-        expect(oldSite).toBeDefined();
-        expect(oldSite?.ghost_uuid).toBeNull();
+        // The existing account is preserved - no new account is created
+        expect(createInternalAccount.mock.calls).toHaveLength(1);
 
-        // Verify new site has the ghost_uuid
-        const newSite = allSites.find((s) => s.host === 'domain-b.tld');
-        expect(newSite).toBeDefined();
-        expect(newSite?.ghost_uuid).toBe(ghostUUID);
+        const accounts = await db('accounts')
+            .join('users', 'accounts.id', 'users.account_id')
+            .where('users.site_id', siteA.id)
+            .select('accounts.*');
+        expect(accounts).toHaveLength(1);
+        expect(accounts[0].name).toBe('Site A title');
     });
 
     it('Rejects ghost_uuid reassignment when the existing host still claims it', async () => {
@@ -327,7 +336,7 @@ describe('SiteService', () => {
         expect(siteBRow).toBeUndefined();
     });
 
-    it('Allows ghost_uuid reassignment when the old host is unreachable', async () => {
+    it('Moves the site to the new host when the old host is unreachable', async () => {
         const ghostUUID = 'migrating-ghost-uuid';
 
         ghostService.getSiteSettings = vi.fn().mockResolvedValue({
@@ -340,7 +349,8 @@ describe('SiteService', () => {
             },
         });
 
-        await service.initialiseSiteForHost('old-domain.tld');
+        const originalSite =
+            await service.initialiseSiteForHost('old-domain.tld');
 
         // Old host is unreachable (domain decommissioned)
         ghostService.getSiteSettings = vi
@@ -367,14 +377,20 @@ describe('SiteService', () => {
 
         const newSite = await service.initialiseSiteForHost('new-domain.tld');
 
+        // The existing site moves to the new host, keeping its identity
+        expect(newSite.id).toBe(originalSite.id);
+        expect(newSite.host).toBe('new-domain.tld');
         expect(newSite.ghost_uuid).toBe(ghostUUID);
+        expect(newSite.webhook_secret).toBe(originalSite.webhook_secret);
 
-        // Old site's ghost_uuid should be nullified
+        const allSites = await db('sites').select('*');
+        expect(allSites).toHaveLength(1);
+        expect(allSites[0].host).toBe('new-domain.tld');
+
         const oldRow = await db('sites')
             .where({ host: 'old-domain.tld' })
             .first();
-
-        expect(oldRow.ghost_uuid).toBeNull();
+        expect(oldRow).toBeUndefined();
     });
 
     it('Allows ghost_uuid reassignment when the old host returns a transient 5xx (fail-open)', async () => {
