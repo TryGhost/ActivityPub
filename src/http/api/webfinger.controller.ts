@@ -2,7 +2,7 @@ import type { Context as HonoContext, Next } from 'hono';
 
 import type { Account } from '@/account/account.entity';
 import type { KnexAccountRepository } from '@/account/account.repository.knex';
-import { getAccountHandleHost, normalizeWebfingerHost } from '@/account/utils';
+import { normalizeWebfingerHost } from '@/account/utils';
 import { Route } from '@/http/decorators/route.decorator';
 import type { SiteService } from '@/site/site.service';
 
@@ -61,7 +61,10 @@ export class WebFingerController {
             );
 
         if (customDomainAccount) {
-            return this.createWebfingerResponse(customDomainAccount);
+            return this.createWebfingerResponse(
+                customDomainAccount,
+                this.getSubjectHost(customDomainAccount, resourceHost),
+            );
         }
 
         const site =
@@ -82,7 +85,10 @@ export class WebFingerController {
                 });
             }
 
-            return this.createWebfingerResponse(account);
+            return this.createWebfingerResponse(
+                account,
+                this.getSubjectHost(account, resourceHost),
+            );
         }
 
         const requestHost = ctx.req.header('host')?.split(':')[0];
@@ -137,10 +143,29 @@ export class WebFingerController {
         }
     }
 
-    private createWebfingerResponse(
-        account: Account,
-        subjectHost = getAccountHandleHost(account).replace(/^www\./, ''),
-    ) {
+    /**
+     * Resolve the host to use in the webfinger subject
+     *
+     * The subject host is only canonicalized to the non-www version of the
+     * account host when the resource was queried via the non-www host — the
+     * www version of a host cannot be unconditionally canonicalized to the
+     * non-www version because the non-www version may be served by an
+     * unrelated service (i.e another Fediverse server), in which case clients
+     * verifying the subject would be directed to the wrong server
+     */
+    private getSubjectHost(account: Account, resourceHost: string) {
+        if (account.webfingerHost) {
+            return account.webfingerHost;
+        }
+
+        if (resourceHost.toLowerCase() === account.apId.host) {
+            return account.apId.host;
+        }
+
+        return account.apId.host.replace(/^www\./, '');
+    }
+
+    private createWebfingerResponse(account: Account, subjectHost: string) {
         const webfingerData = {
             subject: `acct:${account.username}@${subjectHost}`,
             aliases: [account.apId.toString()],

@@ -401,7 +401,7 @@ describe('handleWebFinger', () => {
         expect(response?.status).toBe(200);
     });
 
-    it('should ensure the www is not included in the subject', async () => {
+    it('should keep the www in the subject when the resource was queried via the www host', async () => {
         const ctx = getCtx({ resource: 'acct:alice@www.example.com' });
         const next = vi.fn();
 
@@ -426,7 +426,7 @@ describe('handleWebFinger', () => {
 
         expect(response?.status).toBe(200);
         expect(await response?.json()).toEqual({
-            subject: 'acct:alice@example.com',
+            subject: 'acct:alice@www.example.com',
             aliases: ['https://www.example.com/users/alice'],
             links: [
                 {
@@ -443,5 +443,35 @@ describe('handleWebFinger', () => {
         expect(response?.headers.get('Content-Type')).toBe(
             'application/jrd+json',
         );
+    });
+
+    it('should not include the www in the subject when the site is hosted on the non-www host', async () => {
+        const ctx = getCtx({ resource: 'acct:alice@www.example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({
+                    host: 'example.com',
+                } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockResolvedValue({
+            username: 'alice',
+            url: 'https://example.com',
+            apId: new URL('https://example.com/users/alice'),
+            webfingerHost: null,
+        } as unknown as Account);
+
+        const response = await webFingerController.handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toMatchObject({
+            subject: 'acct:alice@example.com',
+            aliases: ['https://example.com/users/alice'],
+        });
     });
 });
