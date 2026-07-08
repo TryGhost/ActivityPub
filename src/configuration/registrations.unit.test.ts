@@ -66,6 +66,15 @@ describe('createRedisConnection', () => {
         expect(options.port).toBe(6380);
     });
 
+    it('connects in cluster mode when REDIS_MODE is set but empty', () => {
+        process.env.REDIS_MODE = '';
+
+        createRedisConnection(logging);
+
+        expect(clusterConstructor).toHaveBeenCalledTimes(1);
+        expect(redisConstructor).not.toHaveBeenCalled();
+    });
+
     it('throws on an unrecognised REDIS_MODE', () => {
         process.env.REDIS_MODE = 'sentinel';
 

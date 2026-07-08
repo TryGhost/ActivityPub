@@ -97,7 +97,7 @@ import { ImageStorageService } from '@/storage/image-storage.service';
 type RedisMode = 'cluster' | 'standalone';
 
 function getRedisMode(): RedisMode {
-    const mode = process.env.REDIS_MODE ?? 'cluster';
+    const mode = process.env.REDIS_MODE || 'cluster';
 
     if (mode !== 'cluster' && mode !== 'standalone') {
         throw new Error(
