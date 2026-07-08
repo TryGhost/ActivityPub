@@ -102,43 +102,10 @@ export class AccountService {
     ) {}
 
     /**
-     * @deprecated use `ensureByApId`
      * Get an Account by the ActivityPub ID
      * If it is not found locally in our database it will be
      * remotely fetched and stored
      */
-    async getByApId(id: URL): Promise<Account | null> {
-        const account = await this.accountRepository.getByApId(id);
-        if (account) {
-            return account;
-        }
-
-        const context = this.fedifyContextFactory.getFedifyContext();
-
-        const documentLoader = await context.getDocumentLoader({
-            identifier: 'index',
-        });
-        const potentialActor = await lookupFedifyObject(id, { documentLoader });
-
-        // If potentialActor is null - we could not find anything for this URL
-        // Error because could be upstream server issues and we want a retry
-        if (potentialActor === null) {
-            throw new Error(`Could not find Actor ${id}`);
-        }
-
-        // If we do find an Object, and it's not an Actor - we return null because
-        // it's invalid, we don't expect this to be a temporary error
-        if (!isActor(potentialActor)) {
-            return null;
-        }
-
-        const data = await mapActorToExternalAccountData(potentialActor);
-
-        await this.createExternalAccount(data);
-
-        return this.accountRepository.getByApId(id);
-    }
-
     async ensureByApId(
         id: URL,
     ): Promise<Result<Account, RemoteAccountFetchError>> {

@@ -548,8 +548,6 @@ export const createUndoHandler = (
                 );
                 return;
             }
-            const senderAccount = await accountService.getByApId(sender.id);
-
             if (object.objectId === null) {
                 ctx.data.logger.debug(
                     'Undo announce activity object id missing, exit early',
@@ -557,47 +555,61 @@ export const createUndoHandler = (
                 return;
             }
 
-            if (senderAccount !== null) {
-                const originalPostResult = await postService.getByApId(
-                    object.objectId,
-                );
+            const senderAccountResult = await accountService.ensureByApId(
+                sender.id,
+            );
 
-                if (isError(originalPostResult)) {
-                    const error = getError(originalPostResult);
-                    switch (error) {
-                        case 'upstream-error':
-                            ctx.data.logger.debug(
-                                'Upstream error fetching post for undoing announce',
-                                {
-                                    postId: object.objectId.href,
-                                },
-                            );
-                            break;
-                        case 'not-a-post':
-                            ctx.data.logger.debug(
-                                'Resource is not a post in undoing announce',
-                                {
-                                    postId: object.objectId.href,
-                                },
-                            );
-                            break;
-                        case 'missing-author':
-                            ctx.data.logger.debug(
-                                'Post has missing author in undoing announce',
-                                {
-                                    postId: object.objectId.href,
-                                },
-                            );
-                            break;
-                        default:
-                            return exhaustiveCheck(error);
-                    }
-                    return;
-                }
-                const originalPost = getValue(originalPostResult);
-                originalPost.removeRepost(senderAccount);
-                await postRepository.save(originalPost);
+            if (isError(senderAccountResult)) {
+                ctx.data.logger.debug(
+                    'Could not resolve undo announce sender account, exit early',
+                    {
+                        senderId: sender.id.href,
+                        error: getError(senderAccountResult),
+                    },
+                );
+                return;
             }
+            const senderAccount = getValue(senderAccountResult);
+
+            const originalPostResult = await postService.getByApId(
+                object.objectId,
+            );
+
+            if (isError(originalPostResult)) {
+                const error = getError(originalPostResult);
+                switch (error) {
+                    case 'upstream-error':
+                        ctx.data.logger.debug(
+                            'Upstream error fetching post for undoing announce',
+                            {
+                                postId: object.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'not-a-post':
+                        ctx.data.logger.debug(
+                            'Resource is not a post in undoing announce',
+                            {
+                                postId: object.objectId.href,
+                            },
+                        );
+                        break;
+                    case 'missing-author':
+                        ctx.data.logger.debug(
+                            'Post has missing author in undoing announce',
+                            {
+                                postId: object.objectId.href,
+                            },
+                        );
+                        break;
+                    default:
+                        return exhaustiveCheck(error);
+                }
+                return;
+            }
+            const originalPost = getValue(originalPostResult);
+            originalPost.removeRepost(senderAccount);
+            await postRepository.save(originalPost);
         }
 
         return;
@@ -731,47 +743,59 @@ export function createAnnounceHandler(
         ctx.data.globaldb.set([announce.id.href], announceJson);
 
         // This will save the account if it doesn't already exist
-        const senderAccount = await accountService.getByApId(sender.id);
+        const senderAccountResult = await accountService.ensureByApId(
+            sender.id,
+        );
 
-        if (senderAccount !== null) {
-            // This will save the post if it doesn't already exist
-            const postResult = await postService.getByApId(announce.objectId);
+        if (isError(senderAccountResult)) {
+            ctx.data.logger.debug(
+                'Could not resolve announce sender account, exit early',
+                {
+                    senderId: sender.id.href,
+                    error: getError(senderAccountResult),
+                },
+            );
+            return;
+        }
+        const senderAccount = getValue(senderAccountResult);
 
-            if (isError(postResult)) {
-                const error = getError(postResult);
-                switch (error) {
-                    case 'upstream-error':
-                        ctx.data.logger.debug(
-                            'Upstream error fetching post for reposting',
-                            {
-                                postId: announce.objectId.href,
-                            },
-                        );
-                        break;
-                    case 'not-a-post':
-                        ctx.data.logger.debug(
-                            'Resource for reposting is not a post',
-                            {
-                                postId: announce.objectId.href,
-                            },
-                        );
-                        break;
-                    case 'missing-author':
-                        ctx.data.logger.debug(
-                            'Post for reposting has missing author',
-                            {
-                                postId: announce.objectId.href,
-                            },
-                        );
-                        break;
-                    default:
-                        return exhaustiveCheck(error);
-                }
-            } else {
-                const post = getValue(postResult);
-                post.addRepost(senderAccount);
-                await postRepository.save(post);
+        // This will save the post if it doesn't already exist
+        const postResult = await postService.getByApId(announce.objectId);
+
+        if (isError(postResult)) {
+            const error = getError(postResult);
+            switch (error) {
+                case 'upstream-error':
+                    ctx.data.logger.debug(
+                        'Upstream error fetching post for reposting',
+                        {
+                            postId: announce.objectId.href,
+                        },
+                    );
+                    break;
+                case 'not-a-post':
+                    ctx.data.logger.debug(
+                        'Resource for reposting is not a post',
+                        {
+                            postId: announce.objectId.href,
+                        },
+                    );
+                    break;
+                case 'missing-author':
+                    ctx.data.logger.debug(
+                        'Post for reposting has missing author',
+                        {
+                            postId: announce.objectId.href,
+                        },
+                    );
+                    break;
+                default:
+                    return exhaustiveCheck(error);
             }
+        } else {
+            const post = getValue(postResult);
+            post.addRepost(senderAccount);
+            await postRepository.save(post);
         }
     };
 }
@@ -800,12 +824,18 @@ export function createLikeHandler(
             return;
         }
 
-        const [account, sender] = await Promise.all([
-            accountService.getByApId(like.actorId),
+        const [accountResult, sender] = await Promise.all([
+            accountService.ensureByApId(like.actorId),
             like.getActor(ctx),
         ]);
 
-        if (account !== null) {
+        if (isError(accountResult)) {
+            ctx.data.logger.debug('Could not resolve like actor account', {
+                actorId: like.actorId.href,
+                error: getError(accountResult),
+            });
+        } else {
+            const account = getValue(accountResult);
             const postResult = await postService.getByApId(like.objectId);
 
             if (isError(postResult)) {

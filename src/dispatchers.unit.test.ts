@@ -1357,7 +1357,7 @@ describe('dispatchers', () => {
 
             mockAccountService = {
                 getAccountByApId: vi.fn(),
-                getByApId: vi.fn(),
+                ensureByApId: vi.fn(),
                 recordAccountUnfollow: vi.fn(),
             } as unknown as AccountService;
 
@@ -1445,8 +1445,8 @@ describe('dispatchers', () => {
         describe('Undo(Announce)', () => {
             it('removes reposted post', async () => {
                 const senderAccount = { id: 20 } as unknown as Account;
-                vi.mocked(mockAccountService.getByApId).mockResolvedValue(
-                    senderAccount,
+                vi.mocked(mockAccountService.ensureByApId).mockResolvedValue(
+                    ok(senderAccount),
                 );
 
                 const mockRepostedPost = { removeRepost: vi.fn() };
@@ -1499,7 +1499,34 @@ describe('dispatchers', () => {
                 );
                 await handler(undoCtx, undo);
 
-                expect(mockAccountService.getByApId).not.toHaveBeenCalled();
+                expect(mockAccountService.ensureByApId).not.toHaveBeenCalled();
+                expect(mockPostService.getByApId).not.toHaveBeenCalled();
+                expect(mockPostRepository.save).not.toHaveBeenCalled();
+            });
+
+            it('exits early when the sender account cannot be resolved', async () => {
+                vi.mocked(mockAccountService.ensureByApId).mockResolvedValue(
+                    error('not-found'),
+                );
+
+                const announce = new Announce({
+                    id: new URL('https://remote.example/announces/7'),
+                    actor: new Person({ id: bobUrl }),
+                    object: postUrl,
+                });
+                const undo = new Undo({
+                    id: new URL('https://remote.example/undo/2'),
+                    actor: bobUrl,
+                    object: announce,
+                });
+
+                const handler = createUndoHandler(
+                    mockAccountService,
+                    mockPostRepository,
+                    mockPostService,
+                );
+                await handler(undoCtx, undo);
+
                 expect(mockPostService.getByApId).not.toHaveBeenCalled();
                 expect(mockPostRepository.save).not.toHaveBeenCalled();
             });

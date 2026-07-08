@@ -1,9 +1,8 @@
 import type { Actor, Delete } from '@fedify/vocab';
 
-import type { Account } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import type { FedifyContext } from '@/app';
-import { exhaustiveCheck, getError, isError } from '@/core/result';
+import { exhaustiveCheck, getError, getValue, isError } from '@/core/result';
 import { getRelatedActivities } from '@/db';
 import type { PostService } from '@/post/post.service';
 
@@ -43,19 +42,19 @@ export class DeleteHandler {
             return;
         }
 
-        let senderAccount: Account | null = null;
+        const senderAccountResult = await this.accountService.ensureByApId(
+            sender.id,
+        );
 
-        try {
-            senderAccount = await this.accountService.getByApId(sender.id);
-        } catch (error) {
-            ctx.data.logger.error('Error fetching sender account', { error });
+        if (isError(senderAccountResult)) {
+            ctx.data.logger.debug('Sender account not found, exit early', {
+                senderId: sender.id.href,
+                error: getError(senderAccountResult),
+            });
             return;
         }
 
-        if (senderAccount === null) {
-            ctx.data.logger.debug('Sender account not found, exit early');
-            return;
-        }
+        const senderAccount = getValue(senderAccountResult);
 
         const deleteResult = await this.postService.deleteByApId(
             deleteActivity.objectId,

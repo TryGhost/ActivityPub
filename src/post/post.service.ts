@@ -203,13 +203,25 @@ export class PostService {
             return error('missing-author');
         }
 
-        const author = await this.accountService.getByApId(
+        const authorResult = await this.accountService.ensureByApId(
             foundObject.attributionId,
         );
 
-        if (author === null) {
-            return error('missing-author');
+        if (isError(authorResult)) {
+            const authorError = getError(authorResult);
+            switch (authorError) {
+                case 'network-failure':
+                    return error('upstream-error');
+                case 'not-found':
+                case 'invalid-type':
+                case 'invalid-data':
+                    return error('missing-author');
+                default:
+                    return exhaustiveCheck(authorError);
+            }
         }
+
+        const author = getValue(authorResult);
 
         let inReplyTo = null;
         if (foundObject.replyTargetId) {
