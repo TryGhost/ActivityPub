@@ -287,6 +287,7 @@ export class FixtureManager {
             this.db('bluesky_integration_account_handles').truncate(),
             this.db('account_topics').truncate(),
             this.db('topics').truncate(),
+            this.db('ghost_ap_post_mappings').truncate(),
         ]);
         await this.db.raw('SET FOREIGN_KEY_CHECKS = 1');
     }

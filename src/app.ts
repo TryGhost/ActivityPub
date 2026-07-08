@@ -110,6 +110,7 @@ import { ClientConfigController } from '@/http/api/client-config.controller';
 import { ExploreController } from '@/http/api/explore.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
+import { GhostPostController } from '@/http/api/ghost-post.controller';
 import { MissingRequiredParamError } from '@/http/api/helpers/request';
 import { BadRequest } from '@/http/api/helpers/response';
 import { LikeController } from '@/http/api/like.controller';
@@ -968,6 +969,7 @@ app.post(
 );
 
 routeRegistry.registerController('followController', FollowController);
+routeRegistry.registerController('ghostPostController', GhostPostController);
 routeRegistry.registerController('likeController', LikeController);
 routeRegistry.registerController('postController', PostController);
 routeRegistry.registerController('searchController', SearchController);

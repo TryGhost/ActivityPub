@@ -39,6 +39,7 @@ When('it is sent to the webhook endpoint', async function () {
     if (this.payloadData) {
         payload = merge(payload, this.payloadData);
     }
+    this.webhookPayload = payload;
     const body = JSON.stringify(payload);
     const timestamp = Date.now();
     const hmac = createHmac('sha256', getWebhookSecret())

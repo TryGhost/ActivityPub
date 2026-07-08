@@ -56,6 +56,7 @@ import { ClientConfigController } from '@/http/api/client-config.controller';
 import { ExploreController } from '@/http/api/explore.controller';
 import { FeedController } from '@/http/api/feed.controller';
 import { FollowController } from '@/http/api/follow.controller';
+import { GhostPostController } from '@/http/api/ghost-post.controller';
 import { LikeController } from '@/http/api/like.controller';
 import { MediaController } from '@/http/api/media.controller';
 import { NotificationController } from '@/http/api/notification.controller';
@@ -71,6 +72,7 @@ import { AccountSearchView } from '@/http/api/views/account.search.view';
 import { AccountView } from '@/http/api/views/account.view';
 import { BlocksView } from '@/http/api/views/blocks.view';
 import { ExploreView } from '@/http/api/views/explore.view';
+import { GhostPostView } from '@/http/api/views/ghost-post.view';
 import { RecommendationsView } from '@/http/api/views/recommendations.view';
 import { ReplyChainView } from '@/http/api/views/reply.chain.view';
 import { TopicView } from '@/http/api/views/topic.view';
@@ -377,9 +379,14 @@ export function registerDependencies(
         asClass(AccountSearchView).singleton(),
     );
     container.register('blocksView', asClass(BlocksView).singleton());
+    container.register('ghostPostView', asClass(GhostPostView).singleton());
     container.register('replyChainView', asClass(ReplyChainView).singleton());
 
     container.register('blockController', asClass(BlockController).singleton());
+    container.register(
+        'ghostPostController',
+        asClass(GhostPostController).singleton(),
+    );
     container.register(
         'followController',
         asClass(FollowController).singleton(),
