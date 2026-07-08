@@ -1045,9 +1045,15 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
     };
 }
 
+// Same environments in which the role middleware requires https for the JWKS
+// lookup — local setups serve plain http and must keep the request scheme
+const appFetch = ['staging', 'production'].includes(process.env.NODE_ENV || '')
+    ? forceHttps(behindProxy(app.fetch))
+    : behindProxy(app.fetch);
+
 serve(
     {
-        fetch: forceAcceptHeader(forceHttps(behindProxy(app.fetch))),
+        fetch: forceAcceptHeader(appFetch),
         port: Number.parseInt(process.env.PORT || '8080', 10),
     },
     (info) => {

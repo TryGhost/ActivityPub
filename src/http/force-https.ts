@@ -13,6 +13,11 @@
  * (i.e. run before it), as `behindProxy` is what applies the header to the
  * request URL.
  *
+ * Only apply this in environments where all traffic is served over https:
+ * local setups run over plain http, and code that follows the request scheme
+ * (e.g. the JWKS lookup in the role middleware) relies on it staying http
+ * there.
+ *
  * @param fetch A `fetch()` function to be decorated
  */
 export function forceHttps(fetch: (req: Request) => unknown) {
