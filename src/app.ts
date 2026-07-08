@@ -123,6 +123,7 @@ import type { SiteController } from '@/http/api/site.controller';
 import { TopicController } from '@/http/api/topic.controller';
 import type { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
+import { forceHttps } from '@/http/force-https';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
 import { createHostDataContextMiddleware } from '@/http/middleware/host-data-context';
@@ -1046,7 +1047,7 @@ function forceAcceptHeader(fn: (req: Request) => unknown) {
 
 serve(
     {
-        fetch: forceAcceptHeader(behindProxy(app.fetch)),
+        fetch: forceAcceptHeader(forceHttps(behindProxy(app.fetch))),
         port: Number.parseInt(process.env.PORT || '8080', 10),
     },
     (info) => {
