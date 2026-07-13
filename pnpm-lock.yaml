@@ -45,8 +45,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1
       '@logtape/logtape':
-        specifier: 2.2.3
-        version: 2.2.3
+        specifier: 2.2.4
+        version: 2.2.4
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -1130,8 +1130,8 @@ packages:
   '@logtape/logtape@1.3.11':
     resolution: {integrity: sha512-mxkQOyySbjNGweavPudypBf0qZJxLOTXl2NAXYnsZF/ds5dQpTLA7YMSJbc8uFWlTkG+YjAnVL8tQWivIVPOJg==}
 
-  '@logtape/logtape@2.2.3':
-    resolution: {integrity: sha512-NIPzXBJneBv7Ar6sFBbEo5L8zZr2lopQnlVeT881y68qGNcJBy/Y8s8uAwUaVhobB8GIiMluOY7j3bOsaaIhQQ==}
+  '@logtape/logtape@2.2.4':
+    resolution: {integrity: sha512-2rALzv9m4ibE5FyB8/FMm5MPMMlK7ujgy3ufricVKIxj6e7SZbw4w6J16/fRAsXgdDlOXPUA0aa6XoEQvdlKxw==}
 
   '@mswjs/interceptors@0.41.9':
     resolution: {integrity: sha512-VVPPgHyQ6ShqnrmDWuxjmUIsO9gWyOZFmuOfLd9LfBGQJwZfy0gvv9pbHSJuoFNIYC7ZDX9aoFwowjcdSC4E8w==}
@@ -4119,8 +4119,8 @@ snapshots:
       '@jimp/core': 1.6.1
       '@jimp/wasm-webp': 1.6.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/file': 2.2.3(@logtape/logtape@2.2.3)
-      '@logtape/logtape': 2.2.3
+      '@logtape/file': 2.2.3(@logtape/logtape@2.2.4)
+      '@logtape/logtape': 2.2.4
       '@optique/config': 1.1.1(@standard-schema/spec@1.1.0)
       '@optique/core': 1.1.1
       '@optique/discover': 1.1.1
@@ -4159,7 +4159,7 @@ snapshots:
       '@fedify/vocab-runtime': 2.3.1
       '@fedify/webfinger': 2.3.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-metrics': 2.7.1(@opentelemetry/api@1.9.1)
@@ -4182,7 +4182,7 @@ snapshots:
       '@david/dax': dax@0.46.1
       '@fxts/core': 1.26.0
       '@inquirer/prompts': 7.10.1(@types/node@22.20.0)
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       '@optique/core': 1.1.1
       '@optique/run': 1.1.1
       chalk: 5.6.2
@@ -4196,7 +4196,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.3.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       ioredis: 5.11.1
 
   '@fedify/relay@2.3.1':
@@ -4204,13 +4204,13 @@ snapshots:
       '@fedify/fedify': 2.3.1
       '@fedify/vocab': 2.3.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
 
   '@fedify/sqlite@2.3.1(@fedify/fedify@2.3.1)':
     dependencies:
       '@fedify/fedify': 2.3.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       es-toolkit: 1.49.0
 
   '@fedify/uri-template@2.3.1': {}
@@ -4218,7 +4218,7 @@ snapshots:
   '@fedify/vocab-runtime@2.3.1':
     dependencies:
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -4239,7 +4239,7 @@ snapshots:
       '@fedify/vocab-tools': 2.3.1
       '@fedify/webfinger': 2.3.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -4250,7 +4250,7 @@ snapshots:
   '@fedify/webfinger@2.3.1':
     dependencies:
       '@fedify/vocab-runtime': 2.3.1
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
       '@opentelemetry/api': 1.9.1
       es-toolkit: 1.46.1
 
@@ -4907,13 +4907,13 @@ snapshots:
     dependencies:
       wasm-feature-detect: 1.8.0
 
-  '@logtape/file@2.2.3(@logtape/logtape@2.2.3)':
+  '@logtape/file@2.2.3(@logtape/logtape@2.2.4)':
     dependencies:
-      '@logtape/logtape': 2.2.3
+      '@logtape/logtape': 2.2.4
 
   '@logtape/logtape@1.3.11': {}
 
-  '@logtape/logtape@2.2.3': {}
+  '@logtape/logtape@2.2.4': {}
 
   '@mswjs/interceptors@0.41.9':
     dependencies:
