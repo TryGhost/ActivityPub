@@ -37,6 +37,18 @@ describe('getTraceContext', () => {
         });
     });
 
+    it('parses a future-version traceparent header with extra fields', () => {
+        expect(
+            getTraceContext(
+                '01-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra',
+            ),
+        ).toEqual({
+            traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+            spanId: '00f067aa0ba902b7',
+            sampled: true,
+        });
+    });
+
     it.each([
         '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7',
         '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-extra',
