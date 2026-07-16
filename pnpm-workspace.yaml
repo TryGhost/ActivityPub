@@ -6,3 +6,11 @@
 allowBuilds:
   esbuild: false
   protobufjs: false
+
+# pnpm 11 rejects any lockfile entry published within the last 24 hours. Fedify
+# patches are exempt because we ship them by hand, immediately, when they carry
+# a security fix — that path does not go through Renovate, so Renovate's own
+# release-age rule cannot grant the exemption. Every other package keeps the
+# 24h check. Fedify updates are reviewed by a human before merge.
+minimumReleaseAgeExclude:
+  - '@fedify/*'
