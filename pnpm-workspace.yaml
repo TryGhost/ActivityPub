@@ -1,0 +1,8 @@
+# pnpm 11 refuses to install unless every dependency with a build script is
+# explicitly allowed or denied here. Both are denied to match the production
+# image, which installs with --ignore-scripts (see Dockerfile) and so has never
+# run them. pnpm 10 blocked them by default, so this is the existing behaviour
+# made explicit, not a change.
+allowBuilds:
+  esbuild: false
+  protobufjs: false
