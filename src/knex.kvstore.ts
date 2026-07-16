@@ -53,7 +53,8 @@ export class KnexKvStore implements KvStore {
         if (!row) {
             return undefined;
         }
-        if (row.expires !== null && row.expires <= new Date()) {
+        const now = new Date();
+        if (row.expires !== null && row.expires <= now) {
             this.logging.debug(
                 `KnexKvStore: Deleting expired key ${key}`,
                 keyInfo,
@@ -62,7 +63,7 @@ export class KnexKvStore implements KvStore {
             // refreshed the row between our read and this delete
             await this.knex(this.table)
                 .where(query)
-                .where('expires', '<=', new Date())
+                .where('expires', '<=', now)
                 .del();
             return undefined;
         }
