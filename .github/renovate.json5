@@ -36,16 +36,16 @@
       ]
     },
 
-    // Pin @types/node to the deployed Node runtime major (22.x, see Dockerfile
+    // Pin @types/node to the deployed Node runtime major (24.x, see Dockerfile
     // and .nvmrc). Bumping the typings ahead of the runtime lets the compiler
-    // accept Node-24-only APIs that won't exist in production. Bump
-    // allowedVersions in lockstep when the Node base image is upgraded.
+    // accept APIs that won't exist in production. Bump allowedVersions in
+    // lockstep when the Node base image is upgraded.
     {
       description: 'Pin @types/node to the deployed Node runtime major',
       matchPackageNames: [
         '@types/node',
       ],
-      allowedVersions: '<23',
+      allowedVersions: '<25',
     },
   ],
 }
