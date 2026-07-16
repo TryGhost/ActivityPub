@@ -11,12 +11,16 @@ export function getTraceContext(traceContext: string | undefined) {
 
     const [version, traceId, spanId, flags] = parts;
 
+    // Reject malformed/spoofed traceparent so we don't emit junk trace IDs
+    // to Cloud Logging. Version 'ff' and all-zero trace/span IDs are invalid
+    // per the W3C Trace Context spec.
     const isValidTraceContext =
         /^[0-9a-f]{2}$/.test(version) &&
+        version !== 'ff' &&
         /^[0-9a-f]{32}$/.test(traceId) &&
-        traceId !== '00000000000000000000000000000000' &&
+        !/^0+$/.test(traceId) &&
         /^[0-9a-f]{16}$/.test(spanId) &&
-        spanId !== '0000000000000000' &&
+        !/^0+$/.test(spanId) &&
         /^[0-9a-f]{2}$/.test(flags);
 
     if (!isValidTraceContext) {
