@@ -4,6 +4,8 @@ import type { Context as HonoContext, Next } from 'hono';
 import jwt from 'jsonwebtoken';
 import jose from 'node-jose';
 
+import { isLocalEnvironment } from '@/helpers/environment';
+
 export enum GhostRole {
     Anonymous = 'Anonymous',
     Owner = 'Owner',
@@ -21,9 +23,9 @@ function getJwksURL(host: string, ctx: HonoContext) {
     const GHOST_JWKS_ENDPOINT = '/ghost/.well-known/jwks.json';
 
     let protocol = 'https';
-    // We allow insecure requests when not in production for things like testing
+    // We allow insecure requests in local environments for things like testing
     if (
-        !['staging', 'production'].includes(process.env.NODE_ENV || '') &&
+        isLocalEnvironment(process.env.NODE_ENV) &&
         !ctx.req.raw.url.startsWith('https')
     ) {
         protocol = 'http';

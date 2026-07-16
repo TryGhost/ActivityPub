@@ -43,7 +43,6 @@ import * as Sentry from '@sentry/node';
 import { get } from 'es-toolkit/compat';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
-import { behindProxy } from 'x-forwarded-fetch';
 
 import type { Account } from '@/account/account.entity';
 import { AccountBlockedEvent } from '@/account/events/account-blocked.event';
@@ -123,7 +122,6 @@ import type { SiteController } from '@/http/api/site.controller';
 import { TopicController } from '@/http/api/topic.controller';
 import type { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
-import { forceHttps } from '@/http/force-https';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
 import { createHostDataContextMiddleware } from '@/http/middleware/host-data-context';
@@ -133,6 +131,7 @@ import {
     requireRole,
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
+import { createServeFetch } from '@/http/serve-fetch';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
 import {
     createPushMessageHandler,
@@ -1038,22 +1037,9 @@ app.onError((err, c) => {
     return c.text('Internal Server Error', 500);
 });
 
-function forceAcceptHeader(fn: (req: Request) => unknown) {
-    return (request: Request) => {
-        request.headers.set('accept', 'application/activity+json');
-        return fn(request);
-    };
-}
-
-// Same environments in which the role middleware requires https for the JWKS
-// lookup — local setups serve plain http and must keep the request scheme
-const appFetch = ['staging', 'production'].includes(process.env.NODE_ENV || '')
-    ? forceHttps(behindProxy(app.fetch))
-    : behindProxy(app.fetch);
-
 serve(
     {
-        fetch: forceAcceptHeader(appFetch),
+        fetch: createServeFetch(process.env.NODE_ENV, app.fetch),
         port: Number.parseInt(process.env.PORT || '8080', 10),
     },
     (info) => {
