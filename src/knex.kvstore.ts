@@ -58,7 +58,12 @@ export class KnexKvStore implements KvStore {
                 `KnexKvStore: Deleting expired key ${key}`,
                 keyInfo,
             );
-            await this.knex(this.table).where(query).del();
+            // Only delete if still expired - a concurrent set() may have
+            // refreshed the row between our read and this delete
+            await this.knex(this.table)
+                .where(query)
+                .where('expires', '<=', new Date())
+                .del();
             return undefined;
         }
         if (row.value === null) {
