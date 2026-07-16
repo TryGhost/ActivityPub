@@ -2,6 +2,8 @@ import { behindProxy } from 'x-forwarded-fetch';
 
 import { isLocalEnvironment } from '@/helpers/environment';
 
+type FetchHandler = (request: Request) => Response | Promise<Response>;
+
 /**
  * Decorate a `fetch()` function so that the request is always treated as
  * having been made over https.
@@ -21,14 +23,14 @@ import { isLocalEnvironment } from '@/helpers/environment';
  * (i.e. run before it), as `behindProxy` is what applies the header to the
  * request URL — `createServeFetch` owns that composition.
  */
-function forceHttps(fetch: (req: Request) => unknown) {
+function forceHttps(fetch: FetchHandler): FetchHandler {
     return (request: Request) => {
         request.headers.set('x-forwarded-proto', 'https');
         return fetch(request);
     };
 }
 
-function forceAcceptHeader(fetch: (req: Request) => unknown) {
+function forceAcceptHeader(fetch: FetchHandler): FetchHandler {
     return (request: Request) => {
         request.headers.set('accept', 'application/activity+json');
         return fetch(request);
@@ -47,8 +49,8 @@ function forceAcceptHeader(fetch: (req: Request) => unknown) {
  */
 export function createServeFetch(
     environment: string | undefined,
-    fetch: (request: Request) => Response | Promise<Response>,
-) {
+    fetch: FetchHandler,
+): FetchHandler {
     const proxiedFetch = behindProxy(fetch);
 
     return forceAcceptHeader(
