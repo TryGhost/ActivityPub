@@ -122,6 +122,7 @@ import type { SiteController } from '@/http/api/site.controller';
 import { TopicController } from '@/http/api/topic.controller';
 import type { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
+import { createFetchHandler } from '@/http/fetch-handler';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
 import { createHostDataContextMiddleware } from '@/http/middleware/host-data-context';
@@ -131,7 +132,6 @@ import {
     requireRole,
 } from '@/http/middleware/role-guard';
 import { RouteRegistry } from '@/http/routing/route-registry';
-import { createServeFetch } from '@/http/serve-fetch';
 import { setupInstrumentation, spanWrapper } from '@/instrumentation';
 import {
     createPushMessageHandler,
@@ -1039,7 +1039,7 @@ app.onError((err, c) => {
 
 serve(
     {
-        fetch: createServeFetch(process.env.NODE_ENV, app.fetch),
+        fetch: createFetchHandler(process.env.NODE_ENV, app.fetch),
         port: Number.parseInt(process.env.PORT || '8080', 10),
     },
     (info) => {

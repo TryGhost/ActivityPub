@@ -21,7 +21,7 @@ type FetchHandler = (request: Request) => Response | Promise<Response>;
  *
  * This must wrap a `fetch()` function already decorated with `behindProxy`
  * (i.e. run before it), as `behindProxy` is what applies the header to the
- * request URL — `createServeFetch` owns that composition.
+ * request URL — `createFetchHandler` owns that composition.
  */
 function forceHttps(fetch: FetchHandler): FetchHandler {
     return (request: Request) => {
@@ -47,7 +47,7 @@ function forceAcceptHeader(fetch: FetchHandler): FetchHandler {
  * @param environment `process.env.NODE_ENV`
  * @param fetch The app's `fetch()` function
  */
-export function createServeFetch(
+export function createFetchHandler(
     environment: string | undefined,
     fetch: FetchHandler,
 ): FetchHandler {

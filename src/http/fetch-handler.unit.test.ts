@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { createServeFetch } from './serve-fetch';
+import { createFetchHandler } from './fetch-handler';
 
 async function dispatch(environment: string | undefined, request: Request) {
     let receivedRequest: Request | undefined;
 
-    const fetch = createServeFetch(environment, (request: Request) => {
+    const fetch = createFetchHandler(environment, (request: Request) => {
         receivedRequest = request;
         return new Response();
     });
@@ -19,7 +19,7 @@ async function dispatch(environment: string | undefined, request: Request) {
     return receivedRequest;
 }
 
-describe('createServeFetch', () => {
+describe('createFetchHandler', () => {
     for (const environment of ['staging', 'production']) {
         it(`should force an https request URL in ${environment} when x-forwarded-proto is missing`, async () => {
             const request = await dispatch(

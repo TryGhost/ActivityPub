@@ -3,7 +3,7 @@
  * follows the request scheme (e.g. the JWKS lookup in the role middleware)
  * relies on requests staying http in these environments, and the serve
  * boundary must not force the scheme to https for them (see
- * `createServeFetch`).
+ * `createFetchHandler`).
  *
  * Every other environment — including an unset or unrecognised `NODE_ENV` —
  * is treated as being served over https, matching the canonical account URLs
