@@ -16,7 +16,7 @@ importers:
         version: 2.3.2(@fedify/fedify@2.3.2)(hono@4.12.30)
       '@fedify/redis':
         specifier: 2.3.2
-        version: 2.3.2(@fedify/fedify@2.3.2)(ioredis@5.11.1(supports-color@10.2.2))
+        version: 2.3.2(@fedify/fedify@2.3.2)(ioredis@5.11.1)
       '@fedify/vocab':
         specifier: 2.3.2
         version: 2.3.2
@@ -34,7 +34,7 @@ importers:
         version: 0.21.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
       '@google-cloud/pubsub':
         specifier: 5.3.1
-        version: 5.3.1(supports-color@10.2.2)
+        version: 5.3.1
       '@google-cloud/storage':
         specifier: 7.21.0
         version: 7.21.0
@@ -64,7 +64,7 @@ importers:
         version: 2.9.0(@opentelemetry/api@1.9.1)
       '@sentry/node':
         specifier: 10.65.0
-        version: 10.65.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
+        version: 10.65.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
       awilix:
         specifier: 13.0.5
         version: 13.0.5
@@ -79,7 +79,7 @@ importers:
         version: 10.0.0
       ioredis:
         specifier: 5.11.1
-        version: 5.11.1(supports-color@10.2.2)
+        version: 5.11.1
       jsonwebtoken:
         specifier: 9.0.3
         version: 9.0.3
@@ -127,8 +127,8 @@ importers:
         specifier: 2.5.4
         version: 2.5.4
       '@cucumber/cucumber':
-        specifier: 13.0.0
-        version: 13.0.0
+        specifier: 13.1.1
+        version: 13.1.1
       '@faker-js/faker':
         specifier: 10.5.0
         version: 10.5.0
@@ -173,7 +173,7 @@ importers:
         version: 7.0.2
       vite-tsconfig-paths:
         specifier: 6.1.1
-        version: 6.1.1(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.4(@types/node@22.20.1)(esbuild@0.28.1)(yaml@2.9.0))
+        version: 6.1.1(typescript@7.0.2)(vite@8.1.4(@types/node@22.20.1)(esbuild@0.28.1)(yaml@2.9.0))
       vitest:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@22.20.1)(esbuild@0.28.1)(yaml@2.9.0))
@@ -289,65 +289,73 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@cucumber/ci-environment@13.0.0':
-    resolution: {integrity: sha512-cs+3NzfNkGbcmHPddjEv4TKFiBpZRQ6WJEEufB9mw+ExS22V/4R/zpDSEG+fsJ/iSNCd6A2sATdY8PFOyY3YnA==}
+  '@cucumber/ci-environment@14.0.0':
+    resolution: {integrity: sha512-CJbjPPGuk1fArPRVKB6FU2q9FHxOQOeq7IEJcB2NLNhOhV97uazLxvwD5ucAJb/flky+czOLhvaYaRAF6l5QYQ==}
 
-  '@cucumber/cucumber-expressions@19.0.1':
-    resolution: {integrity: sha512-tJrTgCZ5/vgDBfAs2pQu0fu88gPJIGQ40AC/3ftg5/i/BwnhX/W1MbaFF8A+tanY1zbUWWarGFJ2QMKItPQ/QQ==}
+  '@cucumber/cucumber-expressions@20.0.0':
+    resolution: {integrity: sha512-t2FBLKuU0U1nP5FM8pHiVonYcXVm07fvXr/H9osdvrjcLXSWc5OCbOOqV/k5S56w/YndPv1Sv2/m/x1KBYvIlA==}
 
-  '@cucumber/cucumber@13.0.0':
-    resolution: {integrity: sha512-lUD/IxGZXbfSP+pd7zaYvJIJXBaTZ36CmQxcLDYkilGH8y4ycaOnXe7ll0QFukYFh9/1x6S7pw6lYspJg6g7jw==}
+  '@cucumber/cucumber@13.1.1':
+    resolution: {integrity: sha512-HdFYYoC6yVvvOg98MnVQ1KDc2YbmN3n2Jtr7haERcVNuTRpILc7s7Hc8vNTIMT1eI+Hp7V/UmGt6kLkeYXNDSQ==}
     engines: {node: 22 || 24 || >=26}
     hasBin: true
 
-  '@cucumber/gherkin-streams@6.0.0':
-    resolution: {integrity: sha512-HLSHMmdDH0vCr7vsVEURcDA4WwnRLdjkhqr6a4HQ3i4RFK1wiDGPjBGVdGJLyuXuRdJpJbFc6QxHvT8pU4t6jw==}
+  '@cucumber/gherkin-streams@7.0.1':
+    resolution: {integrity: sha512-8W1lmof0hbQ1HgOEpPCkz1KCFaM6MfA7n7rr6vX/7ffgUQ0saOAwapKSVj7P68Aht0K9XqHaw8BDLtqaK/jRIg==}
     hasBin: true
     peerDependencies:
       '@cucumber/gherkin': '>=22.0.0'
       '@cucumber/message-streams': '>=4.0.0'
       '@cucumber/messages': '>=17.1.1'
 
-  '@cucumber/gherkin-utils@11.0.0':
-    resolution: {integrity: sha512-LJ+s4+TepHTgdKWDR4zbPyT7rQjmYIcukTwNbwNwgqr6i8Gjcmzf6NmtbYDA19m1ZFg6kWbFsmHnj37ZuX+kZA==}
+  '@cucumber/gherkin-utils@12.0.1':
+    resolution: {integrity: sha512-vImHbmTzvGcZP4SFSbx7P6janHZN+BqGWXc3EIQ7UeYMeDzwV9ybSlRfpECV340pxKYZyMTtuSCP3CDXfuWCQw==}
     hasBin: true
 
-  '@cucumber/gherkin@38.0.0':
-    resolution: {integrity: sha512-duEXK+KDfQUzu3vsSzXjkxQ2tirF5PRsc1Xrts6THKHJO6mjw4RjM8RV+vliuDasmhhrmdLcOcM7d9nurNTJKw==}
+  '@cucumber/gherkin@41.0.0':
+    resolution: {integrity: sha512-pKGx1EzNjtWbpw74kEevKDMj71dF3ZSaFJpLYuWVvRZKe+Cwoq5iEkuMaELIg1jxIu8jH/A2HPMpMR8UBvdG0w==}
 
-  '@cucumber/gherkin@39.1.0':
-    resolution: {integrity: sha512-pqmSO2bUWxJm3TbNrKXlDaHjL6c77+ez9kWmfCd9oRPeTRPEVH3spZvpAqdXYWOZYSNYwWFCAAeZ4RGpkauNoQ==}
-
-  '@cucumber/html-formatter@23.1.0':
-    resolution: {integrity: sha512-DcCSFoGs6jbwzXPgX1CwgJKEE+ZMcIEzq/0Memg0o24maNn9NJizBFHmoFWG4iv/OxHza+mvc+56cTHetfHndw==}
+  '@cucumber/html-formatter@24.0.0':
+    resolution: {integrity: sha512-F+3Y2yXZBjj8kYhUg++8LjHhfne0ddm8KS9bYf29nF5f9D3g3elZjWnxa9eMKfkIQGlW5EcmzMYyu6iEF+dV5g==}
     peerDependencies:
       '@cucumber/messages': '>=18'
 
-  '@cucumber/junit-xml-formatter@0.13.3':
-    resolution: {integrity: sha512-w9ujOxiuKDtU6fLzJz+wp4Sgp5Xu6ba7ls00LHJccVmQU0Ba7zs+AHnv3iIgPjKZAQe1w8x93dr8Gaubh7Vqkg==}
+  '@cucumber/junit-xml-formatter@0.14.0':
+    resolution: {integrity: sha512-uDuJySsUr1b1VEAERC+YywvVhygBgYIAMyfSMzLZ3LrourudaWZIhfTND4uLNkRZZQcPr6IYv+qj5TP8RTJJ+g==}
     peerDependencies:
       '@cucumber/messages': '*'
 
-  '@cucumber/message-streams@4.1.1':
-    resolution: {integrity: sha512-QCAntLajesWMyX+mZKrj63YghVAts7yKFlZe46XprLbdJZN0ddB+f/Mr9OnyWKC2DHhJ18jzCfKIFCaqpAmUxg==}
+  '@cucumber/message-streams@5.0.1':
+    resolution: {integrity: sha512-MXsD7ZAWWAiWMrn3Lzq2nwu9DJpPbbvdqXj2ot1BSM2gXnoSvg8d0pc6PzS9pI02swMSn/KN11mTdF5ScE7X0Q==}
     peerDependencies:
       '@cucumber/messages': '>=17.1.1'
 
   '@cucumber/messages@32.3.1':
     resolution: {integrity: sha512-yNQq1KoXRYaEKrWMFmpUQX7TdeQuU9jeGgJAZ3dArTsC/T4NpJ6DnqaJIIgwPnz/wtQIQTNX7/h0rOuF5xY4qQ==}
 
-  '@cucumber/pretty-formatter@3.3.1':
-    resolution: {integrity: sha512-wy8M/Poaqnoom+YP1mzZMfHEE3pP9/0JAYajkjpHTtanp4KJGpAXdukuUYbmmgFjRXUmUSK3s5I+I5+f+q2blA==}
+  '@cucumber/messages@33.0.4':
+    resolution: {integrity: sha512-i6P1a0bnmhecOHfvIW0rhMxv/gMKfBKwDMxmD9/Uo1HSqpQ17ocHms1JwWW6uTMLAopqqWlcz7l6Pax+qUOTzg==}
+
+  '@cucumber/messages@34.0.1':
+    resolution: {integrity: sha512-Mvh8CkZD4TGykvXqM9qpnYVGy9cqMxYkImtghl2cF1hEuBtuDGU716zQk7KviLh0ssidM/phh9kdbJL/73dHpg==}
+
+  '@cucumber/pretty-formatter@4.0.0':
+    resolution: {integrity: sha512-vWKHUfjMphtbeHHlQBZ1gQzPL3/HE/O2dNnpBqEOIDwvhp7tKvqSe8kscp2H7pArbxN6euEpR5JbstJdzo3iyg==}
     peerDependencies:
       '@cucumber/messages': '*'
 
-  '@cucumber/query@15.0.1':
-    resolution: {integrity: sha512-FMfT3orJblRsOxvU2doECBvQmauizYlj+5JsM8atAKKPbnQTj7v2/OrnuykvQpfZNBf19DYbRq1e832vllRP/g==}
+  '@cucumber/query@16.0.0':
+    resolution: {integrity: sha512-CtGBHLc92y1RNogXGOFVF7so+XdLR5rVuJGsS6nH7yLeayyYhdV8lYW/LG8R05cm4irG/RO6Wn5I2CAgxMhmwQ==}
     peerDependencies:
       '@cucumber/messages': '*'
 
-  '@cucumber/tag-expressions@9.1.0':
-    resolution: {integrity: sha512-bvHjcRFZ+J1TqIa9eFNO1wGHqwx4V9ZKV3hYgkuK/VahHx73uiP4rKV3JVrvWSMrwrFvJG6C8aEwnCWSvbyFdQ==}
+  '@cucumber/query@16.0.1':
+    resolution: {integrity: sha512-qZwCbL5WLhHGqBdYZvguA5zOTEdLauMTrQEDcDcILMk6eVyPwgtmkcH2/4s/jnT+f02cW0ZVbAaToIN3j6glXw==}
+    peerDependencies:
+      '@cucumber/messages': '*'
+
+  '@cucumber/tag-expressions@10.0.0':
+    resolution: {integrity: sha512-uap3XSQFxj5HYAHQIShGeS2zotMEnUmnEVjyuhp39j7tDUvaU64ArHzRkLPSWRavEI8ycdeNdwef1pcM/n6pSQ==}
 
   '@digitalbazaar/http-client@4.3.0':
     resolution: {integrity: sha512-6lMpxpt9BOmqHKGs9Xm6DP4LlZTBFer/ZjHvP3FcW3IaUWYIWC7dw5RFZnvw4fP57kAVcm1dp3IF+Y50qhBvAw==}
@@ -1988,14 +1996,6 @@ packages:
     resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
     engines: {node: '>=14'}
 
-  commander@14.0.0:
-    resolution: {integrity: sha512-2uM9rYjPvyq39NwLRqaiLtWHyDC1FvryJDa2ATTVims5YAS4PupsEQsDvP14FqhFr0P49CYDugi59xaxJlTXRA==}
-    engines: {node: '>=20'}
-
-  commander@14.0.2:
-    resolution: {integrity: sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ==}
-    engines: {node: '>=20'}
-
   commander@15.0.0:
     resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
     engines: {node: '>=22.12.0'}
@@ -2942,6 +2942,11 @@ packages:
     engines: {node: '>=10.0.0'}
     hasBin: true
 
+  mime@4.1.0:
+    resolution: {integrity: sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw==}
+    engines: {node: '>=16'}
+    hasBin: true
+
   mimic-function@5.0.1:
     resolution: {integrity: sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA==}
     engines: {node: '>=18'}
@@ -2953,11 +2958,6 @@ packages:
   minipass@7.1.3:
     resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
     engines: {node: '>=16 || 14 >=14.17'}
-
-  mkdirp@3.0.1:
-    resolution: {integrity: sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   module-details-from-path@1.0.4:
     resolution: {integrity: sha512-EGWKgxALGMgzvxYF1UyGTy0HXX/2vHLkw6+NvDKW2jypWbHpjQuj4UMcqQWXHERJhVGKikolT06G3bcKe4fi7w==}
@@ -3361,11 +3361,6 @@ packages:
 
   semifies@1.0.0:
     resolution: {integrity: sha512-xXR3KGeoxTNWPD4aBvL5NUpMTT7WMANr3EWnaS190QVkY52lqqcVRD7Q05UVbBhiWDGWMlJEUam9m7uFFGVScw==}
-
-  semver@7.8.1:
-    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
@@ -3957,7 +3952,7 @@ snapshots:
       semifies: 1.0.0
       source-map: 0.6.1
 
-  '@apm-js-collab/tracing-hooks@0.10.1(supports-color@10.2.2)':
+  '@apm-js-collab/tracing-hooks@0.10.1':
     dependencies:
       '@apm-js-collab/code-transformer': 0.15.0
       debug: 4.4.3(supports-color@10.2.2)
@@ -4030,25 +4025,25 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@cucumber/ci-environment@13.0.0': {}
+  '@cucumber/ci-environment@14.0.0': {}
 
-  '@cucumber/cucumber-expressions@19.0.1':
+  '@cucumber/cucumber-expressions@20.0.0':
     dependencies:
       regexp-match-indices: 1.0.2
 
-  '@cucumber/cucumber@13.0.0':
+  '@cucumber/cucumber@13.1.1':
     dependencies:
-      '@cucumber/ci-environment': 13.0.0
-      '@cucumber/cucumber-expressions': 19.0.1
-      '@cucumber/gherkin': 39.1.0
-      '@cucumber/gherkin-streams': 6.0.0(@cucumber/gherkin@39.1.0)(@cucumber/message-streams@4.1.1(@cucumber/messages@32.3.1))(@cucumber/messages@32.3.1)
-      '@cucumber/gherkin-utils': 11.0.0
-      '@cucumber/html-formatter': 23.1.0(@cucumber/messages@32.3.1)
-      '@cucumber/junit-xml-formatter': 0.13.3(@cucumber/messages@32.3.1)
-      '@cucumber/message-streams': 4.1.1(@cucumber/messages@32.3.1)
-      '@cucumber/messages': 32.3.1
-      '@cucumber/pretty-formatter': 3.3.1(@cucumber/messages@32.3.1)
-      '@cucumber/tag-expressions': 9.1.0
+      '@cucumber/ci-environment': 14.0.0
+      '@cucumber/cucumber-expressions': 20.0.0
+      '@cucumber/gherkin': 41.0.0
+      '@cucumber/gherkin-streams': 7.0.1(@cucumber/gherkin@41.0.0)(@cucumber/message-streams@5.0.1(@cucumber/messages@34.0.1))(@cucumber/messages@34.0.1)
+      '@cucumber/gherkin-utils': 12.0.1
+      '@cucumber/html-formatter': 24.0.0(@cucumber/messages@34.0.1)
+      '@cucumber/junit-xml-formatter': 0.14.0(@cucumber/messages@34.0.1)
+      '@cucumber/message-streams': 5.0.1(@cucumber/messages@34.0.1)
+      '@cucumber/messages': 34.0.1
+      '@cucumber/pretty-formatter': 4.0.0(@cucumber/messages@34.0.1)
+      '@cucumber/tag-expressions': 10.0.0
       assertion-error-formatter: 3.0.0
       cli-table3: 0.6.5
       commander: 15.0.0
@@ -4058,14 +4053,12 @@ snapshots:
       has-ansi: 6.0.2
       indent-string: 5.0.0
       is-installed-globally: 1.0.0
-      is-stream: 4.0.1
       knuth-shuffle-seeded: 1.0.6
       lodash.merge: 4.6.2
       lodash.mergewith: 4.6.2
       luxon: 3.7.2
-      mkdirp: 3.0.1
       read-package-up: 12.0.0
-      semver: 7.8.1
+      semver: 7.8.5
       string-argv: 0.3.2
       supports-color: 10.2.2
       type-fest: 5.8.0
@@ -4073,65 +4066,71 @@ snapshots:
       yaml: 2.9.0
       yup: 1.7.1
 
-  '@cucumber/gherkin-streams@6.0.0(@cucumber/gherkin@39.1.0)(@cucumber/message-streams@4.1.1(@cucumber/messages@32.3.1))(@cucumber/messages@32.3.1)':
+  '@cucumber/gherkin-streams@7.0.1(@cucumber/gherkin@41.0.0)(@cucumber/message-streams@5.0.1(@cucumber/messages@34.0.1))(@cucumber/messages@34.0.1)':
     dependencies:
-      '@cucumber/gherkin': 39.1.0
-      '@cucumber/message-streams': 4.1.1(@cucumber/messages@32.3.1)
-      '@cucumber/messages': 32.3.1
-      commander: 14.0.0
+      '@cucumber/gherkin': 41.0.0
+      '@cucumber/message-streams': 5.0.1(@cucumber/messages@34.0.1)
+      '@cucumber/messages': 34.0.1
+      commander: 15.0.0
       source-map-support: 0.5.21
 
-  '@cucumber/gherkin-utils@11.0.0':
+  '@cucumber/gherkin-utils@12.0.1':
     dependencies:
-      '@cucumber/gherkin': 38.0.0
-      '@cucumber/messages': 32.3.1
+      '@cucumber/gherkin': 41.0.0
+      '@cucumber/messages': 33.0.4
       '@teppeis/multimaps': 3.0.0
-      commander: 14.0.2
+      commander: 15.0.0
       source-map-support: 0.5.21
 
-  '@cucumber/gherkin@38.0.0':
+  '@cucumber/gherkin@41.0.0':
     dependencies:
       '@cucumber/messages': 32.3.1
 
-  '@cucumber/gherkin@39.1.0':
+  '@cucumber/html-formatter@24.0.0(@cucumber/messages@34.0.1)':
     dependencies:
-      '@cucumber/messages': 32.3.1
+      '@cucumber/messages': 34.0.1
 
-  '@cucumber/html-formatter@23.1.0(@cucumber/messages@32.3.1)':
+  '@cucumber/junit-xml-formatter@0.14.0(@cucumber/messages@34.0.1)':
     dependencies:
-      '@cucumber/messages': 32.3.1
-
-  '@cucumber/junit-xml-formatter@0.13.3(@cucumber/messages@32.3.1)':
-    dependencies:
-      '@cucumber/messages': 32.3.1
-      '@cucumber/query': 15.0.1(@cucumber/messages@32.3.1)
+      '@cucumber/messages': 34.0.1
+      '@cucumber/query': 16.0.1(@cucumber/messages@34.0.1)
       '@teppeis/multimaps': 3.0.0
       luxon: 3.7.2
       xmlbuilder: 15.1.1
 
-  '@cucumber/message-streams@4.1.1(@cucumber/messages@32.3.1)':
+  '@cucumber/message-streams@5.0.1(@cucumber/messages@34.0.1)':
     dependencies:
-      '@cucumber/messages': 32.3.1
-      mime: 3.0.0
+      '@cucumber/messages': 34.0.1
+      mime: 4.1.0
 
   '@cucumber/messages@32.3.1':
     dependencies:
       class-transformer: 0.5.1
       reflect-metadata: 0.2.2
 
-  '@cucumber/pretty-formatter@3.3.1(@cucumber/messages@32.3.1)':
+  '@cucumber/messages@33.0.4': {}
+
+  '@cucumber/messages@34.0.1': {}
+
+  '@cucumber/pretty-formatter@4.0.0(@cucumber/messages@34.0.1)':
     dependencies:
-      '@cucumber/messages': 32.3.1
-      '@cucumber/query': 15.0.1(@cucumber/messages@32.3.1)
+      '@cucumber/messages': 34.0.1
+      '@cucumber/query': 16.0.0(@cucumber/messages@34.0.1)
       luxon: 3.7.2
 
-  '@cucumber/query@15.0.1(@cucumber/messages@32.3.1)':
+  '@cucumber/query@16.0.0(@cucumber/messages@34.0.1)':
     dependencies:
-      '@cucumber/messages': 32.3.1
+      '@cucumber/messages': 34.0.1
       '@teppeis/multimaps': 3.0.0
       lodash.sortby: 4.7.0
 
-  '@cucumber/tag-expressions@9.1.0': {}
+  '@cucumber/query@16.0.1(@cucumber/messages@34.0.1)':
+    dependencies:
+      '@cucumber/messages': 34.0.1
+      '@teppeis/multimaps': 3.0.0
+      lodash.sortby: 4.7.0
+
+  '@cucumber/tag-expressions@10.0.0': {}
 
   '@digitalbazaar/http-client@4.3.0':
     dependencies:
@@ -4329,12 +4328,12 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@fedify/redis@2.3.2(@fedify/fedify@2.3.2)(ioredis@5.11.1(supports-color@10.2.2))':
+  '@fedify/redis@2.3.2(@fedify/fedify@2.3.2)(ioredis@5.11.1)':
     dependencies:
       '@fedify/fedify': 2.3.2
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.2.4
-      ioredis: 5.11.1(supports-color@10.2.2)
+      ioredis: 5.11.1
 
   '@fedify/relay@2.3.2':
     dependencies:
@@ -4444,7 +4443,7 @@ snapshots:
 
   '@google-cloud/promisify@5.1.0': {}
 
-  '@google-cloud/pubsub@5.3.1(supports-color@10.2.2)':
+  '@google-cloud/pubsub@5.3.1':
     dependencies:
       '@google-cloud/paginator': 6.0.2
       '@google-cloud/precise-date': 5.1.0
@@ -4456,7 +4455,7 @@ snapshots:
       arrify: 2.0.1
       extend: 3.0.2
       google-auth-library: 10.9.0
-      google-gax: 5.0.7(supports-color@10.2.2)
+      google-gax: 5.0.7
       google-logging-utils: 1.1.4
       heap-js: 2.7.1
       is-stream-ended: 0.1.4
@@ -5125,12 +5124,12 @@ snapshots:
       '@opentelemetry/resources': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace': 2.9.0(@opentelemetry/api@1.9.1)
 
-  '@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2)':
+  '@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/api-logs': 0.220.0
       import-in-the-middle: 3.3.1
-      require-in-the-middle: 8.0.1(supports-color@10.2.2)
+      require-in-the-middle: 8.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -5311,7 +5310,7 @@ snapshots:
     dependencies:
       '@sentry/conventions': 0.15.1
 
-  '@sentry/node-core@10.65.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))':
+  '@sentry/node-core@10.65.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@sentry/conventions': 0.15.1
       '@sentry/core': 10.65.0
@@ -5320,19 +5319,19 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2)
+      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
 
-  '@sentry/node@10.65.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)':
+  '@sentry/node@10.65.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2)
+      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
       '@sentry/conventions': 0.15.1
       '@sentry/core': 10.65.0
-      '@sentry/node-core': 10.65.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
+      '@sentry/node-core': 10.65.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
       '@sentry/opentelemetry': 10.65.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
-      '@sentry/server-utils': 10.65.0(supports-color@10.2.2)
+      '@sentry/server-utils': 10.65.0
       import-in-the-middle: 3.3.1
     transitivePeerDependencies:
       - '@opentelemetry/core'
@@ -5347,11 +5346,11 @@ snapshots:
       '@sentry/conventions': 0.15.1
       '@sentry/core': 10.65.0
 
-  '@sentry/server-utils@10.65.0(supports-color@10.2.2)':
+  '@sentry/server-utils@10.65.0':
     dependencies:
       '@apm-js-collab/code-transformer': 0.15.0
       '@apm-js-collab/code-transformer-bundler-plugins': 0.5.0
-      '@apm-js-collab/tracing-hooks': 0.10.1(supports-color@10.2.2)
+      '@apm-js-collab/tracing-hooks': 0.10.1
       '@sentry/conventions': 0.15.1
       '@sentry/core': 10.65.0
       magic-string: 0.30.21
@@ -5805,10 +5804,6 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   commander@10.0.1: {}
-
-  commander@14.0.0: {}
-
-  commander@14.0.2: {}
 
   commander@15.0.0: {}
 
@@ -6292,7 +6287,7 @@ snapshots:
       - encoding
       - supports-color
 
-  google-gax@5.0.7(supports-color@10.2.2):
+  google-gax@5.0.7:
     dependencies:
       '@grpc/grpc-js': 1.14.4
       '@grpc/proto-loader': 0.8.1
@@ -6303,7 +6298,7 @@ snapshots:
       object-hash: 3.0.0
       proto3-json-serializer: 3.0.4
       protobufjs: 7.6.5
-      retry-request: 8.0.3(supports-color@10.2.2)
+      retry-request: 8.0.3
       rimraf: 5.0.10
     transitivePeerDependencies:
       - supports-color
@@ -6413,7 +6408,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  http-proxy-agent@7.0.2(supports-color@10.2.2):
+  http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@10.2.2)
@@ -6487,7 +6482,7 @@ snapshots:
 
   interpret@2.2.0: {}
 
-  ioredis@5.11.1(supports-color@10.2.2):
+  ioredis@5.11.1:
     dependencies:
       '@ioredis/commands': 1.10.0
       cluster-key-slot: 1.1.1
@@ -6846,6 +6841,8 @@ snapshots:
 
   mime@3.0.0: {}
 
+  mime@4.1.0: {}
+
   mimic-function@5.0.1: {}
 
   minimatch@9.0.9:
@@ -6853,8 +6850,6 @@ snapshots:
       brace-expansion: 2.1.2
 
   minipass@7.1.3: {}
-
-  mkdirp@3.0.1: {}
 
   module-details-from-path@1.0.4: {}
 
@@ -6930,7 +6925,7 @@ snapshots:
   normalize-package-data@8.0.0:
     dependencies:
       hosted-git-info: 9.0.3
-      semver: 7.8.1
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   nth-check@2.1.1:
@@ -7182,7 +7177,7 @@ snapshots:
 
   require-directory@2.1.1: {}
 
-  require-in-the-middle@8.0.1(supports-color@10.2.2):
+  require-in-the-middle@8.0.1:
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
       module-details-from-path: 1.0.4
@@ -7212,10 +7207,10 @@ snapshots:
       - encoding
       - supports-color
 
-  retry-request@8.0.3(supports-color@10.2.2):
+  retry-request@8.0.3:
     dependencies:
       extend: 3.0.2
-      teeny-request: 10.1.3(supports-color@10.2.2)
+      teeny-request: 10.1.3
     transitivePeerDependencies:
       - supports-color
 
@@ -7281,8 +7276,6 @@ snapshots:
       parseley: 0.13.1
 
   semifies@1.0.0: {}
-
-  semver@7.8.1: {}
 
   semver@7.8.5: {}
 
@@ -7466,9 +7459,9 @@ snapshots:
 
   tarn@3.1.2: {}
 
-  teeny-request@10.1.3(supports-color@10.2.2):
+  teeny-request@10.1.3:
     dependencies:
-      http-proxy-agent: 7.0.2(supports-color@10.2.2)
+      http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
       node-fetch: 3.3.2
       stream-events: 1.0.5
@@ -7643,7 +7636,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-tsconfig-paths@6.1.1(supports-color@10.2.2)(typescript@7.0.2)(vite@8.1.4(@types/node@22.20.1)(esbuild@0.28.1)(yaml@2.9.0)):
+  vite-tsconfig-paths@6.1.1(typescript@7.0.2)(vite@8.1.4(@types/node@22.20.1)(esbuild@0.28.1)(yaml@2.9.0)):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
       globrex: 0.1.2
