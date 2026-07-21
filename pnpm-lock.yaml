@@ -85,7 +85,7 @@ importers:
         version: 9.0.3
       knex:
         specifier: 3.3.0
-        version: 3.3.0(mysql2@3.22.6(@types/node@22.20.1))
+        version: 3.3.0(mysql2@3.23.0(@types/node@22.20.1))
       ky:
         specifier: 2.0.2
         version: 2.0.2
@@ -96,8 +96,8 @@ importers:
         specifier: 4.3.3
         version: 4.3.3
       mysql2:
-        specifier: 3.22.6
-        version: 3.22.6(@types/node@22.20.1)
+        specifier: 3.23.0
+        version: 3.23.0(@types/node@22.20.1)
       node-html-parser:
         specifier: 9.0.0
         version: 9.0.0
@@ -2976,8 +2976,8 @@ packages:
     resolution: {integrity: sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA==}
     engines: {node: ^18.17.0 || >=20.5.0}
 
-  mysql2@3.22.6:
-    resolution: {integrity: sha512-fPKmeDGUzvFP7bMD5SASlJ5zIgvCC4hbanTmhbUlEmhyrY1hR4Hi3xLOWgTd3luYjLVifx6uGvMNJ2m/LlqEpg==}
+  mysql2@3.23.0:
+    resolution: {integrity: sha512-ZwyGLoG9BRlL7hKNDcIy7q18hA6WTWGEpLAerGHXj5Xahemia4msZdwjIOUIzesjK3B5z5gWLktf+2tYSLAyTA==}
     engines: {node: '>= 8.0'}
     peerDependencies:
       '@types/node': '>= 8'
@@ -6649,7 +6649,7 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
-  knex@3.3.0(mysql2@3.22.6(@types/node@22.20.1)):
+  knex@3.3.0(mysql2@3.23.0(@types/node@22.20.1)):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
@@ -6666,7 +6666,7 @@ snapshots:
       tarn: 3.1.2
       tildify: 2.0.0
     optionalDependencies:
-      mysql2: 3.22.6(@types/node@22.20.1)
+      mysql2: 3.23.0(@types/node@22.20.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -6866,7 +6866,7 @@ snapshots:
 
   mute-stream@2.0.0: {}
 
-  mysql2@3.22.6(@types/node@22.20.1):
+  mysql2@3.23.0(@types/node@22.20.1):
     dependencies:
       '@types/node': 22.20.1
       aws-ssl-profiles: 1.1.2
