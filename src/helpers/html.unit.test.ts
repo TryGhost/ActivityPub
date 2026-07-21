@@ -36,13 +36,17 @@ describe('sanitizeHtml', () => {
         await import('sanitize-html');
         const { sanitizeHtml: realSanitizeHtml } = await import('./html');
 
-        const content =
-            '<script src="https://bad.com/script.js"></script><script src="https://twitter.com/script.js"></script><p>Hello, world!</p>';
+        const content = [
+            '<script src="https://bad.com/script.js"></script>',
+            '<script src="https://platform.twitter.com/widgets.js"></script>',
+            '<script src="https://platform.x.com/widgets.js"></script>',
+            '<p>Hello, world!</p>',
+        ].join('');
 
         const result = realSanitizeHtml(content);
 
         expect(result).toEqual(
-            '<script></script><script src="https://twitter.com/script.js"></script><p>Hello, world!</p>',
+            '<script></script><script src="https://platform.twitter.com/widgets.js"></script><script src="https://platform.x.com/widgets.js"></script><p>Hello, world!</p>',
         );
 
         // Restore the mock for subsequent tests
