@@ -21,9 +21,10 @@
         });
     };
 
-    # This gives us a central place to set the node version
+    # This gives us a central place to set the node version. Keep the major in
+    # sync with .nvmrc and the Dockerfile base image.
     node_overlay = final: prev: {
-        nodejs = prev.nodejs;
+        nodejs = prev.nodejs_24;
     };
 
     eachSystem = f:
