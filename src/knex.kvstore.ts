@@ -46,15 +46,28 @@ export class KnexKvStore implements KvStore {
             key: this.keyToString(key),
         };
         const row = await this.knex(this.table).where(query).first();
+        // Fedify distinguishes a missing key (undefined) from a stored null:
+        // its KvKeyCache treats null as a cached "key is unavailable" marker
+        // and skips fetching the key entirely, so returning null for missing
+        // keys breaks HTTP signature verification for never-seen senders.
         if (!row) {
-            return null;
+            return undefined;
         }
-        if (row.expires !== null && row.expires <= new Date()) {
+        const now = new Date();
+        if (row.expires !== null && row.expires <= now) {
             this.logging.debug(
                 `KnexKvStore: Deleting expired key ${key}`,
                 keyInfo,
             );
-            await this.knex(this.table).where(query).del();
+            // Only delete if still expired - a concurrent set() may have
+            // refreshed the row between our read and this delete
+            await this.knex(this.table)
+                .where(query)
+                .where('expires', '<=', now)
+                .del();
+            return undefined;
+        }
+        if (row.value === null) {
             return null;
         }
         if (Object.hasOwn(row.value, '@@BOOLEAN@@')) {

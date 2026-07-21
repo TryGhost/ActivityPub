@@ -18,10 +18,11 @@ describe('KnexKvStore', () => {
         const store = KnexKvStore.create(client, table, logger);
 
         // checkReadingUnsetKey
+        // Fedify's KvStore contract requires undefined (not null) for missing
+        // keys - null means a stored negative entry (see checkNullValue)
         {
             const actual = await store.get(['unsetkey']);
-            const expected = null;
-            expect(actual).toEqual(expected);
+            expect(actual).toBeUndefined();
         }
 
         // checkReadingSetKey
@@ -46,8 +47,15 @@ describe('KnexKvStore', () => {
             await store.set(['deleted'], { initial: 'value' });
             await store.delete(['deleted']);
             const actual = await store.get(['deleted']);
-            const expected = null;
-            expect(actual).toEqual(expected);
+            expect(actual).toBeUndefined();
+        }
+
+        // checkNullValue - Fedify's KvKeyCache stores null to mark a key
+        // lookup as failed, and must read it back as null (not undefined)
+        {
+            await store.set(['nullvalue'], null);
+            const actual = await store.get(['nullvalue']);
+            expect(actual).toBeNull();
         }
     });
 
@@ -131,7 +139,7 @@ describe('KnexKvStore', () => {
 
         const result = await store.get(['expired-key']);
 
-        expect(result).toBeNull();
+        expect(result).toBeUndefined();
     });
 
     it('Deletes expired entries from the database on read', async () => {
