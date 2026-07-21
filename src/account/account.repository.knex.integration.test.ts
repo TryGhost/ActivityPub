@@ -75,13 +75,26 @@ describe('KnexAccountRepository', () => {
 
         const account = await accountRepository.getBySite(site);
 
+        assert(account, 'An Account should have been fetched');
         assert(account.uuid !== null, 'Account should have a uuid');
+    });
+
+    it('Returns null when getting by a site that has no user', async () => {
+        const [, site] = await fixtureManager.createInternalAccount();
+
+        await client('users').where('site_id', site.id).del();
+
+        const account = await accountRepository.getBySite(site);
+
+        assert(account === null, 'No Account should have been fetched');
     });
 
     it('Can get by apId', async () => {
         const [, site] = await fixtureManager.createInternalAccount();
 
         const account = await accountRepository.getBySite(site);
+
+        assert(account, 'An Account should have been fetched');
 
         const row = await client('accounts')
             .where({ id: account.id })
@@ -180,6 +193,8 @@ describe('KnexAccountRepository', () => {
             id: 1,
         } as Site);
 
+        assert(accountEntity, 'An Account should have been fetched');
+
         const updated = accountEntity.updateProfile({
             name: 'Updated Name',
             bio: 'Updated Bio',
@@ -223,6 +238,8 @@ describe('KnexAccountRepository', () => {
         const accountEntity = await accountRepository.getBySite({
             id: 1,
         } as Site);
+
+        assert(accountEntity, 'An Account should have been fetched');
 
         const firstUpdated = accountEntity.updateProfile({
             avatarUrl: new URL('https://example.com/avatar.png'),

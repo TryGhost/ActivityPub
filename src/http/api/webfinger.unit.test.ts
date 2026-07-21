@@ -263,9 +263,7 @@ describe('handleWebFinger', () => {
             return Promise.resolve(null);
         });
 
-        vi.mocked(accountRepository.getBySite).mockRejectedValue(
-            new Error('No account found'),
-        );
+        vi.mocked(accountRepository.getBySite).mockResolvedValue(null);
 
         const response = await webFingerController.handleWebFinger(ctx, next);
 
@@ -273,6 +271,31 @@ describe('handleWebFinger', () => {
         expect(siteService.getSiteByHost).toHaveBeenCalledWith(
             'www.example.com',
         );
+    });
+
+    it('should propagate account lookup errors instead of falling back', async () => {
+        const ctx = getCtx({ resource: 'acct:alice@example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({ host: 'example.com' } as Site);
+            }
+            if (host === 'www.example.com') {
+                return Promise.resolve({ host: 'www.example.com' } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockRejectedValue(
+            new Error('Connection lost'),
+        );
+
+        await expect(
+            webFingerController.handleWebFinger(ctx, next),
+        ).rejects.toThrow('Connection lost');
+        expect(next).not.toHaveBeenCalled();
     });
 
     it('should return a custom webfinger response', async () => {
@@ -436,7 +459,7 @@ describe('handleWebFinger', () => {
         });
     });
 
-    it('should resolve via the www site when the bare-host site account fails to load', async () => {
+    it('should resolve via the www site when the bare-host site has no account', async () => {
         const ctx = getCtx({ resource: 'acct:alice@example.com' });
         const next = vi.fn();
 
@@ -453,7 +476,7 @@ describe('handleWebFinger', () => {
 
         vi.mocked(accountRepository.getBySite).mockImplementation((site) => {
             if (site.host === 'example.com') {
-                return Promise.reject(new Error('No account found'));
+                return Promise.resolve(null);
             }
 
             return Promise.resolve({

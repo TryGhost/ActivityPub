@@ -685,7 +685,13 @@ export class AccountService {
     }
 
     async getAccountForSite(site: Site): Promise<Account> {
-        return this.accountRepository.getBySite(site);
+        const account = await this.accountRepository.getBySite(site);
+
+        if (!account) {
+            throw new Error(`No user found for site: ${site.id}`);
+        }
+
+        return account;
     }
 
     /**

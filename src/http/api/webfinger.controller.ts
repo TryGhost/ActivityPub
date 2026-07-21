@@ -132,7 +132,7 @@ export class WebFingerController {
 
             siteFound = true;
 
-            const account = await this.getAccountBySiteOrNull(site);
+            const account = await this.accountRepository.getBySite(site);
 
             if (
                 account &&
@@ -143,19 +143,6 @@ export class WebFingerController {
         }
 
         return { siteFound, account: null };
-    }
-
-    private async getAccountBySiteOrNull(site: {
-        id: number;
-        host: string;
-        webhook_secret: string;
-        ghost_uuid: string | null;
-    }) {
-        try {
-            return await this.accountRepository.getBySite(site);
-        } catch (_error) {
-            return null;
-        }
     }
 
     private createWebfingerResponse(
