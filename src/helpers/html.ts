@@ -249,8 +249,7 @@ export function sanitizeHtml(content: string): string {
                 'loop',
             ],
         },
-        allowedScriptDomains: ['twitter.com'],
-        allowedScriptHostnames: ['platform.twitter.com'],
+        allowedScriptHostnames: ['platform.twitter.com', 'platform.x.com'],
         allowVulnerableTags: true,
     });
 }
