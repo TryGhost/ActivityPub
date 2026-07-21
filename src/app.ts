@@ -102,6 +102,7 @@ import type { FeedUpdateService } from '@/feed/feed-update.service';
 import type { FlagService } from '@/flag/flag.service';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
+import { isLocalEnvironment } from '@/helpers/environment';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
 import { BlueskyController } from '@/http/api/bluesky.controller';
@@ -1077,13 +1078,13 @@ async function gracefulShutdown(signal: 'SIGINT' | 'SIGTERM') {
 }
 
 process.on('SIGINT', () => {
-    if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
+    if (isLocalEnvironment(process.env.NODE_ENV)) {
         process.exit(0);
     }
     void gracefulShutdown('SIGINT');
 });
 process.on('SIGTERM', () => {
-    if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
+    if (isLocalEnvironment(process.env.NODE_ENV)) {
         process.exit(0);
     }
     void gracefulShutdown('SIGTERM');
