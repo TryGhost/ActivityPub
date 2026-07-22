@@ -239,14 +239,6 @@ export class FixtureManager {
         });
     }
 
-    async disableBlueskyIntegration(account: Account) {
-        await this.db('bluesky_integration_account_handles')
-            .where({
-                account_id: account.id,
-            })
-            .delete();
-    }
-
     async createTopic(name: string, slug: string, displayOrder: number = 0) {
         const [id] = await this.db('topics').insert({
             name,
