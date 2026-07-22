@@ -26,12 +26,6 @@ importers:
       '@fedify/webfinger':
         specifier: 2.3.2
         version: 2.3.2
-      '@google-cloud/opentelemetry-cloud-trace-exporter':
-        specifier: 3.0.0
-        version: 3.0.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
-      '@google-cloud/opentelemetry-cloud-trace-propagator':
-        specifier: 0.21.0
-        version: 0.21.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
       '@google-cloud/pubsub':
         specifier: 5.3.1
         version: 5.3.1(supports-color@10.2.2)
@@ -56,9 +50,6 @@ importers:
       '@opentelemetry/exporter-trace-otlp-proto':
         specifier: 0.220.0
         version: 0.220.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources':
-        specifier: 2.9.0
-        version: 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base':
         specifier: 2.9.0
         version: 2.9.0(@opentelemetry/api@1.9.1)
@@ -150,12 +141,6 @@ importers:
       '@types/sanitize-html':
         specifier: 2.16.1
         version: 2.16.1
-      '@types/sinon':
-        specifier: 22.0.0
-        version: 22.0.0
-      '@types/uuid':
-        specifier: 11.0.0
-        version: 11.0.0
       '@vitest/coverage-v8':
         specifier: 4.1.10
         version: 4.1.10(vitest@4.1.10)
@@ -590,29 +575,6 @@ packages:
 
   '@fxts/core@1.26.0':
     resolution: {integrity: sha512-ONaza1CGr8dLKmJ0HQgi0h4XuyDJMr0P70M7o/My/YeeRxuYoSANHjE2nSY7xO4WHgxUD5ojd5dpxlFOzAEJsA==}
-
-  '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0':
-    resolution: {integrity: sha512-mUfLJBFo+ESbO0dAGboErx2VyZ7rbrHcQvTP99yH/J72dGaPbH2IzS+04TFbTbEd1VW5R9uK3xq2CqawQaG+1Q==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@opentelemetry/api': ^1.0.0
-      '@opentelemetry/core': ^2.0.0
-      '@opentelemetry/resources': ^2.0.0
-      '@opentelemetry/sdk-trace-base': ^2.0.0
-
-  '@google-cloud/opentelemetry-cloud-trace-propagator@0.21.0':
-    resolution: {integrity: sha512-Uw+co/tfYAkXFgMFsHdr5xQbxkLG/mRtHu4LL/ffrNj7TYi5UIU0tG+nGKxo4P2Oj8AJLT2D8iGaXYy9vUkSAA==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@opentelemetry/api': ^1.0.0
-      '@opentelemetry/core': ^2.0.0
-
-  '@google-cloud/opentelemetry-resource-util@3.0.0':
-    resolution: {integrity: sha512-CGR/lNzIfTKlZoZFfS6CkVzx+nsC9gzy6S8VcyaLegfEJbiPjxbMLP7csyhJTvZe/iRRcQJxSk0q8gfrGqD3/Q==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@opentelemetry/core': ^2.0.0
-      '@opentelemetry/resources': ^2.0.0
 
   '@google-cloud/paginator@5.0.2':
     resolution: {integrity: sha512-DJS3s0OVH4zFDB1PzjxAsHqJT6sKVbRwwML0ZBP9PbU7Yebtu/7SWMRzvO2J3nUi9pRNITCfu4LJeooM2w4pjg==}
@@ -1588,21 +1550,11 @@ packages:
   '@types/sanitize-html@2.16.1':
     resolution: {integrity: sha512-n9wjs8bCOTyN/ynwD8s/nTcTreIHB1vf31vhLMGqUPNHaweKC4/fAl4Dj+hUlCTKYgm4P3k83fmiFfzkZ6sgMA==}
 
-  '@types/sinon@22.0.0':
-    resolution: {integrity: sha512-TDbVpbccc2HfiqHR09Argj3mHV1KMW7sCCKj52fsl8lbRLkEn7fB1966EWhOKWUBcqfBueZuPoA7/OK1CKiy3g==}
-
-  '@types/sinonjs__fake-timers@15.0.1':
-    resolution: {integrity: sha512-Ko2tjWJq8oozHzHV+reuvS5KYIRAokHnGbDwGh/J64LntgpbuylF74ipEL24HCyRjf9FOlBiBHWBR1RlVKsI1w==}
-
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
-
-  '@types/uuid@11.0.0':
-    resolution: {integrity: sha512-HVyk8nj2m+jcFRNazzqyVKiZezyhDKrGUA3jlEcg/nZ6Ms+qHwocba1Y/AaVaznJTAM9xpdFSh+ptbNrhOGvZA==}
-    deprecated: This is a stub types definition. uuid provides its own type definitions, so you do not need this installed.
 
   '@types/wrap-ansi@3.0.0':
     resolution: {integrity: sha512-ltIpx+kM7g/MLRZfkbL7EsCEjfzCcScLpkg37eXEtx5kmrAKBkTJwd1GIAjDSL8wTpM6Hzn5YO4pSb91BEwu1g==}
@@ -2456,9 +2408,6 @@ packages:
   heap-js@2.7.1:
     resolution: {integrity: sha512-EQfezRg0NCZGNlhlDR3Evrw1FVL2G3LhU7EgPoxufQKruNBSYA8MiRPHeWbU+36o+Fhel0wMwM+sLEiBAlNLJA==}
     engines: {node: '>=10.0.0'}
-
-  hex2dec@1.1.2:
-    resolution: {integrity: sha512-Yu+q/XWr2fFQ11tHxPq4p4EiNkb2y+lAacJNhAdRXVfRIcDH6gi7htWFnnlIzvqHMHoWeIsfXlNAjZInpAOJDA==}
 
   highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
@@ -4397,36 +4346,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)':
-    dependencies:
-      '@google-cloud/opentelemetry-resource-util': 3.0.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
-      '@grpc/grpc-js': 1.14.4
-      '@grpc/proto-loader': 0.8.1
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
-      google-auth-library: 9.15.1(supports-color@10.2.2)
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-
-  '@google-cloud/opentelemetry-cloud-trace-propagator@0.21.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
-      hex2dec: 1.1.2
-
-  '@google-cloud/opentelemetry-resource-util@3.0.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)':
-    dependencies:
-      '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/semantic-conventions': 1.43.0
-      gcp-metadata: 6.1.1(supports-color@10.2.2)
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
-
   '@google-cloud/paginator@5.0.2':
     dependencies:
       arrify: 2.0.1
@@ -5475,19 +5394,9 @@ snapshots:
     dependencies:
       htmlparser2: 10.1.0
 
-  '@types/sinon@22.0.0':
-    dependencies:
-      '@types/sinonjs__fake-timers': 15.0.1
-
-  '@types/sinonjs__fake-timers@15.0.1': {}
-
   '@types/tough-cookie@4.0.5': {}
 
   '@types/unist@3.0.3': {}
-
-  '@types/uuid@11.0.0':
-    dependencies:
-      uuid: 14.0.1
 
   '@types/wrap-ansi@3.0.0': {}
 
@@ -6365,8 +6274,6 @@ snapshots:
       '@types/hast': 3.0.5
 
   heap-js@2.7.1: {}
-
-  hex2dec@1.1.2: {}
 
   highlight.js@10.7.3: {}
 
