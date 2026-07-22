@@ -4,26 +4,6 @@ import assert from 'node:assert';
 
 import { waitForAPObjectInFeed } from '../support/feed.js';
 
-Then(
-    'the {string} in the feed has content {string}',
-    async function (activityOrObjectName, content) {
-        const responseJson = await this.response.clone().json();
-        const activity = this.activities[activityOrObjectName];
-        const object = this.objects[activityOrObjectName];
-        let found;
-
-        if (activity) {
-            found = responseJson.posts.find(
-                (post) => post.url === activity.object.id,
-            );
-        } else if (object) {
-            found = responseJson.posts.find((post) => post.url === object.id);
-        }
-
-        assert.equal(found.content, content);
-    },
-);
-
 Then('the note {string} is in our feed', async function (noteName) {
     const note = this.objects[noteName];
 
@@ -77,13 +57,6 @@ Then('the note {string} is not in our feed', async function (noteName) {
             `Max retries reached when waiting on item ${note.id} in the feed`,
         );
     }
-});
-
-Then('the article {string} is in our feed', async function (articleName) {
-    const article = this.objects[articleName];
-
-    const found = await waitForAPObjectInFeed(article.id);
-    assert(found);
 });
 
 Then('the article {string} is not in our feed', async function (articleName) {

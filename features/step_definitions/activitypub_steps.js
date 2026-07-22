@@ -103,13 +103,6 @@ Given(
     },
 );
 
-Given('{string} has Object {string}', function (activityName, objectName) {
-    const activity = this.activities[activityName];
-    const object = this.objects[objectName];
-
-    this.activities[activityName] = { ...activity, object };
-});
-
 When('we request the outbox', async function () {
     this.response = await fetchActivityPub(
         'https://self.test/.ghost/activitypub/outbox/index',
@@ -356,38 +349,6 @@ Then(
                 `Activity with object "${objectName}" was not sent to "${followerName}"`,
             );
         });
-    },
-);
-
-Then('the found {string} as {string}', function (foundName, name) {
-    const found = this.found[foundName];
-
-    const { activity, object } = parseActivityString(name);
-
-    this.activities[activity] = found;
-    this.objects[object] = found.object;
-});
-
-Then('the found {string} has property {string}', function (name, prop) {
-    const found = this.found[name];
-
-    const property = prop
-        .split('.')
-        .reduce((thing, key) => thing?.[key], found);
-
-    assert.ok(property);
-});
-
-Then(
-    'the found {string} has property {string} of type {string}',
-    function (name, prop, type) {
-        const found = this.found[name];
-
-        const property = prop
-            .split('.')
-            .reduce((thing, key) => thing?.[key], found);
-
-        assert.equal(typeof property, type);
     },
 );
 

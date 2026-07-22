@@ -6,7 +6,7 @@ import { waitForAPObjectInFeed } from '../support/feed.js';
 import { createActivity } from '../support/fixtures.js';
 import { waitForAPObjectInInbox } from '../support/inbox.js';
 import { waitForItemInNotifications } from '../support/notifications.js';
-import { fetchActivityPub, waitForRequest } from '../support/request.js';
+import { fetchActivityPub } from '../support/request.js';
 
 When('we repost the object {string}', async function (name) {
     const id = this.objects[name].id;
@@ -83,54 +83,6 @@ Then('the object {string} should not be reposted', async function (name) {
     const post = feed.posts.find((item) => item.id === object.id);
 
     assert.equal(post.repostedByMe, false);
-});
-
-Then('an Undo\\(Announce) is sent to {string}', async function (actorName) {
-    if (!this.actors[actorName]) {
-        throw new Error(`Could not find Actor ${actorName}`);
-    }
-    const actor = this.actors[actorName];
-
-    const inboxUrl = new URL(actor.inbox);
-
-    const found = await waitForRequest('POST', inboxUrl.pathname, (call) => {
-        const body = JSON.parse(call.request.body);
-
-        return body.type === 'Undo' && body.object.type === 'Announce';
-    });
-
-    assert(found);
-});
-
-Then('an Announce\\(Note) is sent to {string}', async function (actorName) {
-    if (!this.actors[actorName]) {
-        throw new Error(`Could not find Actor ${actorName}`);
-    }
-    const actor = this.actors[actorName];
-
-    const object = this.objects.Note;
-
-    const inboxUrl = new URL(actor.inbox);
-
-    const found = await waitForRequest('POST', inboxUrl.pathname, (call) => {
-        const body = JSON.parse(call.request.body);
-
-        if (body.type !== 'Announce') {
-            return false;
-        }
-
-        if (object) {
-            if (typeof body.object === 'string') {
-                return body.object === object.id;
-            }
-
-            return body.object.id === object.id;
-        }
-
-        return body.object.type === 'Note';
-    });
-
-    assert(found);
 });
 
 When('{string} reposts our note', async function (actorName) {
@@ -220,13 +172,6 @@ async function checkPostRepostedBy(world, objectType, objectName, actorName) {
         `Post was not reposted by ${actorName}`,
     );
 }
-
-Then(
-    'the {string} {string} is reposted by {string}',
-    async function (objectType, objectName, actorName) {
-        await checkPostRepostedBy(this, objectType, objectName, actorName);
-    },
-);
 
 Then(
     'the note {string} is reposted by {string}',

@@ -1,7 +1,3 @@
-export async function wait(n) {
-    return new Promise((resolve) => setTimeout(resolve, n));
-}
-
 export async function mapPostToActivityPubObject(post) {
     return {
         id: post.id,

@@ -88,10 +88,6 @@ When('an unauthenticated request is made to {string}', async function (path) {
     );
 });
 
-Then('the request is rejected', function () {
-    assert(!this.response.ok);
-});
-
 Then('the request is rejected with a {int}', function (statusCode) {
     assert(
         statusCode < 500,
