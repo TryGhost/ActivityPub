@@ -10,6 +10,7 @@ import { lookupWebFinger } from '@fedify/webfinger';
 
 import type { FedifyContext } from '@/app';
 import { error, ok, type Result } from '@/core/result';
+import { isLocalEnvironment } from '@/helpers/environment';
 
 export type LookupError = 'no-links-found' | 'no-self-link' | 'lookup-error';
 
@@ -82,7 +83,7 @@ export async function lookupActorProfile(
         const webfingerData = await lookupWebFinger(resource, {
             allowPrivateAddress:
                 process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
-                ['development', 'testing'].includes(process.env.NODE_ENV || ''),
+                isLocalEnvironment(process.env.NODE_ENV),
         });
 
         if (!webfingerData?.links) {

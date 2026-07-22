@@ -43,7 +43,6 @@ import * as Sentry from '@sentry/node';
 import { get } from 'es-toolkit/compat';
 import { Hono, type Context as HonoContext, type Next } from 'hono';
 import { cors } from 'hono/cors';
-import { behindProxy } from 'x-forwarded-fetch';
 
 import type { Account } from '@/account/account.entity';
 import { AccountBlockedEvent } from '@/account/events/account-blocked.event';
@@ -103,6 +102,7 @@ import type { FeedUpdateService } from '@/feed/feed-update.service';
 import type { FlagService } from '@/flag/flag.service';
 import type { GhostPostService } from '@/ghost/ghost-post.service';
 import { getTraceContext } from '@/helpers/context-header';
+import { isLocalEnvironment } from '@/helpers/environment';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
 import { BlueskyController } from '@/http/api/bluesky.controller';
@@ -123,6 +123,7 @@ import type { SiteController } from '@/http/api/site.controller';
 import { TopicController } from '@/http/api/topic.controller';
 import type { WebFingerController } from '@/http/api/webfinger.controller';
 import type { WebhookController } from '@/http/api/webhook.controller';
+import { createFetchHandler } from '@/http/fetch-handler';
 import type { HostDataContextLoader } from '@/http/host-data-context-loader';
 import { createDeploymentHeadersMiddleware } from '@/http/middleware/deployment-headers';
 import { createHostDataContextMiddleware } from '@/http/middleware/host-data-context';
@@ -1037,16 +1038,9 @@ app.onError((err, c) => {
     return c.text('Internal Server Error', 500);
 });
 
-function forceAcceptHeader(fn: (req: Request) => unknown) {
-    return (request: Request) => {
-        request.headers.set('accept', 'application/activity+json');
-        return fn(request);
-    };
-}
-
 serve(
     {
-        fetch: forceAcceptHeader(behindProxy(app.fetch)),
+        fetch: createFetchHandler(process.env.NODE_ENV, app.fetch),
         port: Number.parseInt(process.env.PORT || '8080', 10),
     },
     (info) => {
@@ -1084,13 +1078,13 @@ async function gracefulShutdown(signal: 'SIGINT' | 'SIGTERM') {
 }
 
 process.on('SIGINT', () => {
-    if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
+    if (isLocalEnvironment(process.env.NODE_ENV)) {
         process.exit(0);
     }
     void gracefulShutdown('SIGINT');
 });
 process.on('SIGTERM', () => {
-    if (['development', 'testing'].includes(process.env.NODE_ENV || '')) {
+    if (isLocalEnvironment(process.env.NODE_ENV)) {
         process.exit(0);
     }
     void gracefulShutdown('SIGTERM');

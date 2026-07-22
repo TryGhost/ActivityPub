@@ -9,7 +9,7 @@
   "engines": {
     "node": "24"
   },
-  "packageManager": "pnpm@11.14.0",
+  "packageManager": "pnpm@11.15.0",
   "scripts": {
     "build": "esbuild src/app.ts --sourcemap --platform=neutral --bundle --packages=external --outfile=dist/app.js",
     "build:dev": "pnpm build --sourcemap=inline",
@@ -86,10 +86,10 @@
     "@opentelemetry/exporter-trace-otlp-proto": "0.220.0",
     "@opentelemetry/resources": "2.9.0",
     "@opentelemetry/sdk-trace-base": "2.9.0",
-    "@sentry/node": "10.65.0",
+    "@sentry/node": "10.66.0",
     "awilix": "13.0.5",
     "es-toolkit": "1.49.0",
-    "hono": "4.12.30",
+    "hono": "4.12.31",
     "html-to-text": "10.0.0",
     "ioredis": "5.11.1",
     "jsonwebtoken": "9.0.3",

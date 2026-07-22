@@ -48,6 +48,7 @@ import { FeedService } from '@/feed/feed.service';
 import { FeedUpdateService } from '@/feed/feed-update.service';
 import { FlagService } from '@/flag/flag.service';
 import { GhostPostService } from '@/ghost/ghost-post.service';
+import { isLocalEnvironment } from '@/helpers/environment';
 import { getSiteSettings } from '@/helpers/ghost';
 import { AccountController } from '@/http/api/account.controller';
 import { BlockController } from '@/http/api/block.controller';
@@ -309,14 +310,10 @@ export function registerDependencies(
                 circuitBreaker: false,
                 skipSignatureVerification:
                     process.env.SKIP_SIGNATURE_VERIFICATION === 'true' &&
-                    ['development', 'testing'].includes(
-                        process.env.NODE_ENV || '',
-                    ),
+                    isLocalEnvironment(process.env.NODE_ENV),
                 allowPrivateAddress:
                     process.env.ALLOW_PRIVATE_ADDRESS === 'true' &&
-                    ['development', 'testing'].includes(
-                        process.env.NODE_ENV || '',
-                    ),
+                    isLocalEnvironment(process.env.NODE_ENV),
                 firstKnock: 'draft-cavage-http-signatures-12',
             });
         }).singleton(),
