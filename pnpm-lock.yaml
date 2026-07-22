@@ -13,7 +13,7 @@ importers:
         version: 2.3.2
       '@fedify/hono':
         specifier: 2.3.2
-        version: 2.3.2(@fedify/fedify@2.3.2)(hono@4.12.30)
+        version: 2.3.2(@fedify/fedify@2.3.2)(hono@4.12.31)
       '@fedify/redis':
         specifier: 2.3.2
         version: 2.3.2(@fedify/fedify@2.3.2)(ioredis@5.11.1(supports-color@10.2.2))
@@ -28,7 +28,7 @@ importers:
         version: 2.3.2
       '@google-cloud/opentelemetry-cloud-trace-exporter':
         specifier: 3.0.0
-        version: 3.0.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
+        version: 3.0.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
       '@google-cloud/opentelemetry-cloud-trace-propagator':
         specifier: 0.21.0
         version: 0.21.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
@@ -37,10 +37,10 @@ importers:
         version: 5.3.1(supports-color@10.2.2)
       '@google-cloud/storage':
         specifier: 7.21.0
-        version: 7.21.0
+        version: 7.21.0(supports-color@10.2.2)
       '@hono/node-server':
         specifier: 2.0.10
-        version: 2.0.10(hono@4.12.30)
+        version: 2.0.10(hono@4.12.31)
       '@js-temporal/polyfill':
         specifier: 0.5.1
         version: 0.5.1
@@ -64,7 +64,7 @@ importers:
         version: 2.9.0(@opentelemetry/api@1.9.1)
       '@sentry/node':
         specifier: 10.66.0
-        version: 10.66.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
+        version: 10.66.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
       awilix:
         specifier: 13.0.5
         version: 13.0.5
@@ -72,8 +72,8 @@ importers:
         specifier: 1.49.0
         version: 1.49.0
       hono:
-        specifier: 4.12.30
-        version: 4.12.30
+        specifier: 4.12.31
+        version: 4.12.31
       html-to-text:
         specifier: 10.0.0
         version: 10.0.0
@@ -85,7 +85,7 @@ importers:
         version: 9.0.3
       knex:
         specifier: 3.3.0
-        version: 3.3.0(mysql2@3.23.0(@types/node@22.20.1))
+        version: 3.3.0(mysql2@3.23.0(@types/node@22.20.1))(supports-color@10.2.2)
       ky:
         specifier: 2.0.2
         version: 2.0.2
@@ -134,7 +134,7 @@ importers:
         version: 10.5.0
       '@fedify/cli':
         specifier: 2.3.2
-        version: 2.3.2(@jimp/custom@0.22.12)(@types/node@22.20.1)(typescript@7.0.2)
+        version: 2.3.2(@jimp/custom@0.22.12)(@types/node@22.20.1)(supports-color@10.2.2)(typescript@7.0.2)
       '@types/html-to-text':
         specifier: 9.0.4
         version: 9.0.4
@@ -2463,8 +2463,8 @@ packages:
   highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
 
-  hono@4.12.30:
-    resolution: {integrity: sha512-emn+JoJjrN9YTpRDS5it/UI2SO9BAE37T6I3d963RxcZ81G9A4pr2SZTEiiaiKbzx+NKRg5BZ89fCL7gCJCUog==}
+  hono@4.12.31:
+    resolution: {integrity: sha512-zJIHFrl6bq3RDd2YusFNCDlM8qUprxKswyi/OPzPyzKDdyBXDqWx8bZlZ7R+saTdSTatUmb3O7K4SspGPaEOQg==}
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@9.0.3:
@@ -3952,7 +3952,7 @@ snapshots:
       semifies: 1.0.0
       source-map: 0.6.1
 
-  '@apm-js-collab/tracing-hooks@0.13.0':
+  '@apm-js-collab/tracing-hooks@0.13.0(supports-color@10.2.2)':
     dependencies:
       '@apm-js-collab/code-transformer': 0.18.0
       debug: 4.4.3(supports-color@10.2.2)
@@ -4238,7 +4238,7 @@ snapshots:
 
   '@faker-js/faker@10.5.0': {}
 
-  '@fedify/cli@2.3.2(@jimp/custom@0.22.12)(@types/node@22.20.1)(typescript@7.0.2)':
+  '@fedify/cli@2.3.2(@jimp/custom@0.22.12)(@types/node@22.20.1)(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@fedify/fedify': 2.3.2
@@ -4252,7 +4252,7 @@ snapshots:
       '@fxts/core': 1.26.0
       '@hongminhee/localtunnel': 0.3.1
       '@inquirer/prompts': 7.10.1(@types/node@22.20.1)
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/wasm-webp': 1.6.1
       '@js-temporal/polyfill': 0.5.1
       '@logtape/file': 2.2.4(@logtape/logtape@2.2.4)
@@ -4270,11 +4270,11 @@ snapshots:
       enquirer: 2.4.1
       es-toolkit: 1.46.1
       fetch-mock: 12.6.0
-      hono: 4.12.30
+      hono: 4.12.31
       icojs: 0.19.5(@jimp/custom@0.22.12)
       inquirer: 12.11.1(@types/node@22.20.1)
       inquirer-toggle: 1.0.1
-      jimp: 1.6.1
+      jimp: 1.6.1(supports-color@10.2.2)
       ora: 8.2.0
       pngjs: 7.0.0
       shiki: 1.29.2
@@ -4308,10 +4308,10 @@ snapshots:
       structured-field-values: 2.0.4
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@2.3.2(@fedify/fedify@2.3.2)(hono@4.12.30)':
+  '@fedify/hono@2.3.2(@fedify/fedify@2.3.2)(hono@4.12.31)':
     dependencies:
       '@fedify/fedify': 2.3.2
-      hono: 4.12.30
+      hono: 4.12.31
 
   '@fedify/init@2.3.2(@types/node@22.20.1)':
     dependencies:
@@ -4394,16 +4394,16 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))':
+  '@google-cloud/opentelemetry-cloud-trace-exporter@3.0.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)':
     dependencies:
-      '@google-cloud/opentelemetry-resource-util': 3.0.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))
+      '@google-cloud/opentelemetry-resource-util': 3.0.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
       '@grpc/grpc-js': 1.14.4
       '@grpc/proto-loader': 0.8.1
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
-      google-auth-library: 9.15.1
+      google-auth-library: 9.15.1(supports-color@10.2.2)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -4414,12 +4414,12 @@ snapshots:
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
       hex2dec: 1.1.2
 
-  '@google-cloud/opentelemetry-resource-util@3.0.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))':
+  '@google-cloud/opentelemetry-resource-util@3.0.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/resources@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)':
     dependencies:
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/semantic-conventions': 1.43.0
-      gcp-metadata: 6.1.1
+      gcp-metadata: 6.1.1(supports-color@10.2.2)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -4454,7 +4454,7 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.39.0
       arrify: 2.0.1
       extend: 3.0.2
-      google-auth-library: 10.9.0
+      google-auth-library: 10.9.0(supports-color@10.2.2)
       google-gax: 5.0.7(supports-color@10.2.2)
       google-logging-utils: 1.1.4
       heap-js: 2.7.1
@@ -4465,7 +4465,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@google-cloud/storage@7.21.0':
+  '@google-cloud/storage@7.21.0(supports-color@10.2.2)':
     dependencies:
       '@google-cloud/paginator': 5.0.2
       '@google-cloud/projectify': 4.0.0
@@ -4474,13 +4474,13 @@ snapshots:
       async-retry: 1.3.3
       duplexify: 4.1.3
       fast-xml-parser: 5.10.0
-      gaxios: 6.7.1
-      google-auth-library: 9.15.1
+      gaxios: 6.7.1(supports-color@10.2.2)
+      google-auth-library: 9.15.1(supports-color@10.2.2)
       html-entities: 2.6.0
       mime: 3.0.0
       p-limit: 3.1.0
-      retry-request: 7.0.2
-      teeny-request: 9.0.0
+      retry-request: 7.0.2(supports-color@10.2.2)
+      teeny-request: 9.0.0(supports-color@10.2.2)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -4501,9 +4501,9 @@ snapshots:
     dependencies:
       '@logtape/logtape': 1.3.11
 
-  '@hono/node-server@2.0.10(hono@4.12.30)':
+  '@hono/node-server@2.0.10(hono@4.12.31)':
     dependencies:
-      hono: 4.12.30
+      hono: 4.12.31
 
   '@img/colour@1.1.0': {}
 
@@ -4786,14 +4786,14 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@jimp/core@1.6.1':
+  '@jimp/core@1.6.1(supports-color@10.2.2)':
     dependencies:
       '@jimp/file-ops': 1.6.1
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       await-to-js: 3.0.0
       exif-parser: 0.1.12
-      file-type: 21.3.4
+      file-type: 21.3.4(supports-color@10.2.2)
       mime: 3.0.0
     transitivePeerDependencies:
       - supports-color
@@ -4804,9 +4804,9 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@jimp/diff@1.6.1':
+  '@jimp/diff@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/plugin-resize': 1.6.1
+      '@jimp/plugin-resize': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       pixelmatch: 5.3.0
@@ -4815,43 +4815,43 @@ snapshots:
 
   '@jimp/file-ops@1.6.1': {}
 
-  '@jimp/js-bmp@1.6.1':
+  '@jimp/js-bmp@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       bmp-ts: 1.0.9
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/js-gif@1.6.1':
+  '@jimp/js-gif@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       gifwrap: 0.10.1
       omggif: 1.0.10
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/js-jpeg@1.6.1':
+  '@jimp/js-jpeg@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       jpeg-js: 0.4.4
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/js-png@1.6.1':
+  '@jimp/js-png@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       pngjs: 7.0.0
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/js-tiff@1.6.1':
+  '@jimp/js-tiff@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       utif2: 4.1.0
     transitivePeerDependencies:
@@ -4863,9 +4863,9 @@ snapshots:
       '@jimp/utils': 1.6.1
       zod: 3.25.76
 
-  '@jimp/plugin-blur@1.6.1':
+  '@jimp/plugin-blur@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/utils': 1.6.1
     transitivePeerDependencies:
       - supports-color
@@ -4875,9 +4875,9 @@ snapshots:
       '@jimp/types': 1.6.1
       zod: 3.25.76
 
-  '@jimp/plugin-color@1.6.1':
+  '@jimp/plugin-color@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       tinycolor2: 1.6.0
@@ -4885,30 +4885,30 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/plugin-contain@1.6.1':
+  '@jimp/plugin-contain@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-blit': 1.6.1
-      '@jimp/plugin-resize': 1.6.1
+      '@jimp/plugin-resize': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/plugin-cover@1.6.1':
+  '@jimp/plugin-cover@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
-      '@jimp/plugin-crop': 1.6.1
-      '@jimp/plugin-resize': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-crop': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-resize': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/plugin-crop@1.6.1':
+  '@jimp/plugin-crop@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       zod: 3.25.76
@@ -4936,15 +4936,15 @@ snapshots:
       '@jimp/types': 1.6.1
       zod: 3.25.76
 
-  '@jimp/plugin-hash@1.6.1':
+  '@jimp/plugin-hash@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
-      '@jimp/js-bmp': 1.6.1
-      '@jimp/js-jpeg': 1.6.1
-      '@jimp/js-png': 1.6.1
-      '@jimp/js-tiff': 1.6.1
-      '@jimp/plugin-color': 1.6.1
-      '@jimp/plugin-resize': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-bmp': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-jpeg': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-png': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-tiff': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-color': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-resize': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       any-base: 1.1.0
@@ -4956,11 +4956,11 @@ snapshots:
       '@jimp/types': 1.6.1
       zod: 3.25.76
 
-  '@jimp/plugin-print@1.6.1':
+  '@jimp/plugin-print@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
-      '@jimp/js-jpeg': 1.6.1
-      '@jimp/js-png': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-jpeg': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-png': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-blit': 1.6.1
       '@jimp/types': 1.6.1
       parse-bmfont-ascii: 1.0.6
@@ -4976,30 +4976,30 @@ snapshots:
       image-q: 4.0.0
       zod: 3.25.76
 
-  '@jimp/plugin-resize@1.6.1':
+  '@jimp/plugin-resize@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/plugin-rotate@1.6.1':
+  '@jimp/plugin-rotate@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
-      '@jimp/plugin-crop': 1.6.1
-      '@jimp/plugin-resize': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-crop': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-resize': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
-  '@jimp/plugin-threshold@1.6.1':
+  '@jimp/plugin-threshold@1.6.1(supports-color@10.2.2)':
     dependencies:
-      '@jimp/core': 1.6.1
-      '@jimp/plugin-color': 1.6.1
-      '@jimp/plugin-hash': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-color': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-hash': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
       zod: 3.25.76
@@ -5124,12 +5124,12 @@ snapshots:
       '@opentelemetry/resources': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace': 2.9.0(@opentelemetry/api@1.9.1)
 
-  '@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)':
+  '@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/api-logs': 0.220.0
       import-in-the-middle: 3.3.1
-      require-in-the-middle: 8.0.1
+      require-in-the-middle: 8.0.1(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -5310,7 +5310,7 @@ snapshots:
     dependencies:
       '@sentry/conventions': 0.16.0
 
-  '@sentry/node-core@10.66.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))':
+  '@sentry/node-core@10.66.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.66.0
@@ -5319,19 +5319,19 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2)
       '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
 
-  '@sentry/node@10.66.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))':
+  '@sentry/node@10.66.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/instrumentation': 0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2)
       '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.66.0
-      '@sentry/node-core': 10.66.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
+      '@sentry/node-core': 10.66.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
       '@sentry/opentelemetry': 10.66.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.9.0(@opentelemetry/api@1.9.1))
-      '@sentry/server-utils': 10.66.0
+      '@sentry/server-utils': 10.66.0(supports-color@10.2.2)
       import-in-the-middle: 3.3.1
     transitivePeerDependencies:
       - '@opentelemetry/core'
@@ -5346,11 +5346,11 @@ snapshots:
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.66.0
 
-  '@sentry/server-utils@10.66.0':
+  '@sentry/server-utils@10.66.0(supports-color@10.2.2)':
     dependencies:
       '@apm-js-collab/code-transformer': 0.18.0
       '@apm-js-collab/code-transformer-bundler-plugins': 0.6.2
-      '@apm-js-collab/tracing-hooks': 0.13.0
+      '@apm-js-collab/tracing-hooks': 0.13.0(supports-color@10.2.2)
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.66.0
     transitivePeerDependencies:
@@ -5395,7 +5395,7 @@ snapshots:
 
   '@teppeis/multimaps@3.0.0': {}
 
-  '@tokenizer/inflate@0.4.1':
+  '@tokenizer/inflate@0.4.1(supports-color@10.2.2)':
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
       token-types: 6.1.2
@@ -5609,7 +5609,7 @@ snapshots:
     dependencies:
       event-target-shim: 5.0.1
 
-  agent-base@6.0.2:
+  agent-base@6.0.2(supports-color@10.2.2):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
@@ -5841,9 +5841,11 @@ snapshots:
 
   dayjs@1.11.21: {}
 
-  debug@4.3.4:
+  debug@4.3.4(supports-color@10.2.2):
     dependencies:
       ms: 2.1.2
+    optionalDependencies:
+      supports-color: 10.2.2
 
   debug@4.4.3(supports-color@10.2.2):
     dependencies:
@@ -6099,9 +6101,9 @@ snapshots:
       token-types: 6.1.2
       uint8array-extras: 1.5.0
 
-  file-type@21.3.4:
+  file-type@21.3.4(supports-color@10.2.2):
     dependencies:
-      '@tokenizer/inflate': 0.4.1
+      '@tokenizer/inflate': 0.4.1(supports-color@10.2.2)
       strtok3: 10.3.5
       token-types: 6.1.2
       uint8array-extras: 1.5.0
@@ -6137,10 +6139,10 @@ snapshots:
 
   function-bind@1.1.2: {}
 
-  gaxios@6.7.1:
+  gaxios@6.7.1(supports-color@10.2.2):
     dependencies:
       extend: 3.0.2
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       is-stream: 2.0.1
       node-fetch: 2.7.0
       uuid: 9.0.1
@@ -6148,43 +6150,43 @@ snapshots:
       - encoding
       - supports-color
 
-  gaxios@7.1.3:
+  gaxios@7.1.3(supports-color@10.2.2):
     dependencies:
       extend: 3.0.2
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       node-fetch: 3.3.2
       rimraf: 5.0.10
     transitivePeerDependencies:
       - supports-color
 
-  gaxios@7.2.0:
+  gaxios@7.2.0(supports-color@10.2.2):
     dependencies:
       extend: 3.0.2
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       node-fetch: 3.3.2
     transitivePeerDependencies:
       - supports-color
 
-  gcp-metadata@6.1.1:
+  gcp-metadata@6.1.1(supports-color@10.2.2):
     dependencies:
-      gaxios: 6.7.1
+      gaxios: 6.7.1(supports-color@10.2.2)
       google-logging-utils: 0.0.2
       json-bigint: 1.0.0
     transitivePeerDependencies:
       - encoding
       - supports-color
 
-  gcp-metadata@8.1.2:
+  gcp-metadata@8.1.2(supports-color@10.2.2):
     dependencies:
-      gaxios: 7.2.0
+      gaxios: 7.2.0(supports-color@10.2.2)
       google-logging-utils: 1.1.4
       json-bigint: 1.0.0
     transitivePeerDependencies:
       - supports-color
 
-  gcp-metadata@8.1.3:
+  gcp-metadata@8.1.3(supports-color@10.2.2):
     dependencies:
-      gaxios: 7.1.3
+      gaxios: 7.1.3(supports-color@10.2.2)
       google-logging-utils: 1.1.3
       json-bigint: 1.0.0
     transitivePeerDependencies:
@@ -6251,36 +6253,36 @@ snapshots:
 
   globrex@0.1.2: {}
 
-  google-auth-library@10.5.0:
+  google-auth-library@10.5.0(supports-color@10.2.2):
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
-      gaxios: 7.2.0
-      gcp-metadata: 8.1.3
+      gaxios: 7.2.0(supports-color@10.2.2)
+      gcp-metadata: 8.1.3(supports-color@10.2.2)
       google-logging-utils: 1.1.4
-      gtoken: 8.0.0
+      gtoken: 8.0.0(supports-color@10.2.2)
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
 
-  google-auth-library@10.9.0:
+  google-auth-library@10.9.0(supports-color@10.2.2):
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
-      gaxios: 7.2.0
-      gcp-metadata: 8.1.2
+      gaxios: 7.2.0(supports-color@10.2.2)
+      gcp-metadata: 8.1.2(supports-color@10.2.2)
       google-logging-utils: 1.1.3
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
 
-  google-auth-library@9.15.1:
+  google-auth-library@9.15.1(supports-color@10.2.2):
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
-      gaxios: 6.7.1
-      gcp-metadata: 6.1.1
-      gtoken: 7.1.0
+      gaxios: 6.7.1(supports-color@10.2.2)
+      gcp-metadata: 6.1.1(supports-color@10.2.2)
+      gtoken: 7.1.0(supports-color@10.2.2)
       jws: 4.0.1
     transitivePeerDependencies:
       - encoding
@@ -6291,7 +6293,7 @@ snapshots:
       '@grpc/grpc-js': 1.14.4
       '@grpc/proto-loader': 0.8.1
       duplexify: 4.1.3
-      google-auth-library: 10.5.0
+      google-auth-library: 10.5.0(supports-color@10.2.2)
       google-logging-utils: 1.1.3
       node-fetch: 3.3.2
       object-hash: 3.0.0
@@ -6310,17 +6312,17 @@ snapshots:
 
   gopd@1.2.0: {}
 
-  gtoken@7.1.0:
+  gtoken@7.1.0(supports-color@10.2.2):
     dependencies:
-      gaxios: 6.7.1
+      gaxios: 6.7.1(supports-color@10.2.2)
       jws: 4.0.1
     transitivePeerDependencies:
       - encoding
       - supports-color
 
-  gtoken@8.0.0:
+  gtoken@8.0.0(supports-color@10.2.2):
     dependencies:
-      gaxios: 7.2.0
+      gaxios: 7.2.0(supports-color@10.2.2)
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
@@ -6365,7 +6367,7 @@ snapshots:
 
   highlight.js@10.7.3: {}
 
-  hono@4.12.30: {}
+  hono@4.12.31: {}
 
   hosted-git-info@9.0.3:
     dependencies:
@@ -6399,10 +6401,10 @@ snapshots:
       domutils: 4.0.2
       entities: 8.0.0
 
-  http-proxy-agent@5.0.0:
+  http-proxy-agent@5.0.0(supports-color@10.2.2):
     dependencies:
       '@tootallnate/once': 2.0.1
-      agent-base: 6.0.2
+      agent-base: 6.0.2(supports-color@10.2.2)
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
@@ -6414,14 +6416,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@5.0.1:
+  https-proxy-agent@5.0.1(supports-color@10.2.2):
     dependencies:
-      agent-base: 6.0.2
+      agent-base: 6.0.2(supports-color@10.2.2)
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@7.0.6:
+  https-proxy-agent@7.0.6(supports-color@10.2.2):
     dependencies:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@10.2.2)
@@ -6562,33 +6564,33 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
-  jimp@1.6.1:
+  jimp@1.6.1(supports-color@10.2.2):
     dependencies:
-      '@jimp/core': 1.6.1
-      '@jimp/diff': 1.6.1
-      '@jimp/js-bmp': 1.6.1
-      '@jimp/js-gif': 1.6.1
-      '@jimp/js-jpeg': 1.6.1
-      '@jimp/js-png': 1.6.1
-      '@jimp/js-tiff': 1.6.1
+      '@jimp/core': 1.6.1(supports-color@10.2.2)
+      '@jimp/diff': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-bmp': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-gif': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-jpeg': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-png': 1.6.1(supports-color@10.2.2)
+      '@jimp/js-tiff': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-blit': 1.6.1
-      '@jimp/plugin-blur': 1.6.1
+      '@jimp/plugin-blur': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-circle': 1.6.1
-      '@jimp/plugin-color': 1.6.1
-      '@jimp/plugin-contain': 1.6.1
-      '@jimp/plugin-cover': 1.6.1
-      '@jimp/plugin-crop': 1.6.1
+      '@jimp/plugin-color': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-contain': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-cover': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-crop': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-displace': 1.6.1
       '@jimp/plugin-dither': 1.6.1
       '@jimp/plugin-fisheye': 1.6.1
       '@jimp/plugin-flip': 1.6.1
-      '@jimp/plugin-hash': 1.6.1
+      '@jimp/plugin-hash': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-mask': 1.6.1
-      '@jimp/plugin-print': 1.6.1
+      '@jimp/plugin-print': 1.6.1(supports-color@10.2.2)
       '@jimp/plugin-quantize': 1.6.1
-      '@jimp/plugin-resize': 1.6.1
-      '@jimp/plugin-rotate': 1.6.1
-      '@jimp/plugin-threshold': 1.6.1
+      '@jimp/plugin-resize': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-rotate': 1.6.1(supports-color@10.2.2)
+      '@jimp/plugin-threshold': 1.6.1(supports-color@10.2.2)
       '@jimp/types': 1.6.1
       '@jimp/utils': 1.6.1
     transitivePeerDependencies:
@@ -6643,11 +6645,11 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
-  knex@3.3.0(mysql2@3.23.0(@types/node@22.20.1)):
+  knex@3.3.0(mysql2@3.23.0(@types/node@22.20.1))(supports-color@10.2.2):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@10.2.2)
       escalade: 3.2.0
       esm: 3.2.25
       get-package-type: 0.1.0
@@ -7176,7 +7178,7 @@ snapshots:
 
   require-directory@2.1.1: {}
 
-  require-in-the-middle@8.0.1:
+  require-in-the-middle@8.0.1(supports-color@10.2.2):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
       module-details-from-path: 1.0.4
@@ -7197,11 +7199,11 @@ snapshots:
       onetime: 7.0.0
       signal-exit: 4.1.0
 
-  retry-request@7.0.2:
+  retry-request@7.0.2(supports-color@10.2.2):
     dependencies:
       '@types/request': 2.48.13
       extend: 3.0.2
-      teeny-request: 9.0.0
+      teeny-request: 9.0.0(supports-color@10.2.2)
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -7461,16 +7463,16 @@ snapshots:
   teeny-request@10.1.3(supports-color@10.2.2):
     dependencies:
       http-proxy-agent: 7.0.2(supports-color@10.2.2)
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       node-fetch: 3.3.2
       stream-events: 1.0.5
     transitivePeerDependencies:
       - supports-color
 
-  teeny-request@9.0.0:
+  teeny-request@9.0.0(supports-color@10.2.2):
     dependencies:
-      http-proxy-agent: 5.0.0
-      https-proxy-agent: 5.0.1
+      http-proxy-agent: 5.0.0(supports-color@10.2.2)
+      https-proxy-agent: 5.0.1(supports-color@10.2.2)
       node-fetch: 2.7.0
       stream-events: 1.0.5
       uuid: 9.0.1
