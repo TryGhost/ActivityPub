@@ -75,7 +75,7 @@ export interface AccountDraft {
     webfingerHost: string | null;
 }
 
-export type AccountEvent = {
+type AccountEvent = {
     getName(): string;
 };
 

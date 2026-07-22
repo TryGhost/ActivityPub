@@ -10,7 +10,7 @@ import {
 } from '@/post/post.entity';
 export type FeedType = 'Inbox' | 'Feed';
 
-export interface GetFeedDataOptions {
+interface GetFeedDataOptions {
     /**
      * ID of the account associated with the user to get the feed for
      */
@@ -85,7 +85,7 @@ export type GetFeedDataResultRow =
     | GetFeedDataResultRowReposted
     | GetFeedDataResultRowWithoutReposted;
 
-export interface GetFeedDataResult {
+interface GetFeedDataResult {
     results: GetFeedDataResultRow[];
     nextCursor: string | null;
 }

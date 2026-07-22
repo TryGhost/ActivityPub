@@ -13,7 +13,7 @@ export enum NotificationType {
     Mention = 5,
 }
 
-export interface GetNotificationsDataOptions {
+interface GetNotificationsDataOptions {
     /**
      * ID of the account associated with the user to get the notifications for
      */
@@ -64,7 +64,7 @@ interface BaseGetNotificationsDataResultRow {
     in_reply_to_post_url: string;
 }
 
-export interface GetNotificationsDataResult {
+interface GetNotificationsDataResult {
     results: BaseGetNotificationsDataResultRow[];
     nextCursor: string | null;
 }

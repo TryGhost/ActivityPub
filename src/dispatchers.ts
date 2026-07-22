@@ -267,7 +267,7 @@ export function createAcceptHandler(accountService: AccountService) {
     };
 }
 
-export async function handleAnnouncedCreate(
+async function handleAnnouncedCreate(
     ctx: FedifyContext,
     announce: Announce,
     accountService: AccountService,

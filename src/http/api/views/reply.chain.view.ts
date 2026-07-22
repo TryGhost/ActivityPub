@@ -7,7 +7,7 @@ import { normalizePlainText } from '@/helpers/html';
 import type { PostDTO } from '@/http/api/types';
 import { PostType } from '@/post/post.entity';
 
-export type ReplyChain = {
+type ReplyChain = {
     ancestors: {
         chain: PostDTO[];
         hasMore: boolean;
@@ -21,7 +21,7 @@ export type ReplyChain = {
     next: string | null;
 };
 
-export type ReplyChainError = 'not-found';
+type ReplyChainError = 'not-found';
 
 const PostRowSchema = z.object({
     post_id: z.number(),
@@ -62,7 +62,7 @@ const PostRowSchema = z.object({
     author_followed_by_user: z.union([z.literal(0), z.literal(1)]),
 });
 
-export type PostRow = z.infer<typeof PostRowSchema>;
+type PostRow = z.infer<typeof PostRowSchema>;
 
 export class ReplyChainView {
     static readonly MAX_ANCESTOR_DEPTH = 10;

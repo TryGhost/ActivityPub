@@ -2,7 +2,7 @@ export interface SerializableEvent {
     toJSON(): Record<string, unknown>;
 }
 
-export interface DeserializableEventConstructor {
+interface DeserializableEventConstructor {
     fromJSON(data: Record<string, unknown>): SerializableEvent;
 }
 

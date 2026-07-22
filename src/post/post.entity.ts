@@ -18,7 +18,7 @@ export const PostSummary = z
 
 /** @see PostTitle.parse to get a branded PostTitle */
 export type PostTitle = string & { readonly __brand: unique symbol };
-export const POST_TITLE_MAX_LENGTH = 256;
+const POST_TITLE_MAX_LENGTH = 256;
 export const PostTitle = z
     .string()
     .max(POST_TITLE_MAX_LENGTH)
