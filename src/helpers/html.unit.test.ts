@@ -53,6 +53,47 @@ describe('sanitizeHtml', () => {
         vi.mock('sanitize-html');
         vi.resetModules();
     });
+
+    it('should force a restrictive sandbox onto iframes, overriding any supplied value', async () => {
+        // Clear the mock and let the real implementation take over
+        vi.doUnmock('sanitize-html');
+        vi.resetModules();
+
+        await import('sanitize-html');
+        const { sanitizeHtml: realSanitizeHtml } = await import('./html');
+
+        const sandbox =
+            'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms';
+
+        // Arbitrary embed host is kept, but gets our forced sandbox + referrerpolicy
+        expect(
+            realSanitizeHtml(
+                '<iframe src="https://codepen.io/x/embed/abc"></iframe>',
+            ),
+        ).toEqual(
+            `<iframe src="https://codepen.io/x/embed/abc" sandbox="${sandbox}" referrerpolicy="no-referrer"></iframe>`,
+        );
+
+        // An attacker-supplied loose sandbox is overridden, not merged
+        expect(
+            realSanitizeHtml(
+                '<iframe src="https://evil.example/phish" sandbox="allow-top-navigation allow-modals allow-same-origin"></iframe>',
+            ),
+        ).toEqual(
+            `<iframe src="https://evil.example/phish" sandbox="${sandbox}" referrerpolicy="no-referrer"></iframe>`,
+        );
+
+        // A javascript: src is stripped, leaving an inert (src-less) sandboxed iframe
+        expect(
+            realSanitizeHtml('<iframe src="javascript:alert(1)"></iframe>'),
+        ).toEqual(
+            `<iframe sandbox="${sandbox}" referrerpolicy="no-referrer"></iframe>`,
+        );
+
+        // Restore the mock for subsequent tests
+        vi.mock('sanitize-html');
+        vi.resetModules();
+    });
 });
 
 describe('normalizePlainText', () => {

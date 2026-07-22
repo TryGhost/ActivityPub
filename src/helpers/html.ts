@@ -1,6 +1,16 @@
 import { htmlToText } from 'html-to-text';
 import doSanitizeHtml from 'sanitize-html';
 
+// Forced onto every iframe so embedded third-party frames (from arbitrary hosts)
+// cannot navigate the top-level window, escalate their own sandbox, or otherwise
+// misbehave. Keep in parity with FORCED_IFRAME_SANDBOX in
+// https://github.com/TryGhost/Ghost/blob/main/apps/activitypub/src/utils/content-formatters.ts.
+// Intentionally omits `allow-top-navigation` (no tab hijacking). `allow-same-origin`
+// is safe: content iframes are cross-origin to the embedder, so it only grants the
+// frame its own origin, never the parent's.
+const FORCED_IFRAME_SANDBOX =
+    'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms';
+
 export function sanitizeHtml(content: string): string {
     if (!content) {
         return content;
@@ -225,6 +235,8 @@ export function sanitizeHtml(content: string): string {
                 'height',
                 'frameborder',
                 'allowfullscreen',
+                'sandbox',
+                'referrerpolicy',
             ],
             script: ['src', 'async', 'charset'],
 
@@ -251,6 +263,19 @@ export function sanitizeHtml(content: string): string {
         },
         allowedScriptHostnames: ['platform.twitter.com', 'platform.x.com'],
         allowVulnerableTags: true,
+        // Force our sandbox onto every iframe, overriding (not merging with) any
+        // author- or attacker-supplied value. `sandbox`/`referrerpolicy` are in
+        // allowedAttributes above so they survive the subsequent attribute filter.
+        transformTags: {
+            iframe: (tagName, attribs) => ({
+                tagName,
+                attribs: {
+                    ...attribs,
+                    sandbox: FORCED_IFRAME_SANDBOX,
+                    referrerpolicy: 'no-referrer',
+                },
+            }),
+        },
     });
 }
 
