@@ -1,5 +1,3 @@
-export const AP_BASE_PATH = '/.ghost/activitypub';
-
 export const ACTOR_DEFAULT_HANDLE = 'index';
 
 export const HANDLE_REGEX = /@([\w.-]+)@([\w-]+\.[\w.-]+[a-zA-Z])/;
