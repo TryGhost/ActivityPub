@@ -4,7 +4,6 @@ import { AccountEntity } from '@/account/account.entity';
 import {
     AccountAliasedEvent,
     AccountBlockedEvent,
-    AccountCreatedEvent,
     AccountFollowedEvent,
     AccountUnaliasedEvent,
     AccountUnblockedEvent,
@@ -105,7 +104,7 @@ describe('AccountEntity', () => {
             expect(account.isInternal).toBe(draft.isInternal);
         });
 
-        it('should create an AccountEntity with AccountCreatedEvent', async () => {
+        it('should create an AccountEntity without emitting events', async () => {
             const draftData = await createInternalAccountDraftData({
                 host: new URL('http://example.com'),
                 username: 'testuser',
@@ -121,8 +120,7 @@ describe('AccountEntity', () => {
             const account = AccountEntity.fromDraft(draft, 123);
 
             const events = AccountEntity.pullEvents(account);
-            expect(events).toHaveLength(1);
-            expect(events[0]).toBeInstanceOf(AccountCreatedEvent);
+            expect(events).toHaveLength(0);
         });
 
         it('should handle null values correctly', async () => {
