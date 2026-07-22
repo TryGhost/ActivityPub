@@ -8,20 +8,6 @@ export function isUri(value: string): boolean {
     }
 }
 
-export function toURL(value: unknown): URL | undefined {
-    if (value instanceof URL) {
-        return value;
-    }
-    if (typeof value !== 'string') {
-        return undefined;
-    }
-    try {
-        return new URL(value);
-    } catch (_err) {
-        return undefined;
-    }
-}
-
 /**
  * Compares two URLs or strings for equality, normalizing them by removing trailing slashes
  */
