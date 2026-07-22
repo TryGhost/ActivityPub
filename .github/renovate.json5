@@ -36,16 +36,37 @@
       ]
     },
 
-    // Pin @types/node to the deployed Node runtime major (22.x, see Dockerfile
-    // and .nvmrc). Bumping the typings ahead of the runtime lets the compiler
-    // accept Node-24-only APIs that won't exist in production. Bump
+    // CI installs Node from .nvmrc while production runs the Dockerfile base
+    // image, so any update that moves one without the other leaves CI testing
+    // a runtime production doesn't run. Group ALL Node updates (base image +
+    // .nvmrc) into a single, manually reviewed PR: enabled overrides
+    // docker:disableMajor for majors, and automerge overrides the blanket
+    // docker automerge rule above so a base-image bump can't ship on its own.
+    {
+      description: 'Group Node.js updates (Dockerfile base image + .nvmrc)',
+      groupName: 'Node.js',
+      groupSlug: 'node',
+      matchDepNames: [
+        'node',
+      ],
+      matchDatasources: [
+        'docker',
+        'node-version',
+      ],
+      enabled: true,
+      automerge: false,
+    },
+
+    // Pin @types/node to the deployed Node runtime major (see Dockerfile and
+    // .nvmrc). Bumping the typings ahead of the runtime lets the compiler
+    // accept newer-Node APIs that don't exist in the production runtime. Bump
     // allowedVersions in lockstep when the Node base image is upgraded.
     {
       description: 'Pin @types/node to the deployed Node runtime major',
       matchPackageNames: [
         '@types/node',
       ],
-      allowedVersions: '<23',
+      allowedVersions: '<25',
     },
   ],
 }
