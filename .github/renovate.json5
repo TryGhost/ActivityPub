@@ -36,24 +36,22 @@
       ]
     },
 
-    // docker:disableMajor blocks Node majors on the base image, but nothing
-    // stopped Renovate bumping .nvmrc to a new major on its own — and since CI
-    // installs from .nvmrc, that would leave CI testing a runtime production
-    // doesn't run. Re-enable majors for the node image and group them with the
-    // .nvmrc update so both move together in a single, manually reviewed PR.
+    // CI installs Node from .nvmrc while production runs the Dockerfile base
+    // image, so any update that moves one without the other leaves CI testing
+    // a runtime production doesn't run. Group ALL Node updates (base image +
+    // .nvmrc) into a single, manually reviewed PR: enabled overrides
+    // docker:disableMajor for majors, and automerge overrides the blanket
+    // docker automerge rule above so a base-image bump can't ship on its own.
     {
-      description: 'Group Node.js major updates (Dockerfile base image + .nvmrc)',
+      description: 'Group Node.js updates (Dockerfile base image + .nvmrc)',
       groupName: 'Node.js',
-      groupSlug: 'node-major',
+      groupSlug: 'node',
       matchDepNames: [
         'node',
       ],
       matchDatasources: [
         'docker',
         'node-version',
-      ],
-      matchUpdateTypes: [
-        'major',
       ],
       enabled: true,
       automerge: false,
