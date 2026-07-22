@@ -64,25 +64,19 @@ export class WebFingerController {
             return this.createWebfingerResponse(customDomainAccount);
         }
 
-        const site =
-            (await this.siteService.getSiteByHost(normalizedResourceHost)) ||
-            (await this.siteService.getSiteByHost(
-                `www.${normalizedResourceHost}`,
-            ));
+        const resourceLookup = await this.findAccountForHandleHost(
+            resourceUsername,
+            normalizedResourceHost,
+        );
 
-        if (site) {
-            const account = await this.getAccountBySiteOrNull(site);
+        if (resourceLookup.account) {
+            return this.createWebfingerResponse(resourceLookup.account);
+        }
 
-            if (
-                !account ||
-                !this.resourceUsernameMatchesAccount(resourceUsername, account)
-            ) {
-                return new Response(null, {
-                    status: 404,
-                });
-            }
-
-            return this.createWebfingerResponse(account);
+        if (resourceLookup.siteFound) {
+            return new Response(null, {
+                status: 404,
+            });
         }
 
         const requestHost = ctx.req.header('host')?.split(':')[0];
@@ -95,27 +89,16 @@ export class WebFingerController {
         }
 
         if (normalizedRequestHost) {
-            const requestSite =
-                (await this.siteService.getSiteByHost(normalizedRequestHost)) ||
-                (await this.siteService.getSiteByHost(
-                    `www.${normalizedRequestHost}`,
-                ));
+            const requestLookup = await this.findAccountForHandleHost(
+                resourceUsername,
+                normalizedRequestHost,
+            );
 
-            if (requestSite) {
-                const account = await this.getAccountBySiteOrNull(requestSite);
-
-                if (
-                    account &&
-                    this.resourceUsernameMatchesAccount(
-                        resourceUsername,
-                        account,
-                    )
-                ) {
-                    return this.createWebfingerResponse(
-                        account,
-                        normalizedResourceHost,
-                    );
-                }
+            if (requestLookup.account) {
+                return this.createWebfingerResponse(
+                    requestLookup.account,
+                    normalizedResourceHost,
+                );
             }
         }
 
@@ -124,17 +107,42 @@ export class WebFingerController {
         });
     }
 
-    private async getAccountBySiteOrNull(site: {
-        id: number;
-        host: string;
-        webhook_secret: string;
-        ghost_uuid: string | null;
-    }) {
-        try {
-            return await this.accountRepository.getBySite(site);
-        } catch (_error) {
-            return null;
+    /**
+     * Find the account that answers to the requested username on either
+     * variant of a handle host (`host` and `www.host`).
+     *
+     * Multiple site rows can exist for the same publication (e.g. a stale
+     * registration left behind by a www/non-www domain change), so a
+     * username mismatch on one variant must not prevent the other variant
+     * from resolving. The bare host is checked first, so when both variants
+     * match the requested username the bare host wins.
+     */
+    private async findAccountForHandleHost(
+        resourceUsername: string,
+        handleHost: string,
+    ): Promise<{ siteFound: boolean; account: Account | null }> {
+        let siteFound = false;
+
+        for (const host of [handleHost, `www.${handleHost}`]) {
+            const site = await this.siteService.getSiteByHost(host);
+
+            if (!site) {
+                continue;
+            }
+
+            siteFound = true;
+
+            const account = await this.accountRepository.getBySite(site);
+
+            if (
+                account &&
+                this.resourceUsernameMatchesAccount(resourceUsername, account)
+            ) {
+                return { siteFound, account };
+            }
         }
+
+        return { siteFound, account: null };
     }
 
     private createWebfingerResponse(

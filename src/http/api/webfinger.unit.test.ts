@@ -263,9 +263,7 @@ describe('handleWebFinger', () => {
             return Promise.resolve(null);
         });
 
-        vi.mocked(accountRepository.getBySite).mockRejectedValue(
-            new Error('No account found'),
-        );
+        vi.mocked(accountRepository.getBySite).mockResolvedValue(null);
 
         const response = await webFingerController.handleWebFinger(ctx, next);
 
@@ -273,6 +271,31 @@ describe('handleWebFinger', () => {
         expect(siteService.getSiteByHost).toHaveBeenCalledWith(
             'www.example.com',
         );
+    });
+
+    it('should propagate account lookup errors instead of falling back', async () => {
+        const ctx = getCtx({ resource: 'acct:alice@example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({ host: 'example.com' } as Site);
+            }
+            if (host === 'www.example.com') {
+                return Promise.resolve({ host: 'www.example.com' } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockRejectedValue(
+            new Error('Connection lost'),
+        );
+
+        await expect(
+            webFingerController.handleWebFinger(ctx, next),
+        ).rejects.toThrow('Connection lost');
+        expect(next).not.toHaveBeenCalled();
     });
 
     it('should return a custom webfinger response', async () => {
@@ -346,6 +369,217 @@ describe('handleWebFinger', () => {
         expect(await response?.json()).toMatchObject({
             subject: 'acct:alice@example.com',
             aliases: ['https://www.example.com/users/index'],
+        });
+    });
+
+    it('should resolve via the www site when a stale bare-host site does not match the username', async () => {
+        const ctx = getCtx({ resource: 'acct:alice@example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({ host: 'example.com' } as Site);
+            }
+            if (host === 'www.example.com') {
+                return Promise.resolve({ host: 'www.example.com' } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockImplementation((site) => {
+            if (site.host === 'example.com') {
+                // Stale registration left behind by a domain change,
+                // still on the original username
+                return Promise.resolve({
+                    username: 'index',
+                    url: 'https://example.com',
+                    apId: new URL('https://example.com/users/index'),
+                    webfingerHost: null,
+                } as unknown as Account);
+            }
+
+            // Live registration whose display username was changed
+            return Promise.resolve({
+                username: 'alice',
+                url: 'https://www.example.com',
+                apId: new URL('https://www.example.com/users/index'),
+                webfingerHost: null,
+            } as unknown as Account);
+        });
+
+        const response = await webFingerController.handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toMatchObject({
+            subject: 'acct:alice@example.com',
+            aliases: ['https://www.example.com/users/index'],
+        });
+    });
+
+    it('should prefer the bare-host site when both variants match the username', async () => {
+        const ctx = getCtx({ resource: 'acct:index@example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({ host: 'example.com' } as Site);
+            }
+            if (host === 'www.example.com') {
+                return Promise.resolve({ host: 'www.example.com' } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockImplementation((site) => {
+            if (site.host === 'example.com') {
+                return Promise.resolve({
+                    username: 'index',
+                    url: 'https://example.com',
+                    apId: new URL('https://example.com/users/index'),
+                    webfingerHost: null,
+                } as unknown as Account);
+            }
+
+            return Promise.resolve({
+                username: 'index',
+                url: 'https://www.example.com',
+                apId: new URL('https://www.example.com/users/index'),
+                webfingerHost: null,
+            } as unknown as Account);
+        });
+
+        const response = await webFingerController.handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toMatchObject({
+            subject: 'acct:index@example.com',
+            aliases: ['https://example.com/users/index'],
+        });
+    });
+
+    it('should resolve via the www site when the bare-host site has no account', async () => {
+        const ctx = getCtx({ resource: 'acct:alice@example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({ host: 'example.com' } as Site);
+            }
+            if (host === 'www.example.com') {
+                return Promise.resolve({ host: 'www.example.com' } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockImplementation((site) => {
+            if (site.host === 'example.com') {
+                return Promise.resolve(null);
+            }
+
+            return Promise.resolve({
+                username: 'alice',
+                url: 'https://www.example.com',
+                apId: new URL('https://www.example.com/users/alice'),
+                webfingerHost: null,
+            } as unknown as Account);
+        });
+
+        const response = await webFingerController.handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toMatchObject({
+            subject: 'acct:alice@example.com',
+            aliases: ['https://www.example.com/users/alice'],
+        });
+    });
+
+    it('should return 404 when neither host variant matches the username', async () => {
+        const ctx = getCtx({ resource: 'acct:bob@example.com' });
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'example.com') {
+                return Promise.resolve({ host: 'example.com' } as Site);
+            }
+            if (host === 'www.example.com') {
+                return Promise.resolve({ host: 'www.example.com' } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockImplementation((site) => {
+            if (site.host === 'example.com') {
+                return Promise.resolve({
+                    username: 'index',
+                    url: 'https://example.com',
+                    apId: new URL('https://example.com/users/index'),
+                    webfingerHost: null,
+                } as unknown as Account);
+            }
+
+            return Promise.resolve({
+                username: 'alice',
+                url: 'https://www.example.com',
+                apId: new URL('https://www.example.com/users/index'),
+                webfingerHost: null,
+            } as unknown as Account);
+        });
+
+        const response = await webFingerController.handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(404);
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should resolve a custom domain via the www variant of the request host when the bare request host does not match', async () => {
+        const ctx = getCtx(
+            { resource: 'acct:alice@custom.example.com' },
+            'blog.example.com',
+        );
+        const next = vi.fn();
+
+        vi.mocked(siteService.getSiteByHost).mockImplementation((host) => {
+            if (host === 'blog.example.com') {
+                return Promise.resolve({ host: 'blog.example.com' } as Site);
+            }
+            if (host === 'www.blog.example.com') {
+                return Promise.resolve({
+                    host: 'www.blog.example.com',
+                } as Site);
+            }
+
+            return Promise.resolve(null);
+        });
+
+        vi.mocked(accountRepository.getBySite).mockImplementation((site) => {
+            if (site.host === 'blog.example.com') {
+                // Stale registration left behind by a domain change
+                return Promise.resolve({
+                    username: 'bob',
+                    url: 'https://blog.example.com',
+                    apId: new URL('https://blog.example.com/users/bob'),
+                    webfingerHost: null,
+                } as unknown as Account);
+            }
+
+            return Promise.resolve({
+                username: 'alice',
+                url: 'https://www.blog.example.com',
+                apId: new URL('https://www.blog.example.com/users/index'),
+                webfingerHost: null,
+            } as unknown as Account);
+        });
+
+        const response = await webFingerController.handleWebFinger(ctx, next);
+
+        expect(response?.status).toBe(200);
+        expect(await response?.json()).toMatchObject({
+            subject: 'acct:alice@custom.example.com',
+            aliases: ['https://www.blog.example.com/users/index'],
         });
     });
 
