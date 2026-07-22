@@ -10,13 +10,13 @@ import type { PostDTO } from '@/http/api/types';
 import { ContentPreparer } from '@/post/content';
 import { type Mention, OutboxType, PostType } from '@/post/post.entity';
 
-export type GetPostsError =
+type GetPostsError =
     | 'invalid-next-parameter'
     | 'error-getting-outbox'
     | 'no-page-found'
     | 'not-an-actor';
 
-export type GetPostsFromOutboxError = 'not-internal-account';
+type GetPostsFromOutboxError = 'not-internal-account';
 
 interface BaseGetProfileDataResultRow {
     post_id: number;
@@ -71,7 +71,7 @@ interface GetProfileDataResultRowWithoutReposted
     reposter_followed_by_current_user: 0;
 }
 
-export type GetProfileDataResultRow =
+type GetProfileDataResultRow =
     | GetProfileDataResultRowReposted
     | GetProfileDataResultRowWithoutReposted;
 

@@ -14,12 +14,12 @@ import type { SiteSettings } from '@/helpers/ghost';
  * - `unverifiable`: we cannot determine ownership from the response.
  *   The policy layer decides what to do (currently: fail-open).
  */
-export type OwnershipCheckResult =
+type OwnershipCheckResult =
     | { type: 'still-claims' }
     | { type: 'released'; reason: ReleaseReason }
     | { type: 'unverifiable'; reason: UnverifiableReason };
 
-export type ReleaseReason =
+type ReleaseReason =
     | 'dns-not-found'
     | 'connection-refused'
     | 'admin-api-gone'
@@ -27,7 +27,7 @@ export type ReleaseReason =
     | 'different-uuid'
     | 'aliased';
 
-export type UnverifiableReason =
+type UnverifiableReason =
     | 'network-error'
     | 'timeout'
     | 'server-error'

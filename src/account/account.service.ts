@@ -67,7 +67,7 @@ type RemoteAccountFetchError =
     | 'network-failure'
     | 'not-found';
 
-export type AccountAliasError =
+type AccountAliasError =
     | 'invalid-handle'
     | 'lookup-failed'
     | 'not-an-actor'

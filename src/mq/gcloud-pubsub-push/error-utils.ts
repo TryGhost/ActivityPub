@@ -1,6 +1,6 @@
 import { FetchError } from '@fedify/vocab-runtime';
 
-export interface ErrorAnalysis {
+interface ErrorAnalysis {
     /**
      * Whether this error should be retried or not
      */
