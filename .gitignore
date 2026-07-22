@@ -69,9 +69,6 @@ typings/
 # OSX
 .DS_Store
 
-# Activitypub V 3 Final Custom
-.direnv
-
 # Build
 dist/
 
