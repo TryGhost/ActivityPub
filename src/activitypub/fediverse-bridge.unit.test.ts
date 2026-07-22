@@ -2,14 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EventEmitter from 'node:events';
 
-import { type Object as FedifyObject, Follow, Reject } from '@fedify/vocab';
+import { Follow, Reject } from '@fedify/vocab';
 
 import { AccountEntity } from '@/account/account.entity';
 import type { AccountService } from '@/account/account.service';
 import { AccountBlockedEvent, AccountUpdatedEvent } from '@/account/events';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
 import { FediverseBridge } from '@/activitypub/fediverse-bridge';
-import type { UriBuilder } from '@/activitypub/uri';
 import type { FedifyContext } from '@/app';
 import { Post, PostType } from '@/post/post.entity';
 import type { KnexPostRepository } from '@/post/post.repository.knex';
@@ -33,7 +32,6 @@ describe('FediverseBridge', () => {
     let postRepository: KnexPostRepository;
     let context: FedifyContext;
     let fedifyContextFactory: FedifyContextFactory;
-    let mockUriBuilder: UriBuilder<FedifyObject>;
     let bridge: FediverseBridge;
 
     beforeEach(() => {
@@ -44,22 +42,12 @@ describe('FediverseBridge', () => {
         postRepository = {
             getById: vi.fn(),
         } as unknown as KnexPostRepository;
-        mockUriBuilder = {
-            buildObjectUri: vi.fn().mockImplementation((object, { id }) => {
+        context = {
+            getObjectUri: vi.fn().mockImplementation((object, { id }) => {
                 return new URL(
                     `https://example.com/${object.name.toLowerCase()}/${id}`,
                 );
             }),
-            buildFollowersCollectionUri: vi
-                .fn()
-                .mockImplementation((handle) => {
-                    return new URL(
-                        `https://example.com/user/${handle}/followers`,
-                    );
-                }),
-        } as UriBuilder<FedifyObject>;
-        context = {
-            getObjectUri: mockUriBuilder.buildObjectUri,
             async sendActivity() {},
             data: {
                 globaldb: {
