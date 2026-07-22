@@ -7,7 +7,6 @@ import type { Knex } from 'knex';
 
 import { AccountEntity } from '@/account/account.entity';
 import { KnexAccountRepository } from '@/account/account.repository.knex';
-import { AccountCreatedEvent } from '@/account/events';
 import { AccountUpdatedEvent } from '@/account/events/account-updated.event';
 import { AsyncEvents } from '@/core/events';
 import type { Site } from '@/site/site.service';
@@ -860,7 +859,7 @@ describe('KnexAccountRepository', () => {
         expect(fetched?.webfingerHost).toBe('example.com');
     });
 
-    it('Handles events when creating an account', async () => {
+    it('Does not emit events when creating an account', async () => {
         const emitSpy = vi.spyOn(events, 'emitAsync');
 
         const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
@@ -881,11 +880,7 @@ describe('KnexAccountRepository', () => {
 
         await accountRepository.create(draft);
 
-        expect(emitSpy).toHaveBeenCalledWith(
-            AccountCreatedEvent.getName(),
-            expect.any(AccountCreatedEvent),
-        );
-        expect(emitSpy).toHaveBeenCalledTimes(1);
+        expect(emitSpy).not.toHaveBeenCalled();
 
         emitSpy.mockRestore();
         fromDraftSpy.mockRestore();

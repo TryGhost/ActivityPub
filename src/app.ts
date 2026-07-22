@@ -46,7 +46,6 @@ import { cors } from 'hono/cors';
 
 import type { Account } from '@/account/account.entity';
 import { AccountBlockedEvent } from '@/account/events/account-blocked.event';
-import { AccountCreatedEvent } from '@/account/events/account-created.event';
 import { AccountFollowedEvent } from '@/account/events/account-followed.event';
 import { AccountUnblockedEvent } from '@/account/events/account-unblocked.event';
 import { AccountUnfollowedEvent } from '@/account/events/account-unfollowed.event';
@@ -275,7 +274,6 @@ const globalEventSerializer =
 
 for (const event of [
     AccountBlockedEvent,
-    AccountCreatedEvent,
     AccountFollowedEvent,
     AccountUnblockedEvent,
     AccountUnfollowedEvent,
