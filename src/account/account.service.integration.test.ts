@@ -25,13 +25,12 @@ import type {
     Site,
 } from '@/account/types';
 import type { FedifyContextFactory } from '@/activitypub/fedify-context.factory';
+import { AP_BASE_PATH } from '@/constants';
 import { AsyncEvents } from '@/core/events';
 import { getError, getValue, isError } from '@/core/result';
 import { generateTestCryptoKeyPair } from '@/test/crypto-key-pair';
 import { createTestDb } from '@/test/db';
 import { createFixtureManager, type FixtureManager } from '@/test/fixtures';
-
-const AP_BASE_PATH = '/.ghost/activitypub';
 
 vi.mock('@fedify/fedify', async () => {
     // generateCryptoKeyPair is a slow operation so we generate a key pair

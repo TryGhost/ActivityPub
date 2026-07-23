@@ -133,27 +133,7 @@ export class AccountEntity implements Account {
     }
 
     static fromDraft(draft: AccountDraft, id: number): AccountEntity {
-        const events: AccountEvent[] = [];
-        return new AccountEntity(
-            id,
-            draft.uuid,
-            draft.username,
-            draft.name,
-            draft.bio,
-            draft.url,
-            draft.avatarUrl,
-            draft.bannerImageUrl,
-            draft.apId,
-            draft.apFollowers,
-            draft.apInbox,
-            draft.apOutbox,
-            draft.apFollowing,
-            draft.apLiked,
-            draft.isInternal,
-            draft.customFields,
-            draft.webfingerHost,
-            events,
-        );
+        return AccountEntity.create({ ...draft, id });
     }
 
     static draft(from: AccountDraftData): AccountDraft {
