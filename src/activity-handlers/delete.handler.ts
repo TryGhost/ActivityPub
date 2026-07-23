@@ -41,7 +41,9 @@ export class DeleteHandler {
         }
 
         if (isAccountDelete(deleteActivity)) {
-            ctx.data.logger.debug('Delete is an account deletion, exit early');
+            ctx.data.logger.debug(
+                'Delete activity is an account deletion, exit early',
+            );
             return;
         }
 

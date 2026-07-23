@@ -100,7 +100,7 @@ describe('DeleteHandler', () => {
         await handler.handle(mockContext, deleteActivity);
 
         expect(mockLogger.debug).toHaveBeenCalledWith(
-            'Delete is an account deletion, exit early',
+            'Delete activity is an account deletion, exit early',
         );
         expect(mockAccountService.getByApId).not.toHaveBeenCalled();
         expect(mockPostService.deleteByApId).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe('DeleteHandler', () => {
         await handler.handle(mockContext, deleteActivity);
 
         expect(mockLogger.debug).toHaveBeenCalledWith(
-            'Delete is an account deletion, exit early',
+            'Delete activity is an account deletion, exit early',
         );
         expect(mockAccountService.getByApId).not.toHaveBeenCalled();
         expect(mockPostService.deleteByApId).not.toHaveBeenCalled();
