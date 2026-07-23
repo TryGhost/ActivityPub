@@ -862,8 +862,6 @@ describe('KnexAccountRepository', () => {
     it('Does not emit events when creating an account', async () => {
         const emitSpy = vi.spyOn(events, 'emitAsync');
 
-        const fromDraftSpy = vi.spyOn(AccountEntity, 'fromDraft');
-
         const site = await fixtureManager.createSite();
         const draftData = await createInternalAccountDraftData({
             host: new URL(`https://${site.host}`),
@@ -883,7 +881,6 @@ describe('KnexAccountRepository', () => {
         expect(emitSpy).not.toHaveBeenCalled();
 
         emitSpy.mockRestore();
-        fromDraftSpy.mockRestore();
     });
 
     it('Can create an account entity from a database row', async () => {
