@@ -206,7 +206,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: matrix.platform == 'linux/arm64' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -306,7 +306,7 @@ jobs:
 
       - name: Login to GCP Artifact Registry
         if: steps.changes.outputs.reconcile-account-topics == 'true'
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4
         with:
           registry: europe-docker.pkg.dev
           username: oauth2accesstoken
