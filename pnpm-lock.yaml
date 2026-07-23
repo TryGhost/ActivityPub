@@ -127,8 +127,8 @@ importers:
         specifier: 2.5.4
         version: 2.5.4
       '@cucumber/cucumber':
-        specifier: 13.1.1
-        version: 13.1.1
+        specifier: 13.2.0
+        version: 13.2.0
       '@faker-js/faker':
         specifier: 10.5.0
         version: 10.5.0
@@ -295,8 +295,8 @@ packages:
   '@cucumber/cucumber-expressions@20.0.0':
     resolution: {integrity: sha512-t2FBLKuU0U1nP5FM8pHiVonYcXVm07fvXr/H9osdvrjcLXSWc5OCbOOqV/k5S56w/YndPv1Sv2/m/x1KBYvIlA==}
 
-  '@cucumber/cucumber@13.1.1':
-    resolution: {integrity: sha512-HdFYYoC6yVvvOg98MnVQ1KDc2YbmN3n2Jtr7haERcVNuTRpILc7s7Hc8vNTIMT1eI+Hp7V/UmGt6kLkeYXNDSQ==}
+  '@cucumber/cucumber@13.2.0':
+    resolution: {integrity: sha512-QjhTG6FWVdG66qkj1BGONecAIqEIDx4g+ZnTdaQVmhECDfGPYyfEcBX3k71p/h1YKvWEUWmhol77Y7FZ36pARA==}
     engines: {node: 22 || 24 || >=26}
     hasBin: true
 
@@ -329,9 +329,6 @@ packages:
     resolution: {integrity: sha512-MXsD7ZAWWAiWMrn3Lzq2nwu9DJpPbbvdqXj2ot1BSM2gXnoSvg8d0pc6PzS9pI02swMSn/KN11mTdF5ScE7X0Q==}
     peerDependencies:
       '@cucumber/messages': '>=17.1.1'
-
-  '@cucumber/messages@32.3.1':
-    resolution: {integrity: sha512-yNQq1KoXRYaEKrWMFmpUQX7TdeQuU9jeGgJAZ3dArTsC/T4NpJ6DnqaJIIgwPnz/wtQIQTNX7/h0rOuF5xY4qQ==}
 
   '@cucumber/messages@33.0.4':
     resolution: {integrity: sha512-i6P1a0bnmhecOHfvIW0rhMxv/gMKfBKwDMxmD9/Uo1HSqpQ17ocHms1JwWW6uTMLAopqqWlcz7l6Pax+qUOTzg==}
@@ -1935,9 +1932,6 @@ packages:
 
   cjs-module-lexer@2.2.0:
     resolution: {integrity: sha512-4bHTS2YuzUvtoLjdy+98ykbNB5jS0+07EvFNXerqZQJ89F7DI6ET7OQo/HJuW6K0aVsKA9hj9/RVb2kQVOrPDQ==}
-
-  class-transformer@0.5.1:
-    resolution: {integrity: sha512-SQa1Ws6hUbfC98vKGxZH3KFY0Y1lm5Zm0SY8XX9zbK7FJCyVEac3ATW0RIpwzW+oOfmHE5PMPufDG9hCfoEOMw==}
 
   cli-cursor@5.0.0:
     resolution: {integrity: sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw==}
@@ -4034,7 +4028,7 @@ snapshots:
     dependencies:
       regexp-match-indices: 1.0.2
 
-  '@cucumber/cucumber@13.1.1':
+  '@cucumber/cucumber@13.2.0':
     dependencies:
       '@cucumber/ci-environment': 14.0.0
       '@cucumber/cucumber-expressions': 20.0.0
@@ -4087,7 +4081,7 @@ snapshots:
 
   '@cucumber/gherkin@41.0.0':
     dependencies:
-      '@cucumber/messages': 32.3.1
+      '@cucumber/messages': 33.0.4
 
   '@cucumber/html-formatter@24.0.0(@cucumber/messages@34.0.1)':
     dependencies:
@@ -4105,11 +4099,6 @@ snapshots:
     dependencies:
       '@cucumber/messages': 34.0.1
       mime: 4.1.0
-
-  '@cucumber/messages@32.3.1':
-    dependencies:
-      class-transformer: 0.5.1
-      reflect-metadata: 0.2.2
 
   '@cucumber/messages@33.0.4': {}
 
@@ -5745,8 +5734,6 @@ snapshots:
   chardet@2.2.0: {}
 
   cjs-module-lexer@2.2.0: {}
-
-  class-transformer@0.5.1: {}
 
   cli-cursor@5.0.0:
     dependencies:
